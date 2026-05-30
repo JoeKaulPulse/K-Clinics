@@ -9,6 +9,7 @@ import { SectionHeading } from '@/components/ui/Section';
 import { TreatmentCard } from '@/components/ui/TreatmentCard';
 import { Marquee } from '@/components/ui/Marquee';
 import { GenerativeArt } from '@/components/ui/GenerativeArt';
+import { BeforeAfter } from '@/components/ui/BeforeAfter';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { BookingProviders } from '@/components/booking/BookingButtons';
 import { CountUp } from '@/components/motion/CountUp';
@@ -117,6 +118,23 @@ export default function HomePage() {
       <div className="bg-[var(--color-bone)]">
         <HorizontalGallery items={featured} eyebrow="Signature treatments" title="The most requested, in considered hands." />
       </div>
+
+      {/* Results — before/after */}
+      <section className="section container-lux">
+        <div className="grid gap-x-16 gap-y-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+          <SectionHeading
+            eyebrow="Visible results"
+            title="The proof is in the transformation."
+            lede="Drag to reveal the difference. Every result is the product of a bespoke plan, expert hands and the patience to do things properly."
+          />
+          <Reveal delay={0.1}>
+            <BeforeAfter className="aspect-[4/3] w-full shadow-[var(--shadow-lift)]" />
+            <p className="mt-4 text-center text-xs text-[var(--color-stone)]">
+              Illustrative preview. Real client before-and-afters available at consultation.
+            </p>
+          </Reveal>
+        </div>
+      </section>
 
       {/* Why us / pillars */}
       <section className="section container-lux">

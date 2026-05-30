@@ -27,7 +27,7 @@ export default function ContactPage() {
         <BookingButtons />
       </PageHero>
 
-      <section className="container-lux grid gap-12 py-20 md:grid-cols-[0.9fr_1.1fr] md:py-28">
+      <section className="container-lux section grid gap-12 md:grid-cols-[0.9fr_1.1fr]">
         <Reveal>
           <div className="space-y-10">
             <div>
