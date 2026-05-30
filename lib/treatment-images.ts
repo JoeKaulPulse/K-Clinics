@@ -6,13 +6,20 @@
 // in public/treatments/manifest.json (an array of filenames). Only files listed
 // there are used — so the build never references a missing image, and the
 // generative-art placeholder shows for anything not yet uploaded.
-import map from '@/import/slug-image-map.json';
+import treatMap from '@/import/slug-image-map.json';
+import pkgMap from '@/import/package-image-map.json';
+import pageMap from '@/import/page-image-map.json';
 import present from '@/public/treatments/manifest.json';
 
-const imageMap = map as Record<string, string>;
 const available = new Set(present as string[]);
+const resolve = (file?: string) => (file && available.has(file) ? `/treatments/${file}` : null);
 
 export function treatmentImage(slug: string): string | null {
-  const file = imageMap[slug];
-  return file && available.has(file) ? `/treatments/${file}` : null;
+  return resolve((treatMap as Record<string, string>)[slug]);
+}
+export function packageImage(slug: string): string | null {
+  return resolve((pkgMap as Record<string, string>)[slug]);
+}
+export function pageImage(key: string): string | null {
+  return resolve((pageMap as Record<string, string>)[key]);
 }

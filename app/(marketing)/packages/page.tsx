@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { PageHero } from '@/components/ui/PageHero';
-import { GenerativeArt } from '@/components/ui/GenerativeArt';
+import { MediaArt } from '@/components/ui/MediaArt';
+import { packageImage } from '@/lib/treatment-images';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { ArrowIcon } from '@/components/ui/Button';
 import { packages } from '@/lib/packages';
@@ -37,10 +38,12 @@ export default function PackagesPage() {
                   className="group grid overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] transition-all duration-700 [transition-timing-function:var(--ease-lux)] hover:-translate-y-1 hover:shadow-[var(--shadow-lift)] md:grid-cols-[1.1fr_1.2fr]"
                 >
                   <div className={`relative min-h-[15rem] overflow-hidden ${flip ? 'md:order-2' : ''}`}>
-                    <GenerativeArt
+                    <MediaArt
+                      src={packageImage(p.slug)}
                       from={p.gradient[0]}
                       to={p.gradient[1]}
                       seed={i}
+                      alt={p.name}
                       className="h-full w-full transition-transform duration-[1.6s] [transition-timing-function:var(--ease-lux)] group-hover:scale-[1.06]"
                     />
                     <span className="absolute left-6 top-6 font-[family-name:var(--font-display)] text-6xl text-white/30">
