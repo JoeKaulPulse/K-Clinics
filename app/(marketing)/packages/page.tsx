@@ -28,29 +28,37 @@ export default function PackagesPage() {
 
       <section className="container-lux section">
         <Stagger className="grid gap-8">
-          {packages.map((p, i) => (
-            <StaggerItem key={p.slug}>
-              <Link
-                href={`/packages/${p.slug}`}
-                className="group grid overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-line)] transition-all duration-700 hover:shadow-[var(--shadow-lift)] md:grid-cols-[1fr_1.2fr]"
-              >
-                <GenerativeArt
-                  from={p.gradient[0]}
-                  to={p.gradient[1]}
-                  seed={i}
-                  className="min-h-[14rem] transition-transform duration-[1.6s] [transition-timing-function:var(--ease-lux)] group-hover:scale-105"
-                />
-                <div className="flex flex-col justify-center p-8 md:p-12">
-                  <p className="eyebrow mb-3">{p.subtitle}</p>
-                  <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl">{p.name}</h2>
-                  <p className="mt-4 max-w-xl text-[var(--color-stone)]">{p.description}</p>
-                  <span className="mt-6 inline-flex items-center gap-2 font-medium text-[var(--color-gold)]">
-                    View programme <ArrowIcon />
-                  </span>
-                </div>
-              </Link>
-            </StaggerItem>
-          ))}
+          {packages.map((p, i) => {
+            const flip = i % 2 === 1;
+            return (
+              <StaggerItem key={p.slug}>
+                <Link
+                  href={`/packages/${p.slug}`}
+                  className="group grid overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] transition-all duration-700 [transition-timing-function:var(--ease-lux)] hover:-translate-y-1 hover:shadow-[var(--shadow-lift)] md:grid-cols-[1.1fr_1.2fr]"
+                >
+                  <div className={`relative min-h-[15rem] overflow-hidden ${flip ? 'md:order-2' : ''}`}>
+                    <GenerativeArt
+                      from={p.gradient[0]}
+                      to={p.gradient[1]}
+                      seed={i}
+                      className="h-full w-full transition-transform duration-[1.6s] [transition-timing-function:var(--ease-lux)] group-hover:scale-[1.06]"
+                    />
+                    <span className="absolute left-6 top-6 font-[family-name:var(--font-display)] text-6xl text-white/30">
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                  </div>
+                  <div className={`flex flex-col justify-center p-8 md:p-14 ${flip ? 'md:order-1' : ''}`}>
+                    <p className="eyebrow mb-3">{p.subtitle}</p>
+                    <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-[2.5rem]">{p.name}</h2>
+                    <p className="mt-4 max-w-xl leading-relaxed text-[var(--color-stone)]">{p.description}</p>
+                    <span className="mt-7 inline-flex items-center gap-2 font-medium text-[var(--color-gold)]">
+                      View programme <ArrowIcon />
+                    </span>
+                  </div>
+                </Link>
+              </StaggerItem>
+            );
+          })}
         </Stagger>
       </section>
     </>
