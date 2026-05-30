@@ -8,6 +8,8 @@ import { Marquee } from '@/components/ui/Marquee';
 import { GenerativeArt } from '@/components/ui/GenerativeArt';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { BookingProviders } from '@/components/booking/BookingButtons';
+import { CountUp } from '@/components/motion/CountUp';
+import { Aurora } from '@/components/ui/Aurora';
 import { treatments, getTreatment } from '@/lib/treatments';
 import { packages } from '@/lib/packages';
 import { site } from '@/lib/site';
@@ -141,7 +143,8 @@ export default function HomePage() {
           <Stagger className="grid gap-px overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2">
             {pillars.map((p) => (
               <StaggerItem key={p.label} className="bg-[var(--color-porcelain)] p-9 md:p-10">
-                <p className="font-[family-name:var(--font-display)] text-[clamp(3rem,2rem+2vw,4.5rem)] leading-none text-gold-gradient">{p.stat}</p>
+                <CountUp value={p.stat} className="block font-[family-name:var(--font-display)] text-[clamp(3rem,2rem+2vw,4.5rem)] leading-none text-gold-gradient" />
+                <span className="sr-only">{p.stat}</span>
                 <p className="mt-4 font-medium">{p.label}</p>
                 <p className="mt-2 text-sm leading-relaxed text-[var(--color-stone)]">{p.text}</p>
               </StaggerItem>
@@ -152,6 +155,7 @@ export default function HomePage() {
 
       {/* The experience */}
       <section className="surface-ink grain section relative">
+        <Aurora />
         <div className="container-lux relative">
           <SectionHeading
             tone="light"
@@ -209,6 +213,7 @@ export default function HomePage() {
 
       {/* Testimonials */}
       <section className="surface-ink grain section relative">
+        <Aurora />
         <div className="container-lux relative">
           <Testimonials />
         </div>
