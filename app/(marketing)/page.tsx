@@ -3,6 +3,7 @@ import { Hero } from '@/components/home/Hero';
 import { Testimonials } from '@/components/home/Testimonials';
 import { PinnedExperience } from '@/components/home/PinnedExperience';
 import { HorizontalGallery } from '@/components/home/HorizontalGallery';
+import { TrustStrip } from '@/components/home/TrustStrip';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { ScrollReveal } from '@/components/motion/ScrollReveal';
 import { SectionHeading } from '@/components/ui/Section';
@@ -156,6 +157,9 @@ export default function HomePage() {
           </Stagger>
         </div>
       </section>
+
+      {/* Credentials / trust */}
+      <TrustStrip />
 
       {/* The experience — pinned scrollytelling */}
       <PinnedExperience />
