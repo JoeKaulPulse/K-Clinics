@@ -298,6 +298,36 @@
 .rise { opacity: 0; animation: rise-in 0.9s var(--ease-lux) both; }
 .media-in { animation: media-in 1.4s var(--ease-lux) both; }
 
+/* Editorial masked line reveal — each line slides up from behind its own mask. */
+@keyframes line-rise {
+  from { transform: translateY(115%); }
+  to   { transform: translateY(0); }
+}
+.reveal-mask { display: block; overflow: hidden; padding-bottom: 0.12em; margin-bottom: -0.12em; }
+.reveal-mask > .reveal-line {
+  display: block;
+  transform: translateY(115%);
+  animation: line-rise 1.1s var(--ease-lux) both;
+}
+
+/* Hero photography: a curtain wipe in, then a slow perpetual ken-burns drift. */
+@keyframes curtain-up {
+  from { clip-path: inset(0 0 100% 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+@keyframes ken-burns {
+  from { transform: scale(1.015); }
+  to   { transform: scale(1.085); }
+}
+.hero-media { clip-path: inset(0 0 0 0); animation: curtain-up 1.4s var(--ease-lux) both; }
+.hero-media .hero-img { animation: ken-burns 22s var(--ease-glide) 1.4s alternate infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-mask > .reveal-line { transform: none; }
+  .hero-media { clip-path: none; }
+  .hero-media .hero-img { animation: none; }
+}
+
 /* ── Animated K monogram: self-draw calligraphy + fill bloom + sheen ──────── */
 @keyframes k-draw {
   to { stroke-dashoffset: 0; }
