@@ -42,21 +42,21 @@ export function Hero() {
 
           <h1 className="font-[family-name:var(--font-display)] text-[clamp(2.75rem,1.6rem+3.8vw,5.5rem)] leading-[1.02] tracking-[-0.02em]">
             <span className="reveal-mask">
-              <span className="reveal-line" style={{ animationDelay: '0.12s' }}>Aesthetics &amp; dentistry,</span>
+              <span className="reveal-line" style={{ animationDelay: '0.12s' }}>Radiant skin,</span>
             </span>
             <span className="reveal-mask">
               <span className="reveal-line" style={{ animationDelay: '0.28s' }}>
-                <span className="text-gold-shimmer">perfected.</span>
+                <span className="text-gold-shimmer">confident smiles.</span>
               </span>
             </span>
           </h1>
 
           <p
-            className="rise mt-7 max-w-xl text-lg leading-relaxed text-[color-mix(in_oklab,var(--color-porcelain)_78%,transparent)]"
+            className="rise mt-7 max-w-xl text-lg leading-relaxed text-[color-mix(in_oklab,var(--color-porcelain)_80%,transparent)]"
             style={{ animationDelay: '0.4s' }}
           >
-            Advanced laser &amp; skin science and award-worthy aesthetic dentistry — for every skin tone,
-            delivered with precision, artistry and uncommon care.
+            A London clinic devoted to natural beauty — expert aesthetics and aesthetic dentistry,
+            tailored to you and delivered with warmth, artistry and genuine care.
           </p>
 
           <div className="rise mt-9 flex flex-wrap items-center gap-3" style={{ animationDelay: '0.5s' }}>
