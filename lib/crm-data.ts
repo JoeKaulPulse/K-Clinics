@@ -61,7 +61,26 @@ export async function getClient(id: string) {
       consultations: { orderBy: { createdAt: 'desc' } },
       interactions: { orderBy: { createdAt: 'desc' } },
       appointments: { orderBy: { scheduledAt: 'desc' } },
+      bookings: { orderBy: { startAt: 'desc' } },
       emails: { orderBy: { createdAt: 'desc' }, take: 20 },
     },
   });
+}
+
+export async function listBookings(filter?: string) {
+  const now = new Date();
+  let where: Record<string, unknown> | undefined;
+  if (filter === 'upcoming') where = { startAt: { gte: now }, status: { in: ['PENDING', 'CONFIRMED'] } };
+  else if (filter === 'past') where = { startAt: { lt: now } };
+  else if (filter && filter !== 'ALL') where = { status: filter };
+  return db.booking.findMany({
+    where,
+    orderBy: { startAt: filter === 'past' ? 'desc' : 'asc' },
+    include: { client: true },
+    take: 200,
+  });
+}
+
+export async function getBooking(id: string) {
+  return db.booking.findUnique({ where: { id }, include: { client: true } });
 }

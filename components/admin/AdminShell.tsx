@@ -6,6 +6,7 @@ import { KMark } from '@/components/brand/marks';
 
 const nav = [
   { href: '/admin', label: 'Overview', exact: true },
+  { href: '/admin/bookings', label: 'Bookings' },
   { href: '/admin/consultations', label: 'Consultations' },
   { href: '/admin/clients', label: 'Clients' },
   { href: '/admin/campaigns', label: 'Campaigns' },

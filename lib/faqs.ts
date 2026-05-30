@@ -12,9 +12,10 @@ export const generalFaqs: { heading: string; items: Faq[] }[] = [
   {
     heading: 'Booking & payment',
     items: [
-      { q: 'How do I book an appointment?', a: 'Book instantly online via Treatwell or Fresha, call us, or send an enquiry — whichever suits you best. We will confirm your appointment promptly.' },
+      { q: 'How do I book an appointment?', a: 'Book online in under a minute — choose your treatment and time and your card is saved securely (no payment is taken until your treatment is delivered). You can also call us or request a consultation.' },
       { q: 'Can I pay in instalments?', a: 'For larger treatment plans and packages, flexible payment options are available. We will talk you through them at your consultation.' },
-      { q: 'What is your cancellation policy?', a: 'We kindly ask for at least 24–48 hours’ notice to reschedule, so we can offer the time to another client. Full details are shared at booking.' },
+      { q: 'What is your cancellation policy?', a: 'Cancellations are completely free up to 24 hours before your appointment. Within 24 hours, the full treatment fee applies (charged to the card saved at booking). You can cancel any time from the link in your confirmation email.' },
+      { q: 'When am I charged?', a: 'Never upfront. Your card is securely saved when you book, but you are only charged once your treatment has been delivered — or, for late cancellations, per our 24-hour policy.' },
     ],
   },
   {

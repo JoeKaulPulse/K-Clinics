@@ -96,7 +96,7 @@ export function Header() {
           >
             {site.phone}
           </a>
-          <Button href={site.booking.treatwell} external size="md" variant={light ? 'gold' : 'ink'}>
+          <Button href={site.booking.path} size="md" variant={light ? 'gold' : 'ink'}>
             Book Now <ArrowIcon />
           </Button>
         </div>
@@ -235,11 +235,8 @@ export function Header() {
               ))}
             </nav>
             <div className="mt-8 flex flex-col gap-3">
-              <Button href={site.booking.treatwell} external size="lg" className="w-full">
-                Book on Treatwell <ArrowIcon />
-              </Button>
-              <Button href={site.booking.fresha} external variant="outline" size="lg" className="w-full">
-                Book on Fresha
+              <Button href={site.booking.path} size="lg" className="w-full">
+                Book online <ArrowIcon />
               </Button>
               <Link href="/consultation" className="mt-1 text-center text-sm font-medium text-[var(--color-gold)] underline-offset-4 hover:underline">
                 Or request a free consultation

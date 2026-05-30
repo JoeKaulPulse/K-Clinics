@@ -43,6 +43,7 @@ jobs:
         # they remain in the repo for the Vercel production deploy.
         run: |
           rm -rf app/api app/admin components/admin middleware.ts
+          rm -rf "app/(marketing)/booking"
           echo "Removed server-only routes for static build."
 
       - name: Configure Pages (auto-enables Pages if needed)

@@ -56,6 +56,14 @@ enum Role {
   STAFF
 }
 
+enum BookingStatus {
+  PENDING      // created, awaiting card setup confirmation
+  CONFIRMED    // card on file, slot held
+  COMPLETED    // service delivered (may or may not be charged)
+  CANCELLED
+  NO_SHOW
+}
+
 model Client {
   id              String         @id @default(cuid())
   firstName       String
@@ -70,12 +78,14 @@ model Client {
   unsubscribed    Boolean        @default(false)
   unsubToken      String         @unique @default(cuid())
   lastVisitAt     DateTime?
+  stripeCustomerId String?       @unique
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
   consultations   Consultation[]
   interactions    Interaction[]
   appointments    Appointment[]
+  bookings        Booking[]
   emails          EmailEvent[]
 
   @@index([createdAt])
@@ -127,6 +137,50 @@ model Appointment {
   createdAt  DateTime          @default(now())
 
   @@index([scheduledAt])
+}
+
+model Booking {
+  id            String        @id @default(cuid())
+  client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId      String
+
+  treatmentSlug String
+  treatmentTitle String
+  startAt       DateTime
+  endAt         DateTime
+  durationMin   Int
+  pricePence    Int           // 0 = on-consultation (amount set at charge time)
+
+  status        BookingStatus @default(PENDING)
+  notes         String?
+
+  // Stripe: card saved at booking (no charge), charged later.
+  stripeCustomerId       String?
+  stripeSetupIntentId    String?
+  stripePaymentMethodId  String?
+
+  // Service / late-cancel charge.
+  chargePaymentIntentId  String?
+  chargedPence           Int?
+  chargedAt              DateTime?
+
+  // Cancellation.
+  cancelledAt   DateTime?
+  cancelReason  String?
+  cancelledBy   String?       // 'client' | staff email
+  lateCancel    Boolean       @default(false)
+  feeWaived     Boolean       @default(false)
+
+  // Client self-service link token.
+  manageToken   String        @unique @default(cuid())
+
+  remindersSent Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([startAt])
+  @@index([status])
+  @@index([clientId])
 }
 
 model EmailEvent {
