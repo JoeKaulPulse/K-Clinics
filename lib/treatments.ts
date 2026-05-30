@@ -2,6 +2,7 @@
 // Treatment content model. Each entry renders a premium, SEO-optimised page via
 // app/[slug]/page.tsx. Copy is written to read as "ultra-premium clinic".
 // ─────────────────────────────────────────────────────────────────────────────
+import { importedTreatments } from './treatments-imported';
 
 export type Faq = { q: string; a: string };
 export type Benefit = { title: string; text: string };
@@ -73,7 +74,7 @@ export const treatments: Treatment[] = [
       { label: 'Interval', value: '4–6 weeks' },
       { label: 'Downtime', value: 'None' },
     ],
-    priceFrom: '£45',
+    priceFrom: '£11',
     related: ['laser-hair-removal-for-men', 'carbon-laser-peel', 'hydraglow-facial'],
     gradient: ['#c2a589', '#7b6a5d'],
   },
@@ -112,7 +113,7 @@ export const treatments: Treatment[] = [
       { label: 'Popular areas', value: 'Back · Chest · Neckline' },
       { label: 'Downtime', value: 'None' },
     ],
-    priceFrom: '£60',
+    priceFrom: '£33',
     related: ['laser-hair-removal', 'carbon-laser-peel', 'rf-lifting'],
     gradient: ['#7b6a5d', '#2a2420'],
   },
@@ -150,7 +151,7 @@ export const treatments: Treatment[] = [
       { label: 'Downtime', value: 'None' },
       { label: 'Glow', value: 'Immediate' },
     ],
-    priceFrom: '£120',
+    priceFrom: '£121',
     related: ['hydraglow-facial', 'face-treatments', 'laser-hair-removal'],
     gradient: ['#3d352f', '#a98a6d'],
   },
@@ -188,7 +189,7 @@ export const treatments: Treatment[] = [
       { label: 'Approach', value: 'Fade or full removal' },
       { label: 'Consult', value: 'Complimentary' },
     ],
-    priceFrom: '£75',
+    priceFrom: '£44',
     related: ['carbon-laser-peel', 'face-treatments', 'laser-hair-removal'],
     gradient: ['#2a2420', '#7b6a5d'],
   },
@@ -226,7 +227,7 @@ export const treatments: Treatment[] = [
       { label: 'Lasts', value: '~12 months' },
       { label: 'Downtime', value: 'None' },
     ],
-    priceFrom: '£215',
+    priceFrom: '£349',
     related: ['rf-lifting', 'cosmetic-injections', 'hydraglow-facial'],
     gradient: ['#a98a6d', '#2a2420'],
   },
@@ -265,7 +266,7 @@ export const treatments: Treatment[] = [
       { label: 'Comfort', value: 'Warm & relaxing' },
       { label: 'Downtime', value: 'None' },
     ],
-    priceFrom: '£175',
+    priceFrom: '£260',
     related: ['smas-hifu-lifting', 'body-contouring', 'hydraglow-facial'],
     gradient: ['#c2a589', '#3d352f'],
   },
@@ -303,7 +304,7 @@ export const treatments: Treatment[] = [
       { label: 'Downtime', value: 'None' },
       { label: 'Glow', value: 'Immediate' },
     ],
-    priceFrom: '£79',
+    priceFrom: '£110',
     related: ['carbon-laser-peel', 'face-treatments', 'cosmetic-injections'],
     gradient: ['#cdb4a3', '#c2a589'],
   },
@@ -342,7 +343,7 @@ export const treatments: Treatment[] = [
       { label: 'Format', value: 'Prescriptive course' },
       { label: 'Consult', value: 'Complimentary' },
     ],
-    priceFrom: '£90',
+    priceFrom: '£115',
     related: ['hydraglow-facial', 'carbon-laser-peel', 'smas-hifu-lifting'],
     gradient: ['#7b6a5d', '#c2a589'],
   },
@@ -419,7 +420,7 @@ export const treatments: Treatment[] = [
       { label: 'Filler', value: '6–18 months' },
       { label: 'Downtime', value: 'Minimal' },
     ],
-    priceFrom: '£180',
+    priceFrom: '£150',
     related: ['smas-hifu-lifting', 'hydraglow-facial', 'face-treatments'],
     gradient: ['#cdb4a3', '#a98a6d'],
   },
@@ -769,6 +770,8 @@ export const treatments: Treatment[] = [
     related: ['aesthetic-dentistry', 'dental-implant-placement', 'veneers'],
     gradient: ['#c2a589', '#7b6a5d'],
   },
+  // Treatments imported from the existing kclinics.co.uk site (real copy).
+  ...importedTreatments,
 ];
 
 // ── Booking config ───────────────────────────────────────────────────────────
@@ -777,17 +780,18 @@ export const treatments: Treatment[] = [
 // amount set by staff at charge time. Edit these freely — they are guide values.
 type BookingCfg = { pricePence: number | null; durationMin: number };
 export const bookingConfig: Record<string, BookingCfg> = {
-  'laser-hair-removal':          { pricePence: 4500,  durationMin: 30 },
-  'laser-hair-removal-for-men':  { pricePence: 6000,  durationMin: 45 },
-  'carbon-laser-peel':           { pricePence: 12000, durationMin: 45 },
-  'laser-tattoo-removal':        { pricePence: 7500,  durationMin: 30 },
-  'smas-hifu-lifting':           { pricePence: 21500, durationMin: 60 },
-  'rf-lifting':                  { pricePence: 17500, durationMin: 45 },
-  'hydraglow-facial':            { pricePence: 7900,  durationMin: 60 },
-  'face-treatments':             { pricePence: 9000,  durationMin: 60 },
-  'body-contouring':             { pricePence: 9500,  durationMin: 60 },
-  'cosmetic-injections':         { pricePence: 18000, durationMin: 45 },
-  'intimate-rejuvenation':       { pricePence: null,  durationMin: 45 },
+  // "from" = lowest single-session price from the official price sheet.
+  'laser-hair-removal':          { pricePence: 1100,  durationMin: 15 },  // eyebrows from £11
+  'laser-hair-removal-for-men':  { pricePence: 3300,  durationMin: 15 },  // underarms from £33
+  'carbon-laser-peel':           { pricePence: 12100, durationMin: 40 },  // Hollywood peel full face from £121
+  'laser-tattoo-removal':        { pricePence: 4400,  durationMin: 15 },  // very small from £44
+  'smas-hifu-lifting':           { pricePence: 34900, durationMin: 30 },  // eyebrow/forehead/neck lift from £349
+  'rf-lifting':                  { pricePence: 26000, durationMin: 45 },  // from £260
+  'hydraglow-facial':            { pricePence: 9500,  durationMin: 30 },  // signature express from £95
+  'face-treatments':            { pricePence: 11500, durationMin: 30 },  // cosmetic peel full face from £115
+  'body-contouring':             { pricePence: 11000, durationMin: 60 },  // Endosphere from £110
+  'cosmetic-injections':         { pricePence: 15000, durationMin: 30 },  // fat-dissolving from £150/vial
+  'intimate-rejuvenation':       { pricePence: 69000, durationMin: 40 },  // CO2 laser from £690
   'veneers':                     { pricePence: null,  durationMin: 60 },
   'teeth-whitening':             { pricePence: null,  durationMin: 60 },
   'composite-bonding':           { pricePence: null,  durationMin: 60 },
@@ -796,6 +800,28 @@ export const bookingConfig: Record<string, BookingCfg> = {
   'dentures':                    { pricePence: null,  durationMin: 45 },
   'specialist-dentistry':        { pricePence: null,  durationMin: 45 },
   'dental-consultations':        { pricePence: null,  durationMin: 30 },
+  // Imported treatments — prices from the official price sheet where known.
+  'laser-skin-rejuvenation':     { pricePence: 21000, durationMin: 25 },  // Face & Neck from £210
+  'pigmentation-correction':     { pricePence: 1800,  durationMin: 20 },  // nose from £18
+  'vascular-lesions-treatment':  { pricePence: 1800,  durationMin: 20 },  // single vein from £18
+  'scar-stretch-mark-reduction': { pricePence: null,  durationMin: 45 },
+  'spider-veins-removal':        { pricePence: 23000, durationMin: 25 },  // nose thread vein from £230
+  'laser-skin-resurfacing':      { pricePence: 18000, durationMin: 45 },  // from £180
+  'ipl-phototherapy':            { pricePence: 20000, durationMin: 45 },  // from £200
+  'fungal-nail-infection-treatment': { pricePence: 7900, durationMin: 30 }, // 1 foot from £79
+  'permanent-makeup-removal':    { pricePence: 27500, durationMin: 30 },  // eyebrows from £275
+  'microneedling':               { pricePence: null,  durationMin: 60 },
+  'prp-therapy':                 { pricePence: null,  durationMin: 60 },
+  'chemical-peels':              { pricePence: 11500, durationMin: 30 },  // cosmetic peel full face from £115
+  'microdermabrasion':           { pricePence: null,  durationMin: 45 },
+  'botox':                       { pricePence: null,  durationMin: 30 },
+  'dermal-fillers':              { pricePence: null,  durationMin: 45 },
+  'kybella':                     { pricePence: null,  durationMin: 45 },
+  'anti-cellulite-programs':     { pricePence: 11000, durationMin: 60 },  // Endosphere from £110
+  'vacuum-massage':              { pricePence: null,  durationMin: 50 },
+  'hip-dip-filler':              { pricePence: null,  durationMin: 45 },
+  'body-hifu-lifting':           { pricePence: 30900, durationMin: 60 },  // body HIFU from £309
+  'intimate-area-whitening':     { pricePence: 69000, durationMin: 40 },  // from £690
 };
 
 export function bookingFor(slug: string): BookingCfg {

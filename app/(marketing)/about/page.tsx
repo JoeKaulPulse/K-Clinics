@@ -18,11 +18,12 @@ export const metadata: Metadata = pageMeta({
   keywords: ['about K Clinics', 'premium clinic London', 'Islington aesthetics dentistry'],
 });
 
+// Authentic pillars from the existing K Clinics site.
 const values = [
-  { t: 'Clinical excellence', d: 'Medical-grade technology in expert, accountable hands — never a shortcut, never a compromise.' },
-  { t: 'Natural artistry', d: 'A conservative, considered aesthetic. Results that enhance, never overwhelm — unmistakably you.' },
-  { t: 'Radical transparency', d: 'Honest advice, clear plans and fixed quotes. You decide, in your time, with full information.' },
-  { t: 'Quiet luxury', d: 'A calm, private sanctuary where every detail is designed around your comfort and confidence.' },
+  { t: 'Innovation', d: 'We employ the most recent equipment in aesthetic medicine to provide results that are safe, efficient and long-lasting.' },
+  { t: 'Professionalism', d: 'Our team consists of certified specialists with years of experience, adhering to the highest standards of care.' },
+  { t: 'Personalised approach', d: 'Each procedure is customised to your particular needs and preferences, to achieve the best possible results.' },
+  { t: 'Quiet luxury', d: 'Cutting-edge technology meets expert care in an inclusive, luxurious and welcoming environment built around you.' },
 ];
 
 export default function AboutPage() {
@@ -31,8 +32,8 @@ export default function AboutPage() {
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'About', path: '/about' }])} />
       <PageHero
         eyebrow={`Established ${site.founded} · Islington, London`}
-        title="A higher standard of care, beautifully delivered."
-        lede="K Clinics was founded on a conviction that has never wavered: that exceptional results come from the rare union of clinical rigour, genuine artistry and an obsession with how people feel in our care."
+        title="Redefining cosmetic dermatology and dentistry."
+        lede="Luxury treatments, perfect smiles and world-class providers. At K Clinics, we believe aesthetic medicine should feel empowering, welcoming and simple to navigate — for every skin tone, gender and lifestyle."
         gradient={['#7b6a5d', '#2a2420']}
       >
         <BookingButtons />
@@ -44,14 +45,14 @@ export default function AboutPage() {
           <GenerativeArt from="#a98a6d" to="#7b6a5d" className="h-full w-full" />
         </MaskReveal>
         <Reveal delay={0.1}>
-          <p className="eyebrow mb-4">Our philosophy</p>
-          <h2 className="text-title">Two disciplines. One pursuit of confidence.</h2>
+          <p className="eyebrow mb-4">Your natural beauty, our mission</p>
+          <h2 className="text-title">Care, customised entirely around you.</h2>
           <div className="mt-6 space-y-4 text-lg leading-relaxed text-[var(--color-stone)]">
             <p>
-              Most people meet aesthetics and dentistry as two separate worlds. We saw the connection — that a luminous complexion and a confident smile are simply two expressions of the same wellbeing.
+              We believe beauty is more than your appearance in the mirror. Our mission is to emphasise your natural beauty using innovative technology and a professional approach — creating a personalised care plan for every client that delivers a feeling of harmony, confidence and beauty.
             </p>
             <p>
-              So we built a single home for both, staffed by clinicians who treat the whole person, not a checklist. The result is a more complete, more considered kind of transformation — and an experience that feels, from the first hello, entirely unlike a clinic.
+              The goal of K Clinics is to make high-quality, customised care accessible to everyone. Whether you’re looking for a subtle improvement or a life-changing outcome, our clinics are made to make you feel appreciated and cared for — the focus is always on you: your goals, your journey, your beauty.
             </p>
           </div>
         </Reveal>
