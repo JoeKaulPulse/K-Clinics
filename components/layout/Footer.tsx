@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { site } from '@/lib/site';
 import { footerNav } from '@/lib/nav';
 import { Logo } from '@/components/brand/Logo';
+import { KMark } from '@/components/brand/marks';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { Aurora } from '@/components/ui/Aurora';
 
@@ -10,6 +11,10 @@ export function Footer() {
   return (
     <footer className="surface-ink grain relative overflow-hidden">
       <Aurora />
+      {/* Faint brand watermark */}
+      <span aria-hidden className="pointer-events-none absolute -right-[4%] -top-[12%] z-0 hidden h-[150%] w-auto text-[var(--color-gold)] opacity-[0.05] md:block">
+        <span className="block h-full w-auto"><KMark /></span>
+      </span>
       {/* CTA band */}
       <div className="container-lux relative border-b border-white/10 py-20 text-center md:py-28">
         <p className="eyebrow mb-5">Begin your transformation</p>

@@ -5,6 +5,7 @@ import { PageTransition } from '@/components/motion/PageTransition';
 import { ScrollProgress } from '@/components/motion/ScrollProgress';
 import { Cursor } from '@/components/motion/Cursor';
 import { Intro } from '@/components/motion/Intro';
+import { BackToTop } from '@/components/motion/BackToTop';
 
 // Marketing chrome: header, footer, scroll/cursor flourishes, page transitions.
 // (The /admin area uses its own layout without any of this.)
@@ -26,6 +27,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
         <PageTransition>{children}</PageTransition>
       </main>
       <Footer />
+      <BackToTop />
     </>
   );
 }
