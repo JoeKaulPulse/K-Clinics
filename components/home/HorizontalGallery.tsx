@@ -19,25 +19,29 @@ export function HorizontalGallery({ items, eyebrow, title }: { items: Treatment[
   // Move the row from 2% to roughly -(n-1.6) cards' worth across the pin.
   const x = useTransform(scrollYProgress, [0, 1], ['1%', '-72%']);
 
-  if (reduce) {
-    return (
-      <section className="section-t">
-        <div className="container-lux mb-[var(--space-block)]">
-          <Header eyebrow={eyebrow} title={title} />
-        </div>
-        <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto px-[var(--gutter)] pb-6 [scrollbar-width:none]">
-          {items.map((t, i) => (
-            <div key={t.slug} className="w-[78vw] shrink-0 snap-start sm:w-[42vw] lg:w-[28vw]">
-              <Card t={t} index={i} />
-            </div>
-          ))}
-        </div>
-      </section>
-    );
-  }
+  // Mobile (and reduced-motion): a native horizontal swipe rail. Always rendered
+  // on small screens; on md+ it's replaced by the pinned scroll version below.
+  const SwipeRail = (
+    <section className={`section-t ${reduce ? '' : 'md:hidden'}`}>
+      <div className="container-lux mb-[var(--space-block)]">
+        <Header eyebrow={eyebrow} title={title} />
+      </div>
+      <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto px-[var(--gutter)] pb-6 [scrollbar-width:none]">
+        {items.map((t, i) => (
+          <div key={t.slug} className="w-[78vw] shrink-0 snap-start sm:w-[42vw] lg:w-[28vw]">
+            <Card t={t} index={i} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+
+  if (reduce) return SwipeRail;
 
   return (
-    <section ref={ref} className="relative hidden md:block" style={{ height: '320vh' }}>
+    <>
+      {SwipeRail}
+      <section ref={ref} className="relative hidden md:block" style={{ height: '320vh' }}>
       <div className="sticky top-0 flex h-screen flex-col justify-center overflow-hidden">
         <div className="container-lux mb-10">
           <Header eyebrow={eyebrow} title={title} />
@@ -62,6 +66,7 @@ export function HorizontalGallery({ items, eyebrow, title }: { items: Treatment[
         </div>
       </div>
     </section>
+    </>
   );
 }
 
