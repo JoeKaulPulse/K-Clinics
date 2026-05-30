@@ -50,12 +50,12 @@ export function Footer() {
         {footerNav.map((col) => (
           <nav key={col.heading} aria-label={col.heading}>
             <p className="eyebrow mb-5">{col.heading}</p>
-            <ul className="space-y-3">
+            <ul className="space-y-1">
               {col.links.map((l) => (
                 <li key={l.href}>
                   <Link
                     href={l.href}
-                    className="text-sm text-[color-mix(in_oklab,var(--color-porcelain)_72%,transparent)] transition-colors hover:text-[var(--color-gold)]"
+                    className="inline-block py-1.5 text-sm text-[color-mix(in_oklab,var(--color-porcelain)_72%,transparent)] transition-colors hover:text-[var(--color-gold)]"
                   >
                     {l.label}
                   </Link>
