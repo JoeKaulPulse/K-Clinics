@@ -10,7 +10,10 @@
 @theme {
   /* ── Brand palette ──────────────────────────────────────────────────────────
      A "rose / blush luxe" system: deep plum + cream + blush + champagne gold.
-     Swap these for the verified brand hex values to retain the existing palette. */
+     Confirmed brand colours from the supplied logo artwork:
+       taupe  #91766D  (logo ink)
+       cream  #F6ECE3  (logo on dark)
+     Full palette swap pending the complete brand folder. */
   --color-ink: #2b1d24;        /* deep plum — primary text / dark sections */
   --color-ink-soft: #3a2730;   /* softened plum */
   --color-espresso: #4a3038;   /* mid plum */

@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="K Clinics">
-  <!-- Interim K monogram. Replace with the supplied K asset (keep viewBox square). -->
-  <circle cx="60" cy="60" r="58" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.45"/>
-  <path d="M40 28 V92 M40 60 L82 28 M52 56 L84 92"
-        fill="none" stroke="currentColor" stroke-width="6.5"
-        stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
