@@ -83,7 +83,31 @@ export function organizationLd() {
       '@type': 'AggregateRating',
       ratingValue: site.ratingValue,
       reviewCount: site.reviewCount,
+      bestRating: '5',
+      worstRating: '1',
     },
+    areaServed: londonAreas(),
+    currenciesAccepted: 'GBP',
+    paymentAccepted: 'Cash, Credit Card, Debit Card, Apple Pay, Google Pay',
+    medicalSpecialty: ['Dermatology', 'CosmeticDentistry', 'PlasticSurgery'],
+    availableService: [
+      { '@type': 'MedicalProcedure', name: 'Laser Hair Removal' },
+      { '@type': 'MedicalProcedure', name: 'Anti-Wrinkle Injections' },
+      { '@type': 'MedicalProcedure', name: 'Dermal Fillers' },
+      { '@type': 'MedicalProcedure', name: 'HIFU Non-Surgical Lifting' },
+      { '@type': 'Dentistry', name: 'Porcelain Veneers' },
+      { '@type': 'Dentistry', name: 'Teeth Whitening' },
+      { '@type': 'Dentistry', name: 'Dental Implants' },
+    ],
+    knowsAbout: [
+      'Aesthetic medicine',
+      'Cosmetic dentistry',
+      'Laser skin treatments',
+      'Non-surgical facial rejuvenation',
+      'Injectable treatments',
+    ],
+    hasMap: site.mapLink,
+    isAcceptingNewPatients: true,
   };
 }
 
@@ -92,21 +116,104 @@ export function serviceLd({
   description,
   path,
   category,
+  pricePence,
+  bodyLocation,
 }: {
   name: string;
   description: string;
   path: string;
   category: string;
+  pricePence?: number | null;
+  bodyLocation?: string;
 }) {
-  return {
+  const proc: Record<string, unknown> = {
     '@context': 'https://schema.org',
-    '@type': 'MedicalProcedure',
+    '@type': category === 'dentistry' ? 'Dentistry' : 'MedicalProcedure',
     name,
     description,
     url: `${base}${path}`,
     category,
+    procedureType: { '@type': 'MedicalProcedureType', name: 'Noninvasive procedure' },
     provider: { '@id': `${base}/#clinic` },
-    areaServed: { '@type': 'City', name: 'London' },
+    areaServed: londonAreas(),
+  };
+  if (bodyLocation) proc.bodyLocation = bodyLocation;
+  // Service + Offer wrapper enables rich price snippets & "from £X" in results.
+  if (pricePence && pricePence > 0) {
+    return [
+      proc,
+      {
+        '@context': 'https://schema.org',
+        '@type': 'Service',
+        name,
+        serviceType: name,
+        url: `${base}${path}`,
+        provider: { '@id': `${base}/#clinic` },
+        areaServed: londonAreas(),
+        offers: {
+          '@type': 'Offer',
+          price: (pricePence / 100).toFixed(2),
+          priceCurrency: 'GBP',
+          availability: 'https://schema.org/InStock',
+          url: `${base}/book`,
+          priceSpecification: {
+            '@type': 'PriceSpecification',
+            price: (pricePence / 100).toFixed(2),
+            priceCurrency: 'GBP',
+            valueAddedTaxIncluded: true,
+          },
+        },
+      },
+    ];
+  }
+  return proc;
+}
+
+/** Local areas K Clinics serves — strengthens "near me" / borough GEO ranking. */
+export function londonAreas() {
+  return [
+    { '@type': 'City', name: 'London' },
+    ...[
+      'Islington',
+      'Clerkenwell',
+      'Angel',
+      'Shoreditch',
+      'Farringdon',
+      'Old Street',
+      'Barbican',
+      'City of London',
+      'Hoxton',
+      'Finsbury',
+    ].map((name) => ({ '@type': 'Place', name })),
+  ];
+}
+
+/** WebSite node with a sitelinks search box — eligible for the search action. */
+export function websiteLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    '@id': `${base}/#website`,
+    url: base,
+    name: site.name,
+    inLanguage: 'en-GB',
+    publisher: { '@id': `${base}/#clinic` },
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: { '@type': 'EntryPoint', urlTemplate: `${base}/treatments?q={search_term_string}` },
+      'query-input': 'required name=search_term_string',
+    },
+  };
+}
+
+/** A single review snippet, for embedding under a service/clinic node. */
+export function reviewLd(r: { author: string; rating: number; body: string; date?: string }) {
+  return {
+    '@type': 'Review',
+    reviewRating: { '@type': 'Rating', ratingValue: r.rating, bestRating: 5 },
+    author: { '@type': 'Person', name: r.author },
+    reviewBody: r.body,
+    ...(r.date ? { datePublished: r.date } : {}),
   };
 }
 

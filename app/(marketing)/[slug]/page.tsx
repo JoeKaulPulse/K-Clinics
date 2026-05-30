@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { getTreatment, treatmentSlugs } from '@/lib/treatments';
+import { getTreatment, treatmentSlugs, bookingFor } from '@/lib/treatments';
 import { TreatmentTemplate } from '@/components/treatment/TreatmentTemplate';
 import { pageMeta, JsonLd, serviceLd, faqLd, breadcrumbLd } from '@/lib/seo';
 
@@ -42,7 +42,8 @@ export default async function TreatmentPage({ params }: { params: Promise<{ slug
             name: t.title,
             description: t.metaDescription,
             path: `/${t.slug}`,
-            category: t.group,
+            category: t.category,
+            pricePence: bookingFor(t.slug).pricePence,
           }),
           faqLd(t.faqs),
           breadcrumbLd([
