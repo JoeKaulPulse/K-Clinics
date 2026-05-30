@@ -11,7 +11,7 @@ import { KMark, ClinicsWordmark } from '@/components/brand/marks';
  *
  * Aspect ratios from source SVGs:
  *   K mark        — 130 × 234 (tall portrait swoosh)
- *   CLINICS mark  — 531 × 94  (wide wordmark)
+ *   CLINICS mark  — 531 × 51  (wide wordmark, no strapline)
  */
 export function Logo({ className = '', mono = false }: { className?: string; mono?: boolean }) {
   const color = mono ? 'var(--color-porcelain)' : 'var(--color-fg)';

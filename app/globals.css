@@ -298,6 +298,10 @@
 .rise { opacity: 0; animation: rise-in 0.9s var(--ease-lux) both; }
 .media-in { animation: media-in 1.4s var(--ease-lux) both; }
 
+/* Hero scroll-cue dot */
+@keyframes scroll-dot { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(14px); } }
+.hero-scroll-dot { animation: scroll-dot 1.8s var(--ease-glide) infinite; }
+
 /* Editorial masked line reveal — each line slides up from behind its own mask. */
 @keyframes line-rise {
   from { transform: translateY(115%); }
