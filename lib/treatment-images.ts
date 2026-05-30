@@ -12,7 +12,11 @@ import pageMap from '@/import/page-image-map.json';
 import present from '@/public/treatments/manifest.json';
 
 const available = new Set(present as string[]);
-const resolve = (file?: string) => (file && available.has(file) ? `/treatments/${file}` : null);
+// On GitHub Pages the site is served from a sub-path (/K-Clinics). next/image
+// doesn't prepend basePath to unoptimized /public images in a static export, so
+// we prefix it here. Empty on Vercel/dev, so paths stay root-relative there.
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+const resolve = (file?: string) => (file && available.has(file) ? `${BASE}/treatments/${file}` : null);
 
 export function treatmentImage(slug: string): string | null {
   return resolve((treatMap as Record<string, string>)[slug]);
