@@ -2,39 +2,47 @@ import Link from 'next/link';
 import type { Treatment } from '@/lib/treatments';
 import { GenerativeArt } from '@/components/ui/GenerativeArt';
 import { ArrowIcon } from '@/components/ui/Button';
+import { Tilt } from '@/components/motion/Tilt';
 
-/** A premium, hover-animated treatment card. Image area is generative art —
- *  text lives in the HTML below, never baked into the artwork. */
+/** A premium, hover-animated treatment card with 3D tilt + glare.
+ *  Image area is generative art — text lives in the HTML below, never baked in. */
 export function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: number }) {
   return (
-    <Link
-      href={`/${t.slug}`}
-      className="group relative flex flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] transition-all duration-700 [transition-timing-function:var(--ease-lux)] hover:-translate-y-1.5 hover:shadow-[var(--shadow-lift)]"
-    >
-      <div className="relative aspect-[4/3] overflow-hidden">
-        <GenerativeArt
-          from={t.gradient[0]}
-          to={t.gradient[1]}
-          seed={index}
-          className="h-full w-full transition-transform duration-[1.4s] [transition-timing-function:var(--ease-lux)] group-hover:scale-105"
-        />
-        <span className="absolute left-4 top-4 rounded-full bg-black/25 px-3 py-1 text-[0.68rem] font-medium uppercase tracking-[0.18em] text-white/90 backdrop-blur-sm">
-          {t.group}
-        </span>
-        {t.priceFrom && (
-          <span className="absolute bottom-4 right-4 rounded-full bg-[var(--color-porcelain)]/92 px-3 py-1 text-xs font-medium text-[var(--color-ink)] backdrop-blur-sm">
-            {t.priceFrom.startsWith('£') ? `from ${t.priceFrom}` : t.priceFrom}
+    <Tilt className="h-full">
+      <Link
+        href={`/${t.slug}`}
+        className="group relative flex h-full flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] transition-[transform,box-shadow] duration-700 [transition-timing-function:var(--ease-lux)] hover:-translate-y-1 hover:border-[color-mix(in_oklab,var(--color-gold)_45%,var(--color-line))] hover:shadow-[var(--shadow-lift)]"
+      >
+        <div className="relative aspect-[4/3] overflow-hidden">
+          <GenerativeArt
+            from={t.gradient[0]}
+            to={t.gradient[1]}
+            seed={index}
+            className="h-full w-full transition-transform duration-[1.6s] [transition-timing-function:var(--ease-lux)] group-hover:scale-[1.08]"
+          />
+          <span className="absolute left-4 top-4 rounded-full bg-black/25 px-3 py-1 text-[0.68rem] font-medium uppercase tracking-[0.18em] text-white/90 backdrop-blur-sm">
+            {t.group}
           </span>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col p-6">
-        <h3 className="font-[family-name:var(--font-display)] text-2xl leading-tight">{t.title}</h3>
-        <p className="mt-2 flex-1 text-sm leading-relaxed text-[var(--color-stone)]">{t.tagline}</p>
-        <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-gold)]">
-          Discover
-          <ArrowIcon />
-        </span>
-      </div>
-    </Link>
+          {t.priceFrom && (
+            <span className="absolute bottom-4 right-4 rounded-full bg-[var(--color-porcelain)]/92 px-3 py-1 text-xs font-medium text-[var(--color-ink)] backdrop-blur-sm">
+              {t.priceFrom.startsWith('£') ? `from ${t.priceFrom}` : t.priceFrom}
+            </span>
+          )}
+        </div>
+        <div className="flex flex-1 flex-col p-7">
+          <h3 className="font-[family-name:var(--font-display)] text-2xl leading-tight transition-colors duration-500 group-hover:text-[var(--color-gold)]">
+            {t.title}
+          </h3>
+          <p className="mt-2.5 flex-1 text-sm leading-relaxed text-[var(--color-stone)]">{t.tagline}</p>
+          <span className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-gold)]">
+            <span className="relative">
+              Discover
+              <span className="absolute -bottom-0.5 left-0 h-px w-full origin-right scale-x-0 bg-current transition-transform duration-500 [transition-timing-function:var(--ease-lux)] group-hover:origin-left group-hover:scale-x-100" />
+            </span>
+            <ArrowIcon />
+          </span>
+        </div>
+      </Link>
+    </Tilt>
   );
 }

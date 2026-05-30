@@ -7,6 +7,8 @@ import { organizationLd, JsonLd } from '@/lib/seo';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { PageTransition } from '@/components/motion/PageTransition';
+import { ScrollProgress } from '@/components/motion/ScrollProgress';
+import { Cursor } from '@/components/motion/Cursor';
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
@@ -51,6 +53,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <JsonLd data={organizationLd()} />
+        <ScrollProgress />
+        <Cursor />
         <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-[var(--color-ink)] focus:px-5 focus:py-3 focus:text-[var(--color-porcelain)]">
           Skip to content
         </a>

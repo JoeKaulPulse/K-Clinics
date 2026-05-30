@@ -3,7 +3,8 @@
 import { motion, useReducedMotion } from 'motion/react';
 
 /** Generative gradient "art" used in place of stock imagery.
- *  Soft drifting orbs + film grain over a two-stop gradient — always text-free. */
+ *  Layered mesh + drifting orbs + a slow metallic sheen + grain — always text-free.
+ *  Designed to read as rich, hand-crafted depth rather than a flat gradient. */
 export function GenerativeArt({
   from,
   to,
@@ -17,18 +18,29 @@ export function GenerativeArt({
 }) {
   const reduce = useReducedMotion();
   const orbs = [
-    { x: '12%', y: '20%', s: 240, d: 0, c: to },
-    { x: '70%', y: '18%', s: 320, d: 1.5, c: from },
-    { x: '58%', y: '68%', s: 280, d: 0.8, c: to },
-    { x: '24%', y: '76%', s: 200, d: 2.2, c: from },
+    { x: '10%', y: '16%', s: 300, d: 0, c: to },
+    { x: '74%', y: '12%', s: 380, d: 1.5, c: from },
+    { x: '60%', y: '70%', s: 320, d: 0.8, c: to },
+    { x: '20%', y: '80%', s: 240, d: 2.2, c: from },
   ];
 
   return (
     <div
       className={`grain relative overflow-hidden ${className}`}
-      style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
+      style={{
+        backgroundColor: from,
+        backgroundImage: `linear-gradient(135deg, ${from}, ${to})`,
+      }}
       aria-hidden
     >
+      {/* Layered mesh for depth */}
+      <span
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `radial-gradient(60% 60% at 78% 18%, ${from}cc, transparent 60%), radial-gradient(50% 50% at 22% 82%, ${to}b3, transparent 60%)`,
+        }}
+      />
+
       {orbs.map((o, i) => (
         <motion.span
           key={i}
@@ -39,20 +51,32 @@ export function GenerativeArt({
             width: o.s,
             height: o.s,
             background: o.c,
-            opacity: 0.55,
+            opacity: 0.5,
             mixBlendMode: 'soft-light',
           }}
           animate={
-            reduce
-              ? undefined
-              : { x: [0, 24, -16, 0], y: [0, -20, 14, 0], scale: [1, 1.12, 0.96, 1] }
+            reduce ? undefined : { x: [0, 26, -18, 0], y: [0, -22, 16, 0], scale: [1, 1.14, 0.94, 1] }
           }
-          transition={{ duration: 16 + i * 3 + seed, repeat: Infinity, ease: 'easeInOut', delay: o.d }}
+          transition={{ duration: 17 + i * 3 + seed, repeat: Infinity, ease: 'easeInOut', delay: o.d }}
         />
       ))}
-      {/* Sheen sweep */}
-      <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_-10%,rgba(255,255,255,0.28),transparent_55%)]" />
-      <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(43,29,36,0.32),transparent_45%)]" />
+
+      {/* Slow-rotating metallic sheen — the "luxury" tell */}
+      <motion.span
+        className="pointer-events-none absolute -inset-1/4"
+        style={{
+          background:
+            'conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.10) 40deg, transparent 90deg, transparent 270deg, rgba(255,255,255,0.07) 310deg, transparent 360deg)',
+          mixBlendMode: 'overlay',
+        }}
+        animate={reduce ? undefined : { rotate: 360 }}
+        transition={{ duration: 60 + seed * 4, repeat: Infinity, ease: 'linear' }}
+      />
+
+      {/* Top light + bottom shade + vignette */}
+      <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_-10%,rgba(255,255,255,0.30),transparent_55%)]" />
+      <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(43,29,36,0.40),transparent_46%)]" />
+      <span className="pointer-events-none absolute inset-0 shadow-[inset_0_0_120px_rgba(43,29,36,0.35)]" />
     </div>
   );
 }
