@@ -4,7 +4,17 @@ import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 
 const COOKIE = 'kc_admin';
-const secret = () => new TextEncoder().encode(process.env.ADMIN_JWT_SECRET || 'dev-insecure-secret-change-me');
+const secret = () => {
+  const s = process.env.ADMIN_JWT_SECRET;
+  if (!s) {
+    // Never run with a guessable secret in production.
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('ADMIN_JWT_SECRET is required in production.');
+    }
+    return new TextEncoder().encode('dev-insecure-secret-change-me');
+  }
+  return new TextEncoder().encode(s);
+};
 
 export type Session = { sub: string; email: string; name?: string; role: string };
 
