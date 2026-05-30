@@ -9,7 +9,7 @@ export function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: number }
   return (
     <Link
       href={`/${t.slug}`}
-      className="group relative flex flex-col overflow-hidden rounded-[--radius-lg] border border-[--color-line] bg-[--color-bone] transition-all duration-700 [transition-timing-function:var(--ease-lux)] hover:-translate-y-1.5 hover:shadow-[var(--shadow-lift)]"
+      className="group relative flex flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] transition-all duration-700 [transition-timing-function:var(--ease-lux)] hover:-translate-y-1.5 hover:shadow-[var(--shadow-lift)]"
     >
       <div className="relative aspect-[4/3] overflow-hidden">
         <GenerativeArt
@@ -22,15 +22,15 @@ export function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: number }
           {t.group}
         </span>
         {t.priceFrom && (
-          <span className="absolute bottom-4 right-4 rounded-full bg-[--color-porcelain]/92 px-3 py-1 text-xs font-medium text-[--color-ink] backdrop-blur-sm">
+          <span className="absolute bottom-4 right-4 rounded-full bg-[var(--color-porcelain)]/92 px-3 py-1 text-xs font-medium text-[var(--color-ink)] backdrop-blur-sm">
             {t.priceFrom.startsWith('£') ? `from ${t.priceFrom}` : t.priceFrom}
           </span>
         )}
       </div>
       <div className="flex flex-1 flex-col p-6">
         <h3 className="font-[family-name:var(--font-display)] text-2xl leading-tight">{t.title}</h3>
-        <p className="mt-2 flex-1 text-sm leading-relaxed text-[--color-stone]">{t.tagline}</p>
-        <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-[--color-gold]">
+        <p className="mt-2 flex-1 text-sm leading-relaxed text-[var(--color-stone)]">{t.tagline}</p>
+        <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-gold)]">
           Discover
           <ArrowIcon />
         </span>

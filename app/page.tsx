@@ -31,7 +31,7 @@ export default function HomePage() {
       <Hero />
 
       {/* Marquee ribbon */}
-      <section className="border-y border-[--color-line] bg-[--color-bone] py-7">
+      <section className="border-y border-[var(--color-line)] bg-[var(--color-bone)] py-7">
         <Marquee items={['Laser & Skin', 'Aesthetic Dentistry', 'Non-Surgical Lifting', 'Body Contouring', 'Injectable Artistry', 'Smile Design']} />
       </section>
 
@@ -62,7 +62,7 @@ export default function HomePage() {
             <Reveal key={c.tag} delay={idx * 0.1}>
               <Link
                 href={c.href}
-                className="group relative flex h-full min-h-[26rem] flex-col justify-end overflow-hidden rounded-[--radius-xl] p-9 text-[--color-porcelain]"
+                className="group relative flex h-full min-h-[26rem] flex-col justify-end overflow-hidden rounded-[var(--radius-xl)] p-9 text-[var(--color-porcelain)]"
               >
                 <GenerativeArt
                   from={c.grad[0]}
@@ -71,10 +71,10 @@ export default function HomePage() {
                   className="absolute inset-0 -z-0 transition-transform duration-[1.6s] [transition-timing-function:var(--ease-lux)] group-hover:scale-105"
                 />
                 <div className="relative">
-                  <p className="eyebrow mb-3 text-[--color-gold-soft]">{c.tag}</p>
+                  <p className="eyebrow mb-3 text-[var(--color-gold-soft)]">{c.tag}</p>
                   <h3 className="font-[family-name:var(--font-display)] text-4xl">{c.title}</h3>
                   <p className="mt-4 max-w-md text-[color-mix(in_oklab,var(--color-porcelain)_82%,transparent)]">{c.text}</p>
-                  <span className="mt-6 inline-flex items-center gap-2 font-medium text-[--color-gold-soft]">
+                  <span className="mt-6 inline-flex items-center gap-2 font-medium text-[var(--color-gold-soft)]">
                     Explore {c.tag.toLowerCase()} <ArrowIcon />
                   </span>
                 </div>
@@ -85,7 +85,7 @@ export default function HomePage() {
       </section>
 
       {/* Featured treatments */}
-      <section className="bg-[--color-bone] py-24 md:py-32">
+      <section className="bg-[var(--color-bone)] py-24 md:py-32">
         <div className="container-lux">
           <div className="flex flex-wrap items-end justify-between gap-6">
             <SectionHeading eyebrow="Signature treatments" title="The most requested, in considered hands." />
@@ -113,12 +113,12 @@ export default function HomePage() {
             title="Exceptional results begin with exceptional standards."
             lede="World-class technology means little without the judgement to wield it. Our clinicians pair clinical rigour with an artist's eye — and the patience to do things properly."
           />
-          <Stagger className="grid gap-px overflow-hidden rounded-[--radius-lg] border border-[--color-line] bg-[--color-line] sm:grid-cols-2">
+          <Stagger className="grid gap-px overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2">
             {pillars.map((p) => (
-              <StaggerItem key={p.label} className="bg-[--color-porcelain] p-8">
+              <StaggerItem key={p.label} className="bg-[var(--color-porcelain)] p-8">
                 <p className="font-[family-name:var(--font-display)] text-5xl text-gold-gradient">{p.stat}</p>
                 <p className="mt-3 font-medium">{p.label}</p>
-                <p className="mt-1.5 text-sm text-[--color-stone]">{p.text}</p>
+                <p className="mt-1.5 text-sm text-[var(--color-stone)]">{p.text}</p>
               </StaggerItem>
             ))}
           </Stagger>
@@ -143,8 +143,8 @@ export default function HomePage() {
               { n: '03', t: 'Refined results', d: 'Expert delivery, attentive aftercare and outcomes that look natural, considered and unmistakably yours.' },
             ].map((s) => (
               <StaggerItem key={s.n} className="relative">
-                <p className="font-[family-name:var(--font-display)] text-6xl text-[--color-gold]/50">{s.n}</p>
-                <h3 className="mt-4 font-[family-name:var(--font-display)] text-2xl text-[--color-porcelain]">{s.t}</h3>
+                <p className="font-[family-name:var(--font-display)] text-6xl text-[var(--color-gold)]/50">{s.n}</p>
+                <h3 className="mt-4 font-[family-name:var(--font-display)] text-2xl text-[var(--color-porcelain)]">{s.t}</h3>
                 <p className="mt-3 leading-relaxed text-[color-mix(in_oklab,var(--color-porcelain)_70%,transparent)]">{s.d}</p>
               </StaggerItem>
             ))}
@@ -167,13 +167,13 @@ export default function HomePage() {
             <StaggerItem key={p.slug}>
               <Link
                 href={`/packages/${p.slug}`}
-                className="group flex h-full flex-col overflow-hidden rounded-[--radius-lg] border border-[--color-line] transition-all duration-700 hover:-translate-y-1.5 hover:shadow-[var(--shadow-lift)]"
+                className="group flex h-full flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] transition-all duration-700 hover:-translate-y-1.5 hover:shadow-[var(--shadow-lift)]"
               >
                 <GenerativeArt from={p.gradient[0]} to={p.gradient[1]} seed={i} className="aspect-[3/2]" />
                 <div className="flex flex-1 flex-col p-6">
                   <h3 className="font-[family-name:var(--font-display)] text-xl">{p.name}</h3>
-                  <p className="mt-1 text-sm text-[--color-stone]">{p.subtitle}</p>
-                  <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[--color-gold]">
+                  <p className="mt-1 text-sm text-[var(--color-stone)]">{p.subtitle}</p>
+                  <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-gold)]">
                     Explore <ArrowIcon />
                   </span>
                 </div>
@@ -193,12 +193,12 @@ export default function HomePage() {
       {/* Offer / membership */}
       <section className="container-lux py-24 md:py-32">
         <Reveal>
-          <div className="relative overflow-hidden rounded-[--radius-2xl] border border-[--color-line] bg-[--color-bone] p-10 md:p-16">
+          <div className="relative overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-10 md:p-16">
             <GenerativeArt from="#c9a86a" to="#3f5a4e" className="absolute right-0 top-0 hidden h-full w-1/3 opacity-90 md:block" />
             <div className="relative max-w-xl">
               <p className="eyebrow mb-4">Beauty Points · Membership</p>
               <h2 className="text-title">Rewarded for radiance.</h2>
-              <p className="mt-5 text-lg leading-relaxed text-[--color-stone]">
+              <p className="mt-5 text-lg leading-relaxed text-[var(--color-stone)]">
                 Every treatment earns Beauty Points toward future visits, with members enjoying priority booking, exclusive events and seasonal privileges. Confidence, recognised.
               </p>
               <div className="mt-8">
@@ -212,15 +212,15 @@ export default function HomePage() {
       </section>
 
       {/* Visit */}
-      <section className="bg-[--color-bone] py-24 md:py-32">
+      <section className="bg-[var(--color-bone)] py-24 md:py-32">
         <div className="container-lux grid gap-12 lg:grid-cols-2 lg:items-center">
           <Reveal>
             <p className="eyebrow mb-4">Find us</p>
             <h2 className="text-title">In the heart of Clerkenwell.</h2>
-            <p className="mt-5 text-lg leading-relaxed text-[--color-stone]">
+            <p className="mt-5 text-lg leading-relaxed text-[var(--color-stone)]">
               Moments from Farringdon and Barbican, our Islington clinic is a calm, private sanctuary designed for one purpose — to make you feel extraordinary.
             </p>
-            <dl className="mt-8 space-y-4 text-[--color-ink-soft]">
+            <dl className="mt-8 space-y-4 text-[var(--color-ink-soft)]">
               <div>
                 <dt className="eyebrow mb-1">Address</dt>
                 <dd>{site.address.street}, {site.address.locality}, {site.address.region} {site.address.postalCode}</dd>
@@ -241,7 +241,7 @@ export default function HomePage() {
             </div>
           </Reveal>
           <Reveal delay={0.1}>
-            <div className="overflow-hidden rounded-[--radius-xl] border border-[--color-line] shadow-[var(--shadow-soft)]">
+            <div className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-line)] shadow-[var(--shadow-soft)]">
               <iframe
                 title="K Clinics location map"
                 src={site.mapEmbed}

@@ -27,7 +27,7 @@ export function SectionHeading({
         </Reveal>
       )}
       <Reveal delay={0.05}>
-        <h2 className={`text-title ${tone === 'light' ? 'text-[--color-porcelain]' : ''}`}>{title}</h2>
+        <h2 className={`text-title ${tone === 'light' ? 'text-[var(--color-porcelain)]' : ''}`}>{title}</h2>
       </Reveal>
       {lede && (
         <Reveal delay={0.12}>
@@ -35,7 +35,7 @@ export function SectionHeading({
             className={`mt-5 text-lg leading-relaxed ${
               tone === 'light'
                 ? 'text-[color-mix(in_oklab,var(--color-porcelain)_74%,transparent)]'
-                : 'text-[--color-stone]'
+                : 'text-[var(--color-stone)]'
             }`}
           >
             {lede}

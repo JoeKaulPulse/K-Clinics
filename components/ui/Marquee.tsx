@@ -9,7 +9,7 @@ export function Marquee({ items, className = '' }: { items: string[]; className?
             <span className="font-[family-name:var(--font-display)] text-[clamp(1.5rem,4vw,2.75rem)] tracking-tight">
               {it}
             </span>
-            <span className="mx-8 text-[--color-gold]">✦</span>
+            <span className="mx-8 text-[var(--color-gold)]">✦</span>
           </span>
         ))}
       </div>

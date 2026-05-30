@@ -42,9 +42,15 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-GB" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <head>
+        {/* Fallback: ensure scroll-revealed content is visible without JS. */}
+        <noscript>
+          <style>{`[style*="opacity:0"]{opacity:1!important;transform:none!important;filter:none!important}`}</style>
+        </noscript>
+      </head>
       <body>
         <JsonLd data={organizationLd()} />
-        <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-[--color-ink] focus:px-5 focus:py-3 focus:text-[--color-porcelain]">
+        <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-[var(--color-ink)] focus:px-5 focus:py-3 focus:text-[var(--color-porcelain)]">
           Skip to content
         </a>
         <Header />

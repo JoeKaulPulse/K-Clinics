@@ -11,7 +11,7 @@ export function Footer() {
       {/* CTA band */}
       <div className="container-lux relative border-b border-white/10 py-20 text-center md:py-28">
         <p className="eyebrow mb-5">Begin your transformation</p>
-        <h2 className="text-display mx-auto max-w-3xl text-balance text-[--color-porcelain]">
+        <h2 className="text-display mx-auto max-w-3xl text-balance text-[var(--color-porcelain)]">
           Your most confident self is one appointment away.
         </h2>
         <p className="mx-auto mt-5 max-w-xl text-[color-mix(in_oklab,var(--color-porcelain)_72%,transparent)]">
@@ -25,7 +25,7 @@ export function Footer() {
       {/* Link grid */}
       <div className="container-lux relative grid gap-12 py-16 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
-          <Logo mono className="text-[--color-porcelain]" />
+          <Logo mono className="text-[var(--color-porcelain)]" />
           <p className="mt-5 max-w-xs text-sm leading-relaxed text-[color-mix(in_oklab,var(--color-porcelain)_64%,transparent)]">
             {site.tagline}. A premium clinic in the heart of Clerkenwell, uniting advanced aesthetics and aesthetic dentistry.
           </p>
@@ -37,7 +37,7 @@ export function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={k}
-                className="grid h-10 w-10 place-items-center rounded-full border border-white/15 text-xs uppercase tracking-wide transition-colors hover:border-[--color-gold] hover:text-[--color-gold]"
+                className="grid h-10 w-10 place-items-center rounded-full border border-white/15 text-xs uppercase tracking-wide transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]"
               >
                 {k[0].toUpperCase()}
               </a>
@@ -53,7 +53,7 @@ export function Footer() {
                 <li key={l.href}>
                   <Link
                     href={l.href}
-                    className="text-sm text-[color-mix(in_oklab,var(--color-porcelain)_72%,transparent)] transition-colors hover:text-[--color-gold]"
+                    className="text-sm text-[color-mix(in_oklab,var(--color-porcelain)_72%,transparent)] transition-colors hover:text-[var(--color-gold)]"
                   >
                     {l.label}
                   </Link>
@@ -70,9 +70,9 @@ export function Footer() {
           {site.address.street}, {site.address.locality}, {site.address.region} {site.address.postalCode}
         </p>
         <p className="md:text-center">
-          <a href={site.phoneHref} className="hover:text-[--color-gold]">{site.phone}</a>
+          <a href={site.phoneHref} className="hover:text-[var(--color-gold)]">{site.phone}</a>
           {' · '}
-          <a href={site.emailHref} className="hover:text-[--color-gold]">{site.email}</a>
+          <a href={site.emailHref} className="hover:text-[var(--color-gold)]">{site.email}</a>
         </p>
         <p className="md:text-right">© {year} {site.legalName}. All rights reserved.</p>
       </div>

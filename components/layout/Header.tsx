@@ -35,7 +35,7 @@ export function Header() {
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-700 [transition-timing-function:var(--ease-lux)] ${
         scrolled
-          ? 'border-b border-[--color-line] bg-[color-mix(in_oklab,var(--color-porcelain)_82%,transparent)] backdrop-blur-xl'
+          ? 'border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-porcelain)_82%,transparent)] backdrop-blur-xl'
           : 'border-b border-transparent'
       }`}
       onMouseLeave={() => setOpen(null)}
@@ -51,7 +51,7 @@ export function Header() {
             <div key={item.label} onMouseEnter={() => setOpen(item.columns ? item.label : null)}>
               <Link
                 href={item.href}
-                className="relative inline-flex items-center gap-1 rounded-full px-4 py-2 text-[0.95rem] font-medium text-[--color-ink-soft] transition-colors hover:text-[--color-ink]"
+                className="relative inline-flex items-center gap-1 rounded-full px-4 py-2 text-[0.95rem] font-medium text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-ink)]"
               >
                 {item.label}
                 {item.columns && (
@@ -65,7 +65,7 @@ export function Header() {
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <a href={site.phoneHref} className="link-underline text-sm font-medium text-[--color-ink-soft]">
+          <a href={site.phoneHref} className="link-underline text-sm font-medium text-[var(--color-ink-soft)]">
             {site.phone}
           </a>
           <Button href={site.booking.treatwell} external size="md">
@@ -97,7 +97,7 @@ export function Header() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute inset-x-0 top-full hidden border-b border-[--color-line] bg-[color-mix(in_oklab,var(--color-porcelain)_94%,transparent)] backdrop-blur-2xl lg:block"
+            className="absolute inset-x-0 top-full hidden border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-porcelain)_94%,transparent)] backdrop-blur-2xl lg:block"
           >
             <div className="container-lux py-9">
               {primaryNav
@@ -112,13 +112,13 @@ export function Header() {
                             <li key={l.href}>
                               <Link
                                 href={l.href}
-                                className="group flex items-baseline justify-between gap-4 rounded-xl px-3 py-2.5 -mx-3 transition-colors hover:bg-[--color-bone]"
+                                className="group flex items-baseline justify-between gap-4 rounded-xl px-3 py-2.5 -mx-3 transition-colors hover:bg-[var(--color-bone)]"
                               >
                                 <span>
                                   <span className="block font-[family-name:var(--font-display)] text-lg leading-tight">{l.label}</span>
-                                  {l.description && <span className="text-sm text-[--color-stone]">{l.description}</span>}
+                                  {l.description && <span className="text-sm text-[var(--color-stone)]">{l.description}</span>}
                                 </span>
-                                <ArrowIcon className="mt-1 shrink-0 text-[--color-gold] opacity-0 transition-opacity group-hover:opacity-100" />
+                                <ArrowIcon className="mt-1 shrink-0 text-[var(--color-gold)] opacity-0 transition-opacity group-hover:opacity-100" />
                               </Link>
                             </li>
                           ))}
@@ -140,9 +140,9 @@ export function Header() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
-            className="fixed inset-0 top-0 z-0 h-[100dvh] overflow-y-auto bg-[--color-porcelain] px-6 pb-12 pt-24 lg:hidden"
+            className="fixed inset-0 top-0 z-0 h-[100dvh] overflow-y-auto bg-[var(--color-porcelain)] px-6 pb-12 pt-24 lg:hidden"
           >
-            <nav className="flex flex-col divide-y divide-[--color-line]" aria-label="Mobile">
+            <nav className="flex flex-col divide-y divide-[var(--color-line)]" aria-label="Mobile">
               {primaryNav.map((item, idx) => (
                 <motion.div
                   key={item.label}
@@ -157,7 +157,7 @@ export function Header() {
                   {item.columns && (
                     <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
                       {item.columns.flatMap((c) => c.links).map((l) => (
-                        <Link key={l.href} href={l.href} className="text-sm text-[--color-stone]">
+                        <Link key={l.href} href={l.href} className="text-sm text-[var(--color-stone)]">
                           {l.label}
                         </Link>
                       ))}

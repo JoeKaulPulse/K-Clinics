@@ -26,7 +26,7 @@ export function BookingButtons({
 export function BookingProviders({ className = '' }: { className?: string }) {
   return (
     <div className={`flex flex-wrap items-center gap-x-6 gap-y-3 ${className}`}>
-      <span className="text-xs uppercase tracking-[0.2em] text-[--color-stone]">Book instantly via</span>
+      <span className="text-xs uppercase tracking-[0.2em] text-[var(--color-stone)]">Book instantly via</span>
       <a
         href={site.booking.treatwell}
         target="_blank"

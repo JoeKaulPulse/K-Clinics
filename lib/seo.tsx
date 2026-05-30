@@ -16,9 +16,10 @@ export function pageMeta({
   keywords?: string[];
 }): Metadata {
   const url = `${base}${path}`;
-  const fullTitle = path === '/' ? title : `${title}`;
+  const fullTitle = title;
   return {
-    title: fullTitle,
+    // metaTitles already carry the brand, so bypass the layout's title template.
+    title: { absolute: fullTitle },
     description,
     keywords,
     alternates: { canonical: url },

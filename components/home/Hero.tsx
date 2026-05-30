@@ -29,7 +29,7 @@ export function Hero() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.1 }}
-          className="eyebrow mb-6 text-[--color-gold-soft]"
+          className="eyebrow mb-6 text-[var(--color-gold-soft)]"
         >
           Islington · London · Est. {site.founded}
         </motion.p>
@@ -38,7 +38,7 @@ export function Hero() {
           as="h1"
           text="Aesthetics & dentistry,"
           delay={0.2}
-          className="text-hero max-w-5xl text-[--color-porcelain]"
+          className="text-hero max-w-5xl text-[var(--color-porcelain)]"
         />
         <WordReveal
           as="span"
@@ -80,7 +80,7 @@ export function Hero() {
       >
         <span className="flex h-12 w-7 items-start justify-center rounded-full border border-white/30 p-1.5">
           <motion.span
-            className="h-2 w-2 rounded-full bg-[--color-gold-soft]"
+            className="h-2 w-2 rounded-full bg-[var(--color-gold-soft)]"
             animate={reduce ? undefined : { y: [0, 14, 0] }}
             transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
           />

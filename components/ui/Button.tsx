@@ -16,11 +16,11 @@ const sizes: Record<Size, string> = {
 };
 
 const variants: Record<Variant, string> = {
-  gold: 'bg-[--color-gold] text-white hover:bg-[--color-ink] shadow-[var(--shadow-gold)]',
-  ink: 'bg-[--color-ink] text-[--color-porcelain] hover:bg-[--color-espresso]',
+  gold: 'bg-[var(--color-gold)] text-white hover:bg-[var(--color-ink)] shadow-[var(--shadow-gold)]',
+  ink: 'bg-[var(--color-ink)] text-[var(--color-porcelain)] hover:bg-[var(--color-espresso)]',
   ghost: 'bg-transparent text-current hover:bg-[color-mix(in_oklab,currentColor_8%,transparent)]',
   outline:
-    'bg-transparent text-current ring-1 ring-[color-mix(in_oklab,currentColor_28%,transparent)] hover:ring-[--color-gold] hover:text-[--color-gold]',
+    'bg-transparent text-current ring-1 ring-[color-mix(in_oklab,currentColor_28%,transparent)] hover:ring-[var(--color-gold)] hover:text-[var(--color-gold)]',
 };
 
 type Props = {
