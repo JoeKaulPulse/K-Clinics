@@ -6,6 +6,8 @@ import { CrmDisabled } from '@/components/admin/CrmDisabled';
 export const dynamic = 'force-dynamic';
 
 const automations = [
+  { name: 'Appointment reminder', desc: 'A gentle care reminder the day before a confirmed appointment, with a manage link.', kind: 'APPOINTMENT_REMINDER', trigger: '24 hours before visit' },
+  { name: 'Pre-treatment form reminder', desc: 'Nudges clients with a portal account to complete their confidential health forms before arriving.', kind: 'FORM_REMINDER', trigger: '2 days before visit · forms outstanding' },
   { name: 'Birthday greeting', desc: 'Sent on a client’s birthday with a complimentary upgrade offer.', kind: 'BIRTHDAY', trigger: 'DOB matches today' },
   { name: 'Post-treatment follow-up', desc: 'Checks in 3 days after a completed appointment with aftercare + rebooking.', kind: 'FOLLOW_UP', trigger: '3 days after visit' },
   { name: 'Review request', desc: 'Invites a review 7 days after a completed treatment.', kind: 'REVIEW_REQUEST', trigger: '7 days after visit' },
