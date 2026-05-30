@@ -1,19 +1,21 @@
 import Link from 'next/link';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 
-/** Split-screen auth chrome: brand panel + form. Used for client sign in / up. */
+/** Split-screen auth chrome: brand panel + form. Used for client + staff auth. */
 export function AuthShell({
   children,
   heading,
   sub,
   panelTitle,
   panelPoints,
+  eyebrow = 'Client portal',
 }: {
   children: React.ReactNode;
   heading: string;
   sub: string;
   panelTitle: string;
   panelPoints: string[];
+  eyebrow?: string;
 }) {
   return (
     <div className="grid min-h-screen lg:grid-cols-[1fr_1.1fr]">
@@ -50,7 +52,7 @@ export function AuthShell({
       <main className="flex items-center justify-center px-6 py-16">
         <div className="w-full max-w-md">
           <div className="mb-8">
-            <p className="eyebrow mb-2">Client portal</p>
+            <p className="eyebrow mb-2">{eyebrow}</p>
             <h1 className="font-[family-name:var(--font-display)] text-[clamp(1.9rem,1.4rem+1.6vw,2.6rem)]">{heading}</h1>
             <p className="mt-2 text-[var(--color-stone)]">{sub}</p>
           </div>
