@@ -5,6 +5,7 @@
   "description": "K Clinics — premium aesthetics & aesthetic dentistry, Islington London.",
   "scripts": {
     "dev": "node scripts/gen-image-manifest.mjs && next dev",
+    "postinstall": "prisma generate",
     "prebuild": "node scripts/gen-image-manifest.mjs",
     "build": "next build",
     "start": "next start",
