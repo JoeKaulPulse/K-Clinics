@@ -322,6 +322,23 @@
 .hero-media { clip-path: inset(0 0 0 0); animation: curtain-up 1.4s var(--ease-lux) both; }
 .hero-media .hero-img { animation: ken-burns 22s var(--ease-glide) 1.4s alternate infinite; }
 
+/* JS-free scroll parallax on the hero photo (desktop only; graceful no-op where
+   scroll-driven animations aren't supported, e.g. Safari/Firefox). */
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: scroll()) {
+    @keyframes hero-drift {
+      from { transform: translateY(-3.5%); }
+      to   { transform: translateY(6.5%); }
+    }
+    .hero-parallax {
+      animation: hero-drift linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 75vh;
+      will-change: transform;
+    }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .reveal-mask > .reveal-line { transform: none; }
   .hero-media { clip-path: none; }
