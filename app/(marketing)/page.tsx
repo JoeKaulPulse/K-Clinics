@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Hero } from '@/components/home/Hero';
 import { Testimonials } from '@/components/home/Testimonials';
 import { PinnedExperience } from '@/components/home/PinnedExperience';
+import { HorizontalGallery } from '@/components/home/HorizontalGallery';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { ScrollReveal } from '@/components/motion/ScrollReveal';
 import { SectionHeading } from '@/components/ui/Section';
@@ -112,26 +113,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Featured treatments */}
-      <section className="section bg-[var(--color-bone)]">
-        <div className="container-lux">
-          <div className="flex flex-wrap items-end justify-between gap-8">
-            <SectionHeading eyebrow="Signature treatments" title="The most requested, in considered hands." />
-            <Reveal>
-              <Button href="/treatments" variant="outline">
-                View all treatments <ArrowIcon />
-              </Button>
-            </Reveal>
-          </div>
-          <Stagger className="mt-[var(--space-block)] grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {featured.map((t, i) => (
-              <StaggerItem key={t.slug}>
-                <TreatmentCard t={t} index={i} />
-              </StaggerItem>
-            ))}
-          </Stagger>
-        </div>
-      </section>
+      {/* Featured treatments — pinned horizontal gallery */}
+      <div className="bg-[var(--color-bone)]">
+        <HorizontalGallery items={featured} eyebrow="Signature treatments" title="The most requested, in considered hands." />
+      </div>
 
       {/* Why us / pillars */}
       <section className="section container-lux">

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { PageHero } from '@/components/ui/PageHero';
 import { SectionHeading } from '@/components/ui/Section';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
+import { MaskReveal } from '@/components/motion/MaskReveal';
 import { GenerativeArt } from '@/components/ui/GenerativeArt';
 import { Marquee } from '@/components/ui/Marquee';
 import { BookingButtons } from '@/components/booking/BookingButtons';
@@ -39,9 +40,9 @@ export default function AboutPage() {
 
       {/* Story */}
       <section className="container-lux grid gap-12 py-20 md:grid-cols-2 md:items-center md:py-28">
-        <Reveal>
-          <GenerativeArt from="#a98a6d" to="#7b6a5d" className="aspect-[4/5] rounded-[var(--radius-2xl)] shadow-[var(--shadow-lift)]" />
-        </Reveal>
+        <MaskReveal className="aspect-[4/5] rounded-[var(--radius-2xl)] shadow-[var(--shadow-lift)]">
+          <GenerativeArt from="#a98a6d" to="#7b6a5d" className="h-full w-full" />
+        </MaskReveal>
         <Reveal delay={0.1}>
           <p className="eyebrow mb-4">Our philosophy</p>
           <h2 className="text-title">Two disciplines. One pursuit of confidence.</h2>
