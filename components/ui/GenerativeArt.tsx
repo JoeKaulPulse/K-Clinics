@@ -24,9 +24,14 @@ export function GenerativeArt({
     { x: '20%', y: '80%', s: 240, d: 2.2, c: from },
   ];
 
+  // Only apply our own `relative` when the caller hasn't supplied a position
+  // utility (e.g. `absolute inset-0`); otherwise the two conflict and the box
+  // can collapse to zero height.
+  const hasPosition = /\b(absolute|fixed|sticky|relative)\b/.test(className);
+
   return (
     <div
-      className={`grain relative overflow-hidden ${className}`}
+      className={`grain overflow-hidden ${hasPosition ? '' : 'relative'} ${className}`}
       style={{
         backgroundColor: from,
         backgroundImage: `linear-gradient(135deg, ${from}, ${to})`,
