@@ -80,14 +80,17 @@ export function Hero() {
 
         {/* ── Photography ──────────────────────────────────────────── */}
         <div className="hero-media relative order-1 h-[40svh] min-h-[15rem] overflow-hidden lg:order-2 lg:h-auto">
-          <Image
-            src={`${BASE}/hero/skin.webp`}
-            alt="Radiant, healthy skin — advanced aesthetics at K Clinics, Islington"
-            fill
-            priority
-            sizes="(max-width: 1024px) 100vw, 50vw"
-            className="hero-img object-cover object-[50%_24%]"
-          />
+          {/* Parallax layer (oversized on desktop so scroll drift never reveals edges) */}
+          <div className="hero-parallax absolute inset-0 lg:-inset-y-[7%]">
+            <Image
+              src={`${BASE}/hero/skin.webp`}
+              alt="Radiant, healthy skin — advanced aesthetics at K Clinics, Islington"
+              fill
+              priority
+              sizes="(max-width: 1024px) 100vw, 50vw"
+              className="hero-img object-cover object-[50%_24%]"
+            />
+          </div>
           {/* Editorial warmth + depth */}
           <span
             aria-hidden
@@ -97,6 +100,11 @@ export function Hero() {
           <span
             aria-hidden
             className="pointer-events-none absolute inset-0 hidden bg-[linear-gradient(to_right,var(--color-porcelain),transparent_15%)] lg:block"
+          />
+          {/* Top blend so the dark nav/logo stay legible over the photo on mobile */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[linear-gradient(to_bottom,var(--color-porcelain),transparent)] lg:hidden"
           />
           {/* Bottom blend so the image flows into content on mobile */}
           <span
