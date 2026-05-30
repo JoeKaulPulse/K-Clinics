@@ -9,6 +9,7 @@ const nav = [
   { href: '/account/appointments', label: 'Appointments' },
   { href: '/account/assessments', label: 'Health forms' },
   { href: '/account/invoices', label: 'Payments' },
+  { href: '/account/profile', label: 'Profile' },
 ];
 
 export function PortalShell({ firstName, children }: { firstName: string; children: React.ReactNode }) {
