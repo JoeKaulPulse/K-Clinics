@@ -241,6 +241,9 @@ export function Header() {
               <Button href={site.booking.fresha} external variant="outline" size="lg" className="w-full">
                 Book on Fresha
               </Button>
+              <Link href="/consultation" className="mt-1 text-center text-sm font-medium text-[var(--color-gold)] underline-offset-4 hover:underline">
+                Or request a free consultation
+              </Link>
               <a href={site.phoneHref} className="mt-2 text-center text-sm font-medium">
                 {site.phone}
               </a>
