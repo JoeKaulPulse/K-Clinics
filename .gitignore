@@ -32,3 +32,6 @@ yarn-error.log*
 .vscode/*
 !.vscode/extensions.json
 .idea
+
+# WordPress import (raw XML too large; keep extracted content.json)
+import/*.xml
