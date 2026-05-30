@@ -7,6 +7,7 @@ import { Cursor } from '@/components/motion/Cursor';
 import { Intro } from '@/components/motion/Intro';
 import { BackToTop } from '@/components/motion/BackToTop';
 import { MotionProvider } from '@/components/motion/MotionProvider';
+import { CookieConsent } from '@/components/legal/CookieConsent';
 
 // Marketing chrome: header, footer, scroll/cursor flourishes, page transitions.
 // (The /admin area uses its own layout without any of this.)
@@ -29,6 +30,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
       </main>
       <Footer />
       <BackToTop />
+      <CookieConsent />
     </MotionProvider>
   );
 }
