@@ -4,12 +4,14 @@ import { Footer } from '@/components/layout/Footer';
 import { PageTransition } from '@/components/motion/PageTransition';
 import { ScrollProgress } from '@/components/motion/ScrollProgress';
 import { Cursor } from '@/components/motion/Cursor';
+import { Intro } from '@/components/motion/Intro';
 
 // Marketing chrome: header, footer, scroll/cursor flourishes, page transitions.
 // (The /admin area uses its own layout without any of this.)
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
+      <Intro />
       <JsonLd data={organizationLd()} />
       <ScrollProgress />
       <Cursor />
