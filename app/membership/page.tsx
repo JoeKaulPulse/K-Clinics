@@ -43,7 +43,7 @@ export default function MembershipPage() {
         <BookingButtons />
       </PageHero>
 
-      <section className="container-lux py-20 md:py-28">
+      <section className="container-lux section">
         <Stagger className="grid gap-6 md:grid-cols-3">
           {tiers.map((tier, i) => (
             <StaggerItem key={tier.name}>

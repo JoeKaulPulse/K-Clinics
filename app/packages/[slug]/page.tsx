@@ -79,13 +79,13 @@ export default async function PackagePage({ params }: { params: Promise<{ slug: 
       </section>
 
       {related.length > 0 && (
-        <section className="bg-[var(--color-bone)] py-20 md:py-28">
+        <section className="bg-[var(--color-bone)] section">
           <div className="container-lux">
             <Reveal>
               <p className="eyebrow mb-4">Within this programme</p>
               <h2 className="text-title">The treatments inside.</h2>
             </Reveal>
-            <Stagger className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <Stagger className="mt-[var(--space-block)] grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {related.map((t, i) => (
                 <StaggerItem key={t.slug}>
                   <TreatmentCard t={t} index={i} />

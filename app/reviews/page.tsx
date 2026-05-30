@@ -47,7 +47,7 @@ export default function ReviewsPage() {
         <BookingButtons />
       </PageHero>
 
-      <section className="container-lux py-20 md:py-28">
+      <section className="container-lux section">
         <Stagger className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {reviews.map((r) => (
             <StaggerItem key={r.name}>

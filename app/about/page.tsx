@@ -56,10 +56,10 @@ export default function AboutPage() {
       </section>
 
       {/* Values */}
-      <section className="bg-[var(--color-bone)] py-20 md:py-28">
+      <section className="bg-[var(--color-bone)] section">
         <div className="container-lux">
           <SectionHeading eyebrow="What we stand for" title="The principles behind every result." />
-          <Stagger className="mt-12 grid gap-px overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2">
+          <Stagger className="mt-[var(--space-block)] grid gap-px overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2">
             {values.map((v) => (
               <StaggerItem key={v.t} className="bg-[var(--color-porcelain)] p-8 md:p-10">
                 <h3 className="font-[family-name:var(--font-display)] text-2xl">{v.t}</h3>
@@ -76,7 +76,7 @@ export default function AboutPage() {
       </section>
 
       {/* Stats */}
-      <section className="container-lux py-20 md:py-28">
+      <section className="container-lux section">
         <div className="grid gap-8 text-center sm:grid-cols-3">
           {[
             { k: `${new Date().getFullYear() - Number(site.founded)}+`, v: 'Years caring for London' },
