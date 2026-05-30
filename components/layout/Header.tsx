@@ -89,7 +89,7 @@ export function Header() {
 
         <div className="hidden items-center gap-3 lg:flex">
           <Link
-            href="/account"
+            href="/account/login"
             aria-label="Client portal sign in"
             className={`inline-flex items-center gap-1.5 text-sm font-medium transition-colors ${
               light ? 'text-[color-mix(in_oklab,var(--color-porcelain)_88%,transparent)] hover:text-[var(--color-porcelain)]' : 'text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]'

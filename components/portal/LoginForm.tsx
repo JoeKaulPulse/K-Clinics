@@ -31,6 +31,10 @@ function Inner() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
+      if (res.status === 404 || res.status === 503) {
+        setError('This is a design preview — the secure portal runs on the live clinic site.');
+        return;
+      }
       const json = await res.json();
       if (json.ok) {
         router.push(params.get('from') || '/account');
@@ -39,7 +43,8 @@ function Inner() {
         setError(json.error || 'Sign in failed.');
       }
     } catch {
-      setError('Network error — please try again.');
+      // No backend (e.g. the static demo) — present a friendly preview notice.
+      setError('This is a design preview — the secure portal runs on the live clinic site.');
     } finally {
       setLoading(false);
     }

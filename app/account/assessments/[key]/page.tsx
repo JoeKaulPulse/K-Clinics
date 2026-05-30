@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { notFound, redirect } from 'next/navigation';
 import { AssessmentRunner } from '@/components/portal/AssessmentRunner';
 import { getQuestionnaire } from '@/lib/questionnaires';

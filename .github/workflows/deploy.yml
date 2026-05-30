@@ -38,12 +38,15 @@ jobs:
         run: npx prisma generate
 
       - name: Strip server-only routes for static export
-        # The CRM (API, admin dashboard, middleware) requires a server and can't
-        # be statically exported. Remove them for the GitHub Pages preview only;
-        # they remain in the repo for the Vercel production deploy.
+        # The CRM (API, admin dashboard, middleware) and the authenticated portal
+        # pages require a server and can't be statically exported. Remove them for
+        # the GitHub Pages preview only; they remain in the repo for Vercel.
+        # The public client login & signup pages ARE kept so the demo can show
+        # them (their forms switch to a friendly preview message without a server).
         run: |
-          rm -rf app/api app/admin app/account components/admin components/portal middleware.ts
+          rm -rf app/api app/admin components/admin middleware.ts
           rm -rf "app/(marketing)/booking"
+          rm -rf "app/account/page.tsx" "app/account/appointments" "app/account/assessments" "app/account/invoices"
           echo "Removed server-only routes for static build."
 
       - name: Configure Pages (auto-enables Pages if needed)

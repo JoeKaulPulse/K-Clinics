@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { redirect } from 'next/navigation';
 import { PortalShell } from '@/components/portal/PortalShell';
 import { crmEnabled } from '@/lib/crm';
