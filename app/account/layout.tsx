@@ -7,8 +7,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-// The portal is always rendered per-request (auth + personal data).
-export const dynamic = 'force-dynamic';
+// Note: per-request rendering is set on the authenticated pages themselves
+// (dashboard, appointments, assessments, invoices), not here — so the public
+// login & signup pages can also be statically exported for the demo preview.
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
   return <div className="min-h-screen bg-[var(--color-porcelain)] text-[var(--color-ink)]">{children}</div>;
