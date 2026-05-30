@@ -3,7 +3,8 @@ import { PageHero } from '@/components/ui/PageHero';
 import { SectionHeading } from '@/components/ui/Section';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { MaskReveal } from '@/components/motion/MaskReveal';
-import { GenerativeArt } from '@/components/ui/GenerativeArt';
+import { MediaArt } from '@/components/ui/MediaArt';
+import { pageImage } from '@/lib/treatment-images';
 import { Marquee } from '@/components/ui/Marquee';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { CountUp } from '@/components/motion/CountUp';
@@ -42,7 +43,7 @@ export default function AboutPage() {
       {/* Story */}
       <section className="container-lux grid gap-12 py-20 md:grid-cols-2 md:items-center md:py-28">
         <MaskReveal className="aspect-[4/5] rounded-[var(--radius-2xl)] shadow-[var(--shadow-lift)]">
-          <GenerativeArt from="#a98a6d" to="#7b6a5d" className="h-full w-full" />
+          <MediaArt src={pageImage('about')} from="#a98a6d" to="#7b6a5d" alt="K Clinics, Islington" className="h-full w-full" />
         </MaskReveal>
         <Reveal delay={0.1}>
           <p className="eyebrow mb-4">Your natural beauty, our mission</p>

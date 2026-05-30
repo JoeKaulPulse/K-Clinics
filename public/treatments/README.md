@@ -1,17 +1,21 @@
 # Treatment & page imagery
 
 Drop the real image files from the WordPress media library here, keeping their
-original filenames (see ../../import/slug-image-map.json for which file maps to
-which page).
+original filenames (see `../../import/slug-image-map.json`,
+`../../import/package-image-map.json` and `../../import/page-image-map.json` for
+which file maps to which page).
 
-Then list the filenames you've added in `manifest.json`, e.g.:
+`manifest.json` is generated **automatically** at build time (a prebuild step
+scans this folder) — you do NOT need to edit it. Any image you drop here is
+picked up on the next build; anything missing falls back to the generative-art
+placeholder, so every build stays green.
 
-    ["Botox.png", "Microneedling.png", "Carbon-Laser-Peel.png"]
+## Easiest way to populate this folder
 
-Only files listed in manifest.json are used on the site; anything not listed
-falls back to the generative-art placeholder. This keeps every build green even
-before all images are uploaded.
+On a machine that can reach kclinics.co.uk (this build environment cannot), from
+the repo root:
 
-A ready-to-run download helper is in scripts/fetch-media.mjs — run it on a
-machine that can reach kclinics.co.uk to pull every file listed in
-../../import/image-manifest.txt, then copy them here and update manifest.json.
+    node scripts/fetch-media.mjs        # downloads all referenced images here
+    git add public/treatments && git commit -m "Add real imagery" && git push
+
+That's it — real photos appear across the site on the next deploy.
