@@ -3,18 +3,24 @@
 import { useRef, useState } from 'react';
 import { GenerativeArt } from '@/components/ui/GenerativeArt';
 
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+
 /**
  * Draggable before/after reveal slider — a hallmark clinic-results interaction.
- * Uses generative art placeholders today; swap `before`/`after` for real
- * <img> elements (same dimensions) when photography is available.
+ * Pass `beforeSrc`/`afterSrc` (public paths) for real photography; falls back to
+ * generative-art placeholders when omitted.
  */
 export function BeforeAfter({
+  beforeSrc,
+  afterSrc,
   beforeGrad = ['#8a7a6e', '#5a4f47'],
   afterGrad = ['#dcc4a8', '#a98a6d'],
   labelBefore = 'Before',
   labelAfter = 'After',
   className = '',
 }: {
+  beforeSrc?: string;
+  afterSrc?: string;
   beforeGrad?: [string, string];
   afterGrad?: [string, string];
   labelBefore?: string;
@@ -43,12 +49,20 @@ export function BeforeAfter({
       onPointerLeave={() => (dragging.current = false)}
     >
       {/* After (full) */}
-      <GenerativeArt from={afterGrad[0]} to={afterGrad[1]} className="h-full w-full" />
+      {afterSrc ? (
+        <img src={`${BASE}${afterSrc}`} alt={`${labelAfter} treatment`} className="h-full w-full object-cover" draggable={false} />
+      ) : (
+        <GenerativeArt from={afterGrad[0]} to={afterGrad[1]} className="h-full w-full" />
+      )}
       <span className="absolute right-4 top-4 rounded-full bg-black/30 px-3 py-1 text-xs uppercase tracking-[0.16em] text-white/90 backdrop-blur-sm">{labelAfter}</span>
 
       {/* Before (clipped to the left of the handle) */}
       <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
-        <GenerativeArt from={beforeGrad[0]} to={beforeGrad[1]} seed={3} className="h-full w-full" />
+        {beforeSrc ? (
+          <img src={`${BASE}${beforeSrc}`} alt={`${labelBefore} treatment`} className="h-full w-full object-cover" draggable={false} />
+        ) : (
+          <GenerativeArt from={beforeGrad[0]} to={beforeGrad[1]} seed={3} className="h-full w-full" />
+        )}
         <span className="absolute left-4 top-4 rounded-full bg-black/30 px-3 py-1 text-xs uppercase tracking-[0.16em] text-white/90 backdrop-blur-sm">{labelBefore}</span>
       </div>
 
