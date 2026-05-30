@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { KMark } from '@/components/brand/marks';
+import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 
 /**
  * Brand intro curtain — on first load of the session, a refined ink panel with
@@ -49,13 +49,14 @@ export function Intro() {
             <span className="h-20 w-12">
               <KMark animated />
             </span>
+            {/* CLINICS wordmark SVG (not text), revealed as the K finishes drawing. */}
             <motion.span
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6, duration: 0.6 }}
-              className="mt-5 text-[0.7rem] uppercase tracking-[0.4em] text-[var(--color-gold-soft)]"
+              transition={{ delay: 0.75, duration: 0.6 }}
+              className="mt-5 block h-[0.85rem] w-[9rem] text-[var(--color-gold-soft)]"
             >
-              K Clinics
+              <ClinicsWordmark />
             </motion.span>
           </motion.div>
         </motion.div>
