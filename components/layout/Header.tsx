@@ -88,14 +88,19 @@ export function Header() {
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <a
-            href={site.phoneHref}
-            className={`link-underline text-sm font-medium transition-colors ${
-              light ? 'text-[color-mix(in_oklab,var(--color-porcelain)_88%,transparent)]' : 'text-[var(--color-ink-soft)]'
+          <Link
+            href="/account"
+            aria-label="Client portal sign in"
+            className={`inline-flex items-center gap-1.5 text-sm font-medium transition-colors ${
+              light ? 'text-[color-mix(in_oklab,var(--color-porcelain)_88%,transparent)] hover:text-[var(--color-porcelain)]' : 'text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]'
             }`}
           >
-            {site.phone}
-          </a>
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden>
+              <circle cx="12" cy="8" r="3.4" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M5 19.5c1.6-3 4-4.5 7-4.5s5.4 1.5 7 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            Sign in
+          </Link>
           <Button href={site.booking.path} size="md" variant={light ? 'gold' : 'ink'}>
             Book Now <ArrowIcon />
           </Button>

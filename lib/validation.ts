@@ -20,6 +20,30 @@ export const consultSchema = z.object({
 
 export type ConsultInput = z.infer<typeof consultSchema>;
 
+// ── Client portal ───────────────────────────────────────────────────────────
+export const clientSignupSchema = z.object({
+  firstName: z.string().min(1, 'First name is required').max(80),
+  lastName: z.string().max(80).optional().or(z.literal('')),
+  email: z.string().email('Enter a valid email'),
+  phone: z.string().max(40).optional().or(z.literal('')),
+  dob: z.string().optional().or(z.literal('')),
+  password: z.string().min(8, 'Use at least 8 characters').max(200),
+  marketingOptIn: z.boolean().optional(),
+  consent: z.literal(true, { errorMap: () => ({ message: 'Please accept the terms to continue.' }) }),
+  company: z.string().max(0).optional().or(z.literal('')), // honeypot
+});
+
+export const clientLoginSchema = z.object({
+  email: z.string().email('Enter a valid email'),
+  password: z.string().min(1, 'Enter your password'),
+});
+
+export const assessmentSchema = z.object({
+  key: z.string().min(1).max(64),
+  answers: z.record(z.unknown()),
+  bookingId: z.string().optional(),
+});
+
 export const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),

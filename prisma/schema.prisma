@@ -52,8 +52,26 @@ enum AppointmentStatus {
 }
 
 enum Role {
-  OWNER
-  STAFF
+  OWNER         // full access incl. settings & staff management
+  ADMIN         // full CRM access
+  PRACTITIONER  // clinician / doctor — full client + clinical (health) access
+  FRONT_DESK    // scheduling & client contact; no clinical health data
+  STAFF         // legacy / general staff
+}
+
+enum AssessmentType {
+  MEDICAL_HISTORY
+  TREATMENT_CONSENT
+  PRE_TREATMENT
+  SKIN_PROFILE
+  DENTAL_HISTORY
+}
+
+enum DiscountStatus {
+  ACTIVE     // claimed, not yet redeemed
+  REDEEMED   // applied to a booking/treatment
+  REVOKED    // staff revoked (e.g. abuse)
+  BLOCKED    // signup matched an existing claim — no discount granted
 }
 
 enum BookingStatus {
@@ -79,6 +97,17 @@ model Client {
   unsubToken      String         @unique @default(cuid())
   lastVisitAt     DateTime?
   stripeCustomerId String?       @unique
+
+  // ── Client portal account ────────────────────────────────────────────────
+  passwordHash    String?        // set when the client creates a portal account
+  emailVerified   DateTime?
+  portalActive    Boolean        @default(false)
+  lastLoginAt     DateTime?
+
+  // ── First-visit discount (one-time, guardrailed) ─────────────────────────
+  firstDiscountClaimed Boolean   @default(false)
+  signupIp        String?
+
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -87,6 +116,8 @@ model Client {
   appointments    Appointment[]
   bookings        Booking[]
   emails          EmailEvent[]
+  assessments     HealthAssessment[]
+  discountClaims  DiscountClaim[]
 
   @@index([createdAt])
   @@index([dob])
@@ -218,4 +249,67 @@ model AdminUser {
   passwordHash String
   role         Role     @default(STAFF)
   createdAt    DateTime @default(now())
+}
+
+// ── Immutable, encrypted clinical record ─────────────────────────────────────
+// Health questionnaires / assessments are append-only: a submission is NEVER
+// updated or deleted. Corrections create a new version that `supersedesId` the
+// prior one. Answer payloads are encrypted at rest (AES-256-GCM) via the app
+// key; `integrityHash` (HMAC-SHA256) lets us detect any tampering. Access is
+// restricted to the owning client and clinical staff.
+model HealthAssessment {
+  id            String         @id @default(cuid())
+  client        Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId      String
+
+  type          AssessmentType
+  version       Int            @default(1)
+  supersedesId  String?        @unique // points to the prior version, if a correction
+
+  // Encrypted answer blob (base64: iv.tag.ciphertext) — never stored in plain.
+  cipher        String
+  // HMAC-SHA256 over the ciphertext + metadata, for tamper detection.
+  integrityHash String
+  // Non-sensitive metadata kept in clear for listing/filtering.
+  questionnaireKey String       // which questionnaire definition + version
+  summary       Json?          // redacted, non-clinical summary (e.g. {complete:true})
+
+  submittedAt   DateTime       @default(now())
+  submittedIp   String?
+  // Snapshot of who/what the assessment was for (e.g. an upcoming booking).
+  bookingId     String?
+
+  @@index([clientId, type])
+  @@index([submittedAt])
+}
+
+// ── First-visit discount ledger (abuse guardrail) ───────────────────────────
+// One ACTIVE claim per real person. We normalise email/phone and derive a
+// name+DOB key; a new signup matching any prior ACTIVE/REDEEMED claim is
+// BLOCKED (no discount) and flagged for staff, who can override.
+model DiscountClaim {
+  id          String         @id @default(cuid())
+  client      Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId    String
+
+  code        String         @unique
+  status      DiscountStatus @default(ACTIVE)
+  percent     Int            @default(15)
+
+  // Normalised identity fingerprints used to detect repeat claims.
+  emailNorm   String
+  phoneNorm   String?
+  nameDobKey  String?
+  ip          String?
+
+  flagged     Boolean        @default(false) // matched a prior claim / looks suspicious
+  reviewedBy  String?        // staff email if overridden
+  redeemedBookingId String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([emailNorm])
+  @@index([phoneNorm])
+  @@index([nameDobKey])
+  @@index([status])
 }

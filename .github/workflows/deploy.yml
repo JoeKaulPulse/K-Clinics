@@ -42,7 +42,7 @@ jobs:
         # be statically exported. Remove them for the GitHub Pages preview only;
         # they remain in the repo for the Vercel production deploy.
         run: |
-          rm -rf app/api app/admin components/admin middleware.ts
+          rm -rf app/api app/admin app/account components/admin components/portal middleware.ts
           rm -rf "app/(marketing)/booking"
           echo "Removed server-only routes for static build."
 
