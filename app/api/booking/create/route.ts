@@ -46,6 +46,12 @@ export async function POST(req: Request) {
   });
   const customerId = await ensureCustomer(client);
 
+  // One-time welcome discount: apply if this client has an ACTIVE claim.
+  let finalPrice = pricePence ?? 0;
+  const claim =
+    finalPrice > 0 ? await db.discountClaim.findFirst({ where: { clientId: client.id, status: 'ACTIVE' } }) : null;
+  if (claim) finalPrice = Math.round((finalPrice * (100 - claim.percent)) / 100);
+
   // Hold the slot.
   const booking = await db.booking.create({
     data: {
@@ -53,12 +59,20 @@ export async function POST(req: Request) {
       treatmentSlug: d.slug,
       treatmentTitle: treatment.title,
       startAt: start, endAt: end, durationMin,
-      pricePence: pricePence ?? 0,
+      pricePence: finalPrice,
       status: 'PENDING',
       notes: d.notes || null,
       stripeCustomerId: customerId,
     },
   });
+
+  // Burn the welcome discount so it can only ever be used once.
+  if (claim) {
+    await db.discountClaim.update({
+      where: { id: claim.id },
+      data: { status: 'REDEEMED', redeemedBookingId: booking.id },
+    });
+  }
 
   // SetupIntent — saves the card off-session, no charge.
   const setupIntent = await stripe().setupIntents.create({
