@@ -2,13 +2,14 @@
 
 import { revalidatePath } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
-import { getSession } from '@/lib/auth';
+import { getSession, sessionCan } from '@/lib/auth';
 
 // Staff: charge the saved card for a delivered service (adjustable amount).
 export async function chargeBookingAction(bookingId: string, amountPence: number) {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
   if (!session) return { ok: false, error: 'Unauthorised' };
+  if (!sessionCan(session, 'bookings.charge')) return { ok: false, error: 'You don’t have permission to take payments.' };
   if (!Number.isFinite(amountPence) || amountPence < 0) return { ok: false, error: 'Invalid amount' };
 
   const { db } = await import('@/lib/db');
@@ -29,7 +30,7 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
 export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 'NO_SHOW' | 'CONFIRMED') {
   if (!crmEnabled) return;
   const session = await getSession();
-  if (!session) return;
+  if (!session || !sessionCan(session, 'bookings.manage')) return;
   const { db } = await import('@/lib/db');
   await db.booking.update({ where: { id: bookingId }, data: { status } });
   const b = await db.booking.findUnique({ where: { id: bookingId } });
@@ -46,6 +47,7 @@ export async function cancelBookingAction(bookingId: string, opts: { reason?: st
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
   if (!session) return { ok: false, error: 'Unauthorised' };
+  if (!sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to manage bookings.' };
   const { cancelBooking } = await import('@/lib/booking-actions');
   const res = await cancelBooking(bookingId, { by: session.email, reason: opts.reason, waiveFee: opts.waiveFee });
   revalidatePath(`/admin/bookings/${bookingId}`);

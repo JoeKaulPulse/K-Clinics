@@ -90,6 +90,48 @@ export default function ContactPage() {
       </section>
 
       {/* Enquiry form */}
+      {/* Areas served + getting here — local SEO + practical guidance */}
+      <section className="container-lux section-sm">
+        <div className="grid gap-x-16 gap-y-10 lg:grid-cols-[0.9fr_1.1fr]">
+          <Reveal>
+            <p className="eyebrow mb-4">Getting here</p>
+            <h2 className="text-title">A short walk from Farringdon &amp; Barbican.</h2>
+            <p className="mt-5 leading-relaxed text-[var(--color-stone)]">
+              Our clinic sits on Goswell Road in Clerkenwell, on the Islington–City borders. We welcome
+              clients from across central and north London for aesthetics and aesthetic dentistry.
+            </p>
+            <dl className="mt-7 space-y-4 text-sm">
+              <div>
+                <dt className="eyebrow mb-1">Nearest stations</dt>
+                <dd className="text-[var(--color-ink-soft)]">Farringdon (Elizabeth line, Thameslink &amp; Underground) · Barbican · Angel · Old Street — all within a 10-minute walk.</dd>
+              </div>
+              <div>
+                <dt className="eyebrow mb-1">By car</dt>
+                <dd className="text-[var(--color-ink-soft)]">Pay-and-display nearby; outside the Congestion Charge zone’s western edge — please check current TfL boundaries.</dd>
+              </div>
+            </dl>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <p className="eyebrow mb-4">Areas we serve</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                'Islington', 'Clerkenwell', 'Angel', 'Farringdon', 'Barbican', 'Old Street',
+                'Shoreditch', 'Hoxton', 'Finsbury', 'City of London', 'Holborn', 'King’s Cross',
+                'Bloomsbury', 'Highbury', 'Canonbury', 'Bethnal Green',
+              ].map((a) => (
+                <span key={a} className="rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm text-[var(--color-ink-soft)]">
+                  {a}
+                </span>
+              ))}
+            </div>
+            <p className="mt-6 text-sm leading-relaxed text-[var(--color-stone)]">
+              One of London’s most considered destinations for laser &amp; skin treatments, injectables and
+              aesthetic dentistry — trusted by clients across north and central London.
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
       <section className="bg-[var(--color-bone)] section">
         <div className="container-lux grid gap-12 lg:grid-cols-[0.7fr_1.3fr] lg:items-start">
           <Reveal>

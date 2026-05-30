@@ -8,9 +8,9 @@ export const runtime = 'nodejs';
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
 
-  const { getSession } = await import('@/lib/auth');
-  const session = await getSession();
-  if (!session) return NextResponse.json({ ok: false, error: 'Unauthorised' }, { status: 401 });
+  const { requirePermission } = await import('@/lib/auth');
+  const session = await requirePermission('discounts.manage');
+  if (!session) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));
   const { claimId, action } = body as { claimId?: string; action?: 'revoke' | 'restore' };
