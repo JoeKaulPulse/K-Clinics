@@ -15,6 +15,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/book', priority: 0.95, freq: 'monthly' },
     { path: '/consultation', priority: 0.9, freq: 'monthly' },
     { path: '/treatments', priority: 0.9, freq: 'weekly' },
+    { path: '/treatment-finder', priority: 0.75, freq: 'monthly' },
     { path: '/dentistry', priority: 0.9, freq: 'weekly' },
     { path: '/packages', priority: 0.8, freq: 'monthly' },
     { path: '/pricing', priority: 0.8, freq: 'monthly' },

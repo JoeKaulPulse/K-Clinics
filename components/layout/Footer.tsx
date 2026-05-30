@@ -4,6 +4,7 @@ import { footerNav } from '@/lib/nav';
 import { Logo } from '@/components/brand/Logo';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { Aurora } from '@/components/ui/Aurora';
+import { CookieSettingsLink } from '@/components/legal/CookieSettingsLink';
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -82,6 +83,7 @@ export function Footer() {
             {label}
           </Link>
         ))}
+        <CookieSettingsLink />
       </div>
 
       {/* Contact + legal */}
