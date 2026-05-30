@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { crmEnabled } from '@/lib/crm';
-import { getSession } from '@/lib/auth';
+import { getSession, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 
@@ -19,8 +19,9 @@ export default async function AdminOverview() {
     { label: 'Marketing subscribers', value: o.marketingClients },
   ];
 
+  const can = await sessionPermissions();
   return (
-    <AdminShell user={session?.email}>
+    <AdminShell user={session?.email} can={can}>
       <h1 className="font-[family-name:var(--font-display)] text-3xl">Overview</h1>
       <p className="mt-1 text-sm text-[var(--color-stone)]">Welcome back{session?.name ? `, ${session.name}` : ''}.</p>
 

@@ -1,5 +1,5 @@
 import { crmEnabled } from '@/lib/crm';
-import { getSession } from '@/lib/auth';
+import { getSession, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 
@@ -25,8 +25,9 @@ export default async function AutomationsPage() {
   });
   const countFor = (kind: string) => counts.find((c) => c.kind === kind)?._count._all ?? 0;
 
+  const can = await sessionPermissions();
   return (
-    <AdminShell user={session?.email}>
+    <AdminShell user={session?.email} can={can}>
       <h1 className="font-[family-name:var(--font-display)] text-3xl">Automations</h1>
       <p className="mt-1 text-sm text-[var(--color-stone)]">Branded lifecycle emails, sent automatically by a daily job. Counts show the last 30 days.</p>
 

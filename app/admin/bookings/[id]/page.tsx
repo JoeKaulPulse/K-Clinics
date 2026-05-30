@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
-import { getSession } from '@/lib/auth';
+import { getSession, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { BookingActions } from '@/components/admin/BookingActions';
@@ -21,8 +21,9 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const within24h = b.startAt.getTime() - Date.now() < 24 * 60 * 60 * 1000;
   const name = [b.client.firstName, b.client.lastName].filter(Boolean).join(' ');
 
+  const can = await sessionPermissions();
   return (
-    <AdminShell user={session?.email}>
+    <AdminShell user={session?.email} can={can}>
       <Link href="/admin/bookings" className="text-sm text-[var(--color-gold)] hover:underline">← Bookings</Link>
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">

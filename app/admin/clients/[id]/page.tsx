@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
-import { getSession, canViewClinical } from '@/lib/auth';
+import { getSession, canViewClinical, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { AddNote, SendEmail, StatusSelect } from '@/components/admin/ClientActions';
@@ -33,8 +33,9 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
     }
   }
 
+  const can = await sessionPermissions();
   return (
-    <AdminShell user={session?.email}>
+    <AdminShell user={session?.email} can={can}>
       <Link href="/admin/clients" className="text-sm text-[var(--color-gold)] hover:underline">← Clients</Link>
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">

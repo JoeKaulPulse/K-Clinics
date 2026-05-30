@@ -2,6 +2,7 @@ import 'server-only';
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
+import { effectivePermissions } from '@/lib/permissions';
 
 const COOKIE = 'kc_admin';
 const CLIENT_COOKIE = 'kc_client';
@@ -27,7 +28,15 @@ const clientSecret = () => {
   return new TextEncoder().encode(s);
 };
 
-export type Session = { sub: string; email: string; name?: string; role: string };
+export type Session = {
+  sub: string;
+  email: string;
+  name?: string;
+  role: string;
+  /** Per-user permission overrides, captured at login for fast checks. */
+  grant?: string[];
+  revoke?: string[];
+};
 export type ClientSession = { sub: string; email: string; firstName: string };
 
 /** Staff/admin/practitioner roles that may access the CRM. */
@@ -35,6 +44,19 @@ export const STAFF_ROLES = ['OWNER', 'ADMIN', 'PRACTITIONER', 'FRONT_DESK', 'STA
 /** Roles permitted to view clinical (health-assessment) data. */
 export const CLINICAL_ROLES = ['OWNER', 'ADMIN', 'PRACTITIONER'];
 export const canViewClinical = (role?: string) => !!role && CLINICAL_ROLES.includes(role);
+
+/** Does the current session hold a given fine-grained permission? */
+export function sessionCan(session: Session | null | undefined, key: string): boolean {
+  if (!session) return false;
+  if (session.role === 'OWNER') return true;
+  return effectivePermissions({ role: session.role, permGrant: session.grant, permRevoke: session.revoke }).has(key);
+}
+
+/** Guard for server components / route handlers — returns the session or null. */
+export async function requirePermission(key: string): Promise<Session | null> {
+  const session = await getSession();
+  return sessionCan(session, key) ? session : null;
+}
 
 export async function hashPassword(plain: string) {
   return bcrypt.hash(plain, 11);
@@ -127,3 +149,10 @@ export async function verifyClientToken(token: string | undefined): Promise<Clie
 
 export const SESSION_COOKIE = COOKIE;
 export const CLIENT_SESSION_COOKIE = CLIENT_COOKIE;
+
+/** The list of permission keys for the current session (for nav gating). */
+export async function sessionPermissions(): Promise<string[]> {
+  const session = await getSession();
+  if (!session) return [];
+  return [...effectivePermissions({ role: session.role, permGrant: session.grant, permRevoke: session.revoke })];
+}

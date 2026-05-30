@@ -1,4 +1,4 @@
-import { organizationLd, JsonLd } from '@/lib/seo';
+import { organizationLd, websiteLd, JsonLd } from '@/lib/seo';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { PageTransition } from '@/components/motion/PageTransition';
@@ -14,7 +14,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
   return (
     <MotionProvider>
       <Intro />
-      <JsonLd data={organizationLd()} />
+      <JsonLd data={[organizationLd(), websiteLd()]} />
       <ScrollProgress />
       <Cursor />
       <a

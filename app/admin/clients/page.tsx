@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { crmEnabled } from '@/lib/crm';
-import { getSession } from '@/lib/auth';
+import { getSession, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 
@@ -13,8 +13,9 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   const session = await getSession();
   const rows = await listClients(q);
 
+  const can = await sessionPermissions();
   return (
-    <AdminShell user={session?.email}>
+    <AdminShell user={session?.email} can={can}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="font-[family-name:var(--font-display)] text-3xl">Clients</h1>
         <form className="flex gap-2">
