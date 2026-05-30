@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { site } from '@/lib/site';
 import { footerNav } from '@/lib/nav';
 import { Logo } from '@/components/brand/Logo';
-import { KMark } from '@/components/brand/marks';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { Aurora } from '@/components/ui/Aurora';
 
@@ -11,10 +10,6 @@ export function Footer() {
   return (
     <footer className="surface-ink grain relative overflow-hidden">
       <Aurora />
-      {/* Faint brand watermark */}
-      <span aria-hidden className="pointer-events-none absolute -right-[4%] -top-[12%] z-0 hidden h-[150%] w-auto text-[var(--color-gold)] opacity-[0.05] md:block">
-        <span className="block h-full w-auto"><KMark /></span>
-      </span>
       {/* CTA band */}
       <div className="container-lux relative border-b border-white/10 py-20 text-center md:py-28">
         <p className="eyebrow mb-5">Begin your transformation</p>
@@ -32,7 +27,7 @@ export function Footer() {
       {/* Link grid */}
       <div className="container-lux relative grid gap-12 py-16 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
-          <Logo mono className="text-[var(--color-porcelain)]" />
+          <Logo mono size="footer" className="text-[var(--color-porcelain)]" />
           <p className="mt-5 max-w-xs text-sm leading-relaxed text-[color-mix(in_oklab,var(--color-porcelain)_64%,transparent)]">
             {site.tagline}. A premium clinic in the heart of Clerkenwell, uniting advanced aesthetics and aesthetic dentistry.
           </p>

@@ -3,49 +3,48 @@ import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 
 /**
  * K Clinics logo — official artwork, rendered as inline SVG.
- *  • Desktop (sm+): the "K" swoosh monogram stacked ABOVE the "CLINICS" wordmark,
- *    with a persistent champagne shimmer sweeping across the K.
- *  • Mobile (<sm):  an oversized, signature "K" that overhangs the nav bar,
- *    self-draws on load, fills with gold on tap/hover, and shimmers.
+ *
+ * ONE animated "K" at every breakpoint (no duplicate/static copy): the monogram
+ * self-draws on load and fills with champagne gold on hover. The CLINICS
+ * wordmark sits beneath on larger screens. Sizing is controlled by `size`.
  *
  * Colour follows `currentColor`, so it flips to porcelain over dark heroes and
- * brand taupe / ink on light surfaces. Artwork in components/brand/marks.tsx.
+ * brand taupe / ink on light surfaces.
  */
-export function Logo({ className = '', mono = false }: { className?: string; mono?: boolean }) {
+export function Logo({
+  className = '',
+  mono = false,
+  size = 'header',
+}: {
+  className?: string;
+  mono?: boolean;
+  size?: 'header' | 'footer';
+}) {
   const color = mono ? 'var(--color-porcelain)' : 'var(--color-fg)';
+  // K box dimensions (the swoosh is a tall 130×234 portrait).
+  const kBox = size === 'footer' ? 'h-12 w-[1.65rem]' : 'h-10 w-[1.4rem]';
+  const wordmark = size === 'footer' ? 'h-[0.7rem] w-[8rem]' : 'h-[0.58rem] w-[6.5rem]';
 
   return (
     <span
-      className={`inline-flex flex-col items-center leading-none ${className}`}
+      className={`logo group inline-flex flex-col items-center gap-2.5 leading-none ${className}`}
       style={{ color }}
       aria-label={site.name}
     >
-      {/* Mobile: oversized signature K. The base draws itself in on load; a gold
-          copy rises on tap/hover; a shimmer copy sweeps continuously. All three
-          layers share the same box so they sit perfectly aligned. */}
-      <span aria-hidden className="logo-k group sm:hidden">
-        <span className="logo-k__layer">
+      {/* The single animated K. Base draws in on load; a clipped gold copy rises
+          on hover (invisible at rest, so it never ghosts). */}
+      <span aria-hidden className={`relative block ${kBox}`}>
+        <span className="absolute inset-0">
           <KMark animated />
         </span>
-        <span className="logo-k__layer logo-k__rise text-[var(--color-gold)]">
-          <KMark />
-        </span>
-        <span className="logo-k__layer k-shimmer text-[var(--color-gold-bright)]">
+        <span className="logo__rise absolute inset-0 text-[var(--color-gold)]">
           <KMark />
         </span>
       </span>
 
-      {/* Desktop: the formal stacked lockup. The K sits in a fixed box; the
-          shimmer overlay is absolutely positioned to the SAME box so they
-          register exactly (no double-image). */}
-      <span aria-hidden className="hidden flex-col items-center sm:flex">
-        <span className="relative block h-9 w-5">
-          <span className="absolute inset-0"><KMark /></span>
-          <span className="absolute inset-0 k-shimmer text-[var(--color-gold-bright)]"><KMark /></span>
-        </span>
-        <span className="mt-2 block h-[0.6rem] w-[6.75rem]">
-          <ClinicsWordmark />
-        </span>
+      {/* CLINICS wordmark — beneath the K (hidden on the smallest screens). */}
+      <span aria-hidden className={`hidden sm:block ${wordmark}`}>
+        <ClinicsWordmark />
       </span>
 
       <span className="sr-only">{site.name}</span>
