@@ -6,6 +6,7 @@ import { site } from '@/lib/site';
 import { organizationLd, JsonLd } from '@/lib/seo';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
+import { PageTransition } from '@/components/motion/PageTransition';
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
@@ -54,7 +55,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Skip to content
         </a>
         <Header />
-        <main id="main">{children}</main>
+        <main id="main">
+          <PageTransition>{children}</PageTransition>
+        </main>
         <Footer />
       </body>
     </html>

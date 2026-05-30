@@ -51,25 +51,36 @@ export function Header() {
 
         {/* Desktop nav */}
         <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary">
-          {primaryNav.map((item) => (
-            <div key={item.label} onMouseEnter={() => setOpen(item.columns ? item.label : null)}>
-              <Link
-                href={item.href}
-                className={`relative inline-flex items-center gap-1 rounded-full px-4 py-2 text-[0.95rem] font-medium transition-colors ${
-                  light
-                    ? 'text-[color-mix(in_oklab,var(--color-porcelain)_88%,transparent)] hover:text-[var(--color-porcelain)]'
-                    : 'text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]'
-                }`}
-              >
-                {item.label}
-                {item.columns && (
-                  <svg viewBox="0 0 10 6" className={`h-1.5 w-2.5 transition-transform duration-300 ${open === item.label ? 'rotate-180' : ''}`} aria-hidden>
-                    <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                  </svg>
-                )}
-              </Link>
-            </div>
-          ))}
+          {primaryNav.map((item) => {
+            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            return (
+              <div key={item.label} onMouseEnter={() => setOpen(item.columns ? item.label : null)}>
+                <Link
+                  href={item.href}
+                  aria-current={active ? 'page' : undefined}
+                  className={`relative inline-flex items-center gap-1 rounded-full px-4 py-2 text-[0.95rem] font-medium transition-colors ${
+                    light
+                      ? 'text-[color-mix(in_oklab,var(--color-porcelain)_88%,transparent)] hover:text-[var(--color-porcelain)]'
+                      : 'text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]'
+                  }`}
+                >
+                  {item.label}
+                  {item.columns && (
+                    <svg viewBox="0 0 10 6" className={`h-1.5 w-2.5 transition-transform duration-300 ${open === item.label ? 'rotate-180' : ''}`} aria-hidden>
+                      <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                    </svg>
+                  )}
+                  {active && (
+                    <motion.span
+                      layoutId="nav-active"
+                      className="absolute inset-x-3 -bottom-0.5 h-[1.5px] rounded-full bg-[var(--color-gold)]"
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                </Link>
+              </div>
+            );
+          })}
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
