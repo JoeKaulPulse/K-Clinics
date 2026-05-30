@@ -265,6 +265,40 @@
 .animate-float { animation: float-slow 9s var(--ease-glide) infinite; }
 .animate-marquee { animation: marquee 38s linear infinite; }
 
+/* ── Animated K monogram: self-draw calligraphy + fill bloom + sheen ──────── */
+@keyframes k-draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes k-bloom {
+  0%   { opacity: 0; transform: translateY(2%) scale(0.985); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes k-sheen {
+  0%   { opacity: 0; transform: translateY(-60%); }
+  35%  { opacity: 0.9; }
+  100% { opacity: 0; transform: translateY(60%); }
+}
+
+.k-mark--animated { overflow: visible; transform-box: fill-box; transform-origin: center; }
+
+.k-mark--animated .k-mark__fill {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: 50% 60%;
+  animation: k-bloom 1.1s var(--ease-lux) forwards;
+  animation-delay: 1.15s;
+}
+.k-mark--animated .k-mark__draw {
+  stroke-dasharray: 1700;
+  stroke-dashoffset: 1700;
+  animation: k-draw 1.5s var(--ease-glide) forwards;
+}
+/* The drawn stroke fades as the fill blooms in, for a seamless hand-off. */
+.k-mark--animated .k-mark__draw {
+  animation: k-draw 1.5s var(--ease-glide) forwards, k-bloom 0.5s ease-out reverse forwards;
+  animation-delay: 0s, 1.55s;
+}
+
 /* ── Respect reduced motion ───────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

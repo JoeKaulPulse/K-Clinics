@@ -3,6 +3,7 @@ import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import './globals.css';
 import { site } from '@/lib/site';
+import { getTheme, themeToCss } from '@/lib/theme';
 import { organizationLd, JsonLd } from '@/lib/seo';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -42,10 +43,15 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Palette is editable from WordPress; injected as CSS variables here so a
+  // colour change in the CMS re-skins the entire site (falls back to defaults).
+  const theme = await getTheme();
   return (
     <html lang="en-GB" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <head>
+        {/* WordPress-editable brand palette → CSS variable overrides. */}
+        <style id="brand-theme" dangerouslySetInnerHTML={{ __html: themeToCss(theme) }} />
         {/* Fallback: ensure scroll-revealed content is visible without JS. */}
         <noscript>
           <style>{`[style*="opacity:0"]{opacity:1!important;transform:none!important;filter:none!important}`}</style>
