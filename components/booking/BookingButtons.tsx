@@ -6,9 +6,11 @@ import { Button, ArrowIcon } from '@/components/ui/Button';
 export function BookingButtons({
   align = 'start',
   variant = 'gold',
+  consult = false,
 }: {
   align?: 'start' | 'center';
   variant?: 'gold' | 'ink';
+  consult?: boolean;
 }) {
   return (
     <div className={`flex flex-wrap items-center gap-3 ${align === 'center' ? 'justify-center' : ''}`}>
@@ -18,6 +20,11 @@ export function BookingButtons({
       <Button href={site.booking.fresha} external variant="outline" size="lg">
         Book on Fresha <ArrowIcon />
       </Button>
+      {consult && (
+        <Button href="/consultation" variant="ghost" size="lg">
+          Free consultation <ArrowIcon />
+        </Button>
+      )}
     </div>
   );
 }
