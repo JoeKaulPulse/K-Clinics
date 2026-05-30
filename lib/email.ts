@@ -227,3 +227,31 @@ export function tmplPaymentActionRequired(o: { firstName: string; treatment: str
 function escape(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 }
+
+// ── Care-related (transactional) reminders ──────────────────────────────────
+export function tmplAppointmentReminder(o: { firstName: string; treatment: string; start: Date; manageUrl: string }) {
+  return emailShell({
+    preheader: `Reminder: your ${o.treatment} is tomorrow`,
+    body: `<h1 style="font-size:24px;margin:0 0 16px;">See you soon, ${escape(o.firstName)}.</h1>
+    <p>This is a gentle reminder of your upcoming appointment at K Clinics:</p>
+    <table style="font-family:Helvetica,Arial,sans-serif;font-size:16px;color:#3d352f;line-height:2;">
+      <tr><td style="color:#91766e;padding-right:20px;">Treatment</td><td><strong>${escape(o.treatment)}</strong></td></tr>
+      <tr><td style="color:#91766e;padding-right:20px;">When</td><td><strong>${fmtWhen(o.start)}</strong></td></tr>
+      <tr><td style="color:#91766e;padding-right:20px;">Where</td><td>4 Charterhouse Buildings, Goswell Road, London EC1M 7AN</td></tr>
+    </table>
+    <p style="margin:24px 0;">${btn(o.manageUrl, 'Manage your appointment')}</p>
+    <p style="font-size:14px;color:#91766e;">Need to reschedule? You can do so free of charge up to 24 hours before. We look forward to welcoming you.</p>
+    <p>With warmth,<br>The K Clinics team</p>`,
+  });
+}
+
+export function tmplFormReminder(o: { firstName: string; treatment: string; start: Date; formsUrl: string }) {
+  return emailShell({
+    preheader: 'Please complete your pre-treatment forms',
+    body: `<h1 style="font-size:24px;margin:0 0 16px;">A quick step before your visit, ${escape(o.firstName)}.</h1>
+    <p>To make your <strong>${escape(o.treatment)}</strong> on ${fmtWhen(o.start)} as smooth and safe as possible, please complete your confidential health forms beforehand — it only takes a few minutes.</p>
+    <p style="margin:24px 0;">${btn(o.formsUrl, 'Complete my forms')}</p>
+    <p style="font-size:14px;color:#91766e;">Your answers are encrypted and seen only by your clinical team. Completing them in advance saves time at the clinic and helps us tailor your care.</p>
+    <p>With warmth,<br>The K Clinics team</p>`,
+  });
+}

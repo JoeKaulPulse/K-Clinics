@@ -1,6 +1,6 @@
 import 'server-only';
 import { db } from './db';
-import { sendEmail, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest } from './email';
+import { sendEmail, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder } from './email';
 import { site } from './site';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || site.url;
@@ -11,16 +11,21 @@ const FOLLOW_UP_DAYS = 3;
 const REVIEW_DAYS = 7;
 const WIN_BACK_MONTHS = 6;
 
-type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; errors: number };
+type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; errors: number };
 
 export async function runDailyAutomations(): Promise<Tally> {
-  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, errors: 0 };
-  await Promise.all([birthdays(t), followUps(t), reviews(t), winBacks(t)]);
+  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, errors: 0 };
+  await Promise.all([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t)]);
   return t;
 }
 
 function canEmail(c: { email: string; marketingOptIn: boolean; unsubscribed: boolean }) {
   return c.email && c.marketingOptIn && !c.unsubscribed;
+}
+// Care-related (transactional) mail — sent regardless of marketing opt-in, but
+// still suppressed for a hard unsubscribe.
+function canEmailCare(c: { email: string; unsubscribed: boolean }) {
+  return Boolean(c.email) && !c.unsubscribed;
 }
 
 // Already sent this kind to this client today/this cycle?
@@ -95,7 +100,57 @@ async function winBacks(t: Tally) {
   }
 }
 
-async function logEvent(clientId: string, kind: 'BIRTHDAY' | 'FOLLOW_UP' | 'WIN_BACK' | 'REVIEW_REQUEST', to: string, subject: string, res: { ok: boolean; id?: string; error?: string }) {
+// 24-hour appointment reminder — for CONFIRMED bookings starting tomorrow.
+async function reminders(t: Tally) {
+  const start = new Date(); start.setDate(start.getDate() + 1); start.setHours(0, 0, 0, 0);
+  const end = new Date(start); end.setHours(23, 59, 59, 999);
+  const bookings = await db.booking.findMany({
+    where: { status: 'CONFIRMED', remindersSent: false, startAt: { gte: start, lte: end } },
+    include: { client: true },
+  });
+  for (const b of bookings) {
+    if (canEmailCare(b.client)) {
+      const manageUrl = `${SITE_URL}/booking/manage?token=${b.manageToken}`;
+      const res = await sendEmail({
+        to: b.client.email,
+        subject: `Reminder: your ${b.treatmentTitle} is tomorrow`,
+        html: tmplAppointmentReminder({ firstName: b.client.firstName, treatment: b.treatmentTitle, start: b.startAt, manageUrl }),
+      });
+      await logEvent(b.clientId, 'APPOINTMENT_REMINDER', b.client.email, 'Appointment reminder', res);
+      res.ok ? t.reminders++ : t.errors++;
+    }
+    await db.booking.update({ where: { id: b.id }, data: { remindersSent: true } });
+  }
+}
+
+// Pre-treatment health-form reminder — 2 days before, if the client has a
+// portal account but hasn't completed a medical history yet.
+async function formReminders(t: Tally) {
+  const start = new Date(); start.setDate(start.getDate() + 2); start.setHours(0, 0, 0, 0);
+  const end = new Date(start); end.setHours(23, 59, 59, 999);
+  const bookings = await db.booking.findMany({
+    where: { status: 'CONFIRMED', startAt: { gte: start, lte: end } },
+    include: { client: { include: { assessments: { where: { type: 'MEDICAL_HISTORY' }, take: 1 } } } },
+  });
+  for (const b of bookings) {
+    const c = b.client;
+    if (!c.portalActive || c.assessments.length > 0) continue; // only nudge if forms outstanding
+    if (!canEmailCare(c)) continue;
+    // Don't double-send within 3 days.
+    const since = new Date(Date.now() - 3 * 864e5);
+    const dup = await db.emailEvent.findFirst({ where: { clientId: c.id, kind: 'FORM_REMINDER', status: 'SENT', createdAt: { gte: since } } });
+    if (dup) continue;
+    const res = await sendEmail({
+      to: c.email,
+      subject: 'Please complete your pre-treatment forms',
+      html: tmplFormReminder({ firstName: c.firstName, treatment: b.treatmentTitle, start: b.startAt, formsUrl: `${SITE_URL}/account/assessments` }),
+    });
+    await logEvent(c.id, 'FORM_REMINDER', c.email, 'Pre-treatment form reminder', res);
+    res.ok ? t.formReminders++ : t.errors++;
+  }
+}
+
+async function logEvent(clientId: string, kind: 'BIRTHDAY' | 'FOLLOW_UP' | 'WIN_BACK' | 'REVIEW_REQUEST' | 'APPOINTMENT_REMINDER' | 'FORM_REMINDER', to: string, subject: string, res: { ok: boolean; id?: string; error?: string }) {
   await db.emailEvent.create({
     data: { clientId, kind, to, subject, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error },
   });
