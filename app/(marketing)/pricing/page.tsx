@@ -42,7 +42,7 @@ export default function PricingPage() {
                         href={`/${t.slug}`}
                         className="group flex items-center justify-between gap-6 py-5 transition-colors hover:text-[var(--color-gold)]"
                       >
-                        <span>
+                        <span className="transition-transform duration-500 [transition-timing-function:var(--ease-lux)] group-hover:translate-x-2">
                           <span className="font-[family-name:var(--font-display)] text-xl">{t.title}</span>
                           <span className="mt-0.5 block text-sm text-[var(--color-stone)]">{t.tagline}</span>
                         </span>
