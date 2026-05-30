@@ -89,7 +89,7 @@ export default function HomePage() {
             <Reveal key={c.tag} delay={idx * 0.1}>
               <Link
                 href={c.href}
-                className="group relative flex h-full min-h-[32rem] flex-col justify-end overflow-hidden rounded-[var(--radius-2xl)] p-10 text-[var(--color-porcelain)] md:p-12"
+                className="group relative flex h-full min-h-[20rem] flex-col justify-end overflow-hidden rounded-[var(--radius-2xl)] p-8 text-[var(--color-porcelain)] sm:min-h-[26rem] md:min-h-[32rem] md:p-12"
               >
                 <GenerativeArt
                   from={c.grad[0]}
