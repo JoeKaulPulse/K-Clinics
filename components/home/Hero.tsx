@@ -25,12 +25,17 @@ export function Hero() {
               Islington · London — Est. {site.founded}
             </p>
 
-            <h1 className="font-[family-name:var(--font-display)] text-[clamp(2.75rem,1.55rem+3.7vw,5rem)] leading-[1.02] tracking-[-0.02em]">
-              <span className="rise block" style={{ animationDelay: '0.12s' }}>
-                Aesthetics &amp; dentistry,
+            <h1 className="font-[family-name:var(--font-display)] text-[clamp(2.75rem,1.55rem+3.7vw,5rem)] leading-[1.04] tracking-[-0.02em]">
+              <span className="reveal-mask">
+                <span className="reveal-line" style={{ animationDelay: '0.12s' }}>Aesthetics</span>
               </span>
-              <span className="rise block text-gold-shimmer" style={{ animationDelay: '0.22s' }}>
-                perfected.
+              <span className="reveal-mask">
+                <span className="reveal-line" style={{ animationDelay: '0.24s' }}>&amp; dentistry,</span>
+              </span>
+              <span className="reveal-mask">
+                <span className="reveal-line" style={{ animationDelay: '0.38s' }}>
+                  <span className="text-gold-shimmer">perfected.</span>
+                </span>
               </span>
             </h1>
 
@@ -74,19 +79,24 @@ export function Hero() {
         </div>
 
         {/* ── Photography ──────────────────────────────────────────── */}
-        <div className="media-in relative order-1 h-[37svh] min-h-[15rem] overflow-hidden lg:order-2 lg:h-auto">
+        <div className="hero-media relative order-1 h-[40svh] min-h-[15rem] overflow-hidden lg:order-2 lg:h-auto">
           <Image
             src={`${BASE}/hero/skin.webp`}
             alt="Radiant, healthy skin — advanced aesthetics at K Clinics, Islington"
             fill
             priority
             sizes="(max-width: 1024px) 100vw, 50vw"
-            className="object-cover object-[40%_26%]"
+            className="hero-img object-cover object-[50%_24%]"
+          />
+          {/* Editorial warmth + depth */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_85%_at_62%_28%,transparent_45%,color-mix(in_oklab,var(--color-ink)_16%,transparent))]"
           />
           {/* Seam blend into the cream content panel (desktop) */}
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-0 hidden bg-[linear-gradient(to_right,var(--color-porcelain),transparent_16%)] lg:block"
+            className="pointer-events-none absolute inset-0 hidden bg-[linear-gradient(to_right,var(--color-porcelain),transparent_15%)] lg:block"
           />
           {/* Bottom blend so the image flows into content on mobile */}
           <span
@@ -96,7 +106,7 @@ export function Hero() {
           {/* Self-drawing K monogram watermark (CSS-animated, no JS) */}
           <KMark
             animated
-            className="pointer-events-none absolute bottom-6 right-6 h-24 w-auto text-[var(--color-gold)] opacity-25 lg:bottom-10 lg:right-10 lg:h-40"
+            className="pointer-events-none absolute bottom-7 right-7 h-28 w-auto text-[var(--color-porcelain)] opacity-40 mix-blend-overlay lg:bottom-12 lg:right-12 lg:h-52"
           />
         </div>
       </div>

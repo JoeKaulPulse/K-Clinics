@@ -35,9 +35,11 @@ export function Header() {
     document.body.style.overflow = mobile ? 'hidden' : '';
   }, [mobile]);
 
-  // Over the (dark) hero at the top of every page we use light text;
-  // once scrolled, the bar frosts to cream and we switch to dark text.
-  const light = !scrolled && !mobile;
+  // Over a dark hero (sub-pages) we use light text at the top; once scrolled the
+  // bar frosts to cream and switches to dark text. The homepage hero is now a
+  // *light* (cream) split layout, so there we use dark text from the start.
+  const isHome = pathname === '/';
+  const light = !scrolled && !mobile && !isHome;
 
   return (
     <header
