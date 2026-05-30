@@ -88,7 +88,7 @@ export function Hero() {
               fill
               priority
               sizes="(max-width: 1024px) 100vw, 50vw"
-              className="hero-img object-cover object-[50%_24%]"
+              className="hero-img object-cover object-[52%_38%]"
             />
           </div>
           {/* Editorial warmth + depth */}
