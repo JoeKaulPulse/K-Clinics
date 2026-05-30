@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { Hero } from '@/components/home/Hero';
 import { Testimonials } from '@/components/home/Testimonials';
+import { PinnedExperience } from '@/components/home/PinnedExperience';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
+import { ScrollReveal } from '@/components/motion/ScrollReveal';
 import { SectionHeading } from '@/components/ui/Section';
 import { TreatmentCard } from '@/components/ui/TreatmentCard';
 import { Marquee } from '@/components/ui/Marquee';
@@ -55,11 +57,10 @@ export default function HomePage() {
             </Reveal>
           </div>
           <div className="flex flex-col justify-end lg:col-span-5">
+            <ScrollReveal className="text-lede leading-relaxed text-[var(--color-ink)]">
+              K Clinics was built on a simple conviction: that aesthetics and dentistry, practised at the highest level under one roof, create a more complete kind of confidence.
+            </ScrollReveal>
             <Reveal delay={0.12}>
-              <p className="text-lede leading-relaxed text-[var(--color-stone)]">
-                K Clinics was built on a simple conviction: that aesthetics and dentistry, practised at the
-                highest level under one roof, create a more complete kind of confidence.
-              </p>
               <div className="mt-8 flex gap-3">
                 <Button href="/treatments">Explore treatments <ArrowIcon /></Button>
                 <Button href="/about" variant="outline">Our story</Button>
@@ -153,32 +154,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* The experience */}
-      <section className="surface-ink grain section relative">
-        <Aurora />
-        <div className="container-lux relative">
-          <SectionHeading
-            tone="light"
-            align="center"
-            eyebrow="The K Clinics experience"
-            title="Considered from the first hello."
-            lede="From an unhurried consultation to a plan made only for you, every detail is designed to feel calm, private and quietly luxurious."
-          />
-          <Stagger className="mt-[var(--space-block)] grid gap-12 md:grid-cols-3 md:gap-8">
-            {[
-              { n: '01', t: 'Consultation', d: 'We listen first. A thorough, unhurried assessment of your goals, your skin or your smile — and complete transparency on what is possible.' },
-              { n: '02', t: 'Your bespoke plan', d: 'A clear, staged plan tailored to you, with the right treatments sequenced for results that build beautifully over time.' },
-              { n: '03', t: 'Refined results', d: 'Expert delivery, attentive aftercare and outcomes that look natural, considered and unmistakably yours.' },
-            ].map((s) => (
-              <StaggerItem key={s.n} className="relative border-t border-white/15 pt-7">
-                <p className="font-[family-name:var(--font-display)] text-[clamp(3.5rem,2.5rem+2vw,5rem)] leading-none text-[var(--color-gold)]/45">{s.n}</p>
-                <h3 className="mt-5 font-[family-name:var(--font-display)] text-2xl text-[var(--color-porcelain)] md:text-[1.75rem]">{s.t}</h3>
-                <p className="mt-3 leading-relaxed text-[color-mix(in_oklab,var(--color-porcelain)_70%,transparent)]">{s.d}</p>
-              </StaggerItem>
-            ))}
-          </Stagger>
-        </div>
-      </section>
+      {/* The experience — pinned scrollytelling */}
+      <PinnedExperience />
 
       {/* Packages teaser */}
       <section className="section container-lux">
