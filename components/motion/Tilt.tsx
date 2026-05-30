@@ -29,6 +29,11 @@ export function Tilt({
   const rotateY = useTransform(sx, [0, 1], [-max, max]);
   const glareX = useTransform(sx, [0, 1], ['0%', '100%']);
   const glareY = useTransform(sy, [0, 1], ['0%', '100%']);
+  // Must be declared before any conditional return so the hook count is stable.
+  const glareBg = useTransform(
+    [glareX, glareY],
+    ([x, y]) => `radial-gradient(360px circle at ${x} ${y}, rgba(255,255,255,0.18), transparent 60%)`,
+  );
 
   if (reduce) return <div className={className}>{children}</div>;
 
@@ -57,12 +62,7 @@ export function Tilt({
         <motion.span
           aria-hidden
           className="pointer-events-none absolute inset-0 z-20 rounded-[inherit] opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-          style={{
-            background: useTransform(
-              [glareX, glareY],
-              ([x, y]) => `radial-gradient(360px circle at ${x} ${y}, rgba(255,255,255,0.18), transparent 60%)`,
-            ),
-          }}
+          style={{ background: glareBg }}
         />
       )}
     </motion.div>
