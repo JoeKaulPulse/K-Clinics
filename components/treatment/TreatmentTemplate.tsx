@@ -4,7 +4,8 @@ import { getTreatment } from '@/lib/treatments';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { WordReveal } from '@/components/motion/WordReveal';
 import { MaskReveal } from '@/components/motion/MaskReveal';
-import { GenerativeArt } from '@/components/ui/GenerativeArt';
+import { MediaArt } from '@/components/ui/MediaArt';
+import { treatmentImage } from '@/lib/treatment-images';
 import { TreatmentCard } from '@/components/ui/TreatmentCard';
 import { FaqAccordion } from '@/components/ui/FaqAccordion';
 import { Button, ArrowIcon } from '@/components/ui/Button';
@@ -67,7 +68,7 @@ export function TreatmentTemplate({ t }: { t: Treatment }) {
           <Reveal delay={0.1}>
             <div className="relative">
               <MaskReveal className="aspect-[4/5] w-full rounded-[var(--radius-2xl)] shadow-[var(--shadow-lift)]">
-                <GenerativeArt from={t.gradient[0]} to={t.gradient[1]} className="h-full w-full" />
+                <MediaArt src={treatmentImage(t.slug)} from={t.gradient[0]} to={t.gradient[1]} alt={t.title} priority className="h-full w-full" />
               </MaskReveal>
               {t.priceFrom && (
                 <div className="card-glass absolute -bottom-5 -left-5 rounded-[var(--radius-md)] px-6 py-4 shadow-[var(--shadow-soft)]">
