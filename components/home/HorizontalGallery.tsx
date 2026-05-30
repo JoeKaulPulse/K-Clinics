@@ -2,7 +2,8 @@
 
 import { useRef } from 'react';
 import Link from 'next/link';
-import { motion, useScroll, useTransform, useReducedMotion } from 'motion/react';
+import { motion, useScroll, useTransform } from 'motion/react';
+import { useReducedMotionSafe } from '@/components/motion/use-reduced-motion-safe';
 import type { Treatment } from '@/lib/treatments';
 import { MediaArt } from '@/components/ui/MediaArt';
 import { treatmentImage } from '@/lib/treatment-images';
@@ -14,7 +15,7 @@ import { ArrowIcon } from '@/components/ui/Button';
  * native horizontal swipe rail.
  */
 export function HorizontalGallery({ items, eyebrow, title }: { items: Treatment[]; eyebrow: string; title: string }) {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionSafe();
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end end'] });
   // Move the row from 2% to roughly -(n-1.6) cards' worth across the pin.

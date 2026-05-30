@@ -43,7 +43,7 @@ export function Header() {
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-700 [transition-timing-function:var(--ease-lux)] ${
         scrolled
-          ? 'border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-porcelain)_82%,transparent)] backdrop-blur-xl'
+          ? 'border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-porcelain)_92%,transparent)] backdrop-blur-sm'
           : 'border-b border-transparent'
       }`}
       onMouseLeave={() => setOpen(null)}
