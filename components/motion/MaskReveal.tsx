@@ -1,11 +1,12 @@
 'use client';
 
-import { motion, useReducedMotion } from 'motion/react';
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
+import { motion, useInView, useReducedMotion } from 'motion/react';
 
 /**
- * Clip-path mask reveal — the content is unveiled with a directional wipe as it
+ * Clip-path mask reveal — content is unveiled with a directional wipe as it
  * scrolls into view, with a subtle inner scale for a cinematic feel.
+ * Uses useInView for reliable triggering even when already partly on-screen.
  */
 export function MaskReveal({
   children,
@@ -19,25 +20,25 @@ export function MaskReveal({
   delay?: number;
 }) {
   const reduce = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: '0px 0px -10% 0px' });
+
   if (reduce) return <div className={className}>{children}</div>;
 
-  const hidden =
-    direction === 'up'
-      ? 'inset(100% 0% 0% 0%)'
-      : 'inset(0% 100% 0% 0%)';
+  const hidden = direction === 'up' ? 'inset(100% 0% 0% 0%)' : 'inset(0% 100% 0% 0%)';
+  const shown = 'inset(0% 0% 0% 0%)';
 
   return (
     <motion.div
+      ref={ref}
       className={`overflow-hidden ${className}`}
       initial={{ clipPath: hidden }}
-      whileInView={{ clipPath: 'inset(0% 0% 0% 0%)' }}
-      viewport={{ once: true, margin: '-12%' }}
+      animate={{ clipPath: inView ? shown : hidden }}
       transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1], delay }}
     >
       <motion.div
         initial={{ scale: 1.14 }}
-        whileInView={{ scale: 1 }}
-        viewport={{ once: true, margin: '-12%' }}
+        animate={{ scale: inView ? 1 : 1.14 }}
         transition={{ duration: 1.3, ease: [0.16, 1, 0.3, 1], delay }}
         className="h-full w-full"
       >
