@@ -76,6 +76,7 @@ export const primaryNav: NavGroup[] = [
         heading: 'The K Clinics World',
         links: [
           { label: 'About K Clinics', href: '/about', description: 'Our philosophy' },
+          { label: 'Book a Consultation', href: '/consultation', description: 'Complimentary & bespoke' },
           { label: 'Membership & Rewards', href: '/membership', description: 'Beauty Points' },
           { label: 'Reviews', href: '/reviews', description: 'Loved by London' },
           { label: 'FAQ', href: '/faq', description: 'Everything explained' },

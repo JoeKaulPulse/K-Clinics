@@ -4,7 +4,7 @@ import { GenerativeArt } from '@/components/ui/GenerativeArt';
 export default function NotFound() {
   return (
     <section className="relative grid min-h-[80svh] place-items-center overflow-hidden">
-      <GenerativeArt from="#2b1d24" to="#4a3038" className="absolute inset-0" />
+      <GenerativeArt from="#2a2420" to="#4a3f37" className="absolute inset-0" />
       <div className="container-narrow relative z-10 text-center text-[var(--color-porcelain)]">
         <p className="eyebrow mb-5 text-[var(--color-gold-soft)]">Page not found</p>
         <h1 className="text-hero">404</h1>

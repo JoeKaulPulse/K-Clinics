@@ -5,6 +5,7 @@ import { motion, useScroll, useTransform, useReducedMotion } from 'motion/react'
 import { WordReveal } from '@/components/motion/WordReveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { GenerativeArt } from '@/components/ui/GenerativeArt';
+import { KMark } from '@/components/brand/marks';
 import { site } from '@/lib/site';
 
 export function Hero() {
@@ -19,8 +20,17 @@ export function Hero() {
     <section ref={ref} className="relative flex min-h-[100svh] items-end overflow-hidden">
       {/* Generative backdrop */}
       <motion.div style={{ y, scale }} className="absolute inset-0">
-        <GenerativeArt from="#2b1d24" to="#4a3038" className="h-full w-full" />
-        <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(80%_60%_at_70%_30%,rgba(176,133,68,0.30),transparent_60%)]" />
+        <GenerativeArt from="#2a2420" to="#4a3f37" className="h-full w-full" />
+        <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(80%_60%_at_70%_30%,rgba(169,138,109,0.30),transparent_60%)]" />
+      </motion.div>
+
+      {/* Signature animated K emblem — self-draws on load, drifts on scroll */}
+      <motion.div
+        aria-hidden
+        style={{ y: useTransform(scrollYProgress, [0, 1], ['0%', reduce ? '0%' : '-18%']) }}
+        className="pointer-events-none absolute -right-[6%] top-1/2 z-0 hidden h-[80%] -translate-y-1/2 text-[var(--color-gold-soft)] opacity-[0.16] md:block lg:-right-[2%]"
+      >
+        <KMark animated className="h-full w-auto" />
       </motion.div>
 
       {/* Content */}
