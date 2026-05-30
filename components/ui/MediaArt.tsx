@@ -29,8 +29,12 @@ export function MediaArt({
   priority?: boolean;
 }) {
   if (src) {
+    // `next/image fill` needs a positioned parent. Only add `relative` when the
+    // caller hasn't supplied its own positioning (e.g. `absolute inset-0`),
+    // otherwise the two position utilities collide and the box collapses.
+    const positioned = /(?:^|\s)(absolute|fixed|sticky|relative)(?:\s|$)/.test(className);
     return (
-      <div className={`relative overflow-hidden ${className}`}>
+      <div className={`${positioned ? '' : 'relative'} overflow-hidden ${className}`}>
         <Image
           src={src}
           alt={alt}

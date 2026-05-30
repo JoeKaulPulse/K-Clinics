@@ -4,7 +4,8 @@ import { useRef } from 'react';
 import Link from 'next/link';
 import { motion, useScroll, useTransform, useReducedMotion } from 'motion/react';
 import type { Treatment } from '@/lib/treatments';
-import { GenerativeArt } from '@/components/ui/GenerativeArt';
+import { MediaArt } from '@/components/ui/MediaArt';
+import { treatmentImage } from '@/lib/treatment-images';
 import { ArrowIcon } from '@/components/ui/Button';
 
 /**
@@ -88,10 +89,13 @@ function Card({ t, index }: { t: Treatment; index: number }) {
   return (
     <Link href={`/${t.slug}`} className="group block">
       <div className="relative aspect-[3/4] overflow-hidden rounded-[var(--radius-2xl)]">
-        <GenerativeArt
+        <MediaArt
+          src={treatmentImage(t.slug)}
           from={t.gradient[0]}
           to={t.gradient[1]}
           seed={index}
+          alt={t.title}
+          sizes="(max-width: 768px) 78vw, 28vw"
           className="h-full w-full transition-transform duration-[1.6s] [transition-timing-function:var(--ease-lux)] group-hover:scale-[1.07]"
         />
         <span className="absolute left-5 top-5 rounded-full bg-black/25 px-3 py-1 text-[0.65rem] font-medium uppercase tracking-[0.18em] text-white/90 backdrop-blur-sm">

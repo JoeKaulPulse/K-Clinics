@@ -2,15 +2,16 @@
 
 import { useRef } from 'react';
 import { motion, useScroll, useTransform, useReducedMotion, type MotionValue } from 'motion/react';
-import { GenerativeArt } from '@/components/ui/GenerativeArt';
+import { MediaArt } from '@/components/ui/MediaArt';
+import { treatmentImage } from '@/lib/treatment-images';
 import { Aurora } from '@/components/ui/Aurora';
 
-type Step = { n: string; t: string; d: string; grad: [string, string] };
+type Step = { n: string; t: string; d: string; grad: [string, string]; img: string | null };
 
 const steps: Step[] = [
-  { n: '01', t: 'Consultation', d: 'We listen first. A thorough, unhurried assessment of your goals, your skin or your smile — and complete transparency on what is possible.', grad: ['#a98a6d', '#7b6a5d'] },
-  { n: '02', t: 'Your bespoke plan', d: 'A clear, staged plan tailored to you, with the right treatments sequenced for results that build beautifully over time.', grad: ['#7b6a5d', '#2a2420'] },
-  { n: '03', t: 'Refined results', d: 'Expert delivery, attentive aftercare and outcomes that look natural, considered and unmistakably yours.', grad: ['#c2a589', '#4a3f37'] },
+  { n: '01', t: 'Consultation', d: 'We listen first. A thorough, unhurried assessment of your goals, your skin or your smile — and complete transparency on what is possible.', grad: ['#a98a6d', '#7b6a5d'], img: treatmentImage('hydraglow-facial') },
+  { n: '02', t: 'Your bespoke plan', d: 'A clear, staged plan tailored to you, with the right treatments sequenced for results that build beautifully over time.', grad: ['#7b6a5d', '#2a2420'], img: treatmentImage('rf-lifting') },
+  { n: '03', t: 'Refined results', d: 'Expert delivery, attentive aftercare and outcomes that look natural, considered and unmistakably yours.', grad: ['#c2a589', '#4a3f37'], img: treatmentImage('veneers') },
 ];
 
 /**
@@ -99,7 +100,7 @@ function StepArt({ step, index, total, progress }: { step: Step; index: number; 
   const scale = useTransform(progress, [start, start + seg], [1.08, 1]);
   return (
     <motion.div style={{ opacity, scale }} className="absolute inset-0">
-      <GenerativeArt from={step.grad[0]} to={step.grad[1]} seed={index * 3} className="h-full w-full" />
+      <MediaArt src={step.img} from={step.grad[0]} to={step.grad[1]} seed={index * 3} alt={step.t} sizes="(max-width: 768px) 100vw, 50vw" className="h-full w-full" />
     </motion.div>
   );
 }
