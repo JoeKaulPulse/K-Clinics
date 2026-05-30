@@ -11,6 +11,12 @@ name: Fetch real imagery from kclinics.co.uk
 
 on:
   workflow_dispatch:
+  # Also runs when the trigger file below changes, so a single commit can kick
+  # the fetch off without needing the "Run workflow" button. Scoped to that one
+  # path so ordinary commits never re-run it.
+  push:
+    paths:
+      - '.github/fetch-media.trigger'
 
 permissions:
   contents: write
