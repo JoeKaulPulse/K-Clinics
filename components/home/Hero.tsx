@@ -8,125 +8,89 @@ import { site } from '@/lib/site';
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /**
- * Above-the-fold hero. Deliberately a *server* component: the LCP image and the
- * headline render in the initial HTML with no client JS gating them, and the
- * entrance motion is pure CSS — so the fold paints fast (better for Core Web
- * Vitals / SERPs). Split editorial layout: content left, photography right.
+ * Above-the-fold hero. A *server* component: the LCP image and headline render in
+ * the initial HTML with no client JS gating them, and the entrance motion is pure
+ * CSS — so the fold paints fast (good for Core Web Vitals / SERPs). Editorial
+ * stacked layout: copy on a cream field above, the diverse trio band below (its
+ * cream backdrop melts seamlessly into the section).
  */
 export function Hero() {
   return (
     <section className="relative isolate overflow-hidden bg-[var(--color-porcelain)]">
-      <div className="grid min-h-[100svh] lg:grid-cols-[1.04fr_0.96fr]">
-        {/* ── Content ──────────────────────────────────────────────── */}
-        <div className="order-2 flex flex-col justify-center px-[var(--gutter)] pb-14 pt-4 lg:order-1 lg:py-28 lg:pr-12">
-          <div className="mx-auto w-full max-w-[34rem] lg:mx-0">
-            <p className="rise eyebrow mb-6 inline-flex items-center gap-2.5" style={{ animationDelay: '0.05s' }}>
-              <span className="h-px w-8 bg-[var(--color-gold)]/70" />
-              Islington · London — Est. {site.founded}
-            </p>
+      {/* ── Copy ─────────────────────────────────────────────────── */}
+      <div className="container-lux pb-5 pt-24 lg:pb-7 lg:pt-28">
+        <div className="max-w-[42rem]">
+          <p className="rise eyebrow mb-4 inline-flex items-center gap-2.5" style={{ animationDelay: '0.05s' }}>
+            <span className="h-px w-8 bg-[var(--color-gold)]/70" />
+            Islington · London — Est. {site.founded}
+          </p>
 
-            <h1 className="font-[family-name:var(--font-display)] text-[clamp(2.75rem,1.55rem+3.7vw,5rem)] leading-[1.04] tracking-[-0.02em]">
-              <span className="reveal-mask">
-                <span className="reveal-line" style={{ animationDelay: '0.12s' }}>Aesthetics</span>
+          <h1 className="font-[family-name:var(--font-display)] text-[clamp(2.4rem,1.5rem+2.9vw,4.25rem)] leading-[1.03] tracking-[-0.02em]">
+            <span className="reveal-mask">
+              <span className="reveal-line" style={{ animationDelay: '0.12s' }}>Aesthetics &amp; dentistry,</span>
+            </span>
+            <span className="reveal-mask">
+              <span className="reveal-line" style={{ animationDelay: '0.28s' }}>
+                <span className="text-gold-shimmer">perfected.</span>
               </span>
-              <span className="reveal-mask">
-                <span className="reveal-line" style={{ animationDelay: '0.24s' }}>&amp; dentistry,</span>
-              </span>
-              <span className="reveal-mask">
-                <span className="reveal-line" style={{ animationDelay: '0.38s' }}>
-                  <span className="text-gold-shimmer">perfected.</span>
-                </span>
-              </span>
-            </h1>
+            </span>
+          </h1>
 
-            <p
-              className="rise mt-7 max-w-md text-lg leading-relaxed text-[var(--color-stone)]"
-              style={{ animationDelay: '0.32s' }}
-            >
-              London&rsquo;s clinic for advanced laser &amp; skin science and award-worthy aesthetic
-              dentistry — delivered with precision, artistry and uncommon care.
-            </p>
+          <p
+            className="rise mt-5 max-w-xl text-lg leading-relaxed text-[var(--color-stone)]"
+            style={{ animationDelay: '0.4s' }}
+          >
+            Advanced laser &amp; skin science and award-worthy aesthetic dentistry — for every skin tone.
+          </p>
 
-            <div className="rise mt-9 flex flex-wrap items-center gap-3" style={{ animationDelay: '0.42s' }}>
-              <Button href={site.booking.path} variant="gold" size="lg">
-                Book your visit <ArrowIcon />
-              </Button>
-              <Button href="/treatments" variant="outline" size="lg">
-                Explore treatments
-              </Button>
-            </div>
-
-            <p className="rise mt-5 text-sm text-[var(--color-stone)]" style={{ animationDelay: '0.5s' }}>
-              <Link href="/consultation" className="link-underline font-medium text-[var(--color-gold)]">
-                Book a complimentary consultation
-              </Link>{' '}
-              · 15% off your first visit
-            </p>
-
-            <div
-              className="rise mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-[var(--color-line)] pt-7 text-sm"
-              style={{ animationDelay: '0.58s' }}
-            >
-              <span className="flex items-center gap-2">
-                <Stars />
-                <span className="font-medium">{site.ratingValue}</span>
-                <span className="text-[var(--color-stone)]">· {site.reviewCount}+ five-star reviews</span>
-              </span>
-              <span className="hidden h-4 w-px bg-[var(--color-line)] sm:block" />
-              <span className="text-[var(--color-stone)]">Award-trained clinicians</span>
-            </div>
+          <div className="rise mt-7 flex flex-wrap items-center gap-3" style={{ animationDelay: '0.5s' }}>
+            <Button href={site.booking.path} variant="gold" size="lg">
+              Book your visit <ArrowIcon />
+            </Button>
+            <Button href="/treatments" variant="outline" size="lg">
+              Explore treatments
+            </Button>
           </div>
-        </div>
 
-        {/* ── Photography ──────────────────────────────────────────── */}
-        <div className="hero-media relative order-1 h-[40svh] min-h-[15rem] overflow-hidden lg:order-2 lg:h-auto">
-          {/* Parallax layer (oversized on desktop so scroll drift never reveals edges) */}
-          <div className="hero-parallax absolute inset-0 lg:-inset-y-[7%]">
-            <Image
-              src={`${BASE}/hero/skin.webp`}
-              alt="Radiant, healthy skin — advanced aesthetics at K Clinics, Islington"
-              fill
-              priority
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              className="hero-img object-cover object-[52%_38%]"
-            />
+          <div
+            className="rise mt-6 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm"
+            style={{ animationDelay: '0.6s' }}
+          >
+            <span className="flex items-center gap-2">
+              <Stars />
+              <span className="font-medium">{site.ratingValue}</span>
+              <span className="text-[var(--color-stone)]">· {site.reviewCount}+ five-star reviews</span>
+            </span>
+            <span className="hidden h-4 w-px bg-[var(--color-line)] sm:block" />
+            <Link href="/consultation" className="link-underline font-medium text-[var(--color-gold)]">
+              Free consultation · 15% off your first visit
+            </Link>
           </div>
-          {/* Editorial warmth + depth */}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_85%_at_62%_28%,transparent_45%,color-mix(in_oklab,var(--color-ink)_16%,transparent))]"
-          />
-          {/* Seam blend into the cream content panel (desktop) */}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-0 hidden bg-[linear-gradient(to_right,var(--color-porcelain),transparent_15%)] lg:block"
-          />
-          {/* Top blend so the dark nav/logo stay legible over the photo on mobile */}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[linear-gradient(to_bottom,var(--color-porcelain),transparent)] lg:hidden"
-          />
-          {/* Bottom blend so the image flows into content on mobile */}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(to_top,var(--color-porcelain),transparent)] lg:hidden"
-          />
-          {/* Self-drawing K monogram watermark (CSS-animated, no JS) */}
-          <KMark
-            animated
-            className="pointer-events-none absolute bottom-7 right-7 h-28 w-auto text-[var(--color-porcelain)] opacity-40 mix-blend-overlay lg:bottom-12 lg:right-12 lg:h-52"
-          />
         </div>
       </div>
 
-      {/* Scroll cue */}
-      <div
-        className="rise pointer-events-none absolute bottom-7 left-1/2 hidden -translate-x-1/2 lg:flex"
-        style={{ animationDelay: '1s' }}
-      >
-        <span className="flex items-center gap-3 text-[0.7rem] uppercase tracking-[0.22em] text-[var(--color-stone)]">
-          Scroll <span className="h-px w-12 bg-[var(--color-line)]" />
-        </span>
+      {/* ── Trio photography band ─────────────────────────────────── */}
+      <div className="hero-media relative h-[46svh] min-h-[15rem] w-full lg:h-[52vh]">
+        <div className="hero-parallax absolute inset-0 lg:-inset-y-[6%]">
+          <Image
+            src={`${BASE}/hero/trio.webp`}
+            alt="Three women of different skin tones — advanced aesthetics for everyone at K Clinics, Islington"
+            fill
+            priority
+            sizes="100vw"
+            className="hero-img object-cover object-[50%_22%]"
+          />
+        </div>
+        {/* Blend the band's top edge into the cream copy field above it. */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-[linear-gradient(to_bottom,var(--color-porcelain),transparent)]"
+        />
+        {/* Self-drawing K monogram (CSS-animated, no JS). */}
+        <KMark
+          animated
+          className="pointer-events-none absolute bottom-5 right-6 h-16 w-auto text-[var(--color-ink)] opacity-25 lg:bottom-7 lg:right-10 lg:h-24"
+        />
       </div>
     </section>
   );
