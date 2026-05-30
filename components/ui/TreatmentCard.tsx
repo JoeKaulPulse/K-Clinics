@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import type { Treatment } from '@/lib/treatments';
-import { GenerativeArt } from '@/components/ui/GenerativeArt';
+import { MediaArt } from '@/components/ui/MediaArt';
+import { treatmentImage } from '@/lib/treatment-images';
 import { ArrowIcon } from '@/components/ui/Button';
 import { Tilt } from '@/components/motion/Tilt';
 
-/** A premium, hover-animated treatment card with 3D tilt + glare.
- *  Image area is generative art — text lives in the HTML below, never baked in. */
+/** A premium, hover-animated treatment card with 3D tilt + glare. Uses the real
+ *  photo when available, else generative art — text lives in HTML, never baked in. */
 export function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: number }) {
   return (
     <Tilt className="h-full">
@@ -14,10 +15,13 @@ export function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: number }
         className="group relative flex h-full flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] transition-[transform,box-shadow] duration-700 [transition-timing-function:var(--ease-lux)] hover:-translate-y-1 hover:border-[color-mix(in_oklab,var(--color-gold)_45%,var(--color-line))] hover:shadow-[var(--shadow-lift)]"
       >
         <div className="relative aspect-[4/3] overflow-hidden">
-          <GenerativeArt
+          <MediaArt
+            src={treatmentImage(t.slug)}
             from={t.gradient[0]}
             to={t.gradient[1]}
             seed={index}
+            alt={t.title}
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             className="h-full w-full transition-transform duration-[1.6s] [transition-timing-function:var(--ease-lux)] group-hover:scale-[1.08]"
           />
           <span className="absolute left-4 top-4 rounded-full bg-black/25 px-3 py-1 text-[0.68rem] font-medium uppercase tracking-[0.18em] text-white/90 backdrop-blur-sm">

@@ -1,0 +1,2863 @@
+{
+  "pages": [
+    {
+      "slug": "privacy-policy",
+      "title": "Privacy Policy",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "newsletter",
+      "title": "Newsletter",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/03/baner5.jpg",
+      "featuredFile": "baner5.jpg",
+      "gallery": [
+        "baner5.jpg",
+        "baner.jpg",
+        "HydraFacial-Basic-Cleansing-Hydration.jpg",
+        "Laser-Skin-Resurfacing-1.jpg",
+        "RF-Lifting-Face.jpg",
+        "SMAS-HIFU-Lifting-Face-2.jpg",
+        "IPL-Phototherapy-1.jpg",
+        "Laser-Tattoo-Removal-1.jpg"
+      ]
+    },
+    {
+      "slug": "shop",
+      "title": "Shop",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "cart",
+      "title": "Cart",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "checkout",
+      "title": "Checkout",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "test",
+      "title": "test",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/2.jpg",
+      "featuredFile": "2.jpg",
+      "gallery": [
+        "2.jpg",
+        "3.jpg",
+        "4.jpg",
+        "5.jpg"
+      ]
+    },
+    {
+      "slug": "home",
+      "title": "Home",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/04/baner-laser-1.jpg",
+      "featuredFile": "baner-laser-1.jpg",
+      "gallery": [
+        "baner-laser-1.jpg",
+        "111.jpg",
+        "2-8.jpg",
+        "1-8.jpg",
+        "Laser-Hair-Removal-for-Women.jpg",
+        "nnnnnnnnnr.jpg",
+        "Pigmentation-Correction.jpg",
+        "IPL-Rejuvenation.jpg"
+      ]
+    },
+    {
+      "slug": "cosmetology",
+      "title": "Cosmetology",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "dentistry",
+      "title": "Dentistry",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "prising",
+      "title": "Prising",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "our-philosphy",
+      "title": "Our philosphy",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "login",
+      "title": "Login",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "register",
+      "title": "My account Register",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-services",
+      "title": "My account Services",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account",
+      "title": "My account",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-sotrudniki",
+      "title": "My account Sotrudniki",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-cabinet",
+      "title": "My account Cabinet",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-%d1%81hart",
+      "title": "My account Сhart",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-clients",
+      "title": "My account Clients",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-price",
+      "title": "My account Price",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-view-details-session",
+      "title": "My account View Details Session",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-edit-order-for-admin",
+      "title": "My account Edit Order For Admin",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-add-session",
+      "title": "My account Add Session",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-user-info",
+      "title": "My account User info",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-add-order",
+      "title": "My account Add Order",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-edit-care-plan",
+      "title": "My account Edit Care Plan",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-show-orders",
+      "title": "My account Show Orders",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-%d1%81hart-doctor",
+      "title": "My account Сhart Doctor",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-user-info-for-doctor",
+      "title": "My account User info For Doctor",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-view-details-session-for-doctor",
+      "title": "My account View Details Session For Doctor",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-register-new-2",
+      "title": "My account Register NEW",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-my-orders",
+      "title": "My account My Orders",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-view-details-session-for-user",
+      "title": "My account View Details Session for User",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-services-2",
+      "title": "My account Services",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-add-session-for-user",
+      "title": "My account Add Session For User",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-edit-order",
+      "title": "My account Edit Order",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "skin-passport-treatment-history",
+      "title": "Skin Passport Treatment History",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "skin-passport-personalised-recommendations",
+      "title": "Skin Passport Personalised Recommendations",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "skin-passport-treatment-calendar",
+      "title": "Skin Passport Treatment Calendar",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "skin-passport-photos-reports-analysis",
+      "title": "Skin Passport Photos Reports &amp; Analysis",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "skin-passport-beauty-points-accumulation",
+      "title": "Skin Passport Beauty Points Accumulation",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "skin-passport-personalised-care-plan",
+      "title": "Skin Passport Personalised Care Plan",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-personalised-care-plan",
+      "title": "My account Personalised Care Plan",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "book-a-consultation",
+      "title": "Book a Consultation",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "book",
+      "title": "Book",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-gift-cards",
+      "title": "My account GIFT CARDS",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "specialist-dentistry",
+      "title": "Specialist Dentistry",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/108.jpg",
+      "featuredFile": "108.jpg",
+      "gallery": [
+        "108.jpg",
+        "110.jpg",
+        "111.jpg",
+        "112.jpg",
+        "113.jpg",
+        "114.jpg"
+      ]
+    },
+    {
+      "slug": "digital-dentistry",
+      "title": "Digital dentistry",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/baner.jpg",
+      "featuredFile": "baner.jpg",
+      "gallery": [
+        "baner.jpg",
+        "116.jpg",
+        "117.jpg",
+        "118.jpg",
+        "119.jpg",
+        "120.jpg"
+      ]
+    },
+    {
+      "slug": "general-dentistry",
+      "title": "General Dentistry",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2024/12/baner-6.jpg",
+      "featuredFile": "baner-6.jpg",
+      "gallery": [
+        "baner-6.jpg",
+        "baner-laser-1.jpg",
+        "left-2.jpg",
+        "dental-Check-Up.jpg",
+        "Emergency-Consultation.jpg",
+        "Cavity-Fillings-and-Treatment.jpg",
+        "Professional-Teeth-Cleaning.jpg",
+        "50.jpg"
+      ]
+    },
+    {
+      "slug": "check-up",
+      "title": "Check-up",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2024/12/baner-7.jpg",
+      "featuredFile": "baner-7.jpg",
+      "gallery": [
+        "baner-7.jpg",
+        "1-r1tsofrob2c0j2wk9fxlfkichn2nd6517h8ujfiwz8.png",
+        "2-r1tsor1ql2rgeeg6fkt49hnvm9j1xjdt912oar26wk.png",
+        "3-r1tspovxf41s0d30xzfor94h04w9mn45dok5kpo0ok.png",
+        "33.jpg",
+        "34.jpg",
+        "35.jpg",
+        "KClinic.jpg"
+      ]
+    },
+    {
+      "slug": "emergency-appointment",
+      "title": "Emergency Appointment",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2024/12/baner-8.jpg",
+      "featuredFile": "baner-8.jpg",
+      "gallery": [
+        "baner-8.jpg",
+        "1-r1tsofrob2c0j2wk9fxlfkichn2nd6517h8ujfiwz8.png",
+        "2-r1tsor1ql2rgeeg6fkt49hnvm9j1xjdt912oar26wk.png",
+        "3-r1tspovxf41s0d30xzfor94h04w9mn45dok5kpo0ok.png",
+        "24.jpg",
+        "34.jpg",
+        "35.jpg",
+        "emer.jpg"
+      ]
+    },
+    {
+      "slug": "cavity-treatment-and-fillings",
+      "title": "Cavity treatment and fillings",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2024/12/baner-9.jpg",
+      "featuredFile": "baner-9.jpg",
+      "gallery": [
+        "baner-9.jpg",
+        "1-r1tsofrob2c0j2wk9fxlfkichn2nd6517h8ujfiwz8.png",
+        "2-r1tsor1ql2rgeeg6fkt49hnvm9j1xjdt912oar26wk.png",
+        "3-r1tspovxf41s0d30xzfor94h04w9mn45dok5kpo0ok.png",
+        "37.jpg",
+        "38.png",
+        "35.jpg",
+        "98.jpg"
+      ]
+    },
+    {
+      "slug": "professional-teeth-cleaning",
+      "title": "Professional teeth cleaning",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2024/12/teeth.jpg",
+      "featuredFile": "teeth.jpg",
+      "gallery": [
+        "baner-10.jpg",
+        "1-r1tsofrob2c0j2wk9fxlfkichn2nd6517h8ujfiwz8.png",
+        "2-r1tsor1ql2rgeeg6fkt49hnvm9j1xjdt912oar26wk.png",
+        "3-r1tspovxf41s0d30xzfor94h04w9mn45dok5kpo0ok.png",
+        "40.jpg",
+        "41.jpg",
+        "42.jpg",
+        "design.jpg"
+      ]
+    },
+    {
+      "slug": "endodontics-root-canal-treatment",
+      "title": "Endodontics - Root canal treatment",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "tooth-extraction",
+      "title": "Tooth extraction",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2024/12/baner-12.jpg",
+      "featuredFile": "baner-12.jpg",
+      "gallery": [
+        "baner-12.jpg",
+        "1-r1tsofrob2c0j2wk9fxlfkichn2nd6517h8ujfiwz8.png",
+        "2-r1tsor1ql2rgeeg6fkt49hnvm9j1xjdt912oar26wk.png",
+        "3-r1tspovxf41s0d30xzfor94h04w9mn45dok5kpo0ok.png",
+        "45.jpg",
+        "price-1.png",
+        "35.jpg",
+        "46.jpg"
+      ]
+    },
+    {
+      "slug": "implantology",
+      "title": "Implantology",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2024/12/baner-13.jpg",
+      "featuredFile": "baner-13.jpg",
+      "gallery": [
+        "baner-13.jpg",
+        "left-4.jpg",
+        "48.jpg",
+        "49.jpg"
+      ]
+    },
+    {
+      "slug": "consultation-and-preparation-for-implantation",
+      "title": "Consultation and preparation for implantation",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2024/12/baner-14.jpg",
+      "featuredFile": "baner-14.jpg",
+      "gallery": [
+        "baner-14.jpg",
+        "1-r1tsofrob2c0j2wk9fxlfkichn2nd6517h8ujfiwz8.png",
+        "2-r1tsor1ql2rgeeg6fkt49hnvm9j1xjdt912oar26wk.png",
+        "3-r1tspovxf41s0d30xzfor94h04w9mn45dok5kpo0ok.png",
+        "50-1.jpg",
+        "51-1.jpg",
+        "35.jpg",
+        "KClinic-35.jpg"
+      ]
+    },
+    {
+      "slug": "dental-implant-placement",
+      "title": "Dental implant placement",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2024/12/baner-15.jpg",
+      "featuredFile": "baner-15.jpg",
+      "gallery": [
+        "baner-15.jpg",
+        "1-r1tsofrob2c0j2wk9fxlfkichn2nd6517h8ujfiwz8.png",
+        "2-r1tsor1ql2rgeeg6fkt49hnvm9j1xjdt912oar26wk.png",
+        "3-r1tspovxf41s0d30xzfor94h04w9mn45dok5kpo0ok.png",
+        "53.jpg",
+        "54.jpg",
+        "35.jpg",
+        "foto.jpg"
+      ]
+    },
+    {
+      "slug": "prosthodontics",
+      "title": "Prosthodontics",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2024/12/baner-16.jpg",
+      "featuredFile": "baner-16.jpg",
+      "gallery": [
+        "baner-16.jpg",
+        "left-5.jpg",
+        "52-1.jpg",
+        "53-1.jpg",
+        "54-1.jpg"
+      ]
+    },
+    {
+      "slug": "crown-fabrication-and-placement",
+      "title": "Crown fabrication and placement",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2024/12/crown.jpg",
+      "featuredFile": "crown.jpg",
+      "gallery": [
+        "baner-17.jpg",
+        "1-r1tsofrob2c0j2wk9fxlfkichn2nd6517h8ujfiwz8.png",
+        "2-r1tsor1ql2rgeeg6fkt49hnvm9j1xjdt912oar26wk.png",
+        "3-r1tspovxf41s0d30xzfor94h04w9mn45dok5kpo0ok.png",
+        "57.jpg",
+        "58.jpg",
+        "59.jpg",
+        "53-1.jpg"
+      ]
+    },
+    {
+      "slug": "bridge-fabrication-and-placement",
+      "title": "Bridge Fabrication and Placement",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/baner-1.jpg",
+      "featuredFile": "baner-1.jpg",
+      "gallery": [
+        "baner-1.jpg",
+        "1-r1tsofrob2c0j2wk9fxlfkichn2nd6517h8ujfiwz8.png",
+        "2-r1tsor1ql2rgeeg6fkt49hnvm9j1xjdt912oar26wk.png",
+        "3-r1tspovxf41s0d30xzfor94h04w9mn45dok5kpo0ok.png",
+        "67.jpg",
+        "zub.jpg",
+        "69.jpg",
+        "35.jpg"
+      ]
+    },
+    {
+      "slug": "dentures-and-implant-supported-dentures",
+      "title": "Dentures and Implant-Supported Dentures",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/baner-2.jpg",
+      "featuredFile": "baner-2.jpg",
+      "gallery": [
+        "baner-2.jpg",
+        "1-r1tsofrob2c0j2wk9fxlfkichn2nd6517h8ujfiwz8.png",
+        "2-r1tsor1ql2rgeeg6fkt49hnvm9j1xjdt912oar26wk.png",
+        "3-r1tspovxf41s0d30xzfor94h04w9mn45dok5kpo0ok.png",
+        "71.jpg",
+        "72.jpg",
+        "KClinic37.jpg",
+        "73.jpg"
+      ]
+    },
+    {
+      "slug": "orthodontics",
+      "title": "Orthodontics",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/baner-3.jpg",
+      "featuredFile": "baner-3.jpg",
+      "gallery": [
+        "baner-3.jpg",
+        "left-1.jpg",
+        "Braces.jpg",
+        "Aligners.jpg",
+        "Retainers.jpg"
+      ]
+    },
+    {
+      "slug": "braces",
+      "title": "Braces",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/baner-4.jpg",
+      "featuredFile": "baner-4.jpg",
+      "gallery": [
+        "baner-4.jpg",
+        "1-r1tsofrob2c0j2wk9fxlfkichn2nd6517h8ujfiwz8.png",
+        "2-r1tsor1ql2rgeeg6fkt49hnvm9j1xjdt912oar26wk.png",
+        "3-r1tspovxf41s0d30xzfor94h04w9mn45dok5kpo0ok.png",
+        "76.jpg",
+        "price.jpg",
+        "35.jpg",
+        "77.jpg"
+      ]
+    },
+    {
+      "slug": "metal-braces",
+      "title": "Metal Braces",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "ceramic-clear-braces",
+      "title": "Ceramic/Clear Braces",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "alighers",
+      "title": "Alighers",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/alighers.jpg",
+      "featuredFile": "alighers.jpg",
+      "gallery": [
+        "alighers.jpg",
+        "1-r1tsofrob2c0j2wk9fxlfkichn2nd6517h8ujfiwz8.png",
+        "2-r1tsor1ql2rgeeg6fkt49hnvm9j1xjdt912oar26wk.png",
+        "3-r1tspovxf41s0d30xzfor94h04w9mn45dok5kpo0ok.png",
+        "81.jpg",
+        "82.jpg",
+        "35.jpg",
+        "9.jpg"
+      ]
+    },
+    {
+      "slug": "retainers",
+      "title": "Retainers",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/baner-5.jpg",
+      "featuredFile": "baner-5.jpg",
+      "gallery": [
+        "baner-5.jpg",
+        "1-r1tsofrob2c0j2wk9fxlfkichn2nd6517h8ujfiwz8.png",
+        "2-r1tsor1ql2rgeeg6fkt49hnvm9j1xjdt912oar26wk.png",
+        "3-r1tspovxf41s0d30xzfor94h04w9mn45dok5kpo0ok.png",
+        "83.jpg",
+        "KClinic-38.jpg",
+        "35.jpg",
+        "84.jpg"
+      ]
+    },
+    {
+      "slug": "aesthetic-dentistry",
+      "title": "Aesthetic Dentistry",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/baner.jpg",
+      "featuredFile": "baner.jpg",
+      "gallery": [
+        "baner.jpg",
+        "left.jpg",
+        "Consultation-and-Preparation-for-Implantation.jpg",
+        "Dental-Implant-Placement.jpg",
+        "Crown-Fabrication-and-Placement.jpg",
+        "Bridge-Fabrication-and-Placement.jpg",
+        "Dentures-and-Implant-Supported-Dentures.jpg",
+        "Braces.jpg"
+      ]
+    },
+    {
+      "slug": "veneers",
+      "title": "Veneers",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/baner-7.jpg",
+      "featuredFile": "baner-7.jpg",
+      "gallery": [
+        "baner-7.jpg",
+        "1-r1tsofrob2c0j2wk9fxlfkichn2nd6517h8ujfiwz8.png",
+        "2-r1tsor1ql2rgeeg6fkt49hnvm9j1xjdt912oar26wk.png",
+        "3-r1tspovxf41s0d30xzfor94h04w9mn45dok5kpo0ok.png",
+        "90.jpg",
+        "91.jpg",
+        "35.jpg",
+        "1.jpg"
+      ]
+    },
+    {
+      "slug": "composite-bonding",
+      "title": "Composite bonding",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/baner-8.jpg",
+      "featuredFile": "baner-8.jpg",
+      "gallery": [
+        "baner-8.jpg",
+        "1-r1tsofrob2c0j2wk9fxlfkichn2nd6517h8ujfiwz8.png",
+        "2-r1tsor1ql2rgeeg6fkt49hnvm9j1xjdt912oar26wk.png",
+        "3-r1tspovxf41s0d30xzfor94h04w9mn45dok5kpo0ok.png",
+        "94.jpg",
+        "95.jpg",
+        "35.jpg",
+        "19-1.jpg"
+      ]
+    },
+    {
+      "slug": "teeth-whitening",
+      "title": "Teeth whitening",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/teeth.jpg",
+      "featuredFile": "teeth.jpg",
+      "gallery": [
+        "baner-9.jpg",
+        "1-r1tsofrob2c0j2wk9fxlfkichn2nd6517h8ujfiwz8.png",
+        "2-r1tsor1ql2rgeeg6fkt49hnvm9j1xjdt912oar26wk.png",
+        "3-r1tspovxf41s0d30xzfor94h04w9mn45dok5kpo0ok.png",
+        "101.jpg",
+        "102.jpg",
+        "35.jpg",
+        "103.jpg"
+      ]
+    },
+    {
+      "slug": "smile-enhancement",
+      "title": "Smile enhancement",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/baner-10.jpg",
+      "featuredFile": "baner-10.jpg",
+      "gallery": [
+        "baner-10.jpg",
+        "1-r1tsofrob2c0j2wk9fxlfkichn2nd6517h8ujfiwz8.png",
+        "2-r1tsor1ql2rgeeg6fkt49hnvm9j1xjdt912oar26wk.png",
+        "3-r1tspovxf41s0d30xzfor94h04w9mn45dok5kpo0ok.png",
+        "106.jpg",
+        "35.jpg",
+        "107.jpg",
+        "108.jpg"
+      ]
+    },
+    {
+      "slug": "benefits-technology-overview",
+      "title": "Benefits &amp; Technology Overview",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Laser-Skin-Resurfacing.png",
+      "featuredFile": "Laser-Skin-Resurfacing.png",
+      "gallery": [
+        "Laser-Skin-Resurfacing.png",
+        "1-1.png",
+        "2.png",
+        "4.png"
+      ]
+    },
+    {
+      "slug": "laser-skin-rejuvenation",
+      "title": "Laser Skin Rejuvenation",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Laser-Skin-Rejuvenation.png",
+      "featuredFile": "Laser-Skin-Rejuvenation.png",
+      "gallery": [
+        "Laser-Skin-Rejuvenation.png",
+        "Laser-Skin-Rejuvenation.jpg",
+        "Hydration.png",
+        "Fine-Lines-Wrinkles.png",
+        "Hyperpigmentation.png",
+        "Acne-scar.png",
+        "Skin-Tightening.png",
+        "Tone-Texture.png"
+      ]
+    },
+    {
+      "slug": "pigmentation-correction",
+      "title": "Pigmentation Correction",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Pigmentation-Correction.png",
+      "featuredFile": "Pigmentation-Correction.png",
+      "gallery": [
+        "Pigmentation-Correction.png",
+        "1-5.jpg",
+        "pigmrntation.jpg",
+        "3-4.jpg",
+        "Dullness-Dryness.png",
+        "Hyperpigmentation.png",
+        "Skin-Sensitivity.png",
+        "Tone-Texture.png"
+      ]
+    },
+    {
+      "slug": "vascular-lesions-treatment",
+      "title": "Vascular Lesions Treatment",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Vascular-Lesions-Treatment.png",
+      "featuredFile": "Vascular-Lesions-Treatment.png",
+      "gallery": [
+        "Vascular-Lesions-Treatment.png",
+        "vaskular.jpg",
+        "Dullness-Dryness.png",
+        "Vascular-Lesions.png",
+        "Skin-Sensitivity.png",
+        "Reduction-of-Redness.png",
+        "Tone-Texture.png",
+        "Dullness-Dryness-rc6bmsnuft1t1zlymmtl9x2s0aec1f8n183mgynti8.png"
+      ]
+    },
+    {
+      "slug": "scar-stretch-mark-reduction",
+      "title": "Scar &amp; Stretch Mark Reduction",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Scar-Stretch-Mark-Reduction.png",
+      "featuredFile": "Scar-Stretch-Mark-Reduction.png",
+      "gallery": [
+        "Scar-Stretch-Mark-Reduction.png",
+        "scar.jpg",
+        "Tone-Texture.png",
+        "Reduction-in-Scars.png",
+        "Stretch-Mark-Reduction.png",
+        "Regeneration.png",
+        "Skin-Sensitivity.png",
+        "Skin-Tightening.png"
+      ]
+    },
+    {
+      "slug": "spider-veins-removal",
+      "title": "Spider Veins Removal",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Spider-Veins-Removal.png",
+      "featuredFile": "Spider-Veins-Removal.png",
+      "gallery": [
+        "Spider-Veins-Removal.png",
+        "veins.jpg",
+        "Redness-Vascular-Issues.png",
+        "Skin-Tightening.png",
+        "Stretch-Mark-Reduction.png",
+        "Vein-Visibility.png",
+        "Redness-Vascular-Issues-rc6bpcs11kjwnrw5oqn129ty81sazrec1w17i2v8kg.png",
+        "Skin-Tightening-rc6bpzc5lleseeze10e2q450hap44hvw4zov0pxsf4.png"
+      ]
+    },
+    {
+      "slug": "laser-skin-resurfacing",
+      "title": "Laser Skin Resurfacing",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Laser-Skin-Resurfacing.png",
+      "featuredFile": "Laser-Skin-Resurfacing.png",
+      "gallery": [
+        "Laser-Skin-Resurfacing.png",
+        "Laser-Skin-Resurfacing.jpg",
+        "Hydration.png",
+        "Fine-Lines-Wrinkles.png",
+        "Hyperpigmentation.png",
+        "Tone-Texture.png",
+        "Acne-scar.png",
+        "Skin-Tightening.png"
+      ]
+    },
+    {
+      "slug": "rf-lifting",
+      "title": "RF Lifting",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/RF-Lifting.png",
+      "featuredFile": "RF-Lifting.png",
+      "gallery": [
+        "RF-Lifting.png",
+        "RF-Lifting.png",
+        "Hydration.png",
+        "Fine-Lines-Wrinkles.png",
+        "Skin-Tightening.png",
+        "Tone-Texture.png",
+        "Rejuvenation.png",
+        "Skin-Sensitivity.png"
+      ]
+    },
+    {
+      "slug": "smas-hifu-lifting",
+      "title": "SMAS (HIFU) Lifting",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/SMAS-HIFU-Lifting.png",
+      "featuredFile": "SMAS-HIFU-Lifting.png",
+      "gallery": [
+        "SMAS-HIFU-Lifting.png",
+        "SMAS-Lifting.png",
+        "Skin-Tightening.png",
+        "Fine-Lines-Wrinkles.png",
+        "Facial-Contouring.png",
+        "Stretch-Mark-Reduction.png",
+        "Rejuvenation.png",
+        "Skin-Tightening-rc6bpzc5lleseeze10e2q450hap44hvw4zov0pxsf4.png"
+      ]
+    },
+    {
+      "slug": "hydraglowfacial",
+      "title": "HydraGlowFacial",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Laser-Skin-Resurfacing.png",
+      "featuredFile": "Laser-Skin-Resurfacing.png",
+      "gallery": [
+        "Laser-Skin-Resurfacing.png",
+        "hydrafacial.jpg",
+        "HydraFacial-Basic-Cleansing-Hydration.png",
+        "Deluxe-HydraFacial-Full-Face.png",
+        "Antioxidant-Therapy.png",
+        "HydraFacial-Anti-Acne.png",
+        "HydraFacial-Collagen-1.png",
+        "HydraFacial-Pigmentation-Sun-Damage.png"
+      ]
+    },
+    {
+      "slug": "basic-cleansing-hydration",
+      "title": "Basic Cleansing &amp; Hydration",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/HydraFacial-Basic-Cleansing-Hydration.png",
+      "featuredFile": "HydraFacial-Basic-Cleansing-Hydration.png",
+      "gallery": [
+        "HydraFacial-Basic-Cleansing-Hydration.png",
+        "basiccc.jpg",
+        "Hydration.png",
+        "Tone-Texture.png",
+        "Acne-scar.png",
+        "Hyperpigmentation.png",
+        "Fine-Lines-Wrinkles.png",
+        "Skin-Sensitivity.png"
+      ]
+    },
+    {
+      "slug": "hydraglowfacial-full-face-deluxe",
+      "title": "HydraGlowFacial Full Face Deluxe",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Deluxe-HydraFacial-Full-Face.png",
+      "featuredFile": "Deluxe-HydraFacial-Full-Face.png",
+      "gallery": [
+        "Deluxe-HydraFacial-Full-Face.png",
+        "HydrafacialGlow.png",
+        "Hydration.png",
+        "Tone-Texture.png",
+        "Acne-scar.png",
+        "Hyperpigmentation.png",
+        "Fine-Lines-Wrinkles.png",
+        "Skin-Sensitivity.png"
+      ]
+    },
+    {
+      "slug": "antioxidant-therapy",
+      "title": "Antioxidant Therapy",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Antioxidant-Therapy.png",
+      "featuredFile": "Antioxidant-Therapy.png",
+      "gallery": [
+        "Antioxidant-Therapy.png",
+        "price1.jpg",
+        "Hydration.png",
+        "Tone-Texture.png",
+        "Acne-scar.png",
+        "Hyperpigmentation.png",
+        "Fine-Lines-Wrinkles.png",
+        "Skin-Sensitivity.png"
+      ]
+    },
+    {
+      "slug": "hydraglowfacial-platinum",
+      "title": "HydraGlowFacial Platinum",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Laser-Skin-Rejuvenation-2.png",
+      "featuredFile": "Laser-Skin-Rejuvenation-2.png",
+      "gallery": [
+        "Laser-Skin-Rejuvenation-2.png",
+        "Laser-Skin-Rejuvenation.jpg",
+        "Hydration.png",
+        "Tone-Texture.png",
+        "Acne-scar.png",
+        "Hyperpigmentation.png",
+        "Skin-Sensitivity.png",
+        "Hydration-rc6bnqi19uc4ny8t51g5rojde5rjqiyz5vl3qx9na8.png"
+      ]
+    },
+    {
+      "slug": "ipl-phototherapy",
+      "title": "IPL Phototherapy",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/IPL-Phototherapy.png",
+      "featuredFile": "IPL-Phototherapy.png",
+      "gallery": [
+        "IPL-Phototherapy.png",
+        "IPL-Phototherapy.jpg",
+        "Hyperpigmentation.png",
+        "Fine-Lines-Wrinkles.png",
+        "Acne-scar.png",
+        "Redness-Vascular-Issues.png",
+        "Regeneration.png",
+        "Skin-Tightening.png"
+      ]
+    },
+    {
+      "slug": "microneedling",
+      "title": "Microneedling",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Microneedling.png",
+      "featuredFile": "Microneedling.png",
+      "gallery": [
+        "Microneedling.png",
+        "Hydration.png",
+        "Fine-Lines-Wrinkles.png",
+        "Hyperpigmentation.png",
+        "Tone-Texture.png",
+        "Acne-scar.png",
+        "Skin-Tightening.png",
+        "Reduction-in-Scars.png"
+      ]
+    },
+    {
+      "slug": "prp-therapy",
+      "title": "PRP Therapy",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/PRP-Therapy.png",
+      "featuredFile": "PRP-Therapy.png",
+      "gallery": [
+        "PRP-Therapy.png",
+        "Regeneration.png",
+        "Fine-Lines-Wrinkles.png",
+        "Reduction-in-Scars.png",
+        "Stretch-Mark-Reduction.png",
+        "Hyperpigmentation.png",
+        "Anti-Ageing.png",
+        "Oil-Control.png"
+      ]
+    },
+    {
+      "slug": "carbon-laser-peel",
+      "title": "Carbon Laser Peel",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Carbon-Laser-Peel.png",
+      "featuredFile": "Carbon-Laser-Peel.png",
+      "gallery": [
+        "Carbon-Laser-Peel.png",
+        "carbon.jpg",
+        "Deep-Cleansing.png",
+        "Acne-scar.png",
+        "Fine-Lines-Wrinkles.png",
+        "Tone-Texture.png",
+        "Hyperpigmentation.png",
+        "Reduction-in-Scars.png"
+      ]
+    },
+    {
+      "slug": "chemical-peels",
+      "title": "Chemical Peels",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Cosmetic-Peels.png",
+      "featuredFile": "Cosmetic-Peels.png",
+      "gallery": [
+        "Cosmetic-Peels.png",
+        "chemical.jpg",
+        "Tone-Texture.png",
+        "Fine-Lines-Wrinkles.png",
+        "Hyperpigmentation.png",
+        "Acne-scar.png",
+        "Reduction-in-Scars.png",
+        "Regeneration.png"
+      ]
+    },
+    {
+      "slug": "microdermabrasion",
+      "title": "Microdermabrasion",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Microdermabrasion.png",
+      "featuredFile": "Microdermabrasion.png",
+      "gallery": [
+        "Microdermabrasion.png",
+        "Tone-Texture.png",
+        "Hyperpigmentation.png",
+        "Acne-scar.png",
+        "Reduction-in-Scars.png",
+        "Regeneration.png",
+        "Anti-Dullness-Effect.png",
+        "Anti-Ageing.png"
+      ]
+    },
+    {
+      "slug": "cosmetic-injections",
+      "title": "Cosmetic Injections",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/HydraFacial-Anti-Ageing.png",
+      "featuredFile": "HydraFacial-Anti-Ageing.png",
+      "gallery": [
+        "HydraFacial-Anti-Ageing.png",
+        "injection.jpg",
+        "Botox.png",
+        "Dermal-Fillers-3.png",
+        "Kybella-Submental-Fat-Reduction.png"
+      ]
+    },
+    {
+      "slug": "botox",
+      "title": "Botox",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Botox.png",
+      "featuredFile": "Botox.png",
+      "gallery": [
+        "Botox.png",
+        "Botox-1.jpg",
+        "Fine-Lines-Wrinkles.png",
+        "Sweat-Reduction.png",
+        "Facial-Contouring.png",
+        "Anti-Ageing.png",
+        "Skin-Tightening.png",
+        "Fine-Lines-Wrinkles-rc6bnmqoii6zdie9qztnhphj0ma2vqk1tcz5ttf7z4.png"
+      ]
+    },
+    {
+      "slug": "dermal-fillers",
+      "title": "Dermal Fillers",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/Dermal-Fillers.png",
+      "featuredFile": "Dermal-Fillers.png",
+      "gallery": [
+        "Dermal-Fillers.png",
+        "Facial-Contouring.png",
+        "Fine-Lines-Wrinkles.png",
+        "Hydration.png",
+        "Plumping.png",
+        "Facial-Contouring-rc6bng5t6nxz48nttez9i95aux6idutxggergvoz6o.png",
+        "Fine-Lines-Wrinkles-rc6bnmqoii6zdie9qztnhphj0ma2vqk1tcz5ttf7z4.png",
+        "Hydration-rc6bnqi19uc4ny8t51g5rojde5rjqiyz5vl3qx9na8.png"
+      ]
+    },
+    {
+      "slug": "kybella-submental-fat-reduction",
+      "title": "Kybella (Submental Fat Reduction)",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Kybella-Submental-Fat-Reduction.png",
+      "featuredFile": "Kybella-Submental-Fat-Reduction.png",
+      "gallery": [
+        "Kybella-Submental-Fat-Reduction.png",
+        "scar.jpg",
+        "Facial-Contouring.png",
+        "Skin-Tightening.png",
+        "Facial-Contouring-rc6bng5t6nxz48nttez9i95aux6idutxggergvoz6o.png",
+        "Skin-Tightening-rc6bpzc5lleseeze10e2q450hap44hvw4zov0pxsf4.png",
+        "prepare.jpg",
+        "aftercare.jpeg"
+      ]
+    },
+    {
+      "slug": "permanent-makeup-removal",
+      "title": "Permanent MakeUp Removal",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Permanent-MakeUp-Removal.png",
+      "featuredFile": "Permanent-MakeUp-Removal.png",
+      "gallery": [
+        "Permanent-MakeUp-Removal.png",
+        "makeup.jpg",
+        "Reduction-in-Scars.png",
+        "Tone-Texture.png",
+        "Skin-Sensitivity.png",
+        "Reduction-in-Scars-rc6bpgjdswp1y7qp2s9jc8vsll9rujt9een5f6pnvk.png",
+        "Tone-Texture-rc6bqfbets0nvsc6fpaqei3ukuicrcnbv6s46fa3hc.png",
+        "Skin-Sensitivity-rc6bpxgh7xc7r724bzktl4m3aiydp3ofgqdw260krk.png"
+      ]
+    },
+    {
+      "slug": "laser-hair-removal",
+      "title": "Laser Hair Removal",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/Laser-Hair-Removal-1-1.png",
+      "featuredFile": "Laser-Hair-Removal-1-1.png",
+      "gallery": [
+        "Laser-Hair-Removal-1-1.png",
+        "Laser-Hair-Removal-1-2.png",
+        "1-2.jpg",
+        "4-1.jpg",
+        "2-2.jpg",
+        "3-3.jpg",
+        "5-1.jpg",
+        "6-1.jpg"
+      ]
+    },
+    {
+      "slug": "laser-hair-removal-for-women",
+      "title": "Laser Hair Removal for Women",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Unwanted-hair.png",
+      "featuredFile": "Unwanted-hair.png",
+      "gallery": [
+        "Roller-Massage.png",
+        "bikini.jpg",
+        "14.jpg",
+        "15.jpg",
+        "16-1.jpg",
+        "17-1.jpg",
+        "Unwanted-hair.png",
+        "Skin-Sensitivity.png"
+      ]
+    },
+    {
+      "slug": "laser-hair-removal-for-men",
+      "title": "Laser Hair Removal for Men",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/Laser-hair-removal-for-men.jpg",
+      "featuredFile": "Laser-hair-removal-for-men.jpg",
+      "gallery": [
+        "Laser-hair-removal-for-men.jpg",
+        "19.jpg",
+        "20.jpg",
+        "22.jpg",
+        "21.jpg",
+        "Unwanted-hair.png",
+        "Skin-Sensitivity.png",
+        "Tone-Texture.png"
+      ]
+    },
+    {
+      "slug": "intimate-laser-procedures",
+      "title": "Intimate Laser Procedures",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/Intimate-Laser-Procedures.png",
+      "featuredFile": "Intimate-Laser-Procedures.png",
+      "gallery": [
+        "Intimate-Laser-Procedures.png",
+        "left.jpg",
+        "Intimate-Rejuvenation-with-CO2-Laser.png"
+      ]
+    },
+    {
+      "slug": "intimate-rejuvenation-with-co2-laser",
+      "title": "Intimate Rejuvenation with CO2 Laser",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Laser-Hair-Removal-2.png",
+      "featuredFile": "Laser-Hair-Removal-2.png",
+      "gallery": [
+        "Laser-Hair-Removal-2.png",
+        "KClinic.jpg",
+        "Intimate-rejuvenation.png",
+        "Skin-Tightening.png",
+        "Hydration.png",
+        "Tone-Texture.png",
+        "Regeneration.png",
+        "Stretch-Mark-Reduction.png"
+      ]
+    },
+    {
+      "slug": "intimate-area-whitening",
+      "title": "Intimate Area Whitening",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Intimate-rejuvenation.png",
+      "featuredFile": "Intimate-rejuvenation.png",
+      "gallery": [
+        "Laser-Hair-Removal-2.png",
+        "price3-1.jpg",
+        "Intimate-rejuvenation.png",
+        "Hyperpigmentation.png",
+        "Tone-Texture.png",
+        "Skin-Sensitivity.png",
+        "Intimate-rejuvenation-rc6bo9at2j1v45hi39kp5jsl9v6w0h1lwgmtcghrts.png",
+        "Hyperpigmentation-rc6bnu9e16h9ye3cj32o1nl7rp90lbdwie71o142lc.png"
+      ]
+    },
+    {
+      "slug": "body-lifting",
+      "title": "Body Lifting",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/Body-Lifting.png",
+      "featuredFile": "Body-Lifting.png",
+      "gallery": [
+        "Body-Lifting.png",
+        "left3.jpg",
+        "Body-RF-Lifting.png",
+        "Body-SMAS-HIFU-Lifting.png"
+      ]
+    },
+    {
+      "slug": "body-smas-hifu-lifting",
+      "title": "Body SMAS (HIFU) Lifting",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Body-SMAS-HIFU-Lifting.png",
+      "featuredFile": "Body-SMAS-HIFU-Lifting.png",
+      "gallery": [
+        "Body-SMAS-HIFU-Lifting.png",
+        "price5.jpg",
+        "Body-Contouring.png",
+        "Body-Lifting.png",
+        "Skin-Tightening.png",
+        "Cellulite-Reduction.png",
+        "Regeneration.png",
+        "Body-Contouring-rc6blp6mgrjrid7b15r9d71f23sx24vwvsp8bcacrk.png"
+      ]
+    },
+    {
+      "slug": "body-contouring",
+      "title": "Body Contouring",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Body-SMAS-HIFU-Lifting-1.png",
+      "featuredFile": "Body-SMAS-HIFU-Lifting-1.png",
+      "gallery": [
+        "Body-SMAS-HIFU-Lifting-1.png",
+        "left3.jpg",
+        "Hip-Dip-Filler.png",
+        "Endosphere.png"
+      ]
+    },
+    {
+      "slug": "hip-dip-filler",
+      "title": "Hip Dip Filler",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Hip-Dip-Filler.png",
+      "featuredFile": "Hip-Dip-Filler.png",
+      "gallery": [
+        "Hip-Dip-Filler.png",
+        "price-3.jpg",
+        "Body-Contouring.png",
+        "Skin-Tightening.png",
+        "Body-Contouring-rc6blp6mgrjrid7b15r9d71f23sx24vwvsp8bcacrk.png",
+        "Skin-Tightening-rc6bpzc5lleseeze10e2q450hap44hvw4zov0pxsf4.png",
+        "prepare.jpg",
+        "aftercare.jpeg"
+      ]
+    },
+    {
+      "slug": "endosphere",
+      "title": "BodySphere",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Endosphere.png",
+      "featuredFile": "Endosphere.png",
+      "gallery": [
+        "Endosphere.png",
+        "Endosphere.png",
+        "Body-Contouring.png",
+        "Cellulite-Reduction.png",
+        "Skin-Tightening.png",
+        "Improved-Circulation.png",
+        "Lymphatic-Drainage.png",
+        "Muscle-Toning.png"
+      ]
+    },
+    {
+      "slug": "anti-cellulite-programs",
+      "title": "Anti-Cellulite Programs",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/Anti-Cellulite-Programs.png",
+      "featuredFile": "Anti-Cellulite-Programs.png",
+      "gallery": [
+        "Anti-Cellulite-Programs.png",
+        "bok.jpg",
+        "Vacuum-Massage.png",
+        "Roller-Massage.png",
+        "Detoxifying-Body-Wrap-1.png",
+        "Hydrating-Body-Wrap-1.png",
+        "Anti-Cellulite-Body-Wrap-1.png",
+        "Firming-and-Toning-Body-Wrap-1.png"
+      ]
+    },
+    {
+      "slug": "vacuum-massage",
+      "title": "Vacuum Massage",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Vacuum-Massage.png",
+      "featuredFile": "Vacuum-Massage.png",
+      "gallery": [
+        "Vacuum-Massage.png",
+        "vacuum.jpg",
+        "Cellulite-Reduction.png",
+        "Improved-Circulation.png",
+        "Lymphatic-Drainage.png",
+        "Skin-Tightening.png",
+        "Body-Contouring.png",
+        "Muscle-Relaxation.png"
+      ]
+    },
+    {
+      "slug": "roller-massage",
+      "title": "Roller Massage",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Roller-Massage.png",
+      "featuredFile": "Roller-Massage.png",
+      "gallery": [
+        "Roller-Massage.png",
+        "roller.jpg",
+        "Cellulite-Reduction.png",
+        "Improved-Circulation.png",
+        "Lymphatic-Drainage.png",
+        "Skin-Tightening.png",
+        "Body-Contouring.png",
+        "Cellulite-Reduction-rc6bmaswtydcxebwix3ogjl0pyucz69qmrpecpeasg.png"
+      ]
+    },
+    {
+      "slug": "body-wraps",
+      "title": "Body Wraps",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Detoxifying-Body-Wrap.png",
+      "featuredFile": "Detoxifying-Body-Wrap.png",
+      "gallery": [
+        "Detoxifying-Body-Wrap.png",
+        "price-4.jpg",
+        "Detoxification.png",
+        "Cellulite-Reduction.png",
+        "Skin-Tightening.png",
+        "Improved-Circulation.png",
+        "Body-Hydration.png",
+        "Detoxification-rc6bmowhogwnrjrf8l72zy0xmqwv6mtpophojute74.png"
+      ]
+    },
+    {
+      "slug": "laser-tattoo-removal",
+      "title": "Laser Tattoo Removal",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Laser-Tattoo-Removal.png",
+      "featuredFile": "Laser-Tattoo-Removal.png",
+      "gallery": [
+        "Laser-Tattoo-Removal.png",
+        "price4.jpg",
+        "Tattoo-Removal.png",
+        "Regeneration.png",
+        "Tattoo-Removal-rc6bqbk22fvilchn1no84j207b0vwk8eio669bfo68.png",
+        "Regeneration-rc6bpn494qy27hh50d3xbp80radccfjdrb7js4fwo0.png",
+        "prepare.jpg",
+        "aftercare-1.jpeg"
+      ]
+    },
+    {
+      "slug": "fungal-nail-infection-treatment",
+      "title": "Fungal Nail Infection Treatment",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Fungal-Nail-Infection-Treatment.png",
+      "featuredFile": "Fungal-Nail-Infection-Treatment.png",
+      "gallery": [
+        "Fungal-Nail-Infection-Treatment.png",
+        "veins.jpg",
+        "Effective-Elimination-of-Fungus.png",
+        "Improved-Nail-Appearance.png",
+        "Effective-Elimination-of-Fungus-rc6bmxd1dz88o1f4v6uq4dw2z7r63wrapvd1vcgun4.png",
+        "Improved-Nail-Appearance-rc6bo4lm4cvfi3obupjkb2zaaxu1xziy7tddy2oqow.png",
+        "prepare.jpg",
+        "aftercare-1.jpeg"
+      ]
+    },
+    {
+      "slug": "our-philosophy",
+      "title": "Our Philosophy",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/03/baner-1.jpg",
+      "featuredFile": "baner-1.jpg",
+      "gallery": [
+        "baner-1.jpg",
+        "1-1.jpg",
+        "2-1.jpg",
+        "3-1.jpg"
+      ]
+    },
+    {
+      "slug": "about-kclinics",
+      "title": "About KClinics",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/baner-12.jpg",
+      "featuredFile": "baner-12.jpg",
+      "gallery": [
+        "baner-12.jpg",
+        "IMG_9873.jpg",
+        "KClinic-1.png",
+        "124.jpg",
+        "125.jpg",
+        "1-1.jpg",
+        "2-1.jpg",
+        "3.jpg"
+      ]
+    },
+    {
+      "slug": "concierge-services",
+      "title": "Concierge Services",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/baner-12.jpg",
+      "featuredFile": "baner-12.jpg",
+      "gallery": [
+        "baner-12.jpg",
+        "DSC03101.ARW_.jpg",
+        "right.jpg",
+        "126.jpg"
+      ]
+    },
+    {
+      "slug": "refer-a-friend",
+      "title": "Refer a Friend",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/refer.png",
+      "featuredFile": "refer.png",
+      "gallery": [
+        "baner-13.jpg",
+        "5208708510508584449.jpg",
+        "refer.png",
+        "how.jpg",
+        "left-4.jpg",
+        "Laser-Hair-Removal.png",
+        "RF-Lifting.png",
+        "IPL-Phototherapy.png"
+      ]
+    },
+    {
+      "slug": "cosmetology-consultations",
+      "title": "Cosmetology Consultations",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/skin-treatment.jpg",
+      "featuredFile": "skin-treatment.jpg",
+      "gallery": [
+        "skin-treatment.jpg",
+        "VHZ09907.jpg",
+        "DSC03101.ARW_.jpg",
+        "133.png",
+        "333.jpg",
+        "111.jpg",
+        "222.jpg",
+        "VHZ00003.jpg"
+      ]
+    },
+    {
+      "slug": "root-canal-treatment",
+      "title": "Root canal treatment",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2024/12/baner-11.jpg",
+      "featuredFile": "baner-11.jpg",
+      "gallery": [
+        "baner-11.jpg",
+        "1-r1tsofrob2c0j2wk9fxlfkichn2nd6517h8ujfiwz8.png",
+        "2-r1tsor1ql2rgeeg6fkt49hnvm9j1xjdt912oar26wk.png",
+        "3-r1tspovxf41s0d30xzfor94h04w9mn45dok5kpo0ok.png",
+        "194.jpg",
+        "195.jpg",
+        "35.jpg",
+        "2-4.jpg"
+      ]
+    },
+    {
+      "slug": "faq-cosmetology",
+      "title": "FAQ Cosmetology",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "ipl-rejuvenation",
+      "title": "IPL Rejuvenation",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/IPL-Rejuvenation.png",
+      "featuredFile": "IPL-Rejuvenation.png",
+      "gallery": [
+        "IPL-Rejuvenation.png",
+        "IPL-Rejuvenation.jpg",
+        "Hydration.png",
+        "Dullness-Dryness.png",
+        "Hyperpigmentation.png",
+        "Acne-scar.png",
+        "Skin-Sensitivity.png",
+        "Tone-Texture.png"
+      ]
+    },
+    {
+      "slug": "faq-dentistry",
+      "title": "FAQ Dentistry",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "dentistry-all-treatments",
+      "title": "Dentistry All Treatments",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/108.jpg",
+      "featuredFile": "108.jpg",
+      "gallery": [
+        "108.jpg",
+        "dental-Check-Up.jpg",
+        "2-1.jpg",
+        "Dental-Implant-Placement.jpg",
+        "Crown-Fabrication-and-Placement.jpg",
+        "Bridge-Fabrication-and-Placement.jpg",
+        "Dentures-and-Implant-Supported-Dentures.jpg",
+        "Braces.jpg"
+      ]
+    },
+    {
+      "slug": "laser-skin-rejuvenation-2",
+      "title": "Laser Skin Rejuvenation 2",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2024/12/Laser-Skin-Rejuvenation-1.jpg",
+      "featuredFile": "Laser-Skin-Rejuvenation-1.jpg",
+      "gallery": [
+        "Laser-Skin-Rejuvenation-1.jpg",
+        "Hydration-2.png",
+        "Fine-Lines-Wrinkles-2.png",
+        "Hyperpigmentation-3.png",
+        "Acne-scar-3.png",
+        "Skin-Tightening-2.png",
+        "Tone-Texture-2.png",
+        "Redness-Vascular-Issues-1.png"
+      ]
+    },
+    {
+      "slug": "body-rf-lifting",
+      "title": "Body RF Lifting",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Body-RF-Lifting.png",
+      "featuredFile": "Body-RF-Lifting.png",
+      "gallery": [
+        "Body-RF-Lifting.png",
+        "price-2.jpg",
+        "Body-Contouring.png",
+        "Body-Lifting.png",
+        "Regeneration.png",
+        "Body-Contouring-rc6blp6mgrjrid7b15r9d71f23sx24vwvsp8bcacrk.png",
+        "Body-Lifting-rc6bm1eixm0hpapk1t1erlyes44ou78f9h6jjxs8io.png",
+        "Regeneration-rc6bpn494qy27hh50d3xbp80radccfjdrb7js4fwo0.png"
+      ]
+    },
+    {
+      "slug": "individualised-treatment-plans",
+      "title": "Individualised Treatment Plans",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/skin-treatment.jpg",
+      "featuredFile": "skin-treatment.jpg",
+      "gallery": [
+        "skin-treatment.jpg",
+        "DSC03101.ARW_-1.jpg",
+        "DSC03395.ARW_.jpg",
+        "DSC03395.ARW_-scaled.jpg",
+        "notebook.jpg",
+        "VHZ09920.jpg"
+      ]
+    },
+    {
+      "slug": "post-treatment-skincare-guidance",
+      "title": "Post-Treatment Skincare Guidance",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/skin-treatment.jpg",
+      "featuredFile": "skin-treatment.jpg",
+      "gallery": [
+        "skin-treatment.jpg",
+        "142.jpg",
+        "skin-1.jpg",
+        "notebook.jpg",
+        "111-1.jpg"
+      ]
+    },
+    {
+      "slug": "personalized-high-end-treatments",
+      "title": "Personalized High-End Treatments",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/skin-treatment.jpg",
+      "featuredFile": "skin-treatment.jpg",
+      "gallery": [
+        "skin-treatment.jpg",
+        "147.jpg",
+        "145.jpg",
+        "144.jpg",
+        "left-6.jpg",
+        "148.jpg"
+      ]
+    },
+    {
+      "slug": "skin-passport",
+      "title": "Skin Passport",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/skin-treatment.jpg",
+      "featuredFile": "skin-treatment.jpg",
+      "gallery": [
+        "skin-treatment.jpg",
+        "149.jpg",
+        "150.jpg",
+        "left-7.jpg",
+        "151.jpg"
+      ]
+    },
+    {
+      "slug": "kclinics-beauty-points",
+      "title": "KClinics Beauty Points",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/skin-treatment.jpg",
+      "featuredFile": "skin-treatment.jpg",
+      "gallery": [
+        "skin-treatment.jpg",
+        "1-3.jpg",
+        "1.jpg",
+        "2.jpg",
+        "zv-r03e8oa4zh3uz0u54abero3uzna4agits8fmiruids.png",
+        "how-1.jpg"
+      ]
+    },
+    {
+      "slug": "dental-consultations",
+      "title": "Dental Consultations",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/108.jpg",
+      "featuredFile": "108.jpg",
+      "gallery": [
+        "108.jpg",
+        "152.jpg",
+        "153.jpg",
+        "154.jpg",
+        "155.jpg",
+        "156.jpg",
+        "157.jpg"
+      ]
+    },
+    {
+      "slug": "treatment-plans",
+      "title": "Treatment Plans",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/108.jpg",
+      "featuredFile": "108.jpg",
+      "gallery": [
+        "108.jpg",
+        "161.jpg",
+        "162.jpg",
+        "lc.jpg",
+        "163.jpg",
+        "price-2.jpg"
+      ]
+    },
+    {
+      "slug": "aftercare-guidance-for-dental-procedure",
+      "title": "Aftercare Guidance for Dental Procedure",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/108.jpg",
+      "featuredFile": "108.jpg",
+      "gallery": [
+        "108.jpg",
+        "175.jpg",
+        "176.jpg",
+        "177.jpg",
+        "178.jpg"
+      ]
+    },
+    {
+      "slug": "payment-option",
+      "title": "Payment Option",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "gift-vouchers",
+      "title": "Gift Vouchers",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/baner.png",
+      "featuredFile": "baner.png",
+      "gallery": [
+        "baner.png",
+        "downl.jpg",
+        "arr.png",
+        "base_logo_transparent_background.png",
+        "2-2.png",
+        "design-2.png",
+        "price.jpg"
+      ]
+    },
+    {
+      "slug": "careers",
+      "title": "Careers",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/careers.png",
+      "featuredFile": "careers.png",
+      "gallery": [
+        "baner-16.jpg",
+        "careers.png",
+        "182.jpg",
+        "183.jpg",
+        "1.png",
+        "2-1.png",
+        "3.png"
+      ]
+    },
+    {
+      "slug": "franchise-opportunities",
+      "title": "Franchise Opportunities",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/baner-18.jpg",
+      "featuredFile": "baner-18.jpg",
+      "gallery": [
+        "baner-18.jpg",
+        "185.jpg",
+        "186.jpg",
+        "27-2.jpg",
+        "28-2.jpg",
+        "187.jpg"
+      ]
+    },
+    {
+      "slug": "terms-conditions",
+      "title": "Terms &amp; Conditions",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "website-privacy-terms",
+      "title": "Website Privacy &amp; Terms",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "call-recording-privacy",
+      "title": "Call Recording Privacy",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "cctv-policy",
+      "title": "CCTV Policy",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "cancellations-refunds",
+      "title": "Cancellations/Refunds",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "complaints-procedure",
+      "title": "Complaints Procedure",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "health-and-safety",
+      "title": "Health and Safety",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "accessibility",
+      "title": "Accessibility",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "hydraglowfacial-platinum-anti-acne",
+      "title": "HydraGlowFacial Platinum Anti-Acne",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/03/HydraFacial-Anti-Acne.png",
+      "featuredFile": "HydraFacial-Anti-Acne.png",
+      "gallery": [
+        "HydraFacial-Anti-Acne.png",
+        "HydrafacialGlow.png",
+        "Hydration.png",
+        "Tone-Texture.png",
+        "Acne-scar.png",
+        "Hyperpigmentation.png",
+        "Fine-Lines-Wrinkles.png",
+        "Skin-Sensitivity-2.png"
+      ]
+    },
+    {
+      "slug": "hydraglowfacial-platinum-collagen",
+      "title": "HydraGlowFacial Platinum Collagen",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/HydraFacial-Collagen.png",
+      "featuredFile": "HydraFacial-Collagen.png",
+      "gallery": [
+        "HydraFacial-Collagen.png",
+        "HydrafacialGlow.png",
+        "Hydration.png",
+        "Tone-Texture.png",
+        "Fine-Lines-Wrinkles.png",
+        "Skin-Sensitivity-2.png",
+        "Skin-Tightening.png",
+        "Regeneration.png"
+      ]
+    },
+    {
+      "slug": "hydraglowfacial-platinum-pigmentation-sun-damage",
+      "title": "HydraGlowFacial Platinum Pigmentation &amp; Sun Damage",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/HydraFacial-Pigmentation-Sun-Damage-1.png",
+      "featuredFile": "HydraFacial-Pigmentation-Sun-Damage-1.png",
+      "gallery": [
+        "HydraFacial-Pigmentation-Sun-Damage-1.png",
+        "HydrafacialGlow.png",
+        "Hydration.png",
+        "Tone-Texture.png",
+        "Fine-Lines-Wrinkles.png",
+        "Hyperpigmentation.png",
+        "Skin-Tightening.png",
+        "Reduction-in-Scars.png"
+      ]
+    },
+    {
+      "slug": "hydraglowfacial-platinum-anti-ageing",
+      "title": "HydraGlowFacial Platinum Anti-Ageing",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/HydraFacial-Anti-Ageing.png",
+      "featuredFile": "HydraFacial-Anti-Ageing.png",
+      "gallery": [
+        "HydraFacial-Anti-Ageing.png",
+        "HydrafacialGlow.png",
+        "Hydration.png",
+        "Tone-Texture.png",
+        "Fine-Lines-Wrinkles.png",
+        "Skin-Sensitivity-2.png",
+        "Skin-Tightening.png",
+        "Regeneration.png"
+      ]
+    },
+    {
+      "slug": "hydraglowfacial-platinum-brightening",
+      "title": "HydraGlowFacial Platinum Brightening",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/HydraFacial-Brightening-1.png",
+      "featuredFile": "HydraFacial-Brightening-1.png",
+      "gallery": [
+        "HydraFacial-Brightening-1.png",
+        "HydrafacialGlow.png",
+        "Hydration.png",
+        "Tone-Texture.png",
+        "Fine-Lines-Wrinkles.png",
+        "Skin-Sensitivity.png",
+        "Skin-Tightening.png",
+        "Brightening.png"
+      ]
+    },
+    {
+      "slug": "skinglow-package",
+      "title": "“SkinGlow” Package",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/Skinglow.jpg",
+      "featuredFile": "Skinglow.jpg",
+      "gallery": [
+        "Skinglow.jpg",
+        "IMG_0385.jpg",
+        "left-5.jpg",
+        "HydraFacial-Anti-Ageing.png",
+        "HydraFacial-Brightening.png",
+        "Laser-Skin-Rejuvenation-2-2.png",
+        "PRP-Therapy-3.png",
+        "Microneedling-2.png"
+      ]
+    },
+    {
+      "slug": "refund_returns",
+      "title": "Refund and Returns Policy",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "smoothskin-package",
+      "title": "“SmoothSkin” Package",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/Smoothskin.jpg",
+      "featuredFile": "Smoothskin.jpg",
+      "gallery": [
+        "Smoothskin.jpg",
+        "SmoothSkin.jpg",
+        "left-5.jpg",
+        "Carbon-Laser-Peel.png",
+        "Laser-Skin-Rejuvenation-2-2.png",
+        "PRP-Therapy-3.png",
+        "Microneedling-1.png",
+        "131.jpg"
+      ]
+    },
+    {
+      "slug": "rejuvenation-package",
+      "title": "“Rejuvenation” Package",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/Rejuvenation.jpg",
+      "featuredFile": "Rejuvenation.jpg",
+      "gallery": [
+        "Rejuvenation.jpg",
+        "Rejuvenation.jpg",
+        "left-5.jpg",
+        "Laser-Skin-Resurfacing.png",
+        "Carbon-Laser-Peel.png",
+        "Laser-Skin-Rejuvenation-2-2.png",
+        "PRP-Therapy-3.png",
+        "Microneedling-2.png"
+      ]
+    },
+    {
+      "slug": "ultimate-skin-membership-package",
+      "title": "“Ultimate Skin Membership” Package",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/Ultimate-skin.jpg",
+      "featuredFile": "Ultimate-skin.jpg",
+      "gallery": [
+        "Ultimate-skin.jpg",
+        "Ultimate-Skin-Membership.jpg",
+        "hydrafacial.jpg",
+        "Laser-Hair-Removal-1.png",
+        "HydraFacial-Basic-Cleansing-Hydration.png",
+        "Deluxe-HydraFacial-Full-Face.png",
+        "Antioxidant-Therapy.png",
+        "HydraFacial-Anti-Acne.png"
+      ]
+    },
+    {
+      "slug": "bodycontour-package",
+      "title": "“BodyContour” Package",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/BodyContour.jpg",
+      "featuredFile": "BodyContour.jpg",
+      "gallery": [
+        "BodyContour.jpg",
+        "BodyContour-4.jpg",
+        "left-5.jpg",
+        "Endosphere.png",
+        "Vacuum-Massage.png",
+        "Laser-Skin-Rejuvenation-2-2.png",
+        "PRP-Therapy-3.png",
+        "Microneedling-2.png"
+      ]
+    },
+    {
+      "slug": "clearskin-packages",
+      "title": "“ClearSkin” Package",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/ClearSkin-2.jpg",
+      "featuredFile": "ClearSkin-2.jpg",
+      "gallery": [
+        "Clear-skin.jpg",
+        "ClearSkin-2.jpg",
+        "left-5.jpg",
+        "IPL-Phototherapy.png",
+        "Microneedling.png",
+        "Laser-Skin-Rejuvenation-2-2.png",
+        "PRP-Therapy-3.png",
+        "Microneedling-2.png"
+      ]
+    },
+    {
+      "slug": "ultimate-hair-free-women-package",
+      "title": "“Ultimate Hair-Free WOMEN” Package",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/Hair-free-women.jpg",
+      "featuredFile": "Hair-free-women.jpg",
+      "gallery": [
+        "Hair-free-women.jpg",
+        "Ultimate-Hair-Free-Women.jpg",
+        "left-5.jpg",
+        "Laser-Hair-Removal-1.png",
+        "Laser-Skin-Rejuvenation-2-2.png",
+        "PRP-Therapy-3.png",
+        "Microneedling-2.png",
+        "131.jpg"
+      ]
+    },
+    {
+      "slug": "luxelift-package",
+      "title": "“LuxeLift” Package",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/luxelift.jpg",
+      "featuredFile": "luxelift.jpg",
+      "gallery": [
+        "luxelift.jpg",
+        "LuxeLift.jpg",
+        "left-5.jpg",
+        "Carbon-Laser-Peel.png",
+        "SMAS-HIFU-Lifting.png",
+        "Laser-Skin-Rejuvenation-2-2.png",
+        "PRP-Therapy-3.png",
+        "Microneedling-2.png"
+      ]
+    },
+    {
+      "slug": "radiant-complexion-package",
+      "title": "“Radiant Complexion” Package",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/Radiant-1.jpg",
+      "featuredFile": "Radiant-1.jpg",
+      "gallery": [
+        "Radiant-1.jpg",
+        "Radiant-Complexion.jpg",
+        "left-5.jpg",
+        "Cosmetic-Peels-1.png",
+        "Pigmentation-Correction-1.png",
+        "Laser-Skin-Rejuvenation-2-2.png",
+        "PRP-Therapy-3.png",
+        "Microneedling-2.png"
+      ]
+    },
+    {
+      "slug": "intimate-care-package",
+      "title": "“Intimate Care” Package",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/Intimate-care.jpg",
+      "featuredFile": "Intimate-care.jpg",
+      "gallery": [
+        "Intimate-care.jpg",
+        "Intimate-Care.jpg",
+        "left-5.jpg",
+        "Intimate-Rejuvenation-with-CO2-Laser.png",
+        "Intimate-Laser-Procedures.png",
+        "Laser-Skin-Rejuvenation-2-2.png",
+        "PRP-Therapy-3.png",
+        "Microneedling-2.png"
+      ]
+    },
+    {
+      "slug": "ultimate-bodycare-package",
+      "title": "“Ultimate BodyCare” Package",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/ultimate-bodycare-1.jpg",
+      "featuredFile": "ultimate-bodycare-1.jpg",
+      "gallery": [
+        "ultimate-bodycare-1.jpg",
+        "Ultimate-Bodycare.jpg",
+        "hydrafacial.jpg",
+        "Endosphere.png",
+        "Vacuum-Massage.png",
+        "Detoxifying-Body-Wrap-3.png",
+        "Hydrating-Body-Wrap-3.png",
+        "Anti-Cellulite-Body-Wrap-3.png"
+      ]
+    },
+    {
+      "slug": "skin-treatments",
+      "title": "Skin Treatments",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/skin-treatment.jpg",
+      "featuredFile": "skin-treatment.jpg",
+      "gallery": [
+        "skin-treatment.jpg",
+        "8.jpg",
+        "Laser-Skin-Rejuvenation.png",
+        "IPL-Rejuvenation.png",
+        "Pigmentation-Correction-1.png",
+        "Vascular-Lesions-Treatment.png",
+        "Scar-Stretch-Mark-Reduction.png",
+        "Spider-Veins-Removal.png"
+      ]
+    },
+    {
+      "slug": "face-treatments",
+      "title": "Face Treatments",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/Deluxe-HydraFacial-Full-Face.png",
+      "featuredFile": "Deluxe-HydraFacial-Full-Face.png",
+      "gallery": [
+        "skin-treatment.jpg",
+        "9.jpg",
+        "RF-Lifting.png",
+        "SMAS-HIFU-Lifting.png",
+        "HydraFacial-Basic-Cleansing-Hydration.png",
+        "Deluxe-HydraFacial-Full-Face.png",
+        "Antioxidant-Therapy.png",
+        "HydraFacial-Anti-Acne.png"
+      ]
+    },
+    {
+      "slug": "body-treatments",
+      "title": "Body Treatments",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/body-treatment.jpg",
+      "featuredFile": "body-treatment.jpg",
+      "gallery": [
+        "body-treatment.jpg",
+        "10.jpg",
+        "Laser-Hair-Removal-1-2.png",
+        "Intimate-Rejuvenation-with-CO2-Laser.png",
+        "Intimate-Area-Whitening.png",
+        "Body-RF-Lifting-1.png",
+        "Body-SMAS-HIFU-Lifting.png",
+        "Hip-Dip-Filler.png"
+      ]
+    },
+    {
+      "slug": "aesthetic-dentistry-2",
+      "title": "Aesthetic Dentistry",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/baner-6.jpg",
+      "featuredFile": "baner-6.jpg",
+      "gallery": [
+        "baner-6.jpg",
+        "left-2.jpg",
+        "Veneers.jpg",
+        "composit.jpg",
+        "Teeth-Whitening.jpg",
+        "smile.jpg"
+      ]
+    },
+    {
+      "slug": "packages",
+      "title": "Packages",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/skin-treatment.jpg",
+      "featuredFile": "skin-treatment.jpg",
+      "gallery": [
+        "skin-treatment.jpg",
+        "Botox.png",
+        "Smoothskin.jpg",
+        "Rejuvenation.jpg",
+        "Ultimate-skin.jpg",
+        "BodyContour-1.jpg",
+        "Clear-skin-1.jpg",
+        "Hair-free-women-1.jpg"
+      ]
+    },
+    {
+      "slug": "0test",
+      "title": "Online Assistant",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "404-2",
+      "title": "404",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/bg-404.webp",
+      "featuredFile": "bg-404.webp",
+      "gallery": [
+        "bg-404.webp"
+      ]
+    },
+    {
+      "slug": "phone_save",
+      "title": "\"\"phone_save",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-dental-care",
+      "title": "My account Dental Care",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-dental-care2",
+      "title": "My account Dental Care2",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "book-a-consultation-dentist",
+      "title": "Book a Consultation Dentist",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "buy-now-pay-later",
+      "title": "Buy now, Pay later",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2024/11/1114.jpg",
+      "featuredFile": "1114.jpg",
+      "gallery": [
+        "1114.jpg",
+        "5-300x210-1.webp",
+        "6-300x210-1.webp"
+      ]
+    },
+    {
+      "slug": "gift-cards",
+      "title": "Gift Cards",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/33-768x768-1.webp",
+      "featuredFile": "33-768x768-1.webp",
+      "gallery": [
+        "33-768x768-1.webp"
+      ]
+    },
+    {
+      "slug": "contact-us",
+      "title": "Contact us",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "before-after-gallery",
+      "title": "Before &amp; After Gallery",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2024/11/1114.jpg",
+      "featuredFile": "1114.jpg",
+      "gallery": [
+        "1114.jpg",
+        "aligners-1.jpg",
+        "aligners-2.jpg",
+        "aligners-3.jpg",
+        "aligners-4.jpg",
+        "aligners-5.jpg",
+        "braces-1.jpg",
+        "braces-2.jpg"
+      ]
+    },
+    {
+      "slug": "our-clinics",
+      "title": "Our Clinics",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/baner-14.jpg",
+      "featuredFile": "baner-14.jpg",
+      "gallery": [
+        "baner-14.jpg",
+        "IMG_9873-3-1.jpg"
+      ]
+    },
+    {
+      "slug": "my-account-sotrudniki-dent",
+      "title": "My account Sotrudniki Dent",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-%d1%81hart-dent",
+      "title": "My account Сhart Dent",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-user-info-dent",
+      "title": "My account User info Dent",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-%d1%81hart-dentist",
+      "title": "My account Сhart Dentist",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "cost-finance",
+      "title": "Cost &amp; Finance",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/baner-14.jpg",
+      "featuredFile": "baner-14.jpg",
+      "gallery": [
+        "baner-14.jpg",
+        "1-6.jpg",
+        "2-4.jpg",
+        "3-5.jpg",
+        "6.jpg",
+        "5-1.jpg",
+        "4-3.jpg"
+      ]
+    },
+    {
+      "slug": "faq-body",
+      "title": "FAQ Body",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "faq-face",
+      "title": "FAQ Face",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "faq-skin",
+      "title": "FAQ Skin",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "faq-general-dentistry",
+      "title": "FAQ General Dentistry",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "faq-aesthetic-dentistry",
+      "title": "FAQ Aesthetic Dentistry",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "faq",
+      "title": "FAQ",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/01/1-9.jpg",
+      "featuredFile": "1-9.jpg",
+      "gallery": [
+        "1-9.jpg",
+        "2-10.jpg",
+        "3-6.jpg",
+        "4-5.jpg",
+        "5-5.jpg",
+        "6-5.jpg"
+      ]
+    },
+    {
+      "slug": "faq-refer-a-friend",
+      "title": "FAQ Refer a Friend",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "register-friend",
+      "title": "Register Friend",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-refer-friends-get-rewarded",
+      "title": "My account Refer Friends + Get Rewarded",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-appointments",
+      "title": "My account Appointments",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-skin-passport",
+      "title": "My account Skin Passport",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-view-user-profile",
+      "title": "My account View User Profile",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "phone_save-from-admin",
+      "title": "phone_save  from admin",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "refferal-list",
+      "title": "Refferal list",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "dsfgsdfgdsfg",
+      "title": "dsfgsdfgdsfg",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "lost-password",
+      "title": "lost password",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my_account",
+      "title": "My account WOO",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "wishlist",
+      "title": "Wishlist",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "phone1",
+      "title": "phone2",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "phone1-2",
+      "title": "phone1",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-user-info-for-dentist",
+      "title": "My account User info For Dentist",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-personalised-care-plan-dent",
+      "title": "My account Personalised Care Plan Dent",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-edit-care-plan-dent",
+      "title": "My account Edit Care Plan Dent",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-settings",
+      "title": "My account  Settings",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "logs",
+      "title": "Logs",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-bonus",
+      "title": "My account Bonus",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "test-2",
+      "title": "test",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "blog",
+      "title": "Blog",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "reviews",
+      "title": "Reviews",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "test3",
+      "title": "test3",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "oral-surgery",
+      "title": "Oral Surgery",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/02/photo_5.jpg",
+      "featuredFile": "photo_5.jpg",
+      "gallery": [
+        "photo_5.jpg",
+        "left7.jpg",
+        "49.jpg",
+        "51.jpg",
+        "Bridge-Fabrication-and-Placement.jpg",
+        "Dentures-and-Implant-Supported-Dentures.jpg"
+      ]
+    },
+    {
+      "slug": "test_header",
+      "title": "\"\"test_header",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "pricing-packages",
+      "title": "Pricing &amp; Packages",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/packages.jpg",
+      "featuredFile": "packages.jpg",
+      "gallery": [
+        "skin.jpg",
+        "woman.jpg",
+        "man.jpg",
+        "face.jpg",
+        "bogy.jpg",
+        "packages.jpg",
+        "Skinglow.jpg",
+        "Smoothskin.jpg"
+      ]
+    },
+    {
+      "slug": "%d1%81%d0%ba%d0%b2%d0%b8%d0%b7",
+      "title": "Сквиз",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "price-dentist",
+      "title": "Price Dentist",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/04/Dental.jpg",
+      "featuredFile": "Dental.jpg",
+      "gallery": [
+        "Dental.jpg",
+        "design.jpg"
+      ]
+    },
+    {
+      "slug": "laser-hair-removal-for-women-2",
+      "title": "Laser Hair Removal for Women",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Unwanted-hair.png",
+      "featuredFile": "Unwanted-hair.png",
+      "gallery": [
+        "Roller-Massage.png",
+        "bikini.jpg",
+        "14.jpg",
+        "15.jpg",
+        "16-1.jpg",
+        "17-1.jpg",
+        "Unwanted-hair.png",
+        "Skin-Sensitivity.png"
+      ]
+    },
+    {
+      "slug": "endosphere-2",
+      "title": "Endosphere Ru",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Endosphere.png",
+      "featuredFile": "Endosphere.png",
+      "gallery": [
+        "Endosphere.png",
+        "endo.jpg",
+        "Body-Contouring.png",
+        "Cellulite-Reduction.png",
+        "Skin-Tightening.png",
+        "Improved-Circulation.png",
+        "Lymphatic-Drainage.png",
+        "Muscle-Toning.png"
+      ]
+    },
+    {
+      "slug": "scan-qr",
+      "title": "Scan qr",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "ggoglemaps",
+      "title": "ggoglemaps",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "%d1%81%d0%ba%d0%b2%d0%b8%d0%b7-2",
+      "title": "Сквиз 2",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "skviz3",
+      "title": "skviz3",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "skviz4",
+      "title": "skviz4",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "iphone-or-android",
+      "title": "iphone or android",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "quiz",
+      "title": "skviz5",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "smtp_mail",
+      "title": "SMTP_MAIL",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "test6",
+      "title": "test6",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "test-3",
+      "title": "test",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "111test",
+      "title": "111test",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2026/01/VHZ00038-1.jpg",
+      "featuredFile": "VHZ00038-1.jpg",
+      "gallery": [
+        "VHZ00038-1.jpg"
+      ]
+    },
+    {
+      "slug": "home1",
+      "title": "Home1",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/Baner_26.png",
+      "featuredFile": "Baner_26.png",
+      "gallery": [
+        "Baner_26.png",
+        "Baner-9.png",
+        "VHZ00038-1.jpg",
+        "fghdfgh.png",
+        "Group-6-1-1.png",
+        "111.jpg",
+        "KClinics-Event-137.jpg",
+        "ppm.png"
+      ]
+    },
+    {
+      "slug": "special-care",
+      "title": "SPECIAL CARE",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/special-care.png",
+      "featuredFile": "special-care.png",
+      "gallery": [
+        "special-care.png",
+        "for-pregnancy-4.png",
+        "For-Cancer-Patients-2.png",
+        "8-1.png"
+      ]
+    },
+    {
+      "slug": "for-pregnancy",
+      "title": "For Pregnancy",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/for-pregnancy-1-2.png",
+      "featuredFile": "for-pregnancy-1-2.png",
+      "gallery": [
+        "For-pragnancy.png",
+        "for-pregnancy-1-2.png",
+        "1-3.png",
+        "HydraFacial-Basic-Cleansing-Hydration.png",
+        "Deluxe-HydraFacial-Full-Face.png",
+        "Antioxidant-Therapy.png",
+        "HydraFacial-Anti-Acne.png",
+        "HydraFacial-Collagen-1.png"
+      ]
+    },
+    {
+      "slug": "for-cancer-patients",
+      "title": "For Cancer Patients",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/for-canser.png",
+      "featuredFile": "for-canser.png",
+      "gallery": [
+        "for-canser.png",
+        "for-canser.png",
+        "2-3.png",
+        "HydraFacial-Basic-Cleansing-Hydration.png",
+        "Deluxe-HydraFacial-Full-Face.png",
+        "Antioxidant-Therapy.png",
+        "HydraFacial-Anti-Acne.png",
+        "HydraFacial-Collagen-1.png"
+      ]
+    },
+    {
+      "slug": "sensitive-health-support",
+      "title": "Sensitive Health Support",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/sensitive-health-support-1.png",
+      "featuredFile": "sensitive-health-support-1.png",
+      "gallery": [
+        "sensitive-health-support-1.png",
+        "sensitive-health-support.png",
+        "sensetive-1.png",
+        "9.png",
+        "consultation-1.png"
+      ]
+    },
+    {
+      "slug": "scalp-massage",
+      "title": "Scalp Massage",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/Sculp-massage.png",
+      "featuredFile": "Sculp-massage.png",
+      "gallery": [
+        "Body-Lifting.png",
+        "Sculp-massage.png",
+        "price.png",
+        "Dullness-Dryness.png",
+        "Hydration.png",
+        "Tone-Texture.png",
+        "Skin-Tightening.png",
+        "Regeneration.png"
+      ]
+    },
+    {
+      "slug": "cosmetology-all-treatments",
+      "title": "Cosmetology All Treatments",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/10/Rosacea-Treatments.png",
+      "featuredFile": "Rosacea-Treatments.png",
+      "gallery": [
+        "Laser-Skin-Resurfacing.png",
+        "Laser-Skin-Rejuvenation-2.png",
+        "IPL-Rejuvenation.png",
+        "Pigmentation-Correction.png",
+        "Vascular-Lesions-Treatment.png",
+        "Scar-Stretch-Mark-Reduction.png",
+        "Spider-Veins-Removal.png",
+        "Rosacea-Treatments.png"
+      ]
+    },
+    {
+      "slug": "endosphere-3",
+      "title": "Endosphere",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/09/Endosphere.png",
+      "featuredFile": "Endosphere.png",
+      "gallery": [
+        "Endosphere.png",
+        "endo.jpg",
+        "Body-Contouring.png",
+        "Cellulite-Reduction.png",
+        "Skin-Tightening.png",
+        "Improved-Circulation.png",
+        "Lymphatic-Drainage.png",
+        "Muscle-Toning.png"
+      ]
+    },
+    {
+      "slug": "check-user",
+      "title": "Check User",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "rosacea-treatments",
+      "title": "Rosacea Treatments",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2025/12/Rosacea-Treatments.png",
+      "featuredFile": "Rosacea-Treatments.png",
+      "gallery": [
+        "Rosacea-Treatments.png",
+        "makeup.jpg",
+        "Vein-Visibility.png",
+        "Vascular-Lesions.png",
+        "Tone-Texture.png",
+        "Skin-Sensitivity.png",
+        "Hydration.png",
+        "Control-of-Inflammation.png"
+      ]
+    },
+    {
+      "slug": "revolut_pusto",
+      "title": "Revolut_pusto",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "webhooks",
+      "title": "webhooks",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "revolut3",
+      "title": "revolut3",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "caci-treatment",
+      "title": "CACI Treatment",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2026/01/CACI-treatment.png",
+      "featuredFile": "CACI-treatment.png",
+      "gallery": [
+        "IMG_0315-1.jpg",
+        "CACI-treatment.png",
+        "Fine-Lines-Wrinkles.png",
+        "Skin-Tightening.png",
+        "Facial-Contouring.png",
+        "Tone-Texture.png",
+        "Radiance-Boost.png",
+        "Fine-Lines-Wrinkles-rc6bnmqoii6zdie9qztnhphj0ma2vqk1tcz5ttf7z4.png"
+      ]
+    },
+    {
+      "slug": "red-carpet-lift",
+      "title": "Red Carpet Lift",
+      "featured": "https://kclinics.co.uk/wp-content/uploads/2026/01/Red-Carpet-Lift.png",
+      "featuredFile": "Red-Carpet-Lift.png",
+      "gallery": [
+        "Red-Carpet-Lift.png",
+        "DSC03255.ARW_.jpg",
+        "Deep-Cleansing.png",
+        "Skin-Tightening.png",
+        "Stretch-Mark-Reduction.png",
+        "Tone-Texture.png",
+        "Facial-Contouring.png",
+        "Radiance-Boost.png"
+      ]
+    },
+    {
+      "slug": "thank-you",
+      "title": "Thank you",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "random-product",
+      "title": "Random product",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "revolut_webhook",
+      "title": "revolut_webhook",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    },
+    {
+      "slug": "my-account-status-payment",
+      "title": "My account Status Payment",
+      "featured": "",
+      "featuredFile": "",
+      "gallery": []
+    }
+  ]
+}
