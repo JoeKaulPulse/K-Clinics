@@ -3,7 +3,6 @@ name: Deploy demo to GitHub Pages
 on:
   push:
     branches:
-      - claude/k-clinics-site-rebuild-h3tRV
       - main
   workflow_dispatch:
 
@@ -13,10 +12,11 @@ permissions:
   pages: write
   id-token: write
 
-# Only one concurrent deploy; let in-progress runs finish.
+# Supersede any queued/in-progress deploy so the newest commit always wins
+# quickly (Pages keeps the last successful deploy if one is cancelled mid-run).
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
