@@ -1,8 +1,10 @@
 'use client';
 
-import { motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
 
-/** Animates a heading word-by-word with a soft mask rise — for hero titles. */
+/** Animates a heading word-by-word with a soft mask rise — for hero titles.
+ *  Reduced-motion is handled globally by MotionConfig (transforms disabled),
+ *  so the rendered structure stays identical on server and client. */
 export function WordReveal({
   text,
   className,
@@ -14,12 +16,7 @@ export function WordReveal({
   delay?: number;
   as?: 'h1' | 'h2' | 'p' | 'span';
 }) {
-  const reduce = useReducedMotion();
   const words = text.split(' ');
-
-  if (reduce) {
-    return <Tag className={className}>{text}</Tag>;
-  }
 
   return (
     <Tag className={className} aria-label={text}>

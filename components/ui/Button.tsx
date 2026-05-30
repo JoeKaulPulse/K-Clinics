@@ -8,7 +8,7 @@ type Variant = 'gold' | 'ink' | 'ghost' | 'outline';
 type Size = 'md' | 'lg';
 
 const base =
-  'group relative inline-flex items-center justify-center gap-2 rounded-full font-medium tracking-tight transition-colors duration-500 will-change-transform focus-visible:outline-2';
+  'group relative inline-flex items-center justify-center gap-2 rounded-full font-medium tracking-tight transition-colors duration-500 focus-visible:outline-2';
 
 const sizes: Record<Size, string> = {
   md: 'px-6 py-3 text-[0.95rem]',

@@ -1,10 +1,7 @@
-'use client';
-
-import { motion, useReducedMotion } from 'motion/react';
-
 /** Generative gradient "art" used in place of stock imagery.
- *  Layered mesh + drifting orbs + a slow metallic sheen + grain — always text-free.
- *  Designed to read as rich, hand-crafted depth rather than a flat gradient. */
+ *  Layered mesh + orbs + a metallic sheen + grain — always text-free.
+ *  Rendered statically (no JS, no continuous animation) so it reads as rich,
+ *  hand-crafted depth without costing paint work while scrolling. */
 export function GenerativeArt({
   from,
   to,
@@ -16,12 +13,11 @@ export function GenerativeArt({
   className?: string;
   seed?: number;
 }) {
-  const reduce = useReducedMotion();
   const orbs = [
-    { x: '10%', y: '16%', s: 300, d: 0, c: to },
-    { x: '74%', y: '12%', s: 380, d: 1.5, c: from },
-    { x: '60%', y: '70%', s: 320, d: 0.8, c: to },
-    { x: '20%', y: '80%', s: 240, d: 2.2, c: from },
+    { x: '10%', y: '16%', s: 300, c: to },
+    { x: '74%', y: '12%', s: 380, c: from },
+    { x: '60%', y: '70%', s: 320, c: to },
+    { x: '20%', y: '80%', s: 240, c: from },
   ];
 
   // Only apply our own `relative` when the caller hasn't supplied a position
@@ -47,7 +43,7 @@ export function GenerativeArt({
       />
 
       {orbs.map((o, i) => (
-        <motion.span
+        <span
           key={i}
           className="absolute rounded-full blur-3xl"
           style={{
@@ -58,26 +54,19 @@ export function GenerativeArt({
             background: o.c,
             opacity: 0.5,
             mixBlendMode: 'soft-light',
+            transform: `rotate(${seed * 7}deg)`,
           }}
-          whileInView={
-            reduce ? undefined : { x: [0, 26, -18, 0], y: [0, -22, 16, 0], scale: [1, 1.14, 0.94, 1] }
-          }
-          viewport={{ margin: '0px' }}
-          transition={{ duration: 17 + i * 3 + seed, repeat: Infinity, ease: 'easeInOut', delay: o.d }}
         />
       ))}
 
-      {/* Slow-rotating metallic sheen — the "luxury" tell (pauses off-screen) */}
-      <motion.span
+      {/* Static metallic sheen — the "luxury" tell */}
+      <span
         className="pointer-events-none absolute -inset-1/4"
         style={{
           background:
-            'conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.10) 40deg, transparent 90deg, transparent 270deg, rgba(255,255,255,0.07) 310deg, transparent 360deg)',
+            'conic-gradient(from 210deg, transparent 0deg, rgba(255,255,255,0.10) 40deg, transparent 90deg, transparent 270deg, rgba(255,255,255,0.07) 310deg, transparent 360deg)',
           mixBlendMode: 'overlay',
         }}
-        whileInView={reduce ? undefined : { rotate: 360 }}
-        viewport={{ margin: '0px' }}
-        transition={{ duration: 60 + seed * 4, repeat: Infinity, ease: 'linear' }}
       />
 
       {/* Top light + bottom shade + vignette */}

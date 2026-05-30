@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
+import { useReducedMotionSafe } from '@/components/motion/use-reduced-motion-safe';
 import { reviews } from '@/lib/reviews';
 import { site } from '@/lib/site';
 
@@ -10,7 +11,7 @@ const AUTOPLAY_MS = 6000;
 export function Testimonials() {
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionSafe();
   const r = reviews[i];
   const go = (dir: number) => setI((p) => (p + dir + reviews.length) % reviews.length);
 

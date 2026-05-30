@@ -9,8 +9,8 @@ import {
   useSpring,
   useMotionValue,
   useAnimationFrame,
-  useReducedMotion,
 } from 'motion/react';
+import { useReducedMotionSafe } from '@/components/motion/use-reduced-motion-safe';
 
 /**
  * Velocity-reactive marquee — the editorial word ribbon scrolls continuously,
@@ -19,7 +19,7 @@ import {
  * reduced-motion.
  */
 export function Marquee({ items, className = '', baseSpeed = 40 }: { items: string[]; className?: string; baseSpeed?: number }) {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionSafe();
   const row = [...items, ...items, ...items];
 
   if (reduce) {

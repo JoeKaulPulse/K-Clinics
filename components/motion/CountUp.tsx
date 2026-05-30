@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useInView, useReducedMotion } from 'motion/react';
+import { useInView } from 'motion/react';
+import { useReducedMotionSafe } from '@/components/motion/use-reduced-motion-safe';
 
 /** Counts a numeric value up when scrolled into view. Preserves any
  *  non-numeric prefix/suffix (e.g. "15+", "4.9", "100%"). */
 export function CountUp({ value, className = '' }: { value: string; className?: string }) {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionSafe();
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true, margin: '-15%' });
   const [display, setDisplay] = useState(reduce ? value : initial(value));

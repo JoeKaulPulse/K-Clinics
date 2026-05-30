@@ -1,7 +1,8 @@
 'use client';
 
 import { useRef, type ReactNode } from 'react';
-import { motion, useInView, useReducedMotion } from 'motion/react';
+import { motion, useInView } from 'motion/react';
+import { useReducedMotionSafe } from '@/components/motion/use-reduced-motion-safe';
 
 /**
  * Clip-path mask reveal — content is unveiled with a directional wipe as it
@@ -19,7 +20,7 @@ export function MaskReveal({
   direction?: 'up' | 'left';
   delay?: number;
 }) {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionSafe();
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: '0px 0px -10% 0px' });
 

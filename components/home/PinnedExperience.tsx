@@ -1,7 +1,8 @@
 'use client';
 
 import { useRef } from 'react';
-import { motion, useScroll, useTransform, useReducedMotion, type MotionValue } from 'motion/react';
+import { motion, useScroll, useTransform, type MotionValue } from 'motion/react';
+import { useReducedMotionSafe } from '@/components/motion/use-reduced-motion-safe';
 import { MediaArt } from '@/components/ui/MediaArt';
 import { treatmentImage } from '@/lib/treatment-images';
 import { Aurora } from '@/components/ui/Aurora';
@@ -21,7 +22,7 @@ const steps: Step[] = [
  */
 export function PinnedExperience() {
   const ref = useRef<HTMLDivElement>(null);
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionSafe();
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end end'] });
 
   return (

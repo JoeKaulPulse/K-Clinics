@@ -1,7 +1,8 @@
 'use client';
 
-import { motion, useMotionValue, useSpring, useTransform, useReducedMotion } from 'motion/react';
+import { motion, useMotionValue, useSpring, useTransform } from 'motion/react';
 import { useRef, type ReactNode, type PointerEvent } from 'react';
+import { useReducedMotionSafe } from '@/components/motion/use-reduced-motion-safe';
 
 /** Subtle pointer-following 3D tilt with a moving specular highlight.
  *  Wraps any content; respects reduced-motion (renders static). */
@@ -16,7 +17,7 @@ export function Tilt({
   max?: number;
   glare?: boolean;
 }) {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionSafe();
   const ref = useRef<HTMLDivElement>(null);
   const px = useMotionValue(0.5);
   const py = useMotionValue(0.5);
