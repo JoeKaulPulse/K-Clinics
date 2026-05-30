@@ -4,7 +4,10 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
-import { getStripe, bookingEnabled } from '@/lib/stripe-client';
+import { getStripe } from '@/lib/stripe-client';
+import { isDemo } from '@/lib/booking-mode';
+import { demoSlots } from '@/lib/availability-client';
+import { DemoCard } from '@/components/booking/DemoCard';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { site } from '@/lib/site';
 
@@ -50,19 +53,33 @@ function BookingFlowInner({ treatments, initialSlug }: { treatments: Treatment[]
   const treatment = treatments.find((t) => t.slug === slug);
   const steps = ['Treatment', 'Date & time', 'Your details', 'Confirm'];
 
-  // Load slots when date/treatment chosen.
+  // Load slots when date/treatment chosen. Demo mode generates them locally
+  // (excluding any bookings already made this session); live mode asks the API.
   useEffect(() => {
-    if (step !== 1 || !slug || !date) return;
-    setLoadingSlots(true); setSlot(''); setSlots([]);
+    if (step !== 1 || !slug || !date || !treatment) return;
+    setSlot(''); setSlots([]);
+    if (isDemo) {
+      let taken: string[] = [];
+      try { taken = JSON.parse(sessionStorage.getItem('kc_demo_bookings') || '[]'); } catch {}
+      setSlots(demoSlots(date, treatment.durationMin, taken));
+      return;
+    }
+    setLoadingSlots(true);
     fetch('/api/booking/availability', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug, date }) })
       .then((r) => r.json()).then((j) => setSlots(j.slots || [])).catch(() => setSlots([]))
       .finally(() => setLoadingSlots(false));
-  }, [step, slug, date]);
+  }, [step, slug, date, treatment]);
 
   const minDate = useMemo(() => new Date(Date.now() + 864e5).toISOString().slice(0, 10), []);
 
   async function createBooking() {
     setCreating(true); setError('');
+    // Demo: no backend — go straight to the (demo) card step.
+    if (isDemo) {
+      setCreating(false);
+      setStep(3);
+      return;
+    }
     try {
       const res = await fetch('/api/booking/create', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -81,15 +98,14 @@ function BookingFlowInner({ treatments, initialSlug }: { treatments: Treatment[]
     }
   }
 
-  if (!bookingEnabled) {
-    return (
-      <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-8 text-center md:p-12">
-        <h2 className="text-title">Booking opens soon</h2>
-        <p className="mx-auto mt-3 max-w-md text-[var(--color-stone)]">
-          Online booking isn’t enabled in this preview. Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a> or request a consultation.
-        </p>
-      </div>
-    );
+  function finishDemo() {
+    // Persist the held slot so it's no longer offered this session.
+    try {
+      const taken: string[] = JSON.parse(sessionStorage.getItem('kc_demo_bookings') || '[]');
+      taken.push(slot);
+      sessionStorage.setItem('kc_demo_bookings', JSON.stringify(taken));
+    } catch {}
+    setDone(true);
   }
 
   if (done) {
@@ -100,8 +116,16 @@ function BookingFlowInner({ treatments, initialSlug }: { treatments: Treatment[]
         </div>
         <h2 className="text-title">You’re booked in.</h2>
         <p className="mx-auto mt-4 max-w-md text-[var(--color-stone)]">
-          A confirmation is on its way to {details.email}. Your card is securely saved — no payment is taken until your treatment is delivered. You can cancel free up to 24 hours before.
+          {treatment?.title}{slot ? ` · ${new Date(slot).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}` : ''}.
+          {' '}Your card is securely saved — no payment is taken until your treatment is delivered. You can cancel free up to 24 hours before.
         </p>
+        {isDemo ? (
+          <p className="mx-auto mt-4 max-w-md text-xs text-[var(--color-stone-soft)]">
+            This is a demonstration booking — no email is sent and no card is charged. Connect Stripe to go live.
+          </p>
+        ) : (
+          <p className="mx-auto mt-4 max-w-md text-sm text-[var(--color-stone)]">A confirmation is on its way to {details.email}.</p>
+        )}
       </motion.div>
     );
   }
@@ -196,7 +220,7 @@ function BookingFlowInner({ treatments, initialSlug }: { treatments: Treatment[]
           )}
 
           {/* Step 3 — payment (save card) */}
-          {step === 3 && clientSecret && (
+          {step === 3 && (isDemo || clientSecret) && (
             <div>
               <h3 className="font-[family-name:var(--font-display)] text-2xl">Secure your booking</h3>
               <div className="mt-2 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] p-4 text-sm text-[var(--color-stone)]">
@@ -204,9 +228,13 @@ function BookingFlowInner({ treatments, initialSlug }: { treatments: Treatment[]
                 <p className="mt-1">We securely save your card now — <strong>no payment is taken</strong> until your treatment is delivered.</p>
               </div>
               <div className="mt-5">
-                <ElementsWrapper clientSecret={clientSecret}>
-                  <CardStep bookingId={bookingId} onDone={() => setDone(true)} onError={setError} />
-                </ElementsWrapper>
+                {isDemo ? (
+                  <DemoCard onDone={finishDemo} onError={setError} />
+                ) : (
+                  <ElementsWrapper clientSecret={clientSecret}>
+                    <CardStep bookingId={bookingId} onDone={() => setDone(true)} onError={setError} />
+                  </ElementsWrapper>
+                )}
               </div>
             </div>
           )}
