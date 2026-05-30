@@ -17,8 +17,25 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 export function Hero() {
   return (
     <section className="relative isolate overflow-hidden bg-[var(--color-porcelain)]">
+      {/* Brand geometry echoing the photography — fills the copy field's negative
+          space and connects visually to the arcs in the trio band below. */}
+      <svg
+        aria-hidden
+        viewBox="0 0 520 520"
+        fill="none"
+        stroke="currentColor"
+        className="pointer-events-none absolute -right-24 top-2 hidden h-[42vh] w-auto text-[var(--color-stone)] opacity-[0.18] lg:block"
+        strokeWidth="0.8"
+      >
+        <circle cx="300" cy="260" r="250" />
+        <circle cx="300" cy="260" r="165" />
+        <circle cx="300" cy="260" r="80" />
+        <line x1="40" y1="260" x2="520" y2="260" />
+        <path d="M70 60 Q300 260 70 460" />
+      </svg>
+
       {/* ── Copy ─────────────────────────────────────────────────── */}
-      <div className="container-lux pb-5 pt-24 lg:pb-7 lg:pt-28">
+      <div className="container-lux relative pb-5 pt-24 lg:pb-7 lg:pt-28">
         <div className="max-w-[42rem]">
           <p className="rise eyebrow mb-4 inline-flex items-center gap-2.5" style={{ animationDelay: '0.05s' }}>
             <span className="h-px w-8 bg-[var(--color-gold)]/70" />
@@ -70,7 +87,7 @@ export function Hero() {
       </div>
 
       {/* ── Trio photography band ─────────────────────────────────── */}
-      <div className="hero-media relative h-[46svh] min-h-[15rem] w-full lg:h-[52vh]">
+      <div className="hero-media relative h-[33svh] min-h-[13rem] w-full lg:h-[52vh]">
         <div className="hero-parallax absolute inset-0 lg:-inset-y-[6%]">
           <Image
             src={`${BASE}/hero/trio.webp`}
@@ -78,7 +95,7 @@ export function Hero() {
             fill
             priority
             sizes="100vw"
-            className="hero-img object-cover object-[50%_22%]"
+            className="hero-img object-cover object-[50%_30%]"
           />
         </div>
         {/* Blend the band's top edge into the cream copy field above it. */}
