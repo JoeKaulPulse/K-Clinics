@@ -180,6 +180,26 @@
     color: transparent;
   }
 
+  /* Slow travelling shimmer across gold gradient text (e.g. hero accent) */
+  .text-gold-shimmer {
+    background: linear-gradient(
+      105deg,
+      var(--color-gold) 0%,
+      var(--color-gold-bright) 30%,
+      #fff6ea 48%,
+      var(--color-gold-bright) 66%,
+      var(--color-gold) 100%
+    );
+    background-size: 250% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shimmer 7s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .text-gold-shimmer { animation: none; }
+  }
+
   /* Small uppercase eyebrow label */
   .eyebrow {
     font-family: var(--font-sans);

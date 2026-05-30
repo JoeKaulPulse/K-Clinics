@@ -54,7 +54,7 @@ export function Hero() {
           as="span"
           text="perfected."
           delay={0.5}
-          className="text-hero block max-w-5xl text-gold-gradient"
+          className="text-hero block max-w-5xl text-gold-shimmer"
         />
 
         <motion.p
