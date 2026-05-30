@@ -51,7 +51,7 @@ export default function ReviewsPage() {
         <Stagger className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {reviews.map((r) => (
             <StaggerItem key={r.name}>
-              <figure className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-8">
+              <figure className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-8 transition-all duration-700 [transition-timing-function:var(--ease-lux)] hover:-translate-y-1.5 hover:bg-[var(--color-porcelain)] hover:shadow-[var(--shadow-lift)]">
                 <div className="mb-4 flex text-[var(--color-gold)]" aria-hidden>
                   {Array.from({ length: 5 }).map((_, s) => (
                     <svg key={s} viewBox="0 0 20 20" className="h-4 w-4 fill-current">

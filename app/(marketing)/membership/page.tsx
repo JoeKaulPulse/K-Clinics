@@ -47,8 +47,8 @@ export default function MembershipPage() {
         <Stagger className="grid gap-6 md:grid-cols-3">
           {tiers.map((tier, i) => (
             <StaggerItem key={tier.name}>
-              <div className="flex h-full flex-col rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-8">
-                <p className="font-[family-name:var(--font-display)] text-6xl text-gold-gradient">{String(i + 1).padStart(2, '0')}</p>
+              <div className="group flex h-full flex-col rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-8 transition-all duration-700 [transition-timing-function:var(--ease-lux)] hover:-translate-y-1.5 hover:border-[color-mix(in_oklab,var(--color-gold)_45%,var(--color-line))] hover:bg-[var(--color-porcelain)] hover:shadow-[var(--shadow-lift)]">
+                <p className="font-[family-name:var(--font-display)] text-6xl text-gold-gradient transition-transform duration-700 [transition-timing-function:var(--ease-spring)] group-hover:scale-110 group-hover:[transform-origin:left]">{String(i + 1).padStart(2, '0')}</p>
                 <p className="eyebrow mt-4">{tier.name}</p>
                 <h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl leading-snug">{tier.headline}</h2>
                 <ul className="mt-6 space-y-3">
