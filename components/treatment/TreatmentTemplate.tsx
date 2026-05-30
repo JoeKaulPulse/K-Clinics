@@ -111,17 +111,24 @@ export function TreatmentTemplate({ t }: { t: Treatment }) {
           <p className="eyebrow mb-4">The journey</p>
           <h2 className="text-title max-w-2xl">What to expect, step by step.</h2>
         </Reveal>
-        <Stagger className="mt-[var(--space-block)] grid gap-8 md:grid-cols-3">
+        <div className="relative mt-[var(--space-block)]">
+          {/* Animated connecting line (desktop) */}
+          <Reveal>
+            <span className="absolute left-0 right-0 top-0 hidden h-px origin-left bg-gradient-to-r from-[var(--color-gold)] via-[var(--color-gold)]/40 to-transparent md:block" />
+          </Reveal>
+          <Stagger className="grid gap-8 md:grid-cols-3">
           {t.process.map((s, i) => (
-            <StaggerItem key={s.title} className="relative border-t border-[var(--color-ink)] pt-6">
-              <p className="font-[family-name:var(--font-display)] text-5xl text-gold-gradient">
+            <StaggerItem key={s.title} className="relative border-t border-[var(--color-ink)] pt-6 md:border-t-0">
+              <span className="absolute -top-[5px] left-0 hidden h-2.5 w-2.5 rounded-full bg-[var(--color-gold)] md:block" />
+              <p className="font-[family-name:var(--font-display)] text-5xl text-gold-gradient md:mt-6">
                 {String(i + 1).padStart(2, '0')}
               </p>
               <h3 className="mt-4 font-[family-name:var(--font-display)] text-2xl">{s.title}</h3>
               <p className="mt-3 leading-relaxed text-[var(--color-stone)]">{s.text}</p>
             </StaggerItem>
           ))}
-        </Stagger>
+          </Stagger>
+        </div>
       </section>
 
       {/* FAQ */}
