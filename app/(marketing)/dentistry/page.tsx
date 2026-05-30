@@ -31,22 +31,25 @@ export default function DentistryPage() {
 
       {Object.entries(groups).map(([group, list]) => (
         <section key={group} className="container-lux section-sm">
-          <Reveal>
-            <div className="mb-10 flex items-end justify-between gap-6 border-b border-[var(--color-line)] pb-5">
-              <h2 className="text-title">{group}</h2>
-              <span className="text-sm text-[var(--color-stone)]">{list.length} treatments</span>
-            </div>
-          </Reveal>
-          <Stagger className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {list.map((t) => {
-              const i = idx++;
-              return (
-                <StaggerItem key={t.slug}>
-                  <TreatmentCard t={t} index={i} />
-                </StaggerItem>
-              );
-            })}
-          </Stagger>
+          <div className="grid gap-x-12 gap-y-8 lg:grid-cols-[0.8fr_2.2fr]">
+            <Reveal>
+              <div className="lg:sticky lg:top-28 lg:self-start">
+                <h2 className="text-title">{group}</h2>
+                <p className="mt-3 text-sm text-[var(--color-stone)]">{list.length} treatments</p>
+                <span className="mt-6 hidden h-px w-16 bg-[var(--color-gold)]/50 lg:block" />
+              </div>
+            </Reveal>
+            <Stagger className="grid gap-6 sm:grid-cols-2">
+              {list.map((t) => {
+                const i = idx++;
+                return (
+                  <StaggerItem key={t.slug}>
+                    <TreatmentCard t={t} index={i} />
+                  </StaggerItem>
+                );
+              })}
+            </Stagger>
+          </div>
         </section>
       ))}
     </>

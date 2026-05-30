@@ -6,13 +6,16 @@ import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import { primaryNav } from '@/lib/nav';
 import { site } from '@/lib/site';
+import { getTreatment } from '@/lib/treatments';
 import { Logo } from '@/components/brand/Logo';
 import { Button, ArrowIcon } from '@/components/ui/Button';
+import { GenerativeArt } from '@/components/ui/GenerativeArt';
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const [mobile, setMobile] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -25,6 +28,7 @@ export function Header() {
   useEffect(() => {
     setMobile(false);
     setOpen(null);
+    setPreview(null);
   }, [pathname]);
 
   useEffect(() => {
@@ -125,34 +129,72 @@ export function Header() {
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
             className="absolute inset-x-0 top-full hidden border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-porcelain)_94%,transparent)] backdrop-blur-2xl lg:block"
           >
-            <div className="container-lux py-9">
+            <div className="container-lux py-9" onMouseLeave={() => setPreview(null)}>
               {primaryNav
                 .filter((i) => i.label === open && i.columns)
-                .map((item) => (
-                  <div key={item.label} className="grid grid-cols-3 gap-x-10 gap-y-8">
-                    {item.columns!.map((col) => (
-                      <div key={col.heading}>
-                        <p className="eyebrow mb-4">{col.heading}</p>
-                        <ul className="space-y-1">
-                          {col.links.map((l) => (
-                            <li key={l.href}>
-                              <Link
-                                href={l.href}
-                                className="group flex items-baseline justify-between gap-4 rounded-xl px-3 py-2.5 -mx-3 transition-colors hover:bg-[var(--color-bone)]"
-                              >
-                                <span>
-                                  <span className="block font-[family-name:var(--font-display)] text-lg leading-tight">{l.label}</span>
-                                  {l.description && <span className="text-sm text-[var(--color-stone)]">{l.description}</span>}
-                                </span>
-                                <ArrowIcon className="mt-1 shrink-0 text-[var(--color-gold)] opacity-0 transition-opacity group-hover:opacity-100" />
-                              </Link>
-                            </li>
-                          ))}
-                        </ul>
+                .map((item) => {
+                  const cols = item.columns!.length;
+                  const previewT = preview ? getTreatment(preview.replace(/^\//, '')) : null;
+                  return (
+                    <div
+                      key={item.label}
+                      className="grid gap-x-10 gap-y-8"
+                      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr)) 18rem` }}
+                    >
+                      {item.columns!.map((col) => (
+                        <div key={col.heading}>
+                          <p className="eyebrow mb-4">{col.heading}</p>
+                          <ul className="space-y-1">
+                            {col.links.map((l) => (
+                              <li key={l.href}>
+                                <Link
+                                  href={l.href}
+                                  onMouseEnter={() => setPreview(l.href)}
+                                  className="group flex items-baseline justify-between gap-4 rounded-xl px-3 py-2.5 -mx-3 transition-colors hover:bg-[var(--color-bone)]"
+                                >
+                                  <span>
+                                    <span className="block font-[family-name:var(--font-display)] text-lg leading-tight">{l.label}</span>
+                                    {l.description && <span className="text-sm text-[var(--color-stone)]">{l.description}</span>}
+                                  </span>
+                                  <ArrowIcon className="mt-1 shrink-0 text-[var(--color-gold)] opacity-0 transition-opacity group-hover:opacity-100" />
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+
+                      {/* Hover preview pane */}
+                      <div className="relative hidden overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] xl:block">
+                        <AnimatePresence mode="wait">
+                          {previewT ? (
+                            <motion.div
+                              key={previewT.slug}
+                              initial={{ opacity: 0, scale: 1.04 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                              className="absolute inset-0"
+                            >
+                              <GenerativeArt from={previewT.gradient[0]} to={previewT.gradient[1]} className="h-full w-full" />
+                              <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(to_top,rgba(42,36,32,0.8),transparent)] p-5 pt-12 text-[var(--color-porcelain)]">
+                                <p className="font-[family-name:var(--font-display)] text-xl">{previewT.title}</p>
+                                <p className="mt-1 text-xs text-[color-mix(in_oklab,var(--color-porcelain)_80%,transparent)]">{previewT.tagline}</p>
+                              </div>
+                            </motion.div>
+                          ) : (
+                            <motion.div key="placeholder" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0">
+                              <GenerativeArt from="#a98a6d" to="#2a2420" className="h-full w-full opacity-70" />
+                              <div className="absolute inset-0 grid place-items-center p-6 text-center">
+                                <p className="font-[family-name:var(--font-display)] text-lg text-[var(--color-porcelain)]">Hover a treatment to preview</p>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                    ))}
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
             </div>
           </motion.div>
         )}
