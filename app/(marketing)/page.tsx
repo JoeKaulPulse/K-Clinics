@@ -17,6 +17,9 @@ import { Button, ArrowIcon } from '@/components/ui/Button';
 import { BookingProviders } from '@/components/booking/BookingButtons';
 import { CountUp } from '@/components/motion/CountUp';
 import { Aurora } from '@/components/ui/Aurora';
+import { FaqAccordion } from '@/components/ui/FaqAccordion';
+import { allGeneralFaqs } from '@/lib/faqs';
+import { faqLd, JsonLd as JsonLdHome } from '@/lib/seo';
 import { treatments, getTreatment } from '@/lib/treatments';
 import { packages } from '@/lib/packages';
 import { site } from '@/lib/site';
@@ -245,6 +248,24 @@ export default function HomePage() {
             </div>
           </div>
         </Reveal>
+      </section>
+
+      {/* FAQ — answers the top search questions (rich-result eligible) */}
+      <section className="section container-lux">
+        <JsonLdHome data={faqLd(allGeneralFaqs.map((f) => ({ q: f.q, a: f.a })))} />
+        <div className="grid gap-x-16 gap-y-10 lg:grid-cols-[0.8fr_1.2fr]">
+          <SectionHeading
+            eyebrow="Good to know"
+            title="Your questions, answered."
+            lede="Everything you might want to know before your first visit. Still curious? Our team is a call away."
+          />
+          <Reveal delay={0.1}>
+            <FaqAccordion faqs={allGeneralFaqs.slice(0, 6)} />
+            <Link href="/faq" className="mt-7 inline-flex items-center gap-2 font-medium text-[var(--color-gold)]">
+              All questions <ArrowIcon />
+            </Link>
+          </Reveal>
+        </div>
       </section>
 
       {/* Visit */}
