@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 import { site } from '@/lib/site';
 import { treatmentSlugs } from '@/lib/treatments';
 import { packages } from '@/lib/packages';
+import { infoSlugs } from '@/lib/info-pages';
 
 export const dynamic = 'force-static';
 
@@ -42,6 +43,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: now,
       changeFrequency: 'monthly' as const,
       priority: 0.7,
+    })),
+    ...infoSlugs.map((slug) => ({
+      url: `${base}/info/${slug}`,
+      lastModified: now,
+      changeFrequency: 'yearly' as const,
+      priority: 0.3,
     })),
   ];
 }
