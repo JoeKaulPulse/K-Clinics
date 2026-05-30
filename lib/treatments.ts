@@ -2,6 +2,7 @@
 // Treatment content model. Each entry renders a premium, SEO-optimised page via
 // app/[slug]/page.tsx. Copy is written to read as "ultra-premium clinic".
 // ─────────────────────────────────────────────────────────────────────────────
+import { importedTreatments } from './treatments-imported';
 
 export type Faq = { q: string; a: string };
 export type Benefit = { title: string; text: string };
@@ -769,6 +770,8 @@ export const treatments: Treatment[] = [
     related: ['aesthetic-dentistry', 'dental-implant-placement', 'veneers'],
     gradient: ['#c2a589', '#7b6a5d'],
   },
+  // Treatments imported from the existing kclinics.co.uk site (real copy).
+  ...importedTreatments,
 ];
 
 // ── Booking config ───────────────────────────────────────────────────────────
@@ -797,6 +800,28 @@ export const bookingConfig: Record<string, BookingCfg> = {
   'dentures':                    { pricePence: null,  durationMin: 45 },
   'specialist-dentistry':        { pricePence: null,  durationMin: 45 },
   'dental-consultations':        { pricePence: null,  durationMin: 30 },
+  // Imported treatments — prices from the official price sheet where known.
+  'laser-skin-rejuvenation':     { pricePence: 21000, durationMin: 25 },  // Face & Neck from £210
+  'pigmentation-correction':     { pricePence: 1800,  durationMin: 20 },  // nose from £18
+  'vascular-lesions-treatment':  { pricePence: 1800,  durationMin: 20 },  // single vein from £18
+  'scar-stretch-mark-reduction': { pricePence: null,  durationMin: 45 },
+  'spider-veins-removal':        { pricePence: 23000, durationMin: 25 },  // nose thread vein from £230
+  'laser-skin-resurfacing':      { pricePence: 18000, durationMin: 45 },  // from £180
+  'ipl-phototherapy':            { pricePence: 20000, durationMin: 45 },  // from £200
+  'fungal-nail-infection-treatment': { pricePence: 7900, durationMin: 30 }, // 1 foot from £79
+  'permanent-makeup-removal':    { pricePence: 27500, durationMin: 30 },  // eyebrows from £275
+  'microneedling':               { pricePence: null,  durationMin: 60 },
+  'prp-therapy':                 { pricePence: null,  durationMin: 60 },
+  'chemical-peels':              { pricePence: 11500, durationMin: 30 },  // cosmetic peel full face from £115
+  'microdermabrasion':           { pricePence: null,  durationMin: 45 },
+  'botox':                       { pricePence: null,  durationMin: 30 },
+  'dermal-fillers':              { pricePence: null,  durationMin: 45 },
+  'kybella':                     { pricePence: null,  durationMin: 45 },
+  'anti-cellulite-programs':     { pricePence: 11000, durationMin: 60 },  // Endosphere from £110
+  'vacuum-massage':              { pricePence: null,  durationMin: 50 },
+  'hip-dip-filler':              { pricePence: null,  durationMin: 45 },
+  'body-hifu-lifting':           { pricePence: 30900, durationMin: 60 },  // body HIFU from £309
+  'intimate-area-whitening':     { pricePence: 69000, durationMin: 40 },  // from £690
 };
 
 export function bookingFor(slug: string): BookingCfg {
