@@ -1,0 +1,52 @@
+name: Fetch real imagery from kclinics.co.uk
+
+# Downloads every image referenced in import/image-manifest.txt straight from
+# the live WordPress media library and commits them to public/treatments/.
+# GitHub's runners can reach kclinics.co.uk (the Claude build sandbox cannot),
+# so this is the one-click way to populate real photography across the site.
+#
+# How to run: GitHub → Actions → "Fetch real imagery from kclinics.co.uk"
+# → Run workflow → pick this branch → Run. When it finishes it pushes a commit
+# with all the images, which automatically kicks off the Pages deploy.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Download all media
+        run: node scripts/fetch-media.mjs
+
+      - name: Show what landed
+        run: |
+          echo "Files in public/treatments/:"
+          ls -1 public/treatments | wc -l
+          echo "Total size:"
+          du -sh public/treatments
+
+      - name: Commit imagery
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/treatments
+          if git diff --cached --quiet; then
+            echo "No new images to commit."
+          else
+            git commit -m "Images: download real media from kclinics.co.uk media library"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
