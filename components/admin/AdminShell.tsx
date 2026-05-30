@@ -5,17 +5,28 @@ import { usePathname, useRouter } from 'next/navigation';
 import { KMark } from '@/components/brand/marks';
 
 const nav = [
-  { href: '/admin', label: 'Overview', exact: true },
-  { href: '/admin/bookings', label: 'Bookings' },
-  { href: '/admin/consultations', label: 'Consultations' },
-  { href: '/admin/clients', label: 'Clients' },
-  { href: '/admin/campaigns', label: 'Campaigns' },
-  { href: '/admin/automations', label: 'Automations' },
+  { href: '/admin', label: 'Overview', exact: true, perm: 'dashboard.view' },
+  { href: '/admin/bookings', label: 'Bookings', perm: 'bookings.view' },
+  { href: '/admin/consultations', label: 'Consultations', perm: 'consultations.view' },
+  { href: '/admin/clients', label: 'Clients', perm: 'clients.view' },
+  { href: '/admin/campaigns', label: 'Campaigns', perm: 'campaigns.view' },
+  { href: '/admin/automations', label: 'Automations', perm: 'automations.view' },
+  { href: '/admin/staff', label: 'Staff & access', perm: 'staff.view' },
 ];
 
-export function AdminShell({ children, user }: { children: React.ReactNode; user?: string }) {
+export function AdminShell({
+  children,
+  user,
+  can = [],
+}: {
+  children: React.ReactNode;
+  user?: string;
+  can?: string[];
+}) {
   const pathname = usePathname();
   const router = useRouter();
+  const allowed = new Set(can);
+  const items = nav.filter((n) => !n.perm || allowed.size === 0 || allowed.has(n.perm));
 
   async function signOut() {
     await fetch('/api/admin/logout', { method: 'POST' });
@@ -31,7 +42,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
           <span className="font-[family-name:var(--font-display)] text-lg">K Clinics CRM</span>
         </div>
         <nav className="flex gap-1 overflow-x-auto lg:flex-col">
-          {nav.map((n) => {
+          {items.map((n) => {
             const active = n.exact ? pathname === n.href : pathname.startsWith(n.href);
             return (
               <Link

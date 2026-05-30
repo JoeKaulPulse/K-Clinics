@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { crmEnabled } from '@/lib/crm';
-import { getSession } from '@/lib/auth';
+import { getSession, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 
@@ -24,8 +24,9 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
   const session = await getSession();
   const rows = await listBookings(filter);
 
+  const can = await sessionPermissions();
   return (
-    <AdminShell user={session?.email}>
+    <AdminShell user={session?.email} can={can}>
       <h1 className="font-[family-name:var(--font-display)] text-3xl">Bookings</h1>
 
       <div className="mt-6 flex flex-wrap gap-2">

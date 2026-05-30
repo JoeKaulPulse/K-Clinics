@@ -1,5 +1,5 @@
 import { crmEnabled } from '@/lib/crm';
-import { getSession } from '@/lib/auth';
+import { getSession, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { CampaignComposer } from '@/components/admin/CampaignComposer';
@@ -15,8 +15,9 @@ export default async function CampaignsPage() {
     db.campaign.findMany({ orderBy: { createdAt: 'desc' }, take: 20 }),
   ]);
 
+  const can = await sessionPermissions();
   return (
-    <AdminShell user={session?.email}>
+    <AdminShell user={session?.email} can={can}>
       <h1 className="font-[family-name:var(--font-display)] text-3xl">Email campaigns</h1>
       <p className="mt-1 text-sm text-[var(--color-stone)]">Send a branded broadcast to your marketing subscribers.</p>
 

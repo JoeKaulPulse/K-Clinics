@@ -248,7 +248,17 @@ model AdminUser {
   name         String?
   passwordHash String
   role         Role     @default(STAFF)
+  active       Boolean  @default(true)
+
+  // Per-user permission overrides on top of the role defaults.
+  // grant = always allow these keys; revoke = always deny these keys.
+  permGrant    String[] @default([])
+  permRevoke   String[] @default([])
+
+  lastLoginAt  DateTime?
+  createdBy    String?
   createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 // ── Immutable, encrypted clinical record ─────────────────────────────────────
