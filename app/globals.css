@@ -384,17 +384,24 @@
 }
 
 /* ── Mobile signature K: oversized, overhangs the bar, gold ink-rise on tap ── */
-.logo-k {
-  position: relative;
-  display: block;
-  height: 4.4rem;        /* much larger than the bar's text */
-  width: 2.25rem;
-  /* Sit low so the swoosh tail descends past the header divider into the page. */
-  transform: translateY(20px) rotate(-1deg);
-  transform-origin: 50% 100%;
-  transition: transform 0.7s var(--ease-lux);
-  will-change: transform;
+/* Mobile only — the Tailwind `sm:hidden` on the element controls visibility at
+   ≥640px; we must NOT set `display` here or it would override that utility and
+   leak the big K onto desktop (causing a double logo). */
+@media (max-width: 639.98px) {
+  .logo-k {
+    position: relative;
+    display: block;
+    height: 4.4rem;        /* much larger than the bar's text */
+    width: 2.25rem;
+    /* Sit low so the swoosh tail descends past the header divider into the page. */
+    transform: translateY(20px) rotate(-1deg);
+    transform-origin: 50% 100%;
+    transition: transform 0.7s var(--ease-lux);
+    will-change: transform;
+  }
 }
+/* All three K layers fill the same box so they register exactly. */
+.logo-k__layer { position: absolute; inset: 0; }
 .logo-k:hover,
 .logo-k:active {
   transform: translateY(20px) scale(1.09) rotate(-3deg);
@@ -413,19 +420,29 @@
    sweeping across, masked to the K shape. Sits above the base mark on both the
    mobile and desktop logos. */
 .k-shimmer {
-  -webkit-mask-image: linear-gradient(105deg, transparent 38%, #000 50%, transparent 62%);
-  mask-image: linear-gradient(105deg, transparent 38%, #000 50%, transparent 62%);
-  -webkit-mask-size: 300% 100%;
-  mask-size: 300% 100%;
+  /* A narrow diagonal highlight, masked to the K. Off-canvas + fully transparent
+     at rest (so it never doubles the K), flashing through during the sweep. */
+  -webkit-mask-image: linear-gradient(105deg, transparent 44%, #000 50%, transparent 56%);
+  mask-image: linear-gradient(105deg, transparent 44%, #000 50%, transparent 56%);
+  -webkit-mask-size: 250% 100%;
+  mask-size: 250% 100%;
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
-  animation: k-shimmer-sweep 4.5s var(--ease-glide) 2.6s infinite;
+  -webkit-mask-position: 250% 0;
+  mask-position: 250% 0;
+  opacity: 0;
+  animation: k-shimmer-sweep 5s var(--ease-glide) 2.6s infinite;
   mix-blend-mode: screen;
+  pointer-events: none;
 }
 @keyframes k-shimmer-sweep {
-  0%   { -webkit-mask-position: 160% 0; mask-position: 160% 0; }
-  /* long pause between sweeps so it feels like a precious glint, not a loop */
-  55%, 100% { -webkit-mask-position: -60% 0; mask-position: -60% 0; }
+  0%   { opacity: 0; -webkit-mask-position: 250% 0; mask-position: 250% 0; }
+  8%   { opacity: 1; }
+  /* the glint travels across only during the first ~30% of the cycle… */
+  30%  { opacity: 1; -webkit-mask-position: -40% 0; mask-position: -40% 0; }
+  38%  { opacity: 0; -webkit-mask-position: -40% 0; mask-position: -40% 0; }
+  /* …then a long, calm pause with nothing visible. */
+  100% { opacity: 0; -webkit-mask-position: -40% 0; mask-position: -40% 0; }
 }
 
 /* ── Respect reduced motion ───────────────────────────────────────────────── */
