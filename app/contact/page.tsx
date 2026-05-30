@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
+import { EnquiryForm } from '@/components/contact/EnquiryForm';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
@@ -86,6 +87,24 @@ export default function ContactPage() {
             />
           </div>
         </Reveal>
+      </section>
+
+      {/* Enquiry form */}
+      <section className="bg-[var(--color-bone)] py-20 md:py-28">
+        <div className="container-lux grid gap-12 lg:grid-cols-[0.7fr_1.3fr] lg:items-start">
+          <Reveal>
+            <div className="lg:sticky lg:top-28">
+              <p className="eyebrow mb-4">Send an enquiry</p>
+              <h2 className="text-title">Tell us what you’re looking for.</h2>
+              <p className="mt-5 text-[var(--color-stone)]">
+                Share a few details and our team will be in touch to arrange your complimentary consultation. Prefer to book instantly? Use Treatwell or Fresha above.
+              </p>
+            </div>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <EnquiryForm />
+          </Reveal>
+        </div>
       </section>
     </>
   );
