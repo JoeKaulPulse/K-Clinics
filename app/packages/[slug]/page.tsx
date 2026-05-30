@@ -44,7 +44,7 @@ export default async function PackagePage({ params }: { params: Promise<{ slug: 
         <BookingButtons />
       </PageHero>
 
-      <section className="container-lux grid gap-12 py-20 md:grid-cols-[1.2fr_0.8fr] md:py-28">
+      <section className="container-lux section grid gap-12 md:grid-cols-[1.2fr_0.8fr]">
         <Reveal>
           <p className="eyebrow mb-5">What’s included</p>
           <ul className="space-y-4">

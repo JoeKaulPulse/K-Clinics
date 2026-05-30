@@ -3,11 +3,13 @@ import { site } from '@/lib/site';
 import { footerNav } from '@/lib/nav';
 import { Logo } from '@/components/brand/Logo';
 import { BookingButtons } from '@/components/booking/BookingButtons';
+import { Aurora } from '@/components/ui/Aurora';
 
 export function Footer() {
   const year = new Date().getFullYear();
   return (
     <footer className="surface-ink grain relative overflow-hidden">
+      <Aurora />
       {/* CTA band */}
       <div className="container-lux relative border-b border-white/10 py-20 text-center md:py-28">
         <p className="eyebrow mb-5">Begin your transformation</p>

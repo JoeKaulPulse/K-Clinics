@@ -5,6 +5,7 @@ import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { GenerativeArt } from '@/components/ui/GenerativeArt';
 import { Marquee } from '@/components/ui/Marquee';
 import { BookingButtons } from '@/components/booking/BookingButtons';
+import { CountUp } from '@/components/motion/CountUp';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
@@ -84,7 +85,7 @@ export default function AboutPage() {
             { k: '40+', v: 'Treatments under one roof' },
           ].map((s) => (
             <Reveal key={s.v}>
-              <p className="font-[family-name:var(--font-display)] text-6xl text-gold-gradient">{s.k}</p>
+              <CountUp value={s.k} className="block font-[family-name:var(--font-display)] text-6xl text-gold-gradient" />
               <p className="mt-2 text-[var(--color-stone)]">{s.v}</p>
             </Reveal>
           ))}
