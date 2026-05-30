@@ -10,6 +10,8 @@ import { SectionHeading } from '@/components/ui/Section';
 import { TreatmentCard } from '@/components/ui/TreatmentCard';
 import { Marquee } from '@/components/ui/Marquee';
 import { GenerativeArt } from '@/components/ui/GenerativeArt';
+import { MediaArt } from '@/components/ui/MediaArt';
+import { treatmentImage, packageImage } from '@/lib/treatment-images';
 import { BeforeAfter } from '@/components/ui/BeforeAfter';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { BookingProviders } from '@/components/booking/BookingButtons';
@@ -81,6 +83,7 @@ export default function HomePage() {
               title: 'Laser, Skin & Body',
               text: 'Medical-grade laser hair removal, non-surgical lifting, advanced facials, body contouring and refined injectables.',
               grad: ['#a98a6d', '#7b6a5d'] as [string, string],
+              img: treatmentImage('laser-hair-removal'),
             },
             {
               tag: 'Dentistry',
@@ -88,6 +91,7 @@ export default function HomePage() {
               title: 'Aesthetic Dentistry',
               text: 'Smile design, porcelain veneers, professional whitening, composite bonding and life-changing dental implants.',
               grad: ['#7b6a5d', '#2a2420'] as [string, string],
+              img: treatmentImage('veneers'),
             },
           ].map((c, idx) => (
             <Reveal key={c.tag} delay={idx * 0.1}>
@@ -95,12 +99,16 @@ export default function HomePage() {
                 href={c.href}
                 className="group relative flex h-full min-h-[20rem] flex-col justify-end overflow-hidden rounded-[var(--radius-2xl)] p-8 text-[var(--color-porcelain)] sm:min-h-[26rem] md:min-h-[32rem] md:p-12"
               >
-                <GenerativeArt
+                <MediaArt
+                  src={c.img}
                   from={c.grad[0]}
                   to={c.grad[1]}
                   seed={idx * 2}
+                  alt={c.title}
+                  sizes="(max-width: 1024px) 100vw, 50vw"
                   className="absolute inset-0 -z-0 transition-transform duration-[1.6s] [transition-timing-function:var(--ease-lux)] group-hover:scale-105"
                 />
+                <span className="pointer-events-none absolute inset-0 -z-0 bg-[linear-gradient(to_top,rgba(42,36,32,0.85),rgba(42,36,32,0.35)_45%,rgba(42,36,32,0.15))]" />
                 <div className="relative">
                   <p className="eyebrow mb-4 text-[var(--color-gold-soft)]">{c.tag}</p>
                   <h3 className="font-[family-name:var(--font-display)] text-[clamp(2rem,1.4rem+2vw,3.25rem)] leading-[1.05]">{c.title}</h3>
@@ -181,7 +189,15 @@ export default function HomePage() {
                 href={`/packages/${p.slug}`}
                 className="group flex h-full flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] transition-all duration-700 hover:-translate-y-1.5 hover:shadow-[var(--shadow-lift)]"
               >
-                <GenerativeArt from={p.gradient[0]} to={p.gradient[1]} seed={i} className="aspect-[4/3]" />
+                <MediaArt
+                  src={packageImage(p.slug)}
+                  from={p.gradient[0]}
+                  to={p.gradient[1]}
+                  seed={i}
+                  alt={p.name}
+                  sizes="(max-width: 768px) 100vw, 25vw"
+                  className="aspect-[4/3] transition-transform duration-[1.6s] [transition-timing-function:var(--ease-lux)] group-hover:scale-[1.05]"
+                />
                 <div className="flex flex-1 flex-col p-7">
                   <h3 className="font-[family-name:var(--font-display)] text-[1.35rem] leading-tight">{p.name}</h3>
                   <p className="mt-2 text-sm text-[var(--color-stone)]">{p.subtitle}</p>
