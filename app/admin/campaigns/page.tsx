@@ -1,5 +1,6 @@
+import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
-import { getSession, sessionPermissions } from '@/lib/auth';
+import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { CampaignComposer } from '@/components/admin/CampaignComposer';
@@ -10,6 +11,7 @@ export default async function CampaignsPage() {
   if (!crmEnabled) return <CrmDisabled />;
   const { db } = await import('@/lib/db');
   const session = await getSession();
+  if (!sessionCan(session, 'campaigns.view')) redirect('/admin');
   const [audience, past] = await Promise.all([
     db.client.count({ where: { marketingOptIn: true, unsubscribed: false } }),
     db.campaign.findMany({ orderBy: { createdAt: 'desc' }, take: 20 }),

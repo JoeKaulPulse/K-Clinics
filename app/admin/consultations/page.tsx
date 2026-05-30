@@ -1,6 +1,7 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
-import { getSession, sessionPermissions } from '@/lib/auth';
+import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 
@@ -13,6 +14,7 @@ export default async function ConsultationsPage({ searchParams }: { searchParams
   const { status = 'ALL' } = await searchParams;
   const { listConsultations } = await import('@/lib/crm-data');
   const session = await getSession();
+  if (!sessionCan(session, 'consultations.view')) redirect('/admin');
   const rows = await listConsultations(status);
 
   const can = await sessionPermissions();

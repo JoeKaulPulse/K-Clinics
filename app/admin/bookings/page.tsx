@@ -1,6 +1,7 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
-import { getSession, sessionPermissions } from '@/lib/auth';
+import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 
@@ -22,6 +23,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
   const { filter = 'upcoming' } = await searchParams;
   const { listBookings } = await import('@/lib/crm-data');
   const session = await getSession();
+  if (!sessionCan(session, 'bookings.view')) redirect('/admin');
   const rows = await listBookings(filter);
 
   const can = await sessionPermissions();

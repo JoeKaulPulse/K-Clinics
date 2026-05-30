@@ -1,5 +1,6 @@
+import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
-import { getSession, sessionPermissions } from '@/lib/auth';
+import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 
@@ -18,6 +19,7 @@ export default async function AutomationsPage() {
   if (!crmEnabled) return <CrmDisabled />;
   const { db } = await import('@/lib/db');
   const session = await getSession();
+  if (!sessionCan(session, 'automations.view')) redirect('/admin');
 
   const since = new Date(Date.now() - 30 * 864e5);
   const counts = await db.emailEvent.groupBy({

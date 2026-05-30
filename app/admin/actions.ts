@@ -2,12 +2,12 @@
 
 import { revalidatePath } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
-import { getSession } from '@/lib/auth';
+import { getSession, sessionCan } from '@/lib/auth';
 
 export async function addNote(clientId: string, summary: string, detail?: string) {
   if (!crmEnabled || !summary.trim()) return;
   const session = await getSession();
-  if (!session) return;
+  if (!session || !sessionCan(session, 'clients.edit')) return;
   const { db } = await import('@/lib/db');
   await db.interaction.create({
     data: { clientId, type: 'NOTE', summary: summary.trim(), detail: detail || null, author: session.email },
@@ -18,7 +18,7 @@ export async function addNote(clientId: string, summary: string, detail?: string
 export async function setConsultStatus(consultId: string, clientId: string, status: string) {
   if (!crmEnabled) return;
   const session = await getSession();
-  if (!session) return;
+  if (!session || !sessionCan(session, 'consultations.manage')) return;
   const { db } = await import('@/lib/db');
   await db.consultation.update({ where: { id: consultId }, data: { status: status as never } });
   await db.interaction.create({
@@ -31,7 +31,7 @@ export async function setConsultStatus(consultId: string, clientId: string, stat
 export async function sendManualEmail(clientId: string, to: string, subject: string, body: string) {
   if (!crmEnabled || !subject.trim() || !body.trim()) return { ok: false, error: 'Subject and body required' };
   const session = await getSession();
-  if (!session) return { ok: false, error: 'Unauthorised' };
+  if (!session || !sessionCan(session, 'clients.view')) return { ok: false, error: 'Unauthorised' };
   const { db } = await import('@/lib/db');
   const { sendEmail, tmplManual } = await import('@/lib/email');
 
@@ -51,6 +51,8 @@ export async function sendManualEmail(clientId: string, to: string, subject: str
 
 export async function toggleMarketing(clientId: string, optIn: boolean) {
   if (!crmEnabled) return;
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'clients.edit')) return;
   const { db } = await import('@/lib/db');
   await db.client.update({ where: { id: clientId }, data: { marketingOptIn: optIn, unsubscribed: optIn ? false : undefined } });
   revalidatePath(`/admin/clients/${clientId}`);
