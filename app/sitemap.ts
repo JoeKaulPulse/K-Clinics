@@ -11,6 +11,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const staticPaths: { path: string; priority: number; freq: MetadataRoute.Sitemap[number]['changeFrequency'] }[] = [
     { path: '/', priority: 1, freq: 'weekly' },
+    { path: '/book', priority: 0.95, freq: 'monthly' },
     { path: '/consultation', priority: 0.9, freq: 'monthly' },
     { path: '/treatments', priority: 0.9, freq: 'weekly' },
     { path: '/dentistry', priority: 0.9, freq: 'weekly' },

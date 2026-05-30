@@ -31,3 +31,23 @@ export const campaignSchema = z.object({
   body: z.string().min(1),
   segment: z.string().optional(),
 });
+
+export const availabilitySchema = z.object({
+  slug: z.string().min(1),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date'),
+});
+
+export const bookingCreateSchema = z.object({
+  slug: z.string().min(1),
+  startISO: z.string().datetime(),
+  firstName: z.string().min(1).max(80),
+  lastName: z.string().max(80).optional().or(z.literal('')),
+  email: z.string().email(),
+  phone: z.string().max(40).optional().or(z.literal('')),
+  notes: z.string().max(2000).optional().or(z.literal('')),
+  marketingOptIn: z.boolean().default(false),
+  consent: z.literal(true, { errorMap: () => ({ message: 'Please accept the booking terms' }) }),
+  company: z.string().max(0).optional().or(z.literal('')), // honeypot
+});
+
+export type BookingCreateInput = z.infer<typeof bookingCreateSchema>;

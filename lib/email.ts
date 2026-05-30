@@ -102,7 +102,7 @@ export function tmplBirthday(firstName: string, unsubUrl: string) {
     body: `<h1 style="font-size:26px;margin:0 0 16px;">Happy birthday, ${escape(firstName)}.</h1>
     <p>From all of us at K Clinics — we hope your day is wonderful.</p>
     <p>To celebrate, we would love to treat you to a <strong>complimentary upgrade</strong> on your next visit this month. Simply mention this email when you book.</p>
-    <p style="margin:28px 0;">${btn(site.booking.treatwell, 'Book your visit')}</p>
+    <p style="margin:28px 0;">${btn(site.url + site.booking.path, 'Book your visit')}</p>
     <p>With warmth,<br>The K Clinics team</p>`,
   });
 }
@@ -114,7 +114,7 @@ export function tmplFollowUp(firstName: string, treatment: string, unsubUrl: str
     body: `<h1 style="font-size:24px;margin:0 0 16px;">How are you, ${escape(firstName)}?</h1>
     <p>It was a pleasure to welcome you for your ${escape(treatment)}. We wanted to check in and make sure you are delighted with your results.</p>
     <p>If you have any questions about aftercare, just reply — we are always here. When you are ready, we would love to see you again.</p>
-    <p style="margin:28px 0;">${btn(site.booking.treatwell, 'Book your next visit')}</p>
+    <p style="margin:28px 0;">${btn(site.url + site.booking.path, 'Book your next visit')}</p>
     <p>With warmth,<br>The K Clinics team</p>`,
   });
 }
@@ -126,7 +126,7 @@ export function tmplWinBack(firstName: string, unsubUrl: string) {
     body: `<h1 style="font-size:24px;margin:0 0 16px;">We have missed you, ${escape(firstName)}.</h1>
     <p>It has been a little while since your last visit, and we would love to welcome you back.</p>
     <p>As a thank you for your loyalty, enjoy a special privilege on your next treatment — reply and we will arrange it.</p>
-    <p style="margin:28px 0;">${btn(site.booking.treatwell, 'Rediscover K Clinics')}</p>
+    <p style="margin:28px 0;">${btn(site.url + site.booking.path, 'Rediscover K Clinics')}</p>
     <p>With warmth,<br>The K Clinics team</p>`,
   });
 }
@@ -144,6 +144,84 @@ export function tmplReviewRequest(firstName: string, unsubUrl: string) {
 
 export function tmplManual(bodyHtml: string, unsubUrl?: string) {
   return emailShell({ body: bodyHtml, unsubUrl });
+}
+
+// ── Booking templates ────────────────────────────────────────────────────────
+const fmtWhen = (d: Date) =>
+  d.toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+const fmtMoney = (pence: number) => `£${(pence / 100).toLocaleString('en-GB', { minimumFractionDigits: pence % 100 ? 2 : 0 })}`;
+
+export function tmplBookingConfirmation(o: { firstName: string; treatment: string; start: Date; pricePence: number; manageUrl: string }) {
+  const price = o.pricePence > 0 ? fmtMoney(o.pricePence) : 'Assessed at your visit';
+  return emailShell({
+    preheader: `Your ${o.treatment} is booked for ${fmtWhen(o.start)}`,
+    body: `<h1 style="font-size:26px;margin:0 0 16px;">You're booked in, ${escape(o.firstName)}.</h1>
+    <p>We look forward to welcoming you to K Clinics.</p>
+    <table style="font-family:Helvetica,Arial,sans-serif;font-size:15px;color:#3d352f;line-height:2;margin:8px 0;">
+      <tr><td style="color:#91766e;padding-right:20px;">Treatment</td><td><strong>${escape(o.treatment)}</strong></td></tr>
+      <tr><td style="color:#91766e;padding-right:20px;">When</td><td><strong>${fmtWhen(o.start)}</strong></td></tr>
+      <tr><td style="color:#91766e;padding-right:20px;">Price</td><td>${price}</td></tr>
+    </table>
+    <p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">
+      Your card is securely saved — <strong>no payment is taken now</strong>. You will only be charged when your treatment is delivered.
+      Cancellations are free up to <strong>24 hours</strong> before your appointment; within 24 hours the full fee applies.
+    </p>
+    <p style="margin:24px 0;">${btn(o.manageUrl, 'Manage or cancel booking')}</p>
+    <p>${site.address.street}, ${site.address.locality}.<br>With warmth,<br>The K Clinics team</p>`,
+  });
+}
+
+export function tmplBookingNotify(o: { name: string; email: string; phone?: string; treatment: string; start: Date; pricePence: number }) {
+  return emailShell({
+    preheader: `New booking: ${o.name} — ${o.treatment}`,
+    body: `<h1 style="font-size:22px;margin:0 0 16px;">New booking</h1>
+    <table style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#3d352f;line-height:1.9;">
+      <tr><td style="color:#91766e;padding-right:16px;">Client</td><td><strong>${escape(o.name)}</strong></td></tr>
+      <tr><td style="color:#91766e;padding-right:16px;">Email</td><td>${escape(o.email)}</td></tr>
+      <tr><td style="color:#91766e;padding-right:16px;">Phone</td><td>${escape(o.phone || '—')}</td></tr>
+      <tr><td style="color:#91766e;padding-right:16px;">Treatment</td><td>${escape(o.treatment)}</td></tr>
+      <tr><td style="color:#91766e;padding-right:16px;">When</td><td>${fmtWhen(o.start)}</td></tr>
+      <tr><td style="color:#91766e;padding-right:16px;">Price</td><td>${o.pricePence > 0 ? fmtMoney(o.pricePence) : 'On consultation'}</td></tr>
+    </table>
+    <p style="margin:24px 0 0;">${btn(site.url + '/admin/bookings', 'Open in CRM')}</p>`,
+  });
+}
+
+export function tmplBookingCancelled(o: { firstName: string; treatment: string; start: Date; feeCharged?: number }) {
+  const fee = o.feeCharged
+    ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">As this cancellation was within 24 hours of your appointment, a late-cancellation fee of <strong>${fmtMoney(o.feeCharged)}</strong> has been charged to your card on file.</p>`
+    : `<p>No charge has been taken. We hope to welcome you another time.</p>`;
+  return emailShell({
+    preheader: `Your ${o.treatment} booking has been cancelled`,
+    body: `<h1 style="font-size:24px;margin:0 0 16px;">Booking cancelled</h1>
+    <p>Hi ${escape(o.firstName)}, your <strong>${escape(o.treatment)}</strong> appointment on ${fmtWhen(o.start)} has been cancelled.</p>
+    ${fee}
+    <p style="margin:24px 0;">${btn(site.url + '/book', 'Book again')}</p>
+    <p>With warmth,<br>The K Clinics team</p>`,
+  });
+}
+
+export function tmplChargeReceipt(o: { firstName: string; treatment: string; pricePence: number; late?: boolean }) {
+  return emailShell({
+    preheader: `Receipt — ${o.treatment}`,
+    body: `<h1 style="font-size:24px;margin:0 0 16px;">Thank you, ${escape(o.firstName)}.</h1>
+    <p>${o.late ? 'A late-cancellation fee has been processed' : 'Your payment has been processed'} for your <strong>${escape(o.treatment)}</strong>.</p>
+    <table style="font-family:Helvetica,Arial,sans-serif;font-size:16px;color:#3d352f;line-height:2;">
+      <tr><td style="color:#91766e;padding-right:20px;">Amount</td><td><strong>${fmtMoney(o.pricePence)}</strong></td></tr>
+    </table>
+    <p style="margin-top:20px;">This is your receipt. ${o.late ? '' : 'We hope you love your results.'}</p>
+    <p>With warmth,<br>The K Clinics team</p>`,
+  });
+}
+
+export function tmplPaymentActionRequired(o: { firstName: string; treatment: string; payUrl: string; pricePence: number }) {
+  return emailShell({
+    preheader: 'Action needed to complete your payment',
+    body: `<h1 style="font-size:24px;margin:0 0 16px;">One quick step, ${escape(o.firstName)}.</h1>
+    <p>Your bank needs you to confirm the payment of <strong>${fmtMoney(o.pricePence)}</strong> for your ${escape(o.treatment)}. It only takes a moment.</p>
+    <p style="margin:24px 0;">${btn(o.payUrl, 'Confirm payment')}</p>
+    <p>With warmth,<br>The K Clinics team</p>`,
+  });
 }
 
 function escape(s: string) {

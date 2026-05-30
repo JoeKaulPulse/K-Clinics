@@ -43,11 +43,10 @@ export const site = {
     { day: 'Sunday', dow: 'Su', open: 'Closed', close: 'Closed' },
   ],
 
-  // ── Booking integrations ────────────────────────────────────────────────────
-  // Replace '#' with your live Treatwell & Fresha venue URLs.
+  // ── Booking ───────────────────────────────────────────────────────────────
+  // First-party booking (Stripe-backed). Treatwell/Fresha removed.
   booking: {
-    treatwell: 'https://www.treatwell.co.uk/place/k-clinics/',
-    fresha: 'https://www.fresha.com/a/k-clinics',
+    path: '/book',
     phoneCta: 'tel:+442072500000',
   },
 

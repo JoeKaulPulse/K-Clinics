@@ -31,6 +31,10 @@ export type Treatment = {
   /** Two-stop gradient used for the page's generative hero art (no baked text). */
   gradient: [string, string];
   accent?: string;
+  /** Booking: fixed price in pence (null/undefined = "on consultation", £0 hold). */
+  pricePence?: number | null;
+  /** Booking: appointment length in minutes. */
+  durationMin?: number;
 };
 
 export const treatments: Treatment[] = [
@@ -766,6 +770,43 @@ export const treatments: Treatment[] = [
     gradient: ['#c2a589', '#7b6a5d'],
   },
 ];
+
+// ── Booking config ───────────────────────────────────────────────────────────
+// Price (pence) + duration (minutes) per treatment, used by the booking system.
+// price `null` ⇒ "on consultation": booked as a £0 card-on-file hold, with the
+// amount set by staff at charge time. Edit these freely — they are guide values.
+type BookingCfg = { pricePence: number | null; durationMin: number };
+export const bookingConfig: Record<string, BookingCfg> = {
+  'laser-hair-removal':          { pricePence: 4500,  durationMin: 30 },
+  'laser-hair-removal-for-men':  { pricePence: 6000,  durationMin: 45 },
+  'carbon-laser-peel':           { pricePence: 12000, durationMin: 45 },
+  'laser-tattoo-removal':        { pricePence: 7500,  durationMin: 30 },
+  'smas-hifu-lifting':           { pricePence: 21500, durationMin: 60 },
+  'rf-lifting':                  { pricePence: 17500, durationMin: 45 },
+  'hydraglow-facial':            { pricePence: 7900,  durationMin: 60 },
+  'face-treatments':             { pricePence: 9000,  durationMin: 60 },
+  'body-contouring':             { pricePence: 9500,  durationMin: 60 },
+  'cosmetic-injections':         { pricePence: 18000, durationMin: 45 },
+  'intimate-rejuvenation':       { pricePence: null,  durationMin: 45 },
+  'veneers':                     { pricePence: null,  durationMin: 60 },
+  'teeth-whitening':             { pricePence: null,  durationMin: 60 },
+  'composite-bonding':           { pricePence: null,  durationMin: 60 },
+  'aesthetic-dentistry':         { pricePence: null,  durationMin: 45 },
+  'dental-implant-placement':    { pricePence: null,  durationMin: 60 },
+  'dentures':                    { pricePence: null,  durationMin: 45 },
+  'specialist-dentistry':        { pricePence: null,  durationMin: 45 },
+  'dental-consultations':        { pricePence: null,  durationMin: 30 },
+};
+
+export function bookingFor(slug: string): BookingCfg {
+  return bookingConfig[slug] ?? { pricePence: null, durationMin: 45 };
+}
+
+/** Treatments with a fixed price (bookable with an upfront amount shown). */
+export const bookableTreatments = treatments.map((t) => ({ ...t, ...bookingFor(t.slug) }));
+
+export const formatPrice = (pence: number | null | undefined) =>
+  pence == null ? 'On consultation' : `£${(pence / 100).toLocaleString('en-GB', { minimumFractionDigits: pence % 100 ? 2 : 0 })}`;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 export const getTreatment = (slug: string) => treatments.find((t) => t.slug === slug);

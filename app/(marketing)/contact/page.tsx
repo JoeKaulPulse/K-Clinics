@@ -9,7 +9,7 @@ import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 export const metadata: Metadata = pageMeta({
   title: 'Contact & Find Us — Islington, London | K Clinics',
   description:
-    'Visit K Clinics at 4 Charterhouse Buildings, Goswell Road, Islington, London. Book online via Treatwell or Fresha, call, or email. Opening hours and directions.',
+    'Visit K Clinics at 4 Charterhouse Buildings, Goswell Road, Islington, London. Book online, call, or email. Opening hours and directions.',
   path: '/contact',
   keywords: ['K Clinics contact', 'aesthetics clinic Islington address', 'book appointment London'],
 });
@@ -97,7 +97,7 @@ export default function ContactPage() {
               <p className="eyebrow mb-4">Send an enquiry</p>
               <h2 className="text-title">Tell us what you’re looking for.</h2>
               <p className="mt-5 text-[var(--color-stone)]">
-                Share a few details and our team will be in touch to arrange your complimentary consultation. Prefer to book instantly? Use Treatwell or Fresha above.
+                Share a few details and our team will be in touch to arrange your complimentary consultation. Prefer to book instantly? Use the online booking above.
               </p>
             </div>
           </Reveal>
