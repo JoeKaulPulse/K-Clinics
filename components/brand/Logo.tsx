@@ -1,36 +1,32 @@
 import { site } from '@/lib/site';
+import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 
-/** K Clinics wordmark — a fine serif "K" monogram inside a hairline ring,
- *  set beside an editorial wordmark. Pure SVG/CSS, scales crisply. */
+/**
+ * K Clinics logo — rendered as inline SVG content.
+ *  • Desktop (sm+): the "K" mark stacked ABOVE the "CLINICS" wordmark.
+ *  • Mobile (<sm):  the "K" mark only.
+ *
+ * Colour follows `currentColor`, so it flips to porcelain over dark heroes and
+ * ink on light surfaces. Real artwork lives in components/brand/marks.tsx.
+ */
 export function Logo({ className = '', mono = false }: { className?: string; mono?: boolean }) {
-  const tone = mono ? 'currentColor' : 'var(--color-gold)';
+  const color = mono ? 'var(--color-porcelain)' : 'var(--color-fg)';
+
   return (
-    <span className={`inline-flex items-center gap-3 ${className}`} aria-label={site.name}>
-      <span className="relative grid h-10 w-10 place-items-center">
-        <svg viewBox="0 0 48 48" className="absolute inset-0 h-full w-full" aria-hidden>
-          <circle cx="24" cy="24" r="23" fill="none" stroke={tone} strokeWidth="1" opacity="0.55" />
-        </svg>
-        <span
-          className="font-[family-name:var(--font-display)] text-[1.4rem] leading-none"
-          style={{ color: mono ? 'currentColor' : 'var(--color-fg)', fontVariationSettings: "'opsz' 144" }}
-        >
-          K
-        </span>
+    <span
+      className={`inline-flex flex-col items-center leading-none ${className}`}
+      style={{ color }}
+      aria-label={site.name}
+    >
+      {/* K mark — always visible */}
+      <span aria-hidden className="block h-9 w-9 sm:h-11 sm:w-11">
+        <KMark />
       </span>
-      <span className="flex flex-col leading-none">
-        <span
-          className="font-[family-name:var(--font-display)] text-[1.18rem] tracking-[-0.01em]"
-          style={{ fontVariationSettings: "'opsz' 144" }}
-        >
-          K&nbsp;Clinics
-        </span>
-        <span
-          className="mt-[3px] text-[0.5rem] font-medium uppercase tracking-[0.34em]"
-          style={{ color: mono ? 'currentColor' : 'var(--color-gold)' }}
-        >
-          London
-        </span>
+      {/* CLINICS wordmark — desktop only, stacked beneath the K */}
+      <span aria-hidden className="mt-2 hidden h-[0.6rem] w-[7.25rem] sm:block">
+        <ClinicsWordmark />
       </span>
+      <span className="sr-only">{site.name}</span>
     </span>
   );
 }

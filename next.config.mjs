@@ -24,6 +24,10 @@ const nextConfig = {
     formats: ['image/avif', 'image/webp'],
     // GitHub Pages has no image optimiser; serve images as-is.
     unoptimized: isPages,
+    // Allow SVG to be served through next/image (brand logo, icons).
+    dangerouslyAllowSVG: true,
+    contentDispositionType: 'inline',
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   ...(isPages
     ? {
