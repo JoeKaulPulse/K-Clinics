@@ -34,6 +34,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Strip server-only routes for static export
+        # The CRM (API, admin dashboard, middleware) requires a server and can't
+        # be statically exported. Remove them for the GitHub Pages preview only;
+        # they remain in the repo for the Vercel production deploy.
+        run: |
+          rm -rf app/api app/admin components/admin middleware.ts
+          echo "Removed server-only routes for static build."
+
       - name: Configure Pages (auto-enables Pages if needed)
         id: pages
         uses: actions/configure-pages@v5
@@ -48,6 +59,7 @@ jobs:
         env:
           GHPAGES: 'true'
           PAGES_BASE_PATH: ${{ steps.base.outputs.path }}
+          NEXT_PUBLIC_CRM_ENABLED: 'false'
         run: npm run build
 
       - name: Disable Jekyll (serve _next/)

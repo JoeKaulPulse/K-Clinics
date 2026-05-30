@@ -19,10 +19,10 @@ export default function OG() {
           flexDirection: 'column',
           justifyContent: 'space-between',
           padding: 80,
-          backgroundColor: '#2b1d24',
+          backgroundColor: '#2a2420',
           backgroundImage:
-            'radial-gradient(120% 120% at 80% -10%, rgba(176,133,68,0.35), rgba(43,29,36,0) 55%)',
-          color: '#f8f1ec',
+            'radial-gradient(120% 120% at 80% -10%, rgba(169,138,109,0.35), rgba(42,36,32,0) 55%)',
+          color: '#f6ece3',
           fontFamily: 'serif',
         }}
       >
@@ -32,7 +32,7 @@ export default function OG() {
               width: 64,
               height: 64,
               borderRadius: 999,
-              border: '2px solid #b08544',
+              border: '2px solid #a98a6d',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -48,7 +48,7 @@ export default function OG() {
           <div style={{ fontSize: 76, lineHeight: 1.05, letterSpacing: -1 }}>
             Aesthetics & dentistry,
           </div>
-          <div style={{ fontSize: 76, lineHeight: 1.05, color: '#e3c98f', letterSpacing: -1 }}>
+          <div style={{ fontSize: 76, lineHeight: 1.05, color: '#dcc4a8', letterSpacing: -1 }}>
             perfected.
           </div>
           <div

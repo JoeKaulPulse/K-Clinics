@@ -27,7 +27,7 @@ export const packages: Pkg[] = [
     ],
     bestFor: 'A comprehensive, year-long renewal of face and body.',
     priceFrom: 'On consultation',
-    gradient: ['#b08544', '#7a4f57'],
+    gradient: ['#a98a6d', '#7b6a5d'],
     related: ['smas-hifu-lifting', 'rf-lifting', 'body-contouring'],
   },
   {
@@ -45,7 +45,7 @@ export const packages: Pkg[] = [
     ],
     bestFor: 'Acne-prone, congested or unevenly pigmented skin.',
     priceFrom: 'On consultation',
-    gradient: ['#d8a9a0', '#c9a86a'],
+    gradient: ['#cdb4a3', '#c2a589'],
     related: ['carbon-laser-peel', 'face-treatments', 'hydraglow-facial'],
   },
   {
@@ -63,7 +63,7 @@ export const packages: Pkg[] = [
     ],
     bestFor: 'Smoothing cellulite and sculpting body contours.',
     priceFrom: 'On consultation',
-    gradient: ['#c9a86a', '#3a2730'],
+    gradient: ['#c2a589', '#3d352f'],
     related: ['body-contouring', 'rf-lifting', 'smas-hifu-lifting'],
   },
   {
@@ -81,7 +81,7 @@ export const packages: Pkg[] = [
     ],
     bestFor: 'Women seeking permanent, full-body hair reduction.',
     priceFrom: 'On consultation',
-    gradient: ['#c9a86a', '#7a4f57'],
+    gradient: ['#c2a589', '#7b6a5d'],
     related: ['laser-hair-removal', 'carbon-laser-peel', 'hydraglow-facial'],
   },
 ];

@@ -34,19 +34,20 @@ export type ThemeTokens = {
 };
 
 export const defaultTheme: ThemeTokens = {
-  ink: '#2b1d24',
-  inkSoft: '#3a2730',
-  espresso: '#4a3038',
-  porcelain: '#f8f1ec',
-  bone: '#f1e6df',
-  sand: '#e7d4ca',
-  stone: '#9a8479',
-  stoneSoft: '#c3ada0',
-  gold: '#b08544',
-  goldSoft: '#c9a86a',
-  goldBright: '#e3c98f',
-  jade: '#7a4f57',
-  blush: '#d8a9a0',
+  // Official K Clinics "warm taupe & cream" identity (cream #F6ECE3, taupe #91766E).
+  ink: '#2a2420',
+  inkSoft: '#3d352f',
+  espresso: '#4a3f37',
+  porcelain: '#f6ece3',
+  bone: '#efe3d7',
+  sand: '#e3d3c4',
+  stone: '#91766e',
+  stoneSoft: '#b7a294',
+  gold: '#a98a6d',
+  goldSoft: '#c2a589',
+  goldBright: '#dcc4a8',
+  jade: '#7b6a5d',
+  blush: '#cdb4a3',
 };
 
 // Maps token keys → CSS custom property names.

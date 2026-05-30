@@ -75,8 +75,8 @@ export function GenerativeArt({
 
       {/* Top light + bottom shade + vignette */}
       <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_-10%,rgba(255,255,255,0.30),transparent_55%)]" />
-      <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(43,29,36,0.40),transparent_46%)]" />
-      <span className="pointer-events-none absolute inset-0 shadow-[inset_0_0_120px_rgba(43,29,36,0.35)]" />
+      <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(42,36,32,0.40),transparent_46%)]" />
+      <span className="pointer-events-none absolute inset-0 shadow-[inset_0_0_120px_rgba(42,36,32,0.35)]" />
     </div>
   );
 }

@@ -20,8 +20,8 @@ export function Hero() {
     <section ref={ref} className="relative flex min-h-[100svh] items-end overflow-hidden">
       {/* Generative backdrop */}
       <motion.div style={{ y, scale }} className="absolute inset-0">
-        <GenerativeArt from="#2b1d24" to="#4a3038" className="h-full w-full" />
-        <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(80%_60%_at_70%_30%,rgba(176,133,68,0.30),transparent_60%)]" />
+        <GenerativeArt from="#2a2420" to="#4a3f37" className="h-full w-full" />
+        <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(80%_60%_at_70%_30%,rgba(169,138,109,0.30),transparent_60%)]" />
       </motion.div>
 
       {/* Signature animated K emblem — self-draws on load, drifts on scroll */}
