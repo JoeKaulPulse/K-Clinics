@@ -90,7 +90,7 @@ export default function ContactPage() {
       </section>
 
       {/* Enquiry form */}
-      <section className="bg-[var(--color-bone)] py-20 md:py-28">
+      <section className="bg-[var(--color-bone)] section">
         <div className="container-lux grid gap-12 lg:grid-cols-[0.7fr_1.3fr] lg:items-start">
           <Reveal>
             <div className="lg:sticky lg:top-28">

@@ -28,7 +28,7 @@ export default function FaqPage() {
         <BookingButtons />
       </PageHero>
 
-      <section className="container-lux py-20 md:py-28">
+      <section className="container-lux section">
         <div className="space-y-16">
           {generalFaqs.map((g) => (
             <Reveal key={g.heading}>

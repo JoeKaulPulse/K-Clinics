@@ -26,7 +26,7 @@ export default function PackagesPage() {
         gradient={['#b08544', '#3a2730']}
       />
 
-      <section className="container-lux py-20 md:py-28">
+      <section className="container-lux section">
         <Stagger className="grid gap-8">
           {packages.map((p, i) => (
             <StaggerItem key={p.slug}>

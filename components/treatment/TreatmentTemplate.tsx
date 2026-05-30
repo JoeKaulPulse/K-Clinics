@@ -84,13 +84,13 @@ export function TreatmentTemplate({ t }: { t: Treatment }) {
       </section>
 
       {/* Benefits */}
-      <section className="bg-[var(--color-bone)] py-20 md:py-28">
+      <section className="bg-[var(--color-bone)] section">
         <div className="container-lux">
           <Reveal>
             <p className="eyebrow mb-4">The difference</p>
             <h2 className="text-title max-w-2xl">Why clients choose this treatment.</h2>
           </Reveal>
-          <Stagger className="mt-12 grid gap-px overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2">
+          <Stagger className="mt-[var(--space-block)] grid gap-px overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2">
             {t.benefits.map((b) => (
               <StaggerItem key={b.title} className="bg-[var(--color-porcelain)] p-8">
                 <div className="mb-4 grid h-11 w-11 place-items-center rounded-full bg-[var(--color-ink)] text-[var(--color-gold-soft)]">
@@ -107,12 +107,12 @@ export function TreatmentTemplate({ t }: { t: Treatment }) {
       </section>
 
       {/* Process */}
-      <section className="container-lux py-20 md:py-28">
+      <section className="container-lux section">
         <Reveal>
           <p className="eyebrow mb-4">The journey</p>
           <h2 className="text-title max-w-2xl">What to expect, step by step.</h2>
         </Reveal>
-        <Stagger className="mt-12 grid gap-8 md:grid-cols-3">
+        <Stagger className="mt-[var(--space-block)] grid gap-8 md:grid-cols-3">
           {t.process.map((s, i) => (
             <StaggerItem key={s.title} className="relative border-t border-[var(--color-ink)] pt-6">
               <p className="font-[family-name:var(--font-display)] text-5xl text-gold-gradient">
@@ -126,7 +126,7 @@ export function TreatmentTemplate({ t }: { t: Treatment }) {
       </section>
 
       {/* FAQ */}
-      <section className="bg-[var(--color-bone)] py-20 md:py-28">
+      <section className="bg-[var(--color-bone)] section">
         <div className="container-lux grid gap-12 lg:grid-cols-[0.7fr_1.3fr] lg:items-start">
           <Reveal>
             <div className="lg:sticky lg:top-28">
@@ -150,12 +150,12 @@ export function TreatmentTemplate({ t }: { t: Treatment }) {
 
       {/* Related */}
       {related.length > 0 && (
-        <section className="container-lux py-20 md:py-28">
+        <section className="container-lux section">
           <Reveal>
             <p className="eyebrow mb-4">You may also love</p>
             <h2 className="text-title">Complete the experience.</h2>
           </Reveal>
-          <Stagger className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <Stagger className="mt-[var(--space-block)] grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {related.map((r, i) => (
               <StaggerItem key={r.slug}>
                 <TreatmentCard t={r} index={i} />

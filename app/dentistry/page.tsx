@@ -30,7 +30,7 @@ export default function DentistryPage() {
       </PageHero>
 
       {Object.entries(groups).map(([group, list]) => (
-        <section key={group} className="container-lux py-16 md:py-20">
+        <section key={group} className="container-lux section-sm">
           <Reveal>
             <div className="mb-10 flex items-end justify-between gap-6 border-b border-[var(--color-line)] pb-5">
               <h2 className="text-title">{group}</h2>

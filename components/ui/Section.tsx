@@ -19,11 +19,14 @@ export function SectionHeading({
 }) {
   return (
     <div
-      className={`${align === 'center' ? 'mx-auto text-center' : ''} max-w-2xl ${className}`}
+      className={`${align === 'center' ? 'mx-auto max-w-3xl text-center' : 'max-w-3xl'} ${className}`}
     >
       {eyebrow && (
         <Reveal>
-          <p className="eyebrow mb-4">{eyebrow}</p>
+          <p className={`eyebrow mb-6 inline-flex items-center gap-2.5 ${align === 'center' ? 'justify-center' : ''}`}>
+            <span className="h-px w-7 bg-[var(--color-gold)]/60" />
+            {eyebrow}
+          </p>
         </Reveal>
       )}
       <Reveal delay={0.05}>
@@ -32,7 +35,7 @@ export function SectionHeading({
       {lede && (
         <Reveal delay={0.12}>
           <p
-            className={`mt-5 text-lg leading-relaxed ${
+            className={`mt-6 text-lede leading-relaxed ${align === 'center' ? 'mx-auto' : ''} max-w-2xl ${
               tone === 'light'
                 ? 'text-[color-mix(in_oklab,var(--color-porcelain)_74%,transparent)]'
                 : 'text-[var(--color-stone)]'
