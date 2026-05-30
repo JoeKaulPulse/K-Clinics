@@ -285,6 +285,19 @@
 .animate-float { animation: float-slow 9s var(--ease-glide) infinite; }
 .animate-marquee { animation: marquee 38s linear infinite; }
 
+/* ── CSS entrance animations (no JS — keeps the hero a light server component) ─ */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(1.4rem); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes media-in {
+  from { opacity: 0; transform: scale(1.08); }
+  to   { opacity: 1; transform: scale(1); }
+}
+/* Elements start hidden and rise into place; stagger via inline animation-delay. */
+.rise { opacity: 0; animation: rise-in 0.9s var(--ease-lux) both; }
+.media-in { animation: media-in 1.4s var(--ease-lux) both; }
+
 /* ── Animated K monogram: self-draw calligraphy + fill bloom + sheen ──────── */
 @keyframes k-draw {
   to { stroke-dashoffset: 0; }

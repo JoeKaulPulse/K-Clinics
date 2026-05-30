@@ -137,7 +137,13 @@ export default function HomePage() {
             lede="Drag to reveal the difference. Every result is the product of a bespoke plan, expert hands and the patience to do things properly."
           />
           <Reveal delay={0.1}>
-            <BeforeAfter className="aspect-[4/3] w-full shadow-[var(--shadow-lift)]" />
+            <BeforeAfter
+              beforeSrc="/hero/result-before.webp"
+              afterSrc="/hero/result-after.webp"
+              labelBefore="Before"
+              labelAfter="After"
+              className="aspect-[4/3] w-full shadow-[var(--shadow-lift)]"
+            />
             <p className="mt-4 text-center text-xs text-[var(--color-stone)]">
               Illustrative preview. Real client before-and-afters available at consultation.
             </p>
