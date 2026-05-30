@@ -69,6 +69,30 @@ export async function assessmentStatus(clientId: string) {
   return latestByType;
 }
 
+/** Decrypt + format an assessment for clinical display (caller MUST authorise). */
+export async function formatAssessment(id: string) {
+  const a = await readAssessment(id);
+  if (!a) return null;
+  const key = (a.questionnaire?.key as string) || a.questionnaireKey.split('@')[0];
+  const def = getQuestionnaire(key);
+  const answers = (a.answers || {}) as Record<string, unknown>;
+  const items = (def?.questions ?? []).map((q) => {
+    const raw = answers[q.id];
+    let value = '—';
+    if (raw !== undefined && raw !== '' && raw !== null) {
+      if (q.options && (q.type === 'single' || q.type === 'boolean')) {
+        value = q.options.find((o) => o.value === raw)?.label ?? String(raw);
+      } else if (q.type === 'multi' && Array.isArray(raw)) {
+        value = raw.map((v) => q.options?.find((o) => o.value === v)?.label ?? v).join(', ');
+      } else {
+        value = String(raw);
+      }
+    }
+    return { id: q.id, prompt: q.prompt, value };
+  }).filter((it) => it.value !== '—');
+  return { title: def?.title ?? key, version: a.version, submittedAt: a.submittedAt, tampered: a.tampered, items };
+}
+
 /** Decrypt a single assessment — clinical access only (caller must authorise). */
 export async function readAssessment(id: string) {
   const row = await db.healthAssessment.findUnique({ where: { id } });
