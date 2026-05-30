@@ -18,8 +18,8 @@ export default function OG() {
           justifyContent: 'space-between',
           padding: 80,
           background:
-            'radial-gradient(120% 120% at 80% -10%, rgba(176,133,68,0.35), transparent 55%), #161310',
-          color: '#faf6ef',
+            'radial-gradient(120% 120% at 80% -10%, rgba(176,133,68,0.35), transparent 55%), #2b1d24',
+          color: '#f8f1ec',
           fontFamily: 'serif',
         }}
       >
@@ -53,7 +53,7 @@ export default function OG() {
               marginTop: 28,
               fontSize: 26,
               fontFamily: 'sans-serif',
-              color: 'rgba(250,246,239,0.72)',
+              color: 'rgba(248,241,236,0.72)',
             }}
           >
             Laser & skin · Non-surgical lifting · Aesthetic dentistry — Islington, London

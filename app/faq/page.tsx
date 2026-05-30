@@ -23,7 +23,7 @@ export default function FaqPage() {
         eyebrow="Everything explained"
         title="Your questions, thoughtfully answered."
         lede="Everything you might want to know before your first visit. If your question isn’t here, our team would be delighted to help."
-        gradient={['#161310', '#3f5a4e']}
+        gradient={['#2b1d24', '#7a4f57']}
       >
         <BookingButtons />
       </PageHero>

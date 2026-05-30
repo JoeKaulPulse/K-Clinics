@@ -23,7 +23,7 @@ export default function PackagesPage() {
         eyebrow="Curated programmes"
         title="Signature packages, designed to transform."
         lede="Our most considered work happens over time. Each programme sequences complementary treatments into a single, value-led journey toward a defined result."
-        gradient={['#b08544', '#2c2620']}
+        gradient={['#b08544', '#3a2730']}
       />
 
       <section className="container-lux py-20 md:py-28">

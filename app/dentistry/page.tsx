@@ -24,7 +24,7 @@ export default function DentistryPage() {
         eyebrow="Aesthetic & Restorative Dentistry"
         title="A smile, designed around you."
         lede="Health-led, beauty-driven dentistry — uniting veneers, whitening, bonding, implants and specialist care under one meticulous standard."
-        gradient={['#3f5a4e', '#161310']}
+        gradient={['#7a4f57', '#2b1d24']}
       >
         <BookingButtons />
       </PageHero>

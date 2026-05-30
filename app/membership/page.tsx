@@ -38,7 +38,7 @@ export default function MembershipPage() {
         eyebrow="Beauty Points · Membership"
         title="Rewarded for radiance."
         lede="Our way of saying thank you. Every treatment earns Beauty Points and unlocks privileges designed to make looking — and feeling — your best even more rewarding."
-        gradient={['#c9a86a', '#2c2620']}
+        gradient={['#c9a86a', '#3a2730']}
       >
         <BookingButtons />
       </PageHero>

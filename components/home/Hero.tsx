@@ -19,7 +19,7 @@ export function Hero() {
     <section ref={ref} className="relative flex min-h-[100svh] items-end overflow-hidden">
       {/* Generative backdrop */}
       <motion.div style={{ y, scale }} className="absolute inset-0">
-        <GenerativeArt from="#161310" to="#3f342b" className="h-full w-full" />
+        <GenerativeArt from="#2b1d24" to="#4a3038" className="h-full w-full" />
         <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(80%_60%_at_70%_30%,rgba(176,133,68,0.30),transparent_60%)]" />
       </motion.div>
 

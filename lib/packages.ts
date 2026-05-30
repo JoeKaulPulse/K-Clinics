@@ -27,7 +27,7 @@ export const packages: Pkg[] = [
     ],
     bestFor: 'A comprehensive, year-long renewal of face and body.',
     priceFrom: 'On consultation',
-    gradient: ['#b08544', '#3f5a4e'],
+    gradient: ['#b08544', '#7a4f57'],
     related: ['smas-hifu-lifting', 'rf-lifting', 'body-contouring'],
   },
   {
@@ -63,7 +63,7 @@ export const packages: Pkg[] = [
     ],
     bestFor: 'Smoothing cellulite and sculpting body contours.',
     priceFrom: 'On consultation',
-    gradient: ['#c9a86a', '#2c2620'],
+    gradient: ['#c9a86a', '#3a2730'],
     related: ['body-contouring', 'rf-lifting', 'smas-hifu-lifting'],
   },
   {
@@ -81,7 +81,7 @@ export const packages: Pkg[] = [
     ],
     bestFor: 'Women seeking permanent, full-body hair reduction.',
     priceFrom: 'On consultation',
-    gradient: ['#c9a86a', '#3f5a4e'],
+    gradient: ['#c9a86a', '#7a4f57'],
     related: ['laser-hair-removal', 'carbon-laser-peel', 'hydraglow-facial'],
   },
 ];

@@ -21,7 +21,7 @@ export default function ContactPage() {
         eyebrow="Visit · Call · Book"
         title="Come and meet us."
         lede="A calm, private clinic in the heart of Clerkenwell. Book instantly online, or get in touch — we would love to welcome you."
-        gradient={['#3f5a4e', '#161310']}
+        gradient={['#7a4f57', '#2b1d24']}
       >
         <BookingButtons />
       </PageHero>

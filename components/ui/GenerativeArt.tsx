@@ -52,7 +52,7 @@ export function GenerativeArt({
       ))}
       {/* Sheen sweep */}
       <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_-10%,rgba(255,255,255,0.28),transparent_55%)]" />
-      <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(22,19,16,0.32),transparent_45%)]" />
+      <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(43,29,36,0.32),transparent_45%)]" />
     </div>
   );
 }

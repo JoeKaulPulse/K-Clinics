@@ -49,14 +49,14 @@ export default function HomePage() {
               href: '/treatments',
               title: 'Laser, Skin & Body',
               text: 'Medical-grade laser hair removal, non-surgical lifting, advanced facials, body contouring and refined injectables.',
-              grad: ['#b08544', '#3f5a4e'] as [string, string],
+              grad: ['#b08544', '#7a4f57'] as [string, string],
             },
             {
               tag: 'Dentistry',
               href: '/dentistry',
               title: 'Aesthetic Dentistry',
               text: 'Smile design, porcelain veneers, professional whitening, composite bonding and life-changing dental implants.',
-              grad: ['#3f5a4e', '#161310'] as [string, string],
+              grad: ['#7a4f57', '#2b1d24'] as [string, string],
             },
           ].map((c, idx) => (
             <Reveal key={c.tag} delay={idx * 0.1}>
@@ -194,7 +194,7 @@ export default function HomePage() {
       <section className="container-lux py-24 md:py-32">
         <Reveal>
           <div className="relative overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-10 md:p-16">
-            <GenerativeArt from="#c9a86a" to="#3f5a4e" className="absolute right-0 top-0 hidden h-full w-1/3 opacity-90 md:block" />
+            <GenerativeArt from="#c9a86a" to="#7a4f57" className="absolute right-0 top-0 hidden h-full w-1/3 opacity-90 md:block" />
             <div className="relative max-w-xl">
               <p className="eyebrow mb-4">Beauty Points · Membership</p>
               <h2 className="text-title">Rewarded for radiance.</h2>

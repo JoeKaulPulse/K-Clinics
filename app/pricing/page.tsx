@@ -24,7 +24,7 @@ export default function PricingPage() {
         eyebrow="Transparent pricing"
         title="Clarity, before you commit."
         lede="Guide prices to help you plan. Your exact, personalised pricing is confirmed at a complimentary consultation — where new clients also enjoy 15% off their first visit."
-        gradient={['#2c2620', '#b08544']}
+        gradient={['#3a2730', '#b08544']}
       >
         <BookingButtons />
       </PageHero>
