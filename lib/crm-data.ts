@@ -63,6 +63,11 @@ export async function getClient(id: string) {
       appointments: { orderBy: { scheduledAt: 'desc' } },
       bookings: { orderBy: { startAt: 'desc' } },
       emails: { orderBy: { createdAt: 'desc' }, take: 20 },
+      assessments: {
+        orderBy: { submittedAt: 'desc' },
+        select: { id: true, type: true, version: true, submittedAt: true, questionnaireKey: true, supersedesId: true },
+      },
+      discountClaims: { orderBy: { createdAt: 'desc' } },
     },
   });
 }
