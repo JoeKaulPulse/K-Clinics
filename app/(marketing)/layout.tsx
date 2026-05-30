@@ -4,6 +4,7 @@ import { Footer } from '@/components/layout/Footer';
 import { PageTransition } from '@/components/motion/PageTransition';
 import { ScrollProgress } from '@/components/motion/ScrollProgress';
 import { Cursor } from '@/components/motion/Cursor';
+import { Intro } from '@/components/motion/Intro';
 import { BackToTop } from '@/components/motion/BackToTop';
 
 // Marketing chrome: header, footer, scroll/cursor flourishes, page transitions.
@@ -11,6 +12,7 @@ import { BackToTop } from '@/components/motion/BackToTop';
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
+      <Intro />
       <JsonLd data={organizationLd()} />
       <ScrollProgress />
       <Cursor />
