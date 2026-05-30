@@ -3,6 +3,8 @@ import { site } from '@/lib/site';
 import { treatmentSlugs } from '@/lib/treatments';
 import { packages } from '@/lib/packages';
 
+export const dynamic = 'force-static';
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
   const base = site.url;

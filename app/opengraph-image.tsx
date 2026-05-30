@@ -1,7 +1,8 @@
 import { ImageResponse } from 'next/og';
 import { site } from '@/lib/site';
 
-export const runtime = 'edge';
+// Generated at build time (Node) so it works in a static export for GitHub Pages.
+export const dynamic = 'force-static';
 export const alt = `${site.name} — ${site.tagline}`;
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
@@ -11,14 +12,16 @@ export default function OG() {
     (
       <div
         style={{
+          position: 'relative',
           width: '100%',
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
           padding: 80,
-          background:
-            'radial-gradient(120% 120% at 80% -10%, rgba(176,133,68,0.35), transparent 55%), #2b1d24',
+          backgroundColor: '#2b1d24',
+          backgroundImage:
+            'radial-gradient(120% 120% at 80% -10%, rgba(176,133,68,0.35), rgba(43,29,36,0) 55%)',
           color: '#f8f1ec',
           fontFamily: 'serif',
         }}
