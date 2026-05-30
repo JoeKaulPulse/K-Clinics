@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRef } from 'react';
 import { motion, useScroll, useTransform, useReducedMotion } from 'motion/react';
 import { WordReveal } from '@/components/motion/WordReveal';
@@ -76,7 +77,11 @@ export function Hero() {
         >
           <BookingButtons />
           <p className="mt-5 text-sm text-[color-mix(in_oklab,var(--color-porcelain)_60%,transparent)]">
-            Complimentary consultations · 15% off your first visit
+            Or{' '}
+            <Link href="/consultation" className="link-underline font-medium text-[var(--color-gold-soft)]">
+              request a complimentary consultation
+            </Link>{' '}
+            · 15% off your first visit
           </p>
         </motion.div>
       </motion.div>
