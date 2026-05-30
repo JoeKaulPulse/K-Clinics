@@ -4,6 +4,8 @@ import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
+import { NewBookingButton } from '@/components/admin/NewBookingButton';
+import { bookableTreatments } from '@/lib/treatments';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +31,12 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
   const can = await sessionPermissions();
   return (
     <AdminShell user={session?.email} can={can}>
-      <h1 className="font-[family-name:var(--font-display)] text-3xl">Bookings</h1>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="font-[family-name:var(--font-display)] text-3xl">Bookings</h1>
+        {sessionCan(session, 'bookings.manage') && (
+          <NewBookingButton treatments={bookableTreatments.map((t) => ({ slug: t.slug, title: t.title }))} />
+        )}
+      </div>
 
       <div className="mt-6 flex flex-wrap gap-2">
         {FILTERS.map((f) => (
