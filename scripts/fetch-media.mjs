@@ -37,12 +37,19 @@ function download(url) {
 }
 
 const present = [];
-let ok = 0, fail = 0, skip = 0;
-for (let i = 0; i < urls.length; i++) {
-  const r = await download(urls[i]);
-  if (r.ok) { present.push(r.file); r.skipped ? skip++ : ok++; }
-  else { fail++; if (fail < 30) console.warn('  FAIL', r.status || r.error, urls[i]); }
-  if (i % 50 === 0) process.stdout.write(`\r${i}/${urls.length} (ok ${ok}, skip ${skip}, fail ${fail})`);
+let ok = 0, fail = 0, skip = 0, done = 0;
+const CONCURRENCY = 12;
+let cursor = 0;
+async function worker() {
+  while (cursor < urls.length) {
+    const url = urls[cursor++];
+    const r = await download(url);
+    if (r.ok) { present.push(r.file); r.skipped ? skip++ : ok++; }
+    else { fail++; if (fail < 30) console.warn('  FAIL', r.status || r.error, url); }
+    done++;
+    if (done % 25 === 0) process.stdout.write(`\r${done}/${urls.length} (ok ${ok}, skip ${skip}, fail ${fail})`);
+  }
 }
+await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify([...new Set(present)].sort(), null, 2));
 console.log(`\nDone. ${present.length} files in public/treatments/, manifest.json written. (fail ${fail})`);
