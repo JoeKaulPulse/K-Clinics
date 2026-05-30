@@ -31,7 +31,7 @@ export default function AboutPage() {
         eyebrow={`Established ${site.founded} · Islington, London`}
         title="A higher standard of care, beautifully delivered."
         lede="K Clinics was founded on a conviction that has never wavered: that exceptional results come from the rare union of clinical rigour, genuine artistry and an obsession with how people feel in our care."
-        gradient={['#3f5a4e', '#161310']}
+        gradient={['#7a4f57', '#2b1d24']}
       >
         <BookingButtons />
       </PageHero>
@@ -39,7 +39,7 @@ export default function AboutPage() {
       {/* Story */}
       <section className="container-lux grid gap-12 py-20 md:grid-cols-2 md:items-center md:py-28">
         <Reveal>
-          <GenerativeArt from="#b08544" to="#3f5a4e" className="aspect-[4/5] rounded-[var(--radius-2xl)] shadow-[var(--shadow-lift)]" />
+          <GenerativeArt from="#b08544" to="#7a4f57" className="aspect-[4/5] rounded-[var(--radius-2xl)] shadow-[var(--shadow-lift)]" />
         </Reveal>
         <Reveal delay={0.1}>
           <p className="eyebrow mb-4">Our philosophy</p>

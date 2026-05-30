@@ -71,7 +71,7 @@ export const treatments: Treatment[] = [
     ],
     priceFrom: '£45',
     related: ['laser-hair-removal-for-men', 'carbon-laser-peel', 'hydraglow-facial'],
-    gradient: ['#c9a86a', '#3f5a4e'],
+    gradient: ['#c9a86a', '#7a4f57'],
   },
   {
     slug: 'laser-hair-removal-for-men',
@@ -110,7 +110,7 @@ export const treatments: Treatment[] = [
     ],
     priceFrom: '£60',
     related: ['laser-hair-removal', 'carbon-laser-peel', 'rf-lifting'],
-    gradient: ['#3f5a4e', '#161310'],
+    gradient: ['#7a4f57', '#2b1d24'],
   },
   {
     slug: 'carbon-laser-peel',
@@ -148,7 +148,7 @@ export const treatments: Treatment[] = [
     ],
     priceFrom: '£120',
     related: ['hydraglow-facial', 'face-treatments', 'laser-hair-removal'],
-    gradient: ['#2c2620', '#b08544'],
+    gradient: ['#3a2730', '#b08544'],
   },
   {
     slug: 'laser-tattoo-removal',
@@ -186,7 +186,7 @@ export const treatments: Treatment[] = [
     ],
     priceFrom: '£75',
     related: ['carbon-laser-peel', 'face-treatments', 'laser-hair-removal'],
-    gradient: ['#161310', '#3f5a4e'],
+    gradient: ['#2b1d24', '#7a4f57'],
   },
   {
     slug: 'smas-hifu-lifting',
@@ -224,7 +224,7 @@ export const treatments: Treatment[] = [
     ],
     priceFrom: '£215',
     related: ['rf-lifting', 'cosmetic-injections', 'hydraglow-facial'],
-    gradient: ['#b08544', '#161310'],
+    gradient: ['#b08544', '#2b1d24'],
   },
   {
     slug: 'rf-lifting',
@@ -263,7 +263,7 @@ export const treatments: Treatment[] = [
     ],
     priceFrom: '£175',
     related: ['smas-hifu-lifting', 'body-contouring', 'hydraglow-facial'],
-    gradient: ['#c9a86a', '#2c2620'],
+    gradient: ['#c9a86a', '#3a2730'],
   },
   {
     slug: 'hydraglow-facial',
@@ -340,7 +340,7 @@ export const treatments: Treatment[] = [
     ],
     priceFrom: '£90',
     related: ['hydraglow-facial', 'carbon-laser-peel', 'smas-hifu-lifting'],
-    gradient: ['#3f5a4e', '#c9a86a'],
+    gradient: ['#7a4f57', '#c9a86a'],
   },
   {
     slug: 'body-contouring',
@@ -378,7 +378,7 @@ export const treatments: Treatment[] = [
     ],
     priceFrom: '£95',
     related: ['rf-lifting', 'smas-hifu-lifting', 'cosmetic-injections'],
-    gradient: ['#c9a86a', '#3f5a4e'],
+    gradient: ['#c9a86a', '#7a4f57'],
   },
   {
     slug: 'cosmetic-injections',
@@ -455,7 +455,7 @@ export const treatments: Treatment[] = [
     ],
     priceFrom: 'On consultation',
     related: ['rf-lifting', 'body-contouring', 'face-treatments'],
-    gradient: ['#d8a9a0', '#2c2620'],
+    gradient: ['#d8a9a0', '#3a2730'],
   },
 
   // ───────────────────────────── DENTISTRY ──────────────────────────────────
@@ -495,7 +495,7 @@ export const treatments: Treatment[] = [
     ],
     priceFrom: 'On consultation',
     related: ['composite-bonding', 'teeth-whitening', 'aesthetic-dentistry'],
-    gradient: ['#e3c98f', '#3f5a4e'],
+    gradient: ['#e3c98f', '#7a4f57'],
   },
   {
     slug: 'teeth-whitening',
@@ -533,7 +533,7 @@ export const treatments: Treatment[] = [
     ],
     priceFrom: 'On consultation',
     related: ['veneers', 'composite-bonding', 'aesthetic-dentistry'],
-    gradient: ['#faf6ef', '#c9a86a'],
+    gradient: ['#f8f1ec', '#c9a86a'],
   },
   {
     slug: 'composite-bonding',
@@ -571,7 +571,7 @@ export const treatments: Treatment[] = [
     ],
     priceFrom: 'On consultation',
     related: ['veneers', 'teeth-whitening', 'aesthetic-dentistry'],
-    gradient: ['#c9a86a', '#faf6ef'],
+    gradient: ['#c9a86a', '#f8f1ec'],
   },
   {
     slug: 'aesthetic-dentistry',
@@ -609,7 +609,7 @@ export const treatments: Treatment[] = [
     ],
     priceFrom: 'On consultation',
     related: ['veneers', 'teeth-whitening', 'composite-bonding'],
-    gradient: ['#3f5a4e', '#e3c98f'],
+    gradient: ['#7a4f57', '#e3c98f'],
   },
   {
     slug: 'dental-implant-placement',
@@ -648,7 +648,7 @@ export const treatments: Treatment[] = [
     ],
     priceFrom: 'On consultation',
     related: ['dentures', 'specialist-dentistry', 'dental-consultations'],
-    gradient: ['#2c2620', '#c9a86a'],
+    gradient: ['#3a2730', '#c9a86a'],
   },
   {
     slug: 'dentures',
@@ -687,7 +687,7 @@ export const treatments: Treatment[] = [
     ],
     priceFrom: 'On consultation',
     related: ['dental-implant-placement', 'specialist-dentistry', 'dental-consultations'],
-    gradient: ['#8a8073', '#faf6ef'],
+    gradient: ['#9a8479', '#f8f1ec'],
   },
   {
     slug: 'specialist-dentistry',
@@ -725,7 +725,7 @@ export const treatments: Treatment[] = [
     ],
     priceFrom: 'On consultation',
     related: ['dental-implant-placement', 'dentures', 'dental-consultations'],
-    gradient: ['#3f5a4e', '#161310'],
+    gradient: ['#7a4f57', '#2b1d24'],
   },
   {
     slug: 'dental-consultations',
@@ -763,7 +763,7 @@ export const treatments: Treatment[] = [
     ],
     priceFrom: 'On consultation',
     related: ['aesthetic-dentistry', 'dental-implant-placement', 'veneers'],
-    gradient: ['#c9a86a', '#3f5a4e'],
+    gradient: ['#c9a86a', '#7a4f57'],
   },
 ];
 

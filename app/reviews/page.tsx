@@ -42,7 +42,7 @@ export default function ReviewsPage() {
         eyebrow={`Rated ${site.ratingValue}/5 · ${site.reviewCount}+ reviews`}
         title="Loved by London, in their words."
         lede="The truest measure of our work is how our clients feel when they leave — and how often they return. Here are a few of their stories."
-        gradient={['#b08544', '#3f5a4e']}
+        gradient={['#b08544', '#7a4f57']}
       >
         <BookingButtons />
       </PageHero>

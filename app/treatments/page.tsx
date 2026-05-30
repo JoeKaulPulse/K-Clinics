@@ -24,7 +24,7 @@ export default function TreatmentsPage() {
         eyebrow="Aesthetics · Laser · Skin · Body"
         title="The art and science of looking remarkable."
         lede="From medical-grade laser to non-surgical lifting and refined injectables — every treatment is calibrated to you, and delivered with the precision a premium result demands."
-        gradient={['#b08544', '#3f5a4e']}
+        gradient={['#b08544', '#7a4f57']}
       >
         <BookingButtons />
       </PageHero>
