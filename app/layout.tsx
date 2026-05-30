@@ -1,0 +1,56 @@
+import type { Metadata, Viewport } from 'next';
+import { GeistSans } from 'geist/font/sans';
+import { GeistMono } from 'geist/font/mono';
+import './globals.css';
+import { site } from '@/lib/site';
+import { organizationLd, JsonLd } from '@/lib/seo';
+import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
+
+export const metadata: Metadata = {
+  metadataBase: new URL(site.url),
+  title: {
+    default: `${site.name} — ${site.tagline} | Islington, London`,
+    template: `%s | ${site.name} London`,
+  },
+  description: site.description,
+  applicationName: site.name,
+  authors: [{ name: site.name }],
+  creator: site.name,
+  publisher: site.name,
+  formatDetection: { telephone: true, address: true, email: true },
+  category: 'Health & Beauty',
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 },
+  },
+  icons: {
+    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
+    apple: '/apple-icon.png',
+  },
+  manifest: '/manifest.webmanifest',
+};
+
+export const viewport: Viewport = {
+  themeColor: '#161310',
+  colorScheme: 'light',
+  width: 'device-width',
+  initialScale: 1,
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en-GB" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <body>
+        <JsonLd data={organizationLd()} />
+        <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-[--color-ink] focus:px-5 focus:py-3 focus:text-[--color-porcelain]">
+          Skip to content
+        </a>
+        <Header />
+        <main id="main">{children}</main>
+        <Footer />
+      </body>
+    </html>
+  );
+}
