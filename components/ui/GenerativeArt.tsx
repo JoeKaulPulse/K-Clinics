@@ -54,14 +54,15 @@ export function GenerativeArt({
             opacity: 0.5,
             mixBlendMode: 'soft-light',
           }}
-          animate={
+          whileInView={
             reduce ? undefined : { x: [0, 26, -18, 0], y: [0, -22, 16, 0], scale: [1, 1.14, 0.94, 1] }
           }
+          viewport={{ margin: '0px' }}
           transition={{ duration: 17 + i * 3 + seed, repeat: Infinity, ease: 'easeInOut', delay: o.d }}
         />
       ))}
 
-      {/* Slow-rotating metallic sheen — the "luxury" tell */}
+      {/* Slow-rotating metallic sheen — the "luxury" tell (pauses off-screen) */}
       <motion.span
         className="pointer-events-none absolute -inset-1/4"
         style={{
@@ -69,7 +70,8 @@ export function GenerativeArt({
             'conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.10) 40deg, transparent 90deg, transparent 270deg, rgba(255,255,255,0.07) 310deg, transparent 360deg)',
           mixBlendMode: 'overlay',
         }}
-        animate={reduce ? undefined : { rotate: 360 }}
+        whileInView={reduce ? undefined : { rotate: 360 }}
+        viewport={{ margin: '0px' }}
         transition={{ duration: 60 + seed * 4, repeat: Infinity, ease: 'linear' }}
       />
 
