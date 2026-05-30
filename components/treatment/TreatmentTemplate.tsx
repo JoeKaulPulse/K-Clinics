@@ -17,29 +17,34 @@ export function TreatmentTemplate({ t }: { t: Treatment }) {
   return (
     <article>
       {/* Hero */}
-      <section className="relative overflow-hidden pt-[calc(var(--header-h,5.25rem)+1rem)]">
-        <div className="container-lux grid gap-12 py-12 lg:grid-cols-2 lg:items-center lg:py-20">
+      <section className="surface-ink grain relative overflow-hidden pt-[calc(var(--header-h,5.25rem)+1rem)]">
+        <span
+          className="pointer-events-none absolute inset-0 opacity-60"
+          style={{ background: `radial-gradient(70% 60% at 85% 20%, ${t.gradient[0]}55, transparent 60%)` }}
+          aria-hidden
+        />
+        <div className="container-lux relative grid gap-12 py-12 text-[var(--color-porcelain)] lg:grid-cols-2 lg:items-center lg:py-20">
           <div>
             <Reveal>
-              <nav className="mb-6 flex items-center gap-2 text-sm text-[var(--color-stone)]" aria-label="Breadcrumb">
-                <Link href="/" className="hover:text-[var(--color-ink)]">Home</Link>
+              <nav className="mb-6 flex items-center gap-2 text-sm text-[color-mix(in_oklab,var(--color-porcelain)_60%,transparent)]" aria-label="Breadcrumb">
+                <Link href="/" className="hover:text-[var(--color-gold-soft)]">Home</Link>
                 <span>/</span>
-                <Link href={categoryHref} className="hover:text-[var(--color-ink)]">{categoryLabel}</Link>
+                <Link href={categoryHref} className="hover:text-[var(--color-gold-soft)]">{categoryLabel}</Link>
                 <span>/</span>
-                <span className="text-[var(--color-ink)]">{t.title}</span>
+                <span className="text-[var(--color-porcelain)]">{t.title}</span>
               </nav>
             </Reveal>
             <Reveal delay={0.05}>
-              <p className="eyebrow mb-4">{t.eyebrow}</p>
+              <p className="eyebrow mb-4 text-[var(--color-gold-soft)]">{t.eyebrow}</p>
             </Reveal>
-            <WordReveal as="h1" text={t.title} className="text-display" />
+            <WordReveal as="h1" text={t.title} className="text-display text-[var(--color-porcelain)]" />
             <Reveal delay={0.15}>
-              <p className="mt-4 font-[family-name:var(--font-display)] text-xl text-[var(--color-gold)] md:text-2xl">
+              <p className="mt-4 font-[family-name:var(--font-display)] text-xl text-[var(--color-gold-soft)] md:text-2xl">
                 {t.tagline}
               </p>
             </Reveal>
             <Reveal delay={0.2}>
-              <p className="mt-6 max-w-xl text-lg leading-relaxed text-[var(--color-stone)]">{t.intro}</p>
+              <p className="mt-6 max-w-xl text-lg leading-relaxed text-[color-mix(in_oklab,var(--color-porcelain)_76%,transparent)]">{t.intro}</p>
             </Reveal>
             <Reveal delay={0.28}>
               <div className="mt-8">
@@ -47,11 +52,11 @@ export function TreatmentTemplate({ t }: { t: Treatment }) {
               </div>
             </Reveal>
             <Reveal delay={0.34}>
-              <dl className="mt-10 grid max-w-lg grid-cols-3 gap-4 border-t border-[var(--color-line)] pt-6">
+              <dl className="mt-10 grid max-w-lg grid-cols-3 gap-4 border-t border-white/15 pt-6">
                 {t.facts.map((f) => (
                   <div key={f.label}>
-                    <dt className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">{f.label}</dt>
-                    <dd className="mt-1 font-[family-name:var(--font-display)] text-lg">{f.value}</dd>
+                    <dt className="text-xs uppercase tracking-[0.16em] text-[color-mix(in_oklab,var(--color-porcelain)_58%,transparent)]">{f.label}</dt>
+                    <dd className="mt-1 font-[family-name:var(--font-display)] text-lg text-[var(--color-porcelain)]">{f.value}</dd>
                   </div>
                 ))}
               </dl>
@@ -70,7 +75,7 @@ export function TreatmentTemplate({ t }: { t: Treatment }) {
                   <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">
                     {t.priceFrom.startsWith('£') ? 'From' : 'Pricing'}
                   </p>
-                  <p className="font-[family-name:var(--font-display)] text-2xl">{t.priceFrom}</p>
+                  <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">{t.priceFrom}</p>
                 </div>
               )}
             </div>

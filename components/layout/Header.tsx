@@ -31,6 +31,10 @@ export function Header() {
     document.body.style.overflow = mobile ? 'hidden' : '';
   }, [mobile]);
 
+  // Over the (dark) hero at the top of every page we use light text;
+  // once scrolled, the bar frosts to cream and we switch to dark text.
+  const light = !scrolled && !mobile;
+
   return (
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-700 [transition-timing-function:var(--ease-lux)] ${
@@ -42,7 +46,7 @@ export function Header() {
     >
       <div className="container-lux flex h-[var(--header-h,5.25rem)] items-center justify-between">
         <Link href="/" className="relative z-10 shrink-0" aria-label={`${site.name} home`}>
-          <Logo />
+          <Logo mono={light} className={light ? 'text-[var(--color-porcelain)]' : ''} />
         </Link>
 
         {/* Desktop nav */}
@@ -51,7 +55,11 @@ export function Header() {
             <div key={item.label} onMouseEnter={() => setOpen(item.columns ? item.label : null)}>
               <Link
                 href={item.href}
-                className="relative inline-flex items-center gap-1 rounded-full px-4 py-2 text-[0.95rem] font-medium text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-ink)]"
+                className={`relative inline-flex items-center gap-1 rounded-full px-4 py-2 text-[0.95rem] font-medium transition-colors ${
+                  light
+                    ? 'text-[color-mix(in_oklab,var(--color-porcelain)_88%,transparent)] hover:text-[var(--color-porcelain)]'
+                    : 'text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]'
+                }`}
               >
                 {item.label}
                 {item.columns && (
@@ -65,17 +73,24 @@ export function Header() {
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <a href={site.phoneHref} className="link-underline text-sm font-medium text-[var(--color-ink-soft)]">
+          <a
+            href={site.phoneHref}
+            className={`link-underline text-sm font-medium transition-colors ${
+              light ? 'text-[color-mix(in_oklab,var(--color-porcelain)_88%,transparent)]' : 'text-[var(--color-ink-soft)]'
+            }`}
+          >
             {site.phone}
           </a>
-          <Button href={site.booking.treatwell} external size="md">
+          <Button href={site.booking.treatwell} external size="md" variant={light ? 'gold' : 'ink'}>
             Book Now <ArrowIcon />
           </Button>
         </div>
 
         {/* Mobile toggle */}
         <button
-          className="relative z-10 grid h-11 w-11 place-items-center rounded-full lg:hidden"
+          className={`relative z-10 grid h-11 w-11 place-items-center rounded-full lg:hidden ${
+            light ? 'text-[var(--color-porcelain)]' : 'text-[var(--color-ink)]'
+          }`}
           onClick={() => setMobile((m) => !m)}
           aria-label={mobile ? 'Close menu' : 'Open menu'}
           aria-expanded={mobile}
