@@ -11,12 +11,31 @@ Built for world-class design, fluid premium animation, and best-in-class SEO.
 
 | Concern        | Choice                                                              |
 | -------------- | ------------------------------------------------------------------ |
-| Framework      | **Next.js 15** (App Router, React 19) — SSG for speed + SEO        |
+| Framework      | **Next.js 15** (App Router, React 19)                             |
 | Language       | **TypeScript** (strict)                                            |
-| Styling        | **Tailwind CSS v4** with a tokenised design system                |
+| Styling        | **Tailwind CSS v4** with a tokenised, WordPress-editable palette   |
 | Animation      | **Motion** (Framer Motion) + CSS scroll/keyframe micro-animations |
 | Typography     | **Fraunces** (display serif) + **Geist** (text) — self-hosted      |
 | Booking        | **Treatwell** + **Fresha** deep links (config-driven)             |
+| CMS (optional) | **Headless WordPress** (content + editable palette via REST)       |
+| CRM            | **Prisma + Postgres**, **Resend** email, JWT-auth `/admin`         |
+
+## Brand
+
+Official **"warm taupe & cream"** identity — cream `#F6ECE3`, taupe `#91766E`.
+All colours are CSS variables (see `app/globals.css` `@theme` + `lib/theme.ts`)
+and can be edited from WordPress at runtime (`docs/WORDPRESS_THEME.md`).
+The K/CLINICS logo is real inline SVG (`components/brand/marks.tsx`) — the K
+swoosh shows alone on mobile, stacked above the CLINICS wordmark on desktop.
+
+## Two run modes
+
+1. **Marketing site (static)** — deploys to GitHub Pages. The CI build strips
+   the server-only routes (`app/api`, `app/admin`, `middleware.ts`) and sets
+   `NEXT_PUBLIC_CRM_ENABLED=false`; consult forms fall back to `mailto`.
+2. **Full app (Vercel)** — marketing + `/consultation` capture + `/admin` CRM
+   dashboard + email automations (daily cron). Needs Postgres + Resend env vars
+   (`.env.example`, `docs/CRM_ARCHITECTURE.md`).
 
 ## Getting started
 
