@@ -25,7 +25,7 @@ export function Footer() {
           New clients enjoy 15% off their first visit, and every consultation is complimentary.
         </p>
         <div className="mt-9 flex justify-center">
-          <BookingButtons align="center" />
+          <BookingButtons align="center" consult />
         </div>
       </div>
 
