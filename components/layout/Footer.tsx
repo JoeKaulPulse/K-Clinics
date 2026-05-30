@@ -71,6 +71,24 @@ export function Footer() {
         ))}
       </div>
 
+      {/* Legal & info links */}
+      <div className="container-lux relative flex flex-wrap gap-x-5 gap-y-2 border-t border-white/10 py-6 text-xs text-[color-mix(in_oklab,var(--color-porcelain)_55%,transparent)]">
+        {[
+          ['Terms & Conditions', '/info/terms-conditions'],
+          ['Privacy Policy', '/info/privacy-policy'],
+          ['Cancellations & Refunds', '/info/cancellations-refunds'],
+          ['Complaints', '/info/complaints-procedure'],
+          ['Accessibility', '/info/accessibility'],
+          ['Gift Vouchers', '/info/gift-vouchers'],
+          ['Refer a Friend', '/info/refer-a-friend'],
+          ['Careers', '/info/careers'],
+        ].map(([label, href]) => (
+          <Link key={href} href={href} className="transition-colors hover:text-[var(--color-gold)]">
+            {label}
+          </Link>
+        ))}
+      </div>
+
       {/* Contact + legal */}
       <div className="container-lux relative grid gap-6 border-t border-white/10 py-9 text-sm text-[color-mix(in_oklab,var(--color-porcelain)_60%,transparent)] md:grid-cols-3">
         <p>
