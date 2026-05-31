@@ -77,6 +77,18 @@ export function tmplConsultReply(firstName: string) {
   });
 }
 
+export function tmplPasswordReset(firstName: string, resetUrl: string) {
+  return emailShell({
+    preheader: 'Reset your K Clinics password',
+    body: `<h1 style="font-size:24px;margin:0 0 16px;color:#2a2420;">Reset your password</h1>
+    <p>Hello ${escape(firstName)},</p>
+    <p>We received a request to reset the password for your K Clinics account. Click below to choose a new one — the link is valid for 60 minutes.</p>
+    <p style="margin:28px 0;">${btn(resetUrl, 'Reset my password')}</p>
+    <p style="color:#91766e;font-size:14px;">If you didn’t request this, you can safely ignore this email — your password won’t change.</p>
+    <p style="margin-top:24px;">With warmth,<br>The K Clinics team</p>`,
+  });
+}
+
 export function tmplClinicNotify(data: {
   name: string; email: string; phone?: string; category: string; treatments: string[]; message?: string;
 }) {
