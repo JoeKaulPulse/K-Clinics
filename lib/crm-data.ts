@@ -142,6 +142,11 @@ export async function getClient(id: string) {
         select: { id: true, type: true, version: true, submittedAt: true, questionnaireKey: true, supersedesId: true },
       },
       discountClaims: { orderBy: { createdAt: 'desc' } },
+      tasks: {
+        where: { status: 'OPEN' },
+        orderBy: [{ dueAt: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }],
+        include: { assignee: { select: { name: true, email: true } } },
+      },
     },
   });
 }
