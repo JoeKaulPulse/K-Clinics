@@ -9,6 +9,7 @@ import { translator, isLocale, LOCALES, LOCALE_LABELS, DEFAULT_LOCALE, type Loca
 
 const nav = [
   { href: '/admin', key: 'nav.overview', exact: true, perm: 'dashboard.view' },
+  { href: '/admin/my-day', key: 'nav.myday', perm: undefined },
   { href: '/admin/calendar', key: 'nav.calendar', perm: 'calendar.view' },
   { href: '/admin/bookings', key: 'nav.bookings', perm: 'bookings.view' },
   { href: '/admin/consultations', key: 'nav.consultations', perm: 'consultations.view' },

@@ -29,6 +29,7 @@ type Entry = Record<Locale, string>;
 export const DICT: Record<string, Entry> = {
   // ── Navigation ──
   'nav.overview': { en: 'Overview', uk: 'Огляд' },
+  'nav.myday': { en: 'My day', uk: 'Мій день' },
   'nav.calendar': { en: 'Calendar', uk: 'Календар' },
   'nav.bookings': { en: 'Bookings', uk: 'Записи' },
   'nav.consultations': { en: 'Consultations', uk: 'Консультації' },
