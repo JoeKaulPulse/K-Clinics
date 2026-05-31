@@ -155,6 +155,15 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'privacy.download': { en: 'Download my data', uk: 'Завантажити мої дані' },
   'privacy.erase': { en: 'To request deletion of your account, contact us — we’ll verify your identity and confirm.', uk: 'Щоб видалити акаунт, звʼяжіться з нами — ми підтвердимо вашу особу та виконаємо запит.' },
   'privacy.contact': { en: 'Contact the clinic', uk: 'Звʼязатися з клінікою' },
+
+  // Invoices
+  'inv.title': { en: 'Invoices & receipts', uk: 'Рахунки та квитанції' },
+  'inv.eyebrow': { en: 'Payments', uk: 'Платежі' },
+  'inv.ref': { en: 'Ref', uk: '№' },
+  'inv.none': { en: 'No invoices yet. Receipts for treatments and any fees will appear here.', uk: 'Рахунків ще немає. Квитанції за процедури та збори зʼявлятимуться тут.' },
+  'inv.reasonTreatment': { en: 'Treatment', uk: 'Процедура' },
+  'inv.reasonLateFee': { en: 'Late-cancellation fee', uk: 'Збір за пізнє скасування' },
+  'inv.total': { en: 'Total paid', uk: 'Сплачено всього' },
 };
 
 export function pt(locale: Locale, key: string, vars?: Record<string, string | number>): string {

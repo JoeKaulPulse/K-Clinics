@@ -26,6 +26,7 @@ export async function getDashboard(clientId: string) {
       amountPence: b.chargedPence!,
       paidAt: b.chargedAt!,
       reference: b.id.slice(-8).toUpperCase(),
+      lateCancel: b.lateCancel,
       reason: b.lateCancel ? 'Late-cancellation fee' : 'Treatment',
     }));
 
