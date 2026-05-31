@@ -27,8 +27,9 @@ export async function getStripeBalance(): Promise<LiveBalance> {
   try {
     const res = await fetch('https://api.stripe.com/v1/balance', {
       headers: { Authorization: `Bearer ${key}` },
-      // Never cache a balance.
+      // Never cache a balance; never let a slow third party hang the page.
       cache: 'no-store',
+      signal: AbortSignal.timeout(4000),
     });
     if (!res.ok) return { ...base, detail: `Stripe error ${res.status}` };
     const data = (await res.json()) as { available?: { amount: number; currency: string }[]; pending?: { amount: number; currency: string }[] };

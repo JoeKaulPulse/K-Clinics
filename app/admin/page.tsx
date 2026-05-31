@@ -12,13 +12,13 @@ export default async function AdminOverview() {
   if (!crmEnabled) return <CrmDisabled />;
   const { getOverview, getAnalytics } = await import('@/lib/crm-data');
   const session = await getSession();
-  const [o, a] = await Promise.all([getOverview(), getAnalytics()]);
-
-  // ── "Needs attention" — surface the operational systems on the landing page ──
+  // ── Load everything for the landing page in a single parallel batch ──
   const { db } = await import('@/lib/db');
   const canApproveTimeOff = sessionCan(session, 'schedule.manage');
   const canInventory = sessionCan(session, 'inventory.view');
-  const [pendingTimeOff, myTasks, stockItems, expiringSoon] = await Promise.all([
+  const [o, a, pendingTimeOff, myTasks, stockItems, expiringSoon] = await Promise.all([
+    getOverview(),
+    getAnalytics(),
     canApproveTimeOff ? db.staffTimeOff.count({ where: { status: 'PENDING' } }) : Promise.resolve(0),
     session ? db.task.count({ where: { assigneeId: session.sub, status: 'OPEN' } }) : Promise.resolve(0),
     canInventory ? db.stockItem.findMany({ where: { active: true }, select: { currentQty: true, lowStockAt: true } }) : Promise.resolve([]),
