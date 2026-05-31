@@ -25,8 +25,12 @@ export async function POST(req: Request) {
     return NextResponse.json(result, { status: result.ok ? 200 : 409 });
   } catch (err) {
     console.error('[account/signup] failed:', err);
+    // Surface the underlying cause off-production to make issues diagnosable.
+    const detail = process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production'
+      ? ` (${(err as Error)?.message?.slice(0, 160)})`
+      : '';
     return NextResponse.json(
-      { ok: false, error: 'We couldn’t create your account just now. Please try again shortly.' },
+      { ok: false, error: `We couldn’t create your account just now. Please try again shortly.${detail}` },
       { status: 500 },
     );
   }
