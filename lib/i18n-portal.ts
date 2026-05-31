@@ -72,6 +72,23 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'assess.doneBody': { en: 'Your {form} has been encrypted and added to your confidential record. Your clinician will review it before your visit.', uk: 'Ваша анкета «{form}» зашифрована та додана до конфіденційного запису. Клініцист перегляне її перед вашим візитом.' },
   'assess.backToPortal': { en: 'Back to portal', uk: 'Повернутися до кабінету' },
   'error.couldNotSave': { en: 'Could not save.', uk: 'Не вдалося зберегти.' },
+
+  // Login / forgot password
+  'login.password': { en: 'Password', uk: 'Пароль' },
+  'login.forgot': { en: 'Forgot?', uk: 'Забули?' },
+  'login.signingIn': { en: 'Signing in…', uk: 'Вхід…' },
+  'login.failed': { en: 'Sign in failed.', uk: 'Не вдалося увійти.' },
+  'login.newHere': { en: 'New here?', uk: 'Вперше тут?' },
+  'login.createCta': { en: 'Create an account — get 15% off', uk: 'Створити акаунт — знижка 15%' },
+  'login.staff': { en: 'Staff & clinicians:', uk: 'Персонал і клініцисти:' },
+  'login.crmSignin': { en: 'CRM sign in', uk: 'Вхід у CRM' },
+  'login.preview': { en: 'This is a design preview — the secure portal runs on the live clinic site.', uk: 'Це демонстрація дизайну — захищений кабінет працює на робочому сайті клініки.' },
+  'forgot.title': { en: 'Reset your password', uk: 'Скидання пароля' },
+  'forgot.sub': { en: 'Enter your email and we’ll send a reset link.', uk: 'Введіть свою електронну пошту, і ми надішлемо посилання для скидання.' },
+  'forgot.send': { en: 'Send reset link', uk: 'Надіслати посилання' },
+  'forgot.sending': { en: 'Sending…', uk: 'Надсилання…' },
+  'forgot.sent': { en: 'If an account exists for that email, a reset link is on its way.', uk: 'Якщо акаунт із такою поштою існує, посилання для скидання вже надіслано.' },
+  'forgot.back': { en: 'Back to sign in', uk: 'Назад до входу' },
 };
 
 export function pt(locale: Locale, key: string, vars?: Record<string, string | number>): string {
