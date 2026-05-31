@@ -138,6 +138,14 @@ enum TaskPriority {
   HIGH
 }
 
+enum StockMoveReason {
+  RECEIVED      // stock in
+  USED          // consumed in a treatment
+  WASTED        // expired / damaged / spilled
+  RETURNED      // returned to supplier
+  ADJUSTMENT    // manual correction / stock-take
+}
+
 model Client {
   id              String         @id @default(cuid())
   firstName       String
@@ -424,6 +432,44 @@ model Task {
   @@index([status])
   @@index([assigneeId, status])
   @@index([dueAt])
+}
+
+// ── Inventory: consumables & stock control ──────────────────────────────────
+model StockItem {
+  id          String          @id @default(cuid())
+  name        String
+  category    String?         // e.g. "Injectables", "Consumables", "PPE"
+  unit        String          @default("unit") // vial, ml, syringe, unit, pack
+  sku         String?
+  supplier    String?
+  currentQty  Float           @default(0)
+  lowStockAt  Float           @default(0)       // alert threshold
+  costPence   Int?            // unit cost for valuation (optional)
+  active      Boolean         @default(true)
+  notes       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  movements   StockMovement[]
+
+  @@index([active])
+}
+
+model StockMovement {
+  id        String          @id @default(cuid())
+  item      StockItem       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId    String
+  delta     Float           // + in, − out
+  reason    StockMoveReason
+  batchNo   String?         // lot/batch number (compliance)
+  expiry    DateTime?       // batch expiry (on receipt)
+  bookingId String?         // optional link to the treatment that used it
+  note      String?
+  by        String?         // staff email
+  createdAt DateTime        @default(now())
+
+  @@index([itemId, createdAt])
+  @@index([expiry])
 }
 
 // ── Settings: key/value toggles & config, editable in admin ─────────────────

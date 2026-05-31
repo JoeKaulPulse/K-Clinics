@@ -66,6 +66,10 @@ export const PERMISSIONS: Permission[] = [
   { key: 'calendar.view', group: 'Scheduling', label: 'View calendar', description: 'See the clinic calendar and appointments.' },
   { key: 'schedule.manage', group: 'Scheduling', label: 'Manage schedules & time-off', description: 'Edit staff working hours, time-off and availability.' },
   { key: 'sop.manage', group: 'Scheduling', label: 'Manage SOPs', description: 'Edit standard operating procedures per treatment.', sensitive: true },
+
+  // Inventory
+  { key: 'inventory.view', group: 'Inventory', label: 'View inventory', description: 'See stock levels, batches and expiry dates.' },
+  { key: 'inventory.manage', group: 'Inventory', label: 'Manage inventory', description: 'Add items, receive stock and record usage/wastage.' },
 ];
 
 export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
@@ -85,6 +89,8 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     'clients.edit',
     'clients.clinical.view',
     'calendar.view',
+    'inventory.view',
+    'inventory.manage',
   ],
   FRONT_DESK: [
     'dashboard.view',
@@ -98,8 +104,10 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     'discounts.manage',
     'calendar.view',
     'schedule.manage',
+    'inventory.view',
+    'inventory.manage',
   ],
-  STAFF: ['dashboard.view', 'bookings.view', 'consultations.view', 'clients.view', 'calendar.view'],
+  STAFF: ['dashboard.view', 'bookings.view', 'consultations.view', 'clients.view', 'calendar.view', 'inventory.view'],
 };
 
 export function roleDefaults(role: string): string[] {
