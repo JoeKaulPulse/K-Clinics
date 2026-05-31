@@ -46,6 +46,36 @@ export async function GET() {
     report.schema = checks;
     report.schemaInSync = Object.values(checks).every((v) => v === 'ok');
 
+    // Secrets self-test: sign+login depend on a JWT secret and (for health
+    // forms) the encryption keys. Report presence + a live round-trip so a
+    // missing/invalid secret is diagnosable. Never reveals the secret values.
+    const secrets: Record<string, unknown> = {
+      hasAdminJwtSecret: Boolean(process.env.ADMIN_JWT_SECRET),
+      hasClientJwtSecret: Boolean(process.env.CLIENT_JWT_SECRET),
+      hasHealthEncryptionKey: Boolean(process.env.HEALTH_ENCRYPTION_KEY),
+      hasHealthHmacKey: Boolean(process.env.HEALTH_HMAC_KEY),
+    };
+    try {
+      const { SignJWT, jwtVerify } = await import('jose');
+      const raw = process.env.CLIENT_JWT_SECRET || process.env.ADMIN_JWT_SECRET;
+      if (!raw) throw new Error('no JWT secret set (ADMIN_JWT_SECRET / CLIENT_JWT_SECRET)');
+      const key = new TextEncoder().encode(raw);
+      const token = await new SignJWT({ t: 1 }).setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('1m').sign(key);
+      await jwtVerify(token, key);
+      secrets.jwtSelfTest = 'ok';
+    } catch (e) {
+      secrets.jwtSelfTest = `FAIL: ${(e as Error)?.message?.slice(0, 120)}`;
+    }
+    try {
+      const { encryptJson, decryptJson } = await import('@/lib/crypto');
+      const blob = encryptJson({ t: 1 });
+      decryptJson(blob);
+      secrets.encryptionSelfTest = 'ok';
+    } catch (e) {
+      secrets.encryptionSelfTest = `FAIL: ${(e as Error)?.message?.slice(0, 120)}`;
+    }
+    report.secrets = secrets;
+
     report.ok = true;
   } catch (err) {
     report.database = 'error';
