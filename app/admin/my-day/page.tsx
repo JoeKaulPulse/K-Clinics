@@ -45,6 +45,7 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
     sopAcknowledgedAt: true, medicalFlagReviewedAt: true, practitionerId: true,
     client: { select: { id: true, firstName: true, lastName: true, phone: true, medicalFlag: true } },
     practitioner: { select: { name: true } },
+    location: { select: { name: true, color: true } },
   } as const;
 
   const mine = await db.booking.findMany({
@@ -86,7 +87,10 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
           )}
         </div>
         <p className="truncate text-sm text-[var(--color-stone)]">{b.treatmentTitle}</p>
-        {showClinician && b.practitioner?.name && <p className="text-xs text-[var(--color-stone-soft)]">{b.practitioner.name}</p>}
+        <div className="flex flex-wrap items-center gap-x-2 text-xs text-[var(--color-stone-soft)]">
+          {showClinician && b.practitioner?.name && <span>{b.practitioner.name}</span>}
+          {b.location?.name && <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full" style={{ background: b.location.color || 'var(--color-gold)' }} />{b.location.name}</span>}
+        </div>
       </div>
       <div className="flex shrink-0 flex-col items-end gap-1">
         <span className={`rounded-full px-2.5 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide ${STATUS_BADGE[b.status] || 'bg-[var(--color-bone)]'}`}>{b.status.toLowerCase().replace('_', ' ')}</span>
