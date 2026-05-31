@@ -18,9 +18,11 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const secret = url.searchParams.get('secret');
-  const expected = process.env.CRON_SECRET || process.env.ADMIN_JWT_SECRET;
-  if (!expected || secret !== expected) {
-    return NextResponse.json({ ok: false, error: 'Unauthorised. Pass ?secret=<your CRON_SECRET>.' }, { status: 401 });
+  // Accept EITHER the CRON_SECRET or the ADMIN_JWT_SECRET, so this works
+  // whether or not a dedicated CRON_SECRET has been configured.
+  const accepted = [process.env.CRON_SECRET, process.env.ADMIN_JWT_SECRET].filter(Boolean);
+  if (accepted.length === 0 || !secret || !accepted.includes(secret)) {
+    return NextResponse.json({ ok: false, error: 'Unauthorised. Pass ?secret=<your CRON_SECRET or ADMIN_JWT_SECRET>.' }, { status: 401 });
   }
 
   const clientEmail = (url.searchParams.get('email') || 'client@kclinics.test').toLowerCase();
