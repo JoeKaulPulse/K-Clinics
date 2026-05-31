@@ -554,6 +554,18 @@ model StockMovement {
   @@index([expiry])
 }
 
+// ── OAuth connections to external services (Xero, TrueLayer bank feed) ───────
+// Tokens are stored encrypted (AES-256-GCM) in `tokensEnc`, never in clear.
+model ExternalConnection {
+  id         String   @id @default(cuid())
+  provider   String   @unique   // 'xero' | 'truelayer'
+  tokensEnc  String              // encrypted JSON { access, refresh, expiresAt }
+  accountRef String?             // Xero tenantId / bank account id
+  label      String?             // org / account name for display
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
 // ── Settings: key/value toggles & config, editable in admin ─────────────────
 model Setting {
   key       String   @id

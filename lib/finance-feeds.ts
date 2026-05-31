@@ -39,22 +39,28 @@ export async function getStripeBalance(): Promise<LiveBalance> {
   }
 }
 
-/** Open Banking bank balance — placeholder until a provider + connection exist. */
+/** Open Banking bank balance via TrueLayer (live once OAuth-connected). */
 export async function getBankBalance(): Promise<LiveBalance> {
-  const configured = Boolean(process.env.TRUELAYER_CLIENT_ID || process.env.PLAID_CLIENT_ID || process.env.OPENBANKING_CLIENT_ID);
-  return {
-    source: 'bank', label: 'Business bank', connected: false, availablePence: 0, pendingPence: 0, currency: 'GBP',
-    detail: configured ? 'Provider configured — connect your account.' : 'Add an Open Banking provider to enable.',
-  };
+  const base: LiveBalance = { source: 'bank', label: 'Business bank', connected: false, availablePence: 0, pendingPence: 0, currency: 'GBP' };
+  const { trueLayerConfigured, getBankCashPence } = await import('@/lib/truelayer');
+  if (!trueLayerConfigured()) return { ...base, detail: 'Add TrueLayer credentials to enable.' };
+  const { isConnected } = await import('@/lib/oauth-connections');
+  if (!(await isConnected('truelayer'))) return { ...base, detail: 'Configured — connect your bank in Integrations.' };
+  const r = await getBankCashPence();
+  if (!r.ok) return { ...base, detail: 'Connected — balance temporarily unavailable.', label: r.label || base.label };
+  return { ...base, label: r.label || base.label, connected: true, availablePence: r.availablePence, pendingPence: r.pendingPence };
 }
 
-/** Xero cash position — placeholder until OAuth-connected. */
+/** Xero cash position (live once OAuth-connected). */
 export async function getXeroBalance(): Promise<LiveBalance> {
-  const configured = Boolean(process.env.XERO_CLIENT_ID && process.env.XERO_CLIENT_SECRET);
-  return {
-    source: 'xero', label: 'Xero', connected: false, availablePence: 0, pendingPence: 0, currency: 'GBP',
-    detail: configured ? 'Credentials present — connect via OAuth.' : 'Add Xero credentials to enable.',
-  };
+  const base: LiveBalance = { source: 'xero', label: 'Xero', connected: false, availablePence: 0, pendingPence: 0, currency: 'GBP' };
+  const { xeroConfigured, getXeroCashPence } = await import('@/lib/xero');
+  if (!xeroConfigured()) return { ...base, detail: 'Add Xero credentials to enable.' };
+  const { isConnected } = await import('@/lib/oauth-connections');
+  if (!(await isConnected('xero'))) return { ...base, detail: 'Configured — connect Xero in Integrations.' };
+  const r = await getXeroCashPence();
+  if (!r.ok) return { ...base, detail: 'Connected — balance temporarily unavailable.', label: r.label || base.label };
+  return { ...base, label: r.label || base.label, connected: true, availablePence: r.pence };
 }
 
 export async function liveBalances(): Promise<LiveBalance[]> {
