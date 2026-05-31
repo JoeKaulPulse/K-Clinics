@@ -15,7 +15,12 @@ export async function POST(req: Request) {
   try {
     const { loginClient } = await import('@/lib/client-auth');
     const result = await loginClient(parsed.data.email, parsed.data.password);
-    return NextResponse.json(result, { status: result.ok ? 200 : 401 });
+    const res = NextResponse.json(result, { status: result.ok ? 200 : 401 });
+    if (result.ok && result.locale) {
+      // Open the portal in the client's saved language straight away.
+      res.cookies.set('kc_clang', result.locale, { httpOnly: false, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 365 });
+    }
+    return res;
   } catch (err) {
     console.error('[account/login] failed:', err);
     // Surface a safe diagnostic category (which stage threw) without leaking

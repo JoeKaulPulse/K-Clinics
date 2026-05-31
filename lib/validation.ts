@@ -29,6 +29,7 @@ export const clientSignupSchema = z.object({
   dob: z.string().optional().or(z.literal('')),
   password: z.string().min(8, 'Use at least 8 characters').max(200),
   marketingOptIn: z.boolean().optional(),
+  locale: z.enum(['en', 'uk']).optional(),
   consent: z.literal(true, { errorMap: () => ({ message: 'Please accept the terms to continue.' }) }),
   company: z.string().max(0).optional().or(z.literal('')), // honeypot
 });
