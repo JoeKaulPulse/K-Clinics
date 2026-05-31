@@ -26,10 +26,10 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
   function go(next: number) { setDir(next > step ? 1 : -1); setError(''); setStep(next); }
 
   function validateStep(): boolean {
-    if (step === 1 && !d.firstName.trim()) { setError(t('field.firstName')); return false; }
-    if (step === 2 && !/.+@.+\..+/.test(d.email)) { setError(t('field.email')); return false; }
+    if (step === 1 && !d.firstName.trim()) { setError(t('signup.errFirstName')); return false; }
+    if (step === 2 && !/.+@.+\..+/.test(d.email)) { setError(t('signup.errEmail')); return false; }
     if (step === 3) {
-      if (d.password.length < 8) { setError('8+'); return false; }
+      if (d.password.length < 8) { setError(t('signup.errPassword')); return false; }
       if (!d.consent) { setError(t('signup.consentRequired')); return false; }
     }
     return true;

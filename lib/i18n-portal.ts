@@ -44,6 +44,9 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'signup.doneTitle': { en: 'Welcome to K Clinics, {name}.', uk: 'Ласкаво просимо до K Clinics, {name}.' },
   'signup.discountReady': { en: 'Your {percent}% welcome discount is ready — code {code}. It’s saved to your account.', uk: 'Ваша знижка {percent}% готова — код {code}. Її збережено у вашому акаунті.' },
   'signup.goPortal': { en: 'Go to my portal', uk: 'Перейти до кабінету' },
+  'signup.errFirstName': { en: 'Please enter your first name.', uk: 'Будь ласка, введіть своє імʼя.' },
+  'signup.errEmail': { en: 'Please enter a valid email.', uk: 'Введіть дійсну електронну пошту.' },
+  'signup.errPassword': { en: 'Use at least 8 characters.', uk: 'Використайте щонайменше 8 символів.' },
   'error.network': { en: 'Network error — please try again.', uk: 'Помилка мережі — спробуйте ще раз.' },
   'error.create': { en: 'Could not create your account.', uk: 'Не вдалося створити акаунт.' },
 
