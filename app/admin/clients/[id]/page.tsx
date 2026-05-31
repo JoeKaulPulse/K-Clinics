@@ -4,8 +4,22 @@ import { crmEnabled } from '@/lib/crm';
 import { getSession, canViewClinical, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
-import { AddNote, SendEmail, StatusSelect } from '@/components/admin/ClientActions';
+import { AddNote, PinToggle, SendEmail, StatusSelect } from '@/components/admin/ClientActions';
 import { DiscountAction } from '@/components/admin/DiscountActions';
+
+// Visual styling per interaction type for the client timeline.
+const NOTE_STYLE: Record<string, { label: string; dot: string; badge: string }> = {
+  NOTE: { label: 'Note', dot: 'bg-[var(--color-gold)]', badge: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
+  CLINICAL: { label: 'Clinical', dot: 'bg-[var(--color-ink)]', badge: 'bg-[var(--color-ink)] text-[var(--color-gold-soft)]' },
+  COMPLAINT: { label: 'Complaint', dot: 'bg-[var(--color-blush)]', badge: 'bg-[var(--color-blush)]/20 text-[var(--color-ink)]' },
+  FOLLOW_UP: { label: 'Follow-up', dot: 'bg-amber-400', badge: 'bg-amber-100 text-amber-800' },
+  CALL: { label: 'Call', dot: 'bg-sky-400', badge: 'bg-sky-100 text-sky-800' },
+  EMAIL: { label: 'Email', dot: 'bg-[var(--color-stone-soft)]', badge: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
+  SMS: { label: 'SMS', dot: 'bg-[var(--color-stone-soft)]', badge: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
+  APPOINTMENT: { label: 'Appointment', dot: 'bg-green-400', badge: 'bg-green-100 text-green-800' },
+  SYSTEM: { label: 'System', dot: 'bg-[var(--color-line)]', badge: 'bg-[var(--color-bone)] text-[var(--color-stone-soft)]' },
+};
+const noteStyle = (t: string) => NOTE_STYLE[t] ?? NOTE_STYLE.NOTE;
 import { MedicalFlagEditor } from '@/components/admin/MedicalFlagEditor';
 
 export const dynamic = 'force-dynamic';
@@ -60,20 +74,47 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
         <div className="space-y-10">
         <section>
           <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Timeline</h2>
-          <div className="mb-4"><AddNote clientId={c.id} /></div>
-          <ol className="relative space-y-4 border-l border-[var(--color-line)] pl-5">
-            {c.interactions.length === 0 && <li className="text-sm text-[var(--color-stone)]">No activity yet.</li>}
-            {c.interactions.map((it) => (
-              <li key={it.id} className="relative">
-                <span className="absolute -left-[1.45rem] top-1.5 h-2.5 w-2.5 rounded-full bg-[var(--color-gold)]" />
-                <p className="text-sm font-medium">{it.summary}</p>
-                {it.detail && <p className="mt-0.5 text-sm text-[var(--color-stone)]">{it.detail}</p>}
-                <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">
-                  {new Date(it.createdAt).toLocaleString('en-GB')} · {it.type.toLowerCase()}{it.author ? ` · ${it.author}` : ''}
-                </p>
-              </li>
-            ))}
-          </ol>
+          <div className="mb-4"><AddNote clientId={c.id} clinical={clinical} /></div>
+          {(() => {
+            // Hide clinical notes from non-clinical staff; pinned float to the top.
+            const visible = c.interactions.filter((it) => it.type !== 'CLINICAL' || clinical);
+            const pinned = visible.filter((it) => it.pinned);
+            const rest = visible.filter((it) => !it.pinned);
+            const Item = ({ it }: { it: (typeof visible)[number] }) => {
+              const st = noteStyle(it.type);
+              const editable = ['NOTE', 'CLINICAL', 'COMPLAINT', 'FOLLOW_UP', 'CALL'].includes(it.type);
+              return (
+                <li className="relative">
+                  <span className={`absolute -left-[1.45rem] top-1.5 h-2.5 w-2.5 rounded-full ${st.dot}`} />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`rounded-full px-2 py-0.5 text-[0.6rem] uppercase tracking-wide ${st.badge}`}>{st.label}</span>
+                    {it.pinned && <span className="text-[0.6rem] text-[var(--color-gold)]">★ pinned</span>}
+                  </div>
+                  <p className="mt-1 text-sm font-medium">{it.summary}</p>
+                  {it.detail && <p className="mt-0.5 whitespace-pre-wrap text-sm text-[var(--color-stone)]">{it.detail}</p>}
+                  <div className="mt-0.5 flex items-center gap-3">
+                    <p className="text-xs text-[var(--color-stone-soft)]">
+                      {new Date(it.createdAt).toLocaleString('en-GB')}{it.author ? ` · ${it.author}` : ''}
+                    </p>
+                    {editable && <PinToggle noteId={it.id} clientId={c.id} pinned={it.pinned} />}
+                  </div>
+                </li>
+              );
+            };
+            return (
+              <>
+                {pinned.length > 0 && (
+                  <ol className="relative mb-4 space-y-4 rounded-[var(--radius-md)] border border-[var(--color-gold)]/30 bg-[var(--color-gold)]/5 border-l-2 border-l-[var(--color-gold)] py-3 pl-5 pr-3">
+                    {pinned.map((it) => <Item key={it.id} it={it} />)}
+                  </ol>
+                )}
+                <ol className="relative space-y-4 border-l border-[var(--color-line)] pl-5">
+                  {visible.length === 0 && <li className="text-sm text-[var(--color-stone)]">No activity yet.</li>}
+                  {rest.map((it) => <Item key={it.id} it={it} />)}
+                </ol>
+              </>
+            );
+          })()}
         </section>
 
         {/* Clinical: health assessments (practitioners/admins only) */}

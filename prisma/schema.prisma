@@ -20,6 +20,9 @@ enum ConsultStatus {
 
 enum InteractionType {
   NOTE
+  CLINICAL
+  COMPLAINT
+  FOLLOW_UP
   CALL
   EMAIL
   SMS
@@ -204,9 +207,11 @@ model Interaction {
   summary   String
   detail    String?
   author    String?
+  pinned    Boolean         @default(false)
   createdAt DateTime        @default(now())
 
   @@index([clientId, createdAt])
+  @@index([clientId, pinned])
 }
 
 model Appointment {
