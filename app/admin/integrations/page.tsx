@@ -1,0 +1,89 @@
+import { redirect } from 'next/navigation';
+import { crmEnabled } from '@/lib/crm';
+import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
+import { AdminShell } from '@/components/admin/AdminShell';
+import { CrmDisabled } from '@/components/admin/CrmDisabled';
+import { getIntegrations } from '@/lib/integrations';
+import { getLocale } from '@/lib/locale';
+import { translator } from '@/lib/i18n';
+
+export const dynamic = 'force-dynamic';
+
+const STATUS_BADGE: Record<string, string> = {
+  connected: 'bg-green-100 text-green-800',
+  partial: 'bg-amber-100 text-amber-800',
+  not_configured: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
+};
+
+export default async function IntegrationsPage() {
+  if (!crmEnabled) return <CrmDisabled />;
+  const session = await getSession();
+  // Integrations are owner/admin-level — gated on settings.manage.
+  if (!sessionCan(session, 'settings.manage')) redirect('/admin');
+
+  const integrations = await getIntegrations();
+  const can = await sessionPermissions();
+  const locale = await getLocale();
+  const t = translator(locale);
+  const uk = locale === 'uk';
+
+  const statusLabel = (s: string) => uk
+    ? s === 'connected' ? 'підключено' : s === 'partial' ? 'частково' : 'не налаштовано'
+    : s === 'connected' ? 'connected' : s === 'partial' ? 'partial' : 'not configured';
+
+  const categories = Array.from(new Set(integrations.map((i) => i.category)));
+
+  return (
+    <AdminShell user={session?.email} can={can} locale={locale}>
+      <h1 className="font-[family-name:var(--font-display)] text-3xl">{t('nav.integrations')}</h1>
+      <p className="mt-1 text-sm text-[var(--color-stone)]">
+        {uk
+          ? 'Стан усіх зовнішніх сервісів клініки. Ключі задаються у змінних середовища хостингу; тут показано лише їхній стан.'
+          : 'Live status of every external service the clinic relies on. Secret keys are set in your hosting environment variables — only their presence is shown here, never the values.'}
+      </p>
+
+      <div className="mt-8 space-y-10">
+        {categories.map((cat) => (
+          <section key={cat}>
+            <h2 className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-[var(--color-stone)]">{cat}</h2>
+            <div className="grid gap-4 md:grid-cols-2">
+              {integrations.filter((i) => i.category === cat).map((i) => (
+                <div key={i.id} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="font-[family-name:var(--font-display)] text-lg">{i.name}</h3>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-[0.65rem] font-medium uppercase tracking-wide ${STATUS_BADGE[i.status]}`}>
+                      {statusLabel(i.status)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-[var(--color-stone)]">{i.description}</p>
+                  <p className="mt-3 text-sm font-medium text-[var(--color-ink)]">{i.detail}</p>
+
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {i.envVars.map((v) => (
+                      <span
+                        key={v.name}
+                        title={v.set ? 'Configured' : v.optional ? 'Optional — not set' : 'Required — not set'}
+                        className={`rounded-full px-2 py-0.5 font-[family-name:var(--font-mono)] text-[0.65rem] ${
+                          v.set ? 'bg-green-100 text-green-800' : v.optional ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : 'bg-[var(--color-blush)]/20 text-[var(--color-ink)]'
+                        }`}
+                      >
+                        {v.set ? '✓' : v.optional ? '○' : '✗'} {v.name}
+                      </span>
+                    ))}
+                  </div>
+
+                  {(i.manageHref || i.docsHref) && (
+                    <div className="mt-4 flex items-center gap-4 text-sm">
+                      {i.manageHref && <a href={i.manageHref} className="font-medium text-[var(--color-gold)] hover:text-[var(--color-ink)]">{uk ? 'Керувати' : 'Manage'} →</a>}
+                      {i.docsHref && <a href={i.docsHref} target="_blank" rel="noopener noreferrer" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">{uk ? 'Документація' : 'Get keys'} ↗</a>}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    </AdminShell>
+  );
+}

@@ -31,5 +31,10 @@ export async function POST(req: Request) {
     grant: user.permGrant ?? [],
     revoke: user.permRevoke ?? [],
   });
-  return NextResponse.json({ ok: true });
+  // Seed the CRM language cookie from the user's saved preference so the UI
+  // opens in their language straight away.
+  const res = NextResponse.json({ ok: true });
+  const locale = user.locale === 'uk' ? 'uk' : 'en';
+  res.cookies.set('kc_lang', locale, { httpOnly: false, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 365 });
+  return res;
 }

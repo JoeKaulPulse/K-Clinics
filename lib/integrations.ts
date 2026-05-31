@@ -1,0 +1,158 @@
+import 'server-only';
+
+// Integration & connection registry for the CRM. Surfaces the live status of
+// every external service the clinic depends on, so an owner can see at a glance
+// what's connected and what still needs configuring. Secrets themselves are
+// never returned — only whether each required variable is present.
+
+export type IntegrationStatus = 'connected' | 'partial' | 'not_configured';
+
+export type Integration = {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  status: IntegrationStatus;
+  detail: string;
+  /** Required/optional env vars and whether each is set (booleans only). */
+  envVars: { name: string; set: boolean; optional?: boolean }[];
+  /** In-CRM management link, if any. */
+  manageHref?: string;
+  docsHref?: string;
+};
+
+const has = (v?: string | null) => Boolean(v && v.length > 0);
+
+export async function getIntegrations(): Promise<Integration[]> {
+  const items: Integration[] = [];
+
+  // ── Database ──
+  let dbConnected = false;
+  let clientCount: number | null = null;
+  try {
+    const { db } = await import('@/lib/db');
+    clientCount = await db.client.count();
+    dbConnected = true;
+  } catch {
+    dbConnected = false;
+  }
+  items.push({
+    id: 'database',
+    name: 'Database (PostgreSQL)',
+    category: 'Core',
+    description: 'Stores all clients, bookings, clinical records and audit history.',
+    status: dbConnected ? 'connected' : 'not_configured',
+    detail: dbConnected ? `Connected · ${clientCount ?? 0} client records` : 'Not reachable — set DATABASE_URL.',
+    envVars: [
+      { name: 'DATABASE_URL', set: has(process.env.DATABASE_URL) },
+      { name: 'POSTGRES_URL', set: has(process.env.POSTGRES_URL), optional: true },
+    ],
+  });
+
+  // ── Google Calendar ──
+  const { googleConfigured } = await import('@/lib/google-calendar');
+  const gConfigured = googleConfigured();
+  let connectedStaff = 0;
+  if (dbConnected) {
+    try {
+      const { db } = await import('@/lib/db');
+      connectedStaff = await db.adminUser.count({ where: { googleRefreshToken: { not: null }, active: true } });
+    } catch { /* ignore */ }
+  }
+  items.push({
+    id: 'google-calendar',
+    name: 'Google Calendar',
+    category: 'Scheduling',
+    description: 'Syncs each clinician’s busy times so availability stays accurate automatically.',
+    status: !gConfigured ? 'not_configured' : connectedStaff > 0 ? 'connected' : 'partial',
+    detail: !gConfigured
+      ? 'Add Google OAuth credentials to enable.'
+      : connectedStaff > 0 ? `${connectedStaff} staff calendar${connectedStaff === 1 ? '' : 's'} connected` : 'Configured — no staff connected yet.',
+    envVars: [
+      { name: 'GOOGLE_CLIENT_ID', set: has(process.env.GOOGLE_CLIENT_ID) },
+      { name: 'GOOGLE_CLIENT_SECRET', set: has(process.env.GOOGLE_CLIENT_SECRET) },
+      { name: 'GOOGLE_REDIRECT_URI', set: has(process.env.GOOGLE_REDIRECT_URI) },
+    ],
+    manageHref: '/admin/schedule',
+    docsHref: 'https://console.cloud.google.com/apis/credentials',
+  });
+
+  // ── Email (Resend) ──
+  const resendSet = has(process.env.RESEND_API_KEY);
+  const fromSet = has(process.env.EMAIL_FROM);
+  items.push({
+    id: 'email',
+    name: 'Email (Resend)',
+    category: 'Communications',
+    description: 'Transactional email: confirmations, reminders, password resets and campaigns.',
+    status: resendSet && fromSet ? 'connected' : resendSet || fromSet ? 'partial' : 'not_configured',
+    detail: resendSet && fromSet ? 'Ready to send' : resendSet ? 'API key set — add EMAIL_FROM.' : 'Add a Resend API key to send email.',
+    envVars: [
+      { name: 'RESEND_API_KEY', set: resendSet },
+      { name: 'EMAIL_FROM', set: fromSet },
+      { name: 'EMAIL_REPLY_TO', set: has(process.env.EMAIL_REPLY_TO), optional: true },
+      { name: 'CLINIC_NOTIFY_EMAIL', set: has(process.env.CLINIC_NOTIFY_EMAIL), optional: true },
+    ],
+    docsHref: 'https://resend.com/api-keys',
+  });
+
+  // ── Payments (Stripe) ──
+  const stripeSecret = has(process.env.STRIPE_SECRET_KEY);
+  const stripePub = has(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+  items.push({
+    id: 'payments',
+    name: 'Payments (Stripe)',
+    category: 'Payments',
+    description: 'Take deposits and treatment payments, and reconcile them against bookings.',
+    status: stripeSecret && stripePub ? 'connected' : stripeSecret || stripePub ? 'partial' : 'not_configured',
+    detail: stripeSecret && stripePub ? 'Ready to charge' : stripeSecret || stripePub ? 'Partially configured — add both keys.' : 'Add Stripe keys to take payments.',
+    envVars: [
+      { name: 'STRIPE_SECRET_KEY', set: stripeSecret },
+      { name: 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY', set: stripePub },
+    ],
+    docsHref: 'https://dashboard.stripe.com/apikeys',
+  });
+
+  // ── Content (WordPress) ──
+  const wp = has(process.env.WORDPRESS_API_URL);
+  items.push({
+    id: 'cms',
+    name: 'Content (WordPress)',
+    category: 'Content',
+    description: 'Optional source for journal/blog content pulled into the public site.',
+    status: wp ? 'connected' : 'not_configured',
+    detail: wp ? 'Connected' : 'Optional — set WORDPRESS_API_URL to pull content.',
+    envVars: [{ name: 'WORDPRESS_API_URL', set: wp }],
+  });
+
+  // ── Security & encryption ──
+  const jwt = has(process.env.ADMIN_JWT_SECRET);
+  const enc = has(process.env.HEALTH_ENCRYPTION_KEY);
+  items.push({
+    id: 'security',
+    name: 'Security & encryption',
+    category: 'Core',
+    description: 'Session signing and at-rest encryption for clinical health data.',
+    status: jwt && enc ? 'connected' : jwt || enc ? 'partial' : 'not_configured',
+    detail: jwt && enc ? 'Sessions signed · clinical data encrypted' : 'Missing a required key — sign-in or clinical encryption will fail.',
+    envVars: [
+      { name: 'ADMIN_JWT_SECRET', set: jwt },
+      { name: 'HEALTH_ENCRYPTION_KEY', set: enc },
+      { name: 'HEALTH_HMAC_KEY', set: has(process.env.HEALTH_HMAC_KEY), optional: true },
+    ],
+  });
+
+  // ── Scheduled jobs (Cron) ──
+  const cron = has(process.env.CRON_SECRET);
+  items.push({
+    id: 'cron',
+    name: 'Scheduled jobs',
+    category: 'Automation',
+    description: 'Runs daily automations — reminders, calendar sync and follow-ups.',
+    status: cron ? 'connected' : 'not_configured',
+    detail: cron ? 'Secured & scheduled' : 'Set CRON_SECRET to secure the daily runner.',
+    envVars: [{ name: 'CRON_SECRET', set: cron }],
+  });
+
+  return items;
+}
