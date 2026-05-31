@@ -51,6 +51,7 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'nav.overview': { en: 'Overview', uk: 'Огляд' },
   'nav.appointments': { en: 'Appointments', uk: 'Записи' },
   'nav.assessments': { en: 'Health forms', uk: 'Анкети здоровʼя' },
+  'nav.aftercare': { en: 'Aftercare', uk: 'Догляд' },
   'nav.invoices': { en: 'Invoices', uk: 'Рахунки' },
   'nav.profile': { en: 'Profile', uk: 'Профіль' },
   'portal.signOut': { en: 'Sign out', uk: 'Вийти' },
@@ -139,6 +140,16 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'dash.directions': { en: 'Get directions', uk: 'Прокласти маршрут' },
   'dash.needHelp': { en: 'Need a hand?', uk: 'Потрібна допомога?' },
   'dash.callUs': { en: 'Call the clinic', uk: 'Зателефонувати' },
+
+  // Aftercare
+  'after.eyebrow': { en: 'Aftercare', uk: 'Догляд' },
+  'after.title': { en: 'Caring for your results', uk: 'Догляд за вашим результатом' },
+  'after.intro': { en: 'Guidance for the treatments you’ve booked with us — revisit it any time. Your clinician’s personal instructions always come first.', uk: 'Поради щодо процедур, які ви забронювали — повертайтеся до них будь-коли. Особисті вказівки вашого клініциста завжди мають пріоритет.' },
+  'after.forTreatment': { en: 'For your {treatment}', uk: 'Для вашої процедури «{treatment}»' },
+  'after.empty': { en: 'Once you’ve booked a treatment, tailored aftercare guidance appears here.', uk: 'Щойно ви забронюєте процедуру, тут зʼявляться персональні поради з догляду.' },
+  'after.exploreCta': { en: 'Explore treatments', uk: 'Переглянути процедури' },
+  'after.questions': { en: 'Questions about your recovery?', uk: 'Питання щодо відновлення?' },
+  'after.questionsBody': { en: 'Our team is always happy to help — call us and we’ll talk it through.', uk: 'Наша команда завжди рада допомогти — зателефонуйте, і ми все обговоримо.' },
 
   // Assessments list
   'asmt.eyebrow': { en: 'Health forms', uk: 'Анкети здоровʼя' },
