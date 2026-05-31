@@ -139,6 +139,7 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'appt.upcoming': { en: 'Upcoming', uk: 'Майбутні' },
   'appt.past': { en: 'Past', uk: 'Минулі' },
   'appt.reschedule': { en: 'Reschedule / cancel', uk: 'Перенести / скасувати' },
+  'appt.addCalendar': { en: 'Add to calendar', uk: 'Додати в календар' },
   'appt.none': { en: 'No upcoming appointments.', uk: 'Немає запланованих візитів.' },
   'appt.bookNow': { en: 'Book now', uk: 'Записатися' },
   'appt.noPast': { en: 'No past visits yet.', uk: 'Минулих візитів ще немає.' },
@@ -147,6 +148,13 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'status.COMPLETED': { en: 'Completed', uk: 'Завершено' },
   'status.CANCELLED': { en: 'Cancelled', uk: 'Скасовано' },
   'status.NO_SHOW': { en: 'Missed', uk: 'Пропущено' },
+
+  // Data & privacy
+  'privacy.title': { en: 'Data & privacy', uk: 'Дані та конфіденційність' },
+  'privacy.body': { en: 'Your data is encrypted and held securely. You can download a copy any time.', uk: 'Ваші дані зашифровані та зберігаються надійно. Ви можете завантажити копію будь-коли.' },
+  'privacy.download': { en: 'Download my data', uk: 'Завантажити мої дані' },
+  'privacy.erase': { en: 'To request deletion of your account, contact us — we’ll verify your identity and confirm.', uk: 'Щоб видалити акаунт, звʼяжіться з нами — ми підтвердимо вашу особу та виконаємо запит.' },
+  'privacy.contact': { en: 'Contact the clinic', uk: 'Звʼязатися з клінікою' },
 };
 
 export function pt(locale: Locale, key: string, vars?: Record<string, string | number>): string {
