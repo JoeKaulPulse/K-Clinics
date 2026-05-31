@@ -37,17 +37,24 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
   const nameDobKey = fingerprint.nameDob(input.firstName, input.lastName, input.dob);
 
   // Guardrail: has an equivalent identity already claimed the discount?
-  const priorClaim = await db.discountClaim.findFirst({
-    where: {
-      status: { in: ['ACTIVE', 'REDEEMED'] },
-      OR: [
-        { emailNorm },
-        ...(phoneNorm ? [{ phoneNorm }] : []),
-        ...(nameDobKey ? [{ nameDobKey }] : []),
-      ],
-    },
-  });
-  const grant = !priorClaim;
+  // Fault-tolerant — discount logic must never block account creation.
+  let grant = true;
+  try {
+    const priorClaim = await db.discountClaim.findFirst({
+      where: {
+        status: { in: ['ACTIVE', 'REDEEMED'] },
+        OR: [
+          { emailNorm },
+          ...(phoneNorm ? [{ phoneNorm }] : []),
+          ...(nameDobKey ? [{ nameDobKey }] : []),
+        ],
+      },
+    });
+    grant = !priorClaim;
+  } catch (e) {
+    console.error('[signup] discount lookup failed (continuing):', (e as Error)?.message);
+    grant = false; // don't grant if we can't verify; account still proceeds
+  }
 
   const passwordHash = await hashPassword(input.password);
 
@@ -80,27 +87,33 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
   });
 
   let code: string | undefined;
-  if (grant) {
-    code = `KC15-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-    await db.discountClaim.create({
-      data: { clientId: client.id, code, status: 'ACTIVE', percent: 15, emailNorm, phoneNorm, nameDobKey, ip: input.ip || undefined },
-    });
-    await db.client.update({ where: { id: client.id }, data: { firstDiscountClaimed: true } });
-  } else {
-    // Record the blocked attempt for staff visibility (flagged, no usable code).
-    await db.discountClaim.create({
-      data: {
-        clientId: client.id,
-        code: `BLOCKED-${crypto.randomBytes(3).toString('hex').toUpperCase()}`,
-        status: 'BLOCKED',
-        percent: 15,
-        emailNorm,
-        phoneNorm,
-        nameDobKey,
-        ip: input.ip || undefined,
-        flagged: true,
-      },
-    });
+  try {
+    if (grant) {
+      code = `KC15-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+      await db.discountClaim.create({
+        data: { clientId: client.id, code, status: 'ACTIVE', percent: 15, emailNorm, phoneNorm, nameDobKey, ip: input.ip || undefined },
+      });
+      await db.client.update({ where: { id: client.id }, data: { firstDiscountClaimed: true } });
+    } else {
+      // Record the blocked attempt for staff visibility (flagged, no usable code).
+      await db.discountClaim.create({
+        data: {
+          clientId: client.id,
+          code: `BLOCKED-${crypto.randomBytes(3).toString('hex').toUpperCase()}`,
+          status: 'BLOCKED',
+          percent: 15,
+          emailNorm,
+          phoneNorm,
+          nameDobKey,
+          ip: input.ip || undefined,
+          flagged: true,
+        },
+      });
+    }
+  } catch (e) {
+    // Discount ledger issue must not fail signup — the account is created.
+    console.error('[signup] discount write failed (continuing):', (e as Error)?.message);
+    code = undefined;
   }
 
   await createClientSession({ sub: client.id, email: client.email, firstName: client.firstName });

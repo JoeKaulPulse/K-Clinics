@@ -25,6 +25,23 @@ export async function GET() {
     report.database = 'connected';
     report.clientTable = 'present';
     report.clientCount = clients;
+
+    // Probe the newer tables/columns signup + the ops suite depend on, so a
+    // missing migration is diagnosable rather than a bare 500.
+    const checks: Record<string, string> = {};
+    const probe = async (name: string, fn: () => Promise<unknown>) => {
+      try { await fn(); checks[name] = 'ok'; } catch (e) { checks[name] = `MISSING: ${(e as Error)?.message?.slice(0, 120)}`; }
+    };
+    await probe('discountClaim', () => db.discountClaim.count());
+    await probe('setting', () => db.setting.count());
+    await probe('staffSchedule', () => db.staffSchedule.count());
+    await probe('auditEvent', () => db.auditEvent.count());
+    await probe('client.signupIp+resetToken', () => db.client.findFirst({ select: { signupIp: true, resetTokenHash: true, medicalFlag: true } }));
+    await probe('adminUser.isClinician', () => db.adminUser.findFirst({ select: { isClinician: true, competencies: true } }));
+    await probe('booking.practitioner+timing', () => db.booking.findFirst({ select: { practitionerId: true, startedAt: true, sopAcknowledgedAt: true } }));
+    report.schema = checks;
+    report.schemaInSync = Object.values(checks).every((v) => v === 'ok');
+
     report.ok = true;
   } catch (err) {
     report.database = 'error';
