@@ -16,13 +16,23 @@ export async function POST(req: Request) {
 
   // ── Replace a staff member's weekly schedule ──
   if (body.op === 'setSchedule') {
-    const { staffId, blocks } = body as { staffId: string; blocks: { dayOfWeek: number; startMin: number; endMin: number }[] };
+    const { staffId, blocks } = body as { staffId: string; blocks: { dayOfWeek: number; startMin: number; endMin: number; locationId?: string | null }[] };
     if (!staffId || !Array.isArray(blocks)) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
     const clean = blocks.filter((b) => b.dayOfWeek >= 0 && b.dayOfWeek <= 6 && b.endMin > b.startMin);
+    // One block per weekday → one location per day (a clinician can't be in two
+    // places at once). locationId is kept per block.
     await db.$transaction([
       db.staffSchedule.deleteMany({ where: { staffId } }),
-      db.staffSchedule.createMany({ data: clean.map((b) => ({ staffId, ...b })) }),
+      db.staffSchedule.createMany({ data: clean.map((b) => ({ staffId, dayOfWeek: b.dayOfWeek, startMin: b.startMin, endMin: b.endMin, locationId: b.locationId || null })) }),
     ]);
+    return NextResponse.json({ ok: true });
+  }
+
+  // ── Set which locations a clinician is allowed to work at (many-to-many) ──
+  if (body.op === 'setLocations') {
+    const { staffId, locationIds } = body as { staffId: string; locationIds: string[] };
+    if (!staffId || !Array.isArray(locationIds)) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
+    await db.adminUser.update({ where: { id: staffId }, data: { locations: { set: locationIds.map((id) => ({ id })) } } });
     return NextResponse.json({ ok: true });
   }
 

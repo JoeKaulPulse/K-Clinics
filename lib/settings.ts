@@ -10,7 +10,8 @@ export type SettingKey =
   | 'require_medical_review' // clinician must review medical flag before starting
   | 'enforce_staff_availability' // bookings respect per-staff schedules
   | 'auto_assign_practitioner'   // auto-assign a competent free clinician at booking
-  | 'time_off_requires_approval'; // staff time-off requests need manager sign-off
+  | 'time_off_requires_approval' // staff time-off requests need manager sign-off
+  | 'multi_location_enabled';    // surface location pickers across the CRM
 
 export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   allow_clinician_choice: false,
@@ -19,6 +20,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   enforce_staff_availability: true,
   auto_assign_practitioner: true,
   time_off_requires_approval: true,
+  multi_location_enabled: false,
 };
 
 export const SETTING_META: Record<SettingKey, { label: string; description: string }> = {
@@ -45,6 +47,10 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   time_off_requires_approval: {
     label: 'Time-off needs approval',
     description: 'Staff time-off requests must be approved by a manager before they’re confirmed. Requested time still blocks the calendar until declined.',
+  },
+  multi_location_enabled: {
+    label: 'Multi-location mode',
+    description: 'Turn on once you operate more than one site. Surfaces location pickers for schedules and bookings. Each clinician works at one location per day.',
   },
 };
 

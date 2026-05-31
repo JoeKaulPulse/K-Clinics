@@ -43,6 +43,7 @@ export const DICT: Record<string, Entry> = {
   'nav.automations': { en: 'Automations', uk: 'Автоматизації' },
   'nav.activity': { en: 'Activity log', uk: 'Журнал дій' },
   'nav.staff': { en: 'Staff & access', uk: 'Персонал і доступ' },
+  'nav.locations': { en: 'Locations', uk: 'Локації' },
   'nav.integrations': { en: 'Integrations', uk: 'Інтеграції' },
   'nav.settings': { en: 'Settings', uk: 'Налаштування' },
 
