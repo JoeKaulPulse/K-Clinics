@@ -18,6 +18,12 @@ export async function POST(req: Request) {
     return NextResponse.json(result, { status: result.ok ? 200 : 401 });
   } catch (err) {
     console.error('[account/login] failed:', err);
-    return NextResponse.json({ ok: false, error: 'Sign in is temporarily unavailable. Please try again shortly.' }, { status: 500 });
+    // Surface a safe diagnostic category (which stage threw) without leaking
+    // any detail — helps pin down config/schema issues from the UI.
+    const stage = (err as Error & { stage?: string })?.stage;
+    return NextResponse.json(
+      { ok: false, error: `Sign in is temporarily unavailable. Please try again shortly.${stage ? ` (ref: ${stage})` : ''}` },
+      { status: 500 },
+    );
   }
 }

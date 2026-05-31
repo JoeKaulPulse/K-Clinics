@@ -126,6 +126,14 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
   };
 }
 
+/** Tag a thrown error with the stage it failed at, so the API layer can report
+ *  a safe diagnostic category without leaking details. */
+function stageError(stage: string, err: unknown): Error {
+  const e = new Error(`[login:${stage}] ${(err as Error)?.message || 'failed'}`);
+  (e as Error & { stage?: string }).stage = stage;
+  return e;
+}
+
 export async function loginClient(email: string, password: string): Promise<{ ok: boolean; error?: string }> {
   // Select only what we need: a default findUnique pulls every column, so any
   // not-yet-migrated column in production would throw before we can sign in.
@@ -139,11 +147,17 @@ export async function loginClient(email: string, password: string): Promise<{ ok
       });
       break;
     } catch (err) {
-      if (attempt === 1) throw err;
+      if (attempt === 1) throw stageError('lookup', err);
       await new Promise((r) => setTimeout(r, 300));
     }
   }
-  if (!client?.passwordHash || !(await verifyPassword(password, client.passwordHash))) {
+  let valid = false;
+  try {
+    valid = !!client?.passwordHash && (await verifyPassword(password, client.passwordHash));
+  } catch (err) {
+    throw stageError('verify', err);
+  }
+  if (!valid || !client) {
     return { ok: false, error: 'Invalid email or password.' };
   }
   // Recording last-login is best-effort — a failure here (e.g. column drift)
@@ -153,7 +167,11 @@ export async function loginClient(email: string, password: string): Promise<{ ok
   } catch (e) {
     console.error('[login] lastLoginAt update failed (continuing):', (e as Error)?.message);
   }
-  await createClientSession({ sub: client.id, email: client.email, firstName: client.firstName });
+  try {
+    await createClientSession({ sub: client.id, email: client.email, firstName: client.firstName });
+  } catch (err) {
+    throw stageError('session', err);
+  }
   return { ok: true };
 }
 
