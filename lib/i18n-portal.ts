@@ -55,6 +55,23 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'nav.profile': { en: 'Profile', uk: 'Профіль' },
   'portal.signOut': { en: 'Sign out', uk: 'Вийти' },
   'portal.language': { en: 'Language', uk: 'Мова' },
+
+  // Assessment runner
+  'assess.aboutMin': { en: 'about {n} min', uk: 'близько {n} хв' },
+  'assess.encrypted': { en: 'Encrypted and visible only to your clinical team.', uk: 'Зашифровано та доступно лише вашій клінічній команді.' },
+  'assess.begin': { en: 'Begin →', uk: 'Почати →' },
+  'assess.back': { en: '← Back', uk: '← Назад' },
+  'assess.continue': { en: 'Continue', uk: 'Далі' },
+  'assess.continueSkip': { en: 'Continue / skip', uk: 'Далі / пропустити' },
+  'assess.almost': { en: 'Almost there', uk: 'Майже готово' },
+  'assess.readySubmit': { en: 'Ready to submit?', uk: 'Готові надіслати?' },
+  'assess.submitIntro': { en: 'Once submitted, your answers form part of your confidential clinical record. You can submit a fresh version later if anything changes.', uk: 'Після надсилання ваші відповіді стають частиною конфіденційного клінічного запису. За потреби ви зможете надіслати оновлену версію пізніше.' },
+  'assess.submit': { en: 'Submit securely', uk: 'Надіслати безпечно' },
+  'assess.saving': { en: 'Encrypting & saving…', uk: 'Шифрування та збереження…' },
+  'assess.doneTitle': { en: 'All done — thank you.', uk: 'Готово — дякуємо.' },
+  'assess.doneBody': { en: 'Your {form} has been encrypted and added to your confidential record. Your clinician will review it before your visit.', uk: 'Ваша анкета «{form}» зашифрована та додана до конфіденційного запису. Клініцист перегляне її перед вашим візитом.' },
+  'assess.backToPortal': { en: 'Back to portal', uk: 'Повернутися до кабінету' },
+  'error.couldNotSave': { en: 'Could not save.', uk: 'Не вдалося зберегти.' },
 };
 
 export function pt(locale: Locale, key: string, vars?: Record<string, string | number>): string {

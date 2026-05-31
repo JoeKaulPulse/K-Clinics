@@ -6,11 +6,13 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import type { Question, Questionnaire } from '@/lib/questionnaires';
 import { isVisible } from '@/lib/questionnaires';
+import { portalTranslator, type Locale } from '@/lib/i18n-portal';
 
 type Answers = Record<string, unknown>;
 
-export function AssessmentRunner({ q }: { q: Questionnaire }) {
+export function AssessmentRunner({ q, locale = 'en' }: { q: Questionnaire; locale?: Locale }) {
   const router = useRouter();
+  const t = portalTranslator(locale);
   const [answers, setAnswers] = useState<Answers>({});
   const [i, setI] = useState(-1); // -1 = intro screen
   const [dir, setDir] = useState(1);
@@ -58,9 +60,9 @@ export function AssessmentRunner({ q }: { q: Questionnaire }) {
       });
       const json = await res.json();
       if (json.ok) setStatus('done');
-      else { setError(json.error || 'Could not save.'); setStatus('error'); }
+      else { setError(json.error || t('error.couldNotSave')); setStatus('error'); }
     } catch {
-      setError('Network error — please try again.');
+      setError(t('error.network'));
       setStatus('error');
     }
   }
@@ -73,12 +75,12 @@ export function AssessmentRunner({ q }: { q: Questionnaire }) {
           <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-full bg-[var(--color-ink)] text-[var(--color-gold-soft)]">
             <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </div>
-          <h2 className="font-[family-name:var(--font-display)] text-3xl">All done — thank you.</h2>
+          <h2 className="font-[family-name:var(--font-display)] text-3xl">{t('assess.doneTitle')}</h2>
           <p className="mx-auto mt-3 max-w-sm text-[var(--color-stone)]">
-            Your {q.title.toLowerCase()} has been encrypted and added to your confidential record. Your clinician will review it before your visit.
+            {t('assess.doneBody', { form: q.title.toLowerCase() })}
           </p>
           <Link href="/account" className="mt-7 inline-block rounded-full bg-[var(--color-gold)] px-6 py-3 font-medium text-white hover:bg-[var(--color-ink)]">
-            Back to portal
+            {t('assess.backToPortal')}
           </Link>
         </motion.div>
       </Centered>
@@ -102,15 +104,15 @@ export function AssessmentRunner({ q }: { q: Questionnaire }) {
         <AnimatePresence mode="wait" custom={dir}>
           {i < 0 ? (
             <motion.div key="intro" custom={dir} variants={slide} initial="enter" animate="center" exit="exit" transition={trans}>
-              <p className="eyebrow mb-3">{q.title} · about {q.estMinutes} min</p>
+              <p className="eyebrow mb-3">{q.title} · {t('assess.aboutMin', { n: q.estMinutes })}</p>
               <h1 className="font-[family-name:var(--font-display)] text-[clamp(2rem,1.4rem+2.4vw,3.25rem)] leading-[1.08]">{q.title}</h1>
               <p className="mt-5 max-w-lg text-lg leading-relaxed text-[var(--color-stone)]">{q.intro}</p>
               <div className="mt-8 flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)] px-4 py-3 text-sm text-[var(--color-stone)]">
                 <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-[var(--color-gold)]" fill="none"><path d="M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6l7-3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>
-                Encrypted and visible only to your clinical team.
+                {t('assess.encrypted')}
               </div>
               <button onClick={() => go(1)} className="mt-9 rounded-full bg-[var(--color-gold)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">
-                Begin →
+                {t('assess.begin')}
               </button>
             </motion.div>
           ) : current ? (
@@ -124,14 +126,14 @@ export function AssessmentRunner({ q }: { q: Questionnaire }) {
           ) : (
             // Review / submit screen
             <motion.div key="review" custom={dir} variants={slide} initial="enter" animate="center" exit="exit" transition={trans}>
-              <p className="eyebrow mb-3">Almost there</p>
-              <h2 className="font-[family-name:var(--font-display)] text-[clamp(1.8rem,1.3rem+2vw,2.75rem)]">Ready to submit?</h2>
+              <p className="eyebrow mb-3">{t('assess.almost')}</p>
+              <h2 className="font-[family-name:var(--font-display)] text-[clamp(1.8rem,1.3rem+2vw,2.75rem)]">{t('assess.readySubmit')}</h2>
               <p className="mt-4 max-w-lg text-[var(--color-stone)]">
-                Once submitted, your answers form part of your confidential clinical record. You can submit a fresh version later if anything changes.
+                {t('assess.submitIntro')}
               </p>
               {error && <p className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
               <button onClick={submit} disabled={status === 'saving'} className="mt-8 rounded-full bg-[var(--color-gold)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)] disabled:opacity-60">
-                {status === 'saving' ? 'Encrypting & saving…' : 'Submit securely'}
+                {status === 'saving' ? t('assess.saving') : t('assess.submit')}
               </button>
             </motion.div>
           )}
@@ -140,14 +142,14 @@ export function AssessmentRunner({ q }: { q: Questionnaire }) {
 
       {/* Nav */}
       <div className="mx-auto flex w-full max-w-2xl items-center justify-between px-6 pb-10">
-        <button onClick={() => go(-1)} className={`text-sm font-medium text-[var(--color-stone)] transition-opacity ${i < 0 ? 'pointer-events-none opacity-0' : 'hover:text-[var(--color-ink)]'}`}>← Back</button>
+        <button onClick={() => go(-1)} className={`text-sm font-medium text-[var(--color-stone)] transition-opacity ${i < 0 ? 'pointer-events-none opacity-0' : 'hover:text-[var(--color-ink)]'}`}>{t('assess.back')}</button>
         {i >= 0 && i < total && (
           <button
             onClick={() => answeredOk(current) && go(1)}
             disabled={!answeredOk(current)}
             className="rounded-full bg-[var(--color-ink)] px-6 py-2.5 text-sm font-medium text-[var(--color-porcelain)] transition-opacity disabled:opacity-40"
           >
-            {current?.required ? 'Continue' : 'Continue / skip'} →
+            {current?.required ? t('assess.continue') : t('assess.continueSkip')} →
           </button>
         )}
       </div>
