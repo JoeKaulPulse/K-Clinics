@@ -269,6 +269,10 @@ model Booking {
   practitioner   AdminUser?   @relation("PractitionerBookings", fields: [practitionerId], references: [id], onDelete: SetNull)
   practitionerId String?
 
+  // Which site this appointment takes place at (multi-location).
+  location       Location?    @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  locationId     String?
+
   // Time tracking — actuals vs the scheduled duration.
   startedAt      DateTime?
   finishedAt     DateTime?
@@ -374,6 +378,35 @@ model AdminUser {
   timeOff      StaffTimeOff[]
   bookings     Booking[]       @relation("PractitionerBookings")
   assignedTasks Task[]         @relation("TaskAssignee")
+  locations    Location[]      @relation("StaffLocations")
+}
+
+// ── Clinic locations (multi-site) ────────────────────────────────────────────
+// The clinic starts single-site; this model lets new locations be added and
+// clinicians assigned to one or more. A clinician's working location on a given
+// day comes from their weekly schedule (one block per weekday → one location
+// per day), so they're never in two places at once.
+model Location {
+  id          String          @id @default(cuid())
+  name        String
+  slug        String          @unique
+  addressLine String?
+  city        String?
+  postcode    String?
+  phone       String?
+  email       String?
+  color       String?         // calendar colour
+  active      Boolean         @default(true)
+  isPrimary   Boolean         @default(false)
+  sortOrder   Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  staff       AdminUser[]     @relation("StaffLocations")
+  schedules   StaffSchedule[]
+  bookings    Booking[]
+
+  @@index([active])
 }
 
 // ── Weekly working pattern per staff member ──────────────────────────────────
@@ -384,6 +417,8 @@ model StaffSchedule {
   dayOfWeek  Int        // 0=Sun … 6=Sat
   startMin   Int        // minutes from midnight
   endMin     Int
+  location   Location?  @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  locationId String?
   createdAt  DateTime   @default(now())
 
   @@index([staffId, dayOfWeek])

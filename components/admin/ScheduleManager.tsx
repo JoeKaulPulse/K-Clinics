@@ -7,15 +7,17 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const toHM = (min: number) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 const toMin = (hm: string) => { const [h, m] = hm.split(':').map(Number); return h * 60 + m; };
 
+type Loc = { id: string; name: string; color: string | null };
 type Staff = {
   id: string; name: string | null; email: string; isClinician: boolean; color: string | null; title: string | null;
   competencies: string[];
   googleConnected: boolean;
-  schedules: { dayOfWeek: number; startMin: number; endMin: number }[];
+  locationIds: string[];
+  schedules: { dayOfWeek: number; startMin: number; endMin: number; locationId: string | null }[];
   timeOff: { id: string; kind: string; startAt: string; endAt: string; reason: string | null }[];
 };
 
-export function ScheduleManager({ staff, treatments, googleConfigured }: { staff: Staff[]; treatments: { slug: string; title: string }[]; googleConfigured: boolean }) {
+export function ScheduleManager({ staff, treatments, googleConfigured, locations, multiLocation }: { staff: Staff[]; treatments: { slug: string; title: string }[]; googleConfigured: boolean; locations: Loc[]; multiLocation: boolean }) {
   const [activeId, setActiveId] = useState(staff[0]?.id ?? '');
   const active = staff.find((s) => s.id === activeId);
 
@@ -41,22 +43,25 @@ export function ScheduleManager({ staff, treatments, googleConfigured }: { staff
         {staff.length === 0 && <p className="px-4 py-3 text-sm text-[var(--color-stone)]">No staff yet — add staff in Staff & access.</p>}
       </aside>
 
-      {active && <Editor key={active.id} staff={active} treatments={treatments} googleConfigured={googleConfigured} />}
+      {active && <Editor key={active.id} staff={active} treatments={treatments} googleConfigured={googleConfigured} locations={locations} multiLocation={multiLocation} />}
     </div>
   );
 }
 
-function Editor({ staff, treatments, googleConfigured }: { staff: Staff; treatments: { slug: string; title: string }[]; googleConfigured: boolean }) {
+function Editor({ staff, treatments, googleConfigured, locations, multiLocation }: { staff: Staff; treatments: { slug: string; title: string }[]; googleConfigured: boolean; locations: Loc[]; multiLocation: boolean }) {
   const router = useRouter();
   const [isClinician, setIsClinician] = useState(staff.isClinician);
   const [comp, setComp] = useState<Set<string>>(new Set(staff.competencies));
+  const [locs, setLocs] = useState<Set<string>>(new Set(staff.locationIds));
   const [rows, setRows] = useState(() =>
     DAYS.map((_, d) => {
       const sc = staff.schedules.find((s) => s.dayOfWeek === d);
-      return { on: !!sc, start: sc ? toHM(sc.startMin) : '09:00', end: sc ? toHM(sc.endMin) : '18:00' };
+      return { on: !!sc, start: sc ? toHM(sc.startMin) : '09:00', end: sc ? toHM(sc.endMin) : '18:00', locationId: sc?.locationId || '' };
     }),
   );
   const [msg, setMsg] = useState('');
+  // Locations this clinician may be scheduled at (selected set, else all).
+  const allowedLocs = locations.filter((l) => locs.size === 0 || locs.has(l.id));
 
   async function post(payload: object) {
     const res = await fetch('/api/admin/schedule', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -65,7 +70,7 @@ function Editor({ staff, treatments, googleConfigured }: { staff: Staff; treatme
 
   async function saveSchedule() {
     setMsg('Saving…');
-    const blocks = rows.map((r, d) => (r.on ? { dayOfWeek: d, startMin: toMin(r.start), endMin: toMin(r.end) } : null)).filter(Boolean);
+    const blocks = rows.map((r, d) => (r.on ? { dayOfWeek: d, startMin: toMin(r.start), endMin: toMin(r.end), locationId: r.locationId || null } : null)).filter(Boolean);
     const ok = await post({ op: 'setSchedule', staffId: staff.id, blocks });
     setMsg(ok ? 'Schedule saved ✓' : 'Could not save');
     router.refresh();
@@ -73,6 +78,11 @@ function Editor({ staff, treatments, googleConfigured }: { staff: Staff; treatme
   async function saveClinician() {
     const ok = await post({ op: 'setClinician', staffId: staff.id, isClinician, competencies: [...comp] });
     setMsg(ok ? 'Saved ✓' : 'Could not save');
+    router.refresh();
+  }
+  async function saveLocations() {
+    const ok = await post({ op: 'setLocations', staffId: staff.id, locationIds: [...locs] });
+    setMsg(ok ? 'Locations saved ✓' : 'Could not save');
     router.refresh();
   }
 
@@ -103,6 +113,27 @@ function Editor({ staff, treatments, googleConfigured }: { staff: Staff; treatme
         <button onClick={saveClinician} className="mt-4 rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)]">Save</button>
       </section>
 
+      {/* Locations this clinician works at */}
+      {multiLocation && locations.length > 0 && (
+        <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
+          <h2 className="mb-1 font-[family-name:var(--font-display)] text-xl">Works at</h2>
+          <p className="mb-3 text-sm text-[var(--color-stone)]">Locations this clinician can be scheduled at. Their location each day is set in the weekly hours below — they’re only ever at one site per day.</p>
+          <div className="flex flex-wrap gap-2">
+            {locations.map((l) => {
+              const on = locs.has(l.id);
+              return (
+                <button key={l.id} type="button" onClick={() => { const n = new Set(locs); on ? n.delete(l.id) : n.add(l.id); setLocs(n); }}
+                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
+                  <span className="h-2 w-2 rounded-full" style={{ background: on ? 'white' : (l.color || 'var(--color-gold)') }} />
+                  {l.name}
+                </button>
+              );
+            })}
+          </div>
+          <button onClick={saveLocations} className="mt-4 rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)]">Save locations</button>
+        </section>
+      )}
+
       {/* Weekly hours */}
       <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
         <h2 className="mb-4 font-[family-name:var(--font-display)] text-xl">Weekly working hours</h2>
@@ -116,6 +147,12 @@ function Editor({ staff, treatments, googleConfigured }: { staff: Staff; treatme
               <input type="time" value={r.start} disabled={!r.on} onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, start: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40" />
               <span className="text-[var(--color-stone)]">–</span>
               <input type="time" value={r.end} disabled={!r.on} onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, end: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40" />
+              {multiLocation && allowedLocs.length > 0 && (
+                <select value={r.locationId} disabled={!r.on} onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, locationId: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40">
+                  <option value="">{allowedLocs.length === 1 ? allowedLocs[0].name : 'Location…'}</option>
+                  {allowedLocs.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </select>
+              )}
             </div>
           ))}
         </div>
