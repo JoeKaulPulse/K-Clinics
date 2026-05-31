@@ -16,6 +16,8 @@ export function FaqAccordion({ faqs }: { faqs: Faq[] }) {
               onClick={() => setOpen(isOpen ? null : i)}
               className="group flex w-full items-center justify-between gap-6 py-6 text-left"
               aria-expanded={isOpen}
+              aria-controls={`faq-panel-${i}`}
+              id={`faq-trigger-${i}`}
             >
               <span className={`font-[family-name:var(--font-display)] text-xl leading-snug transition-all duration-500 [transition-timing-function:var(--ease-lux)] group-hover:text-[var(--color-gold)] ${isOpen ? 'translate-x-1' : ''}`}>
                 {f.q}
@@ -33,6 +35,9 @@ export function FaqAccordion({ faqs }: { faqs: Faq[] }) {
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
                   className="overflow-hidden"
+                  id={`faq-panel-${i}`}
+                  role="region"
+                  aria-labelledby={`faq-trigger-${i}`}
                 >
                   <p className="max-w-2xl pb-6 leading-relaxed text-[var(--color-stone)]">{f.a}</p>
                 </motion.div>
