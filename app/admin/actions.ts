@@ -2,16 +2,32 @@
 
 import { revalidatePath } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
-import { getSession, sessionCan } from '@/lib/auth';
+import { getSession, sessionCan, canViewClinical } from '@/lib/auth';
 
-export async function addNote(clientId: string, summary: string, detail?: string) {
+const NOTE_TYPES = ['NOTE', 'CLINICAL', 'COMPLAINT', 'FOLLOW_UP', 'CALL'] as const;
+
+export async function addNote(clientId: string, summary: string, type: string = 'NOTE', detail?: string, pinned?: boolean) {
   if (!crmEnabled || !summary.trim()) return;
   const session = await getSession();
   if (!session || !sessionCan(session, 'clients.edit')) return;
+  const t = (NOTE_TYPES as readonly string[]).includes(type) ? type : 'NOTE';
+  // Clinical notes are restricted to clinical staff.
+  if (t === 'CLINICAL' && !canViewClinical(session.role)) return;
   const { db } = await import('@/lib/db');
-  await db.interaction.create({
-    data: { clientId, type: 'NOTE', summary: summary.trim(), detail: detail || null, author: session.email },
+  const note = await db.interaction.create({
+    data: { clientId, type: t as never, summary: summary.trim(), detail: detail?.trim() || null, author: session.email, pinned: Boolean(pinned) },
   });
+  const { logAudit } = await import('@/lib/audit');
+  await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, clientId, summary: `${t.toLowerCase()} note added`, meta: { noteId: note.id } });
+  revalidatePath(`/admin/clients/${clientId}`);
+}
+
+export async function togglePinNote(noteId: string, clientId: string, pinned: boolean) {
+  if (!crmEnabled) return;
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'clients.edit')) return;
+  const { db } = await import('@/lib/db');
+  await db.interaction.update({ where: { id: noteId }, data: { pinned } });
   revalidatePath(`/admin/clients/${clientId}`);
 }
 
