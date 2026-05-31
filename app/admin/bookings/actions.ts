@@ -4,6 +4,17 @@ import { revalidatePath } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan } from '@/lib/auth';
 
+// Set which location an appointment takes place at (multi-location).
+export async function setBookingLocation(bookingId: string, locationId: string | null) {
+  if (!crmEnabled) return { ok: false };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'Not permitted' };
+  const { db } = await import('@/lib/db');
+  await db.booking.update({ where: { id: bookingId }, data: { locationId: locationId || null } });
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  return { ok: true };
+}
+
 // Staff: charge the saved card for a delivered service (adjustable amount).
 export async function chargeBookingAction(bookingId: string, amountPence: number) {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };

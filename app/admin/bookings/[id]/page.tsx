@@ -7,6 +7,7 @@ import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { BookingActions } from '@/components/admin/BookingActions';
 import { ClinicalWorkflow } from '@/components/admin/ClinicalWorkflow';
 import { ConsumablesPanel } from '@/components/admin/ConsumablesPanel';
+import { BookingLocation } from '@/components/admin/BookingLocation';
 import { sessionCan } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -38,6 +39,11 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const used = usedRaw.map((m) => ({
     id: m.id, itemName: m.item.name, unit: m.item.unit, qty: Math.abs(m.delta), batchNo: m.batchNo, by: m.by, at: m.createdAt.toISOString(),
   }));
+
+  // Location (multi-site): show a picker when more than one site is configured.
+  const { getSetting } = await import('@/lib/settings');
+  const activeLocations = await db.location.findMany({ where: { active: true }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }], select: { id: true, name: true, color: true } });
+  const multiLocation = (await getSetting('multi_location_enabled')) || activeLocations.length > 1;
 
   const can = await sessionPermissions();
   return (
@@ -89,6 +95,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             }}
           />
           {canConsumables && <ConsumablesPanel bookingId={b.id} items={stockItems} used={used} />}
+          {multiLocation && activeLocations.length > 0 && <BookingLocation bookingId={b.id} current={b.locationId} locations={activeLocations} />}
           <div>
             <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Actions</h2>
             <BookingActions
