@@ -132,6 +132,21 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'profile.saved': { en: 'Saved ✓', uk: 'Збережено ✓' },
   'profile.couldNotSave': { en: 'Could not save.', uk: 'Не вдалося зберегти.' },
   'profile.title': { en: 'Your profile', uk: 'Ваш профіль' },
+
+  // Appointments
+  'appt.title': { en: 'Your visits', uk: 'Ваші візити' },
+  'appt.bookNew': { en: 'Book new', uk: 'Новий запис' },
+  'appt.upcoming': { en: 'Upcoming', uk: 'Майбутні' },
+  'appt.past': { en: 'Past', uk: 'Минулі' },
+  'appt.reschedule': { en: 'Reschedule / cancel', uk: 'Перенести / скасувати' },
+  'appt.none': { en: 'No upcoming appointments.', uk: 'Немає запланованих візитів.' },
+  'appt.bookNow': { en: 'Book now', uk: 'Записатися' },
+  'appt.noPast': { en: 'No past visits yet.', uk: 'Минулих візитів ще немає.' },
+  'status.PENDING': { en: 'Awaiting confirmation', uk: 'Очікує підтвердження' },
+  'status.CONFIRMED': { en: 'Confirmed', uk: 'Підтверджено' },
+  'status.COMPLETED': { en: 'Completed', uk: 'Завершено' },
+  'status.CANCELLED': { en: 'Cancelled', uk: 'Скасовано' },
+  'status.NO_SHOW': { en: 'Missed', uk: 'Пропущено' },
 };
 
 export function pt(locale: Locale, key: string, vars?: Record<string, string | number>): string {
