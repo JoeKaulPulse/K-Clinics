@@ -17,6 +17,7 @@ const nav = [
   { href: '/admin/consultations', key: 'nav.consultations', perm: 'consultations.view' },
   { href: '/admin/clients', key: 'nav.clients', perm: 'clients.view' },
   { href: '/admin/discounts', key: 'nav.discounts', perm: 'discounts.manage' },
+  { href: '/admin/reviews', key: 'nav.reviews', perm: 'reviews.manage' },
   { href: '/admin/schedule', key: 'nav.schedule', perm: 'schedule.manage' },
   { href: '/admin/tasks', key: 'nav.tasks', perm: undefined, badge: 'tasks' as const },
   { href: '/admin/time-off', key: 'nav.timeoff', perm: undefined, badge: 'timeoff' as const },

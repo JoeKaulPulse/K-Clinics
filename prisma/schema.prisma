@@ -110,6 +110,22 @@ enum AuditAction {
   TIMEOFF_DECLINED
   TIMEOFF_CANCELLED
   CONSUMABLE_USED
+  REVIEW_REQUESTED
+  REVIEW_RECEIVED
+  REVIEW_PUBLISHED
+}
+
+enum ReviewStatus {
+  PENDING      // request sent, awaiting the client's response
+  SUBMITTED    // client left a review — awaiting staff moderation
+  APPROVED     // approved for display / eligible to push to Google
+  PUBLISHED    // surfaced publicly / synced to Google Business
+  HIDDEN       // moderated out (spam, abusive, off-topic)
+}
+
+enum ReviewChannel {
+  EMAIL
+  SMS
 }
 
 enum TimeOffKind {
@@ -242,6 +258,7 @@ model Client {
   assessments     HealthAssessment[]
   discountClaims  DiscountClaim[]
   tasks           Task[]
+  reviews         Review[]
 
   @@index([createdAt])
   @@index([dob])
@@ -365,6 +382,7 @@ model Booking {
   updatedAt     DateTime      @updatedAt
 
   auditEvents   AuditEvent[]
+  reviews       Review[]
 
   @@index([startAt])
   @@index([status])
@@ -435,6 +453,7 @@ model AdminUser {
   bookings     Booking[]       @relation("PractitionerBookings")
   assignedTasks Task[]         @relation("TaskAssignee")
   locations    Location[]      @relation("StaffLocations")
+  reviews      Review[]        @relation("ClinicianReviews")
 }
 
 // ── Clinic locations (multi-site) ────────────────────────────────────────────
@@ -681,4 +700,45 @@ model DiscountClaim {
   @@index([phoneNorm])
   @@index([nameDobKey])
   @@index([status])
+}
+
+// ── Client reviews (own architecture; optional sync to Google Business) ──────
+model Review {
+  id          String        @id @default(cuid())
+  client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId    String
+  booking     Booking?      @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  bookingId   String?
+  // The clinician the review is about (for staff gamification later).
+  clinician   AdminUser?    @relation("ClinicianReviews", fields: [clinicianId], references: [id], onDelete: SetNull)
+  clinicianId String?
+
+  status      ReviewStatus  @default(PENDING)
+  channel     ReviewChannel @default(EMAIL)
+  // Unguessable token for the public "leave a review" link.
+  token       String        @unique @default(cuid())
+
+  rating      Int?          // 1–5, set when the client submits
+  title       String?
+  body        String?
+  treatmentTitle String?    // snapshot of what was treated
+
+  // Moderation + publication.
+  moderatedBy String?
+  moderatedAt DateTime?
+  // Google Business sync (dummy/inert until credentials supplied).
+  googleReviewId String?
+  pushedToGoogleAt DateTime?
+  // If they clicked through to leave it directly on Google instead.
+  redirectedToGoogle Boolean @default(false)
+
+  requestedAt DateTime?
+  submittedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([status])
+  @@index([clientId])
+  @@index([clinicianId])
+  @@index([rating])
 }

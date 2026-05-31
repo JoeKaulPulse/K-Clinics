@@ -267,3 +267,12 @@ export function tmplFormReminder(o: { firstName: string; treatment: string; star
     <p>With warmth,<br>The K Clinics team</p>`,
   });
 }
+
+export function tmplReviewRequest(firstName: string, link: string, treatment?: string) {
+  const body = `
+    <p>Hi ${firstName},</p>
+    <p>Thank you for visiting ${SITE}${treatment ? ` for your ${treatment}` : ''}. It was a pleasure to care for you.</p>
+    <p>Your feedback means the world to us — and helps others discover the clinic. Would you take a moment to share how it went?</p>
+    <p style="text-align:center;margin:32px 0">
+      <a href="${link}" style="background:#a98a6d;color:#fff;padding:14px 28px;border-radius:999px;text-decoration:none;font-weight:600">Leave a review</a>
+    </p>
