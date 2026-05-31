@@ -54,6 +54,7 @@ export const DICT: Record<string, Entry> = {
   'shell.signOut': { en: 'Sign out', uk: 'Вийти' },
   'shell.profile': { en: 'My profile', uk: 'Мій профіль' },
   'shell.language': { en: 'Language', uk: 'Мова' },
+  'shell.searchClients': { en: 'Search clients…', uk: 'Пошук клієнтів…' },
   'common.save': { en: 'Save', uk: 'Зберегти' },
   'common.saving': { en: 'Saving…', uk: 'Збереження…' },
   'common.saved': { en: 'Saved ✓', uk: 'Збережено ✓' },
