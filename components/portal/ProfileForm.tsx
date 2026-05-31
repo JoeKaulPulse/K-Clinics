@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { portalTranslator, type Locale } from '@/lib/i18n-portal';
 
 type Initial = { firstName: string; lastName: string; email: string; phone: string; dob: string; marketingOptIn: boolean };
 
-export function ProfileForm({ initial }: { initial: Initial }) {
+export function ProfileForm({ initial, locale = 'en' }: { initial: Initial; locale?: Locale }) {
   const router = useRouter();
+  const t = portalTranslator(locale);
   const [d, setD] = useState({ ...initial, newPassword: '' });
   const [msg, setMsg] = useState('');
   const [saving, setSaving] = useState(false);
@@ -24,9 +26,9 @@ export function ProfileForm({ initial }: { initial: Initial }) {
           marketingOptIn: d.marketingOptIn, newPassword: d.newPassword || undefined,
         }),
       });
-      if (res.status === 404 || res.status === 503) { setMsg('Saved (preview).'); return; }
+      if (res.status === 404 || res.status === 503) { setMsg(t('profile.saved')); return; }
       const json = await res.json();
-      setMsg(json.ok ? 'Saved ✓' : json.error || 'Could not save.');
+      setMsg(json.ok ? t('profile.saved') : json.error || t('profile.couldNotSave'));
       if (json.ok) { set('newPassword', ''); router.refresh(); }
     } catch {
       setMsg('Saved (preview).');
@@ -38,22 +40,22 @@ export function ProfileForm({ initial }: { initial: Initial }) {
   return (
     <form onSubmit={save} className="max-w-lg space-y-5">
       <div className="grid grid-cols-2 gap-4">
-        <Field label="First name"><input className={f} value={d.firstName} onChange={(e) => set('firstName', e.target.value)} /></Field>
-        <Field label="Last name"><input className={f} value={d.lastName} onChange={(e) => set('lastName', e.target.value)} /></Field>
+        <Field label={t('field.firstName')}><input className={f} value={d.firstName} onChange={(e) => set('firstName', e.target.value)} /></Field>
+        <Field label={t('field.lastName')}><input className={f} value={d.lastName} onChange={(e) => set('lastName', e.target.value)} /></Field>
       </div>
-      <Field label="Email"><input className={f} value={d.email} disabled /></Field>
+      <Field label={t('field.email')}><input className={f} value={d.email} disabled /></Field>
       <div className="grid grid-cols-2 gap-4">
-        <Field label="Phone"><input className={f} type="tel" value={d.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
-        <Field label="Date of birth"><input className={f} type="date" value={d.dob} onChange={(e) => set('dob', e.target.value)} /></Field>
+        <Field label={t('field.phone')}><input className={f} type="tel" value={d.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
+        <Field label={t('field.dob')}><input className={f} type="date" value={d.dob} onChange={(e) => set('dob', e.target.value)} /></Field>
       </div>
-      <Field label="New password (optional)"><input className={f} type="password" value={d.newPassword} placeholder="Leave blank to keep current" onChange={(e) => set('newPassword', e.target.value)} /></Field>
+      <Field label={t('profile.newPassword')}><input className={f} type="password" value={d.newPassword} placeholder={t('profile.leaveBlank')} onChange={(e) => set('newPassword', e.target.value)} /></Field>
       <label className="flex items-center gap-3 text-sm text-[var(--color-stone)]">
         <input type="checkbox" checked={d.marketingOptIn} onChange={(e) => set('marketingOptIn', e.target.checked)} className="h-4 w-4 accent-[var(--color-gold)]" />
-        Email me offers, events and skincare tips.
+        {t('profile.marketing')}
       </label>
       {msg && <p className="text-sm text-[var(--color-gold)]">{msg}</p>}
       <button type="submit" disabled={saving} className="rounded-full bg-[var(--color-gold)] px-6 py-3 font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
-        {saving ? 'Saving…' : 'Save changes'}
+        {saving ? t('profile.saving') : t('profile.save')}
       </button>
     </form>
   );
