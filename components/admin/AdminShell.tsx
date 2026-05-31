@@ -134,9 +134,13 @@ export function AdminShell({
               </select>
             </label>
             {user && <p className="px-2 text-xs text-[var(--color-stone)]">{user}</p>}
-            <button onClick={signOut} className="mt-2 px-2 text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">
-              {t('shell.signOut')}
-            </button>
+            <div className="mt-2 flex items-center gap-3 px-2">
+              <Link href="/admin/profile" className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">{t('shell.profile')}</Link>
+              <span className="text-[var(--color-line)]">·</span>
+              <button onClick={signOut} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">
+                {t('shell.signOut')}
+              </button>
+            </div>
           </div>
         </aside>
         <main className="flex-1 p-5 md:p-8 lg:p-10">{children}</main>

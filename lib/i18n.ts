@@ -49,6 +49,7 @@ export const DICT: Record<string, Entry> = {
   // ── Shell / common ──
   'shell.crm': { en: 'K Clinics CRM', uk: 'K Clinics CRM' },
   'shell.signOut': { en: 'Sign out', uk: 'Вийти' },
+  'shell.profile': { en: 'My profile', uk: 'Мій профіль' },
   'shell.language': { en: 'Language', uk: 'Мова' },
   'common.save': { en: 'Save', uk: 'Зберегти' },
   'common.saving': { en: 'Saving…', uk: 'Збереження…' },
