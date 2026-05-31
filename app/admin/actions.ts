@@ -22,6 +22,30 @@ export async function addNote(clientId: string, summary: string, type: string = 
   revalidatePath(`/admin/clients/${clientId}`);
 }
 
+// GDPR right-to-erasure — pseudonymise a client's personal data while keeping
+// financial/audit records intact for legal retention. Requires clients.export.
+export async function eraseClientData(clientId: string) {
+  if (!crmEnabled) return { ok: false };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'clients.export')) return { ok: false, error: 'Not permitted' };
+  const { db } = await import('@/lib/db');
+  const { logAudit } = await import('@/lib/audit');
+  await db.client.update({
+    where: { id: clientId },
+    data: {
+      firstName: 'Erased', lastName: null, email: `erased-${clientId}@redacted.invalid`,
+      phone: null, dob: null, notes: null, medicalFlag: null, medicalFlagSetBy: null, medicalFlagAt: null,
+      marketingOptIn: false, unsubscribed: true, portalActive: false, passwordHash: null,
+      resetTokenHash: null, resetTokenExp: null,
+    },
+  });
+  // Remove free-text interactions that may contain personal data.
+  await db.interaction.deleteMany({ where: { clientId } });
+  await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal data erased (GDPR right-to-erasure)' });
+  revalidatePath(`/admin/clients/${clientId}`);
+  return { ok: true };
+}
+
 export async function togglePinNote(noteId: string, clientId: string, pinned: boolean) {
   if (!crmEnabled) return;
   const session = await getSession();
