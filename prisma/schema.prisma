@@ -632,6 +632,7 @@ model HealthAssessment {
   // Non-sensitive metadata kept in clear for listing/filtering.
   questionnaireKey String       // which questionnaire definition + version
   summary       Json?          // redacted, non-clinical summary (e.g. {complete:true})
+  sourceLocale  String         @default("en") // language the client filled this in
 
   submittedAt   DateTime       @default(now())
   submittedIp   String?

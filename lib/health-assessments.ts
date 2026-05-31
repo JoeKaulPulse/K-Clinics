@@ -12,6 +12,7 @@ export async function saveAssessment(opts: {
   clientId: string;
   questionnaireKey: string;
   answers: Record<string, unknown>;
+  sourceLocale?: string;
   ip?: string | null;
   bookingId?: string | null;
 }) {
@@ -50,6 +51,7 @@ export async function saveAssessment(opts: {
       integrityHash: hash,
       questionnaireKey: `${q.key}@${q.version}`,
       summary: { complete: true, questions: q.questions.length },
+      sourceLocale: opts.sourceLocale === 'uk' ? 'uk' : 'en',
       submittedIp: opts.ip ?? undefined,
       bookingId: opts.bookingId ?? undefined,
     },
@@ -76,21 +78,46 @@ export async function formatAssessment(id: string) {
   const key = (a.questionnaire?.key as string) || a.questionnaireKey.split('@')[0];
   const def = getQuestionnaire(key);
   const answers = (a.answers || {}) as Record<string, unknown>;
-  const items = (def?.questions ?? []).map((q) => {
-    const raw = answers[q.id];
-    let value = '—';
-    if (raw !== undefined && raw !== '' && raw !== null) {
-      if (q.options && (q.type === 'single' || q.type === 'boolean')) {
-        value = q.options.find((o) => o.value === raw)?.label ?? String(raw);
-      } else if (q.type === 'multi' && Array.isArray(raw)) {
-        value = raw.map((v) => q.options?.find((o) => o.value === v)?.label ?? v).join(', ');
+  const sourceLocale = (a as { sourceLocale?: string }).sourceLocale || 'en';
+
+  const items: { id: string; prompt: string; value: string; freeText: boolean; original?: string }[] =
+    (def?.questions ?? []).map((q) => {
+      const raw = answers[q.id];
+      let value = '—';
+      let freeText = false;
+      if (raw !== undefined && raw !== '' && raw !== null) {
+        if (q.options && (q.type === 'single' || q.type === 'boolean')) {
+          value = q.options.find((o) => o.value === raw)?.label ?? String(raw);
+        } else if (q.type === 'multi' && Array.isArray(raw)) {
+          value = raw.map((v) => q.options?.find((o) => o.value === v)?.label ?? v).join(', ');
+        } else {
+          value = String(raw);
+          freeText = true;
+        }
+      }
+      return { id: q.id, prompt: q.prompt, value, freeText };
+    }).filter((it) => it.value !== '—');
+
+  // Free-text answers are stored exactly as the client typed them. When that
+  // wasn't English, translate to British English for staff; keep the original.
+  let translatedNote: string | null = null;
+  if (sourceLocale !== 'en') {
+    const { translateToEnglish, localeName, translationConfigured } = await import('@/lib/translate');
+    const freeIdx = items.map((it, i) => (it.freeText ? i : -1)).filter((i) => i >= 0);
+    if (freeIdx.length > 0) {
+      const { translated, ok } = await translateToEnglish(freeIdx.map((i) => items[i].value));
+      if (ok) {
+        freeIdx.forEach((i, k) => { items[i].original = items[i].value; items[i].value = translated[k]; });
+        translatedNote = `Translated from ${localeName(sourceLocale)}`;
       } else {
-        value = String(raw);
+        translatedNote = translationConfigured()
+          ? `Filled in ${localeName(sourceLocale)} — translation temporarily unavailable`
+          : `Filled in ${localeName(sourceLocale)} — translation not configured`;
       }
     }
-    return { id: q.id, prompt: q.prompt, value };
-  }).filter((it) => it.value !== '—');
-  return { title: def?.title ?? key, version: a.version, submittedAt: a.submittedAt, tampered: a.tampered, items };
+  }
+
+  return { title: def?.title ?? key, version: a.version, submittedAt: a.submittedAt, tampered: a.tampered, sourceLocale, translatedNote, items };
 }
 
 /** Decrypt a single assessment — clinical access only (caller must authorise). */
