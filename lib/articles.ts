@@ -129,6 +129,54 @@ export const articles: Article[] = [
       { type: 'p', text: 'Your K Clinics clinician will give you a personalised aftercare plan and check in on your progress, so your skin stays calm and your results last.' },
     ],
   },
+  {
+    slug: 'hifu-vs-rf-non-surgical-lifting',
+    title: 'HIFU vs RF: Which Non-Surgical Lift Is Right for You?',
+    excerpt:
+      'Two of the most effective ways to lift and tighten without surgery — how they differ, and how to choose.',
+    metaDescription:
+      'HIFU vs radiofrequency (RF) skin tightening in London — how each non-surgical lifting treatment works, what they treat best, downtime and results, and how to choose.',
+    category: 'Skin',
+    readMinutes: 5,
+    published: '2026-04-02',
+    keywords: ['HIFU London', 'RF skin tightening London', 'non-surgical facelift', 'skin tightening treatment'],
+    image: 'Body-SMAS-HIFU-Lifting-1.png',
+    related: ['smas-hifu-lifting', 'rf-lifting'],
+    blocks: [
+      { type: 'p', text: 'If you’d like to lift and firm without surgery or injectables, two technologies lead the field: HIFU and radiofrequency (RF). Both work with your body’s own collagen — they just take different routes there.' },
+      { type: 'h2', text: 'HIFU — depth and definition' },
+      { type: 'p', text: 'High-Intensity Focused Ultrasound delivers energy to precise depths beneath the skin, including the SMAS layer that surgeons tighten in a facelift. It’s ideal for a defined lift along the jaw, brow and neck, with results that build over three to six months as new collagen forms.' },
+      { type: 'h2', text: 'RF — texture and tightening' },
+      { type: 'p', text: 'Radiofrequency heats the deeper layers of the skin more broadly, stimulating collagen and improving laxity, texture and fine lines. It’s gentle, comfortable, and excellent for overall firmness and a refreshed surface.' },
+      { type: 'h2', text: 'How to choose' },
+      { type: 'ul', items: ['Want a defined lift along the jaw/neck? HIFU is often the answer', 'Focused on overall firmness, texture and glow? RF excels', 'Prefer minimal sessions? HIFU is typically once a year', 'Like a gradual, comfortable routine? RF suits a short course', 'Often the two are combined for a complete result'] },
+      { type: 'p', text: 'There’s no universal “best” — only what’s best for your face and goals. At your complimentary consultation we assess your skin and recommend the right path, or a tailored combination.' },
+    ],
+  },
+  {
+    slug: 'preparing-for-your-first-consultation',
+    title: 'Preparing for Your First Consultation at K Clinics',
+    excerpt:
+      'What happens at a complimentary consultation, what to bring, and how to get the most from your visit.',
+    metaDescription:
+      'What to expect at your first aesthetics or dentistry consultation at K Clinics, London — how it works, what to bring, and the questions to ask for a confident decision.',
+    category: 'Wellbeing',
+    readMinutes: 4,
+    published: '2026-04-15',
+    keywords: ['aesthetic consultation London', 'free consultation clinic', 'what to expect consultation'],
+    image: 'HydraFacial-Anti-Ageing.png',
+    related: ['cosmetic-injections', 'veneers'],
+    blocks: [
+      { type: 'p', text: 'Every great result begins with a great consultation. At K Clinics it’s complimentary, unhurried and entirely no-obligation — here’s how to make the most of it.' },
+      { type: 'h2', text: 'What happens during your visit' },
+      { type: 'p', text: 'Your clinician will listen to your goals, assess your skin, smile or area of concern, talk you through the realistic options, and design a plan around you. You’ll get honest advice — including, sometimes, that less is more or that now isn’t the right time.' },
+      { type: 'h2', text: 'What to bring' },
+      { type: 'ul', items: ['A list of any medications, allergies or medical conditions', 'Notes on what you’d love to change — and any concerns', 'Photos, if there’s a look you’re drawn to', 'Your questions — no question is too small'] },
+      { type: 'h2', text: 'Questions worth asking' },
+      { type: 'ul', items: ['What results are realistic for me, and in what timeframe?', 'How many sessions, and what’s the total investment?', 'What’s the aftercare and downtime?', 'What are the risks, and how are they managed?'] },
+      { type: 'p', text: 'You’ll never be pressured to decide on the day. Take your time — and when you’re ready, we’ll be here. New clients also enjoy 15% off their first treatment.' },
+    ],
+  },
 ];
 
 export const articleCategories = ['Skin', 'Laser', 'Injectables', 'Dentistry', 'Wellbeing'] as const;

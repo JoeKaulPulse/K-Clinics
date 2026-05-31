@@ -34,6 +34,8 @@ const articleMap: Record<string, string> = {
   'anti-wrinkle-injections-natural-results': 'HydraFacial-Anti-Ageing.png',
   'achieve-the-perfect-smile-veneers-whitening': 'baner-7.jpg',
   'skincare-after-laser-treatments': 'Carbon-Laser-Peel.png',
+  'hifu-vs-rf-non-surgical-lifting': 'Body-SMAS-HIFU-Lifting-1.png',
+  'preparing-for-your-first-consultation': 'HydraFacial-Anti-Ageing.png',
 };
 export function articleImage(slug: string): string | null {
   return resolve(articleMap[slug]);
