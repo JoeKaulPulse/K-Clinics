@@ -106,13 +106,15 @@ export function AdminShell({
     <I18nProvider locale={locale}>
       <div className="flex min-h-screen flex-col lg:flex-row">
         <aside className="flex shrink-0 flex-col gap-1 border-b border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 lg:w-64 lg:border-b-0 lg:border-r lg:p-6">
-          <div className="mb-7 px-2 text-[var(--color-ink)]">
-            <span className="block h-9 w-[1.35rem]"><KMark /></span>
-            <span className="mt-3 block h-[0.62rem] w-[6.75rem] text-[var(--color-ink)]"><ClinicsWordmark /></span>
-            <p className="mt-3 text-[0.66rem] font-medium uppercase tracking-[0.3em] text-[var(--color-stone)]">
-              {locationLabel}
-              <span className="ml-1.5 text-[var(--color-stone-soft)]">· CRM</span>
-            </p>
+          <div className="mb-7 px-2">
+            <div className="inline-flex flex-col items-center text-[var(--color-ink)]">
+              <span className="block h-9 w-[1.35rem]"><KMark /></span>
+              <span className="mt-3 block h-[0.62rem] w-[6.75rem]"><ClinicsWordmark /></span>
+              <p className="mt-3 pl-[0.3em] text-center text-[0.66rem] font-medium uppercase tracking-[0.3em] text-[var(--color-stone)]">
+                {locationLabel}
+                <span className="text-[var(--color-stone-soft)]"> · CRM</span>
+              </p>
+            </div>
           </div>
           <nav className="flex gap-1 overflow-x-auto lg:flex-col">
             {items.map((n) => {

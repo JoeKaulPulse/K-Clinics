@@ -1,4 +1,5 @@
 import 'server-only';
+import { isConnected } from '@/lib/oauth-connections';
 
 // Integration & connection registry for the CRM. Surfaces the live status of
 // every external service the clinic depends on, so an owner can see at a glance
@@ -114,37 +115,41 @@ export async function getIntegrations(): Promise<Integration[]> {
   });
 
   // ── Accounting (Xero) ──
-  const xero = has(process.env.XERO_CLIENT_ID) && has(process.env.XERO_CLIENT_SECRET);
+  const xeroCreds = has(process.env.XERO_CLIENT_ID) && has(process.env.XERO_CLIENT_SECRET);
+  const xeroLinked = dbConnected ? await isConnected('xero') : false;
   items.push({
     id: 'xero',
     name: 'Accounting (Xero)',
     category: 'Finance',
-    description: 'Two-way sync of invoices, bills and bank balances to power the cashflow forecast.',
-    status: xero ? 'connected' : 'not_configured',
-    detail: xero ? 'Credentials present — connect via OAuth.' : 'Add Xero OAuth credentials to sync accounting.',
+    description: 'OAuth-connected cash position from Xero, feeding the cashflow forecast.',
+    status: xeroLinked ? 'connected' : xeroCreds ? 'partial' : 'not_configured',
+    detail: xeroLinked ? 'Connected — cash position live.' : xeroCreds ? 'Credentials present — connect via OAuth.' : 'Add Xero OAuth credentials to enable.',
     envVars: [
       { name: 'XERO_CLIENT_ID', set: has(process.env.XERO_CLIENT_ID) },
       { name: 'XERO_CLIENT_SECRET', set: has(process.env.XERO_CLIENT_SECRET) },
       { name: 'XERO_REDIRECT_URI', set: has(process.env.XERO_REDIRECT_URI), optional: true },
     ],
+    manageHref: xeroCreds ? '/api/admin/integrations/xero/connect' : undefined,
     docsHref: 'https://developer.xero.com/app/manage',
   });
 
-  // ── Bank feed (Open Banking) ──
-  const bank = has(process.env.OPENBANKING_CLIENT_ID) || has(process.env.TRUELAYER_CLIENT_ID) || has(process.env.PLAID_CLIENT_ID);
+  // ── Bank feed (Open Banking via TrueLayer) ──
+  const tlCreds = has(process.env.TRUELAYER_CLIENT_ID) && has(process.env.TRUELAYER_CLIENT_SECRET);
+  const bankLinked = dbConnected ? await isConnected('truelayer') : false;
   items.push({
     id: 'bank',
-    name: 'Bank feed (Open Banking)',
+    name: 'Bank feed (TrueLayer)',
     category: 'Finance',
-    description: 'Live business bank balance + transactions via an OAuth Open Banking provider (TrueLayer/Plaid/Nordigen).',
-    status: bank ? 'connected' : 'not_configured',
-    detail: bank ? 'Provider credentials present — connect your account.' : 'Add an Open Banking provider to feed live balances.',
+    description: 'Live business bank balance via TrueLayer Open Banking (OAuth 2.0).',
+    status: bankLinked ? 'connected' : tlCreds ? 'partial' : 'not_configured',
+    detail: bankLinked ? 'Connected — balance live.' : tlCreds ? 'Credentials present — connect your bank.' : 'Add TrueLayer credentials to enable.',
     envVars: [
-      { name: 'TRUELAYER_CLIENT_ID', set: has(process.env.TRUELAYER_CLIENT_ID), optional: true },
-      { name: 'PLAID_CLIENT_ID', set: has(process.env.PLAID_CLIENT_ID), optional: true },
-      { name: 'OPENBANKING_CLIENT_ID', set: has(process.env.OPENBANKING_CLIENT_ID), optional: true },
+      { name: 'TRUELAYER_CLIENT_ID', set: has(process.env.TRUELAYER_CLIENT_ID) },
+      { name: 'TRUELAYER_CLIENT_SECRET', set: has(process.env.TRUELAYER_CLIENT_SECRET) },
+      { name: 'TRUELAYER_REDIRECT_URI', set: has(process.env.TRUELAYER_REDIRECT_URI), optional: true },
     ],
-    docsHref: 'https://truelayer.com',
+    manageHref: tlCreds ? '/api/admin/integrations/truelayer/connect' : undefined,
+    docsHref: 'https://console.truelayer.com',
   });
 
   // ── Content (WordPress) ──
