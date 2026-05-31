@@ -22,6 +22,7 @@ const nav = [
   { href: '/admin/campaigns', key: 'nav.campaigns', perm: 'campaigns.view' },
   { href: '/admin/automations', key: 'nav.automations', perm: 'automations.view' },
   { href: '/admin/activity', key: 'nav.activity', perm: 'staff.view' },
+  { href: '/admin/cashflow', key: 'nav.cashflow', perm: 'finance.view' },
   { href: '/admin/staff', key: 'nav.staff', perm: 'staff.view' },
   { href: '/admin/locations', key: 'nav.locations', perm: 'settings.manage' },
   { href: '/admin/integrations', key: 'nav.integrations', perm: 'settings.manage' },
