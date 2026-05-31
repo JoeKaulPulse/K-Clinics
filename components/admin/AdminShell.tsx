@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 import { site } from '@/lib/site';
+import { ClientSearch } from '@/components/admin/ClientSearch';
 import { I18nProvider } from '@/components/i18n/I18nProvider';
 import { translator, isLocale, LOCALES, LOCALE_LABELS, DEFAULT_LOCALE, type Locale } from '@/lib/i18n';
 
@@ -117,6 +118,7 @@ export function AdminShell({
               </p>
             </div>
           </div>
+          {allowed.has('clients.view') && <ClientSearch placeholder={t('shell.searchClients')} />}
           <nav className="flex gap-1 overflow-x-auto lg:flex-col">
             {items.map((n) => {
               const active = n.exact ? pathname === n.href : pathname.startsWith(n.href);
