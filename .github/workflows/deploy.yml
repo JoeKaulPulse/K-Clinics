@@ -1,9 +1,10 @@
 name: Deploy demo to GitHub Pages
 
+# Disabled auto-publish: production runs on Vercel (server + DB + client portal).
+# The static Pages export can't serve the server-only portal, so /account 404s
+# there. Manual-only now (workflow_dispatch) so it never auto-publishes and
+# confuses the live URL.
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 # Allow the workflow to publish to Pages.
