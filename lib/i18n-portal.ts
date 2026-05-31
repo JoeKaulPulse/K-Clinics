@@ -126,6 +126,17 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'dash.curatedTitle': { en: 'Treatments you may love', uk: 'Процедури, які вам сподобаються' },
   'dash.ctaTitle': { en: 'Ready for your next visit?', uk: 'Готові до наступного візиту?' },
   'dash.ctaBody': { en: 'Reserve a treatment with our specialists — your welcome offer and history are saved to your account.', uk: 'Забронюйте процедуру в наших фахівців — ваша пропозиція та історія збережені у вашому акаунті.' },
+  'dash.quickActions': { en: 'Quick actions', uk: 'Швидкі дії' },
+  'dash.qaBook': { en: 'Book a treatment', uk: 'Записатися на процедуру' },
+  'dash.qaForms': { en: 'Complete health forms', uk: 'Заповнити анкети' },
+  'dash.qaInvoices': { en: 'View invoices', uk: 'Переглянути рахунки' },
+  'dash.qaProfile': { en: 'Edit profile', uk: 'Редагувати профіль' },
+  'dash.visitUs': { en: 'Visit us', uk: 'Завітайте до нас' },
+  'dash.openToday': { en: 'Open today', uk: 'Сьогодні відкрито' },
+  'dash.closedToday': { en: 'Closed today', uk: 'Сьогодні зачинено' },
+  'dash.directions': { en: 'Get directions', uk: 'Прокласти маршрут' },
+  'dash.needHelp': { en: 'Need a hand?', uk: 'Потрібна допомога?' },
+  'dash.callUs': { en: 'Call the clinic', uk: 'Зателефонувати' },
 
   // Profile
   'profile.newPassword': { en: 'New password (optional)', uk: 'Новий пароль (необовʼязково)' },
