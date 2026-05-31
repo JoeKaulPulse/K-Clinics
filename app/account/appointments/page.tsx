@@ -63,9 +63,14 @@ export default async function AppointmentsPage() {
                     </p>
                   </div>
                 </div>
-                <Link href={`/booking/manage?token=${b.manageToken}`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
-                  {t('appt.reschedule')}
-                </Link>
+                <div className="flex items-center gap-2">
+                  <a href={`/api/account/calendar/${b.manageToken}`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
+                    {t('appt.addCalendar')}
+                  </a>
+                  <Link href={`/booking/manage?token=${b.manageToken}`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
+                    {t('appt.reschedule')}
+                  </Link>
+                </div>
               </li>
             );
           })}
