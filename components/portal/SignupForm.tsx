@@ -26,20 +26,19 @@ export function SignupForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(d),
       });
-      if (res.status === 404 || res.status === 503) {
-        // Static demo — show the success state so the experience is viewable.
+      // 404 = route not present (static GitHub Pages demo only) — preview success.
+      if (res.status === 404) {
         setDone({ granted: true, code: 'WELCOME15', percent: 15 });
         return;
       }
-      const json = await res.json();
+      const json = await res.json().catch(() => ({ ok: false, error: 'Unexpected response.' }));
       if (json.ok) {
         setDone(json.discount);
       } else {
         setError(json.error || 'Could not create your account.');
       }
     } catch {
-      // No backend (e.g. the static demo) — preview the success state.
-      setDone({ granted: true, code: 'WELCOME15', percent: 15 });
+      setError('Network error — please try again.');
     } finally {
       setLoading(false);
     }

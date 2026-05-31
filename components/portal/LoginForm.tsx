@@ -31,11 +31,12 @@ function Inner() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      if (res.status === 404 || res.status === 503) {
+      // 404 = route not present (static GitHub Pages demo only).
+      if (res.status === 404) {
         setError('This is a design preview — the secure portal runs on the live clinic site.');
         return;
       }
-      const json = await res.json();
+      const json = await res.json().catch(() => ({ ok: false, error: 'Unexpected response.' }));
       if (json.ok) {
         router.push(params.get('from') || '/account');
         router.refresh();
@@ -43,8 +44,7 @@ function Inner() {
         setError(json.error || 'Sign in failed.');
       }
     } catch {
-      // No backend (e.g. the static demo) — present a friendly preview notice.
-      setError('This is a design preview — the secure portal runs on the live clinic site.');
+      setError('Network error — please try again.');
     } finally {
       setLoading(false);
     }
