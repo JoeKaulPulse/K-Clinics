@@ -2,11 +2,11 @@ import { site } from '@/lib/site';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 
 /**
- * K Clinics logo — official artwork, rendered as inline SVG.
+ * K Clinics logo — a SINGLE "K" monogram above the CLINICS wordmark.
  *
- * ONE animated "K" at every breakpoint (no duplicate/static copy): the monogram
- * self-draws on load and fills with champagne gold on hover. The CLINICS
- * wordmark sits beneath on larger screens. Sizing is controlled by `size`.
+ * Deliberately one inline SVG (one path), so it can never double-render. The
+ * "animation" is a smooth gold colour fill on hover (handled in CSS via the
+ * `.logo` class) — no overlaid second copy, no self-draw stroke in the header.
  *
  * Colour follows `currentColor`, so it flips to porcelain over dark heroes and
  * brand taupe / ink on light surfaces.
@@ -21,7 +21,6 @@ export function Logo({
   size?: 'header' | 'footer';
 }) {
   const color = mono ? 'var(--color-porcelain)' : 'var(--color-fg)';
-  // K box dimensions (the swoosh is a tall 130×234 portrait).
   const kBox = size === 'footer' ? 'h-12 w-[1.65rem]' : 'h-10 w-[1.4rem]';
   const wordmark = size === 'footer' ? 'h-[0.7rem] w-[8rem]' : 'h-[0.58rem] w-[6.5rem]';
 
@@ -31,22 +30,12 @@ export function Logo({
       style={{ color }}
       aria-label={site.name}
     >
-      {/* The single animated K. Base draws in on load; a clipped gold copy rises
-          on hover (invisible at rest, so it never ghosts). */}
-      <span aria-hidden className={`relative block ${kBox}`}>
-        <span className="absolute inset-0">
-          <KMark animated />
-        </span>
-        <span className="logo__rise absolute inset-0 text-[var(--color-gold)]">
-          <KMark />
-        </span>
+      <span aria-hidden className={`logo__k block ${kBox}`}>
+        <KMark />
       </span>
-
-      {/* CLINICS wordmark — beneath the K (hidden on the smallest screens). */}
       <span aria-hidden className={`hidden sm:block ${wordmark}`}>
         <ClinicsWordmark />
       </span>
-
       <span className="sr-only">{site.name}</span>
     </span>
   );
