@@ -57,21 +57,8 @@ export function ClinicalWorkflow({ bookingId, sop, sopSteps, sopSaved, medicalFl
         </div>
       )}
 
-      {/* SOP */}
-      <div className={`mb-4 rounded-[var(--radius-md)] border p-4 ${sopOk ? 'border-[var(--color-line)] bg-[var(--color-bone)]' : 'border-[var(--color-line)]'}`}>
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium">{sop.title}</p>
-          <button onClick={() => setShowSop((s) => !s)} className="text-xs text-[var(--color-gold)]">{showSop ? 'Hide' : 'View SOP'}</button>
-        </div>
-        {showSop && <pre className="mt-3 whitespace-pre-wrap font-[family-name:var(--font-sans)] text-sm leading-relaxed text-[var(--color-ink-soft)]">{sop.content}</pre>}
-        {sopOk ? (
-          <p className="mt-2 text-xs text-[var(--color-jade)]">Acknowledged ✓</p>
-        ) : (
-          <button disabled={pending} onClick={() => run(() => acknowledgeSop(bookingId))} className="mt-3 rounded-full bg-[var(--color-ink)] px-4 py-2 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-60">
-            I’ve reviewed the SOP
-          </button>
-        )}
-      </div>
+      {/* SOP checklist */}
+      <SopChecklist bookingId={bookingId} title={sop.title} steps={sopSteps} saved={sopSaved} acknowledged={sopOk} disabled={pending} />
 
       {/* Timer + start/finish */}
       <Timer state={state} />
