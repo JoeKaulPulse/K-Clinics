@@ -22,6 +22,8 @@ const NOTE_STYLE: Record<string, { label: string; dot: string; badge: string }> 
 const noteStyle = (t: string) => NOTE_STYLE[t] ?? NOTE_STYLE.NOTE;
 import { MedicalFlagEditor } from '@/components/admin/MedicalFlagEditor';
 import { ClientTasks } from '@/components/admin/ClientTasks';
+import { DataPrivacy } from '@/components/admin/DataPrivacy';
+import { sessionCan } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -231,6 +233,8 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
               ))}
             </div>
           </section>
+
+          {sessionCan(session, 'clients.export') && <DataPrivacy clientId={c.id} />}
         </aside>
       </div>
     </AdminShell>
