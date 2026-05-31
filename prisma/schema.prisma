@@ -325,6 +325,12 @@ model Booking {
   finishedAt     DateTime?
   actualMinutes  Int?
 
+  // Clinician's treatment note for this session (clinical record). Encrypted at
+  // rest via the same app-level crypto used for health assessments.
+  clinicalNoteEnc   String?
+  clinicalNoteBy    String?
+  clinicalNoteAt    DateTime?
+
   // Pre-appointment safety checks the clinician confirms before starting.
   sopAcknowledgedAt     DateTime?
   sopAcknowledgedBy     String?

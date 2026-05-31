@@ -4,6 +4,31 @@ import { revalidatePath } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan } from '@/lib/auth';
 
+// Save the clinician's treatment note for a session (encrypted at rest).
+// Requires clinical access. Append-only in spirit: each save stamps author/time
+// and writes an audit entry.
+export async function saveClinicalNote(bookingId: string, note: string) {
+  if (!crmEnabled) return { ok: false };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'clients.clinical.view')) return { ok: false, error: 'Not permitted' };
+  const { db } = await import('@/lib/db');
+  const { encryptJson } = await import('@/lib/crypto');
+  const { logAudit } = await import('@/lib/audit');
+  const trimmed = note.trim();
+  const b = await db.booking.update({
+    where: { id: bookingId },
+    data: {
+      clinicalNoteEnc: trimmed ? encryptJson({ note: trimmed }) : null,
+      clinicalNoteBy: session.email,
+      clinicalNoteAt: new Date(),
+    },
+    select: { clientId: true },
+  });
+  await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId, summary: 'Clinical treatment note saved' });
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  return { ok: true };
+}
+
 // Clinician confirms they've reviewed the SOP for this appointment.
 export async function acknowledgeSop(bookingId: string) {
   if (!crmEnabled) return { ok: false };
