@@ -4,6 +4,8 @@ import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { TimeOffManager } from '@/components/admin/TimeOffManager';
+import { getLocale } from '@/lib/locale';
+import { translator } from '@/lib/i18n';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,12 +56,16 @@ export default async function TimeOffPage() {
 
   const requiresApproval = await getSetting('time_off_requires_approval');
   const can = await sessionPermissions();
+  const locale = await getLocale();
+  const t = translator(locale);
 
   return (
-    <AdminShell user={session.email} can={can}>
-      <h1 className="font-[family-name:var(--font-display)] text-3xl">Time off</h1>
+    <AdminShell user={session.email} can={can} locale={locale}>
+      <h1 className="font-[family-name:var(--font-display)] text-3xl">{t('timeoff.title')}</h1>
       <p className="mt-1 text-sm text-[var(--color-stone)]">
-        Book your holiday, sick leave and personal time. {requiresApproval ? 'Requests need manager approval' : 'Requests are confirmed automatically'} — and immediately block your bookable hours until declined.
+        {locale === 'uk'
+          ? 'Бронюйте відпустку, лікарняний та особистий час. Запитаний час одразу блокує ваші робочі години, доки його не відхилять.'
+          : `Book your holiday, sick leave and personal time. ${requiresApproval ? 'Requests need manager approval' : 'Requests are confirmed automatically'} — and immediately block your bookable hours until declined.`}
       </p>
       <div className="mt-8">
         <TimeOffManager mine={mine} pending={pending} teamUpcoming={teamUpcoming} canApprove={canApprove} requiresApproval={requiresApproval} />

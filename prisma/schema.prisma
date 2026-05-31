@@ -337,6 +337,8 @@ model AdminUser {
   googleCalendarId String?
   googleRefreshToken String?
 
+  locale       String   @default("en") // CRM UI language (en | uk)
+
   lastLoginAt  DateTime?
   createdBy    String?
   createdAt    DateTime @default(now())

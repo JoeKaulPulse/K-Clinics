@@ -2,17 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useT } from '@/components/i18n/I18nProvider';
 
 type Mine = { id: string; kind: string; status: string; startAt: string; endAt: string; allDay: boolean; reason: string | null; reviewNote?: string | null; reviewedBy?: string | null };
 type Pending = { id: string; kind: string; status: string; startAt: string; endAt: string; allDay: boolean; reason: string | null; staffName: string };
 type TeamItem = { id: string; staffName: string; kind: string; startAt: string; endAt: string; allDay: boolean };
 
-const KINDS = [
-  { value: 'HOLIDAY', label: 'Holiday' },
-  { value: 'SICK', label: 'Sick leave' },
-  { value: 'TRAINING', label: 'Training' },
-  { value: 'PERSONAL', label: 'Personal / appointment' },
-];
+const KIND_VALUES = ['HOLIDAY', 'SICK', 'TRAINING', 'PERSONAL'];
 
 const STATUS_STYLE: Record<string, string> = {
   PENDING: 'bg-amber-100 text-amber-800',
@@ -29,8 +25,6 @@ const fmtRange = (startAt: string, endAt: string, allDay: boolean) => {
   if (allDay) return sameDay ? `${d(s)} · all day` : `${d(s)} – ${d(e)}`;
   return sameDay ? `${d(s)} · ${t(s)}–${t(e)}` : `${d(s)} ${t(s)} – ${d(e)} ${t(e)}`;
 };
-
-const kindLabel = (k: string) => KINDS.find((x) => x.value === k)?.label || k[0] + k.slice(1).toLowerCase();
 
 async function postTimeOff(payload: object) {
   const res = await fetch('/api/admin/time-off', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -57,6 +51,7 @@ export function TimeOffManager({ mine, pending, teamUpcoming, canApprove, requir
 
 function RequestForm({ requiresApproval, canApprove }: { requiresApproval: boolean; canApprove: boolean }) {
   const router = useRouter();
+  const t = useT();
   const [kind, setKind] = useState('HOLIDAY');
   const [allDay, setAllDay] = useState(true);
   const [start, setStart] = useState('');
@@ -74,63 +69,62 @@ function RequestForm({ requiresApproval, canApprove }: { requiresApproval: boole
     const { ok, json } = await postTimeOff({ op: 'request', kind, startAt, endAt, reason, allDay });
     setBusy(false);
     if (ok) {
-      setMsg(json.status === 'PENDING' ? 'Requested ✓ — awaiting approval' : 'Booked ✓');
+      setMsg(json.status === 'PENDING' ? t('timeoff.requested') : t('timeoff.booked'));
       setStart(''); setEnd(''); setReason('');
       router.refresh();
     } else {
-      setMsg(json.error || 'Could not submit.');
+      setMsg(json.error || t('common.couldNotSave'));
     }
   }
 
   const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
   return (
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
-      <h2 className="mb-4 font-[family-name:var(--font-display)] text-xl">Request time off</h2>
+      <h2 className="mb-4 font-[family-name:var(--font-display)] text-xl">{t('timeoff.request')}</h2>
       <div className="space-y-4">
         <div>
-          <label className="mb-1 block text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">Type</label>
+          <label className="mb-1 block text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{t('common.type')}</label>
           <select value={kind} onChange={(e) => setKind(e.target.value)} className={field}>
-            {KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
+            {KIND_VALUES.map((k) => <option key={k} value={k}>{t(`kind.${k}`)}</option>)}
           </select>
         </div>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} className="h-4 w-4 accent-[var(--color-gold)]" />
-          All day
+          {t('timeoff.allDay')}
         </label>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">From</label>
+            <label className="mb-1 block text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{t('common.from')}</label>
             <input type={allDay ? 'date' : 'datetime-local'} value={start} onChange={(e) => setStart(e.target.value)} className={field} />
           </div>
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">To</label>
+            <label className="mb-1 block text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{t('common.to')}</label>
             <input type={allDay ? 'date' : 'datetime-local'} value={end} onChange={(e) => setEnd(e.target.value)} className={field} />
           </div>
         </div>
         <div>
-          <label className="mb-1 block text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">Reason <span className="normal-case text-[var(--color-stone-soft)]">(optional)</span></label>
-          <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Family holiday" className={field} />
+          <label className="mb-1 block text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{t('common.reason')} <span className="normal-case text-[var(--color-stone-soft)]">({t('common.optional')})</span></label>
+          <input value={reason} onChange={(e) => setReason(e.target.value)} className={field} />
         </div>
         <div className="flex items-center gap-3">
           <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
-            {busy ? 'Submitting…' : requiresApproval && !canApprove ? 'Request time off' : 'Book time off'}
+            {busy ? t('timeoff.submitting') : requiresApproval && !canApprove ? t('timeoff.request') : t('timeoff.book')}
           </button>
           {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
         </div>
-        {requiresApproval && !canApprove && (
-          <p className="text-xs text-[var(--color-stone)]">Your manager will be notified. The time is held on your calendar until they approve or decline.</p>
-        )}
       </div>
     </section>
   );
 }
 
 function StatusPill({ status }: { status: string }) {
-  return <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide ${STATUS_STYLE[status] || 'bg-[var(--color-bone)]'}`}>{status.toLowerCase()}</span>;
+  const t = useT();
+  return <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide ${STATUS_STYLE[status] || 'bg-[var(--color-bone)]'}`}>{t(`status.${status}`)}</span>;
 }
 
 function MyTimeOff({ mine }: { mine: Mine[] }) {
   const router = useRouter();
+  const t = useT();
   const [busyId, setBusyId] = useState('');
 
   async function cancel(id: string) {
@@ -142,25 +136,25 @@ function MyTimeOff({ mine }: { mine: Mine[] }) {
 
   return (
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
-      <h2 className="mb-4 font-[family-name:var(--font-display)] text-xl">My time off</h2>
-      {mine.length === 0 && <p className="text-sm text-[var(--color-stone)]">No time off booked yet.</p>}
+      <h2 className="mb-4 font-[family-name:var(--font-display)] text-xl">{t('timeoff.my')}</h2>
+      {mine.length === 0 && <p className="text-sm text-[var(--color-stone)]">{t('timeoff.none')}</p>}
       <ul className="divide-y divide-[var(--color-line)]">
-        {mine.map((t) => {
-          const active = !['DECLINED', 'CANCELLED'].includes(t.status);
+        {mine.map((item) => {
+          const active = !['DECLINED', 'CANCELLED'].includes(item.status);
           return (
-            <li key={t.id} className="flex items-start justify-between gap-3 py-3">
+            <li key={item.id} className="flex items-start justify-between gap-3 py-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{kindLabel(t.kind)}</span>
-                  <StatusPill status={t.status} />
+                  <span className="text-sm font-medium">{t(`kind.${item.kind}`)}</span>
+                  <StatusPill status={item.status} />
                 </div>
-                <p className="mt-0.5 text-sm text-[var(--color-stone)]">{fmtRange(t.startAt, t.endAt, t.allDay)}</p>
-                {t.reason && <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">{t.reason}</p>}
-                {t.status === 'DECLINED' && t.reviewNote && <p className="mt-0.5 text-xs text-[var(--color-blush)]">Declined: {t.reviewNote}</p>}
+                <p className="mt-0.5 text-sm text-[var(--color-stone)]">{fmtRange(item.startAt, item.endAt, item.allDay)}</p>
+                {item.reason && <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">{item.reason}</p>}
+                {item.status === 'DECLINED' && item.reviewNote && <p className="mt-0.5 text-xs text-[var(--color-blush)]">{t('status.DECLINED')}: {item.reviewNote}</p>}
               </div>
               {active && (
-                <button onClick={() => cancel(t.id)} disabled={busyId === t.id} className="shrink-0 text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)] disabled:opacity-50">
-                  {busyId === t.id ? '…' : 'Cancel'}
+                <button onClick={() => cancel(item.id)} disabled={busyId === item.id} className="shrink-0 text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)] disabled:opacity-50">
+                  {busyId === item.id ? '…' : t('common.cancel')}
                 </button>
               )}
             </li>
@@ -173,6 +167,7 @@ function MyTimeOff({ mine }: { mine: Mine[] }) {
 
 function Approvals({ pending }: { pending: Pending[] }) {
   const router = useRouter();
+  const t = useT();
   const [busyId, setBusyId] = useState('');
 
   async function decide(id: string, op: 'approve' | 'decline') {
@@ -189,22 +184,22 @@ function Approvals({ pending }: { pending: Pending[] }) {
   return (
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
       <div className="mb-4 flex items-center gap-2">
-        <h2 className="font-[family-name:var(--font-display)] text-xl">Pending approvals</h2>
+        <h2 className="font-[family-name:var(--font-display)] text-xl">{t('timeoff.pending')}</h2>
         {pending.length > 0 && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">{pending.length}</span>}
       </div>
-      {pending.length === 0 && <p className="text-sm text-[var(--color-stone)]">Nothing awaiting approval. 🎉</p>}
+      {pending.length === 0 && <p className="text-sm text-[var(--color-stone)]">{t('timeoff.noPending')}</p>}
       <ul className="space-y-3">
-        {pending.map((t) => (
-          <li key={t.id} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] p-3">
+        {pending.map((item) => (
+          <li key={item.id} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] p-3">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-medium">{t.staffName}</span>
-              <span className="text-xs text-[var(--color-stone)]">{kindLabel(t.kind)}</span>
+              <span className="text-sm font-medium">{item.staffName}</span>
+              <span className="text-xs text-[var(--color-stone)]">{t(`kind.${item.kind}`)}</span>
             </div>
-            <p className="mt-0.5 text-sm text-[var(--color-stone)]">{fmtRange(t.startAt, t.endAt, t.allDay)}</p>
-            {t.reason && <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">{t.reason}</p>}
+            <p className="mt-0.5 text-sm text-[var(--color-stone)]">{fmtRange(item.startAt, item.endAt, item.allDay)}</p>
+            {item.reason && <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">{item.reason}</p>}
             <div className="mt-2 flex gap-2">
-              <button onClick={() => decide(t.id, 'approve')} disabled={busyId === t.id} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-50">Approve</button>
-              <button onClick={() => decide(t.id, 'decline')} disabled={busyId === t.id} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs hover:border-[var(--color-blush)] hover:text-[var(--color-blush)] disabled:opacity-50">Decline</button>
+              <button onClick={() => decide(item.id, 'approve')} disabled={busyId === item.id} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-50">{t('timeoff.approve')}</button>
+              <button onClick={() => decide(item.id, 'decline')} disabled={busyId === item.id} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs hover:border-[var(--color-blush)] hover:text-[var(--color-blush)] disabled:opacity-50">{t('timeoff.decline')}</button>
             </div>
           </li>
         ))}
@@ -214,17 +209,18 @@ function Approvals({ pending }: { pending: Pending[] }) {
 }
 
 function TeamUpcoming({ items }: { items: TeamItem[] }) {
+  const t = useT();
   return (
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
-      <h2 className="mb-4 font-[family-name:var(--font-display)] text-xl">Team time off — upcoming</h2>
-      {items.length === 0 && <p className="text-sm text-[var(--color-stone)]">No approved time off coming up.</p>}
+      <h2 className="mb-4 font-[family-name:var(--font-display)] text-xl">{t('timeoff.team')}</h2>
+      {items.length === 0 && <p className="text-sm text-[var(--color-stone)]">{t('timeoff.noTeam')}</p>}
       <ul className="divide-y divide-[var(--color-line)]">
-        {items.map((t) => (
-          <li key={t.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-            <span className="font-medium">{t.staffName}</span>
+        {items.map((item) => (
+          <li key={item.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+            <span className="font-medium">{item.staffName}</span>
             <span className="text-right text-[var(--color-stone)]">
-              <span className="mr-2 rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-xs">{kindLabel(t.kind)}</span>
-              {fmtRange(t.startAt, t.endAt, t.allDay)}
+              <span className="mr-2 rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-xs">{t(`kind.${item.kind}`)}</span>
+              {fmtRange(item.startAt, item.endAt, item.allDay)}
             </span>
           </li>
         ))}
