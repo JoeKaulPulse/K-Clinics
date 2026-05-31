@@ -9,6 +9,7 @@ type Month = { label: string; incomePence: number; committedPence: number; model
 type Reserve = { id: string; name: string; color: string | null; targetPence: number; startPence: number; endPence: number; monthlyContributionPence: number };
 type Entry = { id: string; type: string; category: string; label: string; amountPence: number; cadence: string; startDate: string | null; endDate: string | null };
 type Summary = { endOperating: number; endReserves: number; lowestOperating: number; everBelowFloor: boolean };
+type Balance = { source: string; label: string; connected: boolean; availablePence: number; pendingPence: number; currency: string; detail?: string };
 
 const gbp = (p: number) => `£${(p / 100).toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
 const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
@@ -18,12 +19,13 @@ async function post(payload: object) {
   return res.ok;
 }
 
-export function CashflowManager({ cfg, drivers, consumablesMonthly, months, reserves, summary, entries, canManage, uk }: {
-  cfg: Cfg; drivers: Drivers; consumablesMonthly: number; months: Month[]; reserves: Reserve[]; summary: Summary; entries: Entry[]; canManage: boolean; uk: boolean;
+export function CashflowManager({ cfg, drivers, consumablesMonthly, months, reserves, summary, entries, balances, canManage, uk }: {
+  cfg: Cfg; drivers: Drivers; consumablesMonthly: number; months: Month[]; reserves: Reserve[]; summary: Summary; entries: Entry[]; balances: Balance[]; canManage: boolean; uk: boolean;
 }) {
   const L = (en: string, ukt: string) => (uk ? ukt : en);
   return (
     <div className="space-y-10">
+      <LiveBalances balances={balances} canManage={canManage} uk={uk} />
       <ConfigBar cfg={cfg} canManage={canManage} uk={uk} />
       <DriversPanel drivers={drivers} consumablesMonthly={consumablesMonthly} canManage={canManage} uk={uk} />
 
@@ -82,6 +84,44 @@ export function CashflowManager({ cfg, drivers, consumablesMonthly, months, rese
         <Entries entries={entries} canManage={canManage} uk={uk} />
       </div>
     </div>
+  );
+}
+
+function LiveBalances({ balances, canManage, uk }: { balances: Balance[]; canManage: boolean; uk: boolean }) {
+  const router = useRouter();
+  const L = (en: string, ukt: string) => (uk ? ukt : en);
+  const connectedTotal = balances.filter((b) => b.connected).reduce((s, b) => s + b.availablePence, 0);
+  const anyConnected = balances.some((b) => b.connected);
+
+  async function useAsOpening() {
+    if (await post({ op: 'config', openingPounds: connectedTotal / 100 })) router.refresh();
+  }
+
+  return (
+    <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
+      <div className="flex items-center justify-between">
+        <h2 className="font-[family-name:var(--font-display)] text-xl">{L('Live balances', 'Поточні баланси')}</h2>
+        {anyConnected && canManage && <button onClick={useAsOpening} className="text-sm text-[var(--color-gold)] hover:underline">{L('Use as opening cash', 'Як початковий баланс')}</button>}
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        {balances.map((b) => (
+          <div key={b.source} className={`rounded-[var(--radius-md)] border p-4 ${b.connected ? 'border-[var(--color-line)] bg-white' : 'border-dashed border-[var(--color-line)]'}`}>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">{b.label}</span>
+              <span className={`h-2 w-2 rounded-full ${b.connected ? 'bg-green-500' : 'bg-[var(--color-stone-soft)]'}`} />
+            </div>
+            {b.connected ? (
+              <>
+                <div className="mt-1 font-[family-name:var(--font-display)] text-2xl">{gbp(b.availablePence)}</div>
+                {b.pendingPence > 0 && <p className="text-xs text-[var(--color-stone-soft)]">{gbp(b.pendingPence)} {L('pending', 'в очікуванні')}</p>}
+              </>
+            ) : (
+              <p className="mt-2 text-xs text-[var(--color-stone)]">{b.detail || L('Not connected', 'Не підключено')}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

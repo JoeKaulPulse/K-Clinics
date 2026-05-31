@@ -15,10 +15,12 @@ export default async function CashflowPage() {
   const canManage = sessionCan(session, 'finance.manage');
 
   const { buildForecast } = await import('@/lib/cashflow');
+  const { liveBalances } = await import('@/lib/finance-feeds');
   const { db } = await import('@/lib/db');
-  const [forecast, entriesRaw] = await Promise.all([
+  const [forecast, entriesRaw, balances] = await Promise.all([
     buildForecast(),
     db.cashflowEntry.findMany({ where: { active: true }, orderBy: [{ type: 'asc' }, { category: 'asc' }, { label: 'asc' }] }),
+    liveBalances(),
   ]);
 
   const entries = entriesRaw.map((e) => ({
@@ -47,6 +49,7 @@ export default async function CashflowPage() {
           reserves={forecast.reserves}
           summary={forecast.summary}
           entries={entries}
+          balances={balances}
           canManage={canManage}
           uk={uk}
         />
