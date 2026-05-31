@@ -5,6 +5,7 @@ import { getSession, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { BookingActions } from '@/components/admin/BookingActions';
+import { ClinicalWorkflow } from '@/components/admin/ClinicalWorkflow';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,12 +15,14 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   if (!crmEnabled) return <CrmDisabled />;
   const { id } = await params;
   const { getBooking } = await import('@/lib/crm-data');
+  const { getSop } = await import('@/lib/sops');
   const session = await getSession();
   const b = await getBooking(id);
   if (!b) notFound();
 
   const within24h = b.startAt.getTime() - Date.now() < 24 * 60 * 60 * 1000;
   const name = [b.client.firstName, b.client.lastName].filter(Boolean).join(' ');
+  const sop = await getSop(b.treatmentSlug);
 
   const can = await sessionPermissions();
   return (
@@ -55,17 +58,55 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
           </div>
         </section>
 
-        <section>
-          <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Actions</h2>
-          <BookingActions
+        <section className="space-y-6">
+          <ClinicalWorkflow
             bookingId={b.id}
-            status={b.status}
-            pricePence={b.pricePence}
-            within24h={within24h}
-            charged={b.chargedAt ? (b.chargedPence ?? 0) : null}
+            sop={{ title: sop.title, content: sop.content }}
+            medicalFlag={b.client.medicalFlag}
+            state={{
+              sopAcknowledgedAt: b.sopAcknowledgedAt?.toISOString() ?? null,
+              medicalFlagReviewedAt: b.medicalFlagReviewedAt?.toISOString() ?? null,
+              startedAt: b.startedAt?.toISOString() ?? null,
+              finishedAt: b.finishedAt?.toISOString() ?? null,
+              actualMinutes: b.actualMinutes,
+              durationMin: b.durationMin,
+              status: b.status,
+            }}
           />
+          <div>
+            <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Actions</h2>
+            <BookingActions
+              bookingId={b.id}
+              status={b.status}
+              pricePence={b.pricePence}
+              within24h={within24h}
+              charged={b.chargedAt ? (b.chargedPence ?? 0) : null}
+            />
+          </div>
         </section>
       </div>
+
+      {/* Immutable audit trail */}
+      <section className="mt-10">
+        <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Activity log</h2>
+        <p className="mb-4 text-xs text-[var(--color-stone)]">An immutable record of every action on this booking.</p>
+        <ol className="relative space-y-3 border-l border-[var(--color-line)] pl-5">
+          {b.auditEvents.length === 0 && <li className="text-sm text-[var(--color-stone)]">No activity recorded yet.</li>}
+          {b.auditEvents.map((e) => (
+            <li key={e.id} className="relative">
+              <span className="absolute -left-[1.45rem] top-1.5 h-2.5 w-2.5 rounded-full bg-[var(--color-gold)]" />
+              <p className="text-sm font-medium">{e.summary}</p>
+              <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">
+                {new Date(e.createdAt).toLocaleString('en-GB')} · {e.action.toLowerCase().replace(/_/g, ' ')} · {e.actor}
+              </p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {b.practitioner && (
+        <p className="mt-6 text-sm text-[var(--color-stone)]">Assigned clinician: <span className="font-medium text-[var(--color-ink)]">{b.practitioner.name || b.practitioner.email}</span></p>
+      )}
     </AdminShell>
   );
 }
