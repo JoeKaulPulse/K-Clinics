@@ -71,3 +71,27 @@ export async function getSop(treatmentSlug: string): Promise<{ title: string; co
 export function defaultSop(treatmentSlug: string): SopDef {
   return DEFAULTS[treatmentSlug] ?? GENERIC;
 }
+
+export type SopStep = {
+  /** Display label (numbering stripped). */
+  step: string;
+  /** Steps that capture a client answer get a free-text response field. */
+  capture: boolean;
+};
+
+// Parse SOP content (one step per line, optionally numbered) into checklist
+// items. A step captures a response when it reads like a question/confirmation.
+const CAPTURE_HINTS = /(confirm|ask|check|patch test|contraindication|medical|allerg|pregn|medication|consent|response|how (did|does)|any |reports)/i;
+
+export function parseSopSteps(content: string): SopStep[] {
+  return content
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const step = line.replace(/^\s*(\d+[.)]|[-•*])\s*/, '').trim();
+      const capture = /\?\s*$/.test(step) || CAPTURE_HINTS.test(step);
+      return { step, capture };
+    })
+    .filter((s) => s.step.length > 0);
+}
