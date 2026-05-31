@@ -20,6 +20,7 @@ const nav = [
   { href: '/admin/tasks', key: 'nav.tasks', perm: undefined, badge: 'tasks' as const },
   { href: '/admin/time-off', key: 'nav.timeoff', perm: undefined, badge: 'timeoff' as const },
   { href: '/admin/inventory', key: 'nav.inventory', perm: 'inventory.view' },
+  { href: '/admin/reorder', key: 'nav.reorder', perm: 'inventory.view' },
   { href: '/admin/sops', key: 'nav.sops', perm: 'sop.manage' },
   { href: '/admin/campaigns', key: 'nav.campaigns', perm: 'campaigns.view' },
   { href: '/admin/automations', key: 'nav.automations', perm: 'automations.view' },
