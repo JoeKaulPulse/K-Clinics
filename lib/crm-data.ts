@@ -161,5 +161,8 @@ export async function listBookings(filter?: string) {
 }
 
 export async function getBooking(id: string) {
-  return db.booking.findUnique({ where: { id }, include: { client: true } });
+  return db.booking.findUnique({
+    where: { id },
+    include: { client: true, practitioner: { select: { name: true, email: true } }, auditEvents: { orderBy: { createdAt: 'asc' } } },
+  });
 }

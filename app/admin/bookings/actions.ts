@@ -19,8 +19,12 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
   if (booking.chargedAt) return { ok: false, error: 'Already charged' };
 
   const res = await chargeBooking(booking, Math.round(amountPence), { late: false });
+  const { logAudit } = await import('@/lib/audit');
   if (res.ok) {
     await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Charged £${(amountPence / 100).toFixed(2)} for ${booking.treatmentTitle}`, author: session.email } });
+    await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId, summary: `Charged £${(amountPence / 100).toFixed(2)}` });
+  } else {
+    await logAudit({ action: 'PAYMENT_FAILED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId, summary: `Charge failed: ${res.error || 'unknown'}` });
   }
   revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath('/admin/bookings');
