@@ -11,7 +11,8 @@ export type SettingKey =
   | 'enforce_staff_availability' // bookings respect per-staff schedules
   | 'auto_assign_practitioner'   // auto-assign a competent free clinician at booking
   | 'time_off_requires_approval' // staff time-off requests need manager sign-off
-  | 'multi_location_enabled';    // surface location pickers across the CRM
+  | 'multi_location_enabled'     // surface location pickers across the CRM
+  | 'review_requests_enabled';   // auto-send a review request after a treatment
 
 export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   allow_clinician_choice: false,
@@ -21,6 +22,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   auto_assign_practitioner: true,
   time_off_requires_approval: true,
   multi_location_enabled: false,
+  review_requests_enabled: true,
 };
 
 export const SETTING_META: Record<SettingKey, { label: string; description: string }> = {

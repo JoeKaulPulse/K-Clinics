@@ -51,6 +51,9 @@ export const PERMISSIONS: Permission[] = [
   // Discounts
   { key: 'discounts.manage', group: 'Discounts', label: 'Manage discounts', description: 'Revoke or override welcome-offer claims.' },
 
+  // Reviews
+  { key: 'reviews.manage', group: 'Reviews', label: 'Manage reviews', description: 'Moderate, approve and publish client reviews.' },
+
   // Marketing
   { key: 'campaigns.view', group: 'Marketing', label: 'View campaigns', description: 'See email campaigns and history.' },
   { key: 'campaigns.send', group: 'Marketing', label: 'Send campaigns', description: 'Create and send marketing emails.' },
@@ -106,6 +109,7 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     'clients.view',
     'clients.edit',
     'discounts.manage',
+    'reviews.manage',
     'calendar.view',
     'schedule.manage',
     'inventory.view',
