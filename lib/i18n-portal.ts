@@ -55,6 +55,8 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'nav.profile': { en: 'Profile', uk: 'Профіль' },
   'portal.signOut': { en: 'Sign out', uk: 'Вийти' },
   'portal.language': { en: 'Language', uk: 'Мова' },
+  'portal.footer': { en: 'Your data is encrypted and held securely. Need help? Call', uk: 'Ваші дані зашифровані та надійно захищені. Потрібна допомога? Телефонуйте' },
+  'portal.greeting': { en: 'Hi, {name}', uk: 'Вітаємо, {name}' },
 
   // Assessment runner
   'assess.aboutMin': { en: 'about {n} min', uk: 'близько {n} хв' },
