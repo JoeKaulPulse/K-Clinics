@@ -21,6 +21,7 @@ const NOTE_STYLE: Record<string, { label: string; dot: string; badge: string }> 
 };
 const noteStyle = (t: string) => NOTE_STYLE[t] ?? NOTE_STYLE.NOTE;
 import { MedicalFlagEditor } from '@/components/admin/MedicalFlagEditor';
+import { ClientTasks } from '@/components/admin/ClientTasks';
 
 export const dynamic = 'force-dynamic';
 
@@ -161,6 +162,16 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
               setAt={c.medicalFlagAt ? c.medicalFlagAt.toISOString() : null}
             />
           )}
+
+          {/* Tasks for this client */}
+          <ClientTasks
+            clientId={c.id}
+            tasks={c.tasks.map((tk) => ({
+              id: tk.id, title: tk.title, priority: tk.priority as string,
+              dueAt: tk.dueAt ? tk.dueAt.toISOString() : null,
+              assigneeName: tk.assignee?.name || tk.assignee?.email || null,
+            }))}
+          />
 
           {/* Welcome discount */}
           {c.discountClaims.length > 0 && (
