@@ -69,7 +69,7 @@ export function SignupForm() {
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <input type="text" tabIndex={-1} autoComplete="off" aria-hidden value={d.company} onChange={(e) => set('company', e.target.value)} className="absolute -left-[9999px] h-0 w-0" />
+      <input type="text" tabIndex={-1} autoComplete="off" aria-hidden="true" aria-label="Leave this field empty" value={d.company} onChange={(e) => set('company', e.target.value)} className="absolute -left-[9999px] h-0 w-0" />
       <div className="grid grid-cols-2 gap-4">
         <div><label className={authLabel} htmlFor="fn">First name</label><input id="fn" required className={authField} value={d.firstName} onChange={(e) => set('firstName', e.target.value)} /></div>
         <div><label className={authLabel} htmlFor="ln">Last name</label><input id="ln" className={authField} value={d.lastName} onChange={(e) => set('lastName', e.target.value)} /></div>
