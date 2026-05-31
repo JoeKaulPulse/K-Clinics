@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { formatPrice } from '@/lib/treatments';
@@ -13,8 +14,15 @@ export default async function AdminOverview() {
   if (!crmEnabled) return <CrmDisabled />;
   const { getOverview, getAnalytics } = await import('@/lib/crm-data');
   const session = await getSession();
-  // ── Load everything for the landing page in a single parallel batch ──
   const { db } = await import('@/lib/db');
+
+  // A practising clinician's home is "My day", not the owner KPI overview.
+  // Send clinical-only roles there; managers (OWNER/ADMIN) keep the overview.
+  if (session && !['OWNER', 'ADMIN'].includes(session.role)) {
+    const me = await db.adminUser.findUnique({ where: { id: session.sub }, select: { isClinician: true } });
+    if (me?.isClinician) redirect('/admin/my-day');
+  }
+
   const canApproveTimeOff = sessionCan(session, 'schedule.manage');
   const canInventory = sessionCan(session, 'inventory.view');
   const [o, a, pendingTimeOff, myTasks, stockItems, expiringSoon] = await Promise.all([
