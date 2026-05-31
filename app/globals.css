@@ -383,19 +383,13 @@
   animation-delay: 0s, 1.55s;
 }
 
-/* ── Logo: one animated K, gold ink-rise on hover ──────────────────────────── */
-/* The gold copy is hidden at rest (clipped away) so it never ghosts the base K;
-   on hover it wipes up from the base like ink filling the letterform. A subtle
-   lift on the whole mark adds life. */
-.logo__rise {
-  clip-path: inset(100% 0 0 0);
-  transition: clip-path 0.7s var(--ease-lux);
-}
-.logo:hover .logo__rise {
-  clip-path: inset(0 0 0 0);
-}
+/* ── Logo: a single K monogram with a gold colour-fill on hover ────────────── */
+/* One SVG, one path — cannot double-render. The K inherits the logo's colour
+   and warms to champagne gold on hover, with a whisper of lift. */
 .logo { transition: transform 0.6s var(--ease-lux); }
+.logo__k { transition: color 0.6s var(--ease-lux); }
 .logo:hover { transform: translateY(-1px); }
+.logo:hover .logo__k { color: var(--color-gold); }
 
 /* ── Respect reduced motion ───────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
