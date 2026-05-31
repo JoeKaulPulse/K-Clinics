@@ -36,6 +36,7 @@ enum EmailKind {
   REVIEW_REQUEST
   APPOINTMENT_REMINDER
   FORM_REMINDER
+  PASSWORD_RESET
   CAMPAIGN
   MANUAL
 }
@@ -132,6 +133,9 @@ model Client {
   emailVerified   DateTime?
   portalActive    Boolean        @default(false)
   lastLoginAt     DateTime?
+  // Password reset (hashed token + expiry).
+  resetTokenHash  String?
+  resetTokenExp   DateTime?
 
   // ── First-visit discount (one-time, guardrailed) ─────────────────────────
   firstDiscountClaimed Boolean   @default(false)

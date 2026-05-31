@@ -133,6 +133,47 @@ export async function loginClient(email: string, password: string): Promise<{ ok
   return { ok: true };
 }
 
+const sha256 = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
+
+/** Begin a password reset. Always resolves the same way (no account enumeration);
+ *  emails a one-hour reset link only if the account exists. */
+export async function requestPasswordReset(email: string): Promise<{ ok: true }> {
+  const client = await db.client.findUnique({ where: { email: email.trim().toLowerCase() } });
+  if (client?.passwordHash) {
+    const token = crypto.randomBytes(32).toString('hex');
+    await db.client.update({
+      where: { id: client.id },
+      data: { resetTokenHash: sha256(token), resetTokenExp: new Date(Date.now() + 60 * 60 * 1000) },
+    });
+    const base = process.env.NEXT_PUBLIC_SITE_URL || '';
+    const url = `${base}/account/reset?token=${token}&id=${client.id}`;
+    try {
+      const { sendEmail, tmplPasswordReset } = await import('@/lib/email');
+      const res = await sendEmail({ to: client.email, subject: 'Reset your K Clinics password', html: tmplPasswordReset(client.firstName, url) });
+      await db.emailEvent.create({ data: { clientId: client.id, kind: 'PASSWORD_RESET', to: client.email, subject: 'Password reset', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error } });
+    } catch {
+      /* swallow — never reveal whether the email exists */
+    }
+  }
+  return { ok: true };
+}
+
+/** Complete a password reset with a valid, unexpired token. */
+export async function performPasswordReset(clientId: string, token: string, newPassword: string): Promise<{ ok: boolean; error?: string }> {
+  if (!clientId || !token || newPassword.length < 8) return { ok: false, error: 'Invalid request.' };
+  const client = await db.client.findUnique({ where: { id: clientId } });
+  if (!client?.resetTokenHash || !client.resetTokenExp || client.resetTokenExp < new Date()) {
+    return { ok: false, error: 'This reset link has expired. Please request a new one.' };
+  }
+  if (sha256(token) !== client.resetTokenHash) return { ok: false, error: 'Invalid reset link.' };
+  await db.client.update({
+    where: { id: client.id },
+    data: { passwordHash: await hashPassword(newPassword), resetTokenHash: null, resetTokenExp: null, portalActive: true },
+  });
+  await createClientSession({ sub: client.id, email: client.email, firstName: client.firstName });
+  return { ok: true };
+}
+
 /** Resolve the signed-in client (server components / route handlers). */
 export async function getCurrentClient() {
   const session = await getClientSession();

@@ -57,7 +57,10 @@ function Inner() {
         <input id="email" type="email" autoComplete="email" required className={authField} value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
       <div>
-        <label className={authLabel} htmlFor="password">Password</label>
+        <div className="flex items-baseline justify-between">
+          <label className={authLabel} htmlFor="password">Password</label>
+          <Link href="/account/forgot-password" className="text-xs font-medium text-[var(--color-gold)]">Forgot?</Link>
+        </div>
         <input id="password" type="password" autoComplete="current-password" required className={authField} value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
       {error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
