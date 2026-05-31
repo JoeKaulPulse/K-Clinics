@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
+import { getLocale } from '@/lib/locale';
+import { t } from '@/lib/i18n';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 
 export const dynamic = 'force-dynamic';
@@ -30,9 +32,11 @@ export default async function AutomationsPage() {
   const countFor = (kind: string) => counts.find((c) => c.kind === kind)?._count._all ?? 0;
 
   const can = await sessionPermissions();
+
+  const locale = await getLocale();
   return (
-    <AdminShell user={session?.email} can={can}>
-      <h1 className="font-[family-name:var(--font-display)] text-3xl">Automations</h1>
+    <AdminShell user={session?.email} can={can} locale={locale}>
+      <h1 className="font-[family-name:var(--font-display)] text-3xl">{t(locale, 'nav.automations')}</h1>
       <p className="mt-1 text-sm text-[var(--color-stone)]">Branded lifecycle emails, sent automatically by a daily job. Counts show the last 30 days.</p>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">

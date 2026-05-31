@@ -4,6 +4,8 @@ import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
+import { getLocale } from '@/lib/locale';
+import { t } from '@/lib/i18n';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,10 +18,11 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   const rows = await listClients(q);
 
   const can = await sessionPermissions();
+  const locale = await getLocale();
   return (
-    <AdminShell user={session?.email} can={can}>
+    <AdminShell user={session?.email} can={can} locale={locale}>
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="font-[family-name:var(--font-display)] text-3xl">Clients</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-3xl">{t(locale, 'nav.clients')}</h1>
         <form className="flex gap-2">
           <input
             name="q"

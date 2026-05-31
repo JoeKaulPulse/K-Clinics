@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
+import { getLocale } from '@/lib/locale';
+import { t } from '@/lib/i18n';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 
 export const dynamic = 'force-dynamic';
@@ -18,9 +20,11 @@ export default async function ConsultationsPage({ searchParams }: { searchParams
   const rows = await listConsultations(status);
 
   const can = await sessionPermissions();
+
+  const locale = await getLocale();
   return (
-    <AdminShell user={session?.email} can={can}>
-      <h1 className="font-[family-name:var(--font-display)] text-3xl">Consultations</h1>
+    <AdminShell user={session?.email} can={can} locale={locale}>
+      <h1 className="font-[family-name:var(--font-display)] text-3xl">{t(locale, 'nav.consultations')}</h1>
 
       <div className="mt-6 flex flex-wrap gap-2">
         {STATUSES.map((s) => (

@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
+import { getLocale } from '@/lib/locale';
+import { t } from '@/lib/i18n';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { CampaignComposer } from '@/components/admin/CampaignComposer';
 
@@ -18,9 +20,11 @@ export default async function CampaignsPage() {
   ]);
 
   const can = await sessionPermissions();
+
+  const locale = await getLocale();
   return (
-    <AdminShell user={session?.email} can={can}>
-      <h1 className="font-[family-name:var(--font-display)] text-3xl">Email campaigns</h1>
+    <AdminShell user={session?.email} can={can} locale={locale}>
+      <h1 className="font-[family-name:var(--font-display)] text-3xl">{t(locale, 'nav.campaigns')}</h1>
       <p className="mt-1 text-sm text-[var(--color-stone)]">Send a branded broadcast to your marketing subscribers.</p>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.3fr_1fr]">
