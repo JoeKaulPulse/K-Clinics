@@ -13,6 +13,7 @@ const nav = [
   { href: '/admin/schedule', label: 'Schedules', perm: 'schedule.manage' },
   { href: '/admin/campaigns', label: 'Campaigns', perm: 'campaigns.view' },
   { href: '/admin/automations', label: 'Automations', perm: 'automations.view' },
+  { href: '/admin/activity', label: 'Activity log', perm: 'staff.view' },
   { href: '/admin/staff', label: 'Staff & access', perm: 'staff.view' },
   { href: '/admin/settings', label: 'Settings', perm: 'settings.manage' },
 ];

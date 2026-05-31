@@ -6,6 +6,7 @@ import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { AddNote, SendEmail, StatusSelect } from '@/components/admin/ClientActions';
 import { DiscountAction } from '@/components/admin/DiscountActions';
+import { MedicalFlagEditor } from '@/components/admin/MedicalFlagEditor';
 
 export const dynamic = 'force-dynamic';
 
@@ -110,6 +111,16 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
         </div>
 
         <aside className="space-y-8">
+          {/* Medical flag (clinical staff only) */}
+          {clinical && (
+            <MedicalFlagEditor
+              clientId={c.id}
+              initial={c.medicalFlag}
+              setBy={c.medicalFlagSetBy}
+              setAt={c.medicalFlagAt ? c.medicalFlagAt.toISOString() : null}
+            />
+          )}
+
           {/* Welcome discount */}
           {c.discountClaims.length > 0 && (
             <section>
