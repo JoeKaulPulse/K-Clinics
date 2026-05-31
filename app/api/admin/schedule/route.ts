@@ -32,8 +32,9 @@ export async function POST(req: Request) {
     if (!staffId || !startAt || !endAt) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
     const s = new Date(startAt), e = new Date(endAt);
     if (isNaN(+s) || isNaN(+e) || e <= s) return NextResponse.json({ ok: false, error: 'Invalid dates' }, { status: 400 });
-    const validKind = ['HOLIDAY', 'SICK', 'TRAINING', 'BLOCKED'].includes(kind || '') ? kind : 'BLOCKED';
-    await db.staffTimeOff.create({ data: { staffId, kind: validKind as never, startAt: s, endAt: e, reason: reason || null } });
+    const validKind = ['HOLIDAY', 'SICK', 'TRAINING', 'PERSONAL', 'BLOCKED'].includes(kind || '') ? kind : 'BLOCKED';
+    // Added by a manager (schedule.manage) → auto-approved.
+    await db.staffTimeOff.create({ data: { staffId, kind: validKind as never, status: 'APPROVED', startAt: s, endAt: e, reason: reason || null, requestedBy: session.email, reviewedBy: session.email, reviewedAt: new Date() } });
     await logAudit({ action: 'TIMEOFF_ADDED', actor: session.email, actorRole: session.role, summary: `Time-off added for staff ${staffId}: ${s.toLocaleDateString('en-GB')}–${e.toLocaleDateString('en-GB')}` });
     return NextResponse.json({ ok: true });
   }

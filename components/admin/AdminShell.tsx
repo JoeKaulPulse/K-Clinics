@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { KMark } from '@/components/brand/marks';
 
 const nav = [
@@ -11,6 +12,7 @@ const nav = [
   { href: '/admin/consultations', label: 'Consultations', perm: 'consultations.view' },
   { href: '/admin/clients', label: 'Clients', perm: 'clients.view' },
   { href: '/admin/schedule', label: 'Schedules', perm: 'schedule.manage' },
+  { href: '/admin/time-off', label: 'Time off', perm: undefined, badge: 'timeoff' as const },
   { href: '/admin/sops', label: 'SOPs', perm: 'sop.manage' },
   { href: '/admin/campaigns', label: 'Campaigns', perm: 'campaigns.view' },
   { href: '/admin/automations', label: 'Automations', perm: 'automations.view' },
@@ -33,6 +35,19 @@ export function AdminShell({
   const allowed = new Set(can);
   const items = nav.filter((n) => !n.perm || allowed.size === 0 || allowed.has(n.perm));
 
+  // Pending time-off approvals badge (managers only).
+  const [pendingTimeOff, setPendingTimeOff] = useState(0);
+  const canApproveTimeOff = allowed.has('schedule.manage');
+  useEffect(() => {
+    if (!canApproveTimeOff) return;
+    let on = true;
+    fetch('/api/admin/time-off?count=pending')
+      .then((r) => r.json())
+      .then((j) => { if (on && j?.ok) setPendingTimeOff(j.pending || 0); })
+      .catch(() => {});
+    return () => { on = false; };
+  }, [canApproveTimeOff, pathname]);
+
   async function signOut() {
     await fetch('/api/admin/logout', { method: 'POST' });
     router.push('/admin/login');
@@ -53,11 +68,14 @@ export function AdminShell({
               <Link
                 key={n.href}
                 href={n.href}
-                className={`whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-2.5 text-sm transition-colors ${
+                className={`flex items-center justify-between gap-2 whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-2.5 text-sm transition-colors ${
                   active ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-bone)]'
                 }`}
               >
-                {n.label}
+                <span>{n.label}</span>
+                {n.badge === 'timeoff' && canApproveTimeOff && pendingTimeOff > 0 && (
+                  <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[0.65rem] font-semibold text-amber-950">{pendingTimeOff}</span>
+                )}
               </Link>
             );
           })}
