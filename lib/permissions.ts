@@ -61,6 +61,11 @@ export const PERMISSIONS: Permission[] = [
   { key: 'staff.view', group: 'Administration', label: 'View staff', description: 'See the staff & access-control area.' },
   { key: 'staff.manage', group: 'Administration', label: 'Manage staff & access', description: 'Create staff, set roles and customise permissions.', sensitive: true },
   { key: 'settings.manage', group: 'Administration', label: 'Manage settings', description: 'Edit clinic settings and configuration.', sensitive: true },
+
+  // Scheduling
+  { key: 'calendar.view', group: 'Scheduling', label: 'View calendar', description: 'See the clinic calendar and appointments.' },
+  { key: 'schedule.manage', group: 'Scheduling', label: 'Manage schedules & time-off', description: 'Edit staff working hours, time-off and availability.' },
+  { key: 'sop.manage', group: 'Scheduling', label: 'Manage SOPs', description: 'Edit standard operating procedures per treatment.', sensitive: true },
 ];
 
 export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
@@ -79,6 +84,7 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     'clients.view',
     'clients.edit',
     'clients.clinical.view',
+    'calendar.view',
   ],
   FRONT_DESK: [
     'dashboard.view',
@@ -90,8 +96,10 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     'clients.view',
     'clients.edit',
     'discounts.manage',
+    'calendar.view',
+    'schedule.manage',
   ],
-  STAFF: ['dashboard.view', 'bookings.view', 'consultations.view', 'clients.view'],
+  STAFF: ['dashboard.view', 'bookings.view', 'consultations.view', 'clients.view', 'calendar.view'],
 };
 
 export function roleDefaults(role: string): string[] {
