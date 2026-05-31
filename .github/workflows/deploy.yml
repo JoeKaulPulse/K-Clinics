@@ -12,11 +12,12 @@ permissions:
   pages: write
   id-token: write
 
-# Supersede any queued/in-progress deploy so the newest commit always wins
-# quickly (Pages keeps the last successful deploy if one is cancelled mid-run).
+# Let in-progress deploys finish — cancelling them mid-run (the Pages build is
+# large) meant rapid successive pushes never actually published. Queue instead,
+# so the latest commit reliably reaches the live site.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
