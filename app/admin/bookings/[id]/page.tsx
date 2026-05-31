@@ -7,6 +7,7 @@ import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { BookingActions } from '@/components/admin/BookingActions';
 import { ClinicalWorkflow } from '@/components/admin/ClinicalWorkflow';
 import { ConsumablesPanel } from '@/components/admin/ConsumablesPanel';
+import { ClinicalNote } from '@/components/admin/ClinicalNote';
 import { BookingLocation } from '@/components/admin/BookingLocation';
 import { sessionCan } from '@/lib/auth';
 
@@ -39,6 +40,16 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const used = usedRaw.map((m) => ({
     id: m.id, itemName: m.item.name, unit: m.item.unit, qty: Math.abs(m.delta), batchNo: m.batchNo, by: m.by, at: m.createdAt.toISOString(),
   }));
+
+  // Clinical treatment note (clinical staff only) — decrypt for display.
+  const canClinical = sessionCan(session, 'clients.clinical.view');
+  let clinicalNote = '';
+  if (canClinical && b.clinicalNoteEnc) {
+    try {
+      const { decryptJson } = await import('@/lib/crypto');
+      clinicalNote = decryptJson<{ note: string }>(b.clinicalNoteEnc).note;
+    } catch { /* leave blank if undecryptable */ }
+  }
 
   // Location (multi-site): show a picker when more than one site is configured.
   const { getSetting } = await import('@/lib/settings');
@@ -95,6 +106,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             }}
           />
           {canConsumables && <ConsumablesPanel bookingId={b.id} items={stockItems} used={used} />}
+          {canClinical && <ClinicalNote bookingId={b.id} initial={clinicalNote} savedBy={b.clinicalNoteBy} savedAt={b.clinicalNoteAt ? b.clinicalNoteAt.toISOString() : null} />}
           {multiLocation && activeLocations.length > 0 && <BookingLocation bookingId={b.id} current={b.locationId} locations={activeLocations} />}
           <div>
             <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Actions</h2>
