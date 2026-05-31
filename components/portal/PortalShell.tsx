@@ -65,7 +65,7 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
         </nav>
         <div className="flex items-center gap-3">
           <LanguageToggle locale={locale} onChange={changeLanguage} label={t('portal.language')} />
-          <span className="hidden text-sm text-[var(--color-stone)] sm:block">Hi, {firstName}</span>
+          <span className="hidden text-sm text-[var(--color-stone)] sm:block">{t('portal.greeting', { name: firstName })}</span>
           <button onClick={signOut} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
             {t('portal.signOut')}
           </button>
@@ -83,7 +83,7 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
       <main className="flex-1 py-8 md:py-12">{children}</main>
 
       <footer className="border-t border-[var(--color-line)] py-6 text-xs text-[var(--color-stone)]">
-        Your data is encrypted and held securely. Need help? Call{' '}
+        {t('portal.footer')}{' '}
         <a href="tel:+442072500000" className="font-medium text-[var(--color-ink-soft)]">+44 20 7250 0000</a>.
       </footer>
     </div>
