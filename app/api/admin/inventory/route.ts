@@ -17,35 +17,45 @@ export async function POST(req: Request) {
   const { db } = await import('@/lib/db');
 
   if (body.op === 'createItem') {
-    const { name, category, unit, sku, supplier, lowStockAt, costPence } = body as Record<string, string | number | undefined>;
+    const { name, category, brand, size, unit, sku, supplier, moq, lowStockAt, costPence, retailPence, isRetail } = body as Record<string, string | number | boolean | undefined>;
     if (!name || typeof name !== 'string' || !name.trim()) return NextResponse.json({ ok: false, error: 'A name is required.' }, { status: 400 });
     const item = await db.stockItem.create({
       data: {
         name: name.trim().slice(0, 160),
         category: (category as string)?.trim() || null,
+        brand: (brand as string)?.trim() || null,
+        size: (size as string)?.trim() || null,
         unit: ((unit as string) || 'unit').trim().slice(0, 24),
         sku: (sku as string)?.trim() || null,
         supplier: (supplier as string)?.trim() || null,
+        moq: Math.max(1, Math.round(Number(moq)) || 1),
         lowStockAt: Number(lowStockAt) || 0,
         costPence: costPence != null && costPence !== '' ? Math.round(Number(costPence)) : null,
+        retailPence: retailPence != null && retailPence !== '' ? Math.round(Number(retailPence)) : null,
+        isRetail: Boolean(isRetail),
       },
     });
     return NextResponse.json({ ok: true, id: item.id });
   }
 
   if (body.op === 'updateItem') {
-    const { id, name, category, unit, sku, supplier, lowStockAt, costPence, active } = body as Record<string, string | number | boolean | undefined>;
+    const { id, name, category, brand, size, unit, sku, supplier, moq, lowStockAt, costPence, retailPence, isRetail, active } = body as Record<string, string | number | boolean | undefined>;
     if (!id) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
     await db.stockItem.update({
       where: { id: id as string },
       data: {
         ...(name !== undefined ? { name: String(name).trim().slice(0, 160) } : {}),
         ...(category !== undefined ? { category: String(category).trim() || null } : {}),
+        ...(brand !== undefined ? { brand: String(brand).trim() || null } : {}),
+        ...(size !== undefined ? { size: String(size).trim() || null } : {}),
         ...(unit !== undefined ? { unit: String(unit).trim().slice(0, 24) || 'unit' } : {}),
         ...(sku !== undefined ? { sku: String(sku).trim() || null } : {}),
         ...(supplier !== undefined ? { supplier: String(supplier).trim() || null } : {}),
+        ...(moq !== undefined ? { moq: Math.max(1, Math.round(Number(moq)) || 1) } : {}),
         ...(lowStockAt !== undefined ? { lowStockAt: Number(lowStockAt) || 0 } : {}),
         ...(costPence !== undefined ? { costPence: costPence === '' || costPence == null ? null : Math.round(Number(costPence)) } : {}),
+        ...(retailPence !== undefined ? { retailPence: retailPence === '' || retailPence == null ? null : Math.round(Number(retailPence)) } : {}),
+        ...(typeof isRetail === 'boolean' ? { isRetail } : {}),
         ...(typeof active === 'boolean' ? { active } : {}),
       },
     });
