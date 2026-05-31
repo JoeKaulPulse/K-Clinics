@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node scripts/gen-image-manifest.mjs && next dev",
     "postinstall": "prisma generate",
-    "prebuild": "node scripts/gen-image-manifest.mjs",
+    "prebuild": "node scripts/gen-image-manifest.mjs && node scripts/db-sync.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

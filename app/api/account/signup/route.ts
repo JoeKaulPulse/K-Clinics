@@ -19,7 +19,15 @@ export async function POST(req: Request) {
   }
   if (parsed.data.company) return NextResponse.json({ ok: true, discount: { granted: false, percent: 15 } }); // honeypot
 
-  const { signupClient } = await import('@/lib/client-auth');
-  const result = await signupClient({ ...parsed.data, ip: clientIp(req) });
-  return NextResponse.json(result, { status: result.ok ? 200 : 409 });
+  try {
+    const { signupClient } = await import('@/lib/client-auth');
+    const result = await signupClient({ ...parsed.data, ip: clientIp(req) });
+    return NextResponse.json(result, { status: result.ok ? 200 : 409 });
+  } catch (err) {
+    console.error('[account/signup] failed:', err);
+    return NextResponse.json(
+      { ok: false, error: 'We couldn’t create your account just now. Please try again shortly.' },
+      { status: 500 },
+    );
+  }
 }
