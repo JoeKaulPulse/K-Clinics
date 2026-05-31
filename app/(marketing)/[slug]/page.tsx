@@ -23,6 +23,7 @@ export async function generateMetadata({
     description: t.metaDescription,
     path: `/${t.slug}`,
     keywords: t.keywords,
+    ownOgImage: true,
   });
 }
 
