@@ -12,6 +12,7 @@ export type SignupInput = {
   dob?: string;
   password: string;
   marketingOptIn?: boolean;
+  locale?: string;
   ip?: string | null;
 };
 
@@ -68,6 +69,7 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
       dob: input.dob ? new Date(input.dob) : undefined,
       passwordHash,
       portalActive: true,
+      locale: input.locale === 'uk' ? 'uk' : 'en',
       marketingOptIn: input.marketingOptIn || undefined,
       signupIp: input.ip || undefined,
       source: existing?.source ?? 'portal-signup',
@@ -80,6 +82,7 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
       dob: input.dob ? new Date(input.dob) : undefined,
       passwordHash,
       portalActive: true,
+      locale: input.locale === 'uk' ? 'uk' : 'en',
       marketingOptIn: input.marketingOptIn ?? false,
       signupIp: input.ip || undefined,
       source: 'portal-signup',
@@ -134,16 +137,16 @@ function stageError(stage: string, err: unknown): Error {
   return e;
 }
 
-export async function loginClient(email: string, password: string): Promise<{ ok: boolean; error?: string }> {
+export async function loginClient(email: string, password: string): Promise<{ ok: boolean; error?: string; locale?: string }> {
   // Select only what we need: a default findUnique pulls every column, so any
   // not-yet-migrated column in production would throw before we can sign in.
   // Retry once on a transient connection error (serverless cold-start blip).
-  let client: { id: string; email: string; firstName: string; passwordHash: string | null } | null = null;
+  let client: { id: string; email: string; firstName: string; passwordHash: string | null; locale: string } | null = null;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       client = await db.client.findUnique({
         where: { email: email.trim().toLowerCase() },
-        select: { id: true, email: true, firstName: true, passwordHash: true },
+        select: { id: true, email: true, firstName: true, passwordHash: true, locale: true },
       });
       break;
     } catch (err) {
@@ -172,7 +175,7 @@ export async function loginClient(email: string, password: string): Promise<{ ok
   } catch (err) {
     throw stageError('session', err);
   }
-  return { ok: true };
+  return { ok: true, locale: client.locale === 'uk' ? 'uk' : 'en' };
 }
 
 const sha256 = (s: string) => crypto.createHash('sha256').update(s).digest('hex');

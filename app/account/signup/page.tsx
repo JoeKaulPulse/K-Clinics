@@ -1,7 +1,14 @@
+import { cookies } from 'next/headers';
 import { AuthShell } from '@/components/portal/AuthShell';
-import { SignupForm } from '@/components/portal/SignupForm';
+import { SignupWizard } from '@/components/portal/SignupWizard';
+import { PORTAL_LOCALE_COOKIE } from '@/lib/i18n-portal';
+import { isLocale, DEFAULT_LOCALE } from '@/lib/i18n';
 
-export default function SignupPage() {
+export const dynamic = 'force-dynamic';
+
+export default async function SignupPage() {
+  const c = (await cookies()).get(PORTAL_LOCALE_COOKIE)?.value;
+  const initialLocale = isLocale(c) ? c : DEFAULT_LOCALE;
   return (
     <AuthShell
       heading="Create your account"
@@ -14,7 +21,7 @@ export default function SignupPage() {
         'Members-only events and early access',
       ]}
     >
-      <SignupForm />
+      <SignupWizard initialLocale={initialLocale} />
     </AuthShell>
   );
 }

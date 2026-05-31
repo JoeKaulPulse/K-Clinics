@@ -213,6 +213,7 @@ model Client {
   passwordHash    String?        // set when the client creates a portal account
   emailVerified   DateTime?
   portalActive    Boolean        @default(false)
+  locale          String         @default("en") // preferred portal language (en | uk)
   lastLoginAt     DateTime?
   // Password reset (hashed token + expiry).
   resetTokenHash  String?
