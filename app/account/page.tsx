@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PortalShell } from '@/components/portal/PortalShell';
 import { DashboardHero } from '@/components/portal/DashboardHero';
-import { ScrollReveal } from '@/components/motion/ScrollReveal';
+import { Reveal } from '@/components/motion/Reveal';
 import { crmEnabled } from '@/lib/crm';
 import { formatPrice } from '@/lib/treatments';
 import { portalAssessments } from '@/lib/questionnaires';
@@ -41,7 +41,7 @@ export default async function DashboardPage() {
       />
 
       {data.discount && (
-        <ScrollReveal>
+        <Reveal>
           <div className="mb-8 flex flex-wrap items-center justify-between gap-4 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-gold)]/40 bg-gradient-to-br from-[var(--color-bone)] to-[var(--color-sand)]/50 p-6">
             <div className="flex items-center gap-4">
               <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--color-gold)]/15 text-[var(--color-gold)]">
@@ -59,11 +59,11 @@ export default async function DashboardPage() {
               {t('dash.book')}
             </Link>
           </div>
-        </ScrollReveal>
+        </Reveal>
       )}
 
       {missingProfile && (
-        <ScrollReveal>
+        <Reveal>
           <Link href="/account/profile" className="group mb-8 flex items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 transition-colors hover:border-[var(--color-gold)]">
             <div>
               <p className="text-sm font-medium">{t('dash.profilePrompt')}</p>
@@ -71,10 +71,10 @@ export default async function DashboardPage() {
             </div>
             <span className="shrink-0 text-sm font-medium text-[var(--color-gold)] transition-transform group-hover:translate-x-0.5">{t('dash.updateProfile')} →</span>
           </Link>
-        </ScrollReveal>
+        </Reveal>
       )}
 
-      <ScrollReveal delay={0.05}>
+      <Reveal delay={0.05}>
         <div className="grid gap-5 md:grid-cols-2">
           {/* Health forms */}
           <Card title={t('dash.healthForms')}>
@@ -136,7 +136,7 @@ export default async function DashboardPage() {
             </Card>
           )}
         </div>
-      </ScrollReveal>
+      </Reveal>
     </PortalShell>
   );
 }
