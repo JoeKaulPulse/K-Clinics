@@ -15,12 +15,13 @@ const STATUS_BADGE: Record<string, string> = {
   not_configured: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
 };
 
-export default async function IntegrationsPage() {
+export default async function IntegrationsPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   if (!crmEnabled) return <CrmDisabled />;
   const session = await getSession();
   // Integrations are owner/admin-level — gated on settings.manage.
   if (!sessionCan(session, 'settings.manage')) redirect('/admin');
 
+  const sp = await searchParams;
   const integrations = await getIntegrations();
   const can = await sessionPermissions();
   const locale = await getLocale();
@@ -33,9 +34,22 @@ export default async function IntegrationsPage() {
 
   const categories = Array.from(new Set(integrations.map((i) => i.category)));
 
+  // OAuth callbacks redirect back with ?xero=connected|error and ?bank=connected|error.
+  const banners: { ok: boolean; text: string }[] = [];
+  const note = (k: string, label: string) => {
+    if (sp[k] === 'connected') banners.push({ ok: true, text: uk ? `${label} підключено ✓` : `${label} connected ✓` });
+    else if (sp[k] === 'error') banners.push({ ok: false, text: uk ? `Не вдалося підключити ${label}. Спробуйте ще раз.` : `Couldn’t connect ${label}. Please try again.` });
+  };
+  note('xero', 'Xero');
+  note('bank', uk ? 'Банк' : 'Bank feed');
+  note('gcal', 'Google Calendar');
+
   return (
     <AdminShell user={session?.email} can={can} locale={locale}>
       <h1 className="font-[family-name:var(--font-display)] text-3xl">{t('nav.integrations')}</h1>
+      {banners.map((b, i) => (
+        <p key={i} className={`mt-4 rounded-[var(--radius-sm)] border px-4 py-3 text-sm ${b.ok ? 'border-green-600/30 bg-green-50 text-green-800' : 'border-[var(--color-blush)]/40 bg-[var(--color-blush)]/10 text-[var(--color-ink)]'}`}>{b.text}</p>
+      ))}
       <p className="mt-1 text-sm text-[var(--color-stone)]">
         {uk
           ? 'Стан усіх зовнішніх сервісів клініки. Ключі задаються у змінних середовища хостингу; тут показано лише їхній стан.'
