@@ -205,33 +205,60 @@ export function Header() {
             className="fixed inset-0 top-0 z-0 h-[100dvh] overflow-y-auto bg-[var(--color-porcelain)] px-6 pb-12 pt-24 lg:hidden"
           >
             <nav className="flex flex-col divide-y divide-[var(--color-line)]" aria-label="Mobile">
-              {primaryNav.map((item, idx) => (
-                <motion.div
-                  key={item.label}
-                  initial={{ opacity: 0, x: -16 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.05 + idx * 0.05, ease: [0.16, 1, 0.3, 1] }}
-                  className="py-5"
-                >
-                  <Link href={item.href} className="font-[family-name:var(--font-display)] text-3xl">
-                    {item.label}
-                  </Link>
-                  {item.columns && (
-                    <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
-                      {item.columns.flatMap((c) => c.links).map((l) => (
-                        <Link key={l.href} href={l.href} className="text-sm text-[var(--color-stone)]">
-                          {l.label}
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </motion.div>
-              ))}
+              {primaryNav.map((item, idx) => {
+                const expanded = open === item.label;
+                return (
+                  <motion.div
+                    key={item.label}
+                    initial={{ opacity: 0, x: -16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.05 + idx * 0.05, ease: [0.16, 1, 0.3, 1] }}
+                    className="py-4"
+                  >
+                    {item.columns ? (
+                      <>
+                        <button
+                          onClick={() => setOpen(expanded ? null : item.label)}
+                          aria-expanded={expanded}
+                          className="flex w-full items-center justify-between font-[family-name:var(--font-display)] text-2xl"
+                        >
+                          {item.label}
+                          <svg viewBox="0 0 24 24" className={`h-5 w-5 text-[var(--color-stone)] transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                        </button>
+                        {expanded && (
+                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5 overflow-hidden">
+                            {item.columns.flatMap((c) => c.links).map((l) => (
+                              <Link key={l.href} href={l.href} onClick={() => setMobile(false)} className="text-sm text-[var(--color-stone)]">
+                                {l.label}
+                              </Link>
+                            ))}
+                          </motion.div>
+                        )}
+                      </>
+                    ) : (
+                      <Link href={item.href} onClick={() => setMobile(false)} className="block font-[family-name:var(--font-display)] text-2xl">
+                        {item.label}
+                      </Link>
+                    )}
+                  </motion.div>
+                );
+              })}
             </nav>
             <div className="mt-8 flex flex-col gap-3">
               <Button href={site.booking.path} size="lg" className="w-full">
                 Book online <ArrowIcon />
               </Button>
+              <Link
+                href="/account"
+                onClick={() => setMobile(false)}
+                className="flex items-center justify-center gap-2 rounded-full border border-[var(--color-line)] px-6 py-3.5 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden>
+                  <circle cx="12" cy="8" r="3.4" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="M5 19.5c1.6-3 4-4.5 7-4.5s5.4 1.5 7 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                Sign in / My account
+              </Link>
               <Link href="/consultation" className="mt-1 text-center text-sm font-medium text-[var(--color-gold)] underline-offset-4 hover:underline">
                 Or request a free consultation
               </Link>

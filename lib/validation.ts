@@ -31,7 +31,10 @@ export const clientSignupSchema = z.object({
   marketingOptIn: z.boolean().optional(),
   locale: z.enum(['en', 'uk']).optional(),
   consent: z.literal(true, { errorMap: () => ({ message: 'Please accept the terms to continue.' }) }),
-  company: z.string().max(0).optional().or(z.literal('')), // honeypot
+  // Honeypot — accept any string so a browser/password-manager autofill never
+  // blocks a real person with a cryptic error. The route handles a filled value
+  // (treats it as a bot) on its own.
+  company: z.string().optional(),
 });
 
 export const clientLoginSchema = z.object({

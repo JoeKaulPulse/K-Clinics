@@ -44,6 +44,9 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'signup.doneTitle': { en: 'Welcome to K Clinics, {name}.', uk: 'Ласкаво просимо до K Clinics, {name}.' },
   'signup.discountReady': { en: 'Your {percent}% welcome discount is ready — code {code}. It’s saved to your account.', uk: 'Ваша знижка {percent}% готова — код {code}. Її збережено у вашому акаунті.' },
   'signup.goPortal': { en: 'Go to my portal', uk: 'Перейти до кабінету' },
+  'signup.errFirstName': { en: 'Please enter your first name.', uk: 'Будь ласка, введіть своє імʼя.' },
+  'signup.errEmail': { en: 'Please enter a valid email.', uk: 'Введіть дійсну електронну пошту.' },
+  'signup.errPassword': { en: 'Use at least 8 characters.', uk: 'Використайте щонайменше 8 символів.' },
   'error.network': { en: 'Network error — please try again.', uk: 'Помилка мережі — спробуйте ще раз.' },
   'error.create': { en: 'Could not create your account.', uk: 'Не вдалося створити акаунт.' },
 
@@ -51,6 +54,7 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'nav.overview': { en: 'Overview', uk: 'Огляд' },
   'nav.appointments': { en: 'Appointments', uk: 'Записи' },
   'nav.assessments': { en: 'Health forms', uk: 'Анкети здоровʼя' },
+  'nav.aftercare': { en: 'Aftercare', uk: 'Догляд' },
   'nav.invoices': { en: 'Invoices', uk: 'Рахунки' },
   'nav.profile': { en: 'Profile', uk: 'Профіль' },
   'portal.signOut': { en: 'Sign out', uk: 'Вийти' },
@@ -139,6 +143,16 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'dash.directions': { en: 'Get directions', uk: 'Прокласти маршрут' },
   'dash.needHelp': { en: 'Need a hand?', uk: 'Потрібна допомога?' },
   'dash.callUs': { en: 'Call the clinic', uk: 'Зателефонувати' },
+
+  // Aftercare
+  'after.eyebrow': { en: 'Aftercare', uk: 'Догляд' },
+  'after.title': { en: 'Caring for your results', uk: 'Догляд за вашим результатом' },
+  'after.intro': { en: 'Guidance for the treatments you’ve booked with us — revisit it any time. Your clinician’s personal instructions always come first.', uk: 'Поради щодо процедур, які ви забронювали — повертайтеся до них будь-коли. Особисті вказівки вашого клініциста завжди мають пріоритет.' },
+  'after.forTreatment': { en: 'For your {treatment}', uk: 'Для вашої процедури «{treatment}»' },
+  'after.empty': { en: 'Once you’ve booked a treatment, tailored aftercare guidance appears here.', uk: 'Щойно ви забронюєте процедуру, тут зʼявляться персональні поради з догляду.' },
+  'after.exploreCta': { en: 'Explore treatments', uk: 'Переглянути процедури' },
+  'after.questions': { en: 'Questions about your recovery?', uk: 'Питання щодо відновлення?' },
+  'after.questionsBody': { en: 'Our team is always happy to help — call us and we’ll talk it through.', uk: 'Наша команда завжди рада допомогти — зателефонуйте, і ми все обговоримо.' },
 
   // Assessments list
   'asmt.eyebrow': { en: 'Health forms', uk: 'Анкети здоровʼя' },
