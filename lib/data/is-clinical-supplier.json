@@ -1,0 +1,638 @@
+{
+  "brand": "iS Clinical",
+  "supplier": "Harley Street Group (iS Clinical)",
+  "currency": "GBP",
+  "source": "iS Clinical Opening Order 2025 GBP Q4 - sheet 3",
+  "items": [
+    {
+      "sku": "1001",
+      "name": "Cleansing Complex",
+      "size": "180ml",
+      "category": "Cleanse",
+      "wholesalePence": 2400,
+      "rrpPence": 4800,
+      "moq": 4,
+      "isRetail": true
+    },
+    {
+      "sku": "1552",
+      "name": "Cream Cleanser",
+      "size": "120ml",
+      "category": "Cleanse",
+      "wholesalePence": 2400,
+      "rrpPence": 4800,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1202",
+      "name": "Warming Honey Cleanser",
+      "size": "120g",
+      "category": "Cleanse",
+      "wholesalePence": 2400,
+      "rrpPence": 4800,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1006",
+      "name": "Active Serum",
+      "size": "15ml",
+      "category": "Treat",
+      "wholesalePence": 4399,
+      "rrpPence": 8800,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1008",
+      "name": "Super Serum Advanced +",
+      "size": "15ml",
+      "category": "Treat",
+      "wholesalePence": 4749,
+      "rrpPence": 9500,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1012",
+      "name": "Pro Heal Serum Advanced +",
+      "size": "15ml",
+      "category": "Treat",
+      "wholesalePence": 4749,
+      "rrpPence": 9500,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1010",
+      "name": "Poly Vitamin Serum",
+      "size": "15ml",
+      "category": "Treat",
+      "wholesalePence": 3600,
+      "rrpPence": 7200,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1628",
+      "name": "GeneXC Serum",
+      "size": "15ml",
+      "category": "Treat",
+      "wholesalePence": 5250,
+      "rrpPence": 10500,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1778",
+      "name": "Brightening Complex",
+      "size": "30g",
+      "category": "Treat",
+      "wholesalePence": 7549,
+      "rrpPence": 15100,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1499",
+      "name": "Neck Perfect Complex",
+      "size": "50g",
+      "category": "Treat",
+      "wholesalePence": 5499,
+      "rrpPence": 11000,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1019",
+      "name": "Youth Eye Complex",
+      "size": "15g",
+      "category": "Treat",
+      "wholesalePence": 5749,
+      "rrpPence": 11500,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1160",
+      "name": "SHEALD Recovery Balm",
+      "size": "60g",
+      "category": "Treat",
+      "wholesalePence": 3949,
+      "rrpPence": 7900,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1807",
+      "name": "Active Peel System (15 Pack)",
+      "size": null,
+      "category": "Treat",
+      "wholesalePence": 4599,
+      "rrpPence": 9200,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1946",
+      "name": "Retinol+ Emulsion 0.3",
+      "size": "30g",
+      "category": "Treat",
+      "wholesalePence": 5749,
+      "rrpPence": 11500,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1947",
+      "name": "Retinol+ Emulsion 1.0",
+      "size": "30g",
+      "category": "Treat",
+      "wholesalePence": 6750,
+      "rrpPence": 13500,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1004",
+      "name": "Hydra Cool Serum",
+      "size": "15ml",
+      "category": "Hydrate",
+      "wholesalePence": 3199,
+      "rrpPence": 6400,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1003",
+      "name": "Moisturising Complex",
+      "size": "50g",
+      "category": "Hydrate",
+      "wholesalePence": 4899,
+      "rrpPence": 9800,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1286",
+      "name": "Reparative Moisture Emulsion",
+      "size": "50g",
+      "category": "Hydrate",
+      "wholesalePence": 5250,
+      "rrpPence": 10500,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1021",
+      "name": "Body Complex",
+      "size": "180g",
+      "category": "Hydrate",
+      "wholesalePence": 3750,
+      "rrpPence": 7500,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1357",
+      "name": "Youth Intensive Creme",
+      "size": "50g",
+      "category": "Hydrate",
+      "wholesalePence": 11700,
+      "rrpPence": 23400,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1523",
+      "name": "Copper Firming Mist",
+      "size": "75ml",
+      "category": "Hydrate",
+      "wholesalePence": 1999,
+      "rrpPence": 4000,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1525",
+      "name": "Hydra-Intensive Cooling Masque",
+      "size": "120g",
+      "category": "Hydrate",
+      "wholesalePence": 4749,
+      "rrpPence": 9500,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1024",
+      "name": "Eclipse SPF 50+ Translucent",
+      "size": "100g",
+      "category": "Protect",
+      "wholesalePence": 2499,
+      "rrpPence": 5000,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1025",
+      "name": "Extreme Protect SPF 30",
+      "size": "100g",
+      "category": "Protect",
+      "wholesalePence": 3999,
+      "rrpPence": 8000,
+      "moq": 2,
+      "isRetail": true
+    },
+    {
+      "sku": "1029",
+      "name": "Cleansing Complex Professional Use",
+      "size": "480ml",
+      "category": "Professional",
+      "wholesalePence": 5500,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1066",
+      "name": "Cream Cleanser Professional Use",
+      "size": "240ml",
+      "category": "Professional",
+      "wholesalePence": 4062,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1035",
+      "name": "Warming Honey Cleanser Professional Use",
+      "size": "240g",
+      "category": "Professional",
+      "wholesalePence": 4062,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1231",
+      "name": "Clarifying Mud Masque Professional Use",
+      "size": "240g",
+      "category": "Professional",
+      "wholesalePence": 6642,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1033",
+      "name": "Super Serum Advanced + Professional Use",
+      "size": "60ml",
+      "category": "Professional",
+      "wholesalePence": 9265,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1034",
+      "name": "Pro Heal Serum Advanced + Professional Use",
+      "size": "60ml",
+      "category": "Professional",
+      "wholesalePence": 9265,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1030",
+      "name": "Hydra Cool Serum Professional Use",
+      "size": "60ml",
+      "category": "Professional",
+      "wholesalePence": 7319,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1028",
+      "name": "Moisturising Complex Professional Use",
+      "size": "120g",
+      "category": "Professional",
+      "wholesalePence": 6473,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1039",
+      "name": "Reparative Moisture Emulsion Professional",
+      "size": "240g",
+      "category": "Professional",
+      "wholesalePence": 9731,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1199",
+      "name": "Extreme Protect SPF 30 Professional Use",
+      "size": "240g",
+      "category": "Professional",
+      "wholesalePence": 7785,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1161",
+      "name": "SHEALD Recovery Balm Professional Use",
+      "size": "120g",
+      "category": "Professional",
+      "wholesalePence": 6981,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1293",
+      "name": "Tri-Active Exfoliating Masque Professional Use",
+      "size": "240g",
+      "category": "Professional",
+      "wholesalePence": 7531,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1209",
+      "name": "Foaming Enzyme Masque System (Set of 10)",
+      "size": null,
+      "category": "Professional",
+      "wholesalePence": 6896,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1036",
+      "name": "Hydra Intensive Cooling Mask",
+      "size": "240g",
+      "category": "Professional",
+      "wholesalePence": 8842,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1026",
+      "name": "Rejuvenating Masque Professional Use",
+      "size": "120ml",
+      "category": "Professional",
+      "wholesalePence": 8419,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1027",
+      "name": "Resurfacing Masque Professional Use",
+      "size": "120ml",
+      "category": "Professional",
+      "wholesalePence": 8419,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1596",
+      "name": "Copper Firming Mist Professional Use",
+      "size": "240ml",
+      "category": "Professional",
+      "wholesalePence": 4738,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1653",
+      "name": "Massage Silk - Unscented Professional Use",
+      "size": "120g",
+      "category": "Professional",
+      "wholesalePence": 4442,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1051",
+      "name": "Active Serum sample with Mailer (10 Pack)",
+      "size": "3.75ml",
+      "category": "Samples & Marketing Materials",
+      "wholesalePence": 3555,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1566",
+      "name": "Super Serum sample with Mailer (10 Pack)",
+      "size": "3.75ml",
+      "category": "Samples & Marketing Materials",
+      "wholesalePence": 3555,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1565",
+      "name": "Pro-Heal Serum sample with Mailer (10 Pack)",
+      "size": "3.75ml",
+      "category": "Samples & Marketing Materials",
+      "wholesalePence": 3555,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1809",
+      "name": "Active Peel System 1 & 2 dual step (10 Pack) with card",
+      "size": null,
+      "category": "Samples & Marketing Materials",
+      "wholesalePence": 3555,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1949",
+      "name": "Retinol+ Emulsion 0.3 2g sample (20 pack)",
+      "size": "2g",
+      "category": "Samples & Marketing Materials",
+      "wholesalePence": 2934,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1239",
+      "name": "Skin Prep Kits",
+      "size": null,
+      "category": "Samples & Marketing Materials",
+      "wholesalePence": 1800,
+      "rrpPence": null,
+      "moq": 10,
+      "isRetail": false
+    },
+    {
+      "sku": "1579",
+      "name": "iS Clinical Regime Recommendation  DL Card (25 pack)",
+      "size": null,
+      "category": "Samples & Marketing Materials",
+      "wholesalePence": 270,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1071",
+      "name": "iS Clinical Consumer Range Brochure (25 Pack)",
+      "size": null,
+      "category": "Samples & Marketing Materials",
+      "wholesalePence": 2000,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1521",
+      "name": "Champagne Enzyme Treatment Info DL Card (pack of 25)",
+      "size": null,
+      "category": "Samples & Marketing Materials",
+      "wholesalePence": 500,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1248",
+      "name": "Fire & Ice Resurfacing Treatment Info DL Card (25 Pack)",
+      "size": null,
+      "category": "Samples & Marketing Materials",
+      "wholesalePence": 500,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1233",
+      "name": "Skin Condition/Brochure Acrylic Stand x 1 slot",
+      "size": null,
+      "category": "Samples & Marketing Materials",
+      "wholesalePence": 300,
+      "rrpPence": null,
+      "moq": 3,
+      "isRetail": false
+    },
+    {
+      "sku": "1236",
+      "name": "A4 Poster Display Acrylic Holder",
+      "size": null,
+      "category": "Samples & Marketing Materials",
+      "wholesalePence": 500,
+      "rrpPence": null,
+      "moq": 2,
+      "isRetail": false
+    },
+    {
+      "sku": "1258",
+      "name": "A5 Poster Display Acrylic Holder",
+      "size": null,
+      "category": "Samples & Marketing Materials",
+      "wholesalePence": 400,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1944",
+      "name": "A6 Shelf Navigators (6 Pack)",
+      "size": null,
+      "category": "Samples & Marketing Materials",
+      "wholesalePence": 6800,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1945",
+      "name": "A5 Product Glorfiers (4 Pack)",
+      "size": null,
+      "category": "Samples & Marketing Materials",
+      "wholesalePence": 4700,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1943",
+      "name": "Approved Partner Window Decal",
+      "size": null,
+      "category": "Samples & Marketing Materials",
+      "wholesalePence": 200,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1889",
+      "name": "iS Clinical Training Manual",
+      "size": null,
+      "category": "Samples & Marketing Materials",
+      "wholesalePence": 500,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1557",
+      "name": "iS Clinical Starter Pack",
+      "size": null,
+      "category": "Samples & Marketing Materials",
+      "wholesalePence": 200,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1889",
+      "name": "iS Clinical Training Manual",
+      "size": null,
+      "category": "Training",
+      "wholesalePence": 500,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": "1954",
+      "name": "iS Clinical Facial Protocol Booklet",
+      "size": null,
+      "category": "Training",
+      "wholesalePence": 500,
+      "rrpPence": null,
+      "moq": 1,
+      "isRetail": false
+    },
+    {
+      "sku": null,
+      "name": "iS Clinical 2-Days Essential Training (In Clinic / Regional)*",
+      "size": null,
+      "category": "Training",
+      "wholesalePence": 35000,
+      "rrpPence": null,
+      "moq": 2,
+      "isRetail": false
+    }
+  ]
+}

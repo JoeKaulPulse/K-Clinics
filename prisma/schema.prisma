@@ -521,12 +521,17 @@ model StockItem {
   id          String          @id @default(cuid())
   name        String
   category    String?         // e.g. "Injectables", "Consumables", "PPE"
+  brand       String?         // product brand (e.g. "iS Clinical")
+  size        String?         // pack size (e.g. "180ml", "15ml")
   unit        String          @default("unit") // vial, ml, syringe, unit, pack
   sku         String?
   supplier    String?
+  moq         Int             @default(1)       // minimum order quantity honoured at reorder
   currentQty  Float           @default(0)
   lowStockAt  Float           @default(0)       // alert threshold
-  costPence   Int?            // unit cost for valuation (optional)
+  costPence   Int?            // unit cost for valuation (wholesale, ex VAT)
+  retailPence Int?            // retail price (RRP inc VAT) when sold to clients
+  isRetail    Boolean         @default(false)   // sold to clients (vs professional-use)
   active      Boolean         @default(true)
   notes       String?
   createdAt   DateTime        @default(now())

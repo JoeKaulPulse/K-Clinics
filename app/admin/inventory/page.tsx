@@ -26,8 +26,8 @@ export default async function InventoryPage() {
   ]);
 
   const items = itemsRaw.map((i) => ({
-    id: i.id, name: i.name, category: i.category, unit: i.unit, sku: i.sku, supplier: i.supplier,
-    currentQty: i.currentQty, lowStockAt: i.lowStockAt, costPence: i.costPence,
+    id: i.id, name: i.name, category: i.category, brand: i.brand, size: i.size, unit: i.unit, sku: i.sku, supplier: i.supplier,
+    moq: i.moq, currentQty: i.currentQty, lowStockAt: i.lowStockAt, costPence: i.costPence, retailPence: i.retailPence, isRetail: i.isRetail,
   }));
 
   const soon = new Date(Date.now() + 90 * 864e5);
@@ -46,7 +46,7 @@ export default async function InventoryPage() {
         {uk ? 'Облік витратних матеріалів — рівні запасів, партії, терміни придатності та сповіщення про низький залишок.' : 'Track consumables — stock levels, batches, expiry dates and low-stock alerts.'}
       </p>
       <div className="mt-8">
-        <InventoryManager items={items} expiring={expiring} canManage={canManage} uk={uk} />
+        <InventoryManager items={items} expiring={expiring} canManage={canManage} uk={uk} hasISClinical={itemsRaw.some((i) => i.brand === 'iS Clinical')} />
       </div>
     </AdminShell>
   );
