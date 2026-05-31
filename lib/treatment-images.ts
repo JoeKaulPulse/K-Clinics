@@ -27,3 +27,14 @@ export function packageImage(slug: string): string | null {
 export function pageImage(key: string): string | null {
   return resolve((pageMap as Record<string, string>)[key]);
 }
+
+// Journal article → hero image (real photography from the media library).
+const articleMap: Record<string, string> = {
+  'laser-hair-removal-what-to-expect': 'Laser-Hair-Removal-1-1.png',
+  'anti-wrinkle-injections-natural-results': 'HydraFacial-Anti-Ageing.png',
+  'achieve-the-perfect-smile-veneers-whitening': 'baner-7.jpg',
+  'skincare-after-laser-treatments': 'Carbon-Laser-Peel.png',
+};
+export function articleImage(slug: string): string | null {
+  return resolve(articleMap[slug]);
+}

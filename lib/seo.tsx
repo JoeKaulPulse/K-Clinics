@@ -242,6 +242,32 @@ export function breadcrumbLd(items: { name: string; path: string }[]) {
   };
 }
 
+/** Article / blog post schema for the journal. */
+export function articleLd(a: {
+  title: string;
+  description: string;
+  path: string;
+  published: string;
+  updated?: string;
+  image?: string;
+  keywords?: string[];
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: a.title,
+    description: a.description,
+    url: `${base}${a.path}`,
+    mainEntityOfPage: `${base}${a.path}`,
+    datePublished: a.published,
+    dateModified: a.updated || a.published,
+    image: a.image ? `${base}${a.image}` : `${base}/opengraph-image`,
+    keywords: a.keywords?.join(', '),
+    author: { '@type': 'Organization', name: site.name, url: base },
+    publisher: { '@id': `${base}/#clinic` },
+  };
+}
+
 /** Renders a JSON-LD <script> tag. */
 export function JsonLd({ data }: { data: object | object[] }) {
   return (

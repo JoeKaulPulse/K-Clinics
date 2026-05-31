@@ -3,6 +3,7 @@ import { site } from '@/lib/site';
 import { treatmentSlugs } from '@/lib/treatments';
 import { packages } from '@/lib/packages';
 import { infoSlugs } from '@/lib/info-pages';
+import { articleSlugs } from '@/lib/articles';
 
 export const dynamic = 'force-static';
 
@@ -16,6 +17,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/consultation', priority: 0.9, freq: 'monthly' },
     { path: '/treatments', priority: 0.9, freq: 'weekly' },
     { path: '/treatment-finder', priority: 0.75, freq: 'monthly' },
+    { path: '/journal', priority: 0.7, freq: 'weekly' },
     { path: '/dentistry', priority: 0.9, freq: 'weekly' },
     { path: '/packages', priority: 0.8, freq: 'monthly' },
     { path: '/pricing', priority: 0.8, freq: 'monthly' },
@@ -50,6 +52,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: now,
       changeFrequency: 'yearly' as const,
       priority: 0.3,
+    })),
+    ...articleSlugs.map((slug) => ({
+      url: `${base}/journal/${slug}`,
+      lastModified: now,
+      changeFrequency: 'monthly' as const,
+      priority: 0.55,
     })),
   ];
 }

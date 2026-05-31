@@ -93,6 +93,7 @@ export const primaryNav: NavGroup[] = [
           { label: 'Book a Consultation', href: '/consultation', description: 'Complimentary & bespoke' },
           { label: 'Membership & Rewards', href: '/membership', description: 'Beauty Points' },
           { label: 'Reviews', href: '/reviews', description: 'Loved by London' },
+          { label: 'The Journal', href: '/journal', description: 'Expert guides & advice' },
           { label: 'FAQ', href: '/faq', description: 'Everything explained' },
           { label: 'Contact & Find Us', href: '/contact', description: 'Visit the clinic' },
         ],
