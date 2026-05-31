@@ -4,6 +4,7 @@ import { getSession, sessionPermissions } from '@/lib/auth';
 import { formatPrice } from '@/lib/treatments';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
+import { RevenueChart, TopTreatments } from '@/components/admin/Charts';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +46,12 @@ export default async function AdminOverview() {
             <p className="mt-1 text-sm text-[var(--color-stone)]">{k.label}{k.sub ? ` · ${k.sub}` : ''}</p>
           </Link>
         ))}
+      </div>
+
+      {/* Charts */}
+      <div className="mt-6 grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+        <RevenueChart series={a.series} />
+        <TopTreatments items={a.topTreatments} />
       </div>
 
       <div className="mt-10 grid gap-8 lg:grid-cols-[1.4fr_1fr]">

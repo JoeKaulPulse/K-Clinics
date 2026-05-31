@@ -46,6 +46,31 @@ export async function getAnalytics() {
   const revTrend = revPrev > 0 ? Math.round(((rev30 - revPrev) / revPrev) * 100) : null;
   const conversion = consults30 > 0 ? Math.round((bookingsFromConsult30 / consults30) * 100) : 0;
 
+  // Daily revenue series (last 14 days) + top treatments (30 days) for charts.
+  const d14 = new Date(now.getTime() - 13 * 864e5); d14.setHours(0, 0, 0, 0);
+  const chargedRows = await db.booking.findMany({
+    where: { chargedAt: { gte: d14 }, chargedPence: { not: null } },
+    select: { chargedAt: true, chargedPence: true },
+  });
+  const series: { label: string; value: number }[] = [];
+  for (let i = 0; i < 14; i++) {
+    const day = new Date(d14.getTime() + i * 864e5);
+    const next = new Date(day.getTime() + 864e5);
+    const total = chargedRows
+      .filter((r) => r.chargedAt && r.chargedAt >= day && r.chargedAt < next)
+      .reduce((s, r) => s + (r.chargedPence ?? 0), 0);
+    series.push({ label: day.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }), value: total });
+  }
+
+  const treatmentRows = await db.booking.groupBy({
+    by: ['treatmentTitle'],
+    where: { createdAt: { gte: d30 } },
+    _count: { treatmentTitle: true },
+    orderBy: { _count: { treatmentTitle: 'desc' } },
+    take: 5,
+  });
+  const topTreatments = treatmentRows.map((t) => ({ name: t.treatmentTitle, count: t._count.treatmentTitle }));
+
   return {
     rev30,
     revTrend,
@@ -53,6 +78,8 @@ export async function getAnalytics() {
     upcomingCount,
     conversion,
     newClients30,
+    series,
+    topTreatments,
     today: todays.map((b) => ({
       id: b.id,
       time: b.startAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
