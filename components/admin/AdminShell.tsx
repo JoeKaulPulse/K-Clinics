@@ -64,29 +64,18 @@ export function AdminShell({
   useEffect(() => { if (!localeProp) setLocale(readCookieLocale()); }, [localeProp]);
   const t = translator(locale);
 
-  // Pending time-off approvals badge (managers only).
+  // Sidebar badges — a single lightweight request per shell mount.
   const [pendingTimeOff, setPendingTimeOff] = useState(0);
+  const [openTasks, setOpenTasks] = useState(0);
   const canApproveTimeOff = allowed.has('schedule.manage');
   useEffect(() => {
-    if (!canApproveTimeOff) return;
     let on = true;
-    fetch('/api/admin/time-off?count=pending')
+    fetch('/api/admin/badges')
       .then((r) => r.json())
-      .then((j) => { if (on && j?.ok) setPendingTimeOff(j.pending || 0); })
+      .then((j) => { if (on && j?.ok) { setPendingTimeOff(j.pendingTimeOff || 0); setOpenTasks(j.openTasks || 0); } })
       .catch(() => {});
     return () => { on = false; };
-  }, [canApproveTimeOff, pathname]);
-
-  // My open tasks badge (everyone).
-  const [openTasks, setOpenTasks] = useState(0);
-  useEffect(() => {
-    let on = true;
-    fetch('/api/admin/tasks?count=mine')
-      .then((r) => r.json())
-      .then((j) => { if (on && j?.ok) setOpenTasks(j.open || 0); })
-      .catch(() => {});
-    return () => { on = false; };
-  }, [pathname]);
+  }, []);
 
   const badgeCount = (badge?: string) =>
     badge === 'timeoff' ? (canApproveTimeOff ? pendingTimeOff : 0) : badge === 'tasks' ? openTasks : 0;
@@ -108,7 +97,7 @@ export function AdminShell({
     <I18nProvider locale={locale}>
       <div className="flex min-h-screen flex-col lg:flex-row">
         <aside className="flex shrink-0 flex-col gap-1 border-b border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 lg:w-64 lg:border-b-0 lg:border-r lg:p-6">
-          <div className="mb-7 px-2">
+          <div className="mb-7 flex justify-center px-2">
             <div className="inline-flex flex-col items-center text-[var(--color-ink)]">
               <span className="block h-9 w-[1.35rem]"><KMark /></span>
               <span className="mt-3 block h-[0.62rem] w-[6.75rem]"><ClinicsWordmark /></span>
