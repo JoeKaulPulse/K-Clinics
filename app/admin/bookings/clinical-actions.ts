@@ -57,6 +57,43 @@ export async function startAppointment(bookingId: string) {
   return { ok: true };
 }
 
+// Record a consumable used during this appointment — deducts stock, links the
+// movement to the booking (batch traceability) and writes the immutable log.
+export async function recordConsumable(bookingId: string, itemId: string, qty: number, batchNo?: string) {
+  if (!crmEnabled) return { ok: false };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'Not permitted' };
+  if (!itemId || !qty || qty <= 0) return { ok: false, error: 'Enter a quantity.' };
+  const { db } = await import('@/lib/db');
+  const { logAudit } = await import('@/lib/audit');
+  const b = await db.booking.findUnique({ where: { id: bookingId }, select: { clientId: true } });
+  const item = await db.stockItem.findUnique({ where: { id: itemId }, select: { name: true, unit: true } });
+  if (!b || !item) return { ok: false, error: 'Not found' };
+  await db.$transaction([
+    db.stockMovement.create({ data: { itemId, delta: -Math.abs(qty), reason: 'USED', bookingId, batchNo: batchNo?.trim() || null, by: session.email } }),
+    db.stockItem.update({ where: { id: itemId }, data: { currentQty: { decrement: Math.abs(qty) } } }),
+  ]);
+  await logAudit({ action: 'CONSUMABLE_USED', actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId, summary: `Used ${qty} ${item.unit} of ${item.name}${batchNo ? ` (batch ${batchNo})` : ''}` });
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  return { ok: true };
+}
+
+// Undo a consumable line (restores stock). Only the movement for this booking.
+export async function removeConsumable(movementId: string, bookingId: string) {
+  if (!crmEnabled) return { ok: false };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'Not permitted' };
+  const { db } = await import('@/lib/db');
+  const m = await db.stockMovement.findUnique({ where: { id: movementId }, select: { itemId: true, delta: true, bookingId: true } });
+  if (!m || m.bookingId !== bookingId) return { ok: false, error: 'Not found' };
+  await db.$transaction([
+    db.stockMovement.delete({ where: { id: movementId } }),
+    db.stockItem.update({ where: { id: m.itemId }, data: { currentQty: { increment: -m.delta } } }),
+  ]);
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  return { ok: true };
+}
+
 // Finish the appointment — stamps actual duration and marks COMPLETED.
 export async function finishAppointment(bookingId: string) {
   if (!crmEnabled) return { ok: false };

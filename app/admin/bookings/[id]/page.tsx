@@ -6,6 +6,8 @@ import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { BookingActions } from '@/components/admin/BookingActions';
 import { ClinicalWorkflow } from '@/components/admin/ClinicalWorkflow';
+import { ConsumablesPanel } from '@/components/admin/ConsumablesPanel';
+import { sessionCan } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +25,19 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const within24h = b.startAt.getTime() - Date.now() < 24 * 60 * 60 * 1000;
   const name = [b.client.firstName, b.client.lastName].filter(Boolean).join(' ');
   const sop = await getSop(b.treatmentSlug);
+
+  // Consumables (inventory) — items to pick from + what's already logged here.
+  const canConsumables = sessionCan(session, 'bookings.manage') && sessionCan(session, 'inventory.view');
+  const { db } = await import('@/lib/db');
+  const stockItems = canConsumables
+    ? await db.stockItem.findMany({ where: { active: true }, orderBy: [{ category: 'asc' }, { name: 'asc' }], select: { id: true, name: true, unit: true, currentQty: true } })
+    : [];
+  const usedRaw = canConsumables
+    ? await db.stockMovement.findMany({ where: { bookingId: id }, orderBy: { createdAt: 'asc' }, include: { item: { select: { name: true, unit: true } } } })
+    : [];
+  const used = usedRaw.map((m) => ({
+    id: m.id, itemName: m.item.name, unit: m.item.unit, qty: Math.abs(m.delta), batchNo: m.batchNo, by: m.by, at: m.createdAt.toISOString(),
+  }));
 
   const can = await sessionPermissions();
   return (
@@ -73,6 +88,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
               status: b.status,
             }}
           />
+          {canConsumables && <ConsumablesPanel bookingId={b.id} items={stockItems} used={used} />}
           <div>
             <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Actions</h2>
             <BookingActions
