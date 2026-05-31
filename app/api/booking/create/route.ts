@@ -28,12 +28,17 @@ export async function POST(req: Request) {
   const end = new Date(start.getTime() + durationMin * 60_000);
 
   const { db } = await import('@/lib/db');
-  const { isSlotFree } = await import('@/lib/availability');
+  const { isSlotFree, pickPractitioner } = await import('@/lib/availability');
   const { stripe, ensureCustomer } = await import('@/lib/stripe');
+  const { getSetting } = await import('@/lib/settings');
 
-  if (!(await isSlotFree(d.startISO, durationMin))) {
+  if (!(await isSlotFree(d.startISO, durationMin, d.slug))) {
     return NextResponse.json({ ok: false, error: 'That time was just taken. Please choose another slot.' }, { status: 409 });
   }
+
+  // Auto-assign a competent, available clinician if enabled.
+  const autoAssign = await getSetting('auto_assign_practitioner');
+  const practitionerId = autoAssign ? await pickPractitioner(d.startISO, durationMin, d.slug) : null;
 
   // Upsert client + Stripe customer.
   const client = await db.client.upsert({
@@ -63,8 +68,20 @@ export async function POST(req: Request) {
       status: 'PENDING',
       notes: d.notes || null,
       stripeCustomerId: customerId,
+      practitionerId,
     },
   });
+
+  // Immutable audit: booking created (+ assignment if auto-assigned).
+  const { logAudit } = await import('@/lib/audit');
+  await logAudit({
+    action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id,
+    summary: `Booking created: ${treatment.title} on ${start.toLocaleString('en-GB')}`,
+    meta: { treatmentSlug: d.slug, pricePence: finalPrice },
+  });
+  if (practitionerId) {
+    await logAudit({ action: 'PRACTITIONER_ASSIGNED', actor: 'system', bookingId: booking.id, clientId: client.id, summary: 'Clinician auto-assigned' });
+  }
 
   // Burn the welcome discount so it can only ever be used once.
   if (claim) {
