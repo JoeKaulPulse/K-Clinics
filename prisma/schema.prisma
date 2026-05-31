@@ -102,14 +102,26 @@ enum AuditAction {
   ASSESSMENT_VIEWED
   NOTE_ADDED
   TIMEOFF_ADDED
+  TIMEOFF_REQUESTED
+  TIMEOFF_APPROVED
+  TIMEOFF_DECLINED
+  TIMEOFF_CANCELLED
 }
 
 enum TimeOffKind {
   HOLIDAY
   SICK
   TRAINING
+  PERSONAL       // appointment / personal time
   BLOCKED        // manual block
   GCAL_BUSY      // synced from Google Calendar
+}
+
+enum TimeOffStatus {
+  PENDING        // awaiting manager approval
+  APPROVED
+  DECLINED
+  CANCELLED      // withdrawn by the requester
 }
 
 model Client {
@@ -350,18 +362,25 @@ model StaffSchedule {
 
 // ── Time off / busy blocks (manual or Google-Calendar-synced) ───────────────
 model StaffTimeOff {
-  id         String      @id @default(cuid())
-  staff      AdminUser   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  id         String        @id @default(cuid())
+  staff      AdminUser     @relation(fields: [staffId], references: [id], onDelete: Cascade)
   staffId    String
-  kind       TimeOffKind @default(BLOCKED)
+  kind       TimeOffKind   @default(BLOCKED)
+  status     TimeOffStatus @default(APPROVED)   // self-service requests start PENDING
   startAt    DateTime
   endAt      DateTime
+  allDay     Boolean       @default(false)
   reason     String?
-  gcalEventId String?    @unique   // dedupe Google-synced busy blocks
-  createdAt  DateTime    @default(now())
+  requestedBy String?      // email of the person who created it
+  reviewedBy String?       // email of the manager who approved/declined
+  reviewedAt DateTime?
+  reviewNote String?
+  gcalEventId String?      @unique   // dedupe Google-synced busy blocks
+  createdAt  DateTime      @default(now())
 
   @@index([staffId, startAt])
   @@index([startAt, endAt])
+  @@index([status])
 }
 
 // ── Settings: key/value toggles & config, editable in admin ─────────────────

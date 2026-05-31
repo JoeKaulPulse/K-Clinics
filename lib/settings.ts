@@ -9,7 +9,8 @@ export type SettingKey =
   | 'require_sop_ack'        // clinician must acknowledge SOP before starting
   | 'require_medical_review' // clinician must review medical flag before starting
   | 'enforce_staff_availability' // bookings respect per-staff schedules
-  | 'auto_assign_practitioner';  // auto-assign a competent free clinician at booking
+  | 'auto_assign_practitioner'   // auto-assign a competent free clinician at booking
+  | 'time_off_requires_approval'; // staff time-off requests need manager sign-off
 
 export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   allow_clinician_choice: false,
@@ -17,6 +18,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   require_medical_review: true,
   enforce_staff_availability: true,
   auto_assign_practitioner: true,
+  time_off_requires_approval: true,
 };
 
 export const SETTING_META: Record<SettingKey, { label: string; description: string }> = {
@@ -39,6 +41,10 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   require_medical_review: {
     label: 'Require medical-flag review',
     description: 'Clinicians must review any client medical flag before an appointment can be started.',
+  },
+  time_off_requires_approval: {
+    label: 'Time-off needs approval',
+    description: 'Staff time-off requests must be approved by a manager before they’re confirmed. Requested time still blocks the calendar until declined.',
   },
 };
 

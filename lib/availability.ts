@@ -30,7 +30,8 @@ async function cliniciansForDay(treatmentSlug: string, dayStart: Date, dayEnd: D
       name: true,
       competencies: true,
       schedules: { select: { dayOfWeek: true, startMin: true, endMin: true } },
-      timeOff: { where: { startAt: { lt: dayEnd }, endAt: { gt: dayStart } }, select: { startAt: true, endAt: true } },
+      // Pending + approved time-off blocks availability; declined/cancelled does not.
+      timeOff: { where: { startAt: { lt: dayEnd }, endAt: { gt: dayStart }, status: { notIn: ['DECLINED', 'CANCELLED'] } }, select: { startAt: true, endAt: true } },
       bookings: {
         where: { status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { gte: dayStart, lte: dayEnd } },
         select: { startAt: true, endAt: true },
