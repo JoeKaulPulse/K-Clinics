@@ -6,6 +6,7 @@ import { PortalShell } from '@/components/portal/PortalShell';
 import { DashboardHero } from '@/components/portal/DashboardHero';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { TreatmentCard } from '@/components/ui/TreatmentCard';
+import { DiscountChip } from '@/components/portal/DiscountChip';
 import { crmEnabled } from '@/lib/crm';
 import { formatPrice, getTreatment, type Treatment } from '@/lib/treatments';
 import { portalAssessments } from '@/lib/questionnaires';
@@ -58,10 +59,11 @@ export default async function DashboardPage() {
               </span>
               <div>
                 <p className="font-medium">{t('dash.offerReady')}</p>
-                <p className="text-sm text-[var(--color-stone)]">
-                  {t('dash.offerBody', { percent: data.discount.percent, code: '' })}
-                  <span className="font-mono font-semibold text-[var(--color-gold)]">{data.discount.code}</span>
-                </p>
+                <p className="mt-0.5 text-sm text-[var(--color-stone)]">{t('dash.offerBody', { percent: data.discount.percent, code: '' }).replace(/—.*/, '').trim()}</p>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone-soft)]">{t('dash.offerCode')}</span>
+                  <DiscountChip code={data.discount.code} copyLabel={t('dash.copy')} copiedLabel={t('dash.copied')} />
+                </div>
               </div>
             </div>
             <Link href="/book" className="rounded-full bg-[var(--color-gold)] px-5 py-2.5 text-sm font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">{t('dash.book')}</Link>
