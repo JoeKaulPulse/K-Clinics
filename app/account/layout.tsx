@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import '../globals.css';
+import { MotionProvider } from '@/components/motion/MotionProvider';
 
 export const metadata: Metadata = {
   title: 'Client portal | K Clinics',
@@ -12,5 +13,9 @@ export const metadata: Metadata = {
 // login & signup pages can also be statically exported for the demo preview.
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
-  return <div className="min-h-screen bg-[var(--color-porcelain)] text-[var(--color-ink)]">{children}</div>;
+  return (
+    <MotionProvider>
+      <div className="min-h-screen bg-[var(--color-porcelain)] text-[var(--color-ink)]">{children}</div>
+    </MotionProvider>
+  );
 }
