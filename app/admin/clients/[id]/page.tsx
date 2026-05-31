@@ -40,7 +40,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
   // Clinical (health) data — practitioners/admins/owner only. Decrypt the latest
   // version of each assessment type for display.
   const clinical = canViewClinical(session?.role);
-  const clinicalAssessments: { title: string; version: number; submittedAt: Date; tampered: boolean; items: { id: string; prompt: string; value: string }[] }[] = [];
+  const clinicalAssessments: { title: string; version: number; submittedAt: Date; tampered: boolean; sourceLocale?: string; translatedNote?: string | null; items: { id: string; prompt: string; value: string; original?: string }[] }[] = [];
   if (clinical && c.assessments.length) {
     const seen = new Set<string>();
     const latest = c.assessments.filter((a) => (seen.has(a.type) ? false : (seen.add(a.type), true)));
@@ -138,11 +138,17 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                       <p className="text-xs text-[var(--color-stone-soft)]">v{a.version} · {new Date(a.submittedAt).toLocaleDateString('en-GB')}</p>
                     </div>
                     {a.tampered && <p className="mt-1 text-xs font-medium text-[var(--color-blush)]">⚠ Integrity check failed — record may have been altered.</p>}
+                    {a.translatedNote && <p className="mt-1 inline-block rounded-full bg-[var(--color-bone)] px-2.5 py-0.5 text-[0.65rem] text-[var(--color-stone)]">🌐 {a.translatedNote}</p>}
                     <dl className="mt-3 space-y-2">
                       {a.items.map((it) => (
                         <div key={it.id} className="grid grid-cols-[1fr_1.2fr] gap-3 border-b border-[var(--color-line)] pb-2 last:border-0">
                           <dt className="text-xs text-[var(--color-stone)]">{it.prompt}</dt>
-                          <dd className="text-sm">{it.value}</dd>
+                          <dd className="text-sm">
+                            {it.value}
+                            {it.original && it.original !== it.value && (
+                              <span className="mt-0.5 block text-xs italic text-[var(--color-stone-soft)]">{it.original}</span>
+                            )}
+                          </dd>
                         </div>
                       ))}
                     </dl>
