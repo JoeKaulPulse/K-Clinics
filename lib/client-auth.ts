@@ -114,7 +114,17 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
 }
 
 export async function loginClient(email: string, password: string): Promise<{ ok: boolean; error?: string }> {
-  const client = await db.client.findUnique({ where: { email: email.trim().toLowerCase() } });
+  // Retry once on a transient connection error (serverless cold-start blip).
+  let client = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      client = await db.client.findUnique({ where: { email: email.trim().toLowerCase() } });
+      break;
+    } catch (err) {
+      if (attempt === 1) throw err;
+      await new Promise((r) => setTimeout(r, 300));
+    }
+  }
   if (!client?.passwordHash || !(await verifyPassword(password, client.passwordHash))) {
     return { ok: false, error: 'Invalid email or password.' };
   }
