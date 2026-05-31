@@ -4,13 +4,16 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PortalShell } from '@/components/portal/PortalShell';
 import { DashboardHero } from '@/components/portal/DashboardHero';
-import { Reveal } from '@/components/motion/Reveal';
+import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
+import { TreatmentCard } from '@/components/ui/TreatmentCard';
 import { crmEnabled } from '@/lib/crm';
-import { formatPrice } from '@/lib/treatments';
+import { formatPrice, getTreatment, type Treatment } from '@/lib/treatments';
 import { portalAssessments } from '@/lib/questionnaires';
 import { localizeQuestionnaire } from '@/lib/questionnaires-uk';
 import { pt } from '@/lib/i18n-portal';
 import type { Locale } from '@/lib/i18n';
+
+const FEATURED = ['hydraglow-facial', 'smas-hifu-lifting', 'laser-hair-removal', 'cosmetic-injections', 'veneers', 'body-contouring'];
 
 export default async function DashboardPage() {
   if (!crmEnabled) return <NotEnabled />;
@@ -28,6 +31,7 @@ export default async function DashboardPage() {
   const completed = data.past.filter((b) => b.status === 'COMPLETED');
   const dateFmt = (d: Date, opts: Intl.DateTimeFormatOptions) => d.toLocaleDateString(locale === 'uk' ? 'uk-UA' : 'en-GB', opts);
   const missingProfile = !client.phone || !client.dob;
+  const featured = FEATURED.map(getTreatment).filter(Boolean) as Treatment[];
 
   return (
     <PortalShell firstName={client.firstName} locale={locale}>
@@ -136,6 +140,40 @@ export default async function DashboardPage() {
             </Card>
           )}
         </div>
+      </Reveal>
+
+      {/* Curated treatments — marketing-grade imagery */}
+      {featured.length > 0 && (
+        <section className="mt-16">
+          <Reveal>
+            <div className="mb-7 flex items-end justify-between gap-4">
+              <div>
+                <p className="eyebrow mb-2 inline-flex items-center gap-2.5"><span className="h-px w-7 bg-[var(--color-gold)]/60" />{t('dash.curatedEyebrow')}</p>
+                <h2 className="font-[family-name:var(--font-display)] text-[clamp(1.6rem,1.2rem+1.4vw,2.4rem)] leading-tight">{t('dash.curatedTitle')}</h2>
+              </div>
+              <Link href="/treatments" className="hidden shrink-0 text-sm font-medium text-[var(--color-gold)] hover:text-[var(--color-ink)] sm:block">{t('dash.explore')} →</Link>
+            </div>
+          </Reveal>
+          <Stagger className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {featured.map((tr, i) => (
+              <StaggerItem key={tr.slug}>
+                <TreatmentCard t={tr} index={i} />
+              </StaggerItem>
+            ))}
+          </Stagger>
+        </section>
+      )}
+
+      {/* Closing invitation — marketing-style dark band */}
+      <Reveal>
+        <section className="relative mt-16 overflow-hidden rounded-[var(--radius-xl)] bg-[var(--color-ink)] p-10 text-center text-[var(--color-porcelain)] sm:p-14">
+          <span aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(100%_120%_at_50%_0%,color-mix(in_oklab,var(--color-gold)_26%,transparent),transparent_60%)]" />
+          <div className="relative z-10">
+            <h2 className="mx-auto max-w-xl font-[family-name:var(--font-display)] text-[clamp(1.7rem,1.2rem+1.8vw,2.6rem)] leading-tight">{t('dash.ctaTitle')}</h2>
+            <p className="mx-auto mt-3 max-w-md text-[color-mix(in_oklab,var(--color-porcelain)_78%,transparent)]">{t('dash.ctaBody')}</p>
+            <Link href="/book" className="mt-7 inline-block rounded-full bg-[var(--color-gold)] px-7 py-3.5 text-sm font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-white hover:text-[var(--color-ink)]">{t('dash.book')}</Link>
+          </div>
+        </section>
       </Reveal>
     </PortalShell>
   );

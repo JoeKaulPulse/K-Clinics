@@ -122,6 +122,10 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'dash.profileBody': { en: 'Add a few details so we can tailor your care.', uk: 'Додайте кілька даних, щоб ми могли персоналізувати догляд.' },
   'dash.updateProfile': { en: 'Update profile', uk: 'Оновити профіль' },
   'dash.history': { en: 'Your treatment history', uk: 'Історія ваших процедур' },
+  'dash.curatedEyebrow': { en: 'Curated for you', uk: 'Підібрано для вас' },
+  'dash.curatedTitle': { en: 'Treatments you may love', uk: 'Процедури, які вам сподобаються' },
+  'dash.ctaTitle': { en: 'Ready for your next visit?', uk: 'Готові до наступного візиту?' },
+  'dash.ctaBody': { en: 'Reserve a treatment with our specialists — your welcome offer and history are saved to your account.', uk: 'Забронюйте процедуру в наших фахівців — ваша пропозиція та історія збережені у вашому акаунті.' },
 
   // Profile
   'profile.newPassword': { en: 'New password (optional)', uk: 'Новий пароль (необовʼязково)' },
