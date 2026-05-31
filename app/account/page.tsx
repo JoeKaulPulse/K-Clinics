@@ -20,7 +20,7 @@ export default async function DashboardPage() {
   const outstanding = portalAssessments.filter((q) => !data.assessments[q.type]);
 
   return (
-    <PortalShell firstName={client.firstName}>
+    <PortalShell firstName={client.firstName} locale={client.locale === 'uk' ? 'uk' : 'en'}>
       <div className="mb-10">
         <p className="eyebrow mb-2">Your portal</p>
         <h1 className="font-[family-name:var(--font-display)] text-[clamp(2rem,1.4rem+2vw,3rem)]">

@@ -14,7 +14,7 @@ export default async function InvoicesPage() {
   const { invoices } = await getDashboard(client.id);
 
   return (
-    <PortalShell firstName={client.firstName}>
+    <PortalShell firstName={client.firstName} locale={client.locale === 'uk' ? 'uk' : 'en'}>
       <div className="mb-8">
         <p className="eyebrow mb-2">Payments</p>
         <h1 className="font-[family-name:var(--font-display)] text-[clamp(1.8rem,1.3rem+2vw,2.75rem)]">Payments & invoices</h1>

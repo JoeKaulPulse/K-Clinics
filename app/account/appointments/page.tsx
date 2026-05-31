@@ -14,7 +14,7 @@ export default async function AppointmentsPage() {
   const { upcoming, past } = await getDashboard(client.id);
 
   return (
-    <PortalShell firstName={client.firstName}>
+    <PortalShell firstName={client.firstName} locale={client.locale === 'uk' ? 'uk' : 'en'}>
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="eyebrow mb-2">Appointments</p>
