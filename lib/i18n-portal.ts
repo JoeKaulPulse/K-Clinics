@@ -138,6 +138,20 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'dash.needHelp': { en: 'Need a hand?', uk: 'Потрібна допомога?' },
   'dash.callUs': { en: 'Call the clinic', uk: 'Зателефонувати' },
 
+  // Assessments list
+  'asmt.eyebrow': { en: 'Health forms', uk: 'Анкети здоровʼя' },
+  'asmt.title': { en: 'Your assessments', uk: 'Ваші анкети' },
+  'asmt.intro': { en: 'Complete these before your appointment. Every answer is encrypted and seen only by your clinical team.', uk: 'Заповніть їх перед візитом. Кожна відповідь зашифрована й доступна лише вашій клінічній команді.' },
+  'asmt.completedOn': { en: 'Completed {date}', uk: 'Заповнено {date}' },
+  'asmt.about': { en: 'About {n} minutes', uk: 'Близько {n} хв' },
+  'asmt.start': { en: 'Start', uk: 'Почати' },
+  'asmt.update': { en: 'Update', uk: 'Оновити' },
+  'asmt.done': { en: 'Completed', uk: 'Заповнено' },
+  'asmt.todo': { en: 'To complete', uk: 'До заповнення' },
+  'asmt.progress': { en: '{done} of {total} complete', uk: '{done} з {total} заповнено' },
+  'asmt.allDone': { en: 'All your health forms are complete — thank you.', uk: 'Усі ваші анкети заповнені — дякуємо.' },
+  'asmt.secure': { en: 'Encrypted · clinical team only', uk: 'Зашифровано · лише клінічна команда' },
+
   // Profile
   'profile.newPassword': { en: 'New password (optional)', uk: 'Новий пароль (необовʼязково)' },
   'profile.leaveBlank': { en: 'Leave blank to keep current', uk: 'Залиште порожнім, щоб не змінювати' },
