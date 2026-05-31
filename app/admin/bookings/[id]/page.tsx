@@ -19,7 +19,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   if (!crmEnabled) return <CrmDisabled />;
   const { id } = await params;
   const { getBooking } = await import('@/lib/crm-data');
-  const { getSop } = await import('@/lib/sops');
+  const { getSop, parseSopSteps } = await import('@/lib/sops');
   const session = await getSession();
   const b = await getBooking(id);
   if (!b) notFound();
@@ -27,6 +27,15 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const within24h = b.startAt.getTime() - Date.now() < 24 * 60 * 60 * 1000;
   const name = [b.client.firstName, b.client.lastName].filter(Boolean).join(' ');
   const sop = await getSop(b.treatmentSlug);
+  const sopSteps = parseSopSteps(sop.content);
+  // Decrypt any saved SOP-checklist progress for this booking.
+  let sopSaved: { step: string; checked: boolean; response?: string }[] | null = null;
+  if (b.sopChecklistEnc) {
+    try {
+      const { decryptJson } = await import('@/lib/crypto');
+      sopSaved = decryptJson<{ items: typeof sopSaved }>(b.sopChecklistEnc).items;
+    } catch { /* ignore */ }
+  }
 
   // Consumables (inventory) — items to pick from + what's already logged here.
   const canConsumables = sessionCan(session, 'bookings.manage') && sessionCan(session, 'inventory.view');
@@ -94,6 +103,8 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
           <ClinicalWorkflow
             bookingId={b.id}
             sop={{ title: sop.title, content: sop.content }}
+            sopSteps={sopSteps}
+            sopSaved={sopSaved}
             medicalFlag={b.client.medicalFlag}
             state={{
               sopAcknowledgedAt: b.sopAcknowledgedAt?.toISOString() ?? null,
