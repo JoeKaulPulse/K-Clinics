@@ -122,6 +122,16 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'dash.profileBody': { en: 'Add a few details so we can tailor your care.', uk: 'Додайте кілька даних, щоб ми могли персоналізувати догляд.' },
   'dash.updateProfile': { en: 'Update profile', uk: 'Оновити профіль' },
   'dash.history': { en: 'Your treatment history', uk: 'Історія ваших процедур' },
+
+  // Profile
+  'profile.newPassword': { en: 'New password (optional)', uk: 'Новий пароль (необовʼязково)' },
+  'profile.leaveBlank': { en: 'Leave blank to keep current', uk: 'Залиште порожнім, щоб не змінювати' },
+  'profile.marketing': { en: 'Email me offers, events and skincare tips.', uk: 'Надсилайте пропозиції, події та поради по догляду.' },
+  'profile.save': { en: 'Save changes', uk: 'Зберегти зміни' },
+  'profile.saving': { en: 'Saving…', uk: 'Збереження…' },
+  'profile.saved': { en: 'Saved ✓', uk: 'Збережено ✓' },
+  'profile.couldNotSave': { en: 'Could not save.', uk: 'Не вдалося зберегти.' },
+  'profile.title': { en: 'Your profile', uk: 'Ваш профіль' },
 };
 
 export function pt(locale: Locale, key: string, vars?: Record<string, string | number>): string {
