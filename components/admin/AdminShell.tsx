@@ -15,6 +15,7 @@ const nav = [
   { href: '/admin/consultations', key: 'nav.consultations', perm: 'consultations.view' },
   { href: '/admin/clients', key: 'nav.clients', perm: 'clients.view' },
   { href: '/admin/schedule', key: 'nav.schedule', perm: 'schedule.manage' },
+  { href: '/admin/tasks', key: 'nav.tasks', perm: undefined, badge: 'tasks' as const },
   { href: '/admin/time-off', key: 'nav.timeoff', perm: undefined, badge: 'timeoff' as const },
   { href: '/admin/sops', key: 'nav.sops', perm: 'sop.manage' },
   { href: '/admin/campaigns', key: 'nav.campaigns', perm: 'campaigns.view' },
@@ -65,6 +66,20 @@ export function AdminShell({
     return () => { on = false; };
   }, [canApproveTimeOff, pathname]);
 
+  // My open tasks badge (everyone).
+  const [openTasks, setOpenTasks] = useState(0);
+  useEffect(() => {
+    let on = true;
+    fetch('/api/admin/tasks?count=mine')
+      .then((r) => r.json())
+      .then((j) => { if (on && j?.ok) setOpenTasks(j.open || 0); })
+      .catch(() => {});
+    return () => { on = false; };
+  }, [pathname]);
+
+  const badgeCount = (badge?: string) =>
+    badge === 'timeoff' ? (canApproveTimeOff ? pendingTimeOff : 0) : badge === 'tasks' ? openTasks : 0;
+
   async function changeLanguage(next: Locale) {
     setLocale(next);
     document.cookie = `kc_lang=${next}; path=/; max-age=${60 * 60 * 24 * 365}`;
@@ -98,8 +113,8 @@ export function AdminShell({
                   }`}
                 >
                   <span>{t(n.key)}</span>
-                  {n.badge === 'timeoff' && canApproveTimeOff && pendingTimeOff > 0 && (
-                    <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[0.65rem] font-semibold text-amber-950">{pendingTimeOff}</span>
+                  {badgeCount(n.badge) > 0 && (
+                    <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[0.65rem] font-semibold text-amber-950">{badgeCount(n.badge)}</span>
                   )}
                 </Link>
               );
