@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { notFound, redirect } from 'next/navigation';
 import { AssessmentRunner } from '@/components/portal/AssessmentRunner';
 import { getQuestionnaire } from '@/lib/questionnaires';
+import { localizeQuestionnaire } from '@/lib/questionnaires-uk';
 import { crmEnabled } from '@/lib/crm';
 
 export default async function AssessmentPage({ params }: { params: Promise<{ key: string }> }) {
@@ -16,5 +17,7 @@ export default async function AssessmentPage({ params }: { params: Promise<{ key
   const client = await getCurrentClient();
   if (!client) redirect('/account/login');
 
-  return <AssessmentRunner q={q} />;
+  // Show the form in the client's language; stored answer values stay canonical.
+  const locale = client.locale === 'uk' ? 'uk' : 'en';
+  return <AssessmentRunner q={localizeQuestionnaire(q, locale)} locale={locale} />;
 }
