@@ -59,7 +59,11 @@ export async function GET() {
       const { SignJWT, jwtVerify } = await import('jose');
       const raw = process.env.CLIENT_JWT_SECRET || process.env.ADMIN_JWT_SECRET;
       if (!raw) throw new Error('no JWT secret set (ADMIN_JWT_SECRET / CLIENT_JWT_SECRET)');
-      const key = new TextEncoder().encode(raw);
+      // Mirror lib/auth's key normalisation (>=32 bytes for HS256).
+      const bytes = new TextEncoder().encode(raw);
+      let key = bytes;
+      if (bytes.length < 32) { const o = new Uint8Array(32); for (let i = 0; i < 32; i++) o[i] = bytes[i % bytes.length]; key = o; }
+      secrets.jwtSecretBytes = bytes.length;
       const token = await new SignJWT({ t: 1 }).setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('1m').sign(key);
       await jwtVerify(token, key);
       secrets.jwtSelfTest = 'ok';
