@@ -5,6 +5,7 @@ import { effectivePermissions } from '@/lib/permissions';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { StaffManager } from '@/components/admin/StaffManager';
+import { getLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,9 +28,10 @@ export default async function StaffPage() {
   }));
 
   const can = session ? [...effectivePermissions({ role: session.role, permGrant: session.grant, permRevoke: session.revoke })] : [];
+  const locale = await getLocale();
 
   return (
-    <AdminShell user={session?.email} can={can}>
+    <AdminShell user={session?.email} can={can} locale={locale}>
       <StaffManager staff={staff} canManage={sessionCan(session, 'staff.manage')} actorRole={session?.role ?? 'STAFF'} />
     </AdminShell>
   );

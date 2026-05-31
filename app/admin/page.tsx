@@ -5,6 +5,7 @@ import { formatPrice } from '@/lib/treatments';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { RevenueChart, TopTreatments } from '@/components/admin/Charts';
+import { getLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,8 +47,9 @@ export default async function AdminOverview() {
   ];
 
   const can = await sessionPermissions();
+  const locale = await getLocale();
   return (
-    <AdminShell user={session?.email} can={can}>
+    <AdminShell user={session?.email} can={can} locale={locale}>
       <h1 className="font-[family-name:var(--font-display)] text-3xl">Overview</h1>
       <p className="mt-1 text-sm text-[var(--color-stone)]">Welcome back{session?.name ? `, ${session.name}` : ''}.</p>
 

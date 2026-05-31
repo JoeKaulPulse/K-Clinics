@@ -6,6 +6,8 @@ import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { NewBookingButton } from '@/components/admin/NewBookingButton';
 import { bookableTreatments } from '@/lib/treatments';
+import { getLocale } from '@/lib/locale';
+import { t } from '@/lib/i18n';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,10 +31,11 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
   const rows = await listBookings(filter);
 
   const can = await sessionPermissions();
+  const locale = await getLocale();
   return (
-    <AdminShell user={session?.email} can={can}>
+    <AdminShell user={session?.email} can={can} locale={locale}>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-[family-name:var(--font-display)] text-3xl">Bookings</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-3xl">{t(locale, 'nav.bookings')}</h1>
         {sessionCan(session, 'bookings.manage') && (
           <NewBookingButton treatments={bookableTreatments.map((t) => ({ slug: t.slug, title: t.title }))} />
         )}

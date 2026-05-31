@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
+import { getLocale } from '@/lib/locale';
+import { t } from '@/lib/i18n';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { SettingsToggles } from '@/components/admin/SettingsToggles';
 import { SETTING_META, SETTING_DEFAULTS, type SettingKey } from '@/lib/settings';
@@ -23,9 +25,11 @@ export default async function SettingsPage() {
   }));
 
   const can = await sessionPermissions();
+
+  const locale = await getLocale();
   return (
-    <AdminShell user={session?.email} can={can}>
-      <h1 className="font-[family-name:var(--font-display)] text-3xl">Settings</h1>
+    <AdminShell user={session?.email} can={can} locale={locale}>
+      <h1 className="font-[family-name:var(--font-display)] text-3xl">{t(locale, 'nav.settings')}</h1>
       <p className="mt-1 text-sm text-[var(--color-stone)]">Clinic-wide booking & operations preferences.</p>
       <div className="mt-8">
         <SettingsToggles initial={initial} canManage={sessionCan(session, 'settings.manage')} />

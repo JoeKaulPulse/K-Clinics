@@ -5,6 +5,7 @@ import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { ScheduleManager } from '@/components/admin/ScheduleManager';
 import { bookableTreatments } from '@/lib/treatments';
+import { getLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,8 +44,9 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
 
   const { googleConfigured } = await import('@/lib/google-calendar');
   const can = await sessionPermissions();
+  const locale = await getLocale();
   return (
-    <AdminShell user={session?.email} can={can}>
+    <AdminShell user={session?.email} can={can} locale={locale}>
       <h1 className="font-[family-name:var(--font-display)] text-3xl">Schedules &amp; availability</h1>
       <p className="mt-1 text-sm text-[var(--color-stone)]">Set who’s a bookable clinician, their weekly hours, competencies, time off and Google Calendar sync.</p>
       {gcal === 'connected' && <p className="mt-4 rounded-[var(--radius-sm)] border border-green-600/30 bg-green-50 px-4 py-3 text-sm text-green-800">Google Calendar connected — busy times will now block bookable slots.</p>}

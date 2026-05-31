@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
+import { getLocale } from '@/lib/locale';
+import { t } from '@/lib/i18n';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 
 export const dynamic = 'force-dynamic';
@@ -41,13 +43,15 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const hours = Array.from({ length: (DAY_END - DAY_START) / 60 + 1 }, (_, i) => DAY_START + i * 60);
 
   const can = await sessionPermissions();
+
+  const locale = await getLocale();
   const topOf = (d: Date) => (Math.max(DAY_START, d.getHours() * 60 + d.getMinutes()) - DAY_START) * PX_PER_MIN;
   const heightOf = (s: Date, e: Date) => Math.max(22, ((e.getTime() - s.getTime()) / 60000) * PX_PER_MIN);
 
   return (
-    <AdminShell user={session?.email} can={can}>
+    <AdminShell user={session?.email} can={can} locale={locale}>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-[family-name:var(--font-display)] text-3xl">Calendar</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-3xl">{t(locale, 'nav.calendar')}</h1>
         <div className="flex items-center gap-2 text-sm">
           <Link href={`/admin/calendar?date=${iso(prev)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 hover:bg-[var(--color-bone)]">←</Link>
           <span className="min-w-44 text-center font-medium">{day.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span>

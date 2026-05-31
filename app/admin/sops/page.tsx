@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
+import { getLocale } from '@/lib/locale';
+import { t } from '@/lib/i18n';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { SopManager } from '@/components/admin/SopManager';
 import { bookableTreatments } from '@/lib/treatments';
@@ -22,9 +24,11 @@ export default async function SopsPage() {
   );
 
   const can = await sessionPermissions();
+
+  const locale = await getLocale();
   return (
-    <AdminShell user={session?.email} can={can}>
-      <h1 className="font-[family-name:var(--font-display)] text-3xl">Standard operating procedures</h1>
+    <AdminShell user={session?.email} can={can} locale={locale}>
+      <h1 className="font-[family-name:var(--font-display)] text-3xl">{t(locale, 'nav.sops')}</h1>
       <p className="mt-1 text-sm text-[var(--color-stone)]">
         Edit the SOP clinicians must acknowledge before each treatment. Treatments without a custom SOP show a sensible default.
       </p>
