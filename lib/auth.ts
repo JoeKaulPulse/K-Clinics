@@ -6,6 +6,19 @@ import { effectivePermissions } from '@/lib/permissions';
 
 const COOKIE = 'kc_admin';
 const CLIENT_COOKIE = 'kc_client';
+
+// HS256 requires a key of at least 256 bits (32 bytes); `jose` rejects shorter
+// secrets at sign time. Normalise any configured secret to >=32 bytes by
+// repeating its bytes — deterministic, sync and edge-safe (middleware runs on
+// the edge, so we can't use node:crypto here). A proper-length secret is passed
+// through byte-for-byte, so this is fully backward-compatible.
+const toKey = (s: string): Uint8Array => {
+  const bytes = new TextEncoder().encode(s);
+  if (bytes.length >= 32) return bytes;
+  const out = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) out[i] = bytes[i % bytes.length];
+  return out;
+};
 const secret = () => {
   const s = process.env.ADMIN_JWT_SECRET;
   if (!s) {
@@ -13,9 +26,9 @@ const secret = () => {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('ADMIN_JWT_SECRET is required in production.');
     }
-    return new TextEncoder().encode('dev-insecure-secret-change-me');
+    return toKey('dev-insecure-secret-change-me');
   }
-  return new TextEncoder().encode(s);
+  return toKey(s);
 };
 const clientSecret = () => {
   const s = process.env.CLIENT_JWT_SECRET || process.env.ADMIN_JWT_SECRET;
@@ -23,9 +36,9 @@ const clientSecret = () => {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('CLIENT_JWT_SECRET is required in production.');
     }
-    return new TextEncoder().encode('dev-insecure-client-secret-change-me');
+    return toKey('dev-insecure-client-secret-change-me');
   }
-  return new TextEncoder().encode(s);
+  return toKey(s);
 };
 
 export type Session = {
