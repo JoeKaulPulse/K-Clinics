@@ -10,11 +10,12 @@ const toMin = (hm: string) => { const [h, m] = hm.split(':').map(Number); return
 type Staff = {
   id: string; name: string | null; email: string; isClinician: boolean; color: string | null; title: string | null;
   competencies: string[];
+  googleConnected: boolean;
   schedules: { dayOfWeek: number; startMin: number; endMin: number }[];
   timeOff: { id: string; kind: string; startAt: string; endAt: string; reason: string | null }[];
 };
 
-export function ScheduleManager({ staff, treatments }: { staff: Staff[]; treatments: { slug: string; title: string }[] }) {
+export function ScheduleManager({ staff, treatments, googleConfigured }: { staff: Staff[]; treatments: { slug: string; title: string }[]; googleConfigured: boolean }) {
   const [activeId, setActiveId] = useState(staff[0]?.id ?? '');
   const active = staff.find((s) => s.id === activeId);
 
@@ -40,12 +41,12 @@ export function ScheduleManager({ staff, treatments }: { staff: Staff[]; treatme
         {staff.length === 0 && <p className="px-4 py-3 text-sm text-[var(--color-stone)]">No staff yet — add staff in Staff & access.</p>}
       </aside>
 
-      {active && <Editor key={active.id} staff={active} treatments={treatments} />}
+      {active && <Editor key={active.id} staff={active} treatments={treatments} googleConfigured={googleConfigured} />}
     </div>
   );
 }
 
-function Editor({ staff, treatments }: { staff: Staff; treatments: { slug: string; title: string }[] }) {
+function Editor({ staff, treatments, googleConfigured }: { staff: Staff; treatments: { slug: string; title: string }[]; googleConfigured: boolean }) {
   const router = useRouter();
   const [isClinician, setIsClinician] = useState(staff.isClinician);
   const [comp, setComp] = useState<Set<string>>(new Set(staff.competencies));
@@ -124,7 +125,59 @@ function Editor({ staff, treatments }: { staff: Staff; treatments: { slug: strin
 
       {/* Time off */}
       <TimeOff staff={staff} onChange={() => router.refresh()} />
+
+      {/* Google Calendar */}
+      <GoogleCalendar staff={staff} configured={googleConfigured} />
     </div>
+  );
+}
+
+function GoogleCalendar({ staff, configured }: { staff: Staff; configured: boolean }) {
+  const router = useRouter();
+  const [syncing, setSyncing] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  async function sync() {
+    setSyncing(true); setMsg('');
+    const res = await fetch('/api/admin/gcal/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ staffId: staff.id }) });
+    setSyncing(false);
+    if (res.ok) {
+      const j = await res.json().catch(() => ({}));
+      setMsg(`Synced ✓ ${typeof j.imported === 'number' ? `(${j.imported} busy block${j.imported === 1 ? '' : 's'})` : ''}`);
+      router.refresh();
+    } else {
+      const j = await res.json().catch(() => ({}));
+      setMsg(j.error || 'Sync failed');
+    }
+  }
+
+  return (
+    <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
+      <h2 className="mb-1 font-[family-name:var(--font-display)] text-xl">Google Calendar</h2>
+      <p className="mb-4 text-sm text-[var(--color-stone)]">
+        Connect this person’s Google Calendar so their busy times automatically block out bookable slots.
+      </p>
+      {!configured ? (
+        <p className="rounded-[var(--radius-sm)] border border-dashed border-[var(--color-line)] bg-[var(--color-bone)] px-4 py-3 text-sm text-[var(--color-stone)]">
+          Google Calendar isn’t configured on this deployment yet. Add <code className="font-[family-name:var(--font-mono)] text-xs">GOOGLE_CLIENT_ID</code>, <code className="font-[family-name:var(--font-mono)] text-xs">GOOGLE_CLIENT_SECRET</code> and <code className="font-[family-name:var(--font-mono)] text-xs">GOOGLE_REDIRECT_URI</code> to enable it.
+        </p>
+      ) : staff.googleConnected ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex items-center gap-2 rounded-full bg-[var(--color-gold)]/15 px-3 py-1.5 text-sm text-[var(--color-ink)]">
+            <span className="h-2 w-2 rounded-full bg-green-600" /> Connected
+          </span>
+          <button onClick={sync} disabled={syncing} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">
+            {syncing ? 'Syncing…' : 'Sync now'}
+          </button>
+          <a href={`/api/admin/gcal/connect?staffId=${staff.id}`} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">Reconnect</a>
+          {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
+        </div>
+      ) : (
+        <a href={`/api/admin/gcal/connect?staffId=${staff.id}`} className="inline-block rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)]">
+          Connect Google Calendar
+        </a>
+      )}
+    </section>
   );
 }
 

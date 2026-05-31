@@ -37,7 +37,11 @@ export async function GET() {
     await probe('staffSchedule', () => db.staffSchedule.count());
     await probe('auditEvent', () => db.auditEvent.count());
     await probe('client.signupIp+resetToken', () => db.client.findFirst({ select: { signupIp: true, resetTokenHash: true, medicalFlag: true } }));
-    await probe('adminUser.isClinician', () => db.adminUser.findFirst({ select: { isClinician: true, competencies: true } }));
+    // Full-row reads mirror exactly what signup/login do (default findUnique
+    // pulls every column) — so any single missing column shows up here.
+    await probe('client.allColumns', () => db.client.findFirst());
+    await probe('adminUser.isClinician', () => db.adminUser.findFirst({ select: { isClinician: true, competencies: true, googleRefreshToken: true } }));
+    await probe('adminUser.allColumns', () => db.adminUser.findFirst());
     await probe('booking.practitioner+timing', () => db.booking.findFirst({ select: { practitionerId: true, startedAt: true, sopAcknowledgedAt: true } }));
     report.schema = checks;
     report.schemaInSync = Object.values(checks).every((v) => v === 'ok');

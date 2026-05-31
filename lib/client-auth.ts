@@ -27,7 +27,7 @@ export type SignupResult =
  */
 export async function signupClient(input: SignupInput): Promise<SignupResult> {
   const email = input.email.trim().toLowerCase();
-  const existing = await db.client.findUnique({ where: { email } });
+  const existing = await db.client.findUnique({ where: { email }, select: { passwordHash: true, source: true } });
   if (existing?.passwordHash) {
     return { ok: false, error: 'An account already exists for this email. Try signing in.' };
   }
@@ -127,11 +127,16 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
 }
 
 export async function loginClient(email: string, password: string): Promise<{ ok: boolean; error?: string }> {
+  // Select only what we need: a default findUnique pulls every column, so any
+  // not-yet-migrated column in production would throw before we can sign in.
   // Retry once on a transient connection error (serverless cold-start blip).
-  let client = null;
+  let client: { id: string; email: string; firstName: string; passwordHash: string | null } | null = null;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      client = await db.client.findUnique({ where: { email: email.trim().toLowerCase() } });
+      client = await db.client.findUnique({
+        where: { email: email.trim().toLowerCase() },
+        select: { id: true, email: true, firstName: true, passwordHash: true },
+      });
       break;
     } catch (err) {
       if (attempt === 1) throw err;
@@ -141,7 +146,13 @@ export async function loginClient(email: string, password: string): Promise<{ ok
   if (!client?.passwordHash || !(await verifyPassword(password, client.passwordHash))) {
     return { ok: false, error: 'Invalid email or password.' };
   }
-  await db.client.update({ where: { id: client.id }, data: { lastLoginAt: new Date() } });
+  // Recording last-login is best-effort — a failure here (e.g. column drift)
+  // must never block a valid sign-in.
+  try {
+    await db.client.update({ where: { id: client.id }, data: { lastLoginAt: new Date() } });
+  } catch (e) {
+    console.error('[login] lastLoginAt update failed (continuing):', (e as Error)?.message);
+  }
   await createClientSession({ sub: client.id, email: client.email, firstName: client.firstName });
   return { ok: true };
 }

@@ -19,5 +19,14 @@ export async function GET(req: Request) {
 
   const { runDailyAutomations } = await import('@/lib/automations');
   const result = await runDailyAutomations();
-  return NextResponse.json({ ok: true, ...result });
+  // Refresh Google Calendar busy-times for connected clinicians (no-op if Google
+  // isn't configured / nobody connected).
+  let gcal = { ok: false, staff: 0, imported: 0 };
+  try {
+    const { syncAllCalendars } = await import('@/lib/google-calendar');
+    gcal = await syncAllCalendars();
+  } catch {
+    /* never fail the cron on a calendar sync issue */
+  }
+  return NextResponse.json({ ok: true, ...result, gcal });
 }
