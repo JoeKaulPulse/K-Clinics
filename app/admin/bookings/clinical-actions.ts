@@ -42,6 +42,36 @@ export async function acknowledgeSop(bookingId: string) {
   return { ok: true };
 }
 
+// Save the SOP checklist: which steps are checked + any captured client
+// responses. Encrypted at rest. When every step is checked the SOP counts as
+// acknowledged (so the start-gate clears). Audit-logged.
+export async function saveSopChecklist(
+  bookingId: string,
+  items: { step: string; checked: boolean; response?: string }[],
+  allChecked: boolean,
+) {
+  if (!crmEnabled) return { ok: false };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'Not permitted' };
+  const { db } = await import('@/lib/db');
+  const { encryptJson } = await import('@/lib/crypto');
+  const { logAudit } = await import('@/lib/audit');
+  await db.booking.update({
+    where: { id: bookingId },
+    data: {
+      sopChecklistEnc: encryptJson({ items, completedAt: allChecked ? new Date().toISOString() : null }),
+      // Acknowledging requires every step ticked.
+      ...(allChecked ? { sopAcknowledgedAt: new Date(), sopAcknowledgedBy: session.email } : { sopAcknowledgedAt: null }),
+    },
+  });
+  await logAudit({
+    action: 'SOP_ACKNOWLEDGED', actor: session.email, actorRole: session.role, bookingId,
+    summary: allChecked ? 'SOP checklist completed' : 'SOP checklist updated',
+  });
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  return { ok: true };
+}
+
 // Clinician confirms they've reviewed the client's medical flag.
 export async function reviewMedicalFlag(bookingId: string) {
   if (!crmEnabled) return { ok: false };

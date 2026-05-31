@@ -334,6 +334,9 @@ model Booking {
   // Pre-appointment safety checks the clinician confirms before starting.
   sopAcknowledgedAt     DateTime?
   sopAcknowledgedBy     String?
+  // Per-step SOP checklist completion + captured client responses (encrypted).
+  // JSON: { items: [{ step, checked, response }], completedAt }.
+  sopChecklistEnc       String?
   medicalFlagReviewedAt DateTime?
   medicalFlagReviewedBy String?
 
