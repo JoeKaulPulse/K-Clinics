@@ -16,7 +16,7 @@ export default async function AssessmentsPage() {
   const statuses = await assessmentStatus(client.id);
 
   return (
-    <PortalShell firstName={client.firstName}>
+    <PortalShell firstName={client.firstName} locale={client.locale === 'uk' ? 'uk' : 'en'}>
       <div className="mb-8">
         <p className="eyebrow mb-2">Health forms</p>
         <h1 className="font-[family-name:var(--font-display)] text-[clamp(1.8rem,1.3rem+2vw,2.75rem)]">Your assessments</h1>
