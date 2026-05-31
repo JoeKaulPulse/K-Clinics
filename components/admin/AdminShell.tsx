@@ -11,6 +11,7 @@ const nav = [
   { href: '/admin/consultations', label: 'Consultations', perm: 'consultations.view' },
   { href: '/admin/clients', label: 'Clients', perm: 'clients.view' },
   { href: '/admin/schedule', label: 'Schedules', perm: 'schedule.manage' },
+  { href: '/admin/sops', label: 'SOPs', perm: 'sop.manage' },
   { href: '/admin/campaigns', label: 'Campaigns', perm: 'campaigns.view' },
   { href: '/admin/automations', label: 'Automations', perm: 'automations.view' },
   { href: '/admin/activity', label: 'Activity log', perm: 'staff.view' },
