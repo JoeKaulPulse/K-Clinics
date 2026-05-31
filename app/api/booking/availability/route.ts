@@ -12,6 +12,6 @@ export async function POST(req: Request) {
 
   const { freeSlots } = await import('@/lib/availability');
   const { durationMin } = bookingFor(parsed.data.slug);
-  const slots = await freeSlots(parsed.data.date, durationMin);
+  const slots = await freeSlots(parsed.data.date, durationMin, parsed.data.slug);
   return NextResponse.json({ ok: true, slots, durationMin });
 }

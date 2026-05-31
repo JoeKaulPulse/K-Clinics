@@ -84,6 +84,33 @@ enum BookingStatus {
   NO_SHOW
 }
 
+enum AuditAction {
+  BOOKING_CREATED
+  BOOKING_RESCHEDULED
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLED
+  BOOKING_NO_SHOW
+  PRACTITIONER_ASSIGNED
+  APPOINTMENT_STARTED
+  APPOINTMENT_COMPLETED
+  SOP_ACKNOWLEDGED
+  MEDICAL_FLAG_REVIEWED
+  PAYMENT_CHARGED
+  PAYMENT_FAILED
+  ASSESSMENT_SUBMITTED
+  ASSESSMENT_VIEWED
+  NOTE_ADDED
+  TIMEOFF_ADDED
+}
+
+enum TimeOffKind {
+  HOLIDAY
+  SICK
+  TRAINING
+  BLOCKED        // manual block
+  GCAL_BUSY      // synced from Google Calendar
+}
+
 model Client {
   id              String         @id @default(cuid())
   firstName       String
@@ -109,6 +136,14 @@ model Client {
   // ── First-visit discount (one-time, guardrailed) ─────────────────────────
   firstDiscountClaimed Boolean   @default(false)
   signupIp        String?
+
+  // ── Clinical safety flag ─────────────────────────────────────────────────
+  // A concise, non-clinical alert (e.g. "Diabetes — see medical history") that
+  // staff must review at the start of each appointment. Detailed health data
+  // stays in the encrypted HealthAssessment records.
+  medicalFlag     String?
+  medicalFlagSetBy String?
+  medicalFlagAt   DateTime?
 
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
@@ -187,6 +222,22 @@ model Booking {
   status        BookingStatus @default(PENDING)
   notes         String?
 
+  // Assigned clinician. Always usable internally; only offered to clients when
+  // the 'allow_clinician_choice' setting is enabled.
+  practitioner   AdminUser?   @relation("PractitionerBookings", fields: [practitionerId], references: [id], onDelete: SetNull)
+  practitionerId String?
+
+  // Time tracking — actuals vs the scheduled duration.
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  actualMinutes  Int?
+
+  // Pre-appointment safety checks the clinician confirms before starting.
+  sopAcknowledgedAt     DateTime?
+  sopAcknowledgedBy     String?
+  medicalFlagReviewedAt DateTime?
+  medicalFlagReviewedBy String?
+
   // Stripe: card saved at booking (no charge), charged later.
   stripeCustomerId       String?
   stripeSetupIntentId    String?
@@ -211,9 +262,12 @@ model Booking {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
+  auditEvents   AuditEvent[]
+
   @@index([startAt])
   @@index([status])
   @@index([clientId])
+  @@index([practitionerId])
 }
 
 model EmailEvent {
@@ -257,10 +311,91 @@ model AdminUser {
   permGrant    String[] @default([])
   permRevoke   String[] @default([])
 
+  // ── Scheduling & clinical capability ──────────────────────────────────────
+  isClinician   Boolean   @default(false) // bookable as a practitioner
+  title         String?                    // e.g. "Aesthetic Doctor"
+  color         String?                    // calendar colour (hex)
+  // Treatment slugs this person is competent to deliver (empty = all).
+  competencies  String[]  @default([])
+  // Google Calendar integration (busy-time sync + event push).
+  googleCalendarId String?
+  googleRefreshToken String?
+
   lastLoginAt  DateTime?
   createdBy    String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  schedules    StaffSchedule[]
+  timeOff      StaffTimeOff[]
+  bookings     Booking[]       @relation("PractitionerBookings")
+}
+
+// ── Weekly working pattern per staff member ──────────────────────────────────
+model StaffSchedule {
+  id         String    @id @default(cuid())
+  staff      AdminUser @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  staffId    String
+  dayOfWeek  Int        // 0=Sun … 6=Sat
+  startMin   Int        // minutes from midnight
+  endMin     Int
+  createdAt  DateTime   @default(now())
+
+  @@index([staffId, dayOfWeek])
+}
+
+// ── Time off / busy blocks (manual or Google-Calendar-synced) ───────────────
+model StaffTimeOff {
+  id         String      @id @default(cuid())
+  staff      AdminUser   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  staffId    String
+  kind       TimeOffKind @default(BLOCKED)
+  startAt    DateTime
+  endAt      DateTime
+  reason     String?
+  gcalEventId String?    @unique   // dedupe Google-synced busy blocks
+  createdAt  DateTime    @default(now())
+
+  @@index([staffId, startAt])
+  @@index([startAt, endAt])
+}
+
+// ── Settings: key/value toggles & config, editable in admin ─────────────────
+model Setting {
+  key       String   @id
+  value     String           // JSON or scalar string
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}
+
+// ── SOP documents per treatment type ────────────────────────────────────────
+model TreatmentSop {
+  id            String   @id @default(cuid())
+  treatmentSlug String   @unique
+  title         String
+  content       String           // markdown-ish steps; rendered read-only
+  version       Int      @default(1)
+  updatedAt     DateTime @updatedAt
+  updatedBy     String?
+}
+
+// ── Immutable audit log — every action across the booking→treatment→payment
+// lifecycle. Append-only: never updated or deleted. ─────────────────────────
+model AuditEvent {
+  id          String      @id @default(cuid())
+  action      AuditAction
+  booking     Booking?    @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  bookingId   String?
+  clientId    String?
+  actor       String      // staff email or 'client' / 'system'
+  actorRole   String?
+  summary     String
+  meta        Json?
+  createdAt   DateTime    @default(now())
+
+  @@index([bookingId, createdAt])
+  @@index([clientId, createdAt])
+  @@index([createdAt])
 }
 
 // ── Immutable, encrypted clinical record ─────────────────────────────────────
