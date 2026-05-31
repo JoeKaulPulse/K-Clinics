@@ -16,6 +16,10 @@ export async function GET() {
     hasDatabaseUrl: Boolean(process.env.DATABASE_URL),
     hasPostgresUrl: Boolean(process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL),
     env: process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown',
+    // Identifies exactly which build is live, so we can confirm a deploy landed.
+    commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'local',
+    deployedAt: process.env.VERCEL_DEPLOYMENT_ID ? new Date().toISOString() : 'local',
+    buildMarker: 'dashboard-redesign-v2',
   };
 
   try {
