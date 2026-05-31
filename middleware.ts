@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { verifyToken, verifyClientToken, SESSION_COOKIE, CLIENT_SESSION_COOKIE } from '@/lib/auth';
+import { verifyToken, verifyClientToken, SESSION_COOKIE, CLIENT_SESSION_COOKIE } from '@/lib/auth-edge';
 
 // Public client-portal pages (no auth required).
 const PUBLIC_ACCOUNT = new Set([

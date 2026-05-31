@@ -1,0 +1,69 @@
+// Edge-safe authentication primitives. Contains ONLY what can run in the Edge
+// Runtime (middleware): jose-based JWT verify + cookie names + session types.
+// No bcrypt, no next/headers, no `server-only` — so importing this into
+// middleware never drags Node-only code (bcryptjs) into the Edge bundle.
+import { jwtVerify } from 'jose';
+
+export const SESSION_COOKIE = 'kc_admin';
+export const CLIENT_SESSION_COOKIE = 'kc_client';
+
+export type Session = {
+  sub: string;
+  email: string;
+  name?: string;
+  role: string;
+  /** Per-user permission overrides, captured at login for fast checks. */
+  grant?: string[];
+  revoke?: string[];
+};
+export type ClientSession = { sub: string; email: string; firstName: string };
+
+// HS256 requires a key of at least 256 bits (32 bytes); `jose` rejects shorter
+// secrets at sign time. Normalise any configured secret to >=32 bytes by
+// repeating its bytes — deterministic, sync and edge-safe. A proper-length
+// secret passes through byte-for-byte, so this is fully backward-compatible.
+export const toKey = (s: string): Uint8Array => {
+  const bytes = new TextEncoder().encode(s);
+  if (bytes.length >= 32) return bytes;
+  const out = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) out[i] = bytes[i % bytes.length];
+  return out;
+};
+
+export const adminSecret = (): Uint8Array => {
+  const s = process.env.ADMIN_JWT_SECRET;
+  if (!s) {
+    if (process.env.NODE_ENV === 'production') throw new Error('ADMIN_JWT_SECRET is required in production.');
+    return toKey('dev-insecure-secret-change-me');
+  }
+  return toKey(s);
+};
+
+export const clientSecret = (): Uint8Array => {
+  const s = process.env.CLIENT_JWT_SECRET || process.env.ADMIN_JWT_SECRET;
+  if (!s) {
+    if (process.env.NODE_ENV === 'production') throw new Error('CLIENT_JWT_SECRET is required in production.');
+    return toKey('dev-insecure-client-secret-change-me');
+  }
+  return toKey(s);
+};
+
+export async function verifyToken(token: string | undefined): Promise<Session | null> {
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, adminSecret());
+    return payload as unknown as Session;
+  } catch {
+    return null;
+  }
+}
+
+export async function verifyClientToken(token: string | undefined): Promise<ClientSession | null> {
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, clientSecret());
+    return payload as unknown as ClientSession;
+  } catch {
+    return null;
+  }
+}
