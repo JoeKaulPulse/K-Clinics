@@ -113,6 +113,40 @@ export async function getIntegrations(): Promise<Integration[]> {
     docsHref: 'https://dashboard.stripe.com/apikeys',
   });
 
+  // ── Accounting (Xero) ──
+  const xero = has(process.env.XERO_CLIENT_ID) && has(process.env.XERO_CLIENT_SECRET);
+  items.push({
+    id: 'xero',
+    name: 'Accounting (Xero)',
+    category: 'Finance',
+    description: 'Two-way sync of invoices, bills and bank balances to power the cashflow forecast.',
+    status: xero ? 'connected' : 'not_configured',
+    detail: xero ? 'Credentials present — connect via OAuth.' : 'Add Xero OAuth credentials to sync accounting.',
+    envVars: [
+      { name: 'XERO_CLIENT_ID', set: has(process.env.XERO_CLIENT_ID) },
+      { name: 'XERO_CLIENT_SECRET', set: has(process.env.XERO_CLIENT_SECRET) },
+      { name: 'XERO_REDIRECT_URI', set: has(process.env.XERO_REDIRECT_URI), optional: true },
+    ],
+    docsHref: 'https://developer.xero.com/app/manage',
+  });
+
+  // ── Bank feed (Open Banking) ──
+  const bank = has(process.env.OPENBANKING_CLIENT_ID) || has(process.env.TRUELAYER_CLIENT_ID) || has(process.env.PLAID_CLIENT_ID);
+  items.push({
+    id: 'bank',
+    name: 'Bank feed (Open Banking)',
+    category: 'Finance',
+    description: 'Live business bank balance + transactions via an OAuth Open Banking provider (TrueLayer/Plaid/Nordigen).',
+    status: bank ? 'connected' : 'not_configured',
+    detail: bank ? 'Provider credentials present — connect your account.' : 'Add an Open Banking provider to feed live balances.',
+    envVars: [
+      { name: 'TRUELAYER_CLIENT_ID', set: has(process.env.TRUELAYER_CLIENT_ID), optional: true },
+      { name: 'PLAID_CLIENT_ID', set: has(process.env.PLAID_CLIENT_ID), optional: true },
+      { name: 'OPENBANKING_CLIENT_ID', set: has(process.env.OPENBANKING_CLIENT_ID), optional: true },
+    ],
+    docsHref: 'https://truelayer.com',
+  });
+
   // ── Content (WordPress) ──
   const wp = has(process.env.WORDPRESS_API_URL);
   items.push({

@@ -27,6 +27,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  if (body.op === 'drivers') {
+    const { setDrivers } = await import('@/lib/cashflow');
+    await setDrivers({
+      ...(body.monthlyVisitors !== undefined ? { monthlyVisitors: Number(body.monthlyVisitors) || 0 } : {}),
+      ...(body.conversionPct !== undefined ? { conversionPct: Number(body.conversionPct) || 0 } : {}),
+      ...(body.avgValuePounds !== undefined ? { avgValuePence: toPence(body.avgValuePounds) } : {}),
+      ...(body.monthlyNewClients !== undefined ? { monthlyNewClients: Number(body.monthlyNewClients) || 0 } : {}),
+      ...(body.industryGrowthPct !== undefined ? { industryGrowthPct: Number(body.industryGrowthPct) || 0 } : {}),
+      ...(body.seoRank !== undefined ? { seoRank: Number(body.seoRank) || 20 } : {}),
+      ...(body.useSeasonality !== undefined ? { useSeasonality: !!body.useSeasonality } : {}),
+      ...(body.useBookings !== undefined ? { useBookings: !!body.useBookings } : {}),
+    }, session.email);
+    return NextResponse.json({ ok: true });
+  }
+
   if (body.op === 'createEntry') {
     const { type, category, label, amountPounds, cadence, startDate, endDate } = body;
     if (!TYPES.includes(type) || !label?.trim()) return NextResponse.json({ ok: false, error: 'Type and label required.' }, { status: 400 });

@@ -12,7 +12,31 @@ import { db } from '@/lib/db';
 
 export type FinanceConfig = { openingPence: number; safetyFloorPence: number; months: number };
 
+// ── Predictive drivers (assumptions feeding the modelled forecast) ───────────
+export type Drivers = {
+  monthlyVisitors: number;     // website visitors / month
+  conversionPct: number;       // visitor → booking %
+  avgValuePence: number;       // average treatment value
+  monthlyNewClients: number;   // alternative demand driver
+  industryGrowthPct: number;   // annual growth %, compounded monthly
+  seoRank: number;             // avg search position (1 = best)
+  useSeasonality: boolean;
+  useBookings: boolean;        // count confirmed/pending bookings as committed income
+};
+
 const CFG_KEYS = { opening: 'cash_opening_pence', floor: 'cash_safety_floor_pence', months: 'cash_forecast_months' };
+const DRV_KEYS = {
+  visitors: 'cf_monthly_visitors', conv: 'cf_conversion_pct', avg: 'cf_avg_value_pence', newClients: 'cf_monthly_new_clients',
+  growth: 'cf_industry_growth_pct', seo: 'cf_seo_rank', seasonality: 'cf_use_seasonality', bookings: 'cf_use_bookings',
+};
+
+// Default seasonality for a London aesthetics & dentistry clinic (Jan…Dec),
+// normalised to a mean of 1: pre-summer and pre-Christmas peaks, August/January dips.
+const SEASONALITY = [0.85, 0.95, 1.05, 1.1, 1.15, 1.15, 1.05, 0.85, 1.05, 1.05, 1.15, 1.0];
+const seasonNorm = (() => {
+  const mean = SEASONALITY.reduce((a, b) => a + b, 0) / 12;
+  return SEASONALITY.map((v) => v / mean);
+})();
 
 async function readInt(key: string, fallback: number): Promise<number> {
   const row = await db.setting.findUnique({ where: { key } });
@@ -39,6 +63,38 @@ export async function setFinanceConfig(cfg: Partial<FinanceConfig>, by?: string)
   await Promise.all(writes);
 }
 
+async function readNum(key: string, fallback: number): Promise<number> {
+  const row = await db.setting.findUnique({ where: { key } });
+  const n = row ? Number(row.value) : NaN;
+  return Number.isFinite(n) ? n : fallback;
+}
+
+export async function getDrivers(): Promise<Drivers> {
+  const [monthlyVisitors, conversionPct, avgValuePence, monthlyNewClients, industryGrowthPct, seoRank, seasonality, bookings] = await Promise.all([
+    readNum(DRV_KEYS.visitors, 0), readNum(DRV_KEYS.conv, 2), readNum(DRV_KEYS.avg, 25000), readNum(DRV_KEYS.newClients, 0),
+    readNum(DRV_KEYS.growth, 0), readNum(DRV_KEYS.seo, 20), readNum(DRV_KEYS.seasonality, 1), readNum(DRV_KEYS.bookings, 1),
+  ]);
+  return { monthlyVisitors, conversionPct, avgValuePence, monthlyNewClients, industryGrowthPct, seoRank, useSeasonality: seasonality === 1, useBookings: bookings === 1 };
+}
+
+export async function setDrivers(d: Partial<Drivers>, by?: string) {
+  const writes: Promise<unknown>[] = [];
+  const put = (key: string, value: number) =>
+    writes.push(db.setting.upsert({ where: { key }, update: { value: String(value), updatedBy: by }, create: { key, value: String(value), updatedBy: by } }));
+  if (d.monthlyVisitors !== undefined) put(DRV_KEYS.visitors, Math.round(d.monthlyVisitors));
+  if (d.conversionPct !== undefined) put(DRV_KEYS.conv, d.conversionPct);
+  if (d.avgValuePence !== undefined) put(DRV_KEYS.avg, Math.round(d.avgValuePence));
+  if (d.monthlyNewClients !== undefined) put(DRV_KEYS.newClients, Math.round(d.monthlyNewClients));
+  if (d.industryGrowthPct !== undefined) put(DRV_KEYS.growth, d.industryGrowthPct);
+  if (d.seoRank !== undefined) put(DRV_KEYS.seo, Math.round(d.seoRank));
+  if (d.useSeasonality !== undefined) put(DRV_KEYS.seasonality, d.useSeasonality ? 1 : 0);
+  if (d.useBookings !== undefined) put(DRV_KEYS.bookings, d.useBookings ? 1 : 0);
+  await Promise.all(writes);
+}
+
+// SEO rank → a gentle income multiplier (better rank lifts demand). Bounded.
+const rankMultiplier = (rank: number) => Math.min(1.12, Math.max(0.9, 1 + (30 - Math.min(Math.max(rank, 1), 100)) / 400));
+
 type Entry = { type: 'INCOME' | 'EXPENSE'; amountPence: number; cadence: string; startDate: Date | null; endDate: Date | null };
 
 const monthKey = (d: Date) => d.getFullYear() * 12 + d.getMonth();
@@ -62,6 +118,8 @@ function amountForMonth(e: Entry, monthDate: Date): number {
 export type ForecastMonth = {
   label: string;
   incomePence: number;
+  committedPence: number;   // from real confirmed/pending bookings
+  modelledPence: number;    // from drivers + seasonality
   expensePence: number;
   netPence: number;
   reserveContribPence: number;
@@ -72,26 +130,65 @@ export type ForecastMonth = {
 
 export async function buildForecast() {
   const cfg = await getFinanceConfig();
-  const [entries, reservesRaw] = await Promise.all([
+  const drivers = await getDrivers();
+  const now = new Date();
+  const horizonEnd = new Date(now.getFullYear(), now.getMonth() + cfg.months, 1);
+
+  const [entries, reservesRaw, bookings, consumables] = await Promise.all([
     db.cashflowEntry.findMany({ where: { active: true } }),
     db.cashReserve.findMany({ orderBy: { sortOrder: 'asc' } }),
+    // Committed pipeline: confirmed/pending appointments within the horizon.
+    drivers.useBookings
+      ? db.booking.findMany({ where: { status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { gte: now, lt: horizonEnd } }, select: { startAt: true, pricePence: true } })
+      : Promise.resolve([] as { startAt: Date; pricePence: number }[]),
+    // Consumables run-rate: last 90 days of stock consumed × unit cost → monthly.
+    db.stockMovement.findMany({
+      where: { reason: { in: ['USED', 'WASTED'] }, createdAt: { gte: new Date(Date.now() - 90 * 864e5) } },
+      select: { delta: true, item: { select: { costPence: true } } },
+    }),
   ]);
+
+  // Map committed bookings to month index.
+  const committedByMonth = new Array(cfg.months).fill(0);
+  for (const b of bookings) {
+    const idx = (b.startAt.getFullYear() - now.getFullYear()) * 12 + (b.startAt.getMonth() - now.getMonth());
+    if (idx >= 0 && idx < cfg.months) committedByMonth[idx] += b.pricePence > 0 ? b.pricePence : drivers.avgValuePence;
+  }
+
+  // Monthly modelled consumables expense from trailing usage valuation.
+  const consumed90 = consumables.reduce((s, m) => s + Math.abs(m.delta) * (m.item.costPence ?? 0), 0);
+  const consumablesMonthly = Math.round(consumed90 / 3);
+
+  // Modelled treatment demand per month (drivers × seasonality × growth × SEO).
+  const visitorDemand = drivers.monthlyVisitors * (drivers.conversionPct / 100) * drivers.avgValuePence;
+  const clientDemand = drivers.monthlyNewClients * drivers.avgValuePence;
+  const baseDemand = Math.max(visitorDemand, clientDemand);
+  const rankMult = rankMultiplier(drivers.seoRank);
+  const modelledFor = (i: number, monthDate: Date) => {
+    const growth = Math.pow(1 + drivers.industryGrowthPct / 100, i / 12);
+    const season = drivers.useSeasonality ? seasonNorm[monthDate.getMonth()] : 1;
+    return Math.round(baseDemand * growth * season * rankMult);
+  };
 
   const reserveState = reservesRaw.map((r) => ({ ...r, running: r.balancePence }));
   const startReserves = reserveState.reduce((s, r) => s + r.balancePence, 0);
 
-  const now = new Date();
   const months: ForecastMonth[] = [];
   let cash = cfg.openingPence;
 
   for (let i = 0; i < cfg.months; i++) {
     const monthDate = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    let income = 0, expense = 0;
+    let manualIncome = 0, expense = consumablesMonthly;
     for (const e of entries) {
       const amt = amountForMonth(e as Entry, monthDate);
-      if (e.type === 'INCOME') income += amt; else expense += amt;
+      if (e.type === 'INCOME') manualIncome += amt; else expense += amt;
     }
-    // Ring-fence reserve contributions (capped at target).
+    const committed = committedByMonth[i];
+    const modelled = modelledFor(i, monthDate);
+    // Treatment income: real bookings are the floor; modelled fills demand beyond them.
+    const treatment = Math.max(committed, modelled);
+    const income = treatment + manualIncome;
+
     let reserveContrib = 0;
     for (const r of reserveState) {
       if (r.monthlyContributionPence <= 0) continue;
@@ -104,7 +201,8 @@ export async function buildForecast() {
     cash += net - reserveContrib;
     months.push({
       label: monthDate.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }),
-      incomePence: income, expensePence: expense, netPence: net,
+      incomePence: income, committedPence: committed, modelledPence: modelled,
+      expensePence: expense, netPence: net,
       reserveContribPence: reserveContrib, operatingPence: cash,
       reservesPence: reserveState.reduce((s, r) => s + r.running, 0),
       belowFloor: cash < cfg.safetyFloorPence,
@@ -113,6 +211,8 @@ export async function buildForecast() {
 
   return {
     cfg,
+    drivers,
+    consumablesMonthly,
     months,
     reserves: reserveState.map((r) => ({
       id: r.id, name: r.name, color: r.color, targetPence: r.targetPence,

@@ -41,6 +41,8 @@ export default async function CashflowPage() {
       <div className="mt-8">
         <CashflowManager
           cfg={forecast.cfg}
+          drivers={forecast.drivers}
+          consumablesMonthly={forecast.consumablesMonthly}
           months={forecast.months}
           reserves={forecast.reserves}
           summary={forecast.summary}

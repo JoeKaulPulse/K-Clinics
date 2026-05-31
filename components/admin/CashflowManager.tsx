@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type Cfg = { openingPence: number; safetyFloorPence: number; months: number };
-type Month = { label: string; incomePence: number; expensePence: number; netPence: number; reserveContribPence: number; operatingPence: number; reservesPence: number; belowFloor: boolean };
+type Drivers = { monthlyVisitors: number; conversionPct: number; avgValuePence: number; monthlyNewClients: number; industryGrowthPct: number; seoRank: number; useSeasonality: boolean; useBookings: boolean };
+type Month = { label: string; incomePence: number; committedPence: number; modelledPence: number; expensePence: number; netPence: number; reserveContribPence: number; operatingPence: number; reservesPence: number; belowFloor: boolean };
 type Reserve = { id: string; name: string; color: string | null; targetPence: number; startPence: number; endPence: number; monthlyContributionPence: number };
 type Entry = { id: string; type: string; category: string; label: string; amountPence: number; cadence: string; startDate: string | null; endDate: string | null };
 type Summary = { endOperating: number; endReserves: number; lowestOperating: number; everBelowFloor: boolean };
@@ -17,13 +18,14 @@ async function post(payload: object) {
   return res.ok;
 }
 
-export function CashflowManager({ cfg, months, reserves, summary, entries, canManage, uk }: {
-  cfg: Cfg; months: Month[]; reserves: Reserve[]; summary: Summary; entries: Entry[]; canManage: boolean; uk: boolean;
+export function CashflowManager({ cfg, drivers, consumablesMonthly, months, reserves, summary, entries, canManage, uk }: {
+  cfg: Cfg; drivers: Drivers; consumablesMonthly: number; months: Month[]; reserves: Reserve[]; summary: Summary; entries: Entry[]; canManage: boolean; uk: boolean;
 }) {
   const L = (en: string, ukt: string) => (uk ? ukt : en);
   return (
     <div className="space-y-10">
       <ConfigBar cfg={cfg} canManage={canManage} uk={uk} />
+      <DriversPanel drivers={drivers} consumablesMonthly={consumablesMonthly} canManage={canManage} uk={uk} />
 
       {/* Summary */}
       <div className="grid gap-3 sm:grid-cols-4">
@@ -49,10 +51,10 @@ export function CashflowManager({ cfg, months, reserves, summary, entries, canMa
       <section>
         <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">{L('Monthly projection', 'Помісячний прогноз')}</h2>
         <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
-          <table className="w-full min-w-[640px] text-sm">
+          <table className="w-full min-w-[760px] text-sm">
             <thead className="bg-[var(--color-bone)] text-xs uppercase tracking-wide text-[var(--color-stone)]">
               <tr>
-                {[L('Month', 'Місяць'), L('Income', 'Дохід'), L('Expenses', 'Витрати'), L('Net', 'Чистий'), L('To reserves', 'У резерви'), L('Operating', 'Операційні'), L('Reserves', 'Резерви')].map((h) => (
+                {[L('Month', 'Місяць'), L('Income', 'Дохід'), L('of which booked', 'із них заброньовано'), L('Expenses', 'Витрати'), L('Net', 'Чистий'), L('To reserves', 'У резерви'), L('Operating', 'Операційні'), L('Reserves', 'Резерви')].map((h) => (
                   <th key={h} className="px-4 py-2.5 text-right first:text-left">{h}</th>
                 ))}
               </tr>
@@ -62,6 +64,7 @@ export function CashflowManager({ cfg, months, reserves, summary, entries, canMa
                 <tr key={i} className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)]">
                   <td className="px-4 py-2.5 font-medium">{m.label}</td>
                   <td className="px-4 py-2.5 text-right text-[var(--color-jade)]">{gbp(m.incomePence)}</td>
+                  <td className="px-4 py-2.5 text-right text-[var(--color-stone-soft)]" title={L('Confirmed/pending bookings', 'Підтверджені/очікувані записи')}>{m.committedPence > 0 ? gbp(m.committedPence) : '—'}</td>
                   <td className="px-4 py-2.5 text-right text-[var(--color-stone)]">{gbp(m.expensePence)}</td>
                   <td className={`px-4 py-2.5 text-right ${m.netPence < 0 ? 'text-[var(--color-blush)]' : ''}`}>{gbp(m.netPence)}</td>
                   <td className="px-4 py-2.5 text-right text-[var(--color-stone-soft)]">{gbp(m.reserveContribPence)}</td>
@@ -109,6 +112,66 @@ function ConfigBar({ cfg, canManage, uk }: { cfg: Cfg; canManage: boolean; uk: b
       </label>
       {canManage && <button onClick={save} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)]">{L('Update', 'Оновити')}</button>}
       {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
+    </section>
+  );
+}
+
+function DriversPanel({ drivers, consumablesMonthly, canManage, uk }: { drivers: Drivers; consumablesMonthly: number; canManage: boolean; uk: boolean }) {
+  const router = useRouter();
+  const L = (en: string, ukt: string) => (uk ? ukt : en);
+  const [open, setOpen] = useState(false);
+  const [d, setD] = useState({
+    monthlyVisitors: String(drivers.monthlyVisitors), conversionPct: String(drivers.conversionPct),
+    avgValuePounds: String(drivers.avgValuePence / 100), monthlyNewClients: String(drivers.monthlyNewClients),
+    industryGrowthPct: String(drivers.industryGrowthPct), seoRank: String(drivers.seoRank),
+    useSeasonality: drivers.useSeasonality, useBookings: drivers.useBookings,
+  });
+  const [msg, setMsg] = useState('');
+  const setN = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setD({ ...d, [k]: e.target.value });
+
+  async function save() {
+    const ok = await post({ op: 'drivers', ...d });
+    setMsg(ok ? L('Saved ✓', 'Збережено ✓') : L('Could not save', 'Помилка'));
+    if (ok) router.refresh();
+  }
+
+  const monthlyModelled = Math.max(
+    drivers.monthlyVisitors * (drivers.conversionPct / 100) * (drivers.avgValuePence / 100),
+    drivers.monthlyNewClients * (drivers.avgValuePence / 100),
+  );
+
+  return (
+    <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
+      <div className="flex items-center justify-between">
+        <h2 className="font-[family-name:var(--font-display)] text-xl">{L('Prediction drivers', 'Драйвери прогнозу')}</h2>
+        <button onClick={() => setOpen((o) => !o)} className="text-sm text-[var(--color-gold)] hover:underline">{open ? L('Hide', 'Сховати') : L('Edit assumptions', 'Редагувати')}</button>
+      </div>
+      <p className="mt-1 text-sm text-[var(--color-stone)]">
+        {L(
+          `Income is modelled from these drivers and your real bookings, with seasonality applied. ~${gbp(Math.round(monthlyModelled * 100))}/mo modelled demand · consumables run-rate ${gbp(consumablesMonthly)}/mo.`,
+          `Дохід моделюється з цих драйверів і реальних записів із сезонністю. ~${gbp(Math.round(monthlyModelled * 100))}/міс попиту · витратні ${gbp(consumablesMonthly)}/міс.`,
+        )}
+      </p>
+
+      {open && (
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <label className="text-xs text-[var(--color-stone)]">{L('Website visitors / mo', 'Відвідувачі / міс')}<input type="number" value={d.monthlyVisitors} onChange={setN('monthlyVisitors')} disabled={!canManage} className={`${field} mt-1`} /></label>
+          <label className="text-xs text-[var(--color-stone)]">{L('Visitor → booking %', 'Конверсія %')}<input type="number" step="0.1" value={d.conversionPct} onChange={setN('conversionPct')} disabled={!canManage} className={`${field} mt-1`} /></label>
+          <label className="text-xs text-[var(--color-stone)]">{L('Avg treatment value (£)', 'Середній чек (£)')}<input type="number" value={d.avgValuePounds} onChange={setN('avgValuePounds')} disabled={!canManage} className={`${field} mt-1`} /></label>
+          <label className="text-xs text-[var(--color-stone)]">{L('New clients / mo (alt)', 'Нові клієнти / міс')}<input type="number" value={d.monthlyNewClients} onChange={setN('monthlyNewClients')} disabled={!canManage} className={`${field} mt-1`} /></label>
+          <label className="text-xs text-[var(--color-stone)]">{L('Industry growth % / yr', 'Зростання % / рік')}<input type="number" step="0.1" value={d.industryGrowthPct} onChange={setN('industryGrowthPct')} disabled={!canManage} className={`${field} mt-1`} /></label>
+          <label className="text-xs text-[var(--color-stone)]">{L('Avg search rank', 'Позиція в пошуку')}<input type="number" value={d.seoRank} onChange={setN('seoRank')} disabled={!canManage} className={`${field} mt-1`} /></label>
+          <label className="flex items-center gap-2 text-xs text-[var(--color-stone)]"><input type="checkbox" checked={d.useSeasonality} onChange={(e) => setD({ ...d, useSeasonality: e.target.checked })} disabled={!canManage} className="h-4 w-4 accent-[var(--color-gold)]" />{L('Apply seasonality', 'Сезонність')}</label>
+          <label className="flex items-center gap-2 text-xs text-[var(--color-stone)]"><input type="checkbox" checked={d.useBookings} onChange={(e) => setD({ ...d, useBookings: e.target.checked })} disabled={!canManage} className="h-4 w-4 accent-[var(--color-gold)]" />{L('Use confirmed bookings', 'Враховувати записи')}</label>
+          {canManage && <div className="flex items-center gap-3"><button onClick={save} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)]">{L('Save drivers', 'Зберегти')}</button>{msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}</div>}
+        </div>
+      )}
+      {open && (
+        <p className="mt-3 text-xs text-[var(--color-stone-soft)]">
+          {L('Visitors and search rank will auto-populate once Analytics/Search Console are connected; bank, Stripe and Xero balances arrive with those integrations (coming next).',
+             'Відвідувачі та позиції оновлюватимуться після підключення Аналітики; баланси банку, Stripe і Xero — з наступними інтеграціями.')}
+        </p>
+      )}
     </section>
   );
 }
