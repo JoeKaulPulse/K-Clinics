@@ -9,14 +9,19 @@ export function pageMeta({
   description,
   path = '/',
   keywords,
+  ownOgImage = false,
 }: {
   title: string;
   description: string;
   path?: string;
   keywords?: string[];
+  /** When true, omit the site-wide OG image so a route's own
+   *  `opengraph-image.tsx` file convention is used instead. */
+  ownOgImage?: boolean;
 }): Metadata {
   const url = `${base}${path}`;
   const fullTitle = title;
+  const images = ownOgImage ? undefined : [{ url: `${base}/opengraph-image`, width: 1200, height: 630, alt: site.name }];
   return {
     // metaTitles already carry the brand, so bypass the layout's title template.
     title: { absolute: fullTitle },
@@ -30,13 +35,13 @@ export function pageMeta({
       title: fullTitle,
       description,
       locale: site.locale,
-      images: [{ url: `${base}/opengraph-image`, width: 1200, height: 630, alt: site.name }],
+      ...(images ? { images } : {}),
     },
     twitter: {
       card: 'summary_large_image',
       title: fullTitle,
       description,
-      images: [`${base}/opengraph-image`],
+      ...(images ? { images: [`${base}/opengraph-image`] } : {}),
     },
   };
 }

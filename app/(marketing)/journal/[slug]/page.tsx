@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const a = getArticle(slug);
   if (!a) return {};
-  return pageMeta({ title: `${a.title} | K Clinics Journal`, description: a.metaDescription, path: `/journal/${a.slug}`, keywords: a.keywords });
+  return pageMeta({ title: `${a.title} | K Clinics Journal`, description: a.metaDescription, path: `/journal/${a.slug}`, keywords: a.keywords, ownOgImage: true });
 }
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
