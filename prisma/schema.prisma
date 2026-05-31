@@ -147,6 +147,52 @@ enum StockMoveReason {
   ADJUSTMENT    // manual correction / stock-take
 }
 
+enum CashflowType {
+  INCOME
+  EXPENSE
+}
+
+enum CashCadence {
+  ONE_OFF
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+}
+
+// Projected income/expense lines used by the cashflow forecast.
+model CashflowEntry {
+  id          String      @id @default(cuid())
+  type        CashflowType
+  category    String      // Treatments, Retail, Rent, Salaries, Consumables, Marketing…
+  label       String
+  amountPence Int
+  cadence     CashCadence @default(MONTHLY)
+  startDate   DateTime?
+  endDate     DateTime?
+  active      Boolean     @default(true)
+  createdBy   String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([active])
+}
+
+// Ring-fenced cash pots (replenishment, refurbishment, incentives, salary
+// uplifts, operating slush). Contributions are skimmed from cashflow before
+// 'available' operating cash is computed, guaranteeing the business reserve.
+model CashReserve {
+  id                       String   @id @default(cuid())
+  name                     String
+  targetPence              Int      @default(0)  // 0 = no cap
+  balancePence             Int      @default(0)  // current ring-fenced balance
+  monthlyContributionPence Int      @default(0)  // planned monthly top-up
+  color                    String?
+  sortOrder                Int      @default(0)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+}
+
 model Client {
   id              String         @id @default(cuid())
   firstName       String

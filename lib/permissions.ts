@@ -70,6 +70,10 @@ export const PERMISSIONS: Permission[] = [
   // Inventory
   { key: 'inventory.view', group: 'Inventory', label: 'View inventory', description: 'See stock levels, batches and expiry dates.' },
   { key: 'inventory.manage', group: 'Inventory', label: 'Manage inventory', description: 'Add items, receive stock and record usage/wastage.' },
+
+  // Finance
+  { key: 'finance.view', group: 'Finance', label: 'View finances', description: 'See cashflow forecasts and cash reserves.', sensitive: true },
+  { key: 'finance.manage', group: 'Finance', label: 'Manage finances', description: 'Edit forecast lines, reserves and ring-fenced funds.', sensitive: true },
 ];
 
 export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
