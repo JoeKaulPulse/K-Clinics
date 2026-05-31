@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { KMark } from '@/components/brand/marks';
+import { KMark, ClinicsWordmark } from '@/components/brand/marks';
+import { site } from '@/lib/site';
 import { I18nProvider } from '@/components/i18n/I18nProvider';
 import { translator, isLocale, LOCALES, LOCALE_LABELS, DEFAULT_LOCALE, type Locale } from '@/lib/i18n';
 
@@ -40,16 +41,21 @@ export function AdminShell({
   user,
   can = [],
   locale: localeProp,
+  location,
 }: {
   children: React.ReactNode;
   user?: string;
   can?: string[];
   locale?: Locale;
+  location?: string;
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const allowed = new Set(can);
   const items = nav.filter((n) => !n.perm || allowed.size === 0 || allowed.has(n.perm));
+  // Which clinic the user is viewing. Defaults to the primary site (derived from
+  // the clinic locality); pass `location` to override per page in multi-site use.
+  const locationLabel = location || site.address.locality.split(',').pop()?.trim() || site.address.region;
 
   // Locale: server-provided prop wins (no flash); otherwise read the cookie.
   const [locale, setLocale] = useState<Locale>(localeProp ?? DEFAULT_LOCALE);
@@ -100,9 +106,13 @@ export function AdminShell({
     <I18nProvider locale={locale}>
       <div className="flex min-h-screen flex-col lg:flex-row">
         <aside className="flex shrink-0 flex-col gap-1 border-b border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 lg:w-64 lg:border-b-0 lg:border-r lg:p-6">
-          <div className="mb-6 flex items-center gap-3 px-2 text-[var(--color-ink)]">
-            <span className="h-7 w-4"><KMark /></span>
-            <span className="font-[family-name:var(--font-display)] text-lg">{t('shell.crm')}</span>
+          <div className="mb-7 px-2 text-[var(--color-ink)]">
+            <span className="block h-9 w-[1.35rem]"><KMark /></span>
+            <span className="mt-3 block h-[0.62rem] w-[6.75rem] text-[var(--color-ink)]"><ClinicsWordmark /></span>
+            <p className="mt-3 text-[0.66rem] font-medium uppercase tracking-[0.3em] text-[var(--color-stone)]">
+              {locationLabel}
+              <span className="ml-1.5 text-[var(--color-stone-soft)]">· CRM</span>
+            </p>
           </div>
           <nav className="flex gap-1 overflow-x-auto lg:flex-col">
             {items.map((n) => {
