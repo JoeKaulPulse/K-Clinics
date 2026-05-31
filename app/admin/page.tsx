@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { crmEnabled } from '@/lib/crm';
-import { getSession, sessionPermissions } from '@/lib/auth';
+import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { formatPrice } from '@/lib/treatments';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
@@ -14,6 +14,30 @@ export default async function AdminOverview() {
   const session = await getSession();
   const [o, a] = await Promise.all([getOverview(), getAnalytics()]);
 
+  // ── "Needs attention" — surface the operational systems on the landing page ──
+  const { db } = await import('@/lib/db');
+  const canApproveTimeOff = sessionCan(session, 'schedule.manage');
+  const canInventory = sessionCan(session, 'inventory.view');
+  const [pendingTimeOff, myTasks, stockItems, expiringSoon] = await Promise.all([
+    canApproveTimeOff ? db.staffTimeOff.count({ where: { status: 'PENDING' } }) : Promise.resolve(0),
+    session ? db.task.count({ where: { assigneeId: session.sub, status: 'OPEN' } }) : Promise.resolve(0),
+    canInventory ? db.stockItem.findMany({ where: { active: true }, select: { currentQty: true, lowStockAt: true } }) : Promise.resolve([]),
+    canInventory ? db.stockMovement.count({ where: { reason: 'RECEIVED', expiry: { not: null, gte: new Date(), lte: new Date(Date.now() + 90 * 864e5) } } }) : Promise.resolve(0),
+  ]);
+  const lowStock = stockItems.filter((i) => i.lowStockAt > 0 && i.currentQty <= i.lowStockAt).length;
+  const attention = [
+    { show: canApproveTimeOff && pendingTimeOff > 0, label: 'Time-off to approve', value: pendingTimeOff, href: '/admin/time-off', tone: 'amber' },
+    { show: myTasks > 0, label: 'My open tasks', value: myTasks, href: '/admin/tasks', tone: 'ink' },
+    { show: canInventory && lowStock > 0, label: 'Low-stock items', value: lowStock, href: '/admin/inventory', tone: 'blush' },
+    { show: canInventory && expiringSoon > 0, label: 'Batches expiring ≤90d', value: expiringSoon, href: '/admin/inventory', tone: 'amber' },
+  ].filter((x) => x.show);
+
+  const toneCls: Record<string, string> = {
+    amber: 'border-amber-300 bg-amber-50 text-amber-900',
+    blush: 'border-[var(--color-blush)]/40 bg-[var(--color-blush)]/10 text-[var(--color-ink)]',
+    ink: 'border-[var(--color-line)] bg-[var(--color-porcelain)] text-[var(--color-ink)]',
+  };
+
   const kpis = [
     { label: 'Revenue · 30 days', value: formatPrice(a.rev30), trend: a.revTrend, href: '/admin/bookings' },
     { label: 'Upcoming appointments', value: String(a.upcomingCount), href: '/admin/bookings' },
@@ -26,6 +50,18 @@ export default async function AdminOverview() {
     <AdminShell user={session?.email} can={can}>
       <h1 className="font-[family-name:var(--font-display)] text-3xl">Overview</h1>
       <p className="mt-1 text-sm text-[var(--color-stone)]">Welcome back{session?.name ? `, ${session.name}` : ''}.</p>
+
+      {/* Needs attention */}
+      {attention.length > 0 && (
+        <div className="mt-6 flex flex-wrap gap-3">
+          {attention.map((x) => (
+            <Link key={x.label} href={x.href} className={`flex items-center gap-3 rounded-full border px-4 py-2 text-sm transition-shadow hover:shadow-[var(--shadow-soft)] ${toneCls[x.tone]}`}>
+              <span className="font-[family-name:var(--font-display)] text-lg leading-none">{x.value}</span>
+              <span>{x.label}</span>
+            </Link>
+          ))}
+        </div>
+      )}
 
       {/* KPI row */}
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
