@@ -6,12 +6,15 @@ import { KMark } from '@/components/brand/marks';
 
 const nav = [
   { href: '/admin', label: 'Overview', exact: true, perm: 'dashboard.view' },
+  { href: '/admin/calendar', label: 'Calendar', perm: 'calendar.view' },
   { href: '/admin/bookings', label: 'Bookings', perm: 'bookings.view' },
   { href: '/admin/consultations', label: 'Consultations', perm: 'consultations.view' },
   { href: '/admin/clients', label: 'Clients', perm: 'clients.view' },
+  { href: '/admin/schedule', label: 'Schedules', perm: 'schedule.manage' },
   { href: '/admin/campaigns', label: 'Campaigns', perm: 'campaigns.view' },
   { href: '/admin/automations', label: 'Automations', perm: 'automations.view' },
   { href: '/admin/staff', label: 'Staff & access', perm: 'staff.view' },
+  { href: '/admin/settings', label: 'Settings', perm: 'settings.manage' },
 ];
 
 export function AdminShell({

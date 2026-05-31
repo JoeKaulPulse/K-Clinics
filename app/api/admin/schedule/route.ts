@@ -1,0 +1,66 @@
+import { NextResponse } from 'next/server';
+import { crmEnabled } from '@/lib/crm';
+
+export const runtime = 'nodejs';
+
+// Manage a staff member's weekly schedule and time-off. Requires schedule.manage.
+export async function POST(req: Request) {
+  if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
+  const { requirePermission } = await import('@/lib/auth');
+  const session = await requirePermission('schedule.manage');
+  if (!session) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
+
+  const body = await req.json().catch(() => ({}));
+  const { db } = await import('@/lib/db');
+  const { logAudit } = await import('@/lib/audit');
+
+  // ── Replace a staff member's weekly schedule ──
+  if (body.op === 'setSchedule') {
+    const { staffId, blocks } = body as { staffId: string; blocks: { dayOfWeek: number; startMin: number; endMin: number }[] };
+    if (!staffId || !Array.isArray(blocks)) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
+    const clean = blocks.filter((b) => b.dayOfWeek >= 0 && b.dayOfWeek <= 6 && b.endMin > b.startMin);
+    await db.$transaction([
+      db.staffSchedule.deleteMany({ where: { staffId } }),
+      db.staffSchedule.createMany({ data: clean.map((b) => ({ staffId, ...b })) }),
+    ]);
+    return NextResponse.json({ ok: true });
+  }
+
+  // ── Add time-off / block ──
+  if (body.op === 'addTimeOff') {
+    const { staffId, kind, startAt, endAt, reason } = body as { staffId: string; kind?: string; startAt: string; endAt: string; reason?: string };
+    if (!staffId || !startAt || !endAt) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
+    const s = new Date(startAt), e = new Date(endAt);
+    if (isNaN(+s) || isNaN(+e) || e <= s) return NextResponse.json({ ok: false, error: 'Invalid dates' }, { status: 400 });
+    const validKind = ['HOLIDAY', 'SICK', 'TRAINING', 'BLOCKED'].includes(kind || '') ? kind : 'BLOCKED';
+    await db.staffTimeOff.create({ data: { staffId, kind: validKind as never, startAt: s, endAt: e, reason: reason || null } });
+    await logAudit({ action: 'TIMEOFF_ADDED', actor: session.email, actorRole: session.role, summary: `Time-off added for staff ${staffId}: ${s.toLocaleDateString('en-GB')}–${e.toLocaleDateString('en-GB')}` });
+    return NextResponse.json({ ok: true });
+  }
+
+  // ── Remove time-off ──
+  if (body.op === 'removeTimeOff') {
+    const { id } = body as { id: string };
+    if (!id) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
+    await db.staffTimeOff.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  }
+
+  // ── Update a clinician's profile bits (clinician flag, competencies) ──
+  if (body.op === 'setClinician') {
+    const { staffId, isClinician, competencies, color, title } = body as { staffId: string; isClinician?: boolean; competencies?: string[]; color?: string; title?: string };
+    if (!staffId) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
+    await db.adminUser.update({
+      where: { id: staffId },
+      data: {
+        ...(typeof isClinician === 'boolean' ? { isClinician } : {}),
+        ...(Array.isArray(competencies) ? { competencies } : {}),
+        ...(color !== undefined ? { color } : {}),
+        ...(title !== undefined ? { title } : {}),
+      },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  return NextResponse.json({ ok: false, error: 'Unknown op' }, { status: 400 });
+}
