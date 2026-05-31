@@ -1,9 +1,17 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authField, authLabel } from '@/components/portal/AuthShell';
+import { portalTranslator, DEFAULT_LOCALE, type Locale } from '@/lib/i18n-portal';
+import { isLocale } from '@/lib/i18n';
+
+function readCookieLocale(): Locale {
+  if (typeof document === 'undefined') return DEFAULT_LOCALE;
+  const m = document.cookie.match(/(?:^|;\s*)kc_clang=([^;]+)/);
+  return m && isLocale(m[1]) ? (m[1] as Locale) : DEFAULT_LOCALE;
+}
 
 export function LoginForm() {
   return (
@@ -16,6 +24,9 @@ export function LoginForm() {
 function Inner() {
   const router = useRouter();
   const params = useSearchParams();
+  const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
+  useEffect(() => setLocale(readCookieLocale()), []);
+  const t = portalTranslator(locale);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -33,7 +44,7 @@ function Inner() {
       });
       // 404 = route not present (static GitHub Pages demo only).
       if (res.status === 404) {
-        setError('This is a design preview — the secure portal runs on the live clinic site.');
+        setError(t('login.preview'));
         return;
       }
       const json = await res.json().catch(() => ({ ok: false, error: 'Unexpected response.' }));
@@ -41,10 +52,10 @@ function Inner() {
         router.push(params.get('from') || '/account');
         router.refresh();
       } else {
-        setError(json.error || 'Sign in failed.');
+        setError(json.error || t('login.failed'));
       }
     } catch {
-      setError('Network error — please try again.');
+      setError(t('error.network'));
     } finally {
       setLoading(false);
     }
@@ -53,13 +64,13 @@ function Inner() {
   return (
     <form onSubmit={submit} className="space-y-5">
       <div>
-        <label className={authLabel} htmlFor="email">Email</label>
+        <label className={authLabel} htmlFor="email">{t('field.email')}</label>
         <input id="email" type="email" autoComplete="email" required className={authField} value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
       <div>
         <div className="flex items-baseline justify-between">
-          <label className={authLabel} htmlFor="password">Password</label>
-          <Link href="/account/forgot-password" className="text-xs font-medium text-[var(--color-gold)]">Forgot?</Link>
+          <label className={authLabel} htmlFor="password">{t('login.password')}</label>
+          <Link href="/account/forgot-password" className="text-xs font-medium text-[var(--color-gold)]">{t('login.forgot')}</Link>
         </div>
         <input id="password" type="password" autoComplete="current-password" required className={authField} value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
@@ -69,18 +80,18 @@ function Inner() {
         disabled={loading}
         className="w-full rounded-full bg-[var(--color-gold)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60"
       >
-        {loading ? 'Signing in…' : 'Sign in'}
+        {loading ? t('login.signingIn') : t('action.signin')}
       </button>
       <p className="text-center text-sm text-[var(--color-stone)]">
-        New here?{' '}
+        {t('login.newHere')}{' '}
         <Link href="/account/signup" className="font-medium text-[var(--color-gold)]">
-          Create an account — get 15% off
+          {t('login.createCta')}
         </Link>
       </p>
       <p className="text-center text-xs text-[var(--color-stone)]">
-        Staff & clinicians:{' '}
+        {t('login.staff')}{' '}
         <Link href="/admin/login" className="underline">
-          CRM sign in
+          {t('login.crmSignin')}
         </Link>
       </p>
     </form>
