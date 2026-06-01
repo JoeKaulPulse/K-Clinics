@@ -61,7 +61,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
   const can = await sessionPermissions();
 
   // K Vision AI consultations (clinical — decrypt findings + photos for the clinician).
-  const aiAnalyses: { id: string; createdAt: Date; summary: string | null; plan: { title: string; reason: string }[]; findings: { label: string; note: string; severity: string }[]; images: string[] }[] = [];
+  const aiAnalyses: { id: string; createdAt: Date; summary: string | null; treatments: string[]; findings: { label: string; note: string; severity: string }[]; images: string[] }[] = [];
   if (clinical) {
     try {
       const { db } = await import('@/lib/db');
@@ -72,7 +72,10 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
         try { findings = r.findingsEnc ? decryptJson(r.findingsEnc) : []; } catch { /* skip */ }
         const images: string[] = [];
         for (const im of r.images) { try { images.push(decryptJson<string>(im.dataEnc)); } catch { /* skip */ } }
-        aiAnalyses.push({ id: r.id, createdAt: r.createdAt, summary: r.summary, plan: (r.planJson as { title: string; reason: string }[]) ?? [], findings, images });
+        // planJson shape: { phases: [{ treatments: [{ title }] }], extras, planTotalPence }
+        const plan = (r.planJson as { phases?: { treatments?: { title?: string }[] }[] }) ?? {};
+        const treatments = (plan.phases ?? []).flatMap((p) => (p.treatments ?? []).map((t) => t.title || '').filter(Boolean));
+        aiAnalyses.push({ id: r.id, createdAt: r.createdAt, summary: r.summary, treatments, findings, images });
       }
     } catch { /* AI section is best-effort */ }
   }
@@ -160,7 +163,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
         {clinical && aiAnalyses.length > 0 && (
           <section>
             <div className="mb-3 flex items-center gap-2">
-              <h2 className="font-[family-name:var(--font-display)] text-xl">AI consultations (K Vision)</h2>
+              <h2 className="font-[family-name:var(--font-display)] text-xl">AI consultations (Get My Plan)</h2>
               <span className="rounded-full bg-[var(--color-ink)] px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.14em] text-[var(--color-gold-soft)]">Encrypted · clinical</span>
             </div>
             <div className="space-y-4">
@@ -181,7 +184,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                       {a.findings.map((f, i) => <li key={i}><span className="font-medium text-[var(--color-ink)]">{f.label}</span> — {f.note} <span className="text-[var(--color-stone-soft)]">({f.severity})</span></li>)}
                     </ul>
                   )}
-                  {a.plan.length > 0 && <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Plan: {a.plan.map((p) => p.title).join(' · ')}</p>}
+                  {a.treatments.length > 0 && <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Plan: {a.treatments.join(' · ')}</p>}
                 </div>
               ))}
             </div>

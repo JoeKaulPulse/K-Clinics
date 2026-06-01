@@ -1259,6 +1259,7 @@ model AiAnalysis {
   status          String   @default("complete") // complete | refused | error
   confidence      Float?
   needsExpert     Boolean  @default(false)
+  budgetPence     Int?
   findingsEnc     String?               // encrypted JSON: [{area,label,note,severity}]
   planJson        Json?                 // resolved plan: [{slug,title,price,reason}] (non-clinical)
   recommendedSlugs String[] @default([])

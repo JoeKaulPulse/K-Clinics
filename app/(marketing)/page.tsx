@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Hero } from '@/components/home/Hero';
+import { GetMyPlanBand } from '@/components/home/GetMyPlanBand';
 import { Testimonials } from '@/components/home/Testimonials';
 import { PinnedExperience } from '@/components/home/PinnedExperience';
 import { HorizontalGallery } from '@/components/home/HorizontalGallery';
@@ -48,6 +49,9 @@ export default async function HomePage() {
       <section className="border-y border-[var(--color-line)] bg-[var(--color-bone)] py-8">
         <Marquee items={['Laser & Skin', 'Aesthetic Dentistry', 'Non-Surgical Lifting', 'Body Contouring', 'Injectable Artistry', 'Smile Design']} />
       </section>
+
+      {/* AI consultation feature band */}
+      <GetMyPlanBand />
 
       {/* Editorial intro — asymmetric two-column statement */}
       <section className="section container-lux">
