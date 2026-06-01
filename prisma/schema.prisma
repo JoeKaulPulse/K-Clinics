@@ -389,10 +389,9 @@ model Booking {
   location       Location?    @relation(fields: [locationId], references: [id], onDelete: SetNull)
   locationId     String?
 
-  // Room/equipment held for this appointment (e.g. a laser machine), if the
-  // treatment requires one. Blocks that resource's capacity for the booking.
-  resource       Resource?    @relation(fields: [resourceId], references: [id], onDelete: SetNull)
-  resourceId     String?
+  // Rooms/equipment held for this appointment (e.g. a treatment room + the laser
+  // machine). Auto-assigned at booking from what's free and capable.
+  resources      Resource[]
 
   // Time tracking — actuals vs the scheduled duration.
   startedAt      DateTime?
@@ -445,7 +444,6 @@ model Booking {
   @@index([status])
   @@index([clientId])
   @@index([practitionerId])
-  @@index([resourceId])
 }
 
 model EmailEvent {
@@ -656,16 +654,23 @@ model ClinicClosure {
   @@index([startAt, endAt])
 }
 
-// ── Bookable rooms / equipment (e.g. a laser machine) ────────────────────────
-// A treatment may require a resource by `slug`; capacity caps how many bookings
-// can use it at once. If no matching active resource exists, the requirement is
-// simply not enforced (clinics that haven't configured resources aren't blocked).
+// ── Bookable rooms / equipment ───────────────────────────────────────────────
+// Two kinds, both held by a booking:
+//  • ROOM      — a named treatment room (capacity 1). `tags` list what it can host
+//                ('aesthetics', 'dental', 'laser'…); a booking is auto-assigned a
+//                free room whose tags match the treatment's needs.
+//  • EQUIPMENT — shared machines (laser/HIFU), matched by `slug` to a treatment's
+//                requiresResource; `capacity` caps concurrent use.
+// If nothing matching exists, the requirement isn't enforced (clinics that haven't
+// configured rooms/equipment aren't blocked).
 model Resource {
   id         String    @id @default(cuid())
-  slug       String    // e.g. 'laser' — matches a treatment's requiresResource
+  slug       String    // EQUIPMENT: e.g. 'laser'. ROOM: a short code e.g. 'g1'.
   name       String
   kind       ResourceKind @default(EQUIPMENT)
-  capacity   Int       @default(1) // concurrent bookings allowed
+  tags       String[]  @default([]) // ROOM capabilities, e.g. ['aesthetics','laser']
+  floor      String?   // e.g. 'G' / 'LG' — for display/grouping
+  capacity   Int       @default(1) // EQUIPMENT: concurrent uses. ROOM: 1.
   active     Boolean   @default(true)
   location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
   locationId String?
@@ -675,6 +680,7 @@ model Resource {
   bookings   Booking[]
 
   @@index([slug, active])
+  @@index([kind, active])
 }
 
 enum ResourceKind {

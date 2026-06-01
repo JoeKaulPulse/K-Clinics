@@ -28,13 +28,18 @@ export async function POST(req: Request) {
   }
 
   // Create or update.
-  const { id, name, slug, kind, capacity, locationId } = body as { id?: string; name?: string; slug?: string; kind?: string; capacity?: number; locationId?: string | null };
+  const { id, name, slug, kind, capacity, locationId, floor, tags } = body as { id?: string; name?: string; slug?: string; kind?: string; capacity?: number; locationId?: string | null; floor?: string; tags?: string[] | string };
   if (!name?.trim()) return NextResponse.json({ ok: false, error: 'A name is required.' }, { status: 400 });
+  const isRoom = kind === 'ROOM';
+  const tagList = (Array.isArray(tags) ? tags : String(tags || '').split(',')).map((t) => t.trim().toLowerCase()).filter(Boolean);
   const data = {
     name: String(name).slice(0, 80),
     slug: slug?.trim() ? slugify(slug) : slugify(name),
-    kind: kind === 'ROOM' ? 'ROOM' as const : 'EQUIPMENT' as const,
-    capacity: Math.max(1, Math.round(Number(capacity) || 1)),
+    kind: isRoom ? 'ROOM' as const : 'EQUIPMENT' as const,
+    // Rooms are single-occupancy; equipment can have >1 unit.
+    capacity: isRoom ? 1 : Math.max(1, Math.round(Number(capacity) || 1)),
+    tags: isRoom ? tagList : [],
+    floor: floor?.trim() || null,
     locationId: locationId || null,
   };
   if (id) await db.resource.update({ where: { id }, data });

@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   const end = new Date(start.getTime() + durationMin * 60_000);
 
   const { db } = await import('@/lib/db');
-  const { isSlotFree, pickPractitioner, pickResource } = await import('@/lib/availability');
+  const { isSlotFree, pickPractitioner, assignResources } = await import('@/lib/availability');
   const { stripe, ensureCustomer } = await import('@/lib/stripe');
   const { getSetting } = await import('@/lib/settings');
 
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   // room/equipment the treatment requires.
   const autoAssign = await getSetting('auto_assign_practitioner');
   const practitionerId = autoAssign ? await pickPractitioner(d.startISO, durationMin, d.slug) : null;
-  const resourceId = await pickResource(d.startISO, durationMin, d.slug);
+  const resourceIds = await assignResources(d.startISO, durationMin, d.slug);
 
   // Upsert client + Stripe customer.
   const client = await db.client.upsert({
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
       notes: d.notes || null,
       stripeCustomerId: customerId,
       practitionerId,
-      resourceId,
+      resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,
     },
   });
 

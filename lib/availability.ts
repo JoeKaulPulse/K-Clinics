@@ -2,7 +2,7 @@ import 'server-only';
 import { db } from './db';
 import { site } from './site';
 import { getSetting } from './settings';
-import { bookingFor } from './treatments';
+import { bookingFor, getTreatment } from './treatments';
 
 const SLOT_INTERVAL = Number(process.env.SLOT_INTERVAL_MIN || 15);
 const LEAD_MINUTES = 120; // earliest bookable time from now
@@ -17,6 +17,14 @@ function parseHM(s: string): number | null {
 /** Effective end of a booking including its cleanup buffer. */
 function busyEnd(b: { endAt: Date; bufferMin: number }): number {
   return b.endAt.getTime() + b.bufferMin * 60_000;
+}
+
+/** Room capability a treatment needs, derived from its category. */
+function roomTagFor(treatmentSlug?: string): string | null {
+  if (!treatmentSlug) return null;
+  const t = getTreatment(treatmentSlug);
+  if (!t) return null;
+  return t.category === 'dentistry' ? 'dental' : 'aesthetics';
 }
 
 type Clinician = {
@@ -77,38 +85,61 @@ async function dayClosures(dayStart: Date, dayEnd: Date, locationId?: string | n
   });
 }
 
-type ResourceCtx = { capacity: number; bookings: { startAt: Date; endAt: Date; bufferMin: number }[] };
+// ── Resource pools (rooms & equipment) ───────────────────────────────────────
+// A pool is a set of interchangeable resources. A slot is feasible while at
+// least one member has spare capacity; assignment picks that member.
+type Pool = {
+  resources: { id: string; capacity: number }[];
+  bookings: { startAt: Date; endAt: Date; bufferMin: number; resIds: string[] }[];
+};
 
-/** Resource (room/equipment) context for a treatment that requires one. Returns
- *  null when nothing needs enforcing (no required slug, or none configured). */
-async function resourceContext(slug: string | undefined, dayStart: Date, dayEnd: Date, locationId?: string | null): Promise<ResourceCtx | null> {
-  const required = slug ? bookingFor(slug).requiresResource : undefined;
-  if (!required) return null;
+async function loadPool(resources: { id: string; capacity: number }[], dayStart: Date, dayEnd: Date): Promise<Pool> {
+  const ids = resources.map((r) => r.id);
+  const rows = await db.booking.findMany({
+    where: { status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { lt: dayEnd }, endAt: { gt: dayStart }, resources: { some: { id: { in: ids } } } },
+    select: { startAt: true, endAt: true, bufferMin: true, resources: { where: { id: { in: ids } }, select: { id: true } } },
+  });
+  return { resources, bookings: rows.map((r) => ({ startAt: r.startAt, endAt: r.endAt, bufferMin: r.bufferMin, resIds: r.resources.map((x) => x.id) })) };
+}
+
+/** Free treatment rooms matching the required capability tag. */
+async function roomPool(roomTag: string | null, dayStart: Date, dayEnd: Date, locationId?: string | null): Promise<Pool | null> {
+  if (!roomTag) return null;
   const resources = await db.resource.findMany({
-    where: { slug: required, active: true, ...(locationId ? { OR: [{ locationId: null }, { locationId }] } : {}) },
+    where: { kind: 'ROOM', active: true, tags: { has: roomTag }, ...(locationId ? { OR: [{ locationId: null }, { locationId }] } : {}) },
     select: { id: true, capacity: true },
   });
-  if (!resources.length) return null; // not configured → don't block
-  const capacity = resources.reduce((s, r) => s + r.capacity, 0);
-  const bookings = await db.booking.findMany({
-    where: { resourceId: { in: resources.map((r) => r.id) }, status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { lt: dayEnd }, endAt: { gt: dayStart } },
-    select: { startAt: true, endAt: true, bufferMin: true },
-  });
-  return { capacity, bookings };
+  return resources.length ? loadPool(resources, dayStart, dayEnd) : null;
 }
 
-function resourceFree(ctx: ResourceCtx | null, start: Date, endBufferedMs: number): boolean {
-  if (!ctx) return true;
-  const overlapping = ctx.bookings.filter((b) => start.getTime() < busyEnd(b) && endBufferedMs > b.startAt.getTime()).length;
-  return overlapping < ctx.capacity;
+/** Shared equipment (laser/HIFU) the treatment requires. */
+async function equipmentPool(treatmentSlug: string | undefined, dayStart: Date, dayEnd: Date, locationId?: string | null): Promise<Pool | null> {
+  const required = treatmentSlug ? bookingFor(treatmentSlug).requiresResource : undefined;
+  if (!required) return null;
+  const resources = await db.resource.findMany({
+    where: { kind: 'EQUIPMENT', active: true, slug: required, ...(locationId ? { OR: [{ locationId: null }, { locationId }] } : {}) },
+    select: { id: true, capacity: true },
+  });
+  return resources.length ? loadPool(resources, dayStart, dayEnd) : null;
 }
+
+/** First pool member with spare capacity for [start, endBuffered], else null. */
+function pickFromPool(pool: Pool, start: Date, endBufferedMs: number): string | null {
+  for (const r of pool.resources) {
+    const used = pool.bookings.filter((b) => b.resIds.includes(r.id) && start.getTime() < busyEnd(b) && endBufferedMs > b.startAt.getTime()).length;
+    if (used < r.capacity) return r.id;
+  }
+  return null;
+}
+
+const poolFree = (pool: Pool | null, start: Date, endBufferedMs: number) => !pool || pickFromPool(pool, start, endBufferedMs) !== null;
 
 /**
  * Free start-times (ISO) for a date + treatment. A slot is offered only when it
- * fits opening hours and lead time, is outside any clinic closure, has resource
- * capacity, and — when staff availability is enforced — at least one competent
- * clinician is working and free (schedule, break, time-off & clashes, all
- * buffer-aware). Otherwise a single-resource model (no overlapping booking).
+ * fits opening hours and lead time, is outside any clinic closure, has a free
+ * capable room and (if needed) free equipment, and — when staff availability is
+ * enforced — at least one competent clinician is working and free (schedule,
+ * break, time-off & clashes, all buffer-aware).
  */
 export async function freeSlots(dateISO: string, durationMin: number, treatmentSlug?: string, locationId?: string | null): Promise<string[]> {
   const date = new Date(dateISO + 'T00:00:00');
@@ -125,10 +156,11 @@ export async function freeSlots(dateISO: string, durationMin: number, treatmentS
 
   const bufferMin = treatmentSlug ? (bookingFor(treatmentSlug).bufferMin ?? 0) : 0;
   const enforce = treatmentSlug ? await getSetting('enforce_staff_availability') : false;
-  const [clinicians, closures, resCtx] = await Promise.all([
+  const [clinicians, closures, rooms, equip] = await Promise.all([
     enforce && treatmentSlug ? cliniciansForDay(treatmentSlug, dayStart, dayEnd) : Promise.resolve([] as Clinician[]),
     dayClosures(dayStart, dayEnd, locationId),
-    resourceContext(treatmentSlug, dayStart, dayEnd, locationId),
+    roomPool(roomTagFor(treatmentSlug), dayStart, dayEnd, locationId),
+    equipmentPool(treatmentSlug, dayStart, dayEnd, locationId),
   ]);
   const useStaff = enforce && treatmentSlug != null && clinicians.length > 0;
 
@@ -148,10 +180,9 @@ export async function freeSlots(dateISO: string, durationMin: number, treatmentS
     if (start.getTime() < minStart) continue;
 
     const endBufferedMs = end.getTime() + bufferMin * 60_000;
-    // Clinic closure?
     if (closures.some((cl) => start.getTime() < cl.endAt.getTime() && end.getTime() > cl.startAt.getTime())) continue;
-    // Resource capacity?
-    if (!resourceFree(resCtx, start, endBufferedMs)) continue;
+    if (!poolFree(rooms, start, endBufferedMs)) continue;
+    if (!poolFree(equip, start, endBufferedMs)) continue;
 
     if (useStaff) {
       if (clinicians.some((c) => clinicianFree(c, start, end, dow, bufferMin, locationId))) slots.push(start.toISOString());
@@ -175,29 +206,28 @@ export async function pickPractitioner(startISO: string, durationMin: number, tr
   return free?.id ?? null;
 }
 
-/** Pick a resource (room/equipment) with free capacity for a slot, if the
- *  treatment requires one. Returns the resource id to hold, or null. */
-export async function pickResource(startISO: string, durationMin: number, treatmentSlug: string, locationId?: string | null): Promise<string | null> {
-  const required = bookingFor(treatmentSlug).requiresResource;
-  if (!required) return null;
+/** Auto-assign the resources a booking should hold: a free capable room plus any
+ *  shared equipment the treatment requires. Returns resource ids to connect
+ *  (empty when nothing is configured). */
+export async function assignResources(startISO: string, durationMin: number, treatmentSlug: string, locationId?: string | null): Promise<string[]> {
   const start = new Date(startISO);
-  if (isNaN(start.getTime())) return null;
+  if (isNaN(start.getTime())) return [];
   const end = new Date(start.getTime() + durationMin * 60_000);
   const bufferMin = bookingFor(treatmentSlug).bufferMin ?? 0;
   const endBufferedMs = end.getTime() + bufferMin * 60_000;
+  const dayStart = new Date(start); dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(start); dayEnd.setHours(23, 59, 59, 999);
 
-  const resources = await db.resource.findMany({
-    where: { slug: required, active: true, ...(locationId ? { OR: [{ locationId: null }, { locationId }] } : {}) },
-    select: { id: true, capacity: true },
-    orderBy: { capacity: 'desc' },
-  });
-  for (const r of resources) {
-    const used = await db.booking.count({
-      where: { resourceId: r.id, status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { lt: new Date(endBufferedMs) }, endAt: { gt: start } },
-    });
-    if (used < r.capacity) return r.id;
-  }
-  return null;
+  const [rooms, equip] = await Promise.all([
+    roomPool(roomTagFor(treatmentSlug), dayStart, dayEnd, locationId),
+    equipmentPool(treatmentSlug, dayStart, dayEnd, locationId),
+  ]);
+  const ids: string[] = [];
+  const room = rooms && pickFromPool(rooms, start, endBufferedMs);
+  if (room) ids.push(room);
+  const machine = equip && pickFromPool(equip, start, endBufferedMs);
+  if (machine) ids.push(machine);
+  return ids;
 }
 
 /** Validate a proposed start is still free (used at create time). */
@@ -218,12 +248,14 @@ export async function isSlotFree(startISO: string, durationMin: number, treatmen
   const bufferMin = treatmentSlug ? (bookingFor(treatmentSlug).bufferMin ?? 0) : 0;
   const endBufferedMs = end.getTime() + bufferMin * 60_000;
 
-  // Clinic closure?
-  const closures = await dayClosures(dayStart, dayEnd, locationId);
+  const [closures, rooms, equip] = await Promise.all([
+    dayClosures(dayStart, dayEnd, locationId),
+    roomPool(roomTagFor(treatmentSlug), dayStart, dayEnd, locationId),
+    equipmentPool(treatmentSlug, dayStart, dayEnd, locationId),
+  ]);
   if (closures.some((cl) => start.getTime() < cl.endAt.getTime() && end.getTime() > cl.startAt.getTime())) return false;
-
-  // Resource capacity?
-  if (!resourceFree(await resourceContext(treatmentSlug, dayStart, dayEnd, locationId), start, endBufferedMs)) return false;
+  if (!poolFree(rooms, start, endBufferedMs)) return false;
+  if (!poolFree(equip, start, endBufferedMs)) return false;
 
   const enforce = treatmentSlug ? await getSetting('enforce_staff_availability') : false;
   if (enforce && treatmentSlug) {

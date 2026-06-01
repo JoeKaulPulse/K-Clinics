@@ -40,6 +40,8 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   // Consumables (inventory) — items to pick from + what's already logged here.
   const canConsumables = sessionCan(session, 'bookings.manage') && sessionCan(session, 'inventory.view');
   const { db } = await import('@/lib/db');
+  // Rooms / equipment held by this booking (auto-assigned at booking).
+  const heldResources = await db.resource.findMany({ where: { bookings: { some: { id } } }, orderBy: { kind: 'asc' }, select: { name: true, kind: true, floor: true } });
   const stockItems = canConsumables
     ? await db.stockItem.findMany({ where: { active: true }, orderBy: [{ category: 'asc' }, { name: 'asc' }], select: { id: true, name: true, unit: true, currentQty: true } })
     : [];
@@ -152,6 +154,11 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
 
       {b.practitioner && (
         <p className="mt-6 text-sm text-[var(--color-stone)]">Assigned clinician: <span className="font-medium text-[var(--color-ink)]">{b.practitioner.name || b.practitioner.email}</span></p>
+      )}
+      {heldResources.length > 0 && (
+        <p className="mt-2 text-sm text-[var(--color-stone)]">
+          {heldResources.map((r) => `${r.name}${r.floor ? ` (${r.floor})` : ''}`).join(' · ')}
+        </p>
       )}
     </AdminShell>
   );

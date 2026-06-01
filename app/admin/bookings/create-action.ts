@@ -32,8 +32,8 @@ export async function createManualBooking(input: {
 
   const { db } = await import('@/lib/db');
   // Hold any room/equipment the treatment needs (best-effort; staff can override).
-  const { pickResource } = await import('@/lib/availability');
-  const resourceId = await pickResource(input.startISO, durationMin, input.treatmentSlug);
+  const { assignResources } = await import('@/lib/availability');
+  const resourceIds = await assignResources(input.startISO, durationMin, input.treatmentSlug);
   const client = await db.client.upsert({
     where: { email: input.email.toLowerCase() },
     update: {
@@ -62,7 +62,7 @@ export async function createManualBooking(input: {
       pricePence: pricePence ?? 0,
       status: 'CONFIRMED',
       notes: input.notes || null,
-      resourceId,
+      resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,
     },
   });
   await db.interaction.create({
