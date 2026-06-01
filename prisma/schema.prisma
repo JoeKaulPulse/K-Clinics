@@ -617,6 +617,11 @@ model AdminUser {
 
   locale       String   @default("en") // CRM UI language (en | uk)
 
+  // ── Two-factor authentication (TOTP) ────────────────────────────────────
+  totpSecret    String?    // encrypted base32 secret (lib/crypto keyring)
+  totpEnabledAt DateTime?  // set once enrolment is confirmed with a valid code
+  recoveryCodes String[]  @default([]) // bcrypt-hashed single-use recovery codes
+
   lastLoginAt  DateTime?
   createdBy    String?
   createdAt    DateTime @default(now())
@@ -1508,4 +1513,23 @@ model GalleryItem {
   updatedAt     DateTime @updatedAt
 
   @@index([published, order])
+}
+
+// Append-only security/auth telemetry — powers the admin Security centre and
+// the brute-force lockout logic (source of truth; Redis is an optional fast
+// counter layered on top via lib/security/rate-limit).
+model SecurityEvent {
+  id         String   @id @default(cuid())
+  type       String   // LOGIN_OK | LOGIN_FAIL | LOCKOUT | RATE_LIMITED | CAPTCHA_FAIL | TWOFA_FAIL | TWOFA_OK | TWOFA_ENABLED | TWOFA_DISABLED | UNLOCK
+  portal     String   // admin | client | academy
+  identifier String?  // attempted email (lowercased)
+  ip         String?
+  userAgent  String?
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([identifier, createdAt])
+  @@index([ip, createdAt])
+  @@index([createdAt])
 }

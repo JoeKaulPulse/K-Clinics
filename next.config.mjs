@@ -5,6 +5,38 @@
 const isPages = process.env.GHPAGES === 'true';
 const repoBase = process.env.PAGES_BASE_PATH || '';
 
+// ── Security headers (applied to every route in the hosted build) ───────────
+// CSP is allowlisted for the integrations we use (Stripe, Cloudflare Turnstile,
+// YouTube embeds, Google Maps, Google Fonts). If a new third party is blocked,
+// set CSP_DISABLED=true in the environment to ship without CSP while adjusting.
+const csp = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' https://fonts.gstatic.com data:",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "script-src 'self' 'unsafe-inline' https://js.stripe.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://maps.googleapis.com https://maps.gstatic.com",
+  "connect-src 'self' https://api.stripe.com https://m.stripe.network https://challenges.cloudflare.com https://maps.googleapis.com",
+  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com",
+  'upgrade-insecure-requests',
+].join('; ');
+
+const securityHeaders = [
+  ...(process.env.CSP_DISABLED === 'true' ? [] : [{ key: 'Content-Security-Policy', value: csp }]),
+  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=(), payment=(self), interest-cohort=()' },
+  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+  { key: 'X-DNS-Prefetch-Control', value: 'on' },
+];
+
+const headers = async () => [{ source: '/(.*)', headers: securityHeaders }];
+
 const redirects = async () => [
   // Preserve SEO equity from the legacy site's URL structure.
   { source: '/about-kclinics', destination: '/about', permanent: true },
@@ -41,7 +73,7 @@ const nextConfig = {
         trailingSlash: true,
         // redirects() and the rewrites engine aren't available in static export.
       }
-    : { redirects }),
+    : { redirects, headers }),
 };
 
 export default nextConfig;
