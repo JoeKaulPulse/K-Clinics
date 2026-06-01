@@ -1295,3 +1295,41 @@ model AiAnalysisImage {
 
   @@index([analysisId])
 }
+
+// ── Careers — live vacancies (admin-managed) + applications ──────────────────
+model Vacancy {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  department  String?  // Clinical · Front of house · Management …
+  location    String?  // defaults to the clinic locality
+  type        String?  // Full-time · Part-time · Contract · Bank
+  summary     String?  // one-line for the list
+  description String?  // long form (markdown-ish)
+  active      Boolean  @default(true)
+  order       Int      @default(0)
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  applications JobApplication[]
+
+  @@index([active, order])
+}
+
+model JobApplication {
+  id         String   @id @default(cuid())
+  vacancy    Vacancy? @relation(fields: [vacancyId], references: [id], onDelete: SetNull)
+  vacancyId  String?
+  roleTitle  String   // snapshot (so it survives a deleted vacancy)
+  name       String
+  email      String
+  phone      String?
+  coverNote  String?
+  cvUrl      String?
+  status     String   @default("NEW") // NEW · REVIEWING · INTERVIEW · OFFERED · REJECTED · HIRED
+  createdAt  DateTime @default(now())
+
+  @@index([status])
+  @@index([vacancyId])
+}
