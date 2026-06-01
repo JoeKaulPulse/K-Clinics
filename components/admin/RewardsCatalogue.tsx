@@ -29,6 +29,8 @@ export function RewardsCatalogue({
   const [msg, setMsg] = useState('');
 
   async function redeem(id: string) {
+    const reward = rewards.find((x) => x.id === id);
+    if (reward && !confirm(L(`Redeem "${reward.name}" for ${reward.costPoints} points?`, `Обміняти «${reward.name}» за ${reward.costPoints} балів?`))) return;
     setBusy(id); setMsg('');
     const res = await fetch('/api/admin/rewards/redeem', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -91,7 +93,9 @@ export function RewardsCatalogue({
                 <span>{m.name}</span>
                 <span className="flex items-center gap-3">
                   <span className="text-[var(--color-stone)]">−{m.costPoints} {L('pts', 'балів')}</span>
-                  <span className={`rounded-full px-2 py-0.5 text-[0.7rem] font-medium ${STATUS_STYLE[m.status] || 'bg-[var(--color-bone)]'}`}>{m.status}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[0.7rem] font-medium ${STATUS_STYLE[m.status] || 'bg-[var(--color-bone)]'}`}>
+                    {m.status === 'PENDING' ? L('Pending', 'Очікує') : m.status === 'FULFILLED' ? L('Fulfilled', 'Виконано') : m.status === 'DECLINED' ? L('Declined', 'Відхилено') : m.status}
+                  </span>
                 </span>
               </div>
             ))}
