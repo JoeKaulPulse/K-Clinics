@@ -21,11 +21,20 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
   const { getCurrentClient } = await import('@/lib/client-auth');
   const { db } = await import('@/lib/db');
 
-  const [catalogue, promoted, client] = await Promise.all([
+  const [catalogueAll, promoted, client] = await Promise.all([
     bookingCatalogue(),
     liveOffers(true),
     getCurrentClient(),
   ]);
+
+  // Dentistry isn't bookable until a GDC-registered dentist is in post.
+  const catalogue = site.dentistryLive
+    ? catalogueAll
+    : await (async () => {
+        const { dentistry } = await import('@/lib/treatments');
+        const dentistrySlugs = new Set(dentistry.map((t) => t.slug));
+        return catalogueAll.filter((s) => !dentistrySlugs.has(s.treatmentSlug));
+      })();
 
   // Welcome offer is available to a signed-in client with an unused claim.
   let welcomeEligible = !client; // not signed in → they’ll get it on signup

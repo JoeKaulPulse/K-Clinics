@@ -10,10 +10,12 @@ import { TreatmentCard } from '@/components/ui/TreatmentCard';
 import { FaqAccordion } from '@/components/ui/FaqAccordion';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { BookingButtons } from '@/components/booking/BookingButtons';
+import { site } from '@/lib/site';
 
 export function TreatmentTemplate({ t }: { t: Treatment }) {
   const categoryHref = t.category === 'aesthetics' ? '/treatments' : '/dentistry';
   const categoryLabel = t.category === 'aesthetics' ? 'Aesthetics' : 'Dentistry';
+  const comingSoon = t.category === 'dentistry' && !site.dentistryLive;
   const related = t.related.map(getTreatment).filter(Boolean) as Treatment[];
 
   return (
@@ -37,7 +39,10 @@ export function TreatmentTemplate({ t }: { t: Treatment }) {
               </nav>
             </Reveal>
             <Reveal delay={0.05}>
-              <p className="eyebrow mb-4 text-[var(--color-gold-soft)]">{t.eyebrow}</p>
+              <p className="eyebrow mb-4 flex flex-wrap items-center gap-3 text-[var(--color-gold-soft)]">
+                {t.eyebrow}
+                {comingSoon && <span className="rounded-full bg-[var(--color-gold-soft)] px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink)]">Opening soon</span>}
+              </p>
             </Reveal>
             <WordReveal as="h1" text={t.title} className="text-display text-[var(--color-porcelain)]" />
             <Reveal delay={0.15}>
@@ -50,7 +55,16 @@ export function TreatmentTemplate({ t }: { t: Treatment }) {
             </Reveal>
             <Reveal delay={0.28}>
               <div className="mt-8">
-                <BookingButtons />
+                {comingSoon ? (
+                  <div>
+                    <p className="mb-4 max-w-xl text-sm text-[color-mix(in_oklab,var(--color-porcelain)_72%,transparent)]">
+                      Our dentistry suite is opening soon. Register your interest and we’ll let you know the moment it’s available to book.
+                    </p>
+                    <Button href="/dentistry#interest" variant="gold" size="lg">Register your interest <ArrowIcon /></Button>
+                  </div>
+                ) : (
+                  <BookingButtons />
+                )}
               </div>
             </Reveal>
             <Reveal delay={0.34}>
