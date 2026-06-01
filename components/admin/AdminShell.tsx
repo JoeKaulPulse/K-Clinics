@@ -33,6 +33,7 @@ const nav = [
   { href: '/admin/reports', key: 'nav.reports', perm: 'finance.view' },
   { href: '/admin/staff', key: 'nav.staff', perm: 'staff.view' },
   { href: '/admin/locations', key: 'nav.locations', perm: 'settings.manage' },
+  { href: '/admin/seo', key: 'nav.seo', perm: 'settings.manage' },
   { href: '/admin/integrations', key: 'nav.integrations', perm: 'settings.manage' },
   { href: '/admin/settings', key: 'nav.settings', perm: 'settings.manage' },
 ];
