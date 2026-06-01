@@ -1080,6 +1080,23 @@ model Review {
   @@index([rating])
 }
 
+// ── SEO command centre ──────────────────────────────────────────────────────
+// Per-path SEO overrides, editable in the admin and merged over code defaults.
+model PageSeo {
+  id            String   @id @default(cuid())
+  path          String   @unique // e.g. "/laser-hair-removal"
+  title         String?
+  description   String?
+  canonical     String?
+  focusKeyword  String?
+  ogImage       String?
+  noindex       Boolean  @default(false)
+  jsonLd        Json?    // optional custom JSON-LD injected on the page
+  updatedBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
 // ── K Clinics Academy (training sub-brand) ──────────────────────────────────
 // Premium clinician training. Theory on Thinkific, scheduled practical days,
 // VTCT exam administered in-house. Ofqual-regulated + CPD. Catalogue is fully
