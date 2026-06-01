@@ -298,6 +298,7 @@ model Client {
   appointments    Appointment[]
   bookings        Booking[]
   followUps       FollowUp[]
+  aiAnalyses      AiAnalysis[]
   emails          EmailEvent[]
   assessments     HealthAssessment[]
   discountClaims  DiscountClaim[]
@@ -1243,4 +1244,43 @@ model FollowUp {
 
   @@index([clientId])
   @@index([respondedAt])
+}
+
+// ── AI Consultation ("K Vision") ────────────────────────────────────────────
+// Account-gated photo analysis → catalogue-bound treatment plan. Findings are
+// special-category data (encrypted with the keyring). Recommendations only ever
+// reference real, priced catalogue items so a plan is always margin-positive.
+model AiAnalysis {
+  id              String   @id @default(cuid())
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId        String
+  areas           String[] @default([]) // skin | teeth | hair | body
+  model           String?               // which Claude model produced it
+  status          String   @default("complete") // complete | refused | error
+  confidence      Float?
+  needsExpert     Boolean  @default(false)
+  findingsEnc     String?               // encrypted JSON: [{area,label,note,severity}]
+  planJson        Json?                 // resolved plan: [{slug,title,price,reason}] (non-clinical)
+  recommendedSlugs String[] @default([])
+  summary         String?               // short, non-clinical headline for cards
+  tokensIn        Int?
+  tokensOut       Int?
+  consentAt       DateTime?
+  storeImages     Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  images          AiAnalysisImage[]
+
+  @@index([clientId, createdAt])
+}
+
+model AiAnalysisImage {
+  id          String     @id @default(cuid())
+  analysis    AiAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  analysisId  String
+  area        String?
+  dataEnc     String     // encrypted, downscaled image data URL
+  createdAt   DateTime   @default(now())
+
+  @@index([analysisId])
 }

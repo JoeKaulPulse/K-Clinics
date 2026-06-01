@@ -31,15 +31,18 @@ function suitable(audience: string, gender: string | null): boolean {
 
 type Stage = 'account' | 'service' | 'variant' | 'time' | 'upsell' | 'card' | 'done';
 
-export function BookingFlow({ catalogue, client }: { catalogue: Service[]; client: ClientInfo }) {
+export function BookingFlow({ catalogue, client, preselect = null }: { catalogue: Service[]; client: ClientInfo; preselect?: string | null }) {
   const [authed, setAuthed] = useState(client.signedIn);
   const [firstName, setFirstName] = useState(client.firstName);
   const [gender, setGender] = useState<string | null>(client.gender);
   const [welcome, setWelcome] = useState(client.welcomeEligible);
   const [smsPref, setSmsPref] = useState(client.smsReminders);
 
-  const [stage, setStage] = useState<Stage>(client.signedIn ? 'service' : 'account');
-  const [serviceId, setServiceId] = useState('');
+  // Deep-link preselect (e.g. from K Vision "Book →"): jump straight to the
+  // variant step for that service when the client is already signed in.
+  const validPreselect = preselect && catalogue.some((s) => s.id === preselect) ? preselect : '';
+  const [stage, setStage] = useState<Stage>(client.signedIn ? (validPreselect ? 'variant' : 'service') : 'account');
+  const [serviceId, setServiceId] = useState(validPreselect);
   const [variantId, setVariantId] = useState('');
   const [sessions, setSessions] = useState(1);
   const [date, setDate] = useState('');
