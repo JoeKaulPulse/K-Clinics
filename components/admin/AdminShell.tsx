@@ -5,41 +5,56 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 import { site } from '@/lib/site';
-import { ClientSearch } from '@/components/admin/ClientSearch';
+import { GlobalSearch } from '@/components/admin/GlobalSearch';
 import { I18nProvider } from '@/components/i18n/I18nProvider';
 import { translator, isLocale, LOCALES, LOCALE_LABELS, DEFAULT_LOCALE, type Locale } from '@/lib/i18n';
 
-const nav = [
-  { href: '/admin', key: 'nav.overview', exact: true, perm: 'dashboard.view' },
-  { href: '/admin/my-day', key: 'nav.myday', perm: undefined },
-  { href: '/admin/calendar', key: 'nav.calendar', perm: 'calendar.view' },
-  { href: '/admin/bookings', key: 'nav.bookings', perm: 'bookings.view' },
-  { href: '/admin/services', key: 'nav.services', perm: 'settings.manage' },
-  { href: '/admin/academy', key: 'nav.academy', perm: 'settings.manage' },
-  { href: '/admin/careers', key: 'nav.careers', perm: 'settings.manage' },
-  { href: '/admin/gallery', key: 'nav.gallery', perm: 'settings.manage' },
-  { href: '/admin/gift-vouchers', key: 'nav.gift', perm: 'finance.view' },
-  { href: '/admin/consultations', key: 'nav.consultations', perm: 'consultations.view' },
-  { href: '/admin/clients', key: 'nav.clients', perm: 'clients.view' },
-  { href: '/admin/discounts', key: 'nav.discounts', perm: 'discounts.manage' },
-  { href: '/admin/reviews', key: 'nav.reviews', perm: 'reviews.manage' },
-  { href: '/admin/rewards', key: 'nav.rewards', perm: 'rewards.view' },
-  { href: '/admin/schedule', key: 'nav.schedule', perm: 'schedule.manage' },
-  { href: '/admin/tasks', key: 'nav.tasks', perm: undefined, badge: 'tasks' as const },
-  { href: '/admin/time-off', key: 'nav.timeoff', perm: undefined, badge: 'timeoff' as const },
-  { href: '/admin/inventory', key: 'nav.inventory', perm: 'inventory.view' },
-  { href: '/admin/reorder', key: 'nav.reorder', perm: 'inventory.view' },
-  { href: '/admin/sops', key: 'nav.sops', perm: 'sop.manage' },
-  { href: '/admin/campaigns', key: 'nav.campaigns', perm: 'campaigns.view' },
-  { href: '/admin/automations', key: 'nav.automations', perm: 'automations.view' },
-  { href: '/admin/activity', key: 'nav.activity', perm: 'staff.view' },
-  { href: '/admin/cashflow', key: 'nav.cashflow', perm: 'finance.view' },
-  { href: '/admin/reports', key: 'nav.reports', perm: 'finance.view' },
-  { href: '/admin/staff', key: 'nav.staff', perm: 'staff.view' },
-  { href: '/admin/locations', key: 'nav.locations', perm: 'settings.manage' },
-  { href: '/admin/seo', key: 'nav.seo', perm: 'settings.manage' },
-  { href: '/admin/integrations', key: 'nav.integrations', perm: 'settings.manage' },
-  { href: '/admin/settings', key: 'nav.settings', perm: 'settings.manage' },
+type NavItem = { href: string; key: string; exact?: boolean; perm?: string; badge?: 'tasks' | 'timeoff' };
+const navGroups: { heading?: string; items: NavItem[] }[] = [
+  { items: [
+    { href: '/admin', key: 'nav.overview', exact: true, perm: 'dashboard.view' },
+    { href: '/admin/my-day', key: 'nav.myday' },
+    { href: '/admin/calendar', key: 'nav.calendar', perm: 'calendar.view' },
+    { href: '/admin/tasks', key: 'nav.tasks', badge: 'tasks' },
+    { href: '/admin/time-off', key: 'nav.timeoff', badge: 'timeoff' },
+  ] },
+  { heading: 'nav.group.clients', items: [
+    { href: '/admin/bookings', key: 'nav.bookings', perm: 'bookings.view' },
+    { href: '/admin/consultations', key: 'nav.consultations', perm: 'consultations.view' },
+    { href: '/admin/clients', key: 'nav.clients', perm: 'clients.view' },
+    { href: '/admin/reviews', key: 'nav.reviews', perm: 'reviews.manage' },
+    { href: '/admin/discounts', key: 'nav.discounts', perm: 'discounts.manage' },
+    { href: '/admin/rewards', key: 'nav.rewards', perm: 'rewards.view' },
+  ] },
+  { heading: 'nav.group.catalogue', items: [
+    { href: '/admin/services', key: 'nav.services', perm: 'settings.manage' },
+    { href: '/admin/academy', key: 'nav.academy', perm: 'settings.manage' },
+    { href: '/admin/gallery', key: 'nav.gallery', perm: 'settings.manage' },
+    { href: '/admin/careers', key: 'nav.careers', perm: 'settings.manage' },
+    { href: '/admin/gift-vouchers', key: 'nav.gift', perm: 'finance.view' },
+  ] },
+  { heading: 'nav.group.operations', items: [
+    { href: '/admin/schedule', key: 'nav.schedule', perm: 'schedule.manage' },
+    { href: '/admin/inventory', key: 'nav.inventory', perm: 'inventory.view' },
+    { href: '/admin/reorder', key: 'nav.reorder', perm: 'inventory.view' },
+    { href: '/admin/sops', key: 'nav.sops', perm: 'sop.manage' },
+  ] },
+  { heading: 'nav.group.marketing', items: [
+    { href: '/admin/campaigns', key: 'nav.campaigns', perm: 'campaigns.view' },
+    { href: '/admin/automations', key: 'nav.automations', perm: 'automations.view' },
+  ] },
+  { heading: 'nav.group.finance', items: [
+    { href: '/admin/cashflow', key: 'nav.cashflow', perm: 'finance.view' },
+    { href: '/admin/reports', key: 'nav.reports', perm: 'finance.view' },
+  ] },
+  { heading: 'nav.group.admin', items: [
+    { href: '/admin/staff', key: 'nav.staff', perm: 'staff.view' },
+    { href: '/admin/activity', key: 'nav.activity', perm: 'staff.view' },
+    { href: '/admin/locations', key: 'nav.locations', perm: 'settings.manage' },
+    { href: '/admin/seo', key: 'nav.seo', perm: 'settings.manage' },
+    { href: '/admin/integrations', key: 'nav.integrations', perm: 'settings.manage' },
+    { href: '/admin/settings', key: 'nav.settings', perm: 'settings.manage' },
+  ] },
 ];
 
 function readCookieLocale(): Locale {
@@ -64,7 +79,10 @@ export function AdminShell({
   const pathname = usePathname();
   const router = useRouter();
   const allowed = new Set(can);
-  const items = nav.filter((n) => !n.perm || allowed.size === 0 || allowed.has(n.perm));
+  const permitted = (n: NavItem) => !n.perm || allowed.size === 0 || allowed.has(n.perm);
+  const groups = navGroups
+    .map((g) => ({ heading: g.heading, items: g.items.filter(permitted) }))
+    .filter((g) => g.items.length > 0);
   // Which clinic the user is viewing. Defaults to the primary site (derived from
   // the clinic locality); pass `location` to override per page in multi-site use.
   const locationLabel = location || site.address.locality.split(',').pop()?.trim() || site.address.region;
@@ -117,25 +135,34 @@ export function AdminShell({
               </p>
             </div>
           </div>
-          {allowed.has('clients.view') && <ClientSearch placeholder={t('shell.searchClients')} />}
+          <GlobalSearch placeholder={t('shell.search')} />
           <nav className="flex gap-1 overflow-x-auto lg:flex-col">
-            {items.map((n) => {
-              const active = n.exact ? pathname === n.href : pathname.startsWith(n.href);
-              return (
-                <Link
-                  key={n.href}
-                  href={n.href}
-                  className={`flex items-center justify-between gap-2 whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-2.5 text-sm transition-colors ${
-                    active ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-bone)]'
-                  }`}
-                >
-                  <span>{t(n.key)}</span>
-                  {badgeCount(n.badge) > 0 && (
-                    <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[0.65rem] font-semibold text-amber-950">{badgeCount(n.badge)}</span>
-                  )}
-                </Link>
-              );
-            })}
+            {groups.map((g, gi) => (
+              <div key={g.heading ?? `g${gi}`} className="contents lg:block">
+                {g.heading && (
+                  <p className="hidden px-4 pb-1 pt-4 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)] lg:block">
+                    {t(g.heading)}
+                  </p>
+                )}
+                {g.items.map((n) => {
+                  const active = n.exact ? pathname === n.href : pathname.startsWith(n.href);
+                  return (
+                    <Link
+                      key={n.href}
+                      href={n.href}
+                      className={`flex items-center justify-between gap-2 whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-2.5 text-sm transition-colors ${
+                        active ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-bone)]'
+                      }`}
+                    >
+                      <span>{t(n.key)}</span>
+                      {badgeCount(n.badge) > 0 && (
+                        <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[0.65rem] font-semibold text-amber-950">{badgeCount(n.badge)}</span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
           </nav>
           <div className="mt-auto hidden border-t border-[var(--color-line)] pt-4 lg:block">
             {/* Language switcher */}
