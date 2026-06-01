@@ -36,7 +36,27 @@ export type Treatment = {
   pricePence?: number | null;
   /** Booking: appointment length in minutes. */
   durationMin?: number;
+  /** Who a treatment is clinically aimed at. Defaults to 'all' (unisex). Used to
+   *  tailor recommendations — never to exclude clients who haven't told us their
+   *  gender, or who are non-binary / other / prefer-not-to-say. */
+  audience?: 'all' | 'female' | 'male';
 };
+
+/** Audiences to hide from a client's *recommendations* given their gender.
+ *  Inclusive by default: anyone who is non-binary, other, undisclosed, or who
+ *  hasn't set a gender sees the full menu. */
+export function hiddenAudiences(gender?: string | null): ('female' | 'male')[] {
+  if (gender === 'FEMALE') return ['male'];
+  if (gender === 'MALE') return ['female'];
+  return [];
+}
+
+/** Should this treatment be recommended to a client of the given gender? */
+export function suitableForGender(t: Pick<Treatment, 'audience'>, gender?: string | null): boolean {
+  const aud = t.audience ?? 'all';
+  if (aud === 'all') return true;
+  return !hiddenAudiences(gender).includes(aud);
+}
 
 export const treatments: Treatment[] = [
   // ───────────────────────────── AESTHETICS ─────────────────────────────────
@@ -84,6 +104,7 @@ export const treatments: Treatment[] = [
     group: 'Laser & Skin',
     title: 'Laser Hair Removal for Men',
     menuTitle: 'Laser Hair Removal — Men',
+    audience: 'male',
     tagline: 'Groomed, effortless, permanent. Engineered for him.',
     metaTitle: "Men's Laser Hair Removal London | Back, Chest & Beard | K Clinics",
     metaDescription:
@@ -429,6 +450,7 @@ export const treatments: Treatment[] = [
     category: 'aesthetics',
     group: 'Body & Injectables',
     title: 'Intimate Rejuvenation',
+    audience: 'female',
     tagline: 'Confidence, restored — with discretion and care.',
     metaTitle: 'Intimate Rejuvenation & Whitening London | K Clinics',
     metaDescription:

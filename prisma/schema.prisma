@@ -101,6 +101,17 @@ enum ReferralStatus {
   EXPIRED     // friend's first treatment was < £100 (didn't qualify)
 }
 
+// Inclusive gender identity. Used to tailor treatment recommendations (and never
+// to exclude anyone — non-binary / other / undisclosed see the full menu).
+// OTHER pairs with Client.genderSelfDescribe for a free-text identity.
+enum Gender {
+  FEMALE
+  MALE
+  NON_BINARY
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
 enum BookingStatus {
   PENDING      // created, awaiting card setup confirmation
   CONFIRMED    // card on file, slot held
@@ -239,6 +250,8 @@ model Client {
   email           String         @unique
   phone           String?
   dob             DateTime?      // drives birthday automation
+  gender          Gender?        // tailors treatment recommendations (inclusive)
+  genderSelfDescribe String?     // free-text identity when gender = OTHER
   source          String?        // website, treatwell, fresha, referral…
   tags            String[]       @default([])
   notes           String?

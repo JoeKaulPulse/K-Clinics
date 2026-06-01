@@ -21,6 +21,12 @@ const NOTE_STYLE: Record<string, { label: string; dot: string; badge: string }> 
   SYSTEM: { label: 'System', dot: 'bg-[var(--color-line)]', badge: 'bg-[var(--color-bone)] text-[var(--color-stone-soft)]' },
 };
 const noteStyle = (t: string) => NOTE_STYLE[t] ?? NOTE_STYLE.NOTE;
+
+const GENDER_LABEL: Record<string, string> = {
+  FEMALE: 'Female', MALE: 'Male', NON_BINARY: 'Non-binary', OTHER: 'Other', PREFER_NOT_TO_SAY: 'Prefer not to say',
+};
+const genderLabel = (g: string, selfDescribe?: string | null) =>
+  g === 'OTHER' && selfDescribe ? selfDescribe : (GENDER_LABEL[g] ?? g);
 import { MedicalFlagEditor } from '@/components/admin/MedicalFlagEditor';
 import { ClientTasks } from '@/components/admin/ClientTasks';
 import { DataPrivacy } from '@/components/admin/DataPrivacy';
@@ -74,6 +80,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
           <p className="mt-1 text-sm text-[var(--color-stone)]">
             {c.email}{c.phone ? ` · ${c.phone}` : ''}
             {c.dob ? ` · DOB ${new Date(c.dob).toLocaleDateString('en-GB')}` : ''}
+            {c.gender ? ` · ${genderLabel(c.gender, c.genderSelfDescribe)}` : ''}
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {c.source && <span className="rounded-full bg-[var(--color-bone)] px-2.5 py-0.5 text-xs text-[var(--color-stone)]">{c.source}</span>}

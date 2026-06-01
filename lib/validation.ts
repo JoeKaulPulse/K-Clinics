@@ -30,6 +30,8 @@ export const clientSignupSchema = z.object({
   password: z.string().min(8, 'Use at least 8 characters').max(200),
   marketingOptIn: z.boolean().optional(),
   locale: z.enum(['en', 'uk']).optional(),
+  gender: z.enum(['FEMALE', 'MALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_SAY', '']).optional(),
+  genderSelfDescribe: z.string().max(60).optional().or(z.literal('')),
   ref: z.string().max(40).optional().or(z.literal('')), // referral code (a friend's)
   consent: z.literal(true, { errorMap: () => ({ message: 'Please accept the terms to continue.' }) }),
   // Honeypot — accept any string so a browser/password-manager autofill never

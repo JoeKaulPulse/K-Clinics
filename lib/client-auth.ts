@@ -13,6 +13,8 @@ export type SignupInput = {
   password: string;
   marketingOptIn?: boolean;
   locale?: string;
+  gender?: string;
+  genderSelfDescribe?: string;
   ref?: string;
   ip?: string | null;
 };
@@ -60,6 +62,11 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
 
   const passwordHash = await hashPassword(input.password);
 
+  // Inclusive gender capture (optional). Self-description only kept for OTHER.
+  const GENDERS = ['FEMALE', 'MALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_SAY'];
+  const gender = input.gender && GENDERS.includes(input.gender) ? (input.gender as never) : undefined;
+  const genderSelfDescribe = input.gender === 'OTHER' ? (input.genderSelfDescribe?.trim() || undefined) : undefined;
+
   // Upsert the client (they may already exist as a lead/consult).
   const client = await db.client.upsert({
     where: { email },
@@ -68,6 +75,8 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
       lastName: input.lastName || undefined,
       phone: input.phone || undefined,
       dob: input.dob ? new Date(input.dob) : undefined,
+      gender,
+      genderSelfDescribe,
       passwordHash,
       portalActive: true,
       locale: input.locale === 'uk' ? 'uk' : 'en',
@@ -81,6 +90,8 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
       lastName: input.lastName || undefined,
       phone: input.phone || undefined,
       dob: input.dob ? new Date(input.dob) : undefined,
+      gender,
+      genderSelfDescribe,
       passwordHash,
       portalActive: true,
       locale: input.locale === 'uk' ? 'uk' : 'en',
