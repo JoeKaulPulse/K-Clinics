@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   }
 
   if (action === 'resend') {
-    const { sendReviewRequest } = await import('@/lib/reviews');
+    const { sendReviewRequest } = await import('@/lib/review-system');
     const res = await sendReviewRequest(id, 'EMAIL');
     return NextResponse.json(res);
   }

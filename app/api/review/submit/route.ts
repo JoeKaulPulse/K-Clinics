@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   const { token, rating, title, body } = await req.json().catch(() => ({}));
   if (!token || typeof rating !== 'number') return NextResponse.json({ ok: false, error: 'Invalid submission.' }, { status: 400 });
 
-  const { submitReview } = await import('@/lib/reviews');
+  const { submitReview } = await import('@/lib/review-system');
   const r = await submitReview(String(token), rating, String(title || ''), String(body || ''));
   return NextResponse.json(r, { status: r.ok ? 200 : 400 });
 }
