@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { motion, useScroll, useTransform } from 'motion/react';
 import { useReducedMotionSafe } from '@/components/motion/use-reduced-motion-safe';
@@ -17,9 +17,22 @@ import { ArrowIcon } from '@/components/ui/Button';
 export function HorizontalGallery({ items, eyebrow, title }: { items: Treatment[]; eyebrow: string; title: string }) {
   const reduce = useReducedMotionSafe();
   const ref = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end end'] });
-  // Move the row from 2% to roughly -(n-1.6) cards' worth across the pin.
-  const x = useTransform(scrollYProgress, [0, 1], ['1%', '-72%']);
+  // Measure the real horizontal overflow so the row always ends with the last
+  // item ("View all") fully in view, with a right gutter — never clipped.
+  const [distance, setDistance] = useState(0);
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    const compute = () => setDistance(Math.max(0, el.scrollWidth - el.clientWidth));
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    window.addEventListener('resize', compute);
+    return () => { ro.disconnect(); window.removeEventListener('resize', compute); };
+  }, [items.length]);
+  const x = useTransform(scrollYProgress, [0, 1], [0, -distance]);
 
   // Mobile (and reduced-motion): a native horizontal swipe rail. Always rendered
   // on small screens; on md+ it's replaced by the pinned scroll version below.
@@ -48,14 +61,14 @@ export function HorizontalGallery({ items, eyebrow, title }: { items: Treatment[
         <div className="container-lux mb-10">
           <Header eyebrow={eyebrow} title={title} />
         </div>
-        <motion.div style={{ x }} className="flex gap-6 pl-[var(--gutter)] will-change-transform">
+        <motion.div ref={trackRef} style={{ x }} className="flex gap-6 px-[var(--gutter)] will-change-transform">
           {items.map((t, i) => (
             <div key={t.slug} className="w-[30vw] shrink-0 lg:w-[26vw]">
               <Card t={t} index={i} />
             </div>
           ))}
-          <div className="flex w-[20vw] shrink-0 items-center">
-            <Link href="/treatments" className="group inline-flex items-center gap-2 font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">
+          <div className="flex w-[18rem] shrink-0 items-center">
+            <Link href="/treatments" className="group inline-flex items-center gap-2 whitespace-nowrap font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">
               View all <ArrowIcon className="h-5 w-5" />
             </Link>
           </div>
