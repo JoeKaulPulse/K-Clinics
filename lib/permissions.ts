@@ -54,6 +54,10 @@ export const PERMISSIONS: Permission[] = [
   // Reviews
   { key: 'reviews.manage', group: 'Reviews', label: 'Manage reviews', description: 'Moderate, approve and publish client reviews.' },
 
+  // Rewards / gamification
+  { key: 'rewards.view', group: 'Rewards', label: 'View rewards', description: 'See the staff points leaderboard.' },
+  { key: 'rewards.manage', group: 'Rewards', label: 'Manage rewards', description: 'Award or deduct staff points and run incentives.', sensitive: true },
+
   // Marketing
   { key: 'campaigns.view', group: 'Marketing', label: 'View campaigns', description: 'See email campaigns and history.' },
   { key: 'campaigns.send', group: 'Marketing', label: 'Send campaigns', description: 'Create and send marketing emails.' },
@@ -98,6 +102,7 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     'calendar.view',
     'inventory.view',
     'inventory.manage',
+    'rewards.view',
   ],
   FRONT_DESK: [
     'dashboard.view',
@@ -114,6 +119,7 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     'schedule.manage',
     'inventory.view',
     'inventory.manage',
+    'rewards.view',
   ],
   STAFF: ['dashboard.view', 'bookings.view', 'consultations.view', 'clients.view', 'calendar.view', 'inventory.view'],
 };

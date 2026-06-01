@@ -179,6 +179,14 @@ export async function finishAppointment(bookingId: string) {
     console.error('[finishAppointment] review request failed (continuing):', (e as Error)?.message);
   }
 
+  // Staff gamification: efficiency + low-waste points (best-effort).
+  try {
+    const { awardForCompletedAppointment } = await import('@/lib/gamification');
+    await awardForCompletedAppointment(bookingId);
+  } catch (e) {
+    console.error('[finishAppointment] points award failed (continuing):', (e as Error)?.message);
+  }
+
   revalidatePath(`/admin/bookings/${bookingId}`);
   return { ok: true, actualMinutes };
 }

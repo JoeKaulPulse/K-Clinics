@@ -20,6 +20,14 @@ export async function POST(req: Request) {
   if (action === 'approve' || action === 'hide') {
     const status = action === 'approve' ? 'APPROVED' : 'HIDDEN';
     await db.review.update({ where: { id }, data: { status, moderatedBy: session.email, moderatedAt: new Date() } });
+    // Award the clinician their review points on approval (idempotent).
+    if (status === 'APPROVED') {
+      try {
+        const { awardForReview } = await import('@/lib/gamification');
+        await awardForReview(id);
+        await logAudit({ action: 'POINTS_AWARDED', actor: session.email, actorRole: session.role, summary: 'Review points awarded to clinician' });
+      } catch { /* non-fatal */ }
+    }
     return NextResponse.json({ ok: true });
   }
 
