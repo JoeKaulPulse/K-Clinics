@@ -3,31 +3,50 @@ import { PageHero } from '@/components/ui/PageHero';
 import { TreatmentCard } from '@/components/ui/TreatmentCard';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
+import { Button, ArrowIcon } from '@/components/ui/Button';
+import { RegisterInterest } from '@/components/dentistry/RegisterInterest';
 import { dentistry, groupByGroup } from '@/lib/treatments';
+import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const metadata: Metadata = pageMeta({
-  title: 'Aesthetic & Cosmetic Dentistry in London | K Clinics',
+  title: site.dentistryLive
+    ? 'Aesthetic & Cosmetic Dentistry in London | K Clinics'
+    : 'Aesthetic & Cosmetic Dentistry — Opening Soon | K Clinics London',
   description:
-    'Aesthetic dentistry in Islington, London — porcelain veneers, teeth whitening, composite bonding, dental implants and specialist care, designed for a healthy, beautiful smile.',
+    'Aesthetic dentistry coming soon to K Clinics, Islington — porcelain veneers, teeth whitening, composite bonding, dental implants and specialist care. Register your interest.',
   path: '/dentistry',
   keywords: ['cosmetic dentist London', 'dental clinic Islington', 'veneers London', 'dental implants London'],
 });
 
 export default function DentistryPage() {
   const groups = groupByGroup(dentistry);
+  const comingSoon = !site.dentistryLive;
   let idx = 0;
   return (
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Dentistry', path: '/dentistry' }])} />
       <PageHero
-        eyebrow="Aesthetic & Restorative Dentistry"
+        eyebrow={comingSoon ? 'Aesthetic Dentistry · Opening soon' : 'Aesthetic & Restorative Dentistry'}
         title="A smile, designed around you."
-        lede="Health-led, beauty-driven dentistry — uniting veneers, whitening, bonding, implants and specialist care under one meticulous standard."
+        lede={comingSoon
+          ? 'Our dentistry suite is coming soon to Clerkenwell — veneers, whitening, bonding, implants and specialist care, to the same meticulous standard as the rest of K Clinics. Register your interest and you’ll be first to know when it opens.'
+          : 'Health-led, beauty-driven dentistry — uniting veneers, whitening, bonding, implants and specialist care under one meticulous standard.'}
         gradient={['#7b6a5d', '#2a2420']}
       >
-        <BookingButtons />
+        {comingSoon
+          ? <Button href="#interest" variant="gold" size="lg">Register your interest <ArrowIcon /></Button>
+          : <BookingButtons />}
       </PageHero>
+
+      {comingSoon && (
+        <section className="border-b border-[var(--color-line)] bg-[var(--color-bone)]">
+          <div className="container-lux flex flex-wrap items-center justify-center gap-3 py-5 text-center text-sm text-[var(--color-ink-soft)]">
+            <span className="rounded-full bg-[var(--color-gold-soft)] px-3 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink)]">Opening soon</span>
+            <span>Browse what’s coming below. Dentistry isn’t bookable just yet — <a href="#interest" className="link-underline font-medium text-[var(--color-ink)]">register your interest</a> and we’ll be in touch.</span>
+          </div>
+        </section>
+      )}
 
       {Object.entries(groups).map(([group, list]) => (
         <section key={group} className="container-lux section-sm">
@@ -52,6 +71,23 @@ export default function DentistryPage() {
           </div>
         </section>
       ))}
+
+      {comingSoon && (
+        <section id="interest" className="scroll-mt-28 bg-[var(--color-bone)] section">
+          <div className="container-lux">
+            <div className="mx-auto max-w-2xl rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-8 text-center md:p-12">
+              <p className="eyebrow mb-3">Be first in the chair</p>
+              <h2 className="text-title">Register your interest in dentistry.</h2>
+              <p className="mx-auto mt-4 max-w-xl text-[var(--color-stone)]">
+                Leave your email and we’ll let you know the moment our dentistry suite opens — including any launch offers for early registrants.
+              </p>
+              <div className="mt-7 flex justify-center">
+                <RegisterInterest />
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
     </>
   );
 }

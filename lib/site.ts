@@ -59,6 +59,12 @@ export const site = {
     tiktok: 'https://www.tiktok.com/@kclinics',
   },
 
+  // ── Service availability ────────────────────────────────────────────────────
+  // Dentistry can only be offered/advertised once a GDC-registered dentist is in
+  // post. Until then this stays false: the dentistry pages show "opening soon"
+  // with a register-interest form instead of booking. Flip to true when ready.
+  dentistryLive: false,
+
   // ── Trust signals ───────────────────────────────────────────────────────────
   // Opened 2026. Ratings/review counts are NOT hard-coded — they are computed
   // live from real reviews (our own CRM + Google) via lib/reviews-aggregate.ts.
