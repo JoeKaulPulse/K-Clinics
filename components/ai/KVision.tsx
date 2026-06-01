@@ -93,7 +93,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
   }
 
   return (
-    <section className="relative min-h-[88vh] overflow-hidden bg-[#0c0b0a] text-[#f4ece1]">
+    <section className="relative min-h-screen overflow-hidden bg-[#0c0b0a] text-[#f4ece1]">
       <div className="pointer-events-none absolute inset-0 opacity-70" style={{ background: 'radial-gradient(60% 50% at 50% 0%, rgba(200,169,106,0.16), transparent 70%), radial-gradient(40% 40% at 80% 95%, rgba(200,169,106,0.10), transparent 70%)' }} />
       {/* Large, low-opacity animated K monogram watermark (brand) */}
       <motion.div aria-hidden className="pointer-events-none absolute -right-[8%] top-1/2 -translate-y-1/2 text-[var(--color-gold,#c8a96a)]"
@@ -101,7 +101,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
         <div className="h-[80vh] w-[60vw] max-w-[760px]"><KMark animated /></div>
       </motion.div>
 
-      <div className="container-lux relative z-10 py-20 md:py-28">
+      <div className="container-lux relative z-10 flex min-h-screen flex-col justify-center py-20">
         <AnimatePresence mode="wait">
           {stage === 'intro' && (
             <motion.div key="intro" {...fade} className="mx-auto max-w-3xl text-center">
@@ -194,6 +194,15 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
 
         {error && <p className="mx-auto mt-6 max-w-2xl rounded-xl border border-[#d98c8c]/30 bg-[#d98c8c]/10 px-4 py-3 text-center text-sm text-[#f4d6d6]">{error}</p>}
       </div>
+
+      {/* Homepage-style scroll cue (intro only) */}
+      {stage === 'intro' && (
+        <div className="pointer-events-none absolute bottom-8 left-1/2 z-10 hidden -translate-x-1/2 md:block">
+          <span className="flex h-12 w-7 items-start justify-center rounded-full border border-white/25 p-1.5">
+            <span className="hero-scroll-dot h-2 w-2 rounded-full bg-[var(--color-gold-soft)]" />
+          </span>
+        </div>
+      )}
 
       {camOpen && <CameraCapture faceGuide={areas.has('skin') || areas.has('teeth') || areas.has('hair')} onCapture={(d) => { addPhoto(d); setCamOpen(false); }} onClose={() => setCamOpen(false)} onError={(m) => { setError(m); setCamOpen(false); }} />}
     </section>
