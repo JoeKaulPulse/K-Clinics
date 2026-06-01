@@ -86,7 +86,7 @@ export const primaryNav: NavGroup[] = [
     href: '/academy',
   },
   {
-    label: 'K Vision',
+    label: 'Get My Plan',
     href: '/ai-consultation',
   },
   {

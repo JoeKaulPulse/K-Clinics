@@ -3,9 +3,9 @@ import { KVision } from '@/components/ai/KVision';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const metadata: Metadata = pageMeta({
-  title: 'K Vision — AI Skin, Smile & Hair Consultation | K Clinics',
+  title: 'Get My Plan — AI Skin, Smile & Hair Consultation | K Clinics',
   description:
-    'Upload a photo and let K Vision, our AI consultation, analyse your skin, smile and hair and build a personalised, bookable treatment plan in seconds. Free with a K Clinics account.',
+    'Upload a photo and our AI analyses your skin, smile and hair, then builds a personalised, phased, bookable treatment plan to your budget. Free with a K Clinics account.',
   path: '/ai-consultation',
   keywords: ['AI skin analysis London', 'AI consultation aesthetics', 'personalised treatment plan'],
 });
@@ -19,7 +19,7 @@ export default async function AiConsultationPage() {
 
   return (
     <>
-      <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'K Vision', path: '/ai-consultation' }])} />
+      <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Get My Plan', path: '/ai-consultation' }])} />
       <KVision signedIn={!!client} firstName={client?.firstName ?? ''} enabled={enabled} />
     </>
   );

@@ -63,8 +63,8 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
     description: 'When on, a treatment that needs a machine (e.g. laser/HIFU) is only offered in rooms that physically hold that equipment. Off by default — equipment is treated as movable and limited only by how many units you own.',
   },
   ai_consultation_enabled: {
-    label: 'AI consultation (K Vision)',
-    description: 'Let signed-in clients upload photos for an AI skin/teeth/hair analysis and a bookable treatment plan. Requires an Anthropic API key. Turn off to hide the tool.',
+    label: 'AI consultation (Get My Plan)',
+    description: 'Let signed-in clients upload photos for an AI skin/teeth/hair analysis and a bookable, phased treatment plan. Requires an Anthropic API key. Turn off to hide the tool.',
   },
   review_requests_enabled: {
     label: 'Post-treatment review requests',
