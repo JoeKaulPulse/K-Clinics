@@ -163,6 +163,22 @@ export async function finishAppointment(bookingId: string) {
   await db.booking.update({ where: { id: bookingId }, data: { finishedAt, actualMinutes, status: 'COMPLETED' } });
   await db.client.update({ where: { id: b.clientId }, data: { lastVisitAt: finishedAt } });
   await logAudit({ action: 'APPOINTMENT_COMPLETED', actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId, summary: `Appointment completed${actualMinutes ? ` (${actualMinutes} min actual vs ${b.durationMin} booked)` : ''}` });
+
+  // Post-treatment review request (best-effort — never blocks finishing).
+  try {
+    const { getSetting } = await import('@/lib/settings');
+    if (await getSetting('review_requests_enabled')) {
+      const { ensureReviewRequest, sendReviewRequest } = await import('@/lib/review-system');
+      const review = await ensureReviewRequest(bookingId);
+      if (review) {
+        await sendReviewRequest(review.id, 'EMAIL');
+        await logAudit({ action: 'REVIEW_REQUESTED', actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId, summary: 'Review request sent' });
+      }
+    }
+  } catch (e) {
+    console.error('[finishAppointment] review request failed (continuing):', (e as Error)?.message);
+  }
+
   revalidatePath(`/admin/bookings/${bookingId}`);
   return { ok: true, actualMinutes };
 }

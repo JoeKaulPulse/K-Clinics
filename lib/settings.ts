@@ -54,6 +54,10 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
     label: 'Multi-location mode',
     description: 'Turn on once you operate more than one site. Surfaces location pickers for schedules and bookings. Each clinician works at one location per day.',
   },
+  review_requests_enabled: {
+    label: 'Post-treatment review requests',
+    description: 'Automatically invite clients to leave a review after a completed treatment (email; SMS when configured).',
+  },
 };
 
 export async function getSetting(key: SettingKey): Promise<boolean> {

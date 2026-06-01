@@ -16,7 +16,7 @@ export default async function ReviewPage({ params }: { params: Promise<{ token: 
   });
   if (!review) notFound();
 
-  const { googleReviewLink } = await import('@/lib/reviews');
+  const { googleReviewLink } = await import('@/lib/review-system');
   const googleUrl = googleReviewLink();
   const done = review.status !== 'PENDING';
 

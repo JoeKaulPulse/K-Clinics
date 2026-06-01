@@ -143,14 +143,15 @@ export function tmplWinBack(firstName: string, unsubUrl: string) {
   });
 }
 
-export function tmplReviewRequest(firstName: string, unsubUrl: string) {
+export function tmplReviewRequest(firstName: string, link: string, treatment?: string) {
   return emailShell({
-    preheader: 'We would be grateful for your thoughts',
-    unsubUrl,
-    body: `<h1 style="font-size:24px;margin:0 0 16px;">Thank you, ${escape(firstName)}.</h1>
-    <p>We hope you are loving your results. If you have a moment, a short review would mean the world to us — and helps others discover K Clinics.</p>
-    <p style="margin:28px 0;">${btn(site.social.instagram, 'Leave a review')}</p>
-    <p>With gratitude,<br>The K Clinics team</p>`,
+    preheader: 'We would love your feedback',
+    body: `<h1 style="font-size:26px;margin:0 0 16px;">How did we do, ${escape(firstName)}?</h1>
+    <p>We hope you are loving the results of your recent visit to K Clinics${treatment ? ` for your ${escape(treatment)}` : ''}.</p>
+    <p>If you have a moment, we would be so grateful if you could share your experience — it helps us, and helps others discover the clinic.</p>
+    <p style="margin:28px 0;">${btn(link, 'Leave a review')}</p>
+    <p>It only takes a minute, from any device.</p>
+    <p>With warmth,<br>The K Clinics team</p>`,
   });
 }
 
@@ -267,12 +268,3 @@ export function tmplFormReminder(o: { firstName: string; treatment: string; star
     <p>With warmth,<br>The K Clinics team</p>`,
   });
 }
-
-export function tmplReviewRequest(firstName: string, link: string, treatment?: string) {
-  const body = `
-    <p>Hi ${firstName},</p>
-    <p>Thank you for visiting ${SITE}${treatment ? ` for your ${treatment}` : ''}. It was a pleasure to care for you.</p>
-    <p>Your feedback means the world to us — and helps others discover the clinic. Would you take a moment to share how it went?</p>
-    <p style="text-align:center;margin:32px 0">
-      <a href="${link}" style="background:#a98a6d;color:#fff;padding:14px 28px;border-radius:999px;text-decoration:none;font-weight:600">Leave a review</a>
-    </p>
