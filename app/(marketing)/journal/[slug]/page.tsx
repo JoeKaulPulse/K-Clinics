@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Reveal } from '@/components/motion/Reveal';
 import { MaskReveal } from '@/components/motion/MaskReveal';
 import { MediaArt } from '@/components/ui/MediaArt';
+import { ReadingProgress } from '@/components/journal/ReadingProgress';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { articleImage, treatmentImage } from '@/lib/treatment-images';
 import { getArticle, articleSlugs, sortedArticles } from '@/lib/articles';
@@ -33,8 +34,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const related = (a.related ?? []).map(getTreatment).filter(Boolean);
   const more = sortedArticles.filter((x) => x.slug !== a.slug).slice(0, 2);
 
+  let firstP = true; // drop-cap the opening paragraph only
+
   return (
     <>
+      <ReadingProgress />
       <JsonLd
         data={[
           articleLd({ title: a.title, description: a.metaDescription, path: `/journal/${a.slug}`, published: a.published, updated: a.updated, image: img ?? undefined, keywords: a.keywords }),
@@ -53,6 +57,13 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           <p className="eyebrow mb-4">{a.category} · {a.readMinutes} min read · {fmtDate(a.published)}</p>
           <h1 className="font-[family-name:var(--font-display)] text-[clamp(2rem,1.4rem+2.6vw,3.5rem)] leading-[1.05]">{a.title}</h1>
           <p className="mt-5 text-lede leading-relaxed text-[var(--color-stone)]">{a.excerpt}</p>
+          <div className="mt-7 flex items-center gap-3 border-t border-[var(--color-line)] pt-6">
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-[var(--color-ink)] font-[family-name:var(--font-display)] text-sm text-[var(--color-gold-soft)]">K</span>
+            <div className="text-sm">
+              <p className="font-medium text-[var(--color-ink)]">The K Clinics team</p>
+              <p className="text-[var(--color-stone)]">Clinically reviewed{a.updated ? ` · Updated ${fmtDate(a.updated)}` : ''}</p>
+            </div>
+          </div>
         </Reveal>
       </section>
 
@@ -78,7 +89,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                 ))}
               </ul>
             );
-            return <p key={i} className="mt-5 text-lg leading-relaxed text-[var(--color-ink-soft)]">{b.text}</p>;
+            const drop = firstP;
+            firstP = false;
+            return <p key={i} className={`mt-5 text-lg leading-relaxed text-[var(--color-ink-soft)] ${drop ? 'first-letter:float-left first-letter:mr-3 first-letter:font-[family-name:var(--font-display)] first-letter:text-[3.4rem] first-letter:leading-[0.78] first-letter:text-[var(--color-gold)]' : ''}`}>{b.text}</p>;
           })}
         </article>
 

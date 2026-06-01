@@ -81,7 +81,7 @@ export async function sendReviewRequest(reviewId: string, channel: 'EMAIL' | 'SM
 /** Approved, published reviews for the public marketing site. */
 export async function publishedReviews(
   limit = 8,
-): Promise<{ name: string; treatment: string; quote: string; location?: string }[]> {
+): Promise<{ name: string; treatment: string; quote: string; location?: string; rating?: number; title?: string; date?: string }[]> {
   try {
     const rows = await db.review.findMany({
       where: { status: 'PUBLISHED', body: { not: null }, rating: { gte: 4 } },
@@ -93,9 +93,27 @@ export async function publishedReviews(
       name: `${r.client.firstName}${r.client.lastName ? ` ${r.client.lastName[0]}.` : ''}`,
       treatment: r.treatmentTitle || 'Treatment',
       quote: r.body || '',
+      rating: r.rating || 5,
+      title: r.title || undefined,
+      date: (r.submittedAt || r.createdAt)?.toISOString(),
     }));
   } catch {
     return [];
+  }
+}
+
+/** Live aggregate rating from published CRM reviews (for social proof). */
+export async function reviewStats(): Promise<{ count: number; average: number } | null> {
+  try {
+    const agg = await db.review.aggregate({
+      where: { status: 'PUBLISHED', rating: { not: null } },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+    if (!agg._count.rating) return null;
+    return { count: agg._count.rating, average: Math.round((agg._avg.rating || 0) * 10) / 10 };
+  } catch {
+    return null;
   }
 }
 
