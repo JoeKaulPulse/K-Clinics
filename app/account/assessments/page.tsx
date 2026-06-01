@@ -17,8 +17,6 @@ export default async function AssessmentsPage() {
   const client = await getCurrentClient();
   if (!client) redirect('/account/login');
   const statuses = await assessmentStatus(client.id);
-  const { getSetting } = await import('@/lib/settings');
-  const hideSigned = await getSetting('hide_signed_forms');
 
   const locale: Locale = client.locale === 'uk' ? 'uk' : 'en';
   const t = (k: string, v?: Record<string, string | number>) => pt(locale, k, v);
@@ -76,16 +74,12 @@ export default async function AssessmentsPage() {
                   </p>
                 </div>
               </div>
-              {done && hideSigned ? (
-                <span className="shrink-0 rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium text-[var(--color-stone)]">{t('asmt.onFile')}</span>
-              ) : (
-                <Link
-                  href={`/account/assessments/${q.key}`}
-                  className={`shrink-0 rounded-full px-5 py-2.5 text-sm font-medium transition-colors ${done ? 'border border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]' : 'bg-[var(--color-gold)] text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]'}`}
-                >
-                  {done ? t('asmt.update') : t('asmt.start')}
-                </Link>
-              )}
+              <Link
+                href={`/account/assessments/${q.key}`}
+                className={`shrink-0 rounded-full px-5 py-2.5 text-sm font-medium transition-colors ${done ? 'border border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]' : 'bg-[var(--color-gold)] text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]'}`}
+              >
+                {done ? t('asmt.update') : t('asmt.start')}
+              </Link>
             </div>
           );
         })}

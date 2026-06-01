@@ -17,15 +17,6 @@ export default async function AssessmentPage({ params }: { params: Promise<{ key
   const client = await getCurrentClient();
   if (!client) redirect('/account/login');
 
-  // If signed forms are hidden from clients and this one is already submitted,
-  // don't expose the signed copy (it's held in the CRM / provided on SAR).
-  const { getSetting } = await import('@/lib/settings');
-  if (await getSetting('hide_signed_forms')) {
-    const { assessmentStatus } = await import('@/lib/health-assessments');
-    const statuses = await assessmentStatus(client.id);
-    if (statuses.get(q.type)) redirect('/account/assessments');
-  }
-
   // Show the form in the client's language; stored answer values stay canonical.
   const locale = client.locale === 'uk' ? 'uk' : 'en';
   return <AssessmentRunner q={localizeQuestionnaire(q, locale)} locale={locale} />;
