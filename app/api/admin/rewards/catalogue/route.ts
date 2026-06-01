@@ -36,11 +36,15 @@ export async function POST(req: Request) {
     emoji: emoji?.trim() ? String(emoji).slice(0, 8) : null,
     stock: stock === '' || stock == null ? null : Math.max(0, Math.round(Number(stock))),
     sortOrder: Math.round(Number(sortOrder) || 0),
-    active: active === undefined ? true : !!active,
   };
 
-  if (id) await db.reward.update({ where: { id }, data });
-  else await db.reward.create({ data });
+  if (id) {
+    // On edit, only change `active` when explicitly provided — so editing a
+    // hidden reward (the form doesn't send `active`) doesn't silently re-show it.
+    await db.reward.update({ where: { id }, data: active === undefined ? data : { ...data, active: !!active } });
+  } else {
+    await db.reward.create({ data: { ...data, active: active === undefined ? true : !!active } });
+  }
 
   return NextResponse.json({ ok: true });
 }

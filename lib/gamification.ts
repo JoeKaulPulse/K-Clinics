@@ -53,6 +53,11 @@ export async function awardForCompletedAppointment(bookingId: string) {
   });
   if (!b?.practitionerId) return;
 
+  // Idempotent: don't re-award if this booking was already scored (e.g. the
+  // status is toggled COMPLETED → NO_SHOW → COMPLETED again).
+  const already = await db.staffPoints.findFirst({ where: { bookingId, category: { in: ['EFFICIENCY', 'CONSUMABLES'] } } });
+  if (already) return;
+
   // Efficiency: on/under time is rewarded; overrun lightly penalised (capped).
   if (b.actualMinutes != null) {
     const delta = b.actualMinutes - b.durationMin;
@@ -135,31 +140,44 @@ export async function staffBalance(staffId: string): Promise<number> {
 }
 
 /** Redeem a catalogue reward: verify balance + stock, deduct points, log it.
+ *  Balance and stock are re-checked *inside* a serializable transaction so two
+ *  concurrent redemptions can never overspend points or oversell stock.
  *  Returns { ok } or { ok:false, error }. */
 export async function redeemReward(staffId: string, rewardId: string): Promise<{ ok: boolean; error?: string }> {
-  const reward = await db.reward.findUnique({ where: { id: rewardId } });
-  if (!reward || !reward.active) return { ok: false, error: 'This reward is not available.' };
-  if (reward.stock != null && reward.stock <= 0) return { ok: false, error: 'This reward is out of stock.' };
-
-  const balance = await staffBalance(staffId);
-  if (balance < reward.costPoints) return { ok: false, error: `Not enough points — you have ${balance}, this costs ${reward.costPoints}.` };
-
-  // Deduct via a ledger row (keeps balance a pure sum), record the redemption,
-  // and decrement finite stock — all in one transaction.
-  await db.$transaction(async (tx) => {
-    await tx.staffPoints.create({
-      data: { staffId, points: -reward.costPoints, category: 'REDEMPTION', reason: `Redeemed: ${reward.name}`, awardedBy: 'self' },
-    });
-    if (reward.stock != null) await tx.reward.update({ where: { id: rewardId }, data: { stock: { decrement: 1 } } });
-    await tx.rewardRedemption.create({ data: { rewardId, staffId, costPoints: reward.costPoints, status: 'PENDING' } });
-  });
-
   try {
-    const { logAudit } = await import('@/lib/audit');
-    await logAudit({ action: 'REWARD_REDEEMED', actor: staffId, summary: `Redeemed "${reward.name}" for ${reward.costPoints} pts` });
-  } catch { /* non-fatal */ }
-  return { ok: true };
+    await db.$transaction(async (tx) => {
+      const reward = await tx.reward.findUnique({ where: { id: rewardId } });
+      if (!reward || !reward.active) throw new RedeemError('This reward is not available.');
+      if (reward.stock != null && reward.stock <= 0) throw new RedeemError('This reward is out of stock.');
+
+      const agg = await tx.staffPoints.aggregate({ where: { staffId }, _sum: { points: true } });
+      const balance = agg._sum.points ?? 0;
+      if (balance < reward.costPoints) throw new RedeemError(`Not enough points — you have ${balance}, this costs ${reward.costPoints}.`);
+
+      // Deduct via a ledger row (keeps balance a pure sum), record the
+      // redemption, and decrement finite stock — atomically.
+      await tx.staffPoints.create({
+        data: { staffId, points: -reward.costPoints, category: 'REDEMPTION', reason: `Redeemed: ${reward.name}`, awardedBy: 'self' },
+      });
+      if (reward.stock != null) await tx.reward.update({ where: { id: rewardId }, data: { stock: { decrement: 1 } } });
+      await tx.rewardRedemption.create({ data: { rewardId, staffId, costPoints: reward.costPoints, status: 'PENDING' } });
+
+      try {
+        const { logAudit } = await import('@/lib/audit');
+        await logAudit({ action: 'REWARD_REDEEMED', actor: staffId, summary: `Redeemed "${reward.name}" for ${reward.costPoints} pts` });
+      } catch { /* non-fatal */ }
+    }, { isolationLevel: 'Serializable' });
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof RedeemError) return { ok: false, error: e.message };
+    // Serialization failure (concurrent redemption) or other DB error.
+    console.error('[gamification] redeemReward failed:', (e as Error)?.message);
+    return { ok: false, error: 'Could not redeem — please try again.' };
+  }
 }
+
+/** Internal sentinel so transaction guards return a friendly message. */
+class RedeemError extends Error {}
 
 /** Manager decision on a pending redemption. Declining refunds the points. */
 export async function decideRedemption(redemptionId: string, decision: 'FULFILLED' | 'DECLINED', by: string, note?: string): Promise<{ ok: boolean; error?: string }> {
