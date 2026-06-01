@@ -51,7 +51,32 @@ export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 
   const b = await db.booking.findUnique({ where: { id: bookingId } });
   if (b) {
     await db.interaction.create({ data: { clientId: b.clientId, type: 'APPOINTMENT', summary: `Booking marked ${status.toLowerCase().replace('_', ' ')}`, author: session.email } });
-    if (status === 'COMPLETED') await db.client.update({ where: { id: b.clientId }, data: { lastVisitAt: new Date() } });
+    if (status === 'COMPLETED') {
+      await db.client.update({ where: { id: b.clientId }, data: { lastVisitAt: new Date() } });
+
+      // Completing an appointment closes two loops, neither on the critical path:
+      // (1) award the practitioner efficiency / low-waste points, and
+      // (2) ask the client for a review (if enabled in settings).
+      try {
+        const { awardForCompletedAppointment } = await import('@/lib/gamification');
+        await awardForCompletedAppointment(bookingId);
+      } catch (e) {
+        console.error('[bookings] gamification on complete failed:', (e as Error)?.message);
+      }
+      try {
+        const { getSetting } = await import('@/lib/settings');
+        if (await getSetting('review_requests_enabled')) {
+          const { ensureReviewRequest, sendReviewRequest } = await import('@/lib/review-system');
+          const review = await ensureReviewRequest(bookingId);
+          // Send once only: `channel` is null until the first request goes out.
+          if (review && review.status === 'PENDING' && !review.channel) {
+            await sendReviewRequest(review.id, 'EMAIL');
+          }
+        }
+      } catch (e) {
+        console.error('[bookings] review request on complete failed:', (e as Error)?.message);
+      }
+    }
   }
   revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath('/admin/bookings');
