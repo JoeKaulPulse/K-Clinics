@@ -28,7 +28,7 @@ export default function PricingPage() {
         <BookingButtons />
       </PageHero>
 
-      <div className="pt-10"><OffersStrip /></div>
+      <div className="container-lux pt-10"><OffersStrip /></div>
 
       <section className="container-lux section">
         <div className="space-y-[var(--space-section-sm)]">
