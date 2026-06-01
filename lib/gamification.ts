@@ -128,6 +128,56 @@ export async function staffLedger(staffId: string, limit = 50) {
   return db.staffPoints.findMany({ where: { staffId }, orderBy: { createdAt: 'desc' }, take: limit });
 }
 
+/** A staff member's spendable balance — the sum of their ledger (incl. redemptions). */
+export async function staffBalance(staffId: string): Promise<number> {
+  const agg = await db.staffPoints.aggregate({ where: { staffId }, _sum: { points: true } });
+  return agg._sum.points ?? 0;
+}
+
+/** Redeem a catalogue reward: verify balance + stock, deduct points, log it.
+ *  Returns { ok } or { ok:false, error }. */
+export async function redeemReward(staffId: string, rewardId: string): Promise<{ ok: boolean; error?: string }> {
+  const reward = await db.reward.findUnique({ where: { id: rewardId } });
+  if (!reward || !reward.active) return { ok: false, error: 'This reward is not available.' };
+  if (reward.stock != null && reward.stock <= 0) return { ok: false, error: 'This reward is out of stock.' };
+
+  const balance = await staffBalance(staffId);
+  if (balance < reward.costPoints) return { ok: false, error: `Not enough points — you have ${balance}, this costs ${reward.costPoints}.` };
+
+  // Deduct via a ledger row (keeps balance a pure sum), record the redemption,
+  // and decrement finite stock — all in one transaction.
+  await db.$transaction(async (tx) => {
+    await tx.staffPoints.create({
+      data: { staffId, points: -reward.costPoints, category: 'REDEMPTION', reason: `Redeemed: ${reward.name}`, awardedBy: 'self' },
+    });
+    if (reward.stock != null) await tx.reward.update({ where: { id: rewardId }, data: { stock: { decrement: 1 } } });
+    await tx.rewardRedemption.create({ data: { rewardId, staffId, costPoints: reward.costPoints, status: 'PENDING' } });
+  });
+
+  try {
+    const { logAudit } = await import('@/lib/audit');
+    await logAudit({ action: 'REWARD_REDEEMED', actor: staffId, summary: `Redeemed "${reward.name}" for ${reward.costPoints} pts` });
+  } catch { /* non-fatal */ }
+  return { ok: true };
+}
+
+/** Manager decision on a pending redemption. Declining refunds the points. */
+export async function decideRedemption(redemptionId: string, decision: 'FULFILLED' | 'DECLINED', by: string, note?: string): Promise<{ ok: boolean; error?: string }> {
+  const r = await db.rewardRedemption.findUnique({ where: { id: redemptionId }, include: { reward: true } });
+  if (!r) return { ok: false, error: 'Not found.' };
+  if (r.status !== 'PENDING') return { ok: false, error: 'Already decided.' };
+
+  await db.$transaction(async (tx) => {
+    await tx.rewardRedemption.update({ where: { id: redemptionId }, data: { status: decision, decidedBy: by, decidedAt: new Date(), note: note || null } });
+    if (decision === 'DECLINED') {
+      // Refund the points and return stock.
+      await tx.staffPoints.create({ data: { staffId: r.staffId, points: r.costPoints, category: 'REDEMPTION', reason: `Refund: ${r.reward.name} (declined)`, awardedBy: by } });
+      if (r.reward.stock != null) await tx.reward.update({ where: { id: r.rewardId }, data: { stock: { increment: 1 } } });
+    }
+  });
+  return { ok: true };
+}
+
 /** One staff member's standing — total points, rank, review stats, breakdown,
  *  and recent ledger entries. For the clinician's own "My performance" view. */
 export async function staffStanding(staffId: string) {

@@ -457,6 +457,7 @@ model AdminUser {
   locations    Location[]      @relation("StaffLocations")
   reviews      Review[]        @relation("ClinicianReviews")
   points       StaffPoints[]
+  redemptions  RewardRedemption[]
 }
 
 // ── Staff gamification: append-only points ledger ────────────────────────────
@@ -489,6 +490,49 @@ model StaffPoints {
 
   @@index([staffId, createdAt])
   @@index([category])
+}
+
+// ── Rewards catalogue: what staff can spend their points on ───────────────────
+// Manager-curated perks. A redemption deducts points via a REDEMPTION ledger row
+// (so balances stay a pure sum), and is tracked here through to fulfilment.
+model Reward {
+  id          String              @id @default(cuid())
+  name        String
+  description String?
+  costPoints  Int
+  emoji       String?             // small visual marker in the catalogue
+  active      Boolean             @default(true)
+  stock       Int?                // null = unlimited
+  sortOrder   Int                 @default(0)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  redemptions RewardRedemption[]
+
+  @@index([active, sortOrder])
+}
+
+enum RedemptionStatus {
+  PENDING     // requested, awaiting manager fulfilment
+  FULFILLED   // perk granted
+  DECLINED    // rejected (points refunded)
+}
+
+model RewardRedemption {
+  id         String           @id @default(cuid())
+  reward     Reward           @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  rewardId   String
+  staff      AdminUser        @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  staffId    String
+  costPoints Int              // snapshot of cost at redemption time
+  status     RedemptionStatus @default(PENDING)
+  note       String?
+  decidedBy  String?          // manager email
+  decidedAt  DateTime?
+  createdAt  DateTime         @default(now())
+
+  @@index([staffId, createdAt])
+  @@index([status])
 }
 
 // ── Clinic locations (multi-site) ────────────────────────────────────────────
