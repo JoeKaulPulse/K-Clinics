@@ -97,6 +97,26 @@ export async function POST(req: Request) {
       await db.enrolment.delete({ where: { id: body.id } });
       return ok();
     }
+    case 'upsertLiveClass': {
+      const b = body as Record<string, unknown>;
+      if (!b.courseId || !b.title || !b.startAt) return bad();
+      const data = {
+        title: String(b.title).slice(0, 120),
+        startAt: new Date(b.startAt as string),
+        endAt: b.endAt ? new Date(b.endAt as string) : null,
+        joinUrl: (b.joinUrl as string)?.trim() || null,
+        trainer: (b.trainer as string)?.trim() || null,
+        description: (b.description as string)?.trim() || null,
+      };
+      if (b.id) await db.liveClass.update({ where: { id: String(b.id) }, data });
+      else await db.liveClass.create({ data: { ...data, courseId: String(b.courseId) } });
+      return ok();
+    }
+    case 'removeLiveClass': {
+      if (!body.id) return bad();
+      await db.liveClass.delete({ where: { id: body.id } });
+      return ok();
+    }
   }
   return NextResponse.json({ ok: false, error: 'Unknown op' }, { status: 400 });
 }
