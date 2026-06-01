@@ -129,11 +129,13 @@ export function Header() {
                 .map((item) => {
                   const cols = item.columns!.length;
                   const previewT = preview ? getTreatment(preview.replace(/^\//, '')) : null;
+                  // Only treatment menus (Aesthetics/Dentistry) get the hover preview pane.
+                  const isTreatmentMenu = item.columns!.some((col) => col.links.some((l) => getTreatment(l.href.replace(/^\//, ''))));
                   return (
                     <div
                       key={item.label}
                       className="grid gap-x-10 gap-y-8"
-                      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr)) 18rem` }}
+                      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))${isTreatmentMenu ? ' 18rem' : ''}` }}
                     >
                       {item.columns!.map((col) => (
                         <div key={col.heading}>
@@ -158,7 +160,8 @@ export function Header() {
                         </div>
                       ))}
 
-                      {/* Hover preview pane */}
+                      {/* Hover preview pane — treatment menus only */}
+                      {isTreatmentMenu && (
                       <div className="relative hidden overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] xl:block">
                         <AnimatePresence mode="wait">
                           {previewT ? (
@@ -186,6 +189,7 @@ export function Header() {
                           )}
                         </AnimatePresence>
                       </div>
+                      )}
                     </div>
                   );
                 })}
