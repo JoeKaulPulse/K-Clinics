@@ -297,6 +297,7 @@ model Client {
   interactions    Interaction[]
   appointments    Appointment[]
   bookings        Booking[]
+  followUps       FollowUp[]
   emails          EmailEvent[]
   assessments     HealthAssessment[]
   discountClaims  DiscountClaim[]
@@ -450,6 +451,7 @@ model Booking {
   auditEvents   AuditEvent[]
   reviews       Review[]
   items         BookingItem[] // line items: primary treatment + any upsell add-ons
+  followUp      FollowUp?     // post-treatment follow-up questionnaire
 
   @@index([startAt])
   @@index([status])
@@ -1218,4 +1220,27 @@ model Enrolment {
   @@index([status])
   @@index([courseId])
   @@index([applicantEmail])
+}
+
+// ── Post-treatment follow-up questionnaire ──────────────────────────────────
+// Sent ~1 week after a completed treatment ("How is your skin today?"). If the
+// client reports a concern, a follow-up Task is auto-created for the team.
+model FollowUp {
+  id             String    @id @default(cuid())
+  booking        Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId      String    @unique
+  client         Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId       String
+  treatmentTitle String
+  token          String    @unique @default(cuid())
+  sentAt         DateTime  @default(now())
+  respondedAt    DateTime?
+  sentiment      String?   // 'great' | 'ok' | 'concerned'
+  concern        Boolean   @default(false)
+  comment        String?
+  taskId         String?   // the admin task created when a concern is reported
+  createdAt      DateTime  @default(now())
+
+  @@index([clientId])
+  @@index([respondedAt])
 }
