@@ -86,14 +86,21 @@ ${menuText}
 
 ${budgetText}
 
-Build a realistic PHASED treatment plan over time (use sensible session counts and intervals; many laser/skin treatments are a course of 3–6 spaced 2–6 weeks apart, widening later; then maintenance). Explain what to expect at each phase.
+CLINICAL JUDGEMENT — match the plan to what you can ACTUALLY SEE, and err on the side of LESS:
+- Least-invasive-first. Recommend the gentlest treatment that addresses each visible concern — hydrating/brightening facials, light maintenance and targeted care before anything stronger.
+- Reserve intensive or aggressive treatments (ablative/resurfacing lasers such as laser skin resurfacing/rejuvenation, deep chemical peels, long high-intensity courses) for concerns that genuinely warrant them — i.e. "notable" texture, scarring, or pronounced ageing/pigmentation. NEVER recommend resurfacing or aggressive courses for skin that already looks healthy or has only mild concerns; it won't make sense to the client and can feel pushy.
+- Right-size everything. Session counts, intervals and the number of phases must reflect severity. Mild concerns → a light, short plan; sometimes a single treatment, occasional maintenance, or even "you're in great shape — here's light upkeep" is the honest answer. Only propose a multi-session course (3–6, spaced 2–6 weeks) when the concern clearly needs it.
+- Do NOT pad the plan to fill phases or to reach the budget. A small, well-judged plan is better than an over-treated one. Spend less than the budget when that's genuinely appropriate.
+- If concerns are minimal, it's fine to return a single short phase (or focus on maintenance) and put anything optional in "worthConsidering" rather than the core plan.
+
+Explain what to expect at each phase in plain, reassuring language.
 
 Return STRICT JSON only:
 {"refused":false,"confidence":0.0-1.0,"needsExpert":false,"summary":"one warm sentence",
 "findings":[{"area":"skin|teeth|hair|body","label":"short","note":"1 gentle sentence","severity":"mild|moderate|notable"}],
 "phases":[{"title":"Phase 1","timing":"Weeks 1–6","startWeek":0,"expect":"what to expect / milestone, 1 sentence","treatments":[{"slug":"<from list>","sessions":3,"intervalWeeks":2,"reason":"why, 1 sentence"}]}],
 "worthConsidering":[{"slug":"<from list>","reason":"why it would help, 1 sentence"}]}
-2–4 phases, 1–2 treatments each, 0–3 worthConsidering. Set needsExpert only if photos are unclear or the case is genuinely complex.`;
+Use 1–4 phases and 1–2 treatments each — fewer when little is needed (a single phase with one treatment is perfectly valid). 0–3 worthConsidering. Set needsExpert only if photos are unclear or the case is genuinely complex.`;
 
   const userContent: object[] = [
     { type: 'text', text: `Areas: ${opts.areas.join(', ') || 'general'}. Budget: ${opts.budgetLabel}. Please analyse the attached photo(s) and build my plan.` },
