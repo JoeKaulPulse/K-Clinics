@@ -25,6 +25,9 @@ export default async function DashboardPage() {
   const client = await getCurrentClient();
   if (!client) redirect('/account/login');
   const data = await getDashboard(client.id);
+  const { clientLoyaltySummary } = await import('@/lib/client-loyalty');
+  const { formatPrice } = await import('@/lib/treatments');
+  const loyalty = await clientLoyaltySummary(client.id);
 
   const locale: Locale = client.locale === 'uk' ? 'uk' : 'en';
   const t = (k: string, v?: Record<string, string | number>) => pt(locale, k, v);
@@ -68,6 +71,21 @@ export default async function DashboardPage() {
             </div>
             <Link href="/book" className="rounded-full bg-[var(--color-gold)] px-5 py-2.5 text-sm font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">{t('dash.book')}</Link>
           </div>
+        </Reveal>
+      )}
+
+      {loyalty.balance > 0 && (
+        <Reveal>
+          <Link href="/account/rewards" className="mb-10 flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 transition-colors hover:border-[var(--color-gold)]">
+            <div className="flex items-center gap-4">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--color-gold)]/15 text-lg text-[var(--color-gold)]">★</span>
+              <div>
+                <p className="font-[family-name:var(--font-display)] text-2xl">{loyalty.balance.toLocaleString(locale === 'uk' ? 'uk-UA' : 'en-GB')} <span className="text-sm font-normal text-[var(--color-stone)]">{t('rw.points')}</span></p>
+                <p className="mt-0.5 text-sm text-[var(--color-stone)]">{t('rw.worth', { value: formatPrice(loyalty.valuePence) })}</p>
+              </div>
+            </div>
+            <span className="text-sm font-medium text-[var(--color-gold)]">{t('nav.rewards')} →</span>
+          </Link>
         </Reveal>
       )}
 

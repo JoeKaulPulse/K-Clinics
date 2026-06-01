@@ -10,6 +10,7 @@ import { LOCALES, LOCALE_LABELS, isLocale, DEFAULT_LOCALE, type Locale } from '@
 const nav = [
   { href: '/account', key: 'nav.overview' },
   { href: '/account/appointments', key: 'nav.appointments' },
+  { href: '/account/rewards', key: 'nav.rewards' },
   { href: '/account/assessments', key: 'nav.assessments' },
   { href: '/account/aftercare', key: 'nav.aftercare' },
   { href: '/account/invoices', key: 'nav.invoices' },

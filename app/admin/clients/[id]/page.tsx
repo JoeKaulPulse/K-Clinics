@@ -6,6 +6,7 @@ import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { AddNote, PinToggle, SendEmail, StatusSelect } from '@/components/admin/ClientActions';
 import { DiscountAction } from '@/components/admin/DiscountActions';
+import { AdjustClientPoints } from '@/components/admin/AdjustClientPoints';
 
 // Visual styling per interaction type for the client timeline.
 const NOTE_STYLE: Record<string, { label: string; dot: string; badge: string }> = {
@@ -52,6 +53,17 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
   }
 
   const can = await sessionPermissions();
+
+  // Loyalty snapshot (balance + recent ledger). Best-effort — never blocks the page.
+  const { clientLoyaltySummary, clientLedger, pointsToPence } = await import('@/lib/client-loyalty');
+  const { formatPrice } = await import('@/lib/treatments');
+  let loyalty: Awaited<ReturnType<typeof clientLoyaltySummary>> | null = null;
+  let loyaltyLedger: Awaited<ReturnType<typeof clientLedger>> = [];
+  try {
+    [loyalty, loyaltyLedger] = await Promise.all([clientLoyaltySummary(c.id), clientLedger(c.id, 8)]);
+  } catch { /* loyalty optional */ }
+  const canManageLoyalty = can.includes('discounts.manage');
+
   return (
     <AdminShell user={session?.email} can={can}>
       <Link href="/admin/clients" className="text-sm text-[var(--color-gold)] hover:underline">← Clients</Link>
@@ -202,6 +214,40 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                     </div>
                   </div>
                 ))}
+              </div>
+            </section>
+          )}
+
+          {/* Loyalty points */}
+          {loyalty && (loyalty.balance > 0 || loyaltyLedger.length > 0 || canManageLoyalty) && (
+            <section>
+              <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Loyalty points</h2>
+              <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
+                <div className="flex items-end justify-between gap-3">
+                  <div>
+                    <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-gold)]">{loyalty.balance.toLocaleString('en-GB')}</p>
+                    <p className="text-xs text-[var(--color-stone)]">points · worth {formatPrice(loyalty.valuePence)}</p>
+                  </div>
+                  <div className="text-right text-xs text-[var(--color-stone-soft)]">
+                    {loyalty.expiringSoon > 0 && <p>{loyalty.expiringSoon} expiring soon</p>}
+                    {(loyalty.referralsQualified > 0 || loyalty.referralsPending > 0) && (
+                      <p>{loyalty.referralsQualified} referral{loyalty.referralsQualified === 1 ? '' : 's'} rewarded</p>
+                    )}
+                  </div>
+                </div>
+
+                {loyaltyLedger.length > 0 && (
+                  <ul className="mt-3 divide-y divide-[var(--color-line)] border-t border-[var(--color-line)] pt-1">
+                    {loyaltyLedger.map((row) => (
+                      <li key={row.id} className="flex items-center justify-between gap-3 py-1.5 text-xs">
+                        <span className="min-w-0 truncate text-[var(--color-stone)]">{row.reason}</span>
+                        <span className={`shrink-0 font-medium ${row.points < 0 ? 'text-[var(--color-stone)]' : 'text-[var(--color-jade)]'}`}>{row.points > 0 ? '+' : ''}{row.points}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {canManageLoyalty && <AdjustClientPoints clientId={c.id} />}
               </div>
             </section>
           )}

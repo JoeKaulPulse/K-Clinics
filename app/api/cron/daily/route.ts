@@ -19,6 +19,16 @@ export async function GET(req: Request) {
 
   const { runDailyAutomations } = await import('@/lib/automations');
   const result = await runDailyAutomations();
+
+  // Client loyalty maintenance: birthday gifts + expire 12-month-old points.
+  let loyalty = { birthdays: 0, expired: 0 };
+  try {
+    const { awardBirthdayPoints, expireOldPoints } = await import('@/lib/client-loyalty');
+    loyalty = { birthdays: await awardBirthdayPoints(), expired: await expireOldPoints() };
+  } catch (e) {
+    console.error('[cron] loyalty maintenance failed (continuing):', (e as Error)?.message);
+  }
+
   // Refresh Google Calendar busy-times for connected clinicians (no-op if Google
   // isn't configured / nobody connected).
   let gcal = { ok: false, staff: 0, imported: 0 };
@@ -28,5 +38,5 @@ export async function GET(req: Request) {
   } catch {
     /* never fail the cron on a calendar sync issue */
   }
-  return NextResponse.json({ ok: true, ...result, gcal });
+  return NextResponse.json({ ok: true, ...result, loyalty, gcal });
 }

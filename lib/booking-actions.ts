@@ -118,6 +118,14 @@ export async function cancelBooking(
     data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Cancelled ${booking.treatmentTitle}${late ? ' (within 24h)' : ''}${charged ? ` — charged £${(charged / 100).toFixed(2)}` : opts.waiveFee && late ? ' — fee waived' : ''}`, author: opts.by },
   });
 
+  // Return any loyalty points the client had applied to this booking.
+  try {
+    const { refundBookingPoints } = await import('@/lib/client-loyalty');
+    await refundBookingPoints(booking.id);
+  } catch (e) {
+    console.error('[cancelBooking] points refund failed (continuing):', (e as Error)?.message);
+  }
+
   // Cancellation email (free vs late-fee).
   await sendEmail({
     to: booking.client.email,

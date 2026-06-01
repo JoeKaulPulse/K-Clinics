@@ -80,6 +80,27 @@ enum DiscountStatus {
   BLOCKED    // signup matched an existing claim — no discount granted
 }
 
+// Client loyalty: append-only points ledger. A client's balance is the sum of
+// their non-expired rows. Earned 1 pt per £1 spent (100 pts = £1 off), plus
+// bonuses (reviews, birthday) and referral credit. Spending writes a negative
+// REDEMPTION row. Tune values in lib/client-loyalty.ts.
+enum ClientPointsCategory {
+  SPEND       // earned from a completed/charged booking (1 pt per £1)
+  REVIEW      // left a review
+  BIRTHDAY    // annual birthday bonus
+  REFERRAL    // referral credit (referrer or referred friend)
+  REDEMPTION  // spent against a booking (negative) / refunded (positive)
+  MANUAL      // staff adjustment
+  EXPIRY      // points expired after 12 months (negative)
+}
+
+enum ReferralStatus {
+  PENDING     // code generated, no friend linked yet
+  JOINED      // a new client signed up via the code
+  QUALIFIED   // friend's first treatment ≥ £100 completed → both rewarded
+  EXPIRED     // friend's first treatment was < £100 (didn't qualify)
+}
+
 enum BookingStatus {
   PENDING      // created, awaiting card setup confirmation
   CONFIRMED    // card on file, slot held
@@ -241,6 +262,10 @@ model Client {
   firstDiscountClaimed Boolean   @default(false)
   signupIp        String?
 
+  // ── Loyalty / referrals ──────────────────────────────────────────────────
+  referralCode    String?        @unique // this client's own shareable code
+  referredById    String?        // the Referral they joined through (if any)
+
   // ── Clinical safety flag ─────────────────────────────────────────────────
   // A concise, non-clinical alert (e.g. "Diabetes — see medical history") that
   // staff must review at the start of each appointment. Detailed health data
@@ -261,6 +286,9 @@ model Client {
   discountClaims  DiscountClaim[]
   tasks           Task[]
   reviews         Review[]
+  points          ClientPoints[]
+  referralsMade   Referral[]     @relation("ReferralsMade")
+  referredVia     Referral?      @relation("ReferralReceived")
 
   @@index([createdAt])
   @@index([dob])
@@ -329,6 +357,12 @@ model Booking {
 
   status        BookingStatus @default(PENDING)
   notes         String?
+
+  // Loyalty points applied to this booking (money off). pointsRedeemed is the
+  // ledger amount spent; pointsRedeemedPence is the £ value deducted (capped at
+  // 50% of pricePence). Refunded if the booking is cancelled.
+  pointsRedeemed      Int       @default(0)
+  pointsRedeemedPence Int       @default(0)
 
   // Assigned clinician. Always usable internally; only offered to clients when
   // the 'allow_clinician_choice' setting is enabled.
@@ -778,6 +812,52 @@ model DiscountClaim {
   @@index([emailNorm])
   @@index([phoneNorm])
   @@index([nameDobKey])
+  @@index([status])
+}
+
+// ── Client loyalty ledger ─────────────────────────────────────────────────
+// Append-only. Balance = sum of points where not expired. Earned points carry
+// an expiresAt (12 months out); redemptions/refunds/expiry rows don't expire.
+model ClientPoints {
+  id         String               @id @default(cuid())
+  client     Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId   String
+  points     Int                  // may be negative (redemption, expiry)
+  category   ClientPointsCategory
+  reason     String
+  bookingId  String?              // source booking (SPEND / REDEMPTION)
+  reviewId   String?              // source review (REVIEW — idempotency)
+  referralId String?              // source referral (REFERRAL)
+  awardedBy  String               @default("system") // 'system' | staff email
+  expiresAt  DateTime?            // when this earned lot expires (null = never)
+  createdAt  DateTime             @default(now())
+
+  @@index([clientId])
+  @@index([clientId, category])
+  @@index([expiresAt])
+  @@index([bookingId])
+}
+
+// ── Referrals ─────────────────────────────────────────────────────────────
+// One row per referred friend. Rewards (both sides get £25 / 2500 pts) fire
+// when the friend's FIRST treatment of ≥ £100 completes.
+model Referral {
+  id            String         @id @default(cuid())
+  referrer      Client         @relation("ReferralsMade", fields: [referrerId], references: [id], onDelete: Cascade)
+  referrerId    String
+  // The referred friend, linked when they sign up via the code.
+  referred      Client?        @relation("ReferralReceived", fields: [referredId], references: [id], onDelete: SetNull)
+  referredId    String?        @unique // a client can only be referred once
+  referredEmail String?        // captured at sign-up for visibility
+
+  status        ReferralStatus @default(JOINED)
+  qualifiedAt   DateTime?      // friend's first ≥£100 treatment completed
+  rewardedAt    DateTime?      // both sides credited
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([referrerId])
   @@index([status])
 }
 

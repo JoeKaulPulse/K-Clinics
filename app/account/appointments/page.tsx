@@ -3,7 +3,9 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PortalShell } from '@/components/portal/PortalShell';
+import { RedeemPoints } from '@/components/portal/RedeemPoints';
 import { crmEnabled } from '@/lib/crm';
+import { formatPrice } from '@/lib/treatments';
 import { pt } from '@/lib/i18n-portal';
 import type { Locale } from '@/lib/i18n';
 
@@ -23,10 +25,17 @@ export default async function AppointmentsPage() {
   if (!client) redirect('/account/login');
   const { upcoming, past } = await getDashboard(client.id);
 
+  const { clientBalance, pointsToPence, LOYALTY } = await import('@/lib/client-loyalty');
+  const balancePence = pointsToPence(await clientBalance(client.id));
+
   const locale: Locale = client.locale === 'uk' ? 'uk' : 'en';
   const t = (k: string, v?: Record<string, string | number>) => pt(locale, k, v);
   const lc = locale === 'uk' ? 'uk-UA' : 'en-GB';
   const dayCount = (d: Date) => Math.ceil((d.getTime() - Date.now()) / 864e5);
+  const redeemLabels = {
+    use: t('rw.applyPoints'), title: t('rw.applyTitle'), hint: t('rw.applyHint'),
+    applied: t('rw.applied'), apply: t('rw.apply'), remove: t('rw.remove'), cancel: t('rw.cancel'),
+  };
 
   return (
     <PortalShell firstName={client.firstName} locale={locale}>
@@ -70,6 +79,17 @@ export default async function AppointmentsPage() {
                   <Link href={`/booking/manage?token=${b.manageToken}`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
                     {t('appt.reschedule')}
                   </Link>
+                  {b.pricePence > 0 && (
+                    <RedeemPoints
+                      bookingId={b.id}
+                      pricePence={b.pricePence}
+                      appliedPence={b.pointsRedeemedPence}
+                      maxPence={Math.floor(b.pricePence * LOYALTY.maxRedeemFraction)}
+                      balancePence={balancePence}
+                      currency={formatPrice}
+                      labels={redeemLabels}
+                    />
+                  )}
                 </div>
               </li>
             );

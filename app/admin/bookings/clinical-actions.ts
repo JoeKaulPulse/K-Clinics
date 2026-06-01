@@ -186,6 +186,13 @@ export async function finishAppointment(bookingId: string) {
   } catch (e) {
     console.error('[finishAppointment] points award failed (continuing):', (e as Error)?.message);
   }
+  // Client loyalty: credit spend points (best-effort, idempotent).
+  try {
+    const { awardClientSpend } = await import('@/lib/client-loyalty');
+    await awardClientSpend(bookingId);
+  } catch (e) {
+    console.error('[finishAppointment] loyalty award failed (continuing):', (e as Error)?.message);
+  }
 
   revalidatePath(`/admin/bookings/${bookingId}`);
   return { ok: true, actualMinutes };
