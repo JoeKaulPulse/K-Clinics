@@ -32,7 +32,16 @@ export async function POST(req: Request) {
   }
 
   if (action === 'publish') {
-    const r = await db.review.update({ where: { id }, data: { status: 'PUBLISHED', pushedToGoogleAt: new Date(), moderatedBy: session.email, moderatedAt: new Date() } });
+    // Publishing makes the review visible on our marketing site. The Google
+    // push is a separate (currently inert) step, so we do NOT set
+    // pushedToGoogleAt here — that's stamped only when actually synced to Google.
+    const r = await db.review.update({ where: { id }, data: { status: 'PUBLISHED', moderatedBy: session.email, moderatedAt: new Date() } });
+    // Ensure clinician points are awarded even if published without a separate
+    // approve step (idempotent — never double-awards).
+    try {
+      const { awardForReview } = await import('@/lib/gamification');
+      await awardForReview(id);
+    } catch { /* non-fatal */ }
     await logAudit({ action: 'REVIEW_PUBLISHED', actor: session.email, actorRole: session.role, clientId: r.clientId, summary: 'Review published' });
     return NextResponse.json({ ok: true });
   }
