@@ -16,14 +16,21 @@ export async function POST(req: Request) {
 
   // ── Replace a staff member's weekly schedule ──
   if (body.op === 'setSchedule') {
-    const { staffId, blocks } = body as { staffId: string; blocks: { dayOfWeek: number; startMin: number; endMin: number; locationId?: string | null }[] };
+    const { staffId, blocks } = body as { staffId: string; blocks: { dayOfWeek: number; startMin: number; endMin: number; breakStartMin?: number | null; breakEndMin?: number | null; locationId?: string | null }[] };
     if (!staffId || !Array.isArray(blocks)) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
     const clean = blocks.filter((b) => b.dayOfWeek >= 0 && b.dayOfWeek <= 6 && b.endMin > b.startMin);
+    // Keep a break only when it's a valid window inside the working day.
+    const validBreak = (b: { startMin: number; endMin: number; breakStartMin?: number | null; breakEndMin?: number | null }) =>
+      b.breakStartMin != null && b.breakEndMin != null && b.breakEndMin > b.breakStartMin && b.breakStartMin >= b.startMin && b.breakEndMin <= b.endMin;
     // One block per weekday → one location per day (a clinician can't be in two
     // places at once). locationId is kept per block.
     await db.$transaction([
       db.staffSchedule.deleteMany({ where: { staffId } }),
-      db.staffSchedule.createMany({ data: clean.map((b) => ({ staffId, dayOfWeek: b.dayOfWeek, startMin: b.startMin, endMin: b.endMin, locationId: b.locationId || null })) }),
+      db.staffSchedule.createMany({ data: clean.map((b) => ({
+        staffId, dayOfWeek: b.dayOfWeek, startMin: b.startMin, endMin: b.endMin,
+        breakStartMin: validBreak(b) ? b.breakStartMin : null, breakEndMin: validBreak(b) ? b.breakEndMin : null,
+        locationId: b.locationId || null,
+      })) }),
     ]);
     return NextResponse.json({ ok: true });
   }
