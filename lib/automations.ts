@@ -11,11 +11,11 @@ const FOLLOW_UP_DAYS = 3;
 const REVIEW_DAYS = 7;
 const WIN_BACK_MONTHS = 6;
 
-type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; errors: number };
+type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; errors: number };
 
 export async function runDailyAutomations(): Promise<Tally> {
-  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, errors: 0 };
-  await Promise.all([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t)]);
+  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, errors: 0 };
+  await Promise.all([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t)]);
   return t;
 }
 
@@ -97,6 +97,17 @@ async function winBacks(t: Tally) {
     const res = await sendEmail({ to: c.email, subject: `We’ve missed you, ${c.firstName}`, html: tmplWinBack(c.firstName, unsub(c.unsubToken)) });
     await logEvent(c.id, 'WIN_BACK', c.email, 'Win-back', res);
     res.ok ? t.winBacks++ : t.errors++;
+  }
+}
+
+// 1-week post-treatment follow-up questionnaire ("How is your skin today?").
+async function treatmentFollowUps(t: Tally) {
+  try {
+    const { createDueFollowUps } = await import('@/lib/followup');
+    t.treatmentFollowUps = await createDueFollowUps();
+  } catch (e) {
+    t.errors++;
+    console.error('[automations] treatment follow-ups failed:', (e as Error)?.message);
   }
 }
 

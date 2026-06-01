@@ -131,6 +131,17 @@ export function tmplFollowUp(firstName: string, treatment: string, unsubUrl: str
   });
 }
 
+export function tmplFollowUpQuestionnaire(o: { firstName: string; treatment: string; url: string }) {
+  return emailShell({
+    preheader: `How is your skin a week after your ${o.treatment}?`,
+    body: `<h1 style="font-size:24px;margin:0 0 16px;">How are you getting on, ${escape(o.firstName)}?</h1>
+    <p>It's been about a week since your <strong>${escape(o.treatment)}</strong>. We'd love a quick update on how you're feeling — it takes less than a minute, and lets us step in early if anything needs attention.</p>
+    <p style="margin:28px 0;">${btn(o.url, 'Share how you’re doing')}</p>
+    <p>If you have any concerns at all, this goes straight to our clinical team.</p>
+    <p>With warmth,<br>The K Clinics team</p>`,
+  });
+}
+
 export function tmplWinBack(firstName: string, unsubUrl: string) {
   return emailShell({
     preheader: 'We would love to see you again',

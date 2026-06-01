@@ -8,6 +8,7 @@ import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { TreatmentCard } from '@/components/ui/TreatmentCard';
 import { DiscountChip } from '@/components/portal/DiscountChip';
 import { OffersStrip } from '@/components/marketing/OffersStrip';
+import { PersonalisedOffers } from '@/components/portal/PersonalisedOffers';
 import { crmEnabled } from '@/lib/crm';
 import { formatPrice, getTreatment, type Treatment } from '@/lib/treatments';
 import { portalAssessments } from '@/lib/questionnaires';
@@ -60,6 +61,7 @@ export default async function DashboardPage() {
         lastVisitISO={client.lastVisitAt ? client.lastVisitAt.toISOString() : null}
       />
 
+      <PersonalisedOffers clientId={client.id} />
       <div className="mt-8"><OffersStrip heading="Offers for you" /></div>
 
       {data.discount && (
