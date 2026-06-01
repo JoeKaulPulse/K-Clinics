@@ -105,6 +105,7 @@ function CourseCard({ course }: { course: Course }) {
           <span className="text-xs text-[var(--color-stone-soft)]"> · {course.level || 'No level'} · {money(course.pricePence)} · {course.cohorts.length} cohort(s){course.featured ? ' · featured' : ''}</span>
         </div>
         <div className="flex items-center gap-3 text-xs">
+          <a href={`/admin/academy/${course.id}`} className="font-medium text-[var(--color-ink)] hover:text-[var(--color-gold)] hover:underline">Curriculum →</a>
           <button onClick={() => setEditing((v) => !v)} className="text-[var(--color-gold)] hover:underline">{editing ? 'Close' : 'Edit'}</button>
           <button onClick={() => act({ op: 'toggleCourse', id: course.id, active: !course.active })} className="text-[var(--color-stone)] hover:underline">{course.active ? 'Disable' : 'Enable'}</button>
           <button onClick={() => { if (confirm('Delete this course and its cohorts?')) act({ op: 'removeCourse', id: course.id }); }} className="text-[var(--color-blush)] hover:underline">Delete</button>
