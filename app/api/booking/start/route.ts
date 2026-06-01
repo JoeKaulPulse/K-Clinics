@@ -92,9 +92,15 @@ export async function POST(req: Request) {
   const title = `${primary.service.name} — ${primary.variant.name}` + (extra > 0 ? ` + ${extra} add-on${extra > 1 ? 's' : ''}` : '');
 
   // Persist SMS preference if the client opted in during booking.
-  if (d.smsReminders && !client.smsReminders) {
-    await db.client.update({ where: { id: client.id }, data: { smsReminders: true } }).catch(() => {});
-  }
+  const clientUpdate: Record<string, unknown> = {};
+  if (d.smsReminders && !client.smsReminders) clientUpdate.smsReminders = true;
+  // Persist stated allergies on the client record (latest wins) for safety + hospitality.
+  if (d.allergyNote && d.allergyNote.trim() && d.allergyNote.trim() !== (client.allergies || '')) clientUpdate.allergies = d.allergyNote.trim();
+  if (Object.keys(clientUpdate).length) await db.client.update({ where: { id: client.id }, data: clientUpdate }).catch(() => {});
+
+  // Validate refreshment ids server-side.
+  const { isRefreshment } = await import('@/lib/hospitality');
+  const refreshments = d.refreshments.filter(isRefreshment);
 
   const booking = await db.booking.create({
     data: {
@@ -105,6 +111,9 @@ export async function POST(req: Request) {
       pricePence: totalPrice,
       status: 'PENDING',
       notes: d.notes || null,
+      refreshments,
+      allergyNote: d.allergyNote?.trim() || null,
+      aftercareAckAt: d.aftercareAck ? new Date() : null,
       stripeCustomerId: customerId,
       practitionerId,
       resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,

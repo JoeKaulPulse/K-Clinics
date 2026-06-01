@@ -203,6 +203,7 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'asmt.start': { en: 'Start', uk: 'Почати' },
   'asmt.update': { en: 'Update', uk: 'Оновити' },
   'asmt.done': { en: 'Completed', uk: 'Заповнено' },
+  'asmt.onFile': { en: 'Completed · held on file', uk: 'Заповнено · зберігається' },
   'asmt.todo': { en: 'To complete', uk: 'До заповнення' },
   'asmt.progress': { en: '{done} of {total} complete', uk: '{done} з {total} заповнено' },
   'asmt.allDone': { en: 'All your health forms are complete — thank you.', uk: 'Усі ваші анкети заповнені — дякуємо.' },

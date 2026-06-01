@@ -38,14 +38,26 @@ export async function notifyBookingConfirmed(bookingId: string): Promise<void> {
   const manageUrl = `${baseUrl()}/booking/manage?t=${booking.manageToken}`;
   const formsUrl = `${baseUrl()}/account/assessments`;
 
+  // Recommended next session (course-based treatments space out over time).
+  let nextNote: string | undefined;
+  try {
+    const { recommendedNext, formatInterval } = await import('@/lib/treatment-intervals');
+    const completed = await db.booking.count({ where: { clientId: c.id, treatmentSlug: booking.treatmentSlug, status: 'COMPLETED' } });
+    const rec = recommendedNext(booking.treatmentSlug, completed + 1, booking.startAt);
+    if (rec) nextNote = `For best results, we recommend your next ${booking.treatmentTitle} session ${formatInterval(rec.weeks)} after this one — around ${rec.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}.`;
+  } catch { /* recommendation is best-effort */ }
+
   const { sendEmail, tmplBookingConfirmation, tmplBookingNotify } = await import('@/lib/email');
 
+  // Send the client's confirmation first so we can record the true outcome.
+  const clientRes = await sendEmail({
+    to: c.email,
+    subject: `Your booking is confirmed — ${booking.treatmentTitle}`,
+    html: tmplBookingConfirmation({ firstName, treatment: booking.treatmentTitle, start: booking.startAt, pricePence: booking.pricePence, manageUrl, formsUrl, arriveEarly: firstVisit, lines, nextNote }),
+  });
+  if (!clientRes.ok) console.error('[booking-notify] confirmation email failed:', clientRes.error);
+
   const tasks: Promise<unknown>[] = [
-    sendEmail({
-      to: c.email,
-      subject: `Your booking is confirmed — ${booking.treatmentTitle}`,
-      html: tmplBookingConfirmation({ firstName, treatment: booking.treatmentTitle, start: booking.startAt, pricePence: booking.pricePence, manageUrl, formsUrl, arriveEarly: firstVisit, lines }),
-    }),
     sendEmail({
       to: clinicEmail(),
       subject: `New booking — ${name}`,
@@ -65,7 +77,9 @@ export async function notifyBookingConfirmed(bookingId: string): Promise<void> {
 
   await Promise.allSettled(tasks);
 
-  await db.emailEvent.create({ data: { clientId: c.id, kind: 'MANUAL', to: c.email, subject: 'Booking confirmation', status: 'SENT' } }).catch(() => {});
+  // Record the REAL outcome so failures are visible in the email log (this used
+  // to always log SENT, masking provider/config issues like an unverified domain).
+  await db.emailEvent.create({ data: { clientId: c.id, kind: 'MANUAL', to: c.email, subject: 'Booking confirmation', status: clientRes.ok ? 'SENT' : 'FAILED', providerId: clientRes.id, error: clientRes.error } }).catch(() => {});
   await db.interaction.create({
     data: { clientId: c.id, type: 'APPOINTMENT', summary: `Booked ${booking.treatmentTitle}`, detail: booking.startAt.toISOString(), author: 'system' },
   }).catch(() => {});

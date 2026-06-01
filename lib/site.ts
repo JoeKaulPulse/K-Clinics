@@ -17,6 +17,8 @@ export const site = {
   // PLACEHOLDERS — replace with verified details before launch.
   phone: '+44 20 7250 0000',
   phoneHref: 'tel:+442072500000',
+  // WhatsApp business number (digits only, intl format). Overridable via env.
+  whatsapp: '442072500000',
   email: 'hello@kclinics.co.uk',
   emailHref: 'mailto:hello@kclinics.co.uk',
   address: {

@@ -256,6 +256,7 @@ model Client {
   source          String?        // website, treatwell, fresha, referral…
   tags            String[]       @default([])
   notes           String?
+  allergies       String?        // client-stated allergies / dietary notes (hospitality + safety)
   marketingOptIn  Boolean        @default(false)
   smsReminders    Boolean        @default(false) // client opted in to SMS confirmations & reminders
   unsubscribed    Boolean        @default(false)
@@ -375,6 +376,13 @@ model Booking {
 
   status        BookingStatus @default(PENDING)
   notes         String?
+
+  // Hospitality: what the client would like prepared for their visit, plus any
+  // allergy/dietary note. Aftercare acknowledgement: when the client confirmed
+  // they have read & agreed to follow the aftercare instructions.
+  refreshments  String[]      @default([])
+  allergyNote   String?
+  aftercareAckAt DateTime?
 
   // Loyalty points applied to this booking (money off). pointsRedeemed is the
   // ledger amount spent; pointsRedeemedPence is the £ value deducted (capped at
