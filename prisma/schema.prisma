@@ -1144,6 +1144,8 @@ model AcademyStudent {
   updatedAt    DateTime     @updatedAt
 
   enrolments   Enrolment[]
+  lessonProgress LessonProgress[]
+  quizAttempts QuizAttempt[]
 
   @@index([createdAt])
 }
@@ -1172,8 +1174,116 @@ model Course {
 
   cohorts        Cohort[]
   enrolments     Enrolment[]
+  modules        CourseModule[]
+  liveClasses    LiveClass[]
 
   @@index([active, order])
+}
+
+// ── Native LMS (replaces external Thinkific theory) ──────────────────────────
+
+model CourseModule {
+  id        String   @id @default(cuid())
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId  String
+  title     String
+  summary   String?
+  order     Int      @default(0)
+  lessons   Lesson[]
+  quiz      Quiz?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([courseId, order])
+}
+
+model Lesson {
+  id          String   @id @default(cuid())
+  module      CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  moduleId    String
+  title       String
+  order       Int      @default(0)
+  durationMin Int?
+  videoUrl    String?  // YouTube watch/embed URL, or a search link (pre-test explainer)
+  imageUrl    String?
+  body        String   @db.Text // markdown-ish lesson content
+  keyPoints   String[] @default([])
+  citations   Json?    // [{ label, url }]
+  resources   Json?    // [{ label, url }]
+  progress    LessonProgress[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([moduleId, order])
+}
+
+model Quiz {
+  id        String   @id @default(cuid())
+  module    CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  moduleId  String   @unique
+  title     String
+  passMark  Int      @default(70) // percentage required to pass
+  questions QuizQuestion[]
+  attempts  QuizAttempt[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model QuizQuestion {
+  id          String   @id @default(cuid())
+  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quizId      String
+  order       Int      @default(0)
+  prompt      String   @db.Text
+  type        String   @default("SINGLE") // SINGLE | MULTI | TRUEFALSE
+  options     Json     // [string]
+  correct     Json     // [number] (0-based indices)
+  explanation String?  @db.Text
+  imageUrl    String?
+
+  @@index([quizId, order])
+}
+
+model LessonProgress {
+  id          String   @id @default(cuid())
+  student     AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId   String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId    String
+  completedAt DateTime @default(now())
+
+  @@unique([studentId, lessonId])
+  @@index([studentId])
+}
+
+model QuizAttempt {
+  id        String   @id @default(cuid())
+  student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quizId    String
+  scorePct  Int
+  passed    Boolean
+  answers   Json?
+  createdAt DateTime @default(now())
+
+  @@index([studentId, quizId])
+}
+
+model LiveClass {
+  id          String   @id @default(cuid())
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId    String
+  title       String
+  startAt     DateTime
+  endAt       DateTime?
+  joinUrl     String?  // Google Meet link
+  trainer     String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([courseId, startAt])
 }
 
 enum CohortStatus {
