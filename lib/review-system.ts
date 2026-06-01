@@ -83,20 +83,26 @@ export async function publishedReviews(
   limit = 8,
 ): Promise<{ name: string; treatment: string; quote: string; location?: string; rating?: number; title?: string; date?: string }[]> {
   try {
+    // Only 5★ reviews with a written response are shown publicly. Names appear
+    // only with explicit consent; otherwise the review is shown anonymously.
     const rows = await db.review.findMany({
-      where: { status: 'PUBLISHED', body: { not: null }, rating: { gte: 4 } },
+      where: { status: 'PUBLISHED', body: { not: null }, rating: 5 },
       orderBy: { submittedAt: 'desc' },
       take: limit,
       include: { client: { select: { firstName: true, lastName: true } } },
     });
-    return rows.map((r) => ({
-      name: `${r.client.firstName}${r.client.lastName ? ` ${r.client.lastName[0]}.` : ''}`,
-      treatment: r.treatmentTitle || 'Treatment',
-      quote: r.body || '',
-      rating: r.rating || 5,
-      title: r.title || undefined,
-      date: (r.submittedAt || r.createdAt)?.toISOString(),
-    }));
+    return rows
+      .filter((r) => (r.body || '').trim().length > 0)
+      .map((r) => ({
+        name: r.displayConsent
+          ? `${r.client.firstName}${r.client.lastName ? ` ${r.client.lastName[0]}.` : ''}`
+          : 'Verified client',
+        treatment: r.treatmentTitle || 'Treatment',
+        quote: (r.body || '').trim(),
+        rating: 5,
+        title: r.title || undefined,
+        date: (r.submittedAt || r.createdAt)?.toISOString(),
+      }));
   } catch {
     return [];
   }
@@ -118,7 +124,7 @@ export async function reviewStats(): Promise<{ count: number; average: number } 
 }
 
 /** Record a client's submitted review (from the public token page). */
-export async function submitReview(token: string, rating: number, title: string, body: string) {
+export async function submitReview(token: string, rating: number, title: string, body: string, displayConsent = false) {
   const review = await db.review.findUnique({ where: { token } });
   if (!review) return { ok: false, error: 'Invalid link.' };
   if (review.status !== 'PENDING') return { ok: false, error: 'This review has already been submitted.' };
@@ -131,6 +137,7 @@ export async function submitReview(token: string, rating: number, title: string,
       body: body.trim().slice(0, 2000) || null,
       status: 'SUBMITTED',
       submittedAt: new Date(),
+      displayConsent: Boolean(displayConsent),
     },
   });
   const { logAudit } = await import('@/lib/audit');

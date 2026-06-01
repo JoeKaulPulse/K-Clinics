@@ -22,7 +22,7 @@ export const metadata: Metadata = pageMeta({
 // Authentic pillars from the existing K Clinics site.
 const values = [
   { t: 'Innovation', d: 'We employ the most recent equipment in aesthetic medicine to provide results that are safe, efficient and long-lasting.' },
-  { t: 'Professionalism', d: 'Our team consists of certified specialists with years of experience, adhering to the highest standards of care.' },
+  { t: 'Professionalism', d: 'Our team holds recognised UK qualifications — including a Level 7–qualified injector and a prescriber — and works to the highest standards of care.' },
   { t: 'Personalised approach', d: 'Each procedure is customised to your particular needs and preferences, to achieve the best possible results.' },
   { t: 'Quiet luxury', d: 'Cutting-edge technology meets expert care in an inclusive, luxurious and welcoming environment built around you.' },
 ];
@@ -34,7 +34,7 @@ export default function AboutPage() {
       <PageHero
         eyebrow={`Established ${site.founded} · Islington, London`}
         title="Redefining cosmetic dermatology and dentistry."
-        lede="Luxury treatments, perfect smiles and world-class providers. At K Clinics, we believe aesthetic medicine should feel empowering, welcoming and simple to navigate — for every skin tone, gender and lifestyle."
+        lede="Considered treatments, beautiful smiles and qualified clinicians. At K Clinics, we believe aesthetic medicine should feel empowering, welcoming and simple to navigate — for every skin tone, gender and lifestyle."
         gradient={['#7b6a5d', '#2a2420']}
       >
         <BookingButtons />
@@ -79,13 +79,13 @@ export default function AboutPage() {
         <Marquee items={['Precision', 'Artistry', 'Discretion', 'Excellence', 'Care', 'Confidence']} className="text-[var(--color-porcelain)]" />
       </section>
 
-      {/* Stats */}
+      {/* Stats — verifiable facts only */}
       <section className="container-lux section">
         <div className="grid gap-8 text-center sm:grid-cols-3">
           {[
-            { k: `${new Date().getFullYear() - Number(site.founded)}+`, v: 'Years caring for London' },
-            { k: `${site.reviewCount}+`, v: `Five-star reviews · ${site.ratingValue} average` },
-            { k: '40+', v: 'Treatments under one roof' },
+            { k: '2', v: 'Disciplines under one roof' },
+            { k: '40+', v: 'Treatments for face, body & smile' },
+            { k: 'Level 7', v: 'Qualified, prescriber-led injectables' },
           ].map((s) => (
             <Reveal key={s.v}>
               <CountUp value={s.k} className="block font-[family-name:var(--font-display)] text-6xl text-gold-gradient" />

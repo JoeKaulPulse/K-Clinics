@@ -48,7 +48,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
     <AdminShell user={session?.email} can={can} locale={locale}>
       <h1 className="font-[family-name:var(--font-display)] text-3xl">{L('Reviews', 'Відгуки')}</h1>
       <p className="mt-1 text-sm text-[var(--color-stone)]">
-        {L('Moderate client reviews and publish the best. Requests are sent automatically after each treatment.', 'Модеруйте відгуки клієнтів і публікуйте найкращі. Запити надсилаються автоматично після кожної процедури.')}
+        {L('Moderate client reviews and publish the best. Requests are sent automatically after each treatment. Note: the website only shows 5★ reviews with a written comment, and a client’s name only when they’ve consented.', 'Модеруйте відгуки клієнтів і публікуйте найкращі. Запити надсилаються автоматично після кожної процедури. Примітка: на сайті показуються лише відгуки на 5★ із текстом, а ім’я клієнта — лише за згодою.')}
       </p>
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -84,6 +84,9 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
                   <div className="flex flex-wrap items-center gap-2">
                     <Stars n={r.rating} />
                     <span className={`rounded-full px-2.5 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide ${STATUS_STYLE[r.status]}`}>{r.status.toLowerCase()}</span>
+                    {r.displayConsent
+                      ? <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-green-800">{L('name consented', 'згода на ім’я')}</span>
+                      : <span className="rounded-full bg-[var(--color-bone)] px-2.5 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-[var(--color-stone)]">{L('name hidden publicly', 'ім’я приховано')}</span>}
                     {r.treatmentTitle && <span className="text-xs text-[var(--color-stone-soft)]">{r.treatmentTitle}</span>}
                   </div>
                   {r.title && <p className="mt-2 font-medium">{r.title}</p>}

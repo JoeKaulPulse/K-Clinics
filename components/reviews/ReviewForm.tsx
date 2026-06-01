@@ -8,6 +8,7 @@ export function ReviewForm({ token, googleUrl }: { token: string; googleUrl: str
   const [hover, setHover] = useState(0);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
@@ -18,7 +19,7 @@ export function ReviewForm({ token, googleUrl }: { token: string; googleUrl: str
     try {
       const res = await fetch('/api/review/submit', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, rating, title, body }),
+        body: JSON.stringify({ token, rating, title, body, consent }),
       });
       const json = await res.json().catch(() => ({ ok: false }));
       if (json.ok) setDone(true);
@@ -54,8 +55,8 @@ export function ReviewForm({ token, googleUrl }: { token: string; googleUrl: str
       <div className="flex items-center gap-2">
         {[1, 2, 3, 4, 5].map((n) => (
           <button key={n} type="button" onClick={() => setRating(n)} onMouseEnter={() => setHover(n)} onMouseLeave={() => setHover(0)} aria-label={`${n} star${n > 1 ? 's' : ''}`}>
-            <svg viewBox="0 0 24 24" className={`h-10 w-10 transition-colors ${(hover || rating) >= n ? 'text-[var(--color-gold)]' : 'text-[var(--color-sand)]'}`} fill="currentColor">
-              <path d="M12 3l2.6 6 6.4.5-4.9 4.2 1.5 6.3L12 16.9 6.4 20l1.5-6.3L3 9.5 9.4 9 12 3z" />
+            <svg viewBox="0 0 20 20" className={`h-10 w-10 transition-colors ${(hover || rating) >= n ? 'text-[var(--color-gold)]' : 'text-[var(--color-sand)]'}`} fill="currentColor">
+              <path d="M10 1l2.47 5.18 5.68.74-4.18 3.9 1.06 5.62L10 19.4 4.97 16.44l1.06-5.62-4.18-3.9 5.68-.74z" />
             </svg>
           </button>
         ))}
@@ -67,6 +68,10 @@ export function ReviewForm({ token, googleUrl }: { token: string; googleUrl: str
       <div>
         <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} placeholder="Tell us about your visit…" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none focus:border-[var(--color-gold)]" />
       </div>
+      <label className="flex cursor-pointer items-start gap-3 text-sm text-[var(--color-stone)]">
+        <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-gold)]" />
+        <span>I’m happy for K Clinics to feature my review — and my first name — on their website and marketing. (Optional. We only ever publish 5-star reviews with a written comment.)</span>
+      </label>
       {error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm">{error}</p>}
       <button onClick={submit} disabled={loading} className="w-full rounded-full bg-[var(--color-gold)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60">
         {loading ? 'Submitting…' : 'Submit review'}

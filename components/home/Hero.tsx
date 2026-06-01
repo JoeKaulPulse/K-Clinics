@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Button, ArrowIcon } from '@/components/ui/Button';
+import { Stars } from '@/components/ui/Stars';
 import { KMark } from '@/components/brand/marks';
 import { site } from '@/lib/site';
 
@@ -7,8 +8,11 @@ import { site } from '@/lib/site';
  * Above-the-fold hero — the signature dark composition: refined copy on the left,
  * the self-drawing K monogram anchored to the right. A *server* component with
  * CSS-only entrance motion, so the fold paints fast (good for Core Web Vitals).
+ *
+ * `rating` is the REAL aggregate (our reviews + Google) or null — the rating
+ * strip only renders when genuine reviews exist.
  */
-export function Hero() {
+export function Hero({ rating }: { rating?: { average: number; count: number } | null }) {
   return (
     <section className="relative isolate flex min-h-[100svh] items-center overflow-hidden bg-[var(--color-ink)] text-[var(--color-porcelain)]">
       {/* Depth — champagne glow + soft vignette */}
@@ -37,7 +41,7 @@ export function Hero() {
             style={{ animationDelay: '0.05s' }}
           >
             <span className="h-px w-8 bg-[var(--color-gold-soft)]/70" />
-            Islington · London — Est. {site.founded}
+            Islington · London — Established {site.founded}
           </p>
 
           <h1 className="font-[family-name:var(--font-display)] text-[clamp(2.75rem,1.6rem+3.8vw,5.5rem)] leading-[1.02] tracking-[-0.02em]">
@@ -72,14 +76,18 @@ export function Hero() {
             className="rise mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-white/[0.12] pt-7 text-sm"
             style={{ animationDelay: '0.6s' }}
           >
-            <span className="flex items-center gap-2">
-              <Stars />
-              <span className="font-medium">{site.ratingValue}</span>
-              <span className="text-[color-mix(in_oklab,var(--color-porcelain)_60%,transparent)]">
-                · {site.reviewCount}+ five-star reviews
-              </span>
-            </span>
-            <span className="hidden h-4 w-px bg-white/15 sm:block" />
+            {rating && rating.count > 0 && (
+              <>
+                <Link href="/reviews" className="flex items-center gap-2 text-[var(--color-gold-soft)]">
+                  <Stars rating={rating.average} colorClass="text-[var(--color-gold-soft)]" />
+                  <span className="font-medium">{rating.average.toFixed(1)}</span>
+                  <span className="text-[color-mix(in_oklab,var(--color-porcelain)_60%,transparent)]">
+                    · {rating.count} review{rating.count === 1 ? '' : 's'}
+                  </span>
+                </Link>
+                <span className="hidden h-4 w-px bg-white/15 sm:block" />
+              </>
+            )}
             <Link href="/consultation" className="link-underline font-medium text-[var(--color-gold-soft)]">
               Free consultation · 15% off your first visit
             </Link>
@@ -94,17 +102,5 @@ export function Hero() {
         </span>
       </div>
     </section>
-  );
-}
-
-function Stars() {
-  return (
-    <span className="flex gap-0.5 text-[var(--color-gold-soft)]" aria-hidden>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <svg key={i} viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor">
-          <path d="M10 1.6l2.55 5.17 5.7.83-4.13 4.02.98 5.68L10 18.99 4.92 21.32l.98-5.68L1.75 7.6l5.7-.83z" />
-        </svg>
-      ))}
-    </span>
   );
 }

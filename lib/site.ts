@@ -11,7 +11,7 @@ export const site = {
   url: 'https://kclinics.co.uk',
   locale: 'en_GB',
   description:
-    'K Clinics is a premium Islington clinic uniting advanced laser & skin aesthetics with award-worthy aesthetic dentistry — precision treatments, world-class clinicians, and an experience designed around you.',
+    'K Clinics is an Islington clinic uniting advanced laser & skin aesthetics with aesthetic dentistry — precision treatments, qualified clinicians, and an experience designed around you.',
 
   // ── Contact / NAP (Name, Address, Phone) ───────────────────────────────────
   // PLACEHOLDERS — replace with verified details before launch.
@@ -60,9 +60,10 @@ export const site = {
   },
 
   // ── Trust signals ───────────────────────────────────────────────────────────
-  founded: '2016',
-  ratingValue: '4.9',
-  reviewCount: '480',
+  // Opened 2026. Ratings/review counts are NOT hard-coded — they are computed
+  // live from real reviews (our own CRM + Google) via lib/reviews-aggregate.ts.
+  // If there are no real reviews yet, rating widgets simply don't render.
+  founded: '2026',
 } as const;
 
 export type Site = typeof site;

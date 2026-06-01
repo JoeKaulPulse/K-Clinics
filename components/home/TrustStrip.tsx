@@ -1,11 +1,11 @@
 import { Reveal } from '@/components/motion/Reveal';
 
-// Credential / trust markers. Replace labels with real accreditations
-// (GDC, CQC, Save Face, brand partners) and logos when supplied.
+// Real, verifiable credentials only. Update as further accreditations are
+// earned (e.g. Save Face, CQC) — never list one before it's granted.
 const marks = [
-  { k: 'GDC', v: 'Registered clinicians' },
-  { k: 'CQC', v: 'Care Quality Commission' },
-  { k: 'Save Face', v: 'Accredited register' },
+  { k: 'Licensed', v: 'High-Risk Special Treatment Licence' },
+  { k: 'Level 7', v: 'Qualified injector' },
+  { k: 'Prescriber', v: 'Prescriber-led care' },
   { k: 'Medical-grade', v: 'Technology & protocols' },
 ];
 
