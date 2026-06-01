@@ -30,6 +30,27 @@ export async function POST(req: Request) {
 
   const { db } = await import('@/lib/db');
 
+  // Public team-page profile update (single source of truth → /team).
+  if (body.op === 'profile') {
+    if (!id) return NextResponse.json({ ok: false, error: 'Missing id.' }, { status: 400 });
+    const b = body as Record<string, unknown>;
+    const num = (v: unknown) => (v === '' || v == null ? null : Math.max(0, Math.round(Number(v)) || 0));
+    await db.adminUser.update({
+      where: { id },
+      data: {
+        ...(typeof b.publicProfile === 'boolean' ? { publicProfile: b.publicProfile } : {}),
+        ...(b.title !== undefined ? { title: (b.title as string)?.trim() || null } : {}),
+        ...(b.photoUrl !== undefined ? { photoUrl: (b.photoUrl as string)?.trim() || null } : {}),
+        ...(b.publicPhone !== undefined ? { publicPhone: (b.publicPhone as string)?.trim() || null } : {}),
+        ...(b.bio !== undefined ? { bio: (b.bio as string)?.trim() || null } : {}),
+        ...(b.credentials !== undefined ? { credentials: (b.credentials as string)?.trim() || null } : {}),
+        ...(b.yearsExperience !== undefined ? { yearsExperience: num(b.yearsExperience) } : {}),
+        ...(b.profileOrder !== undefined ? { profileOrder: num(b.profileOrder) ?? 0 } : {}),
+      },
+    });
+    return NextResponse.json({ ok: true, id });
+  }
+
   // Update existing
   if (id) {
     const target = await db.adminUser.findUnique({ where: { id } });

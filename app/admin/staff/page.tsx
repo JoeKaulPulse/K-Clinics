@@ -25,6 +25,17 @@ export default async function StaffPage() {
     permGrant: s.permGrant ?? [],
     permRevoke: s.permRevoke ?? [],
     lastLoginAt: s.lastLoginAt ? s.lastLoginAt.toISOString() : null,
+    profile: {
+      publicProfile: s.publicProfile,
+      title: s.title ?? '',
+      photoUrl: s.photoUrl ?? '',
+      publicPhone: s.publicPhone ?? '',
+      bio: s.bio ?? '',
+      credentials: s.credentials ?? '',
+      yearsExperience: s.yearsExperience ?? null,
+      profileOrder: s.profileOrder,
+      isClinician: s.isClinician,
+    },
   }));
 
   const can = session ? [...effectivePermissions({ role: session.role, permGrant: session.grant, permRevoke: session.revoke })] : [];
