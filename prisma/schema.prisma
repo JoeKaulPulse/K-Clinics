@@ -113,6 +113,8 @@ enum AuditAction {
   REVIEW_REQUESTED
   REVIEW_RECEIVED
   REVIEW_PUBLISHED
+  POINTS_AWARDED
+  REWARD_REDEEMED
 }
 
 enum ReviewStatus {
@@ -454,6 +456,39 @@ model AdminUser {
   assignedTasks Task[]         @relation("TaskAssignee")
   locations    Location[]      @relation("StaffLocations")
   reviews      Review[]        @relation("ClinicianReviews")
+  points       StaffPoints[]
+}
+
+// ── Staff gamification: append-only points ledger ────────────────────────────
+// Every award/deduction is a row, so a member's score is the sum of their
+// entries — fully auditable. Driven by commercial signals (efficiency, waste)
+// and, most importantly, client reviews.
+enum PointsCategory {
+  REVIEW          // client review rating
+  EFFICIENCY      // on/under booked treatment time
+  CONSUMABLES     // minimal waste
+  PUNCTUALITY     // started on time
+  PERFORMANCE     // manager-awarded (reviews, KPIs)
+  FRIENDLINESS    // manager/feedback-awarded
+  TEAMWORK
+  MANUAL          // ad-hoc manager adjustment
+  REDEMPTION      // points spent on a reward
+}
+
+model StaffPoints {
+  id        String         @id @default(cuid())
+  staff     AdminUser      @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  staffId   String
+  points    Int            // may be negative (waste, redemption)
+  category  PointsCategory
+  reason    String
+  bookingId String?        // optional source booking
+  reviewId  String?        // optional source review
+  awardedBy String?        // staff email, or 'system'
+  createdAt DateTime       @default(now())
+
+  @@index([staffId, createdAt])
+  @@index([category])
 }
 
 // ── Clinic locations (multi-site) ────────────────────────────────────────────
