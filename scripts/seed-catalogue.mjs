@@ -111,19 +111,33 @@ const CATALOGUE = [
 
 // Category discount offers (promoted): [serviceSlug, percentOff, label]
 const OFFERS = [
-  ['lhr-women', 15, 'Laser Hair Removal — 15% off'],
-  ['lhr-men', 15, 'Laser Hair Removal (Men) — 15% off'],
-  ['laser-pigmentation', 15, 'Laser Pigmentation — 15% off'],
-  ['vascular-lesions', 20, 'Vascular Lesions — 20% off'],
-  ['spider-veins', 10, 'Spider Veins — 10% off'],
-  ['carbon-laser-peel', 5, 'Carbon Laser Facial — 5% off'],
-  ['laser-tattoo-removal', 10, 'Laser Tattoo Removal — 10% off'],
+  ['lhr-women', 15, 'Laser Hair Removal — Women'],
+  ['lhr-men', 15, 'Laser Hair Removal — Men'],
+  ['laser-pigmentation', 15, 'Laser Pigmentation Removal'],
+  ['vascular-lesions', 20, 'Vascular Lesions Treatment'],
+  ['spider-veins', 10, 'Spider Veins Removal'],
+  ['carbon-laser-peel', 5, 'Carbon Laser Facial'],
+  ['laser-tattoo-removal', 10, 'Laser Tattoo Removal'],
 ];
+
+// Strip a trailing discount phrase ("— 10% off") from a name.
+const cleanLabel = (s) => s.replace(/\s*[—–-]+\s*£?\d+%?\s*off\s*$/i, '').trim() || s;
 
 async function main() {
   if (process.env.GHPAGES === 'true' || !pickDirectUrl()) { console.log('[seed-catalogue] skipped (no DB).'); return; }
+
+  // Always-run, idempotent: tidy any offer names that embed a discount phrase
+  // (so they don't render as "… — 10% off — 10% off"). Runs even after load.
+  try {
+    const existing = await db.serviceOffer.findMany({ select: { id: true, name: true } });
+    for (const o of existing) {
+      const cleaned = cleanLabel(o.name);
+      if (cleaned !== o.name) await db.serviceOffer.update({ where: { id: o.id }, data: { name: cleaned } });
+    }
+  } catch { /* table may not exist yet on first sync */ }
+
   const marker = await db.setting.findUnique({ where: { key: MARKER } }).catch(() => null);
-  if (marker) { console.log('[seed-catalogue] skipped (already loaded).'); return; }
+  if (marker) { console.log('[seed-catalogue] offer names normalized; catalogue already loaded.'); return; }
 
   // Clear any bootstrap catalogue, then load the authoritative one.
   await db.serviceOffer.deleteMany({});
