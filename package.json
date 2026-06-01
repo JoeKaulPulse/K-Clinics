@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "node scripts/gen-image-manifest.mjs && next dev",
     "postinstall": "prisma generate",
-    "prebuild": "node scripts/gen-image-manifest.mjs && node scripts/db-sync.mjs && node scripts/seed-rooms.mjs && node scripts/seed-services.mjs && node scripts/seed-catalogue.mjs",
+    "prebuild": "node scripts/gen-image-manifest.mjs && node scripts/db-sync.mjs && node scripts/seed-rooms.mjs && node scripts/seed-services.mjs && node scripts/seed-catalogue.mjs && node scripts/seed-academy.mjs",
     "db:seed:rooms": "node scripts/seed-rooms.mjs",
     "db:seed:services": "node scripts/seed-services.mjs",
     "db:seed:catalogue": "node scripts/seed-catalogue.mjs",
+    "db:seed:academy": "node scripts/seed-academy.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

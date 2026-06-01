@@ -1,0 +1,102 @@
+import { NextResponse } from 'next/server';
+import { crmEnabled } from '@/lib/crm';
+
+export const runtime = 'nodejs';
+
+const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+const num = (v: unknown) => (v == null || v === '' ? null : Math.round(Number(v)));
+const list = (v: unknown): string[] => (Array.isArray(v) ? v : String(v || '').split(',')).map((s) => String(s).trim()).filter(Boolean);
+
+// Manage the academy catalogue + enrolments. Requires settings.manage.
+export async function POST(req: Request) {
+  if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
+  const { requirePermission } = await import('@/lib/auth');
+  const session = await requirePermission('settings.manage');
+  if (!session) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
+
+  const body = await req.json().catch(() => ({}));
+  const { db } = await import('@/lib/db');
+  const ok = (extra: object = {}) => NextResponse.json({ ok: true, ...extra });
+  const bad = () => NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
+
+  switch (body.op) {
+    case 'upsertCourse': {
+      const b = body as Record<string, unknown>;
+      if (!b.title) return bad();
+      const data = {
+        title: String(b.title).slice(0, 120),
+        level: (b.level as string)?.trim() || null,
+        summary: (b.summary as string)?.slice(0, 300) || null,
+        description: (b.description as string) || null,
+        pricePence: Math.max(0, num(b.pricePence) ?? 0),
+        depositPence: b.depositPence ? num(b.depositPence) : null,
+        durationText: (b.durationText as string)?.trim() || null,
+        format: (b.format as string)?.trim() || null,
+        accreditations: list(b.accreditations).map((s) => s.toUpperCase()),
+        outcomes: list(b.outcomes),
+        prerequisites: (b.prerequisites as string)?.trim() || null,
+        thinkificUrl: (b.thinkificUrl as string)?.trim() || null,
+        heroImage: (b.heroImage as string)?.trim() || null,
+        featured: !!b.featured,
+        active: b.active === undefined ? true : !!b.active,
+      };
+      if (b.id) await db.course.update({ where: { id: String(b.id) }, data });
+      else {
+        const order = await db.course.count();
+        await db.course.create({ data: { ...data, slug: `${slugify(data.title)}-${Date.now().toString(36).slice(-4)}`, order } });
+      }
+      return ok();
+    }
+    case 'toggleCourse': {
+      if (!body.id) return bad();
+      await db.course.update({ where: { id: body.id }, data: { active: !!body.active } });
+      return ok();
+    }
+    case 'removeCourse': {
+      if (!body.id) return bad();
+      await db.course.delete({ where: { id: body.id } });
+      return ok();
+    }
+    case 'upsertCohort': {
+      const b = body as Record<string, unknown>;
+      if (!b.courseId || !b.startAt) return bad();
+      const data = {
+        startAt: new Date(b.startAt as string),
+        endAt: b.endAt ? new Date(b.endAt as string) : null,
+        capacity: Math.max(1, num(b.capacity) ?? 8),
+        location: (b.location as string)?.trim() || null,
+        trainer: (b.trainer as string)?.trim() || null,
+        status: ['OPEN', 'FULL', 'CLOSED'].includes(b.status as string) ? (b.status as 'OPEN') : 'OPEN',
+        notes: (b.notes as string)?.trim() || null,
+      };
+      if (b.id) await db.cohort.update({ where: { id: String(b.id) }, data });
+      else await db.cohort.create({ data: { ...data, courseId: String(b.courseId) } });
+      return ok();
+    }
+    case 'removeCohort': {
+      if (!body.id) return bad();
+      await db.cohort.delete({ where: { id: body.id } });
+      return ok();
+    }
+    case 'updateEnrolment': {
+      if (!body.id) return bad();
+      const b = body as Record<string, unknown>;
+      await db.enrolment.update({
+        where: { id: String(b.id) },
+        data: {
+          ...(b.status && ['APPLIED', 'OFFERED', 'PAID', 'ENROLLED', 'COMPLETED', 'CANCELLED'].includes(b.status as string) ? { status: b.status as 'APPLIED' } : {}),
+          ...(b.cohortId !== undefined ? { cohortId: (b.cohortId as string) || null } : {}),
+          ...(b.paidPence !== undefined ? { paidPence: Math.max(0, num(b.paidPence) ?? 0) } : {}),
+          ...(b.notes !== undefined ? { notes: (b.notes as string) || null } : {}),
+        },
+      });
+      return ok();
+    }
+    case 'removeEnrolment': {
+      if (!body.id) return bad();
+      await db.enrolment.delete({ where: { id: body.id } });
+      return ok();
+    }
+  }
+  return NextResponse.json({ ok: false, error: 'Unknown op' }, { status: 400 });
+}
