@@ -8,6 +8,7 @@ import { isDemo } from '@/lib/booking-mode';
 import { demoSlots } from '@/lib/availability-client';
 import { DemoCard } from '@/components/booking/DemoCard';
 import { Button, ArrowIcon } from '@/components/ui/Button';
+import { REFRESHMENTS } from '@/lib/hospitality';
 
 type Course = { sessions: number; totalPence: number };
 type Variant = { id: string; name: string; durationMin: number; pricePence: number; offerPence: number | null; offerName: string | null; courses: Course[] };
@@ -46,6 +47,9 @@ export function BookingFlow({ catalogue, client }: { catalogue: Service[]; clien
   const [slot, setSlot] = useState('');
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [addOns, setAddOns] = useState<Set<string>>(new Set());
+  const [refreshments, setRefreshments] = useState<Set<string>>(new Set());
+  const [allergyNote, setAllergyNote] = useState('');
+  const [aftercareAck, setAftercareAck] = useState(false);
 
   const [clientSecret, setClientSecret] = useState('');
   const [bookingId, setBookingId] = useState('');
@@ -112,7 +116,7 @@ export function BookingFlow({ catalogue, client }: { catalogue: Service[]; clien
     try {
       const res = await fetch('/api/booking/start', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variantId, sessions, startISO: slot, addOnVariantIds: [...addOns], smsReminders: smsPref }),
+        body: JSON.stringify({ variantId, sessions, startISO: slot, addOnVariantIds: [...addOns], smsReminders: smsPref, refreshments: [...refreshments], allergyNote, aftercareAck }),
       });
       const j = await res.json();
       if (!j.ok) { setError(j.error || 'Could not book.'); setSubmitting(false); return; }
@@ -263,11 +267,44 @@ export function BookingFlow({ catalogue, client }: { catalogue: Service[]; clien
                   })}
                 </div>
               )}
+              {/* Refreshments + allergies (we'll have it ready for your visit) */}
+              <div className="mt-6">
+                <p className={label}>Anything you’d like us to prepare?</p>
+                <div className="space-y-3">
+                  {REFRESHMENTS.map((g) => (
+                    <div key={g.group}>
+                      <p className="mb-1 text-xs text-[var(--color-stone-soft)]">{g.group}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {g.items.map((it) => {
+                          const on = refreshments.has(it.id);
+                          return (
+                            <button key={it.id} type="button" onClick={() => setRefreshments((p) => { const n = new Set(p); n.has(it.id) ? n.delete(it.id) : n.add(it.id); return n; })}
+                              className={`rounded-full border px-3.5 py-1.5 text-sm transition-all ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
+                              {it.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3">
+                  <label className={label} htmlFor="ballergy">Any allergies or dietary notes?</label>
+                  <input id="ballergy" value={allergyNote} onChange={(e) => setAllergyNote(e.target.value)} placeholder="e.g. nut allergy, no caffeine" className={field} />
+                </div>
+              </div>
+
               <div className="mt-6 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] p-4 text-sm">
                 <div className="flex justify-between"><span className="text-[var(--color-stone)]">Total today</span><span className="font-medium">£0.00</span></div>
                 <div className="flex justify-between"><span className="text-[var(--color-stone)]">Total at your visit</span><span className="font-medium text-[var(--color-ink)]">{money(orderTotal)}</span></div>
                 <p className="mt-2 text-xs text-[var(--color-stone-soft)]">{totalDuration} min · {[service.name, ...[...addOns].map((id) => catalogue.flatMap((s) => s.variants).find((v) => v.id === id)?.name).filter(Boolean)].join(' + ')}</p>
               </div>
+
+              {/* Aftercare acknowledgement */}
+              <label className="mt-5 flex items-start gap-3 text-sm text-[var(--color-stone)]">
+                <input type="checkbox" checked={aftercareAck} onChange={(e) => setAftercareAck(e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />
+                I confirm I have read, understood and agree to follow the <a href="/account/aftercare" target="_blank" className="link-underline text-[var(--color-ink)]">aftercare instructions</a> for my treatment. *
+              </label>
             </div>
           )}
 
@@ -294,7 +331,7 @@ export function BookingFlow({ catalogue, client }: { catalogue: Service[]; clien
           <button type="button" onClick={() => goBack()} className="text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Back</button>
           {stage === 'variant' && <Button onClick={() => variant && setStage('time')} variant={variant ? 'gold' : 'outline'}>Continue <ArrowIcon /></Button>}
           {stage === 'time' && <Button onClick={() => slot && setStage('upsell')} variant={slot ? 'gold' : 'outline'}>Continue <ArrowIcon /></Button>}
-          {stage === 'upsell' && <Button onClick={() => !submitting && submitBooking()} variant="gold">{submitting ? 'Securing…' : 'Continue to confirm'} <ArrowIcon /></Button>}
+          {stage === 'upsell' && <Button onClick={() => { if (!aftercareAck) { setError('Please confirm you’ve read and agree to the aftercare instructions.'); return; } if (!submitting) submitBooking(); }} variant={aftercareAck ? 'gold' : 'outline'}>{submitting ? 'Securing…' : 'Continue to confirm'} <ArrowIcon /></Button>}
           {stage === 'service' && <span />}
         </div>
       )}

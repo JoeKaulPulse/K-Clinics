@@ -42,6 +42,16 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const { db } = await import('@/lib/db');
   // Rooms / equipment held by this booking (auto-assigned at booking).
   const heldResources = await db.resource.findMany({ where: { bookings: { some: { id } } }, orderBy: { kind: 'asc' }, select: { name: true, kind: true, floor: true } });
+  // Hospitality + aftercare + recommended next session for staff.
+  const visitPrefs = await db.booking.findUnique({ where: { id }, select: { refreshments: true, allergyNote: true, aftercareAckAt: true, treatmentSlug: true, startAt: true, clientId: true } });
+  const { refreshmentLabel } = await import('@/lib/hospitality');
+  let nextRec: string | null = null;
+  if (visitPrefs) {
+    const { recommendedNext, formatInterval } = await import('@/lib/treatment-intervals');
+    const completed = await db.booking.count({ where: { clientId: visitPrefs.clientId, treatmentSlug: visitPrefs.treatmentSlug, status: 'COMPLETED' } });
+    const rec = recommendedNext(visitPrefs.treatmentSlug, completed + 1, visitPrefs.startAt);
+    if (rec) nextRec = `${formatInterval(rec.weeks)} (≈ ${rec.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})`;
+  }
   const stockItems = canConsumables
     ? await db.stockItem.findMany({ where: { active: true }, orderBy: [{ category: 'asc' }, { name: 'asc' }], select: { id: true, name: true, unit: true, currentQty: true } })
     : [];
@@ -159,6 +169,16 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
         <p className="mt-2 text-sm text-[var(--color-stone)]">
           {heldResources.map((r) => `${r.name}${r.floor ? ` (${r.floor})` : ''}`).join(' · ')}
         </p>
+      )}
+
+      {visitPrefs && (visitPrefs.refreshments.length > 0 || visitPrefs.allergyNote || nextRec || visitPrefs.aftercareAckAt) && (
+        <div className="mt-6 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)] p-4 text-sm">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">Visit prep</p>
+          {visitPrefs.refreshments.length > 0 && <p>☕ Refreshments: <span className="font-medium text-[var(--color-ink)]">{visitPrefs.refreshments.map(refreshmentLabel).join(', ')}</span></p>}
+          {visitPrefs.allergyNote && <p className="text-[var(--color-blush)]">⚠ Allergies/dietary: <span className="font-medium">{visitPrefs.allergyNote}</span></p>}
+          <p className="text-[var(--color-stone)]">Aftercare agreed: {visitPrefs.aftercareAckAt ? `Yes (${visitPrefs.aftercareAckAt.toLocaleDateString('en-GB')})` : 'Not yet'}</p>
+          {nextRec && <p className="text-[var(--color-stone)]">Recommended next session: <span className="font-medium text-[var(--color-ink)]">{nextRec}</span></p>}
+        </div>
       )}
     </AdminShell>
   );

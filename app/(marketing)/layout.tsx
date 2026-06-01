@@ -6,6 +6,7 @@ import { ScrollProgress } from '@/components/motion/ScrollProgress';
 import { Cursor } from '@/components/motion/Cursor';
 import { Intro } from '@/components/motion/Intro';
 import { BackToTop } from '@/components/motion/BackToTop';
+import { WhatsAppButton } from '@/components/layout/WhatsAppButton';
 import { MotionProvider } from '@/components/motion/MotionProvider';
 import { CookieConsent } from '@/components/legal/CookieConsent';
 
@@ -30,6 +31,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
       </main>
       <Footer />
       <BackToTop />
+      <WhatsAppButton />
       <CookieConsent />
     </MotionProvider>
   );

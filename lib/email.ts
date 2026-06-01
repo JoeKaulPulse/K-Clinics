@@ -164,7 +164,7 @@ const fmtWhen = (d: Date) =>
   d.toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
 const fmtMoney = (pence: number) => `£${(pence / 100).toLocaleString('en-GB', { minimumFractionDigits: pence % 100 ? 2 : 0 })}`;
 
-export function tmplBookingConfirmation(o: { firstName: string; treatment: string; start: Date; pricePence: number; manageUrl: string; formsUrl?: string; arriveEarly?: boolean; lines?: { label: string; price: string }[] }) {
+export function tmplBookingConfirmation(o: { firstName: string; treatment: string; start: Date; pricePence: number; manageUrl: string; formsUrl?: string; arriveEarly?: boolean; lines?: { label: string; price: string }[]; nextNote?: string }) {
   const price = o.pricePence > 0 ? fmtMoney(o.pricePence) : 'Assessed at your visit';
   const itemsRows = o.lines && o.lines.length > 0
     ? o.lines.map((l) => `<tr><td style="color:#91766e;padding-right:20px;">${escape(l.label)}</td><td>${escape(l.price)}</td></tr>`).join('')
@@ -183,6 +183,7 @@ export function tmplBookingConfirmation(o: { firstName: string; treatment: strin
       Cancellations are free up to <strong>24 hours</strong> before your appointment; within 24 hours the full fee applies.
     </p>
     ${o.arriveEarly ? `<p style="font-size:14px;">Please <strong>arrive 15 minutes early</strong> for your first appointment so your clinician can talk through your treatment with you.</p>` : ''}
+    ${o.nextNote ? `<p style="font-size:14px;">💡 ${escape(o.nextNote)}</p>` : ''}
     ${o.formsUrl ? `<p style="font-size:14px;">Please complete your pre-treatment forms before your visit — it only takes a few minutes (you can also do them in clinic when you arrive).</p><p style="margin:16px 0;">${btn(o.formsUrl, 'Complete my forms')}</p>` : ''}
     <p style="margin:24px 0;">${btn(o.manageUrl, 'Manage or cancel booking')}</p>
     <p>${site.address.street}, ${site.address.locality}.<br>With warmth,<br>The K Clinics team</p>`,

@@ -77,6 +77,10 @@ export const bookingStartSchema = z.object({
   addOnVariantIds: z.array(z.string().min(1)).max(6).default([]),
   notes: z.string().max(2000).optional().or(z.literal('')),
   smsReminders: z.boolean().default(false),
+  // Hospitality + aftercare (team feedback).
+  refreshments: z.array(z.string().max(40)).max(12).default([]),
+  allergyNote: z.string().max(300).optional().or(z.literal('')),
+  aftercareAck: z.boolean().default(false),
 });
 export type BookingStartInput = z.infer<typeof bookingStartSchema>;
 
