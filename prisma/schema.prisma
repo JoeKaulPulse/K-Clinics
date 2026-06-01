@@ -148,6 +148,7 @@ enum AuditAction {
   POINTS_AWARDED
   REWARD_REDEEMED
   SERVICE_PRICES_BULK
+  CLIENT_DELETED
 }
 
 enum ReviewStatus {

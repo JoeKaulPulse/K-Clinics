@@ -47,6 +47,7 @@ export const PERMISSIONS: Permission[] = [
   { key: 'clients.edit', group: 'Clients', label: 'Edit clients', description: 'Update client details, notes and tags.' },
   { key: 'clients.clinical.view', group: 'Clients', label: 'View clinical records', description: 'Decrypt and read health assessments.', sensitive: true },
   { key: 'clients.export', group: 'Clients', label: 'Export client data', description: 'Download client lists (GDPR-sensitive).', sensitive: true },
+  { key: 'clients.delete', group: 'Clients', label: 'Delete clients', description: 'Permanently delete a client and all their data. Irreversible.', sensitive: true },
 
   // Discounts
   { key: 'discounts.manage', group: 'Discounts', label: 'Manage discounts', description: 'Revoke or override welcome-offer claims.' },

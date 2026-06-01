@@ -46,6 +46,41 @@ export async function eraseClientData(clientId: string) {
   return { ok: true };
 }
 
+/** Permanently delete a client and ALL related records (irreversible).
+ *  Guard-railed: requires the `clients.delete` permission AND a typed "DELETE"
+ *  confirmation. The audit entry survives (AuditEvent.clientId is not an FK). */
+export async function deleteClient(clientId: string, confirm: string) {
+  if (!crmEnabled) return { ok: false, error: 'Unavailable.' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'clients.delete')) return { ok: false, error: 'Not permitted.' };
+  if (confirm !== 'DELETE') return { ok: false, error: 'Type DELETE to confirm.' };
+
+  const { db } = await import('@/lib/db');
+  const { logAudit } = await import('@/lib/audit');
+
+  const c = await db.client.findUnique({ where: { id: clientId }, select: { firstName: true, lastName: true, email: true } });
+  if (!c) return { ok: false, error: 'Client not found.' };
+
+  try {
+    // Cascades to the client's bookings, assessments, points, reviews, etc.
+    await db.client.delete({ where: { id: clientId } });
+  } catch (e) {
+    return { ok: false, error: (e as Error)?.message || 'Could not delete this client.' };
+  }
+
+  // Log AFTER deletion so the record persists; no personal data in the summary.
+  await logAudit({
+    action: 'CLIENT_DELETED',
+    actor: session.email,
+    actorRole: session.role,
+    clientId,
+    summary: 'Client permanently deleted (right to erasure)',
+    meta: { email: c.email },
+  });
+  revalidatePath('/admin/clients');
+  return { ok: true };
+}
+
 export async function togglePinNote(noteId: string, clientId: string, pinned: boolean) {
   if (!crmEnabled) return;
   const session = await getSession();

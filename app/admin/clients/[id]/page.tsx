@@ -345,7 +345,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
             </div>
           </section>
 
-          {sessionCan(session, 'clients.export') && <DataPrivacy clientId={c.id} />}
+          {sessionCan(session, 'clients.export') && <DataPrivacy clientId={c.id} canDelete={sessionCan(session, 'clients.delete')} />}
         </aside>
       </div>
     </AdminShell>
