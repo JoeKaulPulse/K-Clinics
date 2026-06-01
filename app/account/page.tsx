@@ -9,6 +9,7 @@ import { TreatmentCard } from '@/components/ui/TreatmentCard';
 import { DiscountChip } from '@/components/portal/DiscountChip';
 import { OffersStrip } from '@/components/marketing/OffersStrip';
 import { PersonalisedOffers } from '@/components/portal/PersonalisedOffers';
+import { MarketingOptInPrompt } from '@/components/portal/MarketingOptInPrompt';
 import { crmEnabled } from '@/lib/crm';
 import { formatPrice, getTreatment, type Treatment } from '@/lib/treatments';
 import { portalAssessments } from '@/lib/questionnaires';
@@ -62,6 +63,7 @@ export default async function DashboardPage() {
       />
 
       <PersonalisedOffers clientId={client.id} />
+      {!client.marketingOptIn && !client.unsubscribed && <MarketingOptInPrompt />}
       <div className="mt-8"><OffersStrip heading="Offers for you" /></div>
 
       {data.discount && (
