@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { getInfoPage, infoSlugs } from '@/lib/info-pages';
@@ -17,8 +17,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return pageMeta({ title: `${p.title} | K Clinics`, description: p.intro.slice(0, 155), path: `/info/${slug}` });
 }
 
+// Pages that now have richer, dedicated routes.
+const REDIRECTS: Record<string, string> = { careers: '/careers' };
+
 export default async function InfoPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  if (REDIRECTS[slug]) redirect(REDIRECTS[slug]);
   const p = getInfoPage(slug);
   if (!p) notFound();
 
