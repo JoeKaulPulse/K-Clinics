@@ -11,7 +11,7 @@ import { translator, isLocale, LOCALES, LOCALE_LABELS, DEFAULT_LOCALE, type Loca
 
 type NavItem = { href: string; key: string; exact?: boolean; perm?: string; badge?: 'tasks' | 'timeoff' };
 const navGroups: { heading?: string; items: NavItem[] }[] = [
-  { items: [
+  { heading: 'nav.group.today', items: [
     { href: '/admin', key: 'nav.overview', exact: true, perm: 'dashboard.view' },
     { href: '/admin/my-day', key: 'nav.myday' },
     { href: '/admin/calendar', key: 'nav.calendar', perm: 'calendar.view' },
@@ -108,6 +108,33 @@ export function AdminShell({
   const badgeCount = (badge?: string) =>
     badge === 'timeoff' ? (canApproveTimeOff ? pendingTimeOff : 0) : badge === 'tasks' ? openTasks : 0;
 
+  // Collapsible sidebar sections (desktop). Collapsed by default; the section
+  // containing the current page opens automatically so you can see where you are.
+  const isActive = (n: NavItem) => (n.exact ? pathname === n.href : pathname.startsWith(n.href));
+  const groupKey = (g: { heading?: string }, gi: number) => g.heading ?? `g${gi}`;
+  const groupBadge = (items: NavItem[]) => items.reduce((s, n) => s + badgeCount(n.badge), 0);
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
+    const s = new Set<string>();
+    groups.forEach((g, gi) => { if (g.items.some(isActive)) s.add(groupKey(g, gi)); });
+    return s;
+  });
+  const toggleGroup = (k: string) => setOpenGroups((prev) => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n; });
+
+  const renderLink = (n: NavItem) => (
+    <Link
+      key={n.href}
+      href={n.href}
+      className={`flex items-center justify-between gap-2 whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-2.5 text-sm transition-colors ${
+        isActive(n) ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-bone)]'
+      }`}
+    >
+      <span>{t(n.key)}</span>
+      {badgeCount(n.badge) > 0 && (
+        <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[0.65rem] font-semibold text-amber-950">{badgeCount(n.badge)}</span>
+      )}
+    </Link>
+  );
+
   async function changeLanguage(next: Locale) {
     setLocale(next);
     document.cookie = `kc_lang=${next}; path=/; max-age=${60 * 60 * 24 * 365}`;
@@ -136,33 +163,35 @@ export function AdminShell({
             </div>
           </div>
           <GlobalSearch placeholder={t('shell.search')} />
-          <nav className="flex gap-1 overflow-x-auto lg:flex-col">
-            {groups.map((g, gi) => (
-              <div key={g.heading ?? `g${gi}`} className="contents lg:block">
-                {g.heading && (
-                  <p className="hidden px-4 pb-1 pt-4 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)] lg:block">
-                    {t(g.heading)}
-                  </p>
-                )}
-                {g.items.map((n) => {
-                  const active = n.exact ? pathname === n.href : pathname.startsWith(n.href);
-                  return (
-                    <Link
-                      key={n.href}
-                      href={n.href}
-                      className={`flex items-center justify-between gap-2 whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-2.5 text-sm transition-colors ${
-                        active ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-bone)]'
-                      }`}
-                    >
-                      <span>{t(n.key)}</span>
-                      {badgeCount(n.badge) > 0 && (
-                        <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[0.65rem] font-semibold text-amber-950">{badgeCount(n.badge)}</span>
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
-            ))}
+
+          {/* Mobile: flat horizontal bar (all items) */}
+          <nav className="flex gap-1 overflow-x-auto lg:hidden">
+            {groups.flatMap((g) => g.items).map(renderLink)}
+          </nav>
+
+          {/* Desktop: collapsible sections (collapsed by default) */}
+          <nav className="hidden flex-col gap-0.5 lg:flex">
+            {groups.map((g, gi) => {
+              const key = groupKey(g, gi);
+              const open = openGroups.has(key);
+              const pending = groupBadge(g.items);
+              return (
+                <div key={key}>
+                  <button
+                    onClick={() => toggleGroup(key)}
+                    aria-expanded={open}
+                    className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-4 pb-1 pt-4 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)] transition-colors hover:text-[var(--color-stone)]"
+                  >
+                    <span className="text-[0.7rem] leading-none text-[var(--color-stone)]">{open ? '▾' : '▸'}</span>
+                    <span className="flex-1 text-left">{g.heading ? t(g.heading) : ''}</span>
+                    {!open && pending > 0 && (
+                      <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[0.6rem] font-semibold text-amber-950">{pending}</span>
+                    )}
+                  </button>
+                  {open && <div className="flex flex-col gap-0.5">{g.items.map(renderLink)}</div>}
+                </div>
+              );
+            })}
           </nav>
           <div className="mt-auto hidden border-t border-[var(--color-line)] pt-4 lg:block">
             {/* Language switcher */}
