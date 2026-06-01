@@ -1333,3 +1333,26 @@ model JobApplication {
   @@index([status])
   @@index([vacancyId])
 }
+
+// ── Gift vouchers (e-gift cards) ─────────────────────────────────────────────
+model GiftVoucher {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  amountPence    Int
+  balancePence   Int
+  purchaserName  String
+  purchaserEmail String
+  recipientName  String?
+  recipientEmail String?
+  message        String?
+  deliverAt      DateTime?            // scheduled delivery date (null = immediate)
+  delivered      Boolean  @default(false)
+  status         String   @default("PENDING") // PENDING | ACTIVE | REDEEMED | CANCELLED
+  stripePaymentIntentId String? @unique
+  expiresAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status])
+  @@index([delivered, deliverAt])
+}
