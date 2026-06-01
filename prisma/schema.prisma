@@ -366,6 +366,9 @@ model Booking {
   startAt       DateTime
   endAt         DateTime
   durationMin   Int
+  // Turnaround/cleanup minutes blocked AFTER the appointment (not client-facing,
+  // not charged). The effective busy window is [startAt, endAt + bufferMin].
+  bufferMin     Int           @default(0)
   pricePence    Int           // 0 = on-consultation (amount set at charge time)
 
   status        BookingStatus @default(PENDING)
@@ -385,6 +388,11 @@ model Booking {
   // Which site this appointment takes place at (multi-location).
   location       Location?    @relation(fields: [locationId], references: [id], onDelete: SetNull)
   locationId     String?
+
+  // Room/equipment held for this appointment (e.g. a laser machine), if the
+  // treatment requires one. Blocks that resource's capacity for the booking.
+  resource       Resource?    @relation(fields: [resourceId], references: [id], onDelete: SetNull)
+  resourceId     String?
 
   // Time tracking — actuals vs the scheduled duration.
   startedAt      DateTime?
@@ -437,6 +445,7 @@ model Booking {
   @@index([status])
   @@index([clientId])
   @@index([practitionerId])
+  @@index([resourceId])
 }
 
 model EmailEvent {
@@ -606,6 +615,8 @@ model Location {
   staff       AdminUser[]     @relation("StaffLocations")
   schedules   StaffSchedule[]
   bookings    Booking[]
+  closures    ClinicClosure[]
+  resources   Resource[]
 
   @@index([active])
 }
@@ -618,11 +629,57 @@ model StaffSchedule {
   dayOfWeek  Int        // 0=Sun … 6=Sat
   startMin   Int        // minutes from midnight
   endMin     Int
+  // Optional daily break (e.g. lunch), as minutes from midnight. When set, the
+  // window [breakStartMin, breakEndMin] is unavailable within the working day.
+  breakStartMin Int?
+  breakEndMin   Int?
   location   Location?  @relation(fields: [locationId], references: [id], onDelete: SetNull)
   locationId String?
   createdAt  DateTime   @default(now())
 
   @@index([staffId, dayOfWeek])
+}
+
+// ── Clinic-wide closures & holidays ──────────────────────────────────────────
+// Blocks bookings for ALL staff over a date/range. locationId null = every site.
+model ClinicClosure {
+  id         String    @id @default(cuid())
+  startAt    DateTime
+  endAt      DateTime
+  allDay     Boolean   @default(true)
+  reason     String?
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  locationId String?   // null = applies to all locations
+  createdBy  String?
+  createdAt  DateTime  @default(now())
+
+  @@index([startAt, endAt])
+}
+
+// ── Bookable rooms / equipment (e.g. a laser machine) ────────────────────────
+// A treatment may require a resource by `slug`; capacity caps how many bookings
+// can use it at once. If no matching active resource exists, the requirement is
+// simply not enforced (clinics that haven't configured resources aren't blocked).
+model Resource {
+  id         String    @id @default(cuid())
+  slug       String    // e.g. 'laser' — matches a treatment's requiresResource
+  name       String
+  kind       ResourceKind @default(EQUIPMENT)
+  capacity   Int       @default(1) // concurrent bookings allowed
+  active     Boolean   @default(true)
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  locationId String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  bookings   Booking[]
+
+  @@index([slug, active])
+}
+
+enum ResourceKind {
+  ROOM
+  EQUIPMENT
 }
 
 // ── Time off / busy blocks (manual or Google-Calendar-synced) ───────────────

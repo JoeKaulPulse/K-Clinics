@@ -27,10 +27,13 @@ export async function createManualBooking(input: {
   const start = new Date(input.startISO);
   if (isNaN(+start)) return { ok: false, error: 'Invalid date/time.' };
 
-  const { pricePence, durationMin } = bookingFor(input.treatmentSlug);
+  const { pricePence, durationMin, bufferMin } = bookingFor(input.treatmentSlug);
   const end = new Date(start.getTime() + durationMin * 60000);
 
   const { db } = await import('@/lib/db');
+  // Hold any room/equipment the treatment needs (best-effort; staff can override).
+  const { pickResource } = await import('@/lib/availability');
+  const resourceId = await pickResource(input.startISO, durationMin, input.treatmentSlug);
   const client = await db.client.upsert({
     where: { email: input.email.toLowerCase() },
     update: {
@@ -55,9 +58,11 @@ export async function createManualBooking(input: {
       startAt: start,
       endAt: end,
       durationMin,
+      bufferMin: bufferMin ?? 0,
       pricePence: pricePence ?? 0,
       status: 'CONFIRMED',
       notes: input.notes || null,
+      resourceId,
     },
   });
   await db.interaction.create({
