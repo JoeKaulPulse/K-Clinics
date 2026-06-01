@@ -3,29 +3,30 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-type Resource = { id: string; slug: string; name: string; kind: string; tags: string[]; floor: string | null; capacity: number; active: boolean; locationId: string | null };
+type Resource = { id: string; slug: string; name: string; kind: string; tags: string[]; floor: string | null; capacity: number; active: boolean; locationId: string | null; equipmentIds: string[] };
 type Loc = { id: string; name: string };
 
 const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
-
-/** Treatment rooms (named, auto-assigned) and shared equipment (laser/HIFU).
- *  Bookings auto-hold a free capable room + any equipment the treatment needs. */
-export function ResourcesManager({ resources, locations, multiLocation }: { resources: Resource[]; locations: Loc[]; multiLocation: boolean }) {
-  const rooms = resources.filter((r) => r.kind === 'ROOM');
-  const equipment = resources.filter((r) => r.kind === 'EQUIPMENT');
-  return (
-    <>
-      <RoomSection rooms={rooms} locations={locations} multiLocation={multiLocation} />
-      <EquipmentSection equipment={equipment} locations={locations} multiLocation={multiLocation} />
-    </>
-  );
-}
 
 async function post(payload: object) {
   return fetch('/api/admin/resources', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 }
 
-function RoomSection({ rooms, locations, multiLocation }: { rooms: Resource[]; locations: Loc[]; multiLocation: boolean }) {
+/** Owner/admin-only: treatment rooms (named, auto-assigned), shared equipment
+ *  (laser/HIFU), each room's purpose, and which equipment sits in each room —
+ *  all editable over time. */
+export function ResourcesManager({ resources, locations, multiLocation }: { resources: Resource[]; locations: Loc[]; multiLocation: boolean }) {
+  const rooms = resources.filter((r) => r.kind === 'ROOM');
+  const equipment = resources.filter((r) => r.kind === 'EQUIPMENT');
+  return (
+    <>
+      <RoomSection rooms={rooms} equipment={equipment} locations={locations} multiLocation={multiLocation} />
+      <EquipmentSection equipment={equipment} locations={locations} multiLocation={multiLocation} />
+    </>
+  );
+}
+
+function RoomSection({ rooms, equipment, locations, multiLocation }: { rooms: Resource[]; equipment: Resource[]; locations: Loc[]; multiLocation: boolean }) {
   const router = useRouter();
   const [name, setName] = useState('');
   const [floor, setFloor] = useState('');
@@ -41,7 +42,6 @@ function RoomSection({ rooms, locations, multiLocation }: { rooms: Resource[]; l
     setBusy(false);
     if (res.ok) { setName(''); router.refresh(); } else { const j = await res.json().catch(() => ({})); setMsg(j.error || 'Could not add.'); }
   }
-  async function act(payload: object) { await post(payload); router.refresh(); }
 
   const byFloor = rooms.reduce<Record<string, Resource[]>>((acc, r) => { (acc[r.floor || '—'] ||= []).push(r); return acc; }, {});
 
@@ -49,8 +49,9 @@ function RoomSection({ rooms, locations, multiLocation }: { rooms: Resource[]; l
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
       <h2 className="mb-1 font-[family-name:var(--font-display)] text-xl">Treatment rooms</h2>
       <p className="mb-4 text-sm text-[var(--color-stone)]">
-        Named rooms, auto-assigned to each booking from whatever’s free. Tag a room <code className="text-xs">aesthetics</code> or
-        <code className="text-xs"> dental</code> so the right treatments land in it (these decide booking; other tags are notes).
+        Named rooms, auto-assigned to each booking from whatever’s free. Edit a room to change its purpose
+        (tags <code className="text-xs">aesthetics</code> / <code className="text-xs">dental</code> decide which treatments land in it)
+        or what equipment lives in it — both can change over time.
       </p>
 
       <div className="flex flex-wrap items-end gap-2">
@@ -75,24 +76,83 @@ function RoomSection({ rooms, locations, multiLocation }: { rooms: Resource[]; l
             <div key={fl}>
               <p className="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">{fl === '—' ? 'No floor set' : `${fl} floor`}</p>
               <ul className="divide-y divide-[var(--color-line)] border-t border-[var(--color-line)]">
-                {list.map((r) => (
-                  <li key={r.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                    <span className={r.active ? '' : 'opacity-50'}>
-                      <span className="font-medium">{r.name}</span>
-                      {r.tags.length > 0 && <span className="text-[var(--color-stone-soft)]"> · {r.tags.join(', ')}</span>}
-                    </span>
-                    <span className="flex items-center gap-3">
-                      <button onClick={() => act({ op: 'toggle', id: r.id, active: !r.active })} className="text-xs text-[var(--color-stone)] hover:underline">{r.active ? 'Disable' : 'Enable'}</button>
-                      <button onClick={() => { if (confirm('Remove this room?')) act({ op: 'remove', id: r.id }); }} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
-                    </span>
-                  </li>
-                ))}
+                {list.map((r) => <RoomRow key={r.id} room={r} equipment={equipment} />)}
               </ul>
             </div>
           ))}
         </div>
       )}
     </section>
+  );
+}
+
+function RoomRow({ room, equipment }: { room: Resource; equipment: Resource[] }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [tags, setTags] = useState(room.tags.join(', '));
+  const [equip, setEquip] = useState<Set<string>>(new Set(room.equipmentIds));
+  const [msg, setMsg] = useState('');
+
+  const equipNames = equipment.filter((e) => room.equipmentIds.includes(e.id)).map((e) => e.name);
+
+  async function act(payload: object) { await post(payload); router.refresh(); }
+
+  async function saveTags() {
+    setMsg('Saving…');
+    const res = await post({ op: 'setTags', id: room.id, tags });
+    setMsg(res.ok ? 'Saved ✓' : 'Could not save'); router.refresh();
+  }
+  async function toggleEquip(id: string) {
+    const next = new Set(equip);
+    next.has(id) ? next.delete(id) : next.add(id);
+    setEquip(next);
+    await post({ op: 'setEquipment', id: room.id, equipmentIds: [...next] });
+    router.refresh();
+  }
+
+  return (
+    <li className="py-2 text-sm">
+      <div className="flex items-center justify-between gap-3">
+        <span className={room.active ? '' : 'opacity-50'}>
+          <span className="font-medium">{room.name}</span>
+          {room.tags.length > 0 && <span className="text-[var(--color-stone-soft)]"> · {room.tags.join(', ')}</span>}
+          {equipNames.length > 0 && <span className="text-[var(--color-stone-soft)]"> · 🛠 {equipNames.join(', ')}</span>}
+        </span>
+        <span className="flex items-center gap-3">
+          <button onClick={() => setOpen((v) => !v)} className="text-xs text-[var(--color-gold)] hover:underline">{open ? 'Close' : 'Edit'}</button>
+          <button onClick={() => act({ op: 'toggle', id: room.id, active: !room.active })} className="text-xs text-[var(--color-stone)] hover:underline">{room.active ? 'Disable' : 'Enable'}</button>
+          <button onClick={() => { if (confirm('Remove this room?')) act({ op: 'remove', id: room.id }); }} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
+        </span>
+      </div>
+
+      {open && (
+        <div className="mt-3 space-y-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white/60 p-3">
+          <div>
+            <p className="mb-1 text-xs font-medium text-[var(--color-stone)]">Used for (tags)</p>
+            <div className="flex items-center gap-2">
+              <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="aesthetics, laser" className={`${field} w-64`} />
+              <button onClick={saveTags} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-porcelain)]">Save</button>
+              {msg && <span className="text-xs text-[var(--color-stone)]">{msg}</span>}
+            </div>
+          </div>
+          <div>
+            <p className="mb-1 text-xs font-medium text-[var(--color-stone)]">Equipment in this room</p>
+            {equipment.length === 0 ? (
+              <p className="text-xs text-[var(--color-stone-soft)]">No equipment defined yet — add some below.</p>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {equipment.map((e) => (
+                  <label key={e.id} className="flex items-center gap-1.5 text-xs">
+                    <input type="checkbox" checked={equip.has(e.id)} onChange={() => toggleEquip(e.id)} className="h-3.5 w-3.5 accent-[var(--color-gold)]" />
+                    {e.name}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </li>
   );
 }
 
@@ -120,6 +180,7 @@ function EquipmentSection({ equipment, locations, multiLocation }: { equipment: 
       <p className="mb-4 text-sm text-[var(--color-stone)]">
         Scarce machines like lasers or HIFU. The <code className="text-xs">slug</code> links to the treatments that need it
         (e.g. <code className="text-xs">laser</code>, <code className="text-xs">hifu</code>); capacity is how many you own.
+        Assign machines to rooms above.
       </p>
 
       <div className="flex flex-wrap items-end gap-2">

@@ -47,9 +47,14 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   // Clinic closures + bookable resources (rooms/equipment).
   const [closuresRaw, resources] = await Promise.all([
     db.clinicClosure.findMany({ where: { endAt: { gte: new Date() } }, orderBy: { startAt: 'asc' }, select: { id: true, startAt: true, endAt: true, reason: true, locationId: true } }),
-    db.resource.findMany({ orderBy: [{ kind: 'asc' }, { floor: 'asc' }, { name: 'asc' }], select: { id: true, slug: true, name: true, kind: true, tags: true, floor: true, capacity: true, active: true, locationId: true } }),
+    db.resource.findMany({ orderBy: [{ kind: 'asc' }, { floor: 'asc' }, { name: 'asc' }], select: { id: true, slug: true, name: true, kind: true, tags: true, floor: true, capacity: true, active: true, locationId: true, equipment: { select: { id: true } } } }),
   ]);
   const closures = closuresRaw.map((c) => ({ id: c.id, startAt: c.startAt.toISOString(), endAt: c.endAt.toISOString(), reason: c.reason, locationId: c.locationId }));
+  const roomsAndEquipment = resources.map(({ equipment, ...r }) => ({ ...r, equipmentIds: equipment.map((e) => e.id) }));
+
+  // Room layout & equipment placement are owner/admin-only configuration.
+  const { sessionIsAdmin } = await import('@/lib/auth');
+  const isAdmin = sessionIsAdmin(session);
 
   const { googleConfigured } = await import('@/lib/google-calendar');
   const can = await sessionPermissions();
@@ -66,7 +71,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
 
       <div className="mt-10 space-y-8">
         <ClosuresManager closures={closures} locations={locations} multiLocation={multiLocation} />
-        <ResourcesManager resources={resources} locations={locations} multiLocation={multiLocation} />
+        {isAdmin && <ResourcesManager resources={roomsAndEquipment} locations={locations} multiLocation={multiLocation} />}
       </div>
     </AdminShell>
   );

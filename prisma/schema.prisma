@@ -679,6 +679,12 @@ model Resource {
 
   bookings   Booking[]
 
+  // Which equipment is physically placed in a ROOM. Self-relation: a room holds
+  // many equipment; a piece of equipment can sit in many rooms. Owner-managed and
+  // changeable over time. (Informational today; available to drive assignment.)
+  equipment  Resource[] @relation("RoomEquipment")
+  inRooms    Resource[] @relation("RoomEquipment")
+
   @@index([slug, active])
   @@index([kind, active])
 }

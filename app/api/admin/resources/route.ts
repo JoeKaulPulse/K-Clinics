@@ -5,12 +5,13 @@ export const runtime = 'nodejs';
 
 const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
 
-// Manage bookable rooms/equipment. Requires schedule.manage.
+// Manage bookable rooms/equipment, room purpose & equipment placement.
+// Owner/Admin only — clinic configuration.
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
-  const { requirePermission } = await import('@/lib/auth');
-  const session = await requirePermission('schedule.manage');
-  if (!session) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
+  const { getSession, sessionIsAdmin } = await import('@/lib/auth');
+  const session = await getSession();
+  if (!sessionIsAdmin(session)) return NextResponse.json({ ok: false, error: 'Only the owner or an admin can manage rooms & equipment.' }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));
   const { db } = await import('@/lib/db');
@@ -24,6 +25,21 @@ export async function POST(req: Request) {
   if (body.op === 'toggle') {
     if (!body.id) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
     await db.resource.update({ where: { id: body.id }, data: { active: !!body.active } });
+    return NextResponse.json({ ok: true });
+  }
+
+  // Edit a room's purpose (capability tags) — adjustable over time.
+  if (body.op === 'setTags') {
+    if (!body.id) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
+    const tagList = (Array.isArray(body.tags) ? body.tags : String(body.tags || '').split(',')).map((t: string) => t.trim().toLowerCase()).filter(Boolean);
+    await db.resource.update({ where: { id: body.id }, data: { tags: tagList } });
+    return NextResponse.json({ ok: true });
+  }
+
+  // Set which equipment is placed in a room (self-relation).
+  if (body.op === 'setEquipment') {
+    if (!body.id || !Array.isArray(body.equipmentIds)) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
+    await db.resource.update({ where: { id: body.id }, data: { equipment: { set: body.equipmentIds.map((eid: string) => ({ id: eid })) } } });
     return NextResponse.json({ ok: true });
   }
 
