@@ -1360,3 +1360,19 @@ model GiftVoucher {
   @@index([status])
   @@index([delivered, deliverAt])
 }
+
+// Footer newsletter sign-ups. Separate from Client — these are marketing
+// subscribers who consented explicitly at the point of sign-up. Every record
+// carries the consent timestamp and an unsubscribe token (GDPR/PECR).
+model NewsletterSubscriber {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  active      Boolean  @default(true)
+  source      String?  // e.g. "footer"
+  consentedAt DateTime @default(now())
+  unsubToken  String   @unique @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([active])
+}

@@ -4,6 +4,9 @@ import { footerNav } from '@/lib/nav';
 import { Logo } from '@/components/brand/Logo';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { Aurora } from '@/components/ui/Aurora';
+import { NewsletterForm } from '@/components/layout/NewsletterForm';
+import { AccessBadges } from '@/components/ui/AccessBadges';
+import { PaymentMarks } from '@/components/ui/PaymentMarks';
 import { CookieSettingsLink } from '@/components/legal/CookieSettingsLink';
 
 export function Footer() {
@@ -25,14 +28,19 @@ export function Footer() {
         </div>
       </div>
 
-      {/* Link grid */}
-      <div className="container-lux relative grid gap-12 py-16 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
-        <div>
+      {/* Main grid: brand + newsletter · Discover · Connect · Policies · contact */}
+      <div className="container-lux relative grid gap-x-8 gap-y-12 py-16 lg:grid-cols-12">
+        {/* Brand + newsletter */}
+        <div className="lg:col-span-4">
           <Logo mono size="footer" className="text-[var(--color-porcelain)]" />
+          <p className="mt-4 text-sm uppercase tracking-[0.16em] text-[color-mix(in_oklab,var(--color-porcelain)_55%,transparent)]">United Kingdom</p>
           <p className="mt-5 max-w-xs text-sm leading-relaxed text-[color-mix(in_oklab,var(--color-porcelain)_64%,transparent)]">
-            {site.tagline}. A premium clinic in the heart of Clerkenwell, uniting advanced aesthetics and aesthetic dentistry.
+            Receive considered tips on skin, smile and aesthetics — plus new treatments, seasonal edits and member-only offers.
           </p>
-          <div className="mt-6 flex gap-3">
+          <div className="mt-5 max-w-sm">
+            <NewsletterForm />
+          </div>
+          <div className="mt-7 flex gap-3">
             {Object.entries(site.social).map(([k, href]) => (
               <a
                 key={k}
@@ -45,11 +53,21 @@ export function Footer() {
                 {k[0].toUpperCase()}
               </a>
             ))}
+            <a
+              href={site.mapLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Find us on the map"
+              className="grid h-10 w-10 place-items-center rounded-full border border-white/15 transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-6-5.3-6-10a6 6 0 1 1 12 0c0 4.7-6 10-6 10z" /><circle cx="12" cy="11" r="2" /></svg>
+            </a>
           </div>
         </div>
 
+        {/* Link columns */}
         {footerNav.map((col) => (
-          <nav key={col.heading} aria-label={col.heading}>
+          <nav key={col.heading} aria-label={col.heading} className="lg:col-span-2">
             <p className="eyebrow mb-5">{col.heading}</p>
             <ul className="space-y-1">
               {col.links.map((l) => (
@@ -65,38 +83,29 @@ export function Footer() {
             </ul>
           </nav>
         ))}
+
+        {/* Contact / NAP block */}
+        <div className="lg:col-span-2">
+          <p className="eyebrow mb-5">City of London · Islington</p>
+          <address className="space-y-3 text-sm not-italic text-[color-mix(in_oklab,var(--color-porcelain)_72%,transparent)]">
+            <a href={site.mapLink} target="_blank" rel="noopener noreferrer" className="block transition-colors hover:text-[var(--color-gold)]">
+              {site.address.street}, {site.address.region} {site.address.postalCode}
+            </a>
+            <a href={site.phoneHref} className="block transition-colors hover:text-[var(--color-gold)]">{site.phone}</a>
+            <a href={site.emailHref} className="block transition-colors hover:text-[var(--color-gold)]">{site.email}</a>
+          </address>
+          <AccessBadges className="mt-6" />
+        </div>
       </div>
 
-      {/* Legal & info links */}
-      <div className="container-lux relative flex flex-wrap gap-x-5 gap-y-2 border-t border-white/10 py-6 text-xs text-[color-mix(in_oklab,var(--color-porcelain)_55%,transparent)]">
-        {[
-          ['Terms & Conditions', '/info/terms-conditions'],
-          ['Privacy Policy', '/info/privacy-policy'],
-          ['Cancellations & Refunds', '/info/cancellations-refunds'],
-          ['Complaints', '/info/complaints-procedure'],
-          ['Accessibility', '/info/accessibility'],
-          ['Gift Vouchers', '/gift-vouchers'],
-          ['Refer a Friend', '/refer-a-friend'],
-          ['Careers', '/careers'],
-        ].map(([label, href]) => (
-          <Link key={href} href={href} className="transition-colors hover:text-[var(--color-gold)]">
-            {label}
-          </Link>
-        ))}
-        <CookieSettingsLink />
-      </div>
-
-      {/* Contact + legal */}
-      <div className="container-lux relative grid gap-6 border-t border-white/10 py-9 text-sm text-[color-mix(in_oklab,var(--color-porcelain)_60%,transparent)] md:grid-cols-3">
-        <p>
-          {site.address.street}, {site.address.locality}, {site.address.region} {site.address.postalCode}
-        </p>
-        <p className="md:text-center">
-          <a href={site.phoneHref} className="hover:text-[var(--color-gold)]">{site.phone}</a>
-          {' · '}
-          <a href={site.emailHref} className="hover:text-[var(--color-gold)]">{site.email}</a>
-        </p>
-        <p className="md:text-right">© {year} {site.legalName}. All rights reserved.</p>
+      {/* Payments + © */}
+      <div className="container-lux relative flex flex-col items-center gap-5 border-t border-white/10 py-7 text-xs text-[color-mix(in_oklab,var(--color-porcelain)_55%,transparent)] md:flex-row md:justify-between">
+        <PaymentMarks />
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+          <CookieSettingsLink />
+          <span className="hidden md:inline text-white/15">·</span>
+          <p>© {year} {site.legalName}. All rights reserved.</p>
+        </div>
       </div>
     </footer>
   );

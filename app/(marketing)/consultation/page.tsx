@@ -55,6 +55,22 @@ export default function ConsultationPage() {
           <ConsultForm />
         </Reveal>
       </section>
+
+      {/* Dental consultations anchor */}
+      <section id="dental" className="container-lux section scroll-mt-28">
+        <Reveal>
+          <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-8 md:p-12">
+            <p className="eyebrow mb-3">Cosmetology & dental consultations</p>
+            <h2 className="text-title">Whether it’s your skin or your smile.</h2>
+            <p className="mt-4 max-w-2xl text-[var(--color-ink-soft)]">
+              The form above covers both sides of K Clinics — simply tell us whether you’re interested in aesthetics, aesthetic dentistry, or both, and we’ll match you with the right clinician. Dental consultations include an assessment of your goals and a clear, costed plan; where a consultation fee applies, it’s credited towards your treatment.
+            </p>
+            <p className="mt-4 text-sm text-[var(--color-stone)]">
+              Explore <a href="/treatments" className="link-underline font-medium text-[var(--color-ink)]">cosmetology treatments</a> or <a href="/dentistry" className="link-underline font-medium text-[var(--color-ink)]">dental treatments</a> first if you’d like.
+            </p>
+          </div>
+        </Reveal>
+      </section>
     </>
   );
 }

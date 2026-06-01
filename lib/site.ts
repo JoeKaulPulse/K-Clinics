@@ -15,12 +15,12 @@ export const site = {
 
   // ── Contact / NAP (Name, Address, Phone) ───────────────────────────────────
   // PLACEHOLDERS — replace with verified details before launch.
-  phone: '+44 20 7250 0000',
-  phoneHref: 'tel:+442072500000',
+  phone: '075 00 075 775',
+  phoneHref: 'tel:+447500075775',
   // WhatsApp business number (digits only, intl format). Overridable via env.
-  whatsapp: '442072500000',
-  email: 'hello@kclinics.co.uk',
-  emailHref: 'mailto:hello@kclinics.co.uk',
+  whatsapp: '447500075775',
+  email: 'support@kclinics.co.uk',
+  emailHref: 'mailto:support@kclinics.co.uk',
   address: {
     street: '4 Charterhouse Buildings, Goswell Road',
     locality: 'Clerkenwell, Islington',
@@ -31,8 +31,8 @@ export const site = {
   },
   geo: { latitude: 51.5226, longitude: -0.0996 },
   mapEmbed:
-    'https://www.google.com/maps?q=4+Charterhouse+Buildings+Goswell+Road+London+EC1M&output=embed',
-  mapLink: 'https://maps.google.com/?q=4+Charterhouse+Buildings,+Goswell+Road,+London+EC1M',
+    'https://www.google.com/maps?q=4+Charterhouse+Buildings+Goswell+Road+London+EC1M+7AN&output=embed',
+  mapLink: 'https://maps.app.goo.gl/AqSgHBRKDQaUa7Kx9',
 
   // ── Opening hours (24h, used for display + schema.org) ──────────────────────
   hours: [
@@ -49,7 +49,7 @@ export const site = {
   // First-party booking (Stripe-backed). Treatwell/Fresha removed.
   booking: {
     path: '/book',
-    phoneCta: 'tel:+442072500000',
+    phoneCta: 'tel:+447500075775',
   },
 
   // ── Social ──────────────────────────────────────────────────────────────────
