@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { ROLES, PERMISSIONS, PERMISSION_GROUPS, roleDefaults, type Role } from '@/lib/permissions';
 
+type Profile = { publicProfile: boolean; title: string; photoUrl: string; publicPhone: string; bio: string; credentials: string; yearsExperience: number | null; profileOrder: number; isClinician: boolean };
 type Staff = {
   id: string;
   email: string;
@@ -14,11 +15,13 @@ type Staff = {
   permGrant: string[];
   permRevoke: string[];
   lastLoginAt: string | null;
+  profile?: Profile;
 };
 
 export function StaffManager({ staff, canManage, actorRole }: { staff: Staff[]; canManage: boolean; actorRole: string }) {
   const router = useRouter();
   const [editing, setEditing] = useState<Staff | 'new' | null>(null);
+  const [profileFor, setProfileFor] = useState<Staff | null>(null);
 
   return (
     <div>
@@ -66,9 +69,14 @@ export function StaffManager({ staff, canManage, actorRole }: { staff: Staff[]; 
                   </td>
                   <td className="px-5 py-3 text-right">
                     {canManage && (
-                      <button onClick={() => setEditing(s)} className="text-sm font-medium text-[var(--color-gold)] hover:underline">
-                        Edit
-                      </button>
+                      <span className="inline-flex items-center gap-3">
+                        <button onClick={() => setProfileFor(s)} className="text-sm font-medium text-[var(--color-stone)] hover:underline" title="Public team-page profile">
+                          Profile{s.profile?.publicProfile ? ' ✓' : ''}
+                        </button>
+                        <button onClick={() => setEditing(s)} className="text-sm font-medium text-[var(--color-gold)] hover:underline">
+                          Edit
+                        </button>
+                      </span>
                     )}
                   </td>
                 </tr>
@@ -77,6 +85,12 @@ export function StaffManager({ staff, canManage, actorRole }: { staff: Staff[]; 
           </tbody>
         </table>
       </div>
+
+      <AnimatePresence>
+        {profileFor && (
+          <ProfileEditor key={`p-${profileFor.id}`} staff={profileFor} onClose={() => setProfileFor(null)} onSaved={() => { setProfileFor(null); router.refresh(); }} />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {editing && (
@@ -252,5 +266,64 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="mb-1 block text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{label}</span>
       {children}
     </label>
+  );
+}
+
+function ProfileEditor({ staff, onClose, onSaved }: { staff: Staff; onClose: () => void; onSaved: () => void }) {
+  const p = staff.profile;
+  const [f, setF] = useState({
+    publicProfile: p?.publicProfile ?? false,
+    title: p?.title ?? '',
+    photoUrl: p?.photoUrl ?? '',
+    publicPhone: p?.publicPhone ?? '',
+    credentials: p?.credentials ?? '',
+    yearsExperience: p?.yearsExperience != null ? String(p.yearsExperience) : '',
+    profileOrder: p ? String(p.profileOrder) : '0',
+    bio: p?.bio ?? '',
+  });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((s) => ({ ...s, [k]: v }));
+  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+
+  async function save() {
+    setBusy(true); setErr('');
+    const res = await fetch('/api/admin/staff', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'profile', id: staff.id, ...f, yearsExperience: f.yearsExperience === '' ? '' : Number(f.yearsExperience), profileOrder: Number(f.profileOrder) }) });
+    const j = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (res.ok) onSaved(); else setErr(j.error || 'Could not save.');
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-6">
+      <motion.div initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 24, opacity: 0 }} className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 sm:rounded-[var(--radius-lg)]">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="font-[family-name:var(--font-display)] text-xl">Public team profile</h2>
+            <p className="text-sm text-[var(--color-stone)]">{staff.name || staff.email} · shows on the /team page{p?.isClinician ? ' (clinical)' : ' (support)'}</p>
+          </div>
+          <button onClick={onClose} className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">✕</button>
+        </div>
+        <label className="mb-4 flex items-center gap-3 text-sm">
+          <input type="checkbox" checked={f.publicProfile} onChange={(e) => set('publicProfile', e.target.checked)} className="h-4 w-4 accent-[var(--color-gold)]" />
+          Show this person on the public team page
+        </label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="text-xs text-[var(--color-stone)]">Job title<br /><input className={field} value={f.title} onChange={(e) => set('title', e.target.value)} placeholder="Aesthetic Doctor" /></label>
+          <label className="text-xs text-[var(--color-stone)]">Years’ experience<br /><input className={field} value={f.yearsExperience} onChange={(e) => set('yearsExperience', e.target.value)} placeholder="10" /></label>
+          <label className="text-xs text-[var(--color-stone)] sm:col-span-2">Headshot URL<br /><input className={field} value={f.photoUrl} onChange={(e) => set('photoUrl', e.target.value)} placeholder="https://…" /></label>
+          <label className="text-xs text-[var(--color-stone)]">Public phone<br /><input className={field} value={f.publicPhone} onChange={(e) => set('publicPhone', e.target.value)} placeholder="+44 …" /></label>
+          <label className="text-xs text-[var(--color-stone)]">Display order<br /><input className={field} value={f.profileOrder} onChange={(e) => set('profileOrder', e.target.value)} /></label>
+          <label className="text-xs text-[var(--color-stone)] sm:col-span-2">Credentials<br /><input className={field} value={f.credentials} onChange={(e) => set('credentials', e.target.value)} placeholder="GMC reg. · Aesthetic Medicine" /></label>
+          <label className="text-xs text-[var(--color-stone)] sm:col-span-2">Bio<br /><textarea rows={4} className={field} value={f.bio} onChange={(e) => set('bio', e.target.value)} /></label>
+        </div>
+        <p className="mt-3 text-xs text-[var(--color-stone-soft)]">Services shown on the card come from this person’s competencies (set in Schedules), and the star rating is calculated from their published reviews.</p>
+        {err && <p className="mt-3 text-sm text-[var(--color-blush)]">{err}</p>}
+        <div className="mt-5 flex justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2.5 text-sm text-[var(--color-stone)]">Cancel</button>
+          <button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-60">{busy ? 'Saving…' : 'Save profile'}</button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }

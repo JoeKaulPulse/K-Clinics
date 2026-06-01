@@ -600,6 +600,16 @@ model AdminUser {
   color         String?                    // calendar colour (hex)
   // Treatment slugs this person is competent to deliver (empty = all).
   competencies  String[]  @default([])
+
+  // ── Public team-page profile (single source of truth → /team) ──
+  publicProfile   Boolean  @default(false)  // show on the public team page
+  photoUrl        String?                   // headshot URL
+  publicPhone     String?                   // shown on the team card (optional)
+  bio             String?                   // public bio
+  yearsExperience Int?
+  credentials     String?                   // e.g. "GMC reg. · Aesthetic Medicine"
+  profileOrder    Int      @default(0)      // ordering within their group
+
   // Google Calendar integration (busy-time sync + event push).
   googleCalendarId String?
   googleRefreshToken String?
