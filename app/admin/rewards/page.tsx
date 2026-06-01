@@ -5,6 +5,8 @@ import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { AwardPoints } from '@/components/admin/AwardPoints';
+import { RewardsCatalogue } from '@/components/admin/RewardsCatalogue';
+import { RewardManager } from '@/components/admin/RewardManager';
 import { getLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
@@ -20,14 +22,32 @@ export default async function RewardsPage({ searchParams }: { searchParams: Prom
   const days = RANGES.includes(Number(range)) ? Number(range) : 90;
   const canManage = sessionCan(session, 'rewards.manage');
 
-  const { leaderboard } = await import('@/lib/gamification');
+  const { leaderboard, staffBalance } = await import('@/lib/gamification');
+  const { db } = await import('@/lib/db');
   const rows = await leaderboard(days || undefined);
 
+  // Catalogue + this user's balance and redemptions (everyone sees these).
+  const [catalogue, balance, myReds] = await Promise.all([
+    db.reward.findMany({ where: { active: true }, orderBy: [{ sortOrder: 'asc' }, { costPoints: 'asc' }] }),
+    session ? staffBalance(session.sub) : Promise.resolve(0),
+    session ? db.rewardRedemption.findMany({ where: { staffId: session.sub }, orderBy: { createdAt: 'desc' }, take: 10, include: { reward: { select: { name: true } } } }) : Promise.resolve([]),
+  ]);
+  const catalogueItems = catalogue.map((r) => ({ id: r.id, name: r.name, description: r.description, costPoints: r.costPoints, emoji: r.emoji, stock: r.stock }));
+  const myRedemptions = myReds.map((m) => ({ id: m.id, name: m.reward.name, costPoints: m.costPoints, status: m.status, createdAt: m.createdAt.toISOString() }));
+
+  // Manager-only: full catalogue (incl. hidden), staff list, pending queue.
   let staff: { id: string; name: string }[] = [];
+  let allRewards: (typeof catalogueItems[number] & { active: boolean })[] = [];
+  let pending: { id: string; staffName: string; rewardName: string; costPoints: number; createdAt: string }[] = [];
   if (canManage) {
-    const { db } = await import('@/lib/db');
-    const s = await db.adminUser.findMany({ where: { active: true }, orderBy: { name: 'asc' }, select: { id: true, name: true, email: true } });
+    const [s, all, pend] = await Promise.all([
+      db.adminUser.findMany({ where: { active: true }, orderBy: { name: 'asc' }, select: { id: true, name: true, email: true } }),
+      db.reward.findMany({ orderBy: [{ sortOrder: 'asc' }, { costPoints: 'asc' }] }),
+      db.rewardRedemption.findMany({ where: { status: 'PENDING' }, orderBy: { createdAt: 'asc' }, include: { reward: { select: { name: true } }, staff: { select: { name: true, email: true } } } }),
+    ]);
     staff = s.map((x) => ({ id: x.id, name: x.name || x.email }));
+    allRewards = all.map((r) => ({ id: r.id, name: r.name, description: r.description, costPoints: r.costPoints, emoji: r.emoji, stock: r.stock, active: r.active }));
+    pending = pend.map((p) => ({ id: p.id, staffName: p.staff.name || p.staff.email, rewardName: p.reward.name, costPoints: p.costPoints, createdAt: p.createdAt.toISOString() }));
   }
 
   const can = await sessionPermissions();
@@ -77,6 +97,16 @@ export default async function RewardsPage({ searchParams }: { searchParams: Prom
           </div>
         ))}
       </div>
+
+      <div className="my-10 border-t border-[var(--color-line)]" />
+
+      <RewardsCatalogue rewards={catalogueItems} balance={balance} myRedemptions={myRedemptions} uk={uk} />
+
+      {canManage && (
+        <div className="mt-10">
+          <RewardManager rewards={allRewards} pending={pending} uk={uk} />
+        </div>
+      )}
     </AdminShell>
   );
 }
