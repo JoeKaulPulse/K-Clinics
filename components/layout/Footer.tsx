@@ -75,7 +75,7 @@ export function Footer() {
           ['Cancellations & Refunds', '/info/cancellations-refunds'],
           ['Complaints', '/info/complaints-procedure'],
           ['Accessibility', '/info/accessibility'],
-          ['Gift Vouchers', '/info/gift-vouchers'],
+          ['Gift Vouchers', '/gift-vouchers'],
           ['Refer a Friend', '/refer-a-friend'],
           ['Careers', '/careers'],
         ].map(([label, href]) => (

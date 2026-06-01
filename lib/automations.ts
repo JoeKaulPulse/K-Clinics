@@ -11,12 +11,23 @@ const FOLLOW_UP_DAYS = 3;
 const REVIEW_DAYS = 7;
 const WIN_BACK_MONTHS = 6;
 
-type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; reencrypted: number; errors: number };
+type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; reencrypted: number; errors: number };
 
 export async function runDailyAutomations(): Promise<Tally> {
-  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, reencrypted: 0, errors: 0 };
-  await Promise.all([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), keyReencryption(t)]);
+  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, reencrypted: 0, errors: 0 };
+  await Promise.all([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), keyReencryption(t)]);
   return t;
+}
+
+// Deliver any scheduled gift vouchers whose chosen delivery date has arrived.
+async function scheduledGiftVouchers(t: Tally) {
+  try {
+    const { deliverDueVouchers } = await import('@/lib/gift-vouchers');
+    t.giftVouchers = await deliverDueVouchers();
+  } catch (e) {
+    t.errors++;
+    console.error('[automations] gift-voucher delivery failed:', (e as Error)?.message);
+  }
 }
 
 function canEmail(c: { email: string; marketingOptIn: boolean; unsubscribed: boolean }) {

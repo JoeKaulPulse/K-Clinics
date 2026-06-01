@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 // Pages that now have richer, dedicated routes.
-const REDIRECTS: Record<string, string> = { careers: '/careers', 'refer-a-friend': '/refer-a-friend' };
+const REDIRECTS: Record<string, string> = { careers: '/careers', 'refer-a-friend': '/refer-a-friend', 'gift-vouchers': '/gift-vouchers' };
 
 export default async function InfoPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

@@ -17,6 +17,7 @@ const nav = [
   { href: '/admin/services', key: 'nav.services', perm: 'settings.manage' },
   { href: '/admin/academy', key: 'nav.academy', perm: 'settings.manage' },
   { href: '/admin/careers', key: 'nav.careers', perm: 'settings.manage' },
+  { href: '/admin/gift-vouchers', key: 'nav.gift', perm: 'finance.view' },
   { href: '/admin/consultations', key: 'nav.consultations', perm: 'consultations.view' },
   { href: '/admin/clients', key: 'nav.clients', perm: 'clients.view' },
   { href: '/admin/discounts', key: 'nav.discounts', perm: 'discounts.manage' },

@@ -170,6 +170,42 @@ export function tmplManual(bodyHtml: string, unsubUrl?: string) {
   return emailShell({ body: bodyHtml, unsubUrl });
 }
 
+// ── Gift voucher templates ───────────────────────────────────────────────────
+function voucherCard(amount: string, code: string) {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;"><tr><td style="background:#2a2420;border-radius:14px;padding:26px;text-align:center;color:#f6ece3;">
+    <div style="font-size:10px;letter-spacing:4px;text-transform:uppercase;color:#c2a589;">K Clinics Gift Voucher</div>
+    <div style="font-family:Georgia,serif;font-size:40px;margin:10px 0;">${amount}</div>
+    <div style="font-size:12px;color:#c2a589;text-transform:uppercase;letter-spacing:2px;">Code</div>
+    <div style="font-family:monospace;font-size:20px;letter-spacing:2px;margin-top:4px;">${escape(code)}</div>
+  </td></tr></table>`;
+}
+
+export function tmplGiftVoucher(o: { recipientName: string; fromName: string; amount: string; code: string; message?: string | null; bookUrl: string }) {
+  return emailShell({
+    preheader: `${o.fromName} sent you a ${o.amount} K Clinics gift voucher`,
+    body: `<h1 style="font-size:26px;margin:0 0 12px;">A gift for you, ${escape(o.recipientName)}.</h1>
+    <p><strong>${escape(o.fromName)}</strong> has sent you a K Clinics gift voucher to spend on any of our treatments.</p>
+    ${o.message ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-style:italic;">“${escape(o.message)}”</p>` : ''}
+    ${voucherCard(o.amount, o.code)}
+    <p style="font-size:14px;">Quote your code when you book or at the clinic. Valid for 12 months; partial use is fine — any balance stays on your code.</p>
+    <p style="margin:24px 0;">${btn(o.bookUrl, 'Book your treatment')}</p>
+    <p>With warmth,<br>The K Clinics team</p>`,
+  });
+}
+
+export function tmplGiftVoucherReceipt(o: { purchaserName: string; amount: string; code: string; recipientName?: string | null; scheduled?: boolean; deliverAt?: Date | null }) {
+  const when = o.deliverAt ? o.deliverAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  return emailShell({
+    preheader: `Your ${o.amount} K Clinics gift voucher`,
+    body: `<h1 style="font-size:24px;margin:0 0 12px;">Thank you, ${escape(o.purchaserName)}.</h1>
+    <p>Your ${o.amount} gift voucher is ready${o.recipientName ? ` for <strong>${escape(o.recipientName)}</strong>` : ''}.</p>
+    ${o.scheduled ? `<p>We’ll deliver it to them on <strong>${when}</strong>.</p>` : `<p>${o.recipientName ? 'We’ve sent it to them too.' : 'Here it is to share however you like.'}</p>`}
+    ${voucherCard(o.amount, o.code)}
+    <p style="font-size:14px;">Valid for 12 months. Redeemable against any treatment; partial use keeps the balance on the code.</p>
+    <p>With warmth,<br>The K Clinics team</p>`,
+  });
+}
+
 // ── Booking templates ────────────────────────────────────────────────────────
 const fmtWhen = (d: Date) =>
   d.toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
