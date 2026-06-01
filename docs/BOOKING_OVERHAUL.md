@@ -7,8 +7,8 @@ Branch: claude/k-clinics-site-rebuild-h3tRV · PR #29
 - [x] P1 Seed service catalogue from lib/pricing.ts (idempotent)
 - [x] P2 Service catalogue lib (read + offer pricing helpers)
 - [x] P2 Admin CRM: services/pricing/offers (cost vs retail, % bulk change, offers, promote)
-- [ ] P3 Booking flow redesign: account gate → service → variant → slot → upsell → card → confirm
-- [ ] P3 Booking create/confirm: client session, variants, add-ons, totals, SetupIntent only if no card
+- [x] P3 Booking flow redesign: account gate → service → variant → slot → upsell → card → confirm
+- [x] P3 Booking create/confirm: client session, variants, add-ons, totals, smart card
 - [ ] P4 Comms: SMS opt-in + confirmation/reminder SMS; email "arrive 15 min early" + forms prompt
 - [ ] P5 Offer promotion on pricing page, treatment pages, portal
 - [ ] Build green + push + Vercel

@@ -164,21 +164,26 @@ const fmtWhen = (d: Date) =>
   d.toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
 const fmtMoney = (pence: number) => `£${(pence / 100).toLocaleString('en-GB', { minimumFractionDigits: pence % 100 ? 2 : 0 })}`;
 
-export function tmplBookingConfirmation(o: { firstName: string; treatment: string; start: Date; pricePence: number; manageUrl: string }) {
+export function tmplBookingConfirmation(o: { firstName: string; treatment: string; start: Date; pricePence: number; manageUrl: string; formsUrl?: string; arriveEarly?: boolean; lines?: { label: string; price: string }[] }) {
   const price = o.pricePence > 0 ? fmtMoney(o.pricePence) : 'Assessed at your visit';
+  const itemsRows = o.lines && o.lines.length > 0
+    ? o.lines.map((l) => `<tr><td style="color:#91766e;padding-right:20px;">${escape(l.label)}</td><td>${escape(l.price)}</td></tr>`).join('')
+    : `<tr><td style="color:#91766e;padding-right:20px;">Treatment</td><td><strong>${escape(o.treatment)}</strong></td></tr>`;
   return emailShell({
     preheader: `Your ${o.treatment} is booked for ${fmtWhen(o.start)}`,
     body: `<h1 style="font-size:26px;margin:0 0 16px;">You're booked in, ${escape(o.firstName)}.</h1>
     <p>We look forward to welcoming you to K Clinics.</p>
     <table style="font-family:Helvetica,Arial,sans-serif;font-size:15px;color:#3d352f;line-height:2;margin:8px 0;">
-      <tr><td style="color:#91766e;padding-right:20px;">Treatment</td><td><strong>${escape(o.treatment)}</strong></td></tr>
+      ${itemsRows}
       <tr><td style="color:#91766e;padding-right:20px;">When</td><td><strong>${fmtWhen(o.start)}</strong></td></tr>
-      <tr><td style="color:#91766e;padding-right:20px;">Price</td><td>${price}</td></tr>
+      <tr><td style="color:#91766e;padding-right:20px;">Total</td><td>${price}</td></tr>
     </table>
     <p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">
       Your card is securely saved — <strong>no payment is taken now</strong>. You will only be charged when your treatment is delivered.
       Cancellations are free up to <strong>24 hours</strong> before your appointment; within 24 hours the full fee applies.
     </p>
+    ${o.arriveEarly ? `<p style="font-size:14px;">Please <strong>arrive 15 minutes early</strong> for your first appointment so your clinician can talk through your treatment with you.</p>` : ''}
+    ${o.formsUrl ? `<p style="font-size:14px;">Please complete your pre-treatment forms before your visit — it only takes a few minutes (you can also do them in clinic when you arrive).</p><p style="margin:16px 0;">${btn(o.formsUrl, 'Complete my forms')}</p>` : ''}
     <p style="margin:24px 0;">${btn(o.manageUrl, 'Manage or cancel booking')}</p>
     <p>${site.address.street}, ${site.address.locality}.<br>With warmth,<br>The K Clinics team</p>`,
   });

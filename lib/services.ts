@@ -114,3 +114,31 @@ export function bestOffer(offers: OfferView[], serviceId: string, variantId: str
 
 export const formatPence = (p: number | null | undefined) =>
   p == null ? 'On consultation' : p === 0 ? 'On consultation' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
+
+export type BookingVariant = {
+  id: string; name: string; durationMin: number; pricePence: number;
+  offerPence: number | null; offerName: string | null;
+  courses: Course[];
+};
+export type BookingService = {
+  id: string; slug: string; treatmentSlug: string; name: string; category: string;
+  audience: string; variants: BookingVariant[];
+};
+
+/** Catalogue shaped for the public booking flow: active services + variants with
+ *  any live offer already priced in, plus the marketing audience for upsell
+ *  targeting. */
+export async function bookingCatalogue(): Promise<BookingService[]> {
+  const [services, offers] = await Promise.all([listServices(false), liveOffers(false)]);
+  const { getTreatment } = await import('@/lib/treatments');
+  return services
+    .filter((s) => s.variants.length > 0)
+    .map((s) => ({
+      id: s.id, slug: s.slug, treatmentSlug: s.treatmentSlug, name: s.name, category: s.category,
+      audience: getTreatment(s.treatmentSlug)?.audience ?? 'all',
+      variants: s.variants.map((v) => {
+        const off = bestOffer(offers, s.id, v.id, v.pricePence);
+        return { id: v.id, name: v.name, durationMin: v.durationMin, pricePence: v.pricePence, courses: v.courses, offerPence: off ? Math.max(0, v.pricePence - off.discountPence) : null, offerName: off?.offer.name ?? null };
+      }),
+    }));
+}

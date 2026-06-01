@@ -12,6 +12,7 @@ const schema = z.object({
   gender: z.enum(['FEMALE', 'MALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_SAY', '']).optional(),
   genderSelfDescribe: z.string().max(60).optional().or(z.literal('')),
   marketingOptIn: z.boolean().optional(),
+  smsReminders: z.boolean().optional(),
   // Optional password change
   newPassword: z.string().min(8).max(200).optional(),
 });
@@ -39,6 +40,7 @@ export async function POST(req: Request) {
     data.genderSelfDescribe = d.gender === 'OTHER' ? (d.genderSelfDescribe?.trim() || null) : null;
   }
   if (typeof d.marketingOptIn === 'boolean') data.marketingOptIn = d.marketingOptIn;
+  if (typeof d.smsReminders === 'boolean') data.smsReminders = d.smsReminders;
   if (d.newPassword) data.passwordHash = await hashPassword(d.newPassword);
 
   await db.client.update({ where: { id: session.sub }, data });
