@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 
 type Stage = 'intro' | 'auth' | 'consent' | 'capture' | 'analysing' | 'results';
@@ -42,9 +42,21 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
   const [storeImages, setStoreImages] = useState(true);
   const [error, setError] = useState('');
   const [result, setResult] = useState<{ summary: string; findings: Finding[]; plan: PlanItem[]; confidence: number } | null>(null);
+  const [camOpen, setCamOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  function begin() { setError(''); setStage(authed ? 'consent' : 'auth'); }
+  const addPhoto = (dataUrl: string) => setPhotos((p) => [...p, { id: crypto.randomUUID(), area: [...areas][0] || 'skin', dataUrl }].slice(0, 4));
+
+  function begin() { setError(''); setStage('consent'); }
+
+  // Gate account creation to the end: capture first, sign in only to reveal results.
+  function requestAnalyse() {
+    if (!consent) { setError('Please give your consent to continue.'); return; }
+    if (photos.length === 0) { setError('Add at least one photo.'); return; }
+    setError('');
+    if (!authed) { setStage('auth'); return; }
+    analyse();
+  }
 
   async function onFiles(files: FileList | null) {
     if (!files) return;
@@ -53,6 +65,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
       try { next.push({ id: crypto.randomUUID(), area: [...areas][0] || 'skin', dataUrl: await downscale(f) }); } catch { /* skip */ }
     }
     setPhotos((p) => [...p, ...next].slice(0, 4));
+    if (fileRef.current) fileRef.current.value = '';
   }
 
   async function analyse() {
@@ -96,7 +109,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
           )}
 
           {stage === 'auth' && (
-            <AuthStep key="auth" onDone={(n) => { setAuthed(true); if (n) setName(n); setStage('consent'); }} onError={setError} />
+            <AuthStep key="auth" onBack={() => { setError(''); setStage('capture'); }} onDone={(n) => { setAuthed(true); if (n) setName(n); analyse(); }} onError={setError} />
           )}
 
           {stage === 'consent' && (
@@ -122,7 +135,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
                     className={`rounded-full border px-4 py-2 text-sm transition-all ${on ? 'border-[var(--color-gold,#c8a96a)] bg-[var(--color-gold,#c8a96a)] text-[#0c0b0a]' : 'border-white/15 text-[#cdbfae] hover:border-white/40'}`}>{a.label}</button>;
                 })}
               </div>
-              <p className="mt-3 text-sm text-[#9a8f80]">{AREAS.find((a) => areas.has(a.id))?.hint}</p>
+              <p className="mt-3 text-sm text-[#9a8f80]">{AREAS.find((a) => areas.has(a.id))?.hint} For the most accurate read, use <span className="text-[#cdbfae]">Take photo</span> and follow the on-screen face guide.</p>
 
               <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {photos.map((p) => (
@@ -132,14 +145,19 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
                   </div>
                 ))}
                 {photos.length < 4 && (
-                  <button onClick={() => fileRef.current?.click()} className="grid aspect-square place-items-center rounded-2xl border border-dashed border-white/20 text-[#cdbfae] transition-colors hover:border-[var(--color-gold,#c8a96a)] hover:text-[var(--color-gold,#c8a96a)]">
-                    <span className="text-center text-sm"><span className="block text-2xl">＋</span>Add photo</span>
-                  </button>
+                  <>
+                    <button onClick={() => { setError(''); setCamOpen(true); }} className="grid aspect-square place-items-center rounded-2xl border border-dashed border-white/20 text-[#cdbfae] transition-colors hover:border-[var(--color-gold,#c8a96a)] hover:text-[var(--color-gold,#c8a96a)]">
+                      <span className="text-center text-sm"><span className="mb-1 block text-2xl">◎</span>Take photo</span>
+                    </button>
+                    <button onClick={() => fileRef.current?.click()} className="grid aspect-square place-items-center rounded-2xl border border-dashed border-white/20 text-[#cdbfae] transition-colors hover:border-[var(--color-gold,#c8a96a)] hover:text-[var(--color-gold,#c8a96a)]">
+                      <span className="text-center text-sm"><span className="mb-1 block text-2xl">＋</span>Upload</span>
+                    </button>
+                  </>
                 )}
               </div>
               <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => onFiles(e.target.files)} />
 
-              <NavRow onBack={() => setStage('consent')} next={{ label: 'Analyse my photos', onClick: analyse, disabled: photos.length === 0 }} />
+              <NavRow onBack={() => setStage('consent')} next={{ label: 'Analyse my photos', onClick: requestAnalyse, disabled: photos.length === 0 }} />
             </motion.div>
           )}
 
@@ -215,7 +233,73 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
 
         {error && <p className="mx-auto mt-6 max-w-2xl rounded-xl border border-[#d98c8c]/30 bg-[#d98c8c]/10 px-4 py-3 text-center text-sm text-[#f4d6d6]">{error}</p>}
       </div>
+
+      {camOpen && (
+        <CameraCapture
+          faceGuide={areas.has('skin') || areas.has('teeth') || areas.has('hair')}
+          onCapture={(d) => { addPhoto(d); setCamOpen(false); }}
+          onClose={() => setCamOpen(false)}
+          onError={(m) => { setError(m); setCamOpen(false); }}
+        />
+      )}
     </section>
+  );
+}
+
+// Live camera capture (laptop webcam / phone front camera) with a face-frame
+// guide — the best web-available equivalent of a guided "face scan".
+function CameraCapture({ faceGuide, onCapture, onClose, onError }: { faceGuide: boolean; onCapture: (dataUrl: string) => void; onClose: () => void; onError: (m: string) => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [facing, setFacing] = useState<'user' | 'environment'>('user');
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 1280 } }, audio: false });
+        if (!active) { stream.getTracks().forEach((t) => t.stop()); return; }
+        streamRef.current = stream;
+        if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play().catch(() => {}); setReady(true); }
+      } catch {
+        onError('We couldn’t access your camera. Please allow camera access in your browser, or use “Upload” instead.');
+      }
+    })();
+    return () => { active = false; streamRef.current?.getTracks().forEach((t) => t.stop()); };
+  }, [facing, onError]);
+
+  function snap() {
+    const v = videoRef.current;
+    if (!v || !v.videoWidth) return;
+    const max = 768; const scale = Math.min(1, max / Math.max(v.videoWidth, v.videoHeight));
+    const w = Math.round(v.videoWidth * scale), h = Math.round(v.videoHeight * scale);
+    const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d')!;
+    if (facing === 'user') { ctx.translate(w, 0); ctx.scale(-1, 1); } // un-mirror the selfie
+    ctx.drawImage(v, 0, 0, w, h);
+    onCapture(canvas.toDataURL('image/jpeg', 0.85));
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/95 p-4">
+      <div className="relative aspect-[3/4] w-full max-w-sm overflow-hidden rounded-3xl border border-white/10">
+        <video ref={videoRef} playsInline muted className={`h-full w-full object-cover ${facing === 'user' ? '-scale-x-100' : ''}`} />
+        {faceGuide && (
+          <div className="pointer-events-none absolute inset-0 grid place-items-center">
+            <motion.div className="h-[68%] w-[56%] rounded-[50%] border-2" style={{ borderColor: 'var(--color-gold,#c8a96a)', boxShadow: '0 0 0 9999px rgba(0,0,0,0.4)' }} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 2.4, repeat: Infinity }} />
+          </div>
+        )}
+        <p className="absolute inset-x-0 top-4 px-6 text-center text-sm text-white/85">{faceGuide ? 'Centre your face in the oval, soft even light, hold still' : 'Frame the area clearly and hold still'}</p>
+        {!ready && <p className="absolute inset-x-0 bottom-4 text-center text-sm text-white/60">Starting camera…</p>}
+      </div>
+      <div className="mt-7 flex items-center gap-8">
+        <button onClick={onClose} className="text-sm text-white/70 hover:text-white">Cancel</button>
+        <button onClick={snap} aria-label="Capture" className="grid h-16 w-16 place-items-center rounded-full border-4 border-white/85 transition-transform active:scale-95"><span className="h-12 w-12 rounded-full bg-white" /></button>
+        <button onClick={() => { setReady(false); setFacing((f) => (f === 'user' ? 'environment' : 'user')); }} className="text-sm text-white/70 hover:text-white">Flip</button>
+      </div>
+    </div>
   );
 }
 
@@ -251,7 +335,7 @@ function Ring({ value }: { value: number }) {
   );
 }
 
-function AuthStep({ onDone, onError }: { onDone: (firstName?: string) => void; onError: (e: string) => void }) {
+function AuthStep({ onDone, onError, onBack }: { onDone: (firstName?: string) => void; onError: (e: string) => void; onBack: () => void }) {
   const [mode, setMode] = useState<'signup' | 'login'>('signup');
   const [f, setF] = useState({ firstName: '', email: '', password: '', company: '' });
   const [busy, setBusy] = useState(false);
@@ -271,8 +355,9 @@ function AuthStep({ onDone, onError }: { onDone: (firstName?: string) => void; o
 
   return (
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto max-w-md">
-      <Heading kicker="Almost there" title={mode === 'signup' ? 'Create your free account' : 'Welcome back'} />
-      <p className="mt-3 text-sm text-[#cdbfae]">{mode === 'signup' ? 'Your account keeps your analysis private and unlocks 15% off your first visit.' : 'Sign in to run your analysis.'}</p>
+      <button onClick={onBack} className="mb-5 text-sm text-[#cdbfae] hover:text-[#f4ece1]">← Back to photos</button>
+      <Heading kicker="Your results are ready" title={mode === 'signup' ? 'Create your free account to reveal them' : 'Welcome back — sign in to reveal them'} />
+      <p className="mt-3 text-sm text-[#cdbfae]">{mode === 'signup' ? 'Your analysis is ready. Create a free account to see your personalised plan, keep it private, and unlock 15% off your first visit.' : 'Sign in to reveal your personalised plan.'}</p>
       <div className="mt-6 space-y-3">
         {mode === 'signup' && <input className={input} placeholder="First name" value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} />}
         <input className={input} type="email" placeholder="Email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
