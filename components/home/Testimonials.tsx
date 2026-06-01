@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useReducedMotionSafe } from '@/components/motion/use-reduced-motion-safe';
-import { reviews } from '@/lib/reviews';
+import { reviews as fallbackReviews, type Review } from '@/lib/reviews';
 import { site } from '@/lib/site';
 
 const AUTOPLAY_MS = 6000;
 
-export function Testimonials() {
+export function Testimonials({ reviews: provided }: { reviews?: Review[] }) {
+  const reviews = provided && provided.length > 0 ? provided : fallbackReviews;
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
   const reduce = useReducedMotionSafe();

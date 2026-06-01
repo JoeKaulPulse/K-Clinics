@@ -127,3 +127,26 @@ export async function leaderboard(days?: number): Promise<LeaderRow[]> {
 export async function staffLedger(staffId: string, limit = 50) {
   return db.staffPoints.findMany({ where: { staffId }, orderBy: { createdAt: 'desc' }, take: limit });
 }
+
+/** One staff member's standing — total points, rank, review stats, breakdown,
+ *  and recent ledger entries. For the clinician's own "My performance" view. */
+export async function staffStanding(staffId: string) {
+  const board = await leaderboard(); // all-time
+  const rank = board.findIndex((r) => r.staffId === staffId);
+  const me = board.find((r) => r.staffId === staffId);
+
+  const [byCategory, recent] = await Promise.all([
+    db.staffPoints.groupBy({ by: ['category'], where: { staffId }, _sum: { points: true } }),
+    db.staffPoints.findMany({ where: { staffId }, orderBy: { createdAt: 'desc' }, take: 12 }),
+  ]);
+
+  return {
+    total: me?.total ?? 0,
+    rank: rank >= 0 ? rank + 1 : null,
+    totalStaff: board.length,
+    avgRating: me?.avgRating ?? null,
+    reviewCount: me?.reviewCount ?? 0,
+    byCategory: byCategory.map((c) => ({ category: c.category, points: c._sum.points ?? 0 })).sort((a, b) => b.points - a.points),
+    recent: recent.map((r) => ({ id: r.id, points: r.points, category: r.category as string, reason: r.reason, createdAt: r.createdAt.toISOString() })),
+  };
+}
