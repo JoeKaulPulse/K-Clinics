@@ -82,6 +82,10 @@ export const primaryNav: NavGroup[] = [
     href: '/pricing',
   },
   {
+    label: 'Academy',
+    href: '/academy',
+  },
+  {
     label: 'Clinic',
     href: '/about',
     columns: [

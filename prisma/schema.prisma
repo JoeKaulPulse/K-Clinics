@@ -1079,3 +1079,118 @@ model Review {
   @@index([clinicianId])
   @@index([rating])
 }
+
+// ── K Clinics Academy (training sub-brand) ──────────────────────────────────
+// Premium clinician training. Theory on Thinkific, scheduled practical days,
+// VTCT exam administered in-house. Ofqual-regulated + CPD. Catalogue is fully
+// CRM-managed; trainees use a separate account/portal.
+
+model AcademyStudent {
+  id           String       @id @default(cuid())
+  firstName    String
+  lastName     String?
+  email        String       @unique
+  phone        String?
+  passwordHash String?
+  portalActive Boolean      @default(false)
+  lastLoginAt  DateTime?
+  resetTokenHash String?
+  resetTokenExp  DateTime?
+  notes        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  enrolments   Enrolment[]
+
+  @@index([createdAt])
+}
+
+model Course {
+  id             String       @id @default(cuid())
+  slug           String       @unique
+  title          String
+  level          String?      // e.g. "Level 4"
+  summary        String?      // one-liner for cards
+  description    String?      // long form (markdown-ish)
+  pricePence     Int          @default(0)
+  depositPence   Int?         // optional deposit to reserve a place
+  durationText   String?      // e.g. "2 practical days + online theory + exam"
+  format         String?      // e.g. "Blended: Thinkific theory + practical + VTCT exam"
+  accreditations String[]     @default([]) // OFQUAL | VTCT | CPD
+  outcomes       String[]     @default([]) // "what you'll learn" bullets
+  prerequisites  String?
+  thinkificUrl   String?      // theory platform link (shown in trainee portal)
+  heroImage      String?
+  featured       Boolean      @default(false)
+  active         Boolean      @default(true)
+  order          Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  cohorts        Cohort[]
+  enrolments     Enrolment[]
+
+  @@index([active, order])
+}
+
+enum CohortStatus {
+  OPEN
+  FULL
+  CLOSED
+}
+
+model Cohort {
+  id         String       @id @default(cuid())
+  course     Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId   String
+  startAt    DateTime
+  endAt      DateTime?
+  capacity   Int          @default(8)
+  location   String?
+  trainer    String?
+  status     CohortStatus @default(OPEN)
+  notes      String?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  enrolments Enrolment[]
+
+  @@index([courseId, startAt])
+}
+
+enum EnrolmentStatus {
+  APPLIED    // applied/enquired — awaiting staff review
+  OFFERED    // place offered, awaiting payment
+  PAID       // paid (full or deposit)
+  ENROLLED   // confirmed on a cohort
+  COMPLETED  // course + exam completed
+  CANCELLED
+}
+
+model Enrolment {
+  id            String          @id @default(cuid())
+  course        Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId      String
+  cohort        Cohort?         @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  cohortId      String?
+  student       AcademyStudent? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  studentId     String?
+
+  // Applicant details captured at enquiry (before an account may exist).
+  applicantName  String
+  applicantEmail String
+  applicantPhone String?
+  experience     String?        // free-text background / qualifications
+  financeInterest Boolean       @default(false) // interested in Clearpay financing
+
+  status        EnrolmentStatus @default(APPLIED)
+  pricePence    Int             @default(0)
+  paidPence     Int             @default(0)
+  notes         String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([status])
+  @@index([courseId])
+  @@index([applicantEmail])
+}
