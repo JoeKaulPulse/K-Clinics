@@ -1376,3 +1376,25 @@ model NewsletterSubscriber {
 
   @@index([active])
 }
+
+// Before/after gallery cases uploaded by staff in the CRM. Each holds a real
+// BEFORE and AFTER image (stored as bytes in the DB — no external blob store).
+// Only shown publicly when `published` is true AND consent is confirmed.
+model GalleryItem {
+  id            String   @id @default(cuid())
+  category      String                         // e.g. "Veneers", "Botox"
+  treatmentSlug String?                        // optional link target on the site
+  caption       String?
+  beforeImage   Bytes
+  beforeType    String   @default("image/jpeg")
+  afterImage    Bytes
+  afterType     String   @default("image/jpeg")
+  published     Boolean  @default(false)       // "show on the website" toggle
+  consent       Boolean  @default(false)       // client gave written consent to publish
+  order         Int      @default(0)
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([published, order])
+}
