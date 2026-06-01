@@ -101,6 +101,17 @@ enum ReferralStatus {
   EXPIRED     // friend's first treatment was < £100 (didn't qualify)
 }
 
+// Inclusive gender identity. Used to tailor treatment recommendations (and never
+// to exclude anyone — non-binary / other / undisclosed see the full menu).
+// OTHER pairs with Client.genderSelfDescribe for a free-text identity.
+enum Gender {
+  FEMALE
+  MALE
+  NON_BINARY
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
 enum BookingStatus {
   PENDING      // created, awaiting card setup confirmation
   CONFIRMED    // card on file, slot held
@@ -136,6 +147,7 @@ enum AuditAction {
   REVIEW_PUBLISHED
   POINTS_AWARDED
   REWARD_REDEEMED
+  SERVICE_PRICES_BULK
 }
 
 enum ReviewStatus {
@@ -239,10 +251,13 @@ model Client {
   email           String         @unique
   phone           String?
   dob             DateTime?      // drives birthday automation
+  gender          Gender?        // tailors treatment recommendations (inclusive)
+  genderSelfDescribe String?     // free-text identity when gender = OTHER
   source          String?        // website, treatwell, fresha, referral…
   tags            String[]       @default([])
   notes           String?
   marketingOptIn  Boolean        @default(false)
+  smsReminders    Boolean        @default(false) // client opted in to SMS confirmations & reminders
   unsubscribed    Boolean        @default(false)
   unsubToken      String         @unique @default(cuid())
   lastVisitAt     DateTime?
@@ -353,6 +368,9 @@ model Booking {
   startAt       DateTime
   endAt         DateTime
   durationMin   Int
+  // Turnaround/cleanup minutes blocked AFTER the appointment (not client-facing,
+  // not charged). The effective busy window is [startAt, endAt + bufferMin].
+  bufferMin     Int           @default(0)
   pricePence    Int           // 0 = on-consultation (amount set at charge time)
 
   status        BookingStatus @default(PENDING)
@@ -372,6 +390,10 @@ model Booking {
   // Which site this appointment takes place at (multi-location).
   location       Location?    @relation(fields: [locationId], references: [id], onDelete: SetNull)
   locationId     String?
+
+  // Rooms/equipment held for this appointment (e.g. a treatment room + the laser
+  // machine). Auto-assigned at booking from what's free and capable.
+  resources      Resource[]
 
   // Time tracking — actuals vs the scheduled duration.
   startedAt      DateTime?
@@ -419,11 +441,105 @@ model Booking {
 
   auditEvents   AuditEvent[]
   reviews       Review[]
+  items         BookingItem[] // line items: primary treatment + any upsell add-ons
 
   @@index([startAt])
   @@index([status])
   @@index([clientId])
   @@index([practitionerId])
+}
+
+// ── Service catalogue (CRM-managed pricing) ──────────────────────────────────
+// Marketing copy lives in lib/treatments.ts; the bookable + priced catalogue
+// lives here so prices, costs, durations and offers are editable in the CRM.
+model Service {
+  id            String          @id @default(cuid())
+  slug          String          @unique
+  treatmentSlug String          // links to a marketing Treatment (lib/treatments.ts)
+  name          String
+  category      String          @default("aesthetics") // aesthetics | dentistry
+  order         Int             @default(0)
+  active        Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  variants      ServiceVariant[]
+  offers        ServiceOffer[]
+
+  @@index([treatmentSlug])
+  @@index([active])
+}
+
+model ServiceVariant {
+  id          String          @id @default(cuid())
+  service     Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId   String
+  name        String          // e.g. "Full Face", "Signature Express (30 min)"
+  durationMin Int             @default(30)
+  pricePence  Int             // single-session retail price (0 = on consultation)
+  costPence   Int?            // cost of goods/service, for margin tracking
+  // Course/package options as [{ sessions, totalPence }], cheaper per-session.
+  courses     Json?
+  order       Int             @default(0)
+  active      Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  offers      ServiceOffer[]
+  bookingItems BookingItem[]
+
+  @@index([serviceId, active])
+}
+
+enum OfferScope {
+  ALL       // every service
+  SERVICE   // one service (all its variants)
+  VARIANT   // a single variant
+}
+
+// Special offers / discounts. Promoted ones surface on the marketing site and
+// in client portals. Applied automatically to matching booking line items.
+model ServiceOffer {
+  id            String      @id @default(cuid())
+  name          String      // shown to clients, e.g. "Summer Skin — 20% off"
+  scope         OfferScope  @default(ALL)
+  service       Service?    @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId     String?
+  variant       ServiceVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  variantId     String?
+  percentOff    Int?        // 0–100
+  amountOffPence Int?       // fixed amount off (alternative to percent)
+  startAt       DateTime?
+  endAt         DateTime?
+  promoted      Boolean     @default(true)  // surface on site + portal
+  active        Boolean     @default(true)
+  createdBy     String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([active, promoted])
+  @@index([serviceId])
+  @@index([variantId])
+}
+
+// A booking is one or more line items: the primary treatment plus any upsell
+// add-ons taken in the same slot (often at a discount).
+model BookingItem {
+  id              String          @id @default(cuid())
+  booking         Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId       String
+  variant         ServiceVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  variantId       String?
+  treatmentSlug   String
+  label           String          // e.g. "Laser Hair Removal — Full Face"
+  sessions        Int             @default(1) // 1 = single; >1 = course booked
+  durationMin     Int             @default(0)
+  pricePence      Int             @default(0) // retail before discount
+  discountPence   Int             @default(0) // welcome/offer/upsell discount applied
+  isAddon         Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+
+  @@index([bookingId])
 }
 
 model EmailEvent {
@@ -593,6 +709,8 @@ model Location {
   staff       AdminUser[]     @relation("StaffLocations")
   schedules   StaffSchedule[]
   bookings    Booking[]
+  closures    ClinicClosure[]
+  resources   Resource[]
 
   @@index([active])
 }
@@ -605,11 +723,71 @@ model StaffSchedule {
   dayOfWeek  Int        // 0=Sun … 6=Sat
   startMin   Int        // minutes from midnight
   endMin     Int
+  // Optional daily break (e.g. lunch), as minutes from midnight. When set, the
+  // window [breakStartMin, breakEndMin] is unavailable within the working day.
+  breakStartMin Int?
+  breakEndMin   Int?
   location   Location?  @relation(fields: [locationId], references: [id], onDelete: SetNull)
   locationId String?
   createdAt  DateTime   @default(now())
 
   @@index([staffId, dayOfWeek])
+}
+
+// ── Clinic-wide closures & holidays ──────────────────────────────────────────
+// Blocks bookings for ALL staff over a date/range. locationId null = every site.
+model ClinicClosure {
+  id         String    @id @default(cuid())
+  startAt    DateTime
+  endAt      DateTime
+  allDay     Boolean   @default(true)
+  reason     String?
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  locationId String?   // null = applies to all locations
+  createdBy  String?
+  createdAt  DateTime  @default(now())
+
+  @@index([startAt, endAt])
+}
+
+// ── Bookable rooms / equipment ───────────────────────────────────────────────
+// Two kinds, both held by a booking:
+//  • ROOM      — a named treatment room (capacity 1). `tags` list what it can host
+//                ('aesthetics', 'dental', 'laser'…); a booking is auto-assigned a
+//                free room whose tags match the treatment's needs.
+//  • EQUIPMENT — shared machines (laser/HIFU), matched by `slug` to a treatment's
+//                requiresResource; `capacity` caps concurrent use.
+// If nothing matching exists, the requirement isn't enforced (clinics that haven't
+// configured rooms/equipment aren't blocked).
+model Resource {
+  id         String    @id @default(cuid())
+  slug       String    // EQUIPMENT: e.g. 'laser'. ROOM: a short code e.g. 'g1'.
+  name       String
+  kind       ResourceKind @default(EQUIPMENT)
+  tags       String[]  @default([]) // ROOM capabilities, e.g. ['aesthetics','laser']
+  floor      String?   // e.g. 'G' / 'LG' — for display/grouping
+  capacity   Int       @default(1) // EQUIPMENT: concurrent uses. ROOM: 1.
+  active     Boolean   @default(true)
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  locationId String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  bookings   Booking[]
+
+  // Which equipment is physically placed in a ROOM. Self-relation: a room holds
+  // many equipment; a piece of equipment can sit in many rooms. Owner-managed and
+  // changeable over time. (Informational today; available to drive assignment.)
+  equipment  Resource[] @relation("RoomEquipment")
+  inRooms    Resource[] @relation("RoomEquipment")
+
+  @@index([slug, active])
+  @@index([kind, active])
+}
+
+enum ResourceKind {
+  ROOM
+  EQUIPMENT
 }
 
 // ── Time off / busy blocks (manual or Google-Calendar-synced) ───────────────

@@ -11,7 +11,9 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ ok: false, error: 'Invalid request' }, { status: 422 });
 
   const { freeSlots } = await import('@/lib/availability');
-  const { durationMin } = bookingFor(parsed.data.slug);
+  // Duration comes from the chosen catalogue variant when supplied; otherwise the
+  // treatment default. This keeps the slot picker tied to the real admin engine.
+  const durationMin = parsed.data.durationMin ?? bookingFor(parsed.data.slug).durationMin;
   const slots = await freeSlots(parsed.data.date, durationMin, parsed.data.slug);
   return NextResponse.json({ ok: true, slots, durationMin });
 }

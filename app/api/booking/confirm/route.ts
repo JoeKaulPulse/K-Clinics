@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { crmEnabled } from '@/lib/crm';
 import { stripeEnabled } from '@/lib/stripe';
-import { site } from '@/lib/site';
 
 export const runtime = 'nodejs';
 
@@ -17,7 +16,6 @@ export async function POST(req: Request) {
 
   const { db } = await import('@/lib/db');
   const { stripe } = await import('@/lib/stripe');
-  const { sendEmail, tmplBookingConfirmation, tmplBookingNotify } = await import('@/lib/email');
 
   const booking = await db.booking.findUnique({ where: { id: parsed.data.bookingId }, include: { client: true } });
   if (!booking) return NextResponse.json({ ok: false, error: 'Booking not found' }, { status: 404 });
@@ -37,19 +35,10 @@ export async function POST(req: Request) {
     where: { id: booking.id },
     data: { status: 'CONFIRMED', stripePaymentMethodId: pmId },
   });
-  await db.interaction.create({
-    data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Booked ${booking.treatmentTitle}`, detail: booking.startAt.toISOString(), author: 'system' },
-  });
 
-  const manageUrl = `${process.env.NEXT_PUBLIC_SITE_URL || site.url}/booking/manage?t=${booking.manageToken}`;
-  const name = [booking.client.firstName, booking.client.lastName].filter(Boolean).join(' ');
-  const notifyTo = process.env.CLINIC_NOTIFY_EMAIL || site.email;
-
-  await Promise.all([
-    sendEmail({ to: booking.client.email, subject: `Your booking is confirmed — ${booking.treatmentTitle}`, html: tmplBookingConfirmation({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, start: booking.startAt, pricePence: booking.pricePence, manageUrl }) }),
-    sendEmail({ to: notifyTo, subject: `New booking — ${name}`, html: tmplBookingNotify({ name, email: booking.client.email, phone: booking.client.phone || undefined, treatment: booking.treatmentTitle, start: booking.startAt, pricePence: booking.pricePence }) }),
-  ]);
-  await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Booking confirmation', status: 'SENT' } });
+  // Centralised confirmation comms (client + clinic email, SMS, forms prompt).
+  const { notifyBookingConfirmed } = await import('@/lib/booking-notify');
+  await notifyBookingConfirmed(booking.id);
 
   return NextResponse.json({ ok: true, manageToken: booking.manageToken });
 }

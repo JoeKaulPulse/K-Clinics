@@ -28,7 +28,10 @@ export default async function ProfilePage() {
           email: client.email,
           phone: client.phone ?? '',
           dob: client.dob ? client.dob.toISOString().slice(0, 10) : '',
+          gender: client.gender ?? '',
+          genderSelfDescribe: client.genderSelfDescribe ?? '',
           marketingOptIn: client.marketingOptIn,
+          smsReminders: client.smsReminders,
         }}
       />
 

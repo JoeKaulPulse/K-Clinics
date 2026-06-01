@@ -4,6 +4,8 @@ import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { ScheduleManager } from '@/components/admin/ScheduleManager';
+import { ClosuresManager } from '@/components/admin/ClosuresManager';
+import { ResourcesManager } from '@/components/admin/ResourcesManager';
 import { bookableTreatments } from '@/lib/treatments';
 import { getLocale } from '@/lib/locale';
 
@@ -25,7 +27,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
     where: { active: true },
     orderBy: [{ isClinician: 'desc' }, { name: 'asc' }],
     include: {
-      schedules: { select: { dayOfWeek: true, startMin: true, endMin: true, locationId: true } },
+      schedules: { select: { dayOfWeek: true, startMin: true, endMin: true, breakStartMin: true, breakEndMin: true, locationId: true } },
       timeOff: { orderBy: { startAt: 'asc' }, select: { id: true, kind: true, startAt: true, endAt: true, reason: true } },
       locations: { select: { id: true } },
     },
@@ -42,6 +44,18 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   const { getSetting } = await import('@/lib/settings');
   const multiLocation = (await getSetting('multi_location_enabled')) || locations.length > 1;
 
+  // Clinic closures + bookable resources (rooms/equipment).
+  const [closuresRaw, resources] = await Promise.all([
+    db.clinicClosure.findMany({ where: { endAt: { gte: new Date() } }, orderBy: { startAt: 'asc' }, select: { id: true, startAt: true, endAt: true, reason: true, locationId: true } }),
+    db.resource.findMany({ orderBy: [{ kind: 'asc' }, { floor: 'asc' }, { name: 'asc' }], select: { id: true, slug: true, name: true, kind: true, tags: true, floor: true, capacity: true, active: true, locationId: true, equipment: { select: { id: true } } } }),
+  ]);
+  const closures = closuresRaw.map((c) => ({ id: c.id, startAt: c.startAt.toISOString(), endAt: c.endAt.toISOString(), reason: c.reason, locationId: c.locationId }));
+  const roomsAndEquipment = resources.map(({ equipment, ...r }) => ({ ...r, equipmentIds: equipment.map((e) => e.id) }));
+
+  // Room layout & equipment placement are owner/admin-only configuration.
+  const { sessionIsAdmin } = await import('@/lib/auth');
+  const isAdmin = sessionIsAdmin(session);
+
   const { googleConfigured } = await import('@/lib/google-calendar');
   const can = await sessionPermissions();
   const locale = await getLocale();
@@ -53,6 +67,11 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
       {gcal === 'error' && <p className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-blush)]/40 bg-[var(--color-blush)]/10 px-4 py-3 text-sm text-[var(--color-ink)]">Couldn’t complete the Google Calendar connection. Please try again.</p>}
       <div className="mt-8">
         <ScheduleManager staff={staff} treatments={bookableTreatments.map((t) => ({ slug: t.slug, title: t.title }))} googleConfigured={googleConfigured()} locations={locations} multiLocation={multiLocation} />
+      </div>
+
+      <div className="mt-10 space-y-8">
+        <ClosuresManager closures={closures} locations={locations} multiLocation={multiLocation} />
+        {isAdmin && <ResourcesManager resources={roomsAndEquipment} locations={locations} multiLocation={multiLocation} />}
       </div>
     </AdminShell>
   );

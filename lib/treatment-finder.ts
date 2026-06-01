@@ -23,7 +23,7 @@ export const finderQuestions: FinderQuestion[] = [
     prompt: 'What would you most love to improve?',
     options: [
       { value: 'skin', label: 'Skin quality & glow', suggests: [{ slug: 'hydraglow-facial', weight: 3 }, { slug: 'carbon-laser-peel', weight: 2 }] },
-      { value: 'hair', label: 'Unwanted hair', suggests: [{ slug: 'laser-hair-removal', weight: 3 }] },
+      { value: 'hair', label: 'Unwanted hair', suggests: [{ slug: 'laser-hair-removal', weight: 3 }, { slug: 'laser-hair-removal-for-men', weight: 3 }] },
       { value: 'lines', label: 'Lines & firmness', suggests: [{ slug: 'cosmetic-injections', weight: 3 }, { slug: 'smas-hifu-lifting', weight: 2 }, { slug: 'rf-lifting', weight: 2 }] },
       { value: 'smile', label: 'My smile', suggests: [{ slug: 'veneers', weight: 3 }, { slug: 'teeth-whitening', weight: 2 }] },
       { value: 'body', label: 'Body contour', suggests: [{ slug: 'body-contouring', weight: 3 }] },
@@ -39,7 +39,7 @@ export const finderQuestions: FinderQuestion[] = [
       { value: 'pigmentation', label: 'Pigmentation / sun damage', suggests: [{ slug: 'carbon-laser-peel', weight: 3 }] },
       { value: 'laxity', label: 'Loss of firmness', suggests: [{ slug: 'smas-hifu-lifting', weight: 3 }, { slug: 'rf-lifting', weight: 2 }] },
       { value: 'wrinkles', label: 'Fine lines & wrinkles', suggests: [{ slug: 'cosmetic-injections', weight: 3 }] },
-      { value: 'hairgrowth', label: 'Regrowth after shaving/waxing', suggests: [{ slug: 'laser-hair-removal', weight: 3 }] },
+      { value: 'hairgrowth', label: 'Regrowth after shaving/waxing', suggests: [{ slug: 'laser-hair-removal', weight: 3 }, { slug: 'laser-hair-removal-for-men', weight: 3 }] },
       { value: 'teethcolour', label: 'Tooth colour / alignment', suggests: [{ slug: 'veneers', weight: 2 }, { slug: 'teeth-whitening', weight: 2 }] },
     ],
   },

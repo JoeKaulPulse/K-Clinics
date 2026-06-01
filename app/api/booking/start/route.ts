@@ -1,0 +1,148 @@
+import { NextResponse } from 'next/server';
+import { bookingStartSchema } from '@/lib/validation';
+import { crmEnabled } from '@/lib/crm';
+import { stripeEnabled } from '@/lib/stripe';
+import { bookingFor } from '@/lib/treatments';
+
+export const runtime = 'nodejs';
+
+const UPSELL_PCT = 20; // discount on add-ons taken in the same slot
+
+// Account-based booking. The signed-in client picks a catalogue variant (+ any
+// upsell add-ons); pricing comes from the CRM with offers + welcome discount
+// applied. Saves the card (SetupIntent) only if none is already on file.
+export async function POST(req: Request) {
+  if (!crmEnabled || !stripeEnabled) {
+    return NextResponse.json({ ok: false, error: 'Online booking is not available right now. Please call us.' }, { status: 503 });
+  }
+  const parsed = bookingStartSchema.safeParse(await req.json().catch(() => ({})));
+  if (!parsed.success) return NextResponse.json({ ok: false, error: parsed.error.errors[0]?.message || 'Invalid request' }, { status: 422 });
+  const d = parsed.data;
+
+  const { getCurrentClient } = await import('@/lib/client-auth');
+  const client = await getCurrentClient();
+  if (!client) return NextResponse.json({ ok: false, error: 'Please create an account or sign in to book.' }, { status: 401 });
+
+  const { getVariant, liveOffers, bestOffer } = await import('@/lib/services');
+  const primary = await getVariant(d.variantId);
+  if (!primary) return NextResponse.json({ ok: false, error: 'That service is unavailable. Please choose another.' }, { status: 404 });
+
+  const addOns = (await Promise.all(d.addOnVariantIds.map((id) => getVariant(id)))).filter(Boolean) as NonNullable<Awaited<ReturnType<typeof getVariant>>>[];
+  const offers = await liveOffers(false);
+
+  const { db } = await import('@/lib/db');
+
+  // ── Build line items + pricing ──
+  type Item = { variantId: string; treatmentSlug: string; label: string; sessions: number; durationMin: number; pricePence: number; discountPence: number; isAddon: boolean };
+  const items: Item[] = [];
+
+  // Primary — single session or a course (course total when a matching course exists).
+  let base = primary.variant.pricePence;
+  let sessions = 1;
+  if (d.sessions > 1) {
+    const course = primary.variant.courses.find((c) => c.sessions === d.sessions);
+    if (course) { base = course.totalPence; sessions = d.sessions; }
+  }
+  const primaryOffer = bestOffer(offers, primary.service.id, primary.variant.id, base);
+  let primaryDiscount = primaryOffer?.discountPence ?? 0;
+  let usedWelcome = false;
+  const welcomeClaim = base > 0 ? await db.discountClaim.findFirst({ where: { clientId: client.id, status: 'ACTIVE' } }) : null;
+  if (welcomeClaim) {
+    const w = Math.round((base * welcomeClaim.percent) / 100);
+    if (w > primaryDiscount) { primaryDiscount = w; usedWelcome = true; }
+  }
+  items.push({
+    variantId: primary.variant.id, treatmentSlug: primary.service.treatmentSlug,
+    label: `${primary.service.name} — ${primary.variant.name}`, sessions,
+    durationMin: primary.variant.durationMin, pricePence: base, discountPence: primaryDiscount, isAddon: false,
+  });
+
+  for (const ao of addOns) {
+    if (ao.variant.id === primary.variant.id) continue;
+    const b = ao.variant.pricePence;
+    const off = bestOffer(offers, ao.service.id, ao.variant.id, b);
+    const discount = Math.max(off?.discountPence ?? 0, Math.round((b * UPSELL_PCT) / 100));
+    items.push({
+      variantId: ao.variant.id, treatmentSlug: ao.service.treatmentSlug,
+      label: `${ao.service.name} — ${ao.variant.name}`, sessions: 1,
+      durationMin: ao.variant.durationMin, pricePence: b, discountPence: discount, isAddon: true,
+    });
+  }
+
+  const totalDuration = items.reduce((s, it) => s + it.durationMin, 0);
+  const totalPrice = items.reduce((s, it) => s + Math.max(0, it.pricePence - it.discountPence), 0);
+
+  // ── Validate the slot against the live availability engine ──
+  const { isSlotFree, pickPractitioner, assignResources } = await import('@/lib/availability');
+  const treatmentSlug = primary.service.treatmentSlug;
+  if (!(await isSlotFree(d.startISO, totalDuration, treatmentSlug))) {
+    return NextResponse.json({ ok: false, error: 'That time was just taken. Please choose another slot.' }, { status: 409 });
+  }
+  const { getSetting } = await import('@/lib/settings');
+  const autoAssign = await getSetting('auto_assign_practitioner');
+  const practitionerId = autoAssign ? await pickPractitioner(d.startISO, totalDuration, treatmentSlug) : null;
+  const resourceIds = await assignResources(d.startISO, totalDuration, treatmentSlug);
+
+  const { stripe, ensureCustomer } = await import('@/lib/stripe');
+  const customerId = await ensureCustomer(client);
+
+  const start = new Date(d.startISO);
+  const end = new Date(start.getTime() + totalDuration * 60_000);
+  const extra = items.length - 1;
+  const title = `${primary.service.name} — ${primary.variant.name}` + (extra > 0 ? ` + ${extra} add-on${extra > 1 ? 's' : ''}` : '');
+
+  // Persist SMS preference if the client opted in during booking.
+  if (d.smsReminders && !client.smsReminders) {
+    await db.client.update({ where: { id: client.id }, data: { smsReminders: true } }).catch(() => {});
+  }
+
+  const booking = await db.booking.create({
+    data: {
+      clientId: client.id,
+      treatmentSlug, treatmentTitle: title,
+      startAt: start, endAt: end, durationMin: totalDuration,
+      bufferMin: bookingFor(treatmentSlug).bufferMin ?? 0,
+      pricePence: totalPrice,
+      status: 'PENDING',
+      notes: d.notes || null,
+      stripeCustomerId: customerId,
+      practitionerId,
+      resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,
+      items: { create: items },
+    },
+  });
+
+  // Burn the welcome discount if it was the best offer used.
+  if (usedWelcome && welcomeClaim) {
+    await db.discountClaim.update({ where: { id: welcomeClaim.id }, data: { status: 'REDEEMED', redeemedBookingId: booking.id } });
+  }
+
+  const { logAudit } = await import('@/lib/audit');
+  await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Booking created: ${title} on ${start.toLocaleString('en-GB')}`, meta: { totalPence: totalPrice, items: items.length } });
+
+  // ── Card on file: reuse a saved card, else save one via SetupIntent ──
+  let defaultPm: string | null = null;
+  try {
+    const customer = await stripe().customers.retrieve(customerId);
+    if (customer && !('deleted' in customer && customer.deleted)) {
+      const dpm = (customer as { invoice_settings?: { default_payment_method?: string | { id: string } } }).invoice_settings?.default_payment_method;
+      defaultPm = typeof dpm === 'string' ? dpm : dpm?.id ?? null;
+    }
+  } catch { /* fall through to collecting a card */ }
+
+  if (defaultPm) {
+    await db.booking.update({ where: { id: booking.id }, data: { status: 'CONFIRMED', stripePaymentMethodId: defaultPm } });
+    await logAudit({ action: 'BOOKING_CONFIRMED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: 'Confirmed with card already on file' });
+    const { notifyBookingConfirmed } = await import('@/lib/booking-notify');
+    await notifyBookingConfirmed(booking.id);
+    return NextResponse.json({ ok: true, bookingId: booking.id, needCard: false, manageToken: booking.manageToken });
+  }
+
+  const setupIntent = await stripe().setupIntents.create({
+    customer: customerId, usage: 'off_session', payment_method_types: ['card'],
+    metadata: { bookingId: booking.id, clientId: client.id },
+  });
+  await db.booking.update({ where: { id: booking.id }, data: { stripeSetupIntentId: setupIntent.id } });
+
+  return NextResponse.json({ ok: true, bookingId: booking.id, needCard: true, clientSecret: setupIntent.client_secret });
+}

@@ -1,7 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { getStripe } from '@/lib/stripe-client';
@@ -9,167 +8,213 @@ import { isDemo } from '@/lib/booking-mode';
 import { demoSlots } from '@/lib/availability-client';
 import { DemoCard } from '@/components/booking/DemoCard';
 import { Button, ArrowIcon } from '@/components/ui/Button';
-import { site } from '@/lib/site';
 
-type Treatment = { slug: string; title: string; group: string; category: string; pricePence: number | null; durationMin: number; tagline: string };
+type Course = { sessions: number; totalPence: number };
+type Variant = { id: string; name: string; durationMin: number; pricePence: number; offerPence: number | null; offerName: string | null; courses: Course[] };
+type Service = { id: string; slug: string; treatmentSlug: string; name: string; category: string; audience: string; variants: Variant[] };
+type ClientInfo = { signedIn: boolean; firstName: string; email: string; gender: string | null; smsReminders: boolean; hasPhone: boolean; welcomeEligible: boolean };
 
-const field =
-  'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-stone-soft)] focus:border-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-stone-soft)] focus:border-[var(--color-gold)]';
 const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
+const money = (p: number) => (p <= 0 ? 'On consultation' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`);
 
-const money = (p: number | null) => (p == null ? 'On consultation' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`);
+const UPSELL_PCT = 20;
 
-// Public wrapper — reads an optional ?treatment=slug deep-link via Suspense so
-// the host page stays statically renderable.
-export function BookingFlow({ treatments }: { treatments: Treatment[] }) {
-  return (
-    <Suspense fallback={<BookingFlowInner treatments={treatments} />}>
-      <BookingFlowWithParam treatments={treatments} />
-    </Suspense>
-  );
+// Gender suitability (inclusive): undisclosed / non-binary / other see everything.
+function suitable(audience: string, gender: string | null): boolean {
+  if (audience === 'all' || !gender) return true;
+  if (gender === 'FEMALE') return audience !== 'male';
+  if (gender === 'MALE') return audience !== 'female';
+  return true;
 }
 
-function BookingFlowWithParam({ treatments }: { treatments: Treatment[] }) {
-  const params = useSearchParams();
-  const slug = params.get('treatment') || undefined;
-  const initialSlug = slug && treatments.some((t) => t.slug === slug) ? slug : undefined;
-  return <BookingFlowInner treatments={treatments} initialSlug={initialSlug} />;
-}
+type Stage = 'account' | 'service' | 'variant' | 'time' | 'upsell' | 'card' | 'done';
 
-function BookingFlowInner({ treatments, initialSlug }: { treatments: Treatment[]; initialSlug?: string }) {
-  const [step, setStep] = useState(initialSlug ? 1 : 0);
-  const [slug, setSlug] = useState(initialSlug || '');
+export function BookingFlow({ catalogue, client }: { catalogue: Service[]; client: ClientInfo }) {
+  const [authed, setAuthed] = useState(client.signedIn);
+  const [firstName, setFirstName] = useState(client.firstName);
+  const [gender, setGender] = useState<string | null>(client.gender);
+  const [welcome, setWelcome] = useState(client.welcomeEligible);
+  const [smsPref, setSmsPref] = useState(client.smsReminders);
+
+  const [stage, setStage] = useState<Stage>(client.signedIn ? 'service' : 'account');
+  const [serviceId, setServiceId] = useState('');
+  const [variantId, setVariantId] = useState('');
+  const [sessions, setSessions] = useState(1);
   const [date, setDate] = useState('');
   const [slots, setSlots] = useState<string[]>([]);
   const [slot, setSlot] = useState('');
   const [loadingSlots, setLoadingSlots] = useState(false);
-  const [details, setDetails] = useState({ firstName: '', lastName: '', email: '', phone: '', notes: '', marketingOptIn: false, consent: false, company: '' });
+  const [addOns, setAddOns] = useState<Set<string>>(new Set());
+
   const [clientSecret, setClientSecret] = useState('');
   const [bookingId, setBookingId] = useState('');
   const [error, setError] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [done, setDone] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const treatment = treatments.find((t) => t.slug === slug);
-  const steps = ['Treatment', 'Date & time', 'Your details', 'Confirm'];
+  const service = catalogue.find((s) => s.id === serviceId);
+  const variant = service?.variants.find((v) => v.id === variantId);
 
-  // Load slots when date/treatment chosen. Demo mode generates them locally
-  // (excluding any bookings already made this session); live mode asks the API.
+  // Effective single-session price for the primary (best of live offer vs 15% welcome).
+  function primaryPrice(v: Variant) {
+    const offer = v.offerPence != null ? v.pricePence - v.offerPence : 0;
+    const wel = welcome && v.pricePence > 0 ? Math.round(v.pricePence * 0.15) : 0;
+    const disc = Math.max(offer, wel);
+    return { price: Math.max(0, v.pricePence - disc), tag: disc > 0 ? (offer >= wel && v.offerName ? v.offerName : '15% welcome') : null, was: disc > 0 ? v.pricePence : null };
+  }
+  function addOnPrice(v: Variant) {
+    const offer = v.offerPence != null ? v.pricePence - v.offerPence : 0;
+    const up = Math.round(v.pricePence * (UPSELL_PCT / 100));
+    const disc = Math.max(offer, up);
+    return { price: Math.max(0, v.pricePence - disc), saved: disc };
+  }
+
+  // Recommended upsells: cheapest variant of each other gender-suitable service.
+  const recommendations = useMemo(() => {
+    if (!service) return [] as { service: Service; variant: Variant }[];
+    return catalogue
+      .filter((s) => s.id !== service.id && suitable(s.audience, gender) && s.variants.length > 0)
+      .map((s) => ({ service: s, variant: [...s.variants].sort((a, b) => a.pricePence - b.pricePence)[0] }))
+      .filter((r) => r.variant.pricePence > 0)
+      .slice(0, 4);
+  }, [catalogue, service, gender]);
+
+  const totalDuration = useMemo(() => {
+    if (!variant) return 0;
+    let d = variant.durationMin;
+    addOns.forEach((id) => { const av = catalogue.flatMap((s) => s.variants).find((v) => v.id === id); if (av) d += av.durationMin; });
+    return d;
+  }, [variant, addOns, catalogue]);
+
+  // Live availability from the admin engine (works without Stripe).
   useEffect(() => {
-    if (step !== 1 || !slug || !date || !treatment) return;
+    if (stage !== 'time' || !service || !variant || !date) return;
     setSlot(''); setSlots([]);
-    if (isDemo) {
-      let taken: string[] = [];
-      try { taken = JSON.parse(sessionStorage.getItem('kc_demo_bookings') || '[]'); } catch {}
-      setSlots(demoSlots(date, treatment.durationMin, taken));
-      return;
-    }
+    if (isDemo) { setSlots(demoSlots(date, totalDuration, [])); return; }
     setLoadingSlots(true);
-    fetch('/api/booking/availability', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug, date }) })
+    fetch('/api/booking/availability', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: service.treatmentSlug, date, durationMin: totalDuration }) })
       .then((r) => r.json()).then((j) => setSlots(j.slots || [])).catch(() => setSlots([]))
       .finally(() => setLoadingSlots(false));
-  }, [step, slug, date, treatment]);
+  }, [stage, service, variant, date, totalDuration]);
 
   const minDate = useMemo(() => new Date(Date.now() + 864e5).toISOString().slice(0, 10), []);
 
-  async function createBooking() {
-    setCreating(true); setError('');
-    // Demo: no backend — go straight to the (demo) card step.
-    if (isDemo) {
-      setCreating(false);
-      setStep(3);
-      return;
-    }
+  const orderTotal = useMemo(() => {
+    if (!variant) return 0;
+    let t = primaryPrice(sessions > 1 ? courseAsVariant(variant, sessions) : variant).price;
+    addOns.forEach((id) => { const av = catalogue.flatMap((s) => s.variants).find((v) => v.id === id); if (av) t += addOnPrice(av).price; });
+    return t;
+  }, [variant, sessions, addOns, catalogue, welcome]);
+
+  async function submitBooking() {
+    setSubmitting(true); setError('');
+    if (isDemo) { setSubmitting(false); setStage('card'); return; }
     try {
-      const res = await fetch('/api/booking/create', {
+      const res = await fetch('/api/booking/start', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug, startISO: slot, ...details }),
+        body: JSON.stringify({ variantId, sessions, startISO: slot, addOnVariantIds: [...addOns], smsReminders: smsPref }),
       });
       const j = await res.json();
-      if (j.ok && j.clientSecret) {
-        setClientSecret(j.clientSecret); setBookingId(j.bookingId); setStep(3);
-      } else {
-        setError(j.error || 'Could not start booking.');
-      }
-    } catch {
-      setError('Network error. Please try again.');
-    } finally {
-      setCreating(false);
-    }
+      if (!j.ok) { setError(j.error || 'Could not book.'); setSubmitting(false); return; }
+      if (j.needCard) { setClientSecret(j.clientSecret); setBookingId(j.bookingId); setStage('card'); }
+      else { setStage('done'); }
+    } catch { setError('Network error. Please try again.'); }
+    finally { setSubmitting(false); }
   }
 
-  function finishDemo() {
-    // Persist the held slot so it's no longer offered this session.
-    try {
-      const taken: string[] = JSON.parse(sessionStorage.getItem('kc_demo_bookings') || '[]');
-      taken.push(slot);
-      sessionStorage.setItem('kc_demo_bookings', JSON.stringify(taken));
-    } catch {}
-    setDone(true);
-  }
+  const steps: { key: Stage; label: string }[] = [
+    ...(authed ? [] : [{ key: 'account' as Stage, label: 'Account' }]),
+    { key: 'service', label: 'Treatment' }, { key: 'variant', label: 'Option' },
+    { key: 'time', label: 'Time' }, { key: 'upsell', label: 'Enhance' }, { key: 'card', label: 'Confirm' },
+  ];
+  const stepIndex = Math.max(0, steps.findIndex((s) => s.key === stage));
 
-  if (done) {
-    return (
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-10 text-center md:p-16">
-        <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-full bg-[var(--color-ink)] text-[var(--color-gold-soft)]">
-          <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-        </div>
-        <h2 className="text-title">You’re booked in.</h2>
-        <p className="mx-auto mt-4 max-w-md text-[var(--color-stone)]">
-          {treatment?.title}{slot ? ` · ${new Date(slot).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}` : ''}.
-          {' '}Your card is securely saved — no payment is taken until your treatment is delivered. You can cancel free up to 24 hours before.
-        </p>
-        {isDemo ? (
-          <p className="mx-auto mt-4 max-w-md text-xs text-[var(--color-stone-soft)]">
-            This is a demonstration booking — no email is sent and no card is charged. Connect Stripe to go live.
-          </p>
-        ) : (
-          <p className="mx-auto mt-4 max-w-md text-sm text-[var(--color-stone)]">A confirmation is on its way to {details.email}.</p>
-        )}
-      </motion.div>
-    );
-  }
+  if (stage === 'done') return <Done firstName={firstName} treatment={service?.name} slot={slot} />;
 
   return (
     <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6 md:p-10">
-      {/* Progress */}
       <div className="mb-8 flex items-center gap-2">
         {steps.map((s, i) => (
-          <div key={s} className="flex flex-1 flex-col gap-2">
+          <div key={s.key} className="flex flex-1 flex-col gap-2">
             <div className="h-1 overflow-hidden rounded-full bg-[var(--color-sand)]">
-              <motion.div className="h-full bg-[var(--color-gold)]" initial={false} animate={{ width: i < step ? '100%' : i === step ? '50%' : '0%' }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} />
+              <motion.div className="h-full bg-[var(--color-gold)]" initial={false} animate={{ width: i < stepIndex ? '100%' : i === stepIndex ? '50%' : '0%' }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} />
             </div>
-            <span className={`hidden text-[0.65rem] uppercase tracking-[0.14em] sm:block ${i === step ? 'text-[var(--color-gold)]' : 'text-[var(--color-stone)]'}`}>{s}</span>
+            <span className={`hidden text-[0.65rem] uppercase tracking-[0.14em] sm:block ${i === stepIndex ? 'text-[var(--color-gold)]' : 'text-[var(--color-stone)]'}`}>{s.label}</span>
           </div>
         ))}
       </div>
 
       <AnimatePresence mode="wait">
-        <motion.div key={step} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}>
-          {/* Step 0 — treatment */}
-          {step === 0 && (
+        <motion.div key={stage} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}>
+          {stage === 'account' && (
+            <AccountStep
+              onAuthed={(info) => { setAuthed(true); setFirstName(info.firstName); setGender(info.gender); setWelcome(info.welcome); setSmsPref(info.sms); setStage('service'); }}
+              setError={setError}
+            />
+          )}
+
+          {stage === 'service' && (
             <div>
               <h3 className="font-[family-name:var(--font-display)] text-2xl">Choose your treatment</h3>
+              {welcome && <p className="mt-2 text-sm text-[var(--color-gold)]">✦ Your 15% welcome offer will be applied automatically.</p>}
               <div className="mt-6 grid max-h-[26rem] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
-                {treatments.map((t) => (
-                  <button key={t.slug} type="button" onClick={() => { setSlug(t.slug); setStep(1); }}
-                    className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border p-4 text-left transition-all ${slug === t.slug ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
+                {catalogue.map((s) => (
+                  <button key={s.id} type="button" onClick={() => { setServiceId(s.id); setVariantId(''); setSessions(1); setAddOns(new Set()); setStage('variant'); }}
+                    className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border p-4 text-left transition-all ${serviceId === s.id ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                     <span>
-                      <span className="block font-[family-name:var(--font-display)] text-base leading-tight">{t.title}</span>
-                      <span className="text-xs text-[var(--color-stone)]">{t.durationMin} min</span>
+                      <span className="block font-[family-name:var(--font-display)] text-base leading-tight">{s.name}</span>
+                      <span className="text-xs text-[var(--color-stone)]">{s.variants.length} option{s.variants.length > 1 ? 's' : ''}</span>
                     </span>
-                    <span className="shrink-0 text-sm font-medium text-[var(--color-gold)]">{money(t.pricePence)}</span>
+                    <span className="shrink-0 text-sm font-medium text-[var(--color-gold)]">from {money(Math.min(...s.variants.map((v) => v.offerPence ?? v.pricePence).filter((p) => p > 0)) || 0)}</span>
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Step 1 — date & slot */}
-          {step === 1 && treatment && (
+          {stage === 'variant' && service && (
             <div>
-              <h3 className="font-[family-name:var(--font-display)] text-2xl">{treatment.title}</h3>
-              <p className="mt-1 text-sm text-[var(--color-stone)]">{treatment.durationMin} min · {money(treatment.pricePence)}</p>
+              <h3 className="font-[family-name:var(--font-display)] text-2xl">{service.name}</h3>
+              <p className="mt-1 text-sm text-[var(--color-stone)]">Choose your option.</p>
+              <div className="mt-6 grid max-h-[24rem] gap-2 overflow-y-auto pr-1">
+                {service.variants.map((v) => {
+                  const pp = primaryPrice(v);
+                  return (
+                    <button key={v.id} type="button" onClick={() => { setVariantId(v.id); setSessions(1); }}
+                      className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border p-4 text-left transition-all ${variantId === v.id ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
+                      <span>
+                        <span className="block text-sm font-medium">{v.name}</span>
+                        <span className="text-xs text-[var(--color-stone)]">{v.durationMin} min{pp.tag ? ` · ${pp.tag}` : ''}</span>
+                      </span>
+                      <span className="shrink-0 text-right text-sm font-medium text-[var(--color-gold)]">
+                        {pp.was && <span className="mr-1 text-xs text-[var(--color-stone-soft)] line-through">{money(pp.was)}</span>}
+                        {money(pp.price)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {variant && variant.courses.length > 0 && (
+                <div className="mt-5">
+                  <p className={label}>Single session or a course?</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => setSessions(1)} className={`rounded-full border px-4 py-2 text-sm ${sessions === 1 ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)]'}`}>Single · {money(primaryPrice(variant).price)}</button>
+                    {variant.courses.map((c) => (
+                      <button key={c.sessions} onClick={() => setSessions(c.sessions)} className={`rounded-full border px-4 py-2 text-sm ${sessions === c.sessions ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)]'}`}>
+                        Course of {c.sessions} · {money(c.totalPence)}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Booking a course reserves this appointment as your first session.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {stage === 'time' && service && variant && (
+            <div>
+              <h3 className="font-[family-name:var(--font-display)] text-2xl">{service.name} — {variant.name}</h3>
+              <p className="mt-1 text-sm text-[var(--color-stone)]">{totalDuration} min · {money(orderTotal)}{sessions > 1 ? ` · course of ${sessions}` : ''}</p>
               <div className="mt-6">
                 <label className={label} htmlFor="bdate">Select a date</label>
                 <input id="bdate" type="date" min={minDate} value={date} onChange={(e) => setDate(e.target.value)} className={field} />
@@ -177,64 +222,65 @@ function BookingFlowInner({ treatments, initialSlug }: { treatments: Treatment[]
               {date && (
                 <div className="mt-6">
                   <p className={label}>Available times</p>
-                  {loadingSlots ? (
-                    <p className="text-sm text-[var(--color-stone)]">Finding available times…</p>
-                  ) : slots.length === 0 ? (
-                    <p className="text-sm text-[var(--color-stone)]">No availability that day — please try another date.</p>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {slots.map((s) => {
-                        const t = new Date(s).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-                        return (
-                          <button key={s} type="button" onClick={() => setSlot(s)}
-                            className={`rounded-full border px-4 py-2 text-sm transition-all ${slot === s ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
-                            {t}
+                  {loadingSlots ? <p className="text-sm text-[var(--color-stone)]">Finding available times…</p>
+                    : slots.length === 0 ? <p className="text-sm text-[var(--color-stone)]">No availability that day — please try another date.</p>
+                    : (
+                      <div className="flex flex-wrap gap-2">
+                        {slots.map((s) => (
+                          <button key={s} type="button" onClick={() => setSlot(s)} className={`rounded-full border px-4 py-2 text-sm transition-all ${slot === s ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
+                            {new Date(s).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                           </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
                 </div>
               )}
             </div>
           )}
 
-          {/* Step 2 — details */}
-          {step === 2 && (
-            <div className="grid gap-5 sm:grid-cols-2">
-              <div><label className={label} htmlFor="bfn">First name *</label><input id="bfn" className={field} value={details.firstName} onChange={(e) => setDetails({ ...details, firstName: e.target.value })} /></div>
-              <div><label className={label} htmlFor="bln">Last name</label><input id="bln" className={field} value={details.lastName} onChange={(e) => setDetails({ ...details, lastName: e.target.value })} /></div>
-              <div className="sm:col-span-2"><label className={label} htmlFor="bem">Email *</label><input id="bem" type="email" className={field} value={details.email} onChange={(e) => setDetails({ ...details, email: e.target.value })} /></div>
-              <div className="sm:col-span-2"><label className={label} htmlFor="bph">Phone</label><input id="bph" type="tel" className={field} value={details.phone} onChange={(e) => setDetails({ ...details, phone: e.target.value })} /></div>
-              <div className="sm:col-span-2"><label className={label} htmlFor="bno">Notes (optional)</label><textarea id="bno" rows={2} className={field} value={details.notes} onChange={(e) => setDetails({ ...details, notes: e.target.value })} /></div>
-              <input type="text" tabIndex={-1} autoComplete="off" value={details.company} onChange={(e) => setDetails({ ...details, company: e.target.value })} className="absolute -left-[9999px] h-0 w-0" aria-hidden />
-              <label className="flex items-start gap-3 text-sm text-[var(--color-stone)] sm:col-span-2">
-                <input type="checkbox" checked={details.marketingOptIn} onChange={(e) => setDetails({ ...details, marketingOptIn: e.target.checked })} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />
-                Keep me updated with offers and skincare tips.
-              </label>
-              <label className="flex items-start gap-3 text-sm text-[var(--color-stone)] sm:col-span-2">
-                <input type="checkbox" checked={details.consent} onChange={(e) => setDetails({ ...details, consent: e.target.checked })} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />
-                I agree to the booking terms: my card is saved but not charged now; I’ll be charged when the service is delivered; cancellations within 24 hours are charged in full. *
-              </label>
+          {stage === 'upsell' && service && variant && (
+            <div>
+              <h3 className="font-[family-name:var(--font-display)] text-2xl">Enhance your visit</h3>
+              <p className="mt-1 text-sm text-[var(--color-stone)]">Add a treatment to the same appointment and save {UPSELL_PCT}%{gender ? ' — picked for you' : ''}.</p>
+              {recommendations.length === 0 ? (
+                <p className="mt-6 text-sm text-[var(--color-stone)]">No add-ons available — continue to confirm.</p>
+              ) : (
+                <div className="mt-6 grid gap-2">
+                  {recommendations.map(({ service: s, variant: v }) => {
+                    const ap = addOnPrice(v); const on = addOns.has(v.id);
+                    return (
+                      <button key={v.id} type="button" onClick={() => setAddOns((prev) => { const n = new Set(prev); n.has(v.id) ? n.delete(v.id) : n.add(v.id); return n; })}
+                        className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border p-4 text-left transition-all ${on ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
+                        <span>
+                          <span className="block text-sm font-medium">{s.name} — {v.name}</span>
+                          <span className="text-xs text-[var(--color-stone)]">+{v.durationMin} min · save {money(ap.saved)}</span>
+                        </span>
+                        <span className="shrink-0 text-right text-sm font-medium text-[var(--color-gold)]">
+                          <span className="mr-1 text-xs text-[var(--color-stone-soft)] line-through">{money(v.pricePence)}</span>{money(ap.price)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="mt-6 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] p-4 text-sm">
+                <div className="flex justify-between"><span className="text-[var(--color-stone)]">Total today</span><span className="font-medium">£0.00</span></div>
+                <div className="flex justify-between"><span className="text-[var(--color-stone)]">Total at your visit</span><span className="font-medium text-[var(--color-ink)]">{money(orderTotal)}</span></div>
+                <p className="mt-2 text-xs text-[var(--color-stone-soft)]">{totalDuration} min · {[service.name, ...[...addOns].map((id) => catalogue.flatMap((s) => s.variants).find((v) => v.id === id)?.name).filter(Boolean)].join(' + ')}</p>
+              </div>
             </div>
           )}
 
-          {/* Step 3 — payment (save card) */}
-          {step === 3 && (isDemo || clientSecret) && (
+          {stage === 'card' && (isDemo || clientSecret) && (
             <div>
               <h3 className="font-[family-name:var(--font-display)] text-2xl">Secure your booking</h3>
               <div className="mt-2 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] p-4 text-sm text-[var(--color-stone)]">
-                <p><strong className="text-[var(--color-ink)]">{treatment?.title}</strong> · {slot && new Date(slot).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                <p className="mt-1">We securely save your card now — <strong>no payment is taken</strong> until your treatment is delivered.</p>
+                <p><strong className="text-[var(--color-ink)]">{service?.name}</strong> · {slot && new Date(slot).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                <p className="mt-1">We securely save your card now — <strong>no payment is taken</strong> until your treatment is delivered. Free cancellation up to 24 hours before; within 24 hours the full fee applies.</p>
               </div>
               <div className="mt-5">
-                {isDemo ? (
-                  <DemoCard onDone={finishDemo} onError={setError} />
-                ) : (
-                  <ElementsWrapper clientSecret={clientSecret}>
-                    <CardStep bookingId={bookingId} onDone={() => setDone(true)} onError={setError} />
-                  </ElementsWrapper>
-                )}
+                {isDemo ? <DemoCard onDone={() => setStage('done')} onError={setError} />
+                  : <ElementsWrapper clientSecret={clientSecret}><CardStep bookingId={bookingId} onDone={() => setStage('done')} onError={setError} /></ElementsWrapper>}
               </div>
             </div>
           )}
@@ -243,23 +289,125 @@ function BookingFlowInner({ treatments, initialSlug }: { treatments: Treatment[]
 
       {error && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
 
-      {/* Nav (hidden on card step — handled inside) */}
-      {step < 3 && (
+      {stage !== 'card' && stage !== 'account' && (
         <div className="mt-8 flex items-center justify-between gap-4">
-          <button type="button" onClick={() => setStep((s) => Math.max(0, s - 1))} className={`text-sm font-medium text-[var(--color-stone)] ${step === 0 ? 'pointer-events-none opacity-0' : 'hover:text-[var(--color-ink)]'}`}>← Back</button>
-          {step === 1 && <Button onClick={() => slot && setStep(2)} variant={slot ? 'gold' : 'outline'}>Continue <ArrowIcon /></Button>}
-          {step === 2 && <Button onClick={() => details.firstName && /\S+@\S+\.\S+/.test(details.email) && details.consent && !creating && createBooking()} variant={details.consent ? 'gold' : 'outline'}>{creating ? 'Securing…' : 'Continue to card'} <ArrowIcon /></Button>}
-          {step === 0 && <span />}
+          <button type="button" onClick={() => goBack()} className="text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Back</button>
+          {stage === 'variant' && <Button onClick={() => variant && setStage('time')} variant={variant ? 'gold' : 'outline'}>Continue <ArrowIcon /></Button>}
+          {stage === 'time' && <Button onClick={() => slot && setStage('upsell')} variant={slot ? 'gold' : 'outline'}>Continue <ArrowIcon /></Button>}
+          {stage === 'upsell' && <Button onClick={() => !submitting && submitBooking()} variant="gold">{submitting ? 'Securing…' : 'Continue to confirm'} <ArrowIcon /></Button>}
+          {stage === 'service' && <span />}
         </div>
       )}
     </div>
   );
+
+  function goBack() {
+    const order: Stage[] = authed ? ['service', 'variant', 'time', 'upsell'] : ['account', 'service', 'variant', 'time', 'upsell'];
+    const i = order.indexOf(stage);
+    if (i > 0) setStage(order[i - 1]);
+  }
+}
+
+function courseAsVariant(v: Variant, sessions: number): Variant {
+  const c = v.courses.find((x) => x.sessions === sessions);
+  return c ? { ...v, pricePence: c.totalPence, offerPence: null, offerName: null } : v;
+}
+
+// ── Account step (signup / login) ───────────────────────────────────────────
+function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string; gender: string | null; welcome: boolean; sms: boolean }) => void; setError: (e: string) => void }) {
+  const [mode, setMode] = useState<'signup' | 'login'>('signup');
+  const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', gender: '', marketingOptIn: true, sms: false, consent: false, company: '' });
+  const [busy, setBusy] = useState(false);
+
+  async function signup() {
+    if (!f.firstName || !/\S+@\S+\.\S+/.test(f.email) || f.password.length < 8 || !f.consent) { setError('Please complete the required fields (password 8+ characters) and accept the terms.'); return; }
+    setBusy(true); setError('');
+    try {
+      const res = await fetch('/api/account/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firstName: f.firstName, lastName: f.lastName, email: f.email, phone: f.phone, password: f.password, gender: f.gender || undefined, marketingOptIn: f.marketingOptIn, locale: 'en', company: f.company }) });
+      const j = await res.json();
+      if (!j.ok) { setError(j.error || 'Could not create your account.'); setBusy(false); return; }
+      if (f.sms && f.phone) { fetch('/api/account/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ smsReminders: true }) }).catch(() => {}); }
+      onAuthed({ firstName: f.firstName, gender: f.gender || null, welcome: !!j.discount?.granted, sms: f.sms && !!f.phone });
+    } catch { setError('Network error. Please try again.'); setBusy(false); }
+  }
+  async function login() {
+    if (!/\S+@\S+\.\S+/.test(f.email) || !f.password) { setError('Enter your email and password.'); return; }
+    setBusy(true); setError('');
+    try {
+      const res = await fetch('/api/account/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: f.email, password: f.password }) });
+      const j = await res.json();
+      if (!j.ok) { setError(j.error || 'Invalid email or password.'); setBusy(false); return; }
+      window.location.reload(); // re-render server-side with the signed-in client
+    } catch { setError('Network error. Please try again.'); setBusy(false); }
+  }
+
+  return (
+    <div>
+      <h3 className="font-[family-name:var(--font-display)] text-2xl">{mode === 'signup' ? 'Create your account to book' : 'Welcome back'}</h3>
+      {mode === 'signup' && (
+        <div className="mt-3 rounded-[var(--radius-md)] border border-[var(--color-gold)]/30 bg-[var(--color-gold)]/8 p-4 text-sm text-[var(--color-ink-soft)]">
+          ✦ <strong>Enjoy 15% off your first visit</strong> when you create your free account — and keep all your appointments, forms and rewards in one place.
+        </div>
+      )}
+
+      {mode === 'signup' ? (
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div><label className={label}>First name *</label><input className={field} value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} /></div>
+          <div><label className={label}>Last name</label><input className={field} value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} /></div>
+          <div className="sm:col-span-2"><label className={label}>Email *</label><input type="email" className={field} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
+          <div><label className={label}>Mobile</label><input type="tel" className={field} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
+          <div><label className={label}>Password * (8+)</label><input type="password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
+          <div className="sm:col-span-2"><label className={label}>Gender (optional — tailors recommendations)</label>
+            <select className={field} value={f.gender} onChange={(e) => setF({ ...f, gender: e.target.value })}>
+              <option value="">Prefer not to say</option>
+              <option value="FEMALE">Female</option><option value="MALE">Male</option>
+              <option value="NON_BINARY">Non-binary</option><option value="OTHER">Other</option>
+            </select>
+          </div>
+          <input type="text" tabIndex={-1} autoComplete="off" value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} className="absolute -left-[9999px] h-0 w-0" aria-hidden />
+          <label className="flex items-start gap-3 text-sm text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={f.sms} onChange={(e) => setF({ ...f, sms: e.target.checked })} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />Text me appointment confirmations &amp; reminders.</label>
+          <label className="flex items-start gap-3 text-sm text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={f.marketingOptIn} onChange={(e) => setF({ ...f, marketingOptIn: e.target.checked })} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />Keep me updated with offers and skincare tips.</label>
+          <label className="flex items-start gap-3 text-sm text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={f.consent} onChange={(e) => setF({ ...f, consent: e.target.checked })} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />I agree to the booking terms: my card is saved but not charged now; I’ll be charged when the service is delivered; cancellations within 24 hours are charged in full. *</label>
+        </div>
+      ) : (
+        <div className="mt-6 grid gap-4">
+          <div><label className={label}>Email</label><input type="email" className={field} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
+          <div><label className={label}>Password</label><input type="password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
+        </div>
+      )}
+
+      <div className="mt-8 flex items-center justify-between gap-4">
+        <button type="button" onClick={() => setMode(mode === 'signup' ? 'login' : 'signup')} className="text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">
+          {mode === 'signup' ? 'Already have an account? Sign in' : 'New here? Create an account'}
+        </button>
+        <Button onClick={() => !busy && (mode === 'signup' ? signup() : login())} variant="gold">{busy ? 'Please wait…' : mode === 'signup' ? 'Create account & continue' : 'Sign in'} <ArrowIcon /></Button>
+      </div>
+    </div>
+  );
+}
+
+function Done({ firstName, treatment, slot }: { firstName: string; treatment?: string; slot: string }) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-10 text-center md:p-16">
+      <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-full bg-[var(--color-ink)] text-[var(--color-gold-soft)]">
+        <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      </div>
+      <h2 className="text-title">You’re booked in{firstName ? `, ${firstName}` : ''}.</h2>
+      <p className="mx-auto mt-4 max-w-md text-[var(--color-stone)]">
+        {treatment}{slot ? ` · ${new Date(slot).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}` : ''}.
+        {' '}Your card is securely saved — no payment is taken until your treatment is delivered. We’ve emailed your confirmation.
+      </p>
+      <p className="mx-auto mt-4 max-w-md text-sm text-[var(--color-stone)]">
+        Please <a href="/account/assessments" className="link-underline font-medium text-[var(--color-ink)]">complete your pre-treatment forms</a> before your visit, and arrive 15 minutes early for your first appointment.
+      </p>
+      <p className="mt-6"><a href="/account/appointments" className="link-underline text-sm font-medium text-[var(--color-ink)]">View my appointments →</a></p>
+    </motion.div>
+  );
 }
 
 function ElementsWrapper({ clientSecret, children }: { clientSecret: string; children: React.ReactNode }) {
-  const stripePromise = getStripe();
   return (
-    <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#a98a6d', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
+    <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#a98a6d', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
       {children}
     </Elements>
   );
@@ -269,7 +417,6 @@ function CardStep({ bookingId, onDone, onError }: { bookingId: string; onDone: (
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
-
   async function submit() {
     if (!stripe || !elements) return;
     setSubmitting(true); onError('');
@@ -277,16 +424,12 @@ function CardStep({ bookingId, onDone, onError }: { bookingId: string; onDone: (
     if (error) { onError(error.message || 'Card could not be saved.'); setSubmitting(false); return; }
     const res = await fetch('/api/booking/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId }) });
     const j = await res.json();
-    if (j.ok) onDone();
-    else { onError(j.error || 'Could not confirm booking.'); setSubmitting(false); }
+    if (j.ok) onDone(); else { onError(j.error || 'Could not confirm booking.'); setSubmitting(false); }
   }
-
   return (
     <div>
       <PaymentElement />
-      <div className="mt-6 flex justify-end">
-        <Button onClick={submit} variant="gold" size="lg">{submitting ? 'Confirming…' : 'Confirm booking'} <ArrowIcon /></Button>
-      </div>
+      <div className="mt-6 flex justify-end"><Button onClick={submit} variant="gold" size="lg">{submitting ? 'Confirming…' : 'Confirm booking'} <ArrowIcon /></Button></div>
     </div>
   );
 }

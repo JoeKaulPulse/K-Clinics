@@ -18,7 +18,7 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
 
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
-  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', password: '', marketingOptIn: true, consent: false, company: '' });
+  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', gender: '', genderSelfDescribe: '', password: '', marketingOptIn: true, consent: false, company: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState<null | { granted: boolean; code?: string; percent: number; reason?: string }>(null);
@@ -143,6 +143,16 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
                   <div className="grid grid-cols-2 gap-4">
                     <div><label className={authLabel}>{t('field.phone')}</label><input type="tel" autoComplete="tel" className={authField} value={d.phone} onChange={(e) => set('phone', e.target.value)} /></div>
                     <div><label className={authLabel}>{t('field.dob')}</label><input type="date" className={authField} value={d.dob} onChange={(e) => set('dob', e.target.value)} /></div>
+                  </div>
+                  <div>
+                    <label className={authLabel}>{t('gender.label')} <span className="text-[var(--color-stone-soft)]">({t('field.optional')})</span></label>
+                    <select className={authField} value={d.gender} onChange={(e) => set('gender', e.target.value)}>
+                      <option value="">{t('gender.unset')}</option>
+                      {(['FEMALE', 'MALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_SAY'] as const).map((g) => <option key={g} value={g}>{t(`gender.${g}`)}</option>)}
+                    </select>
+                    {d.gender === 'OTHER' && (
+                      <input className={`${authField} mt-2`} maxLength={60} placeholder={t('gender.selfDescribe')} value={d.genderSelfDescribe} onChange={(e) => set('genderSelfDescribe', e.target.value)} />
+                    )}
                   </div>
                 </div>
               </Step>

@@ -36,7 +36,27 @@ export type Treatment = {
   pricePence?: number | null;
   /** Booking: appointment length in minutes. */
   durationMin?: number;
+  /** Who a treatment is clinically aimed at. Defaults to 'all' (unisex). Used to
+   *  tailor recommendations — never to exclude clients who haven't told us their
+   *  gender, or who are non-binary / other / prefer-not-to-say. */
+  audience?: 'all' | 'female' | 'male';
 };
+
+/** Audiences to hide from a client's *recommendations* given their gender.
+ *  Inclusive by default: anyone who is non-binary, other, undisclosed, or who
+ *  hasn't set a gender sees the full menu. */
+export function hiddenAudiences(gender?: string | null): ('female' | 'male')[] {
+  if (gender === 'FEMALE') return ['male'];
+  if (gender === 'MALE') return ['female'];
+  return [];
+}
+
+/** Should this treatment be recommended to a client of the given gender? */
+export function suitableForGender(t: Pick<Treatment, 'audience'>, gender?: string | null): boolean {
+  const aud = t.audience ?? 'all';
+  if (aud === 'all') return true;
+  return !hiddenAudiences(gender).includes(aud);
+}
 
 export const treatments: Treatment[] = [
   // ───────────────────────────── AESTHETICS ─────────────────────────────────
@@ -84,6 +104,7 @@ export const treatments: Treatment[] = [
     group: 'Laser & Skin',
     title: 'Laser Hair Removal for Men',
     menuTitle: 'Laser Hair Removal — Men',
+    audience: 'male',
     tagline: 'Groomed, effortless, permanent. Engineered for him.',
     metaTitle: "Men's Laser Hair Removal London | Back, Chest & Beard | K Clinics",
     metaDescription:
@@ -429,6 +450,7 @@ export const treatments: Treatment[] = [
     category: 'aesthetics',
     group: 'Body & Injectables',
     title: 'Intimate Rejuvenation',
+    audience: 'female',
     tagline: 'Confidence, restored — with discretion and care.',
     metaTitle: 'Intimate Rejuvenation & Whitening London | K Clinics',
     metaDescription:
@@ -778,20 +800,20 @@ export const treatments: Treatment[] = [
 // Price (pence) + duration (minutes) per treatment, used by the booking system.
 // price `null` ⇒ "on consultation": booked as a £0 card-on-file hold, with the
 // amount set by staff at charge time. Edit these freely — they are guide values.
-type BookingCfg = { pricePence: number | null; durationMin: number };
+type BookingCfg = { pricePence: number | null; durationMin: number; bufferMin?: number; requiresResource?: string };
 export const bookingConfig: Record<string, BookingCfg> = {
   // "from" = lowest single-session price from the official price sheet.
-  'laser-hair-removal':          { pricePence: 1100,  durationMin: 15 },  // eyebrows from £11
-  'laser-hair-removal-for-men':  { pricePence: 3300,  durationMin: 15 },  // underarms from £33
-  'carbon-laser-peel':           { pricePence: 12100, durationMin: 40 },  // Hollywood peel full face from £121
-  'laser-tattoo-removal':        { pricePence: 4400,  durationMin: 15 },  // very small from £44
-  'smas-hifu-lifting':           { pricePence: 34900, durationMin: 30 },  // eyebrow/forehead/neck lift from £349
-  'rf-lifting':                  { pricePence: 26000, durationMin: 45 },  // from £260
-  'hydraglow-facial':            { pricePence: 9500,  durationMin: 30 },  // signature express from £95
-  'face-treatments':            { pricePence: 11500, durationMin: 30 },  // cosmetic peel full face from £115
-  'body-contouring':             { pricePence: 11000, durationMin: 60 },  // Endosphere from £110
-  'cosmetic-injections':         { pricePence: 15000, durationMin: 30 },  // fat-dissolving from £150/vial
-  'intimate-rejuvenation':       { pricePence: 69000, durationMin: 40 },  // CO2 laser from £690
+  'laser-hair-removal':          { pricePence: 1100,  durationMin: 15, bufferMin: 10, requiresResource: 'laser' },  // eyebrows from £11
+  'laser-hair-removal-for-men':  { pricePence: 3300,  durationMin: 15, bufferMin: 10, requiresResource: 'laser' },  // underarms from £33
+  'carbon-laser-peel':           { pricePence: 12100, durationMin: 40, bufferMin: 10, requiresResource: 'laser' },  // Hollywood peel full face from £121
+  'laser-tattoo-removal':        { pricePence: 4400,  durationMin: 15, bufferMin: 10, requiresResource: 'laser' },  // very small from £44
+  'smas-hifu-lifting':           { pricePence: 34900, durationMin: 30, bufferMin: 10, requiresResource: 'hifu' },  // eyebrow/forehead/neck lift from £349
+  'rf-lifting':                  { pricePence: 26000, durationMin: 45, bufferMin: 10 },  // from £260
+  'hydraglow-facial':            { pricePence: 9500,  durationMin: 30, bufferMin: 10 },  // signature express from £95
+  'face-treatments':            { pricePence: 11500, durationMin: 30, bufferMin: 10 },  // cosmetic peel full face from £115
+  'body-contouring':             { pricePence: 11000, durationMin: 60, bufferMin: 15 },  // Endosphere from £110
+  'cosmetic-injections':         { pricePence: 15000, durationMin: 30, bufferMin: 10 },  // fat-dissolving from £150/vial
+  'intimate-rejuvenation':       { pricePence: 69000, durationMin: 40, bufferMin: 15, requiresResource: 'laser' },  // CO2 laser from £690
   'veneers':                     { pricePence: null,  durationMin: 60 },
   'teeth-whitening':             { pricePence: null,  durationMin: 60 },
   'composite-bonding':           { pricePence: null,  durationMin: 60 },
@@ -801,13 +823,13 @@ export const bookingConfig: Record<string, BookingCfg> = {
   'specialist-dentistry':        { pricePence: null,  durationMin: 45 },
   'dental-consultations':        { pricePence: null,  durationMin: 30 },
   // Imported treatments — prices from the official price sheet where known.
-  'laser-skin-rejuvenation':     { pricePence: 21000, durationMin: 25 },  // Face & Neck from £210
-  'pigmentation-correction':     { pricePence: 1800,  durationMin: 20 },  // nose from £18
-  'vascular-lesions-treatment':  { pricePence: 1800,  durationMin: 20 },  // single vein from £18
-  'scar-stretch-mark-reduction': { pricePence: null,  durationMin: 45 },
-  'spider-veins-removal':        { pricePence: 23000, durationMin: 25 },  // nose thread vein from £230
-  'laser-skin-resurfacing':      { pricePence: 18000, durationMin: 45 },  // from £180
-  'ipl-phototherapy':            { pricePence: 20000, durationMin: 45 },  // from £200
+  'laser-skin-rejuvenation':     { pricePence: 21000, durationMin: 25, bufferMin: 10, requiresResource: 'laser' },  // Face & Neck from £210
+  'pigmentation-correction':     { pricePence: 1800,  durationMin: 20, bufferMin: 10, requiresResource: 'laser' },  // nose from £18
+  'vascular-lesions-treatment':  { pricePence: 1800,  durationMin: 20, bufferMin: 10, requiresResource: 'laser' },  // single vein from £18
+  'scar-stretch-mark-reduction': { pricePence: null,  durationMin: 45, bufferMin: 10 },
+  'spider-veins-removal':        { pricePence: 23000, durationMin: 25, bufferMin: 10, requiresResource: 'laser' },  // nose thread vein from £230
+  'laser-skin-resurfacing':      { pricePence: 18000, durationMin: 45, bufferMin: 10, requiresResource: 'laser' },  // from £180
+  'ipl-phototherapy':            { pricePence: 20000, durationMin: 45, bufferMin: 10, requiresResource: 'laser' },  // from £200
   'fungal-nail-infection-treatment': { pricePence: 7900, durationMin: 30 }, // 1 foot from £79
   'permanent-makeup-removal':    { pricePence: 27500, durationMin: 30 },  // eyebrows from £275
   'microneedling':               { pricePence: null,  durationMin: 60 },

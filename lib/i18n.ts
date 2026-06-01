@@ -40,6 +40,7 @@ export const DICT: Record<string, Entry> = {
   'nav.rewards': { en: 'Rewards', uk: 'Винагороди' },
   'nav.schedule': { en: 'Schedules', uk: 'Розклади' },
   'nav.timeoff': { en: 'Time off', uk: 'Відпустки' },
+  'nav.services': { en: 'Services & pricing', uk: 'Послуги та ціни' },
   'nav.inventory': { en: 'Inventory', uk: 'Склад' },
   'nav.reorder': { en: 'Reorder', uk: 'Замовлення' },
   'nav.sops': { en: 'SOPs', uk: 'Стандарти (SOP)' },

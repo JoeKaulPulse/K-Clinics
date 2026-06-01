@@ -25,6 +25,10 @@ export const STAFF_ROLES = ['OWNER', 'ADMIN', 'PRACTITIONER', 'FRONT_DESK', 'STA
 export const CLINICAL_ROLES = ['OWNER', 'ADMIN', 'PRACTITIONER'];
 export const canViewClinical = (role?: string) => !!role && CLINICAL_ROLES.includes(role);
 
+/** Owner/Admin only — clinic configuration such as room layout & equipment placement. */
+export const ADMIN_ROLES = ['OWNER', 'ADMIN'];
+export const sessionIsAdmin = (session: Session | null | undefined): boolean => !!session && ADMIN_ROLES.includes(session.role);
+
 /** Does the current session hold a given fine-grained permission? */
 export function sessionCan(session: Session | null | undefined, key: string): boolean {
   if (!session) return false;

@@ -6,6 +6,7 @@ import { AdminShell } from '@/components/admin/AdminShell';
 import { getLocale } from '@/lib/locale';
 import { t } from '@/lib/i18n';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
+import { CalendarBlockButton } from '@/components/admin/CalendarBlockButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,8 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     }),
     db.staffTimeOff.findMany({ where: { startAt: { lt: dayEnd }, endAt: { gt: dayStart } } }),
   ]);
+  const closures = await db.clinicClosure.findMany({ where: { startAt: { lt: dayEnd }, endAt: { gt: dayStart } }, select: { reason: true } });
+  const canManageSchedule = sessionCan(session, 'schedule.manage');
 
   // Columns: each clinician + an "Unassigned" column.
   const columns = [...clinicians.map((c) => ({ id: c.id, name: c.name || 'Clinician', color: c.color })), { id: null as string | null, name: 'Unassigned', color: null }];
@@ -50,15 +53,22 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
 
   return (
     <AdminShell user={session?.email} can={can} locale={locale}>
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="relative flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-[family-name:var(--font-display)] text-3xl">{t(locale, 'nav.calendar')}</h1>
         <div className="flex items-center gap-2 text-sm">
           <Link href={`/admin/calendar?date=${iso(prev)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 hover:bg-[var(--color-bone)]">←</Link>
           <span className="min-w-44 text-center font-medium">{day.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
           <Link href={`/admin/calendar?date=${iso(next)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 hover:bg-[var(--color-bone)]">→</Link>
           <Link href="/admin/calendar" className="ml-2 rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-[var(--color-porcelain)]">Today</Link>
+          {canManageSchedule && clinicians.length > 0 && <CalendarBlockButton clinicians={columns.filter((c) => c.id).map((c) => ({ id: c.id as string, name: c.name }))} dateISO={iso(dayStart)} />}
         </div>
       </div>
+
+      {closures.length > 0 && (
+        <p className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-blush)]/40 bg-[var(--color-blush)]/10 px-4 py-2.5 text-sm font-medium text-[var(--color-ink)]">
+          Clinic closed this day{closures[0].reason ? ` — ${closures[0].reason}` : ''}. No online bookings will be offered.
+        </p>
+      )}
 
       <div className="mt-6 overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
         <div className="flex min-w-[640px]">

@@ -13,7 +13,7 @@ type Staff = {
   competencies: string[];
   googleConnected: boolean;
   locationIds: string[];
-  schedules: { dayOfWeek: number; startMin: number; endMin: number; locationId: string | null }[];
+  schedules: { dayOfWeek: number; startMin: number; endMin: number; breakStartMin: number | null; breakEndMin: number | null; locationId: string | null }[];
   timeOff: { id: string; kind: string; startAt: string; endAt: string; reason: string | null }[];
 };
 
@@ -56,7 +56,11 @@ function Editor({ staff, treatments, googleConfigured, locations, multiLocation 
   const [rows, setRows] = useState(() =>
     DAYS.map((_, d) => {
       const sc = staff.schedules.find((s) => s.dayOfWeek === d);
-      return { on: !!sc, start: sc ? toHM(sc.startMin) : '09:00', end: sc ? toHM(sc.endMin) : '18:00', locationId: sc?.locationId || '' };
+      return {
+        on: !!sc, start: sc ? toHM(sc.startMin) : '09:00', end: sc ? toHM(sc.endMin) : '18:00',
+        breakStart: sc?.breakStartMin != null ? toHM(sc.breakStartMin) : '', breakEnd: sc?.breakEndMin != null ? toHM(sc.breakEndMin) : '',
+        locationId: sc?.locationId || '',
+      };
     }),
   );
   const [msg, setMsg] = useState('');
@@ -70,7 +74,11 @@ function Editor({ staff, treatments, googleConfigured, locations, multiLocation 
 
   async function saveSchedule() {
     setMsg('Saving…');
-    const blocks = rows.map((r, d) => (r.on ? { dayOfWeek: d, startMin: toMin(r.start), endMin: toMin(r.end), locationId: r.locationId || null } : null)).filter(Boolean);
+    const blocks = rows.map((r, d) => (r.on ? {
+      dayOfWeek: d, startMin: toMin(r.start), endMin: toMin(r.end),
+      breakStartMin: r.breakStart ? toMin(r.breakStart) : null, breakEndMin: r.breakEnd ? toMin(r.breakEnd) : null,
+      locationId: r.locationId || null,
+    } : null)).filter(Boolean);
     const ok = await post({ op: 'setSchedule', staffId: staff.id, blocks });
     setMsg(ok ? 'Schedule saved ✓' : 'Could not save');
     router.refresh();
@@ -147,6 +155,10 @@ function Editor({ staff, treatments, googleConfigured, locations, multiLocation 
               <input type="time" value={r.start} disabled={!r.on} onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, start: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40" />
               <span className="text-[var(--color-stone)]">–</span>
               <input type="time" value={r.end} disabled={!r.on} onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, end: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40" />
+              <span className="ml-2 hidden text-xs text-[var(--color-stone-soft)] sm:inline">break</span>
+              <input type="time" value={r.breakStart} disabled={!r.on} title="Break start (optional)" onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, breakStart: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40" />
+              <span className="text-[var(--color-stone)]">–</span>
+              <input type="time" value={r.breakEnd} disabled={!r.on} title="Break end (optional)" onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, breakEnd: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40" />
               {multiLocation && allowedLocs.length > 0 && (
                 <select value={r.locationId} disabled={!r.on} onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, locationId: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40">
                   <option value="">{allowedLocs.length === 1 ? allowedLocs[0].name : 'Location…'}</option>
@@ -156,7 +168,8 @@ function Editor({ staff, treatments, googleConfigured, locations, multiLocation 
             </div>
           ))}
         </div>
-        <button onClick={saveSchedule} className="mt-5 rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)]">Save hours</button>
+        <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Set an optional daily break (e.g. lunch) — no bookings will be offered during it.</p>
+        <button onClick={saveSchedule} className="mt-4 rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)]">Save hours</button>
         {msg && <span className="ml-3 text-sm text-[var(--color-stone)]">{msg}</span>}
       </section>
 

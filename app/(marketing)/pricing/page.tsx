@@ -4,6 +4,7 @@ import { Reveal } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { priceList, formatGBP } from '@/lib/pricing';
+import { OffersStrip } from '@/components/marketing/OffersStrip';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const metadata: Metadata = pageMeta({
@@ -26,6 +27,8 @@ export default function PricingPage() {
       >
         <BookingButtons />
       </PageHero>
+
+      <div className="pt-10"><OffersStrip /></div>
 
       <section className="container-lux section">
         <div className="space-y-[var(--space-section-sm)]">

@@ -4,9 +4,12 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
 import { finderQuestions, scoreFinder } from '@/lib/treatment-finder';
-import { getTreatment, formatPrice, bookingFor } from '@/lib/treatments';
+import { getTreatment, formatPrice, bookingFor, suitableForGender } from '@/lib/treatments';
 
-export function TreatmentFinder() {
+/** `gender` (when a signed-in client uses the finder) tailors which treatments
+ *  are suggested — e.g. a man isn't shown women-specific treatments and vice
+ *  versa. Anonymous visitors (gender undefined) see the full set. */
+export function TreatmentFinder({ gender }: { gender?: string | null } = {}) {
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
@@ -32,7 +35,9 @@ export function TreatmentFinder() {
     return Array.isArray(a) ? a.includes(val) : a === val;
   };
 
-  const results = done ? scoreFinder(answers).slice(0, 3).map(getTreatment).filter(Boolean) : [];
+  const results = done
+    ? scoreFinder(answers).map(getTreatment).filter((tr): tr is NonNullable<typeof tr> => Boolean(tr) && suitableForGender(tr!, gender)).slice(0, 3)
+    : [];
   const progress = Math.round((Math.min(step, total) / total) * 100);
 
   return (

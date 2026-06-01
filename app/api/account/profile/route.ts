@@ -9,7 +9,10 @@ const schema = z.object({
   lastName: z.string().max(80).optional().or(z.literal('')),
   phone: z.string().max(40).optional().or(z.literal('')),
   dob: z.string().optional().or(z.literal('')),
+  gender: z.enum(['FEMALE', 'MALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_SAY', '']).optional(),
+  genderSelfDescribe: z.string().max(60).optional().or(z.literal('')),
   marketingOptIn: z.boolean().optional(),
+  smsReminders: z.boolean().optional(),
   // Optional password change
   newPassword: z.string().min(8).max(200).optional(),
 });
@@ -31,7 +34,13 @@ export async function POST(req: Request) {
   if (d.lastName !== undefined) data.lastName = d.lastName || null;
   if (d.phone !== undefined) data.phone = d.phone || null;
   if (d.dob) data.dob = new Date(d.dob);
+  if (d.gender !== undefined) {
+    data.gender = d.gender === '' ? null : d.gender;
+    // Self-description only applies to OTHER; clear it otherwise.
+    data.genderSelfDescribe = d.gender === 'OTHER' ? (d.genderSelfDescribe?.trim() || null) : null;
+  }
   if (typeof d.marketingOptIn === 'boolean') data.marketingOptIn = d.marketingOptIn;
+  if (typeof d.smsReminders === 'boolean') data.smsReminders = d.smsReminders;
   if (d.newPassword) data.passwordHash = await hashPassword(d.newPassword);
 
   await db.client.update({ where: { id: session.sub }, data });

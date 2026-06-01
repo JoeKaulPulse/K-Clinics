@@ -2,29 +2,46 @@ import type { Metadata } from 'next';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { BookingFlow } from '@/components/booking/BookingFlow';
-import { treatments, bookingFor } from '@/lib/treatments';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const metadata: Metadata = pageMeta({
   title: 'Book an Appointment — Islington, London | K Clinics',
   description:
-    'Book your appointment at K Clinics, Islington in seconds. Choose your treatment and time; your card is saved securely and only charged when your service is delivered. Free cancellation up to 24 hours before.',
+    'Book your appointment at K Clinics, Islington. Create your free account for 15% off your first visit, choose your treatment and time; your card is saved securely and only charged when your service is delivered. Free cancellation up to 24 hours before.',
   path: '/book',
   keywords: ['book appointment London', 'aesthetics booking Islington', 'clinic online booking'],
 });
 
-const list = treatments.map((t) => ({
-  slug: t.slug, title: t.title, group: t.group, category: t.category,
-  tagline: t.tagline, ...bookingFor(t.slug),
-}));
+export const dynamic = 'force-dynamic';
 
-export default function BookPage() {
+export default async function BookPage() {
+  const { bookingCatalogue, liveOffers } = await import('@/lib/services');
+  const { getCurrentClient } = await import('@/lib/client-auth');
+  const { db } = await import('@/lib/db');
+
+  const [catalogue, promoted, client] = await Promise.all([
+    bookingCatalogue(),
+    liveOffers(true),
+    getCurrentClient(),
+  ]);
+
+  // Welcome offer is available to a signed-in client with an unused claim.
+  let welcomeEligible = !client; // not signed in → they’ll get it on signup
+  if (client) {
+    const active = await db.discountClaim.findFirst({ where: { clientId: client.id, status: 'ACTIVE' } });
+    welcomeEligible = !!active;
+  }
+
+  const clientInfo = client
+    ? { signedIn: true, firstName: client.firstName, email: client.email, gender: client.gender ?? null, smsReminders: client.smsReminders, hasPhone: !!client.phone, welcomeEligible }
+    : { signedIn: false, firstName: '', email: '', gender: null as string | null, smsReminders: false, hasPhone: false, welcomeEligible: true };
+
   const points = [
+    'Create your free account for 15% off your first visit',
     'Your card is saved securely — no payment is taken now',
     'You’re only charged when your treatment is delivered',
     'Free cancellation up to 24 hours before your appointment',
-    'New clients enjoy 15% off their first visit',
   ];
 
   return (
@@ -33,7 +50,7 @@ export default function BookPage() {
       <PageHero
         eyebrow="Booking"
         title="Reserve your appointment."
-        lede="Choose your treatment and a time that suits you. It takes less than a minute — and you won’t pay a penny until your treatment is delivered."
+        lede="Create your account, choose your treatment and a time that suits you. You won’t pay a penny until your treatment is delivered."
         gradient={['#7b6a5d', '#2a2420']}
       />
 
@@ -52,13 +69,23 @@ export default function BookPage() {
                 </li>
               ))}
             </ul>
+            {promoted.length > 0 && (
+              <div className="mt-8 rounded-[var(--radius-md)] border border-[var(--color-gold)]/30 bg-[var(--color-gold)]/8 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-gold)]">On now</p>
+                <ul className="mt-2 space-y-1 text-sm text-[var(--color-ink-soft)]">
+                  {promoted.slice(0, 4).map((o) => (
+                    <li key={o.id}>✦ {o.name}{o.percentOff ? ` — ${o.percentOff}% off` : ''}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <p className="mt-8 text-sm text-[var(--color-stone)]">
               Prefer to talk? Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>
             </p>
           </div>
         </Reveal>
         <Reveal delay={0.1}>
-          <BookingFlow treatments={list} />
+          <BookingFlow catalogue={catalogue} client={clientInfo} />
         </Reveal>
       </section>
     </>

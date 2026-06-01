@@ -30,6 +30,8 @@ export const clientSignupSchema = z.object({
   password: z.string().min(8, 'Use at least 8 characters').max(200),
   marketingOptIn: z.boolean().optional(),
   locale: z.enum(['en', 'uk']).optional(),
+  gender: z.enum(['FEMALE', 'MALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_SAY', '']).optional(),
+  genderSelfDescribe: z.string().max(60).optional().or(z.literal('')),
   ref: z.string().max(40).optional().or(z.literal('')), // referral code (a friend's)
   consent: z.literal(true, { errorMap: () => ({ message: 'Please accept the terms to continue.' }) }),
   // Honeypot — accept any string so a browser/password-manager autofill never
@@ -64,7 +66,19 @@ export const campaignSchema = z.object({
 export const availabilitySchema = z.object({
   slug: z.string().min(1),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date'),
+  durationMin: z.number().int().positive().max(600).optional(),
 });
+
+// Account-based booking: client is signed in; pricing comes from the catalogue.
+export const bookingStartSchema = z.object({
+  variantId: z.string().min(1),
+  sessions: z.number().int().positive().max(20).default(1),
+  startISO: z.string().datetime(),
+  addOnVariantIds: z.array(z.string().min(1)).max(6).default([]),
+  notes: z.string().max(2000).optional().or(z.literal('')),
+  smsReminders: z.boolean().default(false),
+});
+export type BookingStartInput = z.infer<typeof bookingStartSchema>;
 
 export const bookingCreateSchema = z.object({
   slug: z.string().min(1),

@@ -7,6 +7,7 @@ import { DashboardHero } from '@/components/portal/DashboardHero';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { TreatmentCard } from '@/components/ui/TreatmentCard';
 import { DiscountChip } from '@/components/portal/DiscountChip';
+import { OffersStrip } from '@/components/marketing/OffersStrip';
 import { crmEnabled } from '@/lib/crm';
 import { formatPrice, getTreatment, type Treatment } from '@/lib/treatments';
 import { portalAssessments } from '@/lib/questionnaires';
@@ -15,7 +16,10 @@ import { pt } from '@/lib/i18n-portal';
 import { site } from '@/lib/site';
 import type { Locale } from '@/lib/i18n';
 
-const FEATURED = ['hydraglow-facial', 'smas-hifu-lifting', 'laser-hair-removal', 'cosmetic-injections', 'veneers', 'body-contouring'];
+// Recommendation pool — includes gender-specific treatments which are filtered
+// by the client's gender below (men's laser only shown to men, intimate
+// rejuvenation only to women; everyone else sees the unisex set).
+const FEATURED = ['hydraglow-facial', 'smas-hifu-lifting', 'laser-hair-removal', 'laser-hair-removal-for-men', 'intimate-rejuvenation', 'cosmetic-injections', 'veneers', 'body-contouring'];
 
 export default async function DashboardPage() {
   if (!crmEnabled) return <NotEnabled />;
@@ -36,7 +40,10 @@ export default async function DashboardPage() {
   const completed = data.past.filter((b) => b.status === 'COMPLETED');
   const dateFmt = (d: Date, opts: Intl.DateTimeFormatOptions) => d.toLocaleDateString(locale === 'uk' ? 'uk-UA' : 'en-GB', opts);
   const missingProfile = !client.phone || !client.dob;
-  const featured = FEATURED.map(getTreatment).filter(Boolean) as Treatment[];
+  const { suitableForGender } = await import('@/lib/treatments');
+  const featured = (FEATURED.map(getTreatment).filter(Boolean) as Treatment[])
+    .filter((tr) => suitableForGender(tr, client.gender))
+    .slice(0, 6);
 
   const DOW = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const todayHours = site.hours.find((h) => h.day === DOW[new Date().getDay()]);
@@ -52,6 +59,8 @@ export default async function DashboardPage() {
         memberSince={client.createdAt.toISOString()}
         lastVisitISO={client.lastVisitAt ? client.lastVisitAt.toISOString() : null}
       />
+
+      <div className="mt-8"><OffersStrip heading="Offers for you" /></div>
 
       {data.discount && (
         <Reveal>

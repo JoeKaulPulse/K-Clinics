@@ -23,12 +23,12 @@ export async function POST(req: Request) {
   const treatment = getTreatment(d.slug);
   if (!treatment) return NextResponse.json({ ok: false, error: 'Unknown treatment' }, { status: 404 });
 
-  const { pricePence, durationMin } = bookingFor(d.slug);
+  const { pricePence, durationMin, bufferMin } = bookingFor(d.slug);
   const start = new Date(d.startISO);
   const end = new Date(start.getTime() + durationMin * 60_000);
 
   const { db } = await import('@/lib/db');
-  const { isSlotFree, pickPractitioner } = await import('@/lib/availability');
+  const { isSlotFree, pickPractitioner, assignResources } = await import('@/lib/availability');
   const { stripe, ensureCustomer } = await import('@/lib/stripe');
   const { getSetting } = await import('@/lib/settings');
 
@@ -36,9 +36,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'That time was just taken. Please choose another slot.' }, { status: 409 });
   }
 
-  // Auto-assign a competent, available clinician if enabled.
+  // Auto-assign a competent, available clinician if enabled, and hold any
+  // room/equipment the treatment requires.
   const autoAssign = await getSetting('auto_assign_practitioner');
   const practitionerId = autoAssign ? await pickPractitioner(d.startISO, durationMin, d.slug) : null;
+  const resourceIds = await assignResources(d.startISO, durationMin, d.slug);
 
   // Upsert client + Stripe customer.
   const client = await db.client.upsert({
@@ -64,11 +66,13 @@ export async function POST(req: Request) {
       treatmentSlug: d.slug,
       treatmentTitle: treatment.title,
       startAt: start, endAt: end, durationMin,
+      bufferMin: bufferMin ?? 0,
       pricePence: finalPrice,
       status: 'PENDING',
       notes: d.notes || null,
       stripeCustomerId: customerId,
       practitionerId,
+      resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,
     },
   });
 
