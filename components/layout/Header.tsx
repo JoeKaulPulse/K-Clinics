@@ -10,6 +10,8 @@ import { getTreatment } from '@/lib/treatments';
 import { Logo } from '@/components/brand/Logo';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { GenerativeArt } from '@/components/ui/GenerativeArt';
+import { MediaArt } from '@/components/ui/MediaArt';
+import { treatmentImage } from '@/lib/treatment-images';
 import { AccountMenu } from '@/components/layout/AccountMenu';
 
 export function Header() {
@@ -173,7 +175,7 @@ export function Header() {
                               transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
                               className="absolute inset-0"
                             >
-                              <GenerativeArt from={previewT.gradient[0]} to={previewT.gradient[1]} className="h-full w-full" />
+                              <MediaArt src={treatmentImage(previewT.slug)} from={previewT.gradient[0]} to={previewT.gradient[1]} alt={previewT.title} sizes="18rem" className="h-full w-full" />
                               <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(to_top,rgba(42,36,32,0.8),transparent)] p-5 pt-12 text-[var(--color-porcelain)]">
                                 <p className="font-[family-name:var(--font-display)] text-xl">{previewT.title}</p>
                                 <p className="mt-1 text-xs text-[color-mix(in_oklab,var(--color-porcelain)_80%,transparent)]">{previewT.tagline}</p>
