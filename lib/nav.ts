@@ -86,6 +86,10 @@ export const primaryNav: NavGroup[] = [
     href: '/academy',
   },
   {
+    label: 'K Vision',
+    href: '/ai-consultation',
+  },
+  {
     label: 'Clinic',
     href: '/about',
     columns: [

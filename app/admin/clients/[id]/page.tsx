@@ -60,6 +60,23 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
 
   const can = await sessionPermissions();
 
+  // K Vision AI consultations (clinical — decrypt findings + photos for the clinician).
+  const aiAnalyses: { id: string; createdAt: Date; summary: string | null; plan: { title: string; reason: string }[]; findings: { label: string; note: string; severity: string }[]; images: string[] }[] = [];
+  if (clinical) {
+    try {
+      const { db } = await import('@/lib/db');
+      const { decryptJson } = await import('@/lib/crypto');
+      const rows = await db.aiAnalysis.findMany({ where: { clientId: c.id, status: 'complete' }, orderBy: { createdAt: 'desc' }, take: 5, include: { images: true } });
+      for (const r of rows) {
+        let findings: { label: string; note: string; severity: string }[] = [];
+        try { findings = r.findingsEnc ? decryptJson(r.findingsEnc) : []; } catch { /* skip */ }
+        const images: string[] = [];
+        for (const im of r.images) { try { images.push(decryptJson<string>(im.dataEnc)); } catch { /* skip */ } }
+        aiAnalyses.push({ id: r.id, createdAt: r.createdAt, summary: r.summary, plan: (r.planJson as { title: string; reason: string }[]) ?? [], findings, images });
+      }
+    } catch { /* AI section is best-effort */ }
+  }
+
   // Loyalty snapshot (balance + recent ledger). Best-effort — never blocks the page.
   const { clientLoyaltySummary, clientLedger, pointsToPence } = await import('@/lib/client-loyalty');
   const { formatPrice } = await import('@/lib/treatments');
@@ -138,6 +155,38 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
             );
           })()}
         </section>
+
+        {/* Clinical: K Vision AI consultations (practitioners/admins only) */}
+        {clinical && aiAnalyses.length > 0 && (
+          <section>
+            <div className="mb-3 flex items-center gap-2">
+              <h2 className="font-[family-name:var(--font-display)] text-xl">AI consultations (K Vision)</h2>
+              <span className="rounded-full bg-[var(--color-ink)] px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.14em] text-[var(--color-gold-soft)]">Encrypted · clinical</span>
+            </div>
+            <div className="space-y-4">
+              {aiAnalyses.map((a) => (
+                <div key={a.id} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium">{a.summary || 'Analysis'}</p>
+                    <p className="text-xs text-[var(--color-stone-soft)]">{new Date(a.createdAt).toLocaleDateString('en-GB')}</p>
+                  </div>
+                  {a.images.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {a.images.map((src, i) => <img key={i} src={src} alt="Client upload" className="h-20 w-20 rounded-[var(--radius-sm)] object-cover" />)}
+                    </div>
+                  )}
+                  {a.findings.length > 0 && (
+                    <ul className="mt-3 space-y-1 text-sm text-[var(--color-stone)]">
+                      {a.findings.map((f, i) => <li key={i}><span className="font-medium text-[var(--color-ink)]">{f.label}</span> — {f.note} <span className="text-[var(--color-stone-soft)]">({f.severity})</span></li>)}
+                    </ul>
+                  )}
+                  {a.plan.length > 0 && <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Plan: {a.plan.map((p) => p.title).join(' · ')}</p>}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Clinical: health assessments (practitioners/admins only) */}
         {clinical && (

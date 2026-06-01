@@ -15,7 +15,8 @@ export const metadata: Metadata = pageMeta({
 
 export const dynamic = 'force-dynamic';
 
-export default async function BookPage() {
+export default async function BookPage({ searchParams }: { searchParams: Promise<{ treatment?: string }> }) {
+  const { treatment } = await searchParams;
   const { bookingCatalogue, liveOffers } = await import('@/lib/services');
   const { getCurrentClient } = await import('@/lib/client-auth');
   const { db } = await import('@/lib/db');
@@ -85,7 +86,7 @@ export default async function BookPage() {
           </div>
         </Reveal>
         <Reveal delay={0.1}>
-          <BookingFlow catalogue={catalogue} client={clientInfo} />
+          <BookingFlow catalogue={catalogue} client={clientInfo} preselect={treatment ? (catalogue.find((s) => s.treatmentSlug === treatment)?.id ?? null) : null} />
         </Reveal>
       </section>
     </>
