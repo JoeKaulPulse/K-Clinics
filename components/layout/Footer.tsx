@@ -76,8 +76,8 @@ export function Footer() {
           ['Complaints', '/info/complaints-procedure'],
           ['Accessibility', '/info/accessibility'],
           ['Gift Vouchers', '/info/gift-vouchers'],
-          ['Refer a Friend', '/info/refer-a-friend'],
-          ['Careers', '/info/careers'],
+          ['Refer a Friend', '/refer-a-friend'],
+          ['Careers', '/careers'],
         ].map(([label, href]) => (
           <Link key={href} href={href} className="transition-colors hover:text-[var(--color-gold)]">
             {label}
