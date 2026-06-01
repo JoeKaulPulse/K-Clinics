@@ -67,6 +67,7 @@ export const DICT: Record<string, Entry> = {
   'shell.searchClients': { en: 'Search clients…', uk: 'Пошук клієнтів…' },
   'shell.search': { en: 'Search everything…', uk: 'Пошук усюди…' },
   'nav.group.today': { en: 'Today', uk: 'Сьогодні' },
+  'nav.security': { en: 'Security centre', uk: 'Безпека' },
   'nav.group.clients': { en: 'Clients & bookings', uk: 'Клієнти та записи' },
   'nav.group.catalogue': { en: 'Catalogue', uk: 'Каталог' },
   'nav.group.operations': { en: 'Operations', uk: 'Операції' },

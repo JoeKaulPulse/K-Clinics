@@ -4,6 +4,7 @@ import { getSession, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { ProfileEditor } from '@/components/admin/ProfileEditor';
+import { TwoFactorSetup } from '@/components/admin/TwoFactorSetup';
 import { ROLES } from '@/lib/permissions';
 import { getLocale } from '@/lib/locale';
 
@@ -17,7 +18,7 @@ export default async function ProfilePage() {
   const { db } = await import('@/lib/db');
   const me = await db.adminUser.findUnique({
     where: { id: session.sub },
-    select: { name: true, title: true, email: true, role: true, isClinician: true, lastLoginAt: true },
+    select: { name: true, title: true, email: true, role: true, isClinician: true, lastLoginAt: true, totpEnabledAt: true },
   });
   if (!me) redirect('/admin/login');
 
@@ -46,6 +47,10 @@ export default async function ProfilePage() {
       </p>
       <div className="mt-8 max-w-xl">
         <ProfileEditor name={me.name} title={me.title} uk={uk} />
+      </div>
+
+      <div className="mt-8 max-w-xl">
+        <TwoFactorSetup enabled={Boolean(me.totpEnabledAt)} />
       </div>
 
       {showPerf && (

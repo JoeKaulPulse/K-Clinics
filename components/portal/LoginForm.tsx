@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authField, authLabel } from '@/components/portal/AuthShell';
+import { Turnstile } from '@/components/security/Turnstile';
 import { portalTranslator, DEFAULT_LOCALE, type Locale } from '@/lib/i18n-portal';
 import { isLocale } from '@/lib/i18n';
 
@@ -29,6 +30,8 @@ function Inner() {
   const t = portalTranslator(locale);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [captchaSiteKey, setCaptchaSiteKey] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -40,7 +43,7 @@ function Inner() {
       const res = await fetch('/api/account/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, captchaToken }),
       });
       // 404 = route not present (static GitHub Pages demo only).
       if (res.status === 404) {
@@ -52,6 +55,7 @@ function Inner() {
         router.push(params.get('from') || '/account');
         router.refresh();
       } else {
+        if (json.requireCaptcha && json.captchaSiteKey) setCaptchaSiteKey(json.captchaSiteKey);
         setError(json.error || t('login.failed'));
       }
     } catch {
@@ -74,6 +78,7 @@ function Inner() {
         </div>
         <input id="password" type="password" autoComplete="current-password" required className={authField} value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
+      {captchaSiteKey && <Turnstile siteKey={captchaSiteKey} onToken={setCaptchaToken} />}
       {error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
       <button
         type="submit"

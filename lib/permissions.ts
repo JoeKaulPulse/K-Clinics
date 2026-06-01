@@ -69,6 +69,7 @@ export const PERMISSIONS: Permission[] = [
   { key: 'staff.view', group: 'Administration', label: 'View staff', description: 'See the staff & access-control area.' },
   { key: 'staff.manage', group: 'Administration', label: 'Manage staff & access', description: 'Create staff, set roles and customise permissions.', sensitive: true },
   { key: 'settings.manage', group: 'Administration', label: 'Manage settings', description: 'Edit clinic settings and configuration.', sensitive: true },
+  { key: 'security.manage', group: 'Administration', label: 'Security centre', description: 'View threats, manage lockouts, 2FA policy and key rotation.', sensitive: true },
 
   // Scheduling
   { key: 'calendar.view', group: 'Scheduling', label: 'View calendar', description: 'See the clinic calendar and appointments.' },
@@ -90,7 +91,7 @@ export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
 const ALL = PERMISSION_KEYS;
 const ROLE_DEFAULTS: Record<Role, string[]> = {
   OWNER: ALL,
-  ADMIN: ALL.filter((k) => k !== 'staff.manage' && k !== 'settings.manage').concat(['staff.view']),
+  ADMIN: ALL.filter((k) => k !== 'staff.manage' && k !== 'settings.manage' && k !== 'security.manage').concat(['staff.view']),
   PRACTITIONER: [
     'dashboard.view',
     'bookings.view',
