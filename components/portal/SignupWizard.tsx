@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import { authField, authLabel } from '@/components/portal/AuthShell';
 import { portalTranslator, PORTAL_LOCALE_COOKIE, type Locale } from '@/lib/i18n-portal';
@@ -12,6 +12,7 @@ const STEPS = 4;
 
 export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale }) {
   const router = useRouter();
+  const refCode = (useSearchParams().get('ref') || '').trim().slice(0, 40);
   const [locale, setLocale] = useState<Locale>(initialLocale);
   const t = portalTranslator(locale);
 
@@ -52,7 +53,7 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
     try {
       const res = await fetch('/api/account/signup', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...d, locale }),
+        body: JSON.stringify({ ...d, locale, ref: refCode || undefined }),
       });
       if (res.status === 404) { setDone({ granted: true, code: 'WELCOME15', percent: 15 }); return; }
       const json = await res.json().catch(() => ({ ok: false, error: t('error.create') }));
@@ -86,6 +87,12 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
 
   return (
     <div>
+      {refCode && (
+        <div className="mb-6 flex items-center gap-2.5 rounded-[var(--radius-md)] border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/5 px-4 py-3 text-sm text-[var(--color-ink)]">
+          <span aria-hidden className="text-base">🎁</span>
+          <span>{t('signup.referred')}</span>
+        </div>
+      )}
       {/* Progress */}
       <div className="mb-8 flex items-center gap-2">
         {Array.from({ length: STEPS }).map((_, i) => (
