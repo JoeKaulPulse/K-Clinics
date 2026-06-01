@@ -102,14 +102,30 @@ async function loadPool(resources: { id: string; capacity: number }[], dayStart:
   return { resources, bookings: rows.map((r) => ({ startAt: r.startAt, endAt: r.endAt, bufferMin: r.bufferMin, resIds: r.resources.map((x) => x.id) })) };
 }
 
-/** Free treatment rooms matching the required capability tag. */
-async function roomPool(roomTag: string | null, dayStart: Date, dayEnd: Date, locationId?: string | null): Promise<Pool | null> {
+/** Free treatment rooms matching the required capability tag. When `equipSlug`
+ *  is given (equipment-tied-to-room mode), only rooms physically holding that
+ *  equipment qualify. Returns null when no rooms are configured for the tag at
+ *  all (requirement not enforced); an empty pool (→ no slots) when rooms exist
+ *  for the tag but none hold the required equipment. */
+async function roomPool(roomTag: string | null, equipSlug: string | undefined, dayStart: Date, dayEnd: Date, locationId?: string | null): Promise<Pool | null> {
   if (!roomTag) return null;
+  const locWhere = locationId ? { OR: [{ locationId: null }, { locationId }] } : {};
+  const anyRoom = await db.resource.count({ where: { kind: 'ROOM', active: true, tags: { has: roomTag }, ...locWhere } });
+  if (!anyRoom) return null; // rooms not configured for this category → don't enforce
   const resources = await db.resource.findMany({
-    where: { kind: 'ROOM', active: true, tags: { has: roomTag }, ...(locationId ? { OR: [{ locationId: null }, { locationId }] } : {}) },
+    where: {
+      kind: 'ROOM', active: true, tags: { has: roomTag },
+      ...(equipSlug ? { equipment: { some: { kind: 'EQUIPMENT', active: true, slug: equipSlug } } } : {}),
+      ...locWhere,
+    },
     select: { id: true, capacity: true },
   });
-  return resources.length ? loadPool(resources, dayStart, dayEnd) : null;
+  return loadPool(resources, dayStart, dayEnd); // may be empty → blocks the slot
+}
+
+/** Equipment slug to require inside the room, only when binding is on. */
+function boundEquipSlug(binding: boolean, treatmentSlug?: string): string | undefined {
+  return binding && treatmentSlug ? bookingFor(treatmentSlug).requiresResource : undefined;
 }
 
 /** Shared equipment (laser/HIFU) the treatment requires. */
@@ -155,11 +171,14 @@ export async function freeSlots(dateISO: string, durationMin: number, treatmentS
   const dayEnd = new Date(date); dayEnd.setHours(23, 59, 59, 999);
 
   const bufferMin = treatmentSlug ? (bookingFor(treatmentSlug).bufferMin ?? 0) : 0;
-  const enforce = treatmentSlug ? await getSetting('enforce_staff_availability') : false;
+  const [enforce, binding] = await Promise.all([
+    treatmentSlug ? getSetting('enforce_staff_availability') : Promise.resolve(false),
+    treatmentSlug ? getSetting('room_equipment_binding') : Promise.resolve(false),
+  ]);
   const [clinicians, closures, rooms, equip] = await Promise.all([
     enforce && treatmentSlug ? cliniciansForDay(treatmentSlug, dayStart, dayEnd) : Promise.resolve([] as Clinician[]),
     dayClosures(dayStart, dayEnd, locationId),
-    roomPool(roomTagFor(treatmentSlug), dayStart, dayEnd, locationId),
+    roomPool(roomTagFor(treatmentSlug), boundEquipSlug(binding, treatmentSlug), dayStart, dayEnd, locationId),
     equipmentPool(treatmentSlug, dayStart, dayEnd, locationId),
   ]);
   const useStaff = enforce && treatmentSlug != null && clinicians.length > 0;
@@ -218,8 +237,9 @@ export async function assignResources(startISO: string, durationMin: number, tre
   const dayStart = new Date(start); dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(start); dayEnd.setHours(23, 59, 59, 999);
 
+  const binding = await getSetting('room_equipment_binding');
   const [rooms, equip] = await Promise.all([
-    roomPool(roomTagFor(treatmentSlug), dayStart, dayEnd, locationId),
+    roomPool(roomTagFor(treatmentSlug), boundEquipSlug(binding, treatmentSlug), dayStart, dayEnd, locationId),
     equipmentPool(treatmentSlug, dayStart, dayEnd, locationId),
   ]);
   const ids: string[] = [];
@@ -248,9 +268,10 @@ export async function isSlotFree(startISO: string, durationMin: number, treatmen
   const bufferMin = treatmentSlug ? (bookingFor(treatmentSlug).bufferMin ?? 0) : 0;
   const endBufferedMs = end.getTime() + bufferMin * 60_000;
 
+  const binding = treatmentSlug ? await getSetting('room_equipment_binding') : false;
   const [closures, rooms, equip] = await Promise.all([
     dayClosures(dayStart, dayEnd, locationId),
-    roomPool(roomTagFor(treatmentSlug), dayStart, dayEnd, locationId),
+    roomPool(roomTagFor(treatmentSlug), boundEquipSlug(binding, treatmentSlug), dayStart, dayEnd, locationId),
     equipmentPool(treatmentSlug, dayStart, dayEnd, locationId),
   ]);
   if (closures.some((cl) => start.getTime() < cl.endAt.getTime() && end.getTime() > cl.startAt.getTime())) return false;

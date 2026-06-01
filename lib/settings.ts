@@ -12,6 +12,7 @@ export type SettingKey =
   | 'auto_assign_practitioner'   // auto-assign a competent free clinician at booking
   | 'time_off_requires_approval' // staff time-off requests need manager sign-off
   | 'multi_location_enabled'     // surface location pickers across the CRM
+  | 'room_equipment_binding'     // equipment is tied to the room it sits in
   | 'review_requests_enabled';   // auto-send a review request after a treatment
 
 export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
@@ -22,6 +23,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   auto_assign_practitioner: true,
   time_off_requires_approval: true,
   multi_location_enabled: false,
+  room_equipment_binding: false,
   review_requests_enabled: true,
 };
 
@@ -53,6 +55,10 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   multi_location_enabled: {
     label: 'Multi-location mode',
     description: 'Turn on once you operate more than one site. Surfaces location pickers for schedules and bookings. Each clinician works at one location per day.',
+  },
+  room_equipment_binding: {
+    label: 'Tie equipment to its room',
+    description: 'When on, a treatment that needs a machine (e.g. laser/HIFU) is only offered in rooms that physically hold that equipment. Off by default — equipment is treated as movable and limited only by how many units you own.',
   },
   review_requests_enabled: {
     label: 'Post-treatment review requests',
