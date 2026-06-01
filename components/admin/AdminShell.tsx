@@ -14,6 +14,7 @@ const nav = [
   { href: '/admin/my-day', key: 'nav.myday', perm: undefined },
   { href: '/admin/calendar', key: 'nav.calendar', perm: 'calendar.view' },
   { href: '/admin/bookings', key: 'nav.bookings', perm: 'bookings.view' },
+  { href: '/admin/services', key: 'nav.services', perm: 'settings.manage' },
   { href: '/admin/consultations', key: 'nav.consultations', perm: 'consultations.view' },
   { href: '/admin/clients', key: 'nav.clients', perm: 'clients.view' },
   { href: '/admin/discounts', key: 'nav.discounts', perm: 'discounts.manage' },

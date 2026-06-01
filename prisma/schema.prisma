@@ -147,6 +147,7 @@ enum AuditAction {
   REVIEW_PUBLISHED
   POINTS_AWARDED
   REWARD_REDEEMED
+  SERVICE_PRICES_BULK
 }
 
 enum ReviewStatus {
@@ -256,6 +257,7 @@ model Client {
   tags            String[]       @default([])
   notes           String?
   marketingOptIn  Boolean        @default(false)
+  smsReminders    Boolean        @default(false) // client opted in to SMS confirmations & reminders
   unsubscribed    Boolean        @default(false)
   unsubToken      String         @unique @default(cuid())
   lastVisitAt     DateTime?
@@ -439,11 +441,105 @@ model Booking {
 
   auditEvents   AuditEvent[]
   reviews       Review[]
+  items         BookingItem[] // line items: primary treatment + any upsell add-ons
 
   @@index([startAt])
   @@index([status])
   @@index([clientId])
   @@index([practitionerId])
+}
+
+// ── Service catalogue (CRM-managed pricing) ──────────────────────────────────
+// Marketing copy lives in lib/treatments.ts; the bookable + priced catalogue
+// lives here so prices, costs, durations and offers are editable in the CRM.
+model Service {
+  id            String          @id @default(cuid())
+  slug          String          @unique
+  treatmentSlug String          // links to a marketing Treatment (lib/treatments.ts)
+  name          String
+  category      String          @default("aesthetics") // aesthetics | dentistry
+  order         Int             @default(0)
+  active        Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  variants      ServiceVariant[]
+  offers        ServiceOffer[]
+
+  @@index([treatmentSlug])
+  @@index([active])
+}
+
+model ServiceVariant {
+  id          String          @id @default(cuid())
+  service     Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId   String
+  name        String          // e.g. "Full Face", "Signature Express (30 min)"
+  durationMin Int             @default(30)
+  pricePence  Int             // single-session retail price (0 = on consultation)
+  costPence   Int?            // cost of goods/service, for margin tracking
+  // Course/package options as [{ sessions, totalPence }], cheaper per-session.
+  courses     Json?
+  order       Int             @default(0)
+  active      Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  offers      ServiceOffer[]
+  bookingItems BookingItem[]
+
+  @@index([serviceId, active])
+}
+
+enum OfferScope {
+  ALL       // every service
+  SERVICE   // one service (all its variants)
+  VARIANT   // a single variant
+}
+
+// Special offers / discounts. Promoted ones surface on the marketing site and
+// in client portals. Applied automatically to matching booking line items.
+model ServiceOffer {
+  id            String      @id @default(cuid())
+  name          String      // shown to clients, e.g. "Summer Skin — 20% off"
+  scope         OfferScope  @default(ALL)
+  service       Service?    @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId     String?
+  variant       ServiceVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  variantId     String?
+  percentOff    Int?        // 0–100
+  amountOffPence Int?       // fixed amount off (alternative to percent)
+  startAt       DateTime?
+  endAt         DateTime?
+  promoted      Boolean     @default(true)  // surface on site + portal
+  active        Boolean     @default(true)
+  createdBy     String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([active, promoted])
+  @@index([serviceId])
+  @@index([variantId])
+}
+
+// A booking is one or more line items: the primary treatment plus any upsell
+// add-ons taken in the same slot (often at a discount).
+model BookingItem {
+  id              String          @id @default(cuid())
+  booking         Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId       String
+  variant         ServiceVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  variantId       String?
+  treatmentSlug   String
+  label           String          // e.g. "Laser Hair Removal — Full Face"
+  sessions        Int             @default(1) // 1 = single; >1 = course booked
+  durationMin     Int             @default(0)
+  pricePence      Int             @default(0) // retail before discount
+  discountPence   Int             @default(0) // welcome/offer/upsell discount applied
+  isAddon         Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+
+  @@index([bookingId])
 }
 
 model EmailEvent {
