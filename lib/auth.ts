@@ -6,18 +6,22 @@ import { effectivePermissions } from '@/lib/permissions';
 import {
   SESSION_COOKIE as COOKIE,
   CLIENT_SESSION_COOKIE as CLIENT_COOKIE,
+  ACADEMY_SESSION_COOKIE as ACADEMY_COOKIE,
   adminSecret as secret,
   clientSecret,
+  academySecret,
   verifyToken,
   verifyClientToken,
+  verifyAcademyToken,
   type Session,
   type ClientSession,
+  type AcademySession,
 } from '@/lib/auth-edge';
 
 // Re-export the Edge-safe primitives so existing `@/lib/auth` imports keep working.
-export { SESSION_COOKIE, CLIENT_SESSION_COOKIE } from '@/lib/auth-edge';
-export { verifyToken, verifyClientToken };
-export type { Session, ClientSession };
+export { SESSION_COOKIE, CLIENT_SESSION_COOKIE, ACADEMY_SESSION_COOKIE } from '@/lib/auth-edge';
+export { verifyToken, verifyClientToken, verifyAcademyToken };
+export type { Session, ClientSession, AcademySession };
 
 /** Staff/admin/practitioner roles that may access the CRM. */
 export const STAFF_ROLES = ['OWNER', 'ADMIN', 'PRACTITIONER', 'FRONT_DESK', 'STAFF'];
@@ -96,6 +100,27 @@ export async function destroyClientSession() {
 export async function getClientSession(): Promise<ClientSession | null> {
   const token = (await cookies()).get(CLIENT_COOKIE)?.value;
   return verifyClientToken(token);
+}
+
+// ── Academy (trainee) portal sessions (separate cookie + secret) ────────────
+export async function createAcademySession(payload: AcademySession) {
+  const token = await new SignJWT({ ...payload })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('30d')
+    .sign(academySecret());
+  (await cookies()).set(ACADEMY_COOKIE, token, {
+    httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 30,
+  });
+}
+
+export async function destroyAcademySession() {
+  (await cookies()).set(ACADEMY_COOKIE, '', { path: '/', maxAge: 0 });
+}
+
+export async function getAcademySession(): Promise<AcademySession | null> {
+  const token = (await cookies()).get(ACADEMY_COOKIE)?.value;
+  return verifyAcademyToken(token);
 }
 
 /** The list of permission keys for the current session (for nav gating). */

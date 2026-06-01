@@ -12,14 +12,14 @@ Requirements (from owner):
 - Catalogue **fully CRM-managed**. **Separate** trainee accounts/portal.
 
 Build:
-- [ ] Schema: Course, Cohort, Enrolment, AcademyStudent (+ enums)
-- [ ] Academy session (separate cookie/secret) + academy-auth lib
-- [ ] Admin CRM: courses / cohorts / enrolments (applications → payment → enrol)
-- [ ] Public /academy: landing, course list, course detail + application form
-- [ ] Application API → enrolment(APPLIED) + emails (academy + applicant)
-- [ ] Trainee portal: signup/login/dashboard (enrolled courses, Thinkific, dates, exam)
-- [ ] Seed example courses (L2–L7) + accreditation badges + equipment-leasing section
-- [ ] Nav entries; build green; PR
+- [x] Schema: Course, Cohort, Enrolment, AcademyStudent (+ enums)
+- [x] Academy session (separate cookie/secret) + academy-auth lib
+- [x] Admin CRM: courses / cohorts / enrolments (applications → payment → enrol)
+- [x] Public /academy: landing, course list, course detail + application form
+- [x] Application API → enrolment(APPLIED) + emails (academy + applicant)
+- [x] Trainee portal: signup/login/dashboard (enrolled courses, Thinkific, dates, exam)
+- [x] Seed example courses (L2–L7) + accreditation badges + equipment-leasing section
+- [x] Nav entries; build green; PR
 
 ## Task 2 — SEO / GEO / Agentic command centre (admin)
 - GEO = both Generative Engine Optimization + local/geographic.

@@ -6,6 +6,7 @@ import { jwtVerify } from 'jose';
 
 export const SESSION_COOKIE = 'kc_admin';
 export const CLIENT_SESSION_COOKIE = 'kc_client';
+export const ACADEMY_SESSION_COOKIE = 'kc_academy';
 
 export type Session = {
   sub: string;
@@ -17,6 +18,7 @@ export type Session = {
   revoke?: string[];
 };
 export type ClientSession = { sub: string; email: string; firstName: string };
+export type AcademySession = { sub: string; email: string; firstName: string };
 
 // HS256 requires a key of at least 256 bits (32 bytes); `jose` rejects shorter
 // secrets at sign time. Normalise any configured secret to >=32 bytes by
@@ -63,6 +65,26 @@ export async function verifyClientToken(token: string | undefined): Promise<Clie
   try {
     const { payload } = await jwtVerify(token, clientSecret());
     return payload as unknown as ClientSession;
+  } catch {
+    return null;
+  }
+}
+
+// Academy (trainee) portal — separate from the clinic client portal.
+export const academySecret = (): Uint8Array => {
+  const s = process.env.ACADEMY_JWT_SECRET || process.env.CLIENT_JWT_SECRET || process.env.ADMIN_JWT_SECRET;
+  if (!s) {
+    if (process.env.NODE_ENV === 'production') throw new Error('ACADEMY_JWT_SECRET is required in production.');
+    return toKey('dev-insecure-academy-secret-change-me');
+  }
+  return toKey(s);
+};
+
+export async function verifyAcademyToken(token: string | undefined): Promise<AcademySession | null> {
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, academySecret());
+    return payload as unknown as AcademySession;
   } catch {
     return null;
   }
