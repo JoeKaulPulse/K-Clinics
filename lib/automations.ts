@@ -11,11 +11,11 @@ const FOLLOW_UP_DAYS = 3;
 const REVIEW_DAYS = 7;
 const WIN_BACK_MONTHS = 6;
 
-type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; errors: number };
+type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; reencrypted: number; errors: number };
 
 export async function runDailyAutomations(): Promise<Tally> {
-  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, errors: 0 };
-  await Promise.all([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t)]);
+  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, reencrypted: 0, errors: 0 };
+  await Promise.all([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), keyReencryption(t)]);
   return t;
 }
 
@@ -108,6 +108,22 @@ async function treatmentFollowUps(t: Tally) {
   } catch (e) {
     t.errors++;
     console.error('[automations] treatment follow-ups failed:', (e as Error)?.message);
+  }
+}
+
+// Background key-rotation sweep — re-encrypts a batch of records still on a
+// retired encryption key onto the active key. Idempotent; never drops keys.
+async function keyReencryption(t: Tally) {
+  try {
+    const { rotationActive, reencryptBatch } = await import('@/lib/key-rotation');
+    if (!rotationActive()) return;
+    const res = await reencryptBatch(500);
+    t.reencrypted = res.migrated;
+    if (res.errors) t.errors += res.errors;
+    if (res.migrated || res.remaining) console.log(`[key-rotation] migrated ${res.migrated}, ${res.remaining} remaining`);
+  } catch (e) {
+    t.errors++;
+    console.error('[automations] key re-encryption failed:', (e as Error)?.message);
   }
 }
 
