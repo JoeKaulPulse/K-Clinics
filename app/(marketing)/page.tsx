@@ -36,7 +36,9 @@ const pillars = [
   { stat: '100%', label: 'Bespoke plans', text: 'Every protocol designed around one person — you.' },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const { publishedReviews } = await import('@/lib/review-system');
+  const liveReviews = await publishedReviews();
   return (
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }])} />
@@ -224,7 +226,7 @@ export default function HomePage() {
       <section className="surface-ink grain section relative">
         <Aurora />
         <div className="container-lux relative">
-          <Testimonials />
+          <Testimonials reviews={liveReviews} />
         </div>
       </section>
 

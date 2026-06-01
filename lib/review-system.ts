@@ -78,6 +78,27 @@ export async function sendReviewRequest(reviewId: string, channel: 'EMAIL' | 'SM
   return res;
 }
 
+/** Approved, published reviews for the public marketing site. */
+export async function publishedReviews(
+  limit = 8,
+): Promise<{ name: string; treatment: string; quote: string; location?: string }[]> {
+  try {
+    const rows = await db.review.findMany({
+      where: { status: 'PUBLISHED', body: { not: null }, rating: { gte: 4 } },
+      orderBy: { submittedAt: 'desc' },
+      take: limit,
+      include: { client: { select: { firstName: true, lastName: true } } },
+    });
+    return rows.map((r) => ({
+      name: `${r.client.firstName}${r.client.lastName ? ` ${r.client.lastName[0]}.` : ''}`,
+      treatment: r.treatmentTitle || 'Treatment',
+      quote: r.body || '',
+    }));
+  } catch {
+    return [];
+  }
+}
+
 /** Record a client's submitted review (from the public token page). */
 export async function submitReview(token: string, rating: number, title: string, body: string) {
   const review = await db.review.findUnique({ where: { token } });
