@@ -288,7 +288,7 @@ function OffersSection({ services, offers }: { services: Service[]; offers: Offe
           {offers.map((o) => (
             <li key={o.id} className="flex items-center justify-between gap-3 py-2 text-sm">
               <span>
-                <span className="font-medium">{o.name}</span>
+                <span className="font-medium">{o.name.replace(/\s*[—–-]+\s*£?\d+%?\s*off\s*$/i, '').trim() || o.name}</span>
                 <span className="text-[var(--color-stone-soft)]"> · {o.percentOff ? `${o.percentOff}% off` : `£${((o.amountOffPence ?? 0) / 100)} off`} · {o.scope === 'SERVICE' ? svcName(o.serviceId) : o.scope === 'VARIANT' ? 'one variant' : 'all services'}{o.endAt ? ` · ends ${new Date(o.endAt).toLocaleDateString('en-GB')}` : ''}</span>
                 {o.promoted && <span className="ml-2 rounded-full bg-[var(--color-gold)]/15 px-2 py-0.5 text-[0.65rem] text-[var(--color-gold)]">promoted</span>}
               </span>
