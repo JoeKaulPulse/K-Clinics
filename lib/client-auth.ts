@@ -13,6 +13,7 @@ export type SignupInput = {
   password: string;
   marketingOptIn?: boolean;
   locale?: string;
+  ref?: string;
   ip?: string | null;
 };
 
@@ -117,6 +118,17 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
     // Discount ledger issue must not fail signup — the account is created.
     console.error('[signup] discount write failed (continuing):', (e as Error)?.message);
     code = undefined;
+  }
+
+  // Loyalty: if they signed up via a friend's referral code, link it (the £25/£25
+  // reward fires later, when their first ≥£100 treatment completes). Best-effort.
+  if (input.ref?.trim()) {
+    try {
+      const { linkReferral } = await import('@/lib/client-loyalty');
+      await linkReferral(input.ref, client.id, email);
+    } catch (e) {
+      console.error('[signup] referral link failed (continuing):', (e as Error)?.message);
+    }
   }
 
   await createClientSession({ sub: client.id, email: client.email, firstName: client.firstName });

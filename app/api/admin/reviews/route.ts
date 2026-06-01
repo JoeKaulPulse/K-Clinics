@@ -25,6 +25,8 @@ export async function POST(req: Request) {
       try {
         const { awardForReview } = await import('@/lib/gamification');
         await awardForReview(id);
+        const { awardClientReview } = await import('@/lib/client-loyalty');
+        await awardClientReview(id); // thank-you points for the client (idempotent)
         await logAudit({ action: 'POINTS_AWARDED', actor: session.email, actorRole: session.role, summary: 'Review points awarded to clinician' });
       } catch { /* non-fatal */ }
     }
@@ -41,6 +43,8 @@ export async function POST(req: Request) {
     try {
       const { awardForReview } = await import('@/lib/gamification');
       await awardForReview(id);
+      const { awardClientReview } = await import('@/lib/client-loyalty');
+      await awardClientReview(id);
     } catch { /* non-fatal */ }
     await logAudit({ action: 'REVIEW_PUBLISHED', actor: session.email, actorRole: session.role, clientId: r.clientId, summary: 'Review published' });
     return NextResponse.json({ ok: true });

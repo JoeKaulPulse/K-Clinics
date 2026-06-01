@@ -30,6 +30,7 @@ export const clientSignupSchema = z.object({
   password: z.string().min(8, 'Use at least 8 characters').max(200),
   marketingOptIn: z.boolean().optional(),
   locale: z.enum(['en', 'uk']).optional(),
+  ref: z.string().max(40).optional().or(z.literal('')), // referral code (a friend's)
   consent: z.literal(true, { errorMap: () => ({ message: 'Please accept the terms to continue.' }) }),
   // Honeypot — accept any string so a browser/password-manager autofill never
   // blocks a real person with a cryptic error. The route handles a filled value

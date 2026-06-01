@@ -34,6 +34,14 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
   if (res.ok) {
     await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Charged £${(amountPence / 100).toFixed(2)} for ${booking.treatmentTitle}`, author: session.email } });
     await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId, summary: `Charged £${(amountPence / 100).toFixed(2)}` });
+    // The charged amount is the truest spend signal — credit loyalty points
+    // (idempotent: a no-op if completion already awarded them).
+    try {
+      const { awardClientSpend } = await import('@/lib/client-loyalty');
+      await awardClientSpend(bookingId);
+    } catch (e) {
+      console.error('[bookings] loyalty on charge failed:', (e as Error)?.message);
+    }
   } else {
     await logAudit({ action: 'PAYMENT_FAILED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId, summary: `Charge failed: ${res.error || 'unknown'}` });
   }
@@ -62,6 +70,14 @@ export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 
         await awardForCompletedAppointment(bookingId);
       } catch (e) {
         console.error('[bookings] gamification on complete failed:', (e as Error)?.message);
+      }
+      // (3) credit the client their loyalty points (idempotent; also fires when
+      // the booking is later charged, whichever happens first).
+      try {
+        const { awardClientSpend } = await import('@/lib/client-loyalty');
+        await awardClientSpend(bookingId);
+      } catch (e) {
+        console.error('[bookings] loyalty on complete failed:', (e as Error)?.message);
       }
       try {
         const { getSetting } = await import('@/lib/settings');
