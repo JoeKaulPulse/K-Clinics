@@ -3,26 +3,28 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useReducedMotionSafe } from '@/components/motion/use-reduced-motion-safe';
-import { reviews as fallbackReviews, type Review } from '@/lib/reviews';
-import { site } from '@/lib/site';
+import { Stars } from '@/components/ui/Stars';
 
 const AUTOPLAY_MS = 6000;
 
-export function Testimonials({ reviews: provided }: { reviews?: Review[] }) {
-  const reviews = provided && provided.length > 0 ? provided : fallbackReviews;
+export type TestimonialCard = { author: string; body: string; treatment?: string; source?: 'google' | 'internal' };
+
+export function Testimonials({ reviews, rating }: { reviews: TestimonialCard[]; rating?: { average: number; count: number } | null }) {
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
   const reduce = useReducedMotionSafe();
-  const r = reviews[i];
   const go = (dir: number) => setI((p) => (p + dir + reviews.length) % reviews.length);
 
   // Auto-advance, pausing on hover / reduced-motion.
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
-    if (reduce || paused) return;
+    if (reduce || paused || reviews.length < 2) return;
     timer.current = setInterval(() => setI((p) => (p + 1) % reviews.length), AUTOPLAY_MS);
     return () => { if (timer.current) clearInterval(timer.current); };
-  }, [reduce, paused]);
+  }, [reduce, paused, reviews.length]);
+
+  if (reviews.length === 0) return null;
+  const r = reviews[i];
 
   return (
     <div
@@ -31,22 +33,18 @@ export function Testimonials({ reviews: provided }: { reviews?: Review[] }) {
       onMouseLeave={() => setPaused(false)}
     >
       <div>
-        <p className="eyebrow mb-4">Loved by London</p>
+        <p className="eyebrow mb-4">In our clients’ words</p>
         <h2 className="text-title text-[var(--color-porcelain)]">
           The mark of our work is how quietly it speaks.
         </h2>
-        <div className="mt-8 flex items-center gap-4">
-          <div className="flex text-[var(--color-gold-soft)]" aria-hidden>
-            {Array.from({ length: 5 }).map((_, s) => (
-              <svg key={s} viewBox="0 0 20 20" className="h-5 w-5 fill-current">
-                <path d="M10 1l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9 4.8 17.2l1-5.8L1.5 7.3l5.9-.9z" />
-              </svg>
-            ))}
+        {rating && rating.count > 0 && (
+          <div className="mt-8 flex items-center gap-4">
+            <Stars rating={rating.average} size="h-5 w-5" colorClass="text-[var(--color-gold-soft)]" />
+            <p className="text-sm text-[color-mix(in_oklab,var(--color-porcelain)_70%,transparent)]">
+              {rating.average.toFixed(1)}/5 from {rating.count} verified review{rating.count === 1 ? '' : 's'}
+            </p>
           </div>
-          <p className="text-sm text-[color-mix(in_oklab,var(--color-porcelain)_70%,transparent)]">
-            {site.ratingValue}/5 from {site.reviewCount}+ reviews
-          </p>
-        </div>
+        )}
       </div>
 
       <div className="relative">
@@ -62,57 +60,60 @@ export function Testimonials({ reviews: provided }: { reviews?: Review[] }) {
               className="absolute inset-0"
             >
               <p className="font-[family-name:var(--font-display)] text-2xl leading-snug text-[var(--color-porcelain)] md:text-[1.75rem]">
-                {r.quote}
+                {r.body}
               </p>
               <footer className="mt-6 text-sm text-[color-mix(in_oklab,var(--color-porcelain)_72%,transparent)]">
-                <span className="font-medium text-[var(--color-gold-soft)]">{r.name}</span> — {r.treatment}
-                {r.location ? `, ${r.location}` : ''}
+                <span className="font-medium text-[var(--color-gold-soft)]">{r.author}</span>
+                {r.treatment ? ` — ${r.treatment}` : ''}
+                {r.source === 'google' ? ' · via Google' : ''}
               </footer>
             </motion.blockquote>
           </AnimatePresence>
         </div>
 
-        <div className="mt-8 flex items-center gap-5">
-          <div className="flex gap-3">
-            <button
-              onClick={() => go(-1)}
-              aria-label="Previous testimonial"
-              className="grid h-11 w-11 place-items-center rounded-full border border-white/20 text-[var(--color-porcelain)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]"
-            >
-              ←
-            </button>
-            <button
-              onClick={() => go(1)}
-              aria-label="Next testimonial"
-              className="grid h-11 w-11 place-items-center rounded-full border border-white/20 text-[var(--color-porcelain)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]"
-            >
-              →
-            </button>
-          </div>
-          {/* Progress dots */}
-          <div className="flex items-center gap-2">
-            {reviews.map((_, d) => (
+        {reviews.length > 1 && (
+          <div className="mt-8 flex items-center gap-5">
+            <div className="flex gap-3">
               <button
-                key={d}
-                onClick={() => setI(d)}
-                aria-label={`Testimonial ${d + 1}`}
-                className="group relative h-2 overflow-hidden rounded-full bg-white/20 transition-all"
-                style={{ width: d === i ? 28 : 8 }}
+                onClick={() => go(-1)}
+                aria-label="Previous testimonial"
+                className="grid h-11 w-11 place-items-center rounded-full border border-white/20 text-[var(--color-porcelain)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]"
               >
-                {d === i && !reduce && !paused && (
-                  <motion.span
-                    key={`fill-${i}`}
-                    className="absolute inset-0 origin-left bg-[var(--color-gold-soft)]"
-                    initial={{ scaleX: 0 }}
-                    animate={{ scaleX: 1 }}
-                    transition={{ duration: AUTOPLAY_MS / 1000, ease: 'linear' }}
-                  />
-                )}
-                {d === i && (reduce || paused) && <span className="absolute inset-0 bg-[var(--color-gold-soft)]" />}
+                ←
               </button>
-            ))}
+              <button
+                onClick={() => go(1)}
+                aria-label="Next testimonial"
+                className="grid h-11 w-11 place-items-center rounded-full border border-white/20 text-[var(--color-porcelain)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]"
+              >
+                →
+              </button>
+            </div>
+            {/* Progress dots */}
+            <div className="flex items-center gap-2">
+              {reviews.map((_, d) => (
+                <button
+                  key={d}
+                  onClick={() => setI(d)}
+                  aria-label={`Testimonial ${d + 1}`}
+                  className="group relative h-2 overflow-hidden rounded-full bg-white/20 transition-all"
+                  style={{ width: d === i ? 28 : 8 }}
+                >
+                  {d === i && !reduce && !paused && (
+                    <motion.span
+                      key={`fill-${i}`}
+                      className="absolute inset-0 origin-left bg-[var(--color-gold-soft)]"
+                      initial={{ scaleX: 0 }}
+                      animate={{ scaleX: 1 }}
+                      transition={{ duration: AUTOPLAY_MS / 1000, ease: 'linear' }}
+                    />
+                  )}
+                  {d === i && (reduce || paused) && <span className="absolute inset-0 bg-[var(--color-gold-soft)]" />}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

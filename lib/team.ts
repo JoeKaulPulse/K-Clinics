@@ -27,7 +27,7 @@ export const team: Practitioner[] = [
     role: 'Laser & Skin Therapist',
     credentials: 'Core of Knowledge · Advanced Laser Certified',
     focus: ['Laser hair removal', 'Carbon laser peel', 'Pigmentation'],
-    bio: 'With deep expertise across skin types and tones, our senior laser specialist calibrates every protocol for safety and results — and is trusted by clients for a calm, precise, reassuring treatment experience.',
+    bio: 'Working across skin types and tones, our laser specialist calibrates every protocol for safety and results — with a calm, precise and reassuring treatment experience.',
   },
   {
     slug: 'lead-aesthetic-dentist',

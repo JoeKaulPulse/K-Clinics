@@ -1080,6 +1080,10 @@ model Review {
   title       String?
   body        String?
   treatmentTitle String?    // snapshot of what was treated
+  // Explicit client consent to feature this review publicly with their first
+  // name. Without it we never show the name (reviews still need to be 5★ with a
+  // written response to appear on the site at all).
+  displayConsent Boolean    @default(false)
 
   // Moderation + publication.
   moderatedBy String?

@@ -84,13 +84,8 @@ export function organizationLd() {
         closes: h.close,
       })),
     sameAs: Object.values(site.social),
-    aggregateRating: {
-      '@type': 'AggregateRating',
-      ratingValue: site.ratingValue,
-      reviewCount: site.reviewCount,
-      bestRating: '5',
-      worstRating: '1',
-    },
+    // No aggregateRating here — it must reflect real reviews only. When real
+    // reviews exist, aggregateRatingLd() is injected on the relevant pages.
     areaServed: londonAreas(),
     currenciesAccepted: 'GBP',
     paymentAccepted: 'Cash, Credit Card, Debit Card, Apple Pay, Google Pay',
@@ -208,6 +203,20 @@ export function websiteLd() {
       target: { '@type': 'EntryPoint', urlTemplate: `${base}/treatments?q={search_term_string}` },
       'query-input': 'required name=search_term_string',
     },
+  };
+}
+
+/** Real AggregateRating node, tied to the clinic. Only emit when there are
+ *  genuine reviews — never with hard-coded numbers. */
+export function aggregateRatingLd({ average, count }: { average: number; count: number }) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'AggregateRating',
+    itemReviewed: { '@type': 'MedicalClinic', name: site.name, '@id': `${base}/#clinic` },
+    ratingValue: average.toFixed(1),
+    reviewCount: String(count),
+    bestRating: '5',
+    worstRating: '1',
   };
 }
 

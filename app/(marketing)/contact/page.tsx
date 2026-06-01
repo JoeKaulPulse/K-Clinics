@@ -125,8 +125,8 @@ export default function ContactPage() {
               ))}
             </div>
             <p className="mt-6 text-sm leading-relaxed text-[var(--color-stone)]">
-              One of London’s most considered destinations for laser &amp; skin treatments, injectables and
-              aesthetic dentistry — trusted by clients across north and central London.
+              A considered new destination for laser &amp; skin treatments, injectables and
+              aesthetic dentistry — for clients across north and central London.
             </p>
           </Reveal>
         </div>

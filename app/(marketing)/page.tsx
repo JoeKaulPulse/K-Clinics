@@ -24,26 +24,28 @@ import { faqLd, JsonLd as JsonLdHome } from '@/lib/seo';
 import { treatments, getTreatment } from '@/lib/treatments';
 import { packages } from '@/lib/packages';
 import { site } from '@/lib/site';
-import { JsonLd, breadcrumbLd } from '@/lib/seo';
+import { JsonLd, breadcrumbLd, aggregateRatingLd } from '@/lib/seo';
 
 const featured = ['laser-hair-removal', 'smas-hifu-lifting', 'hydraglow-facial', 'veneers', 'body-contouring', 'cosmetic-injections']
   .map(getTreatment)
   .filter(Boolean) as typeof treatments;
 
 const pillars = [
-  { stat: '15+', label: 'Years of clinical artistry', text: 'A decade and more refining technique, technology and taste.' },
+  { stat: '2', label: 'Disciplines, one roof', text: 'Advanced aesthetics and aesthetic dentistry, side by side.' },
   { stat: '40+', label: 'Advanced treatments', text: 'One address for face, body, skin and smile.' },
-  { stat: site.ratingValue, label: 'Average client rating', text: `From ${site.reviewCount}+ reviews across London.` },
+  { stat: 'Level 7', label: 'Qualified, prescriber-led', text: 'Injectables led by a Level 7–qualified practitioner, with a prescriber on hand.' },
   { stat: '100%', label: 'Bespoke plans', text: 'Every protocol designed around one person — you.' },
 ];
 
 export default async function HomePage() {
-  const { publishedReviews } = await import('@/lib/review-system');
-  const liveReviews = await publishedReviews();
+  const { getReviewAggregate } = await import('@/lib/reviews-aggregate');
+  const aggregate = await getReviewAggregate();
+  const rating = aggregate ? { average: aggregate.average, count: aggregate.count } : null;
   return (
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }])} />
-      <Hero />
+      {aggregate && <JsonLd data={aggregateRatingLd({ average: aggregate.average, count: aggregate.count })} />}
+      <Hero rating={rating} />
 
       {/* Marquee ribbon */}
       <section className="border-y border-[var(--color-line)] bg-[var(--color-bone)] py-8">
@@ -166,7 +168,7 @@ export default async function HomePage() {
           <SectionHeading
             eyebrow="Why K Clinics"
             title="Exceptional results begin with exceptional standards."
-            lede="World-class technology means little without the judgement to wield it. Our clinicians pair clinical rigour with an artist's eye — and the patience to do things properly."
+            lede="Advanced technology means little without the judgement to wield it. Our clinicians pair clinical rigour with an artist's eye — and the patience to do things properly."
           />
           <Stagger className="grid gap-px overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2">
             {pillars.map((p) => (
@@ -226,13 +228,15 @@ export default async function HomePage() {
         </Stagger>
       </section>
 
-      {/* Testimonials */}
-      <section className="surface-ink grain section relative">
-        <Aurora />
-        <div className="container-lux relative">
-          <Testimonials reviews={liveReviews} />
-        </div>
-      </section>
+      {/* Testimonials — only shown when we have real, consented 5★ reviews */}
+      {aggregate && aggregate.cards.length > 0 && (
+        <section className="surface-ink grain section relative">
+          <Aurora />
+          <div className="container-lux relative">
+            <Testimonials reviews={aggregate.cards} rating={rating} />
+          </div>
+        </section>
+      )}
 
       {/* Offer / membership */}
       <section className="section container-lux">
