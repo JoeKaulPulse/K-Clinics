@@ -108,9 +108,11 @@ async function reminders(t: Tally) {
     where: { status: 'CONFIRMED', remindersSent: false, startAt: { gte: start, lte: end } },
     include: { client: true },
   });
+  const { smsConfigured, sendSms } = await import('@/lib/sms');
+  const smsOn = smsConfigured();
   for (const b of bookings) {
+    const manageUrl = `${SITE_URL}/booking/manage?token=${b.manageToken}`;
     if (canEmailCare(b.client)) {
-      const manageUrl = `${SITE_URL}/booking/manage?token=${b.manageToken}`;
       const res = await sendEmail({
         to: b.client.email,
         subject: `Reminder: your ${b.treatmentTitle} is tomorrow`,
@@ -118,6 +120,11 @@ async function reminders(t: Tally) {
       });
       await logEvent(b.clientId, 'APPOINTMENT_REMINDER', b.client.email, 'Appointment reminder', res);
       res.ok ? t.reminders++ : t.errors++;
+    }
+    // SMS reminder when the client opted in to text reminders.
+    if (smsOn && b.client.smsReminders && b.client.phone) {
+      const when = b.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      await sendSms(b.client.phone, `K Clinics reminder: your ${b.treatmentTitle} is tomorrow, ${when}. Manage: ${manageUrl}`).catch(() => {});
     }
     await db.booking.update({ where: { id: b.id }, data: { remindersSent: true } });
   }

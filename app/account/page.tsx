@@ -7,6 +7,7 @@ import { DashboardHero } from '@/components/portal/DashboardHero';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { TreatmentCard } from '@/components/ui/TreatmentCard';
 import { DiscountChip } from '@/components/portal/DiscountChip';
+import { OffersStrip } from '@/components/marketing/OffersStrip';
 import { crmEnabled } from '@/lib/crm';
 import { formatPrice, getTreatment, type Treatment } from '@/lib/treatments';
 import { portalAssessments } from '@/lib/questionnaires';
@@ -58,6 +59,8 @@ export default async function DashboardPage() {
         memberSince={client.createdAt.toISOString()}
         lastVisitISO={client.lastVisitAt ? client.lastVisitAt.toISOString() : null}
       />
+
+      <div className="mt-8"><OffersStrip heading="Offers for you" /></div>
 
       {data.discount && (
         <Reveal>

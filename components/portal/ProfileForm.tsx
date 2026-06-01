@@ -6,7 +6,7 @@ import { portalTranslator, type Locale } from '@/lib/i18n-portal';
 
 const GENDERS = ['FEMALE', 'MALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_SAY'] as const;
 
-type Initial = { firstName: string; lastName: string; email: string; phone: string; dob: string; gender: string; genderSelfDescribe: string; marketingOptIn: boolean };
+type Initial = { firstName: string; lastName: string; email: string; phone: string; dob: string; gender: string; genderSelfDescribe: string; marketingOptIn: boolean; smsReminders: boolean };
 
 export function ProfileForm({ initial, locale = 'en' }: { initial: Initial; locale?: Locale }) {
   const router = useRouter();
@@ -26,7 +26,7 @@ export function ProfileForm({ initial, locale = 'en' }: { initial: Initial; loca
         body: JSON.stringify({
           firstName: d.firstName, lastName: d.lastName, phone: d.phone, dob: d.dob,
           gender: d.gender, genderSelfDescribe: d.genderSelfDescribe,
-          marketingOptIn: d.marketingOptIn, newPassword: d.newPassword || undefined,
+          marketingOptIn: d.marketingOptIn, smsReminders: d.smsReminders, newPassword: d.newPassword || undefined,
         }),
       });
       if (res.status === 404 || res.status === 503) { setMsg(t('profile.saved')); return; }
@@ -65,6 +65,10 @@ export function ProfileForm({ initial, locale = 'en' }: { initial: Initial; loca
       <label className="flex items-center gap-3 text-sm text-[var(--color-stone)]">
         <input type="checkbox" checked={d.marketingOptIn} onChange={(e) => set('marketingOptIn', e.target.checked)} className="h-4 w-4 accent-[var(--color-gold)]" />
         {t('profile.marketing')}
+      </label>
+      <label className="flex items-center gap-3 text-sm text-[var(--color-stone)]">
+        <input type="checkbox" checked={d.smsReminders} onChange={(e) => set('smsReminders', e.target.checked)} className="h-4 w-4 accent-[var(--color-gold)]" />
+        Text me appointment confirmations &amp; reminders
       </label>
       {msg && <p className="text-sm text-[var(--color-gold)]">{msg}</p>}
       <button type="submit" disabled={saving} className="rounded-full bg-[var(--color-gold)] px-6 py-3 font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">

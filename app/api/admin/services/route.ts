@@ -69,6 +69,36 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, updated: variants.length });
     }
 
+    // ── Bulk import: paste the price matrix into a service ──
+    case 'import': {
+      const { parsePriceMatrix } = await import('@/lib/price-import');
+      const { raw, serviceId, newServiceName, treatmentSlug, category, mode } = body as {
+        raw?: string; serviceId?: string; newServiceName?: string; treatmentSlug?: string; category?: string; mode?: string;
+      };
+      if (!raw?.trim()) return NextResponse.json({ ok: false, error: 'Paste the price rows first.' }, { status: 400 });
+      const { variants } = parsePriceMatrix(raw);
+      if (!variants.length) return NextResponse.json({ ok: false, error: 'No rows could be read from that paste.' }, { status: 400 });
+
+      let svcId = serviceId;
+      if (!svcId) {
+        if (!newServiceName?.trim() || !treatmentSlug?.trim()) return NextResponse.json({ ok: false, error: 'Name the service and pick a treatment to link it to.' }, { status: 400 });
+        const slug = newServiceName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50);
+        const order = await db.service.count();
+        const created = await db.service.create({ data: { slug: `${slug}-${Date.now().toString(36).slice(-4)}`, treatmentSlug, name: newServiceName.slice(0, 120), category: category === 'dentistry' ? 'dentistry' : 'aesthetics', order } });
+        svcId = created.id;
+      }
+      if (mode === 'replace') await db.serviceVariant.deleteMany({ where: { serviceId: svcId } });
+      const startOrder = mode === 'replace' ? 0 : await db.serviceVariant.count({ where: { serviceId: svcId } });
+      await db.serviceVariant.createMany({
+        data: variants.map((v, i) => ({
+          serviceId: svcId!, name: v.name.slice(0, 120), durationMin: Math.max(5, v.durationMin),
+          pricePence: Math.max(0, v.pricePence), courses: v.courses.length ? v.courses : undefined, order: startOrder + i,
+        })),
+      });
+      await logAudit({ action: 'SERVICE_PRICES_BULK', actor: session.email, actorRole: session.role, summary: `Imported ${variants.length} variant(s) into a service (${mode === 'replace' ? 'replaced' : 'appended'})` });
+      return NextResponse.json({ ok: true, imported: variants.length, serviceId: svcId });
+    }
+
     // ── Offers ──
     case 'createOffer': {
       if (!body.name) return NextResponse.json({ ok: false, error: 'Name the offer.' }, { status: 400 });

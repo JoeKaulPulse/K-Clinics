@@ -14,7 +14,9 @@ export default async function ServicesPage() {
   if (!sessionCan(session, 'settings.manage')) redirect('/admin');
 
   const { listServices, liveOffers } = await import('@/lib/services');
+  const { treatments } = await import('@/lib/treatments');
   const [services, offers] = await Promise.all([listServices(true), liveOffers(false)]);
+  const treatmentOptions = treatments.map((t) => ({ slug: t.slug, title: t.title, category: t.category }));
 
   const can = await sessionPermissions();
   const locale = await getLocale();
@@ -29,6 +31,7 @@ export default async function ServicesPage() {
         <ServicesManager
           services={services.map((s) => ({ id: s.id, slug: s.slug, name: s.name, category: s.category, active: s.active, variants: s.variants }))}
           offers={offers.map((o) => ({ ...o, startAt: o.startAt?.toISOString() ?? null, endAt: o.endAt?.toISOString() ?? null }))}
+          treatments={treatmentOptions}
         />
       </div>
     </AdminShell>

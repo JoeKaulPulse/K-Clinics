@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { parsePriceMatrix } from '@/lib/price-import';
 
 type Variant = { id: string; name: string; durationMin: number; pricePence: number; costPence: number | null; courses: { sessions: number; totalPence: number }[] };
 type Service = { id: string; slug: string; name: string; category: string; active: boolean; variants: Variant[] };
 type Offer = { id: string; name: string; scope: string; serviceId: string | null; variantId: string | null; percentOff: number | null; amountOffPence: number | null; startAt: string | null; endAt: string | null; promoted: boolean };
+type TreatmentOpt = { slug: string; title: string; category: string };
 
 const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm';
 const money = (p: number | null) => (p == null ? '—' : p === 0 ? 'On consult.' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`);
@@ -15,15 +17,108 @@ async function post(payload: object) {
   return fetch('/api/admin/services', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 }
 
-export function ServicesManager({ services, offers }: { services: Service[]; offers: Offer[] }) {
+export function ServicesManager({ services, offers, treatments }: { services: Service[]; offers: Offer[]; treatments: TreatmentOpt[] }) {
   return (
     <div className="space-y-8">
+      <ImportPanel services={services} treatments={treatments} />
       <BulkPrice services={services} />
       <OffersSection services={services} offers={offers} />
       <div className="space-y-5">
         {services.map((s) => <ServiceCard key={s.id} service={s} />)}
       </div>
     </div>
+  );
+}
+
+function ImportPanel({ services, treatments }: { services: Service[]; treatments: TreatmentOpt[] }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [target, setTarget] = useState(''); // serviceId or '' for new
+  const [newName, setNewName] = useState('');
+  const [treatmentSlug, setTreatmentSlug] = useState(treatments[0]?.slug ?? '');
+  const [mode, setMode] = useState<'replace' | 'append'>('replace');
+  const [raw, setRaw] = useState('');
+  const [preview, setPreview] = useState<{ name: string; durationMin: number; pricePence: number; courses: { sessions: number; totalPence: number }[] }[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  function doPreview() {
+    const r = parsePriceMatrix(raw);
+    setPreview(r.variants);
+    setMsg(r.variants.length ? `${r.variants.length} variant(s) read${r.warnings.length ? ` · ${r.warnings.length} line(s) skipped` : ''}` : 'Nothing could be read — check the format.');
+  }
+  async function doImport() {
+    if (!preview?.length) { setMsg('Preview first.'); return; }
+    if (!target && (!newName.trim() || !treatmentSlug)) { setMsg('Name the new service and link a treatment.'); return; }
+    setBusy(true); setMsg('Importing…');
+    const cat = treatments.find((t) => t.slug === treatmentSlug)?.category;
+    const res = await post({ op: 'import', raw, serviceId: target || undefined, newServiceName: target ? undefined : newName, treatmentSlug: target ? undefined : treatmentSlug, category: cat, mode });
+    const j = await res.json();
+    setBusy(false);
+    if (res.ok) { setMsg(`Imported ${j.imported} variant(s) ✓`); setRaw(''); setPreview(null); router.refresh(); }
+    else setMsg(j.error || 'Import failed.');
+  }
+
+  return (
+    <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-[family-name:var(--font-display)] text-lg">Import from the price sheet</h2>
+          <p className="text-sm text-[var(--color-stone)]">Paste rows from your pricing spreadsheet — name, price, per-session, sessions, minutes, minutes+doc. Course rows group automatically.</p>
+        </div>
+        <button onClick={() => setOpen((v) => !v)} className="shrink-0 rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)]">{open ? 'Close' : 'Open importer'}</button>
+      </div>
+
+      {open && (
+        <div className="mt-4 space-y-3">
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="text-xs text-[var(--color-stone)]">Import into<br />
+              <select value={target} onChange={(e) => setTarget(e.target.value)} className={field}>
+                <option value="">+ New service…</option>
+                {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </label>
+            {!target && (
+              <>
+                <label className="text-xs text-[var(--color-stone)]">New service name<br /><input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Laser Hair Removal — Women" className={`${field} w-56`} /></label>
+                <label className="text-xs text-[var(--color-stone)]">Linked treatment<br />
+                  <select value={treatmentSlug} onChange={(e) => setTreatmentSlug(e.target.value)} className={field}>
+                    {treatments.map((t) => <option key={t.slug} value={t.slug}>{t.title}</option>)}
+                  </select>
+                </label>
+              </>
+            )}
+            <label className="text-xs text-[var(--color-stone)]">Mode<br />
+              <select value={mode} onChange={(e) => setMode(e.target.value as 'replace' | 'append')} className={field}>
+                <option value="replace">Replace variants</option>
+                <option value="append">Add to existing</option>
+              </select>
+            </label>
+          </div>
+          <textarea value={raw} onChange={(e) => setRaw(e.target.value)} rows={6} placeholder="Bikini line 1 session	27	0	1	15	25&#10;Bikini line 3 session	73	25	3	15	25" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-3 font-mono text-xs" />
+          <div className="flex items-center gap-2">
+            <button onClick={doPreview} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)]">Preview</button>
+            <button onClick={doImport} disabled={busy || !preview?.length} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? '…' : 'Import'}</button>
+            {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
+          </div>
+          {preview && preview.length > 0 && (
+            <div className="max-h-64 overflow-y-auto rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white">
+              <table className="w-full text-sm">
+                <thead><tr className="sticky top-0 bg-[var(--color-bone)] text-left text-xs uppercase text-[var(--color-stone-soft)]"><th className="p-2">Variant</th><th className="p-2">Min</th><th className="p-2">Price</th><th className="p-2">Courses</th></tr></thead>
+                <tbody>
+                  {preview.map((v, i) => (
+                    <tr key={i} className="border-t border-[var(--color-line)]">
+                      <td className="p-2">{v.name}</td><td className="p-2">{v.durationMin}</td><td className="p-2">{money(v.pricePence)}</td>
+                      <td className="p-2 text-xs text-[var(--color-stone)]">{v.courses.map((c) => `${c.sessions}×${money(c.totalPence)}`).join('  ') || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
   );
 }
 

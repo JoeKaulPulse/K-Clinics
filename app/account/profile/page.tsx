@@ -31,6 +31,7 @@ export default async function ProfilePage() {
           gender: client.gender ?? '',
           genderSelfDescribe: client.genderSelfDescribe ?? '',
           marketingOptIn: client.marketingOptIn,
+          smsReminders: client.smsReminders,
         }}
       />
 
