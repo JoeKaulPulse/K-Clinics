@@ -26,6 +26,11 @@ export async function POST(req: Request) {
   const { getVariant, liveOffers, bestOffer } = await import('@/lib/services');
   const primary = await getVariant(d.variantId);
   if (!primary) return NextResponse.json({ ok: false, error: 'That service is unavailable. Please choose another.' }, { status: 404 });
+  // Block treatments that are available on request only (machine not in yet).
+  const { getTreatment } = await import('@/lib/treatments');
+  if (getTreatment(primary.service.treatmentSlug)?.onRequest) {
+    return NextResponse.json({ ok: false, error: 'This treatment is available on request only — please enquire and we’ll arrange it for you.' }, { status: 409 });
+  }
 
   const addOns = (await Promise.all(d.addOnVariantIds.map((id) => getVariant(id)))).filter(Boolean) as NonNullable<Awaited<ReturnType<typeof getVariant>>>[];
   const offers = await liveOffers(false);

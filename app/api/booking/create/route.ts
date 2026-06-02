@@ -22,6 +22,7 @@ export async function POST(req: Request) {
 
   const treatment = getTreatment(d.slug);
   if (!treatment) return NextResponse.json({ ok: false, error: 'Unknown treatment' }, { status: 404 });
+  if (treatment.onRequest) return NextResponse.json({ ok: false, error: 'This treatment is available on request only — please enquire and we’ll arrange it for you.' }, { status: 409 });
 
   const { pricePence, durationMin, bufferMin } = bookingFor(d.slug);
   const start = new Date(d.startISO);
