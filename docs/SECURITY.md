@@ -51,6 +51,21 @@ Generate a strong secret from the Security centre, or:
 6. Add Turnstile + (optionally) Upstash Redis keys.
 7. Confirm the Security centre shows a clean posture (no red/amber flags).
 
+## Automated scanning (CI)
+
+- **CodeQL** (`.github/workflows/codeql.yml`) — SAST on push/PR + weekly.
+- **npm audit + dependency review + gitleaks** (`.github/workflows/security.yml`)
+  — fail the build on high/critical vulnerable deps, review new deps on PRs, and
+  scan for committed secrets.
+- **Dependabot** (`.github/dependabot.yml`) — weekly dependency + Actions updates.
+
+## Content Security Policy note
+
+The marketing site is largely statically pre-rendered, so a per-request
+nonce-based CSP isn't viable (a nonce can't be injected into pre-built HTML).
+The allow-listed CSP in `next.config.mjs` is the appropriate best-practice here.
+Keep it tight; add new third-party origins explicitly rather than loosening it.
+
 ## Key rotation runbook
 
 - **Session secret** (`*_JWT_SECRET`): set a new value in Vercel + redeploy.
