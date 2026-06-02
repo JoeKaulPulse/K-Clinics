@@ -28,17 +28,16 @@ export async function POST(req: Request) {
         visitorEmail: (clean(b.email, 160) || client?.email || '').toLowerCase() || null,
         clientId: client?.id ?? null,
         page: clean(b.page, 200) || null,
-        staffUnread: 1,
+        // mode defaults to AI — the assistant answers first and notifies/hands
+        // over to staff only when it needs a human, so staffUnread starts at 0.
+        staffUnread: 0,
         messages: { create: { sender: 'VISITOR', body } },
       },
       select: { id: true, token: true },
     });
-    // Notify the clinic so someone jumps in.
-    try {
-      const { sendEmail } = await import('@/lib/email');
-      const { site } = await import('@/lib/site');
-      await sendEmail({ to: process.env.CLINIC_NOTIFY_EMAIL || site.email, subject: 'New live chat started', html: `<p>A visitor started a live chat:</p><blockquote>${body.replace(/[<>]/g, '')}</blockquote><p>Reply in the CRM → Live chat.</p>` });
-    } catch { /* non-fatal */ }
+    // Let the AI assistant answer (it notifies/hands over to staff as needed).
+    const { maybeAutoReply } = await import('@/lib/chat-ai');
+    await maybeAutoReply(convo.id);
     return NextResponse.json({ ok: true, token: convo.token });
   }
 
@@ -46,12 +45,18 @@ export async function POST(req: Request) {
     const token = clean(b.token, 60);
     const body = clean(b.message);
     if (!token || !body) return NextResponse.json({ ok: false, error: 'Bad request.' }, { status: 400 });
-    const convo = await db.chatConversation.findUnique({ where: { token }, select: { id: true } });
+    const convo = await db.chatConversation.findUnique({ where: { token }, select: { id: true, mode: true } });
     if (!convo) return NextResponse.json({ ok: false, error: 'Conversation not found.' }, { status: 404 });
     await db.$transaction([
       db.chatMessage.create({ data: { conversationId: convo.id, sender: 'VISITOR', body } }),
-      db.chatConversation.update({ where: { id: convo.id }, data: { status: 'OPEN', lastMessageAt: new Date(), staffUnread: { increment: 1 } } }),
+      // Only flag staff as unread when a human is the one answering; in AI mode
+      // the assistant replies and escalates (bumping unread) only if needed.
+      db.chatConversation.update({ where: { id: convo.id }, data: { status: 'OPEN', lastMessageAt: new Date(), ...(convo.mode === 'STAFF' ? { staffUnread: { increment: 1 } } : {}) } }),
     ]);
+    if (convo.mode === 'AI') {
+      const { maybeAutoReply } = await import('@/lib/chat-ai');
+      await maybeAutoReply(convo.id);
+    }
     return NextResponse.json({ ok: true });
   }
 
