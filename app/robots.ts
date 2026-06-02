@@ -10,7 +10,7 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: '*',
         allow: '/',
         // Private / transactional areas — keep out of the index & crawl budget.
-        disallow: ['/admin', '/account', '/api/', '/booking/manage'],
+        disallow: ['/admin', '/account', '/api/', '/booking/manage', '/academy/portal', '/academy/learn'],
       },
     ],
     sitemap: `${site.url}/sitemap.xml`,
