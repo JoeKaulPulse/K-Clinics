@@ -5,6 +5,7 @@ import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { ProfileEditor } from '@/components/admin/ProfileEditor';
 import { TwoFactorSetup } from '@/components/admin/TwoFactorSetup';
+import { SignOutEverywhere } from '@/components/admin/SignOutEverywhere';
 import { ROLES } from '@/lib/permissions';
 import { getLocale } from '@/lib/locale';
 
@@ -57,6 +58,12 @@ export default async function ProfilePage() {
 
       <div className="mt-8 max-w-xl">
         <TwoFactorSetup enabled={Boolean(me.totpEnabledAt)} />
+      </div>
+
+      <div className="mt-6 max-w-xl rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
+        <h3 className="font-[family-name:var(--font-display)] text-lg">Sessions</h3>
+        <p className="mb-3 mt-1 text-sm text-[var(--color-stone)]">Sessions expire after 2 hours idle (12 hours maximum). If you’ve used a shared or lost device, sign out everywhere.</p>
+        <SignOutEverywhere />
       </div>
 
       {showPerf && (
