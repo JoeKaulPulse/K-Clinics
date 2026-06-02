@@ -30,6 +30,16 @@ export async function POST(req: Request) {
 
   const { db } = await import('@/lib/db');
 
+  // Reset a staff member's 2FA (e.g. lost authenticator). They'll be prompted
+  // to set it up again on next login if their role requires it.
+  if (body.op === 'reset2fa') {
+    if (!id) return NextResponse.json({ ok: false, error: 'Missing id.' }, { status: 400 });
+    await db.adminUser.update({ where: { id }, data: { totpSecret: null, totpEnabledAt: null, recoveryCodes: [] } });
+    const { logAudit } = await import('@/lib/audit');
+    await logAudit({ action: 'NOTE_ADDED', actor: actor.email, actorRole: actor.role, summary: `Reset 2FA for staff ${id}` });
+    return NextResponse.json({ ok: true, id });
+  }
+
   // Public team-page profile update (single source of truth → /team).
   if (body.op === 'profile') {
     if (!id) return NextResponse.json({ ok: false, error: 'Missing id.' }, { status: 400 });

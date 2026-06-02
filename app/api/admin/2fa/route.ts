@@ -22,7 +22,14 @@ export async function POST(req: Request) {
     }
     case 'confirm': {
       const res = await confirmEnrolment(session.sub, String(body.code || ''));
-      if (res.ok) await recordSecurity('TWOFA_ENABLED', 'admin', session.email, req);
+      if (res.ok) {
+        await recordSecurity('TWOFA_ENABLED', 'admin', session.email, req);
+        // Re-issue a full session so the setup-only gate (needsSetup) is cleared.
+        const { db } = await import('@/lib/db');
+        const { createSession } = await import('@/lib/auth');
+        const u = await db.adminUser.findUnique({ where: { id: session.sub }, select: { id: true, email: true, name: true, role: true, permGrant: true, permRevoke: true } });
+        if (u) await createSession({ sub: u.id, email: u.email, name: u.name || undefined, role: u.role, grant: u.permGrant ?? [], revoke: u.permRevoke ?? [] });
+      }
       return NextResponse.json(res, { status: res.ok ? 200 : 400 });
     }
     case 'disable': {

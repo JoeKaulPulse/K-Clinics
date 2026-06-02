@@ -45,6 +45,12 @@ export default async function ProfilePage() {
         {me.email} · {roleLabel}{me.isClinician ? (uk ? ' · клініцист' : ' · clinician') : ''}
         {me.lastLoginAt ? ` · ${uk ? 'останній вхід' : 'last login'} ${new Date(me.lastLoginAt).toLocaleString('en-GB')}` : ''}
       </p>
+      {session.needsSetup && (
+        <div className="mt-6 max-w-xl rounded-[var(--radius-lg)] border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          <strong>Two-factor authentication is required for your role.</strong> Set it up below to unlock the rest of the CRM.
+        </div>
+      )}
+
       <div className="mt-8 max-w-xl">
         <ProfileEditor name={me.name} title={me.title} uk={uk} />
       </div>

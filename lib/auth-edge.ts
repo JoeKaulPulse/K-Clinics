@@ -16,6 +16,9 @@ export type Session = {
   /** Per-user permission overrides, captured at login for fast checks. */
   grant?: string[];
   revoke?: string[];
+  /** Set when 2FA is required for this role but not yet enrolled — the user is
+   *  signed in only far enough to complete setup (gated in middleware). */
+  needsSetup?: boolean;
 };
 export type ClientSession = { sub: string; email: string; firstName: string };
 export type AcademySession = { sub: string; email: string; firstName: string };
