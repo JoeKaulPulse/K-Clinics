@@ -1591,6 +1591,7 @@ model ChatConversation {
   visitorEmail  String?
   clientId      String?               // if a signed-in client started it
   status        String   @default("OPEN") // OPEN | CLOSED
+  mode          String   @default("AI")    // AI | STAFF — who is answering
   staffUnread   Int      @default(0)   // messages awaiting staff
   page          String?               // path the chat was opened from
   lastMessageAt DateTime @default(now())
