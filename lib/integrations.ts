@@ -250,5 +250,23 @@ export async function getIntegrations(): Promise<Integration[]> {
     envVars: [{ name: 'CRON_SECRET', set: cron }],
   });
 
+  // ── SMS (Twilio) ──
+  const twSid = has(process.env.TWILIO_ACCOUNT_SID);
+  const twTok = has(process.env.TWILIO_AUTH_TOKEN);
+  const twFrom = has(process.env.TWILIO_FROM);
+  items.push({
+    id: 'sms',
+    name: 'SMS reminders (Twilio)',
+    category: 'Communications',
+    description: 'Appointment reminders and confirmations by text message.',
+    status: twSid && twTok && twFrom ? 'connected' : (twSid || twTok || twFrom) ? 'partial' : 'not_configured',
+    detail: twSid && twTok && twFrom ? 'Configured' : 'Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM.',
+    envVars: [
+      { name: 'TWILIO_ACCOUNT_SID', set: twSid },
+      { name: 'TWILIO_AUTH_TOKEN', set: twTok },
+      { name: 'TWILIO_FROM', set: twFrom },
+    ],
+  });
+
   return items;
 }
