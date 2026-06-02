@@ -4,7 +4,7 @@ import { TreatmentCard } from '@/components/ui/TreatmentCard';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { aesthetics, groupByGroup } from '@/lib/treatments';
-import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
+import { pageMeta, JsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Aesthetic Treatments in London — Laser, Skin & Body | K Clinics',
@@ -19,7 +19,10 @@ export default function TreatmentsPage() {
   let idx = 0;
   return (
     <>
-      <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Aesthetics', path: '/treatments' }])} />
+      <JsonLd data={[
+        breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Aesthetics', path: '/treatments' }]),
+        itemListLd('Aesthetic treatments at K Clinics', aesthetics.map((t) => ({ name: t.title, path: `/${t.slug}` }))),
+      ]} />
       <PageHero
         eyebrow="Aesthetics · Laser · Skin · Body"
         title="The art and science of looking remarkable."

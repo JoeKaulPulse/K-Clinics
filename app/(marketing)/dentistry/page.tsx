@@ -7,7 +7,7 @@ import { Button, ArrowIcon } from '@/components/ui/Button';
 import { RegisterInterest } from '@/components/dentistry/RegisterInterest';
 import { dentistry, groupByGroup } from '@/lib/treatments';
 import { site } from '@/lib/site';
-import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
+import { pageMeta, JsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: site.dentistryLive
@@ -25,7 +25,10 @@ export default function DentistryPage() {
   let idx = 0;
   return (
     <>
-      <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Dentistry', path: '/dentistry' }])} />
+      <JsonLd data={[
+        breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Dentistry', path: '/dentistry' }]),
+        itemListLd('Dentistry treatments at K Clinics', dentistry.map((t) => ({ name: t.title, path: `/${t.slug}` }))),
+      ]} />
       <PageHero
         eyebrow={comingSoon ? 'Aesthetic Dentistry · Opening soon' : 'Aesthetic & Restorative Dentistry'}
         title="A smile, designed around you."

@@ -301,6 +301,23 @@ export function offerCatalogLd(items: { name: string; price: number }[]) {
   };
 }
 
+/** Ordered ItemList of links — exposes a hub page's contents (treatment menu,
+ *  etc.) to search & AI as a structured, crawlable list. */
+export function itemListLd(name: string, items: { name: string; path: string }[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name,
+    numberOfItems: items.length,
+    itemListElement: items.map((it, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: it.name,
+      url: `${base}${it.path}`,
+    })),
+  };
+}
+
 export function faqLd(faqs: { q: string; a: string }[]) {
   return {
     '@context': 'https://schema.org',
