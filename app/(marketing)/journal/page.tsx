@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { PageHero } from '@/components/ui/PageHero';
 import { JournalBrowser } from '@/components/journal/JournalBrowser';
-import { sortedArticles } from '@/lib/articles';
-import { articleImage } from '@/lib/treatment-images';
+import { listBlogCards } from '@/lib/blog';
 import { pageMeta, JsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
+
+export const dynamic = 'force-dynamic';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'The Journal — Expert Skin, Laser & Dentistry Guides | KClinics London',
@@ -13,17 +14,14 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({
   keywords: ['aesthetics blog London', 'skincare advice', 'laser hair removal guide', 'aesthetic dentistry tips'],
 });
 
-export default function JournalPage() {
-  const cards = sortedArticles.map((a) => ({
-    slug: a.slug, title: a.title, excerpt: a.excerpt, category: a.category,
-    readMinutes: a.readMinutes, published: a.published, image: articleImage(a.slug),
-  }));
+export default async function JournalPage() {
+  const cards = await listBlogCards();
 
   return (
     <>
       <JsonLd data={[
         breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Journal', path: '/journal' }]),
-        itemListLd('KClinics Journal articles', sortedArticles.map((a) => ({ name: a.title, path: `/journal/${a.slug}` }))),
+        itemListLd('KClinics Journal articles', cards.map((a) => ({ name: a.title, path: `/journal/${a.slug}` }))),
       ]} />
       <PageHero
         eyebrow="The Journal"
