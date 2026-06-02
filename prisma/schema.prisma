@@ -308,9 +308,55 @@ model Client {
   points          ClientPoints[]
   referralsMade   Referral[]     @relation("ReferralsMade")
   referredVia     Referral?      @relation("ReferralReceived")
+  callRecords     CallRecord[]
 
   @@index([createdAt])
   @@index([dob])
+}
+
+// ── Telephony (yay.com VoIP) ────────────────────────────────────────────────
+// Immutable record of a phone call. Created when a call completes (yay webhook)
+// and only ever enriched afterwards with the recording + transcript — the core
+// call facts are never altered, so the log is an append-only audit trail.
+enum CallDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum CallMatchType {
+  CLIENT
+  STAFF
+  UNKNOWN
+}
+
+model CallRecord {
+  id               String        @id @default(cuid())
+  yayId            String        @unique          // yay.com call/CDR id → idempotent ingest
+  direction        CallDirection
+  fromNumber       String
+  toNumber         String
+  status           String?                        // answered | missed | busy | failed | voicemail
+  startedAt        DateTime
+  answeredAt       DateTime?
+  endedAt          DateTime?
+  durationSec      Int           @default(0)
+  agentExtension   String?                        // yay extension that handled the call
+  agentEmail       String?
+  recordingUrl     String?                        // yay-hosted recording
+  recordingMime    String?
+  transcript       String?       @db.Text
+  transcriptStatus String        @default("pending") // pending | ready | unavailable
+  matchType        CallMatchType @default(UNKNOWN)
+  matchedClientId  String?
+  matchedClient    Client?       @relation(fields: [matchedClientId], references: [id], onDelete: SetNull)
+  matchedLabel     String?                        // display label when not a known client
+  notes            String?                        // free-text staff note (the only mutable field)
+  raw              Json?                          // original webhook payload, for audit
+  createdAt        DateTime      @default(now())
+
+  @@index([startedAt])
+  @@index([direction])
+  @@index([matchedClientId])
 }
 
 model Consultation {

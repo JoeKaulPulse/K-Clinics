@@ -97,6 +97,24 @@ export async function getIntegrations(): Promise<Integration[]> {
     docsHref: 'https://resend.com/api-keys',
   });
 
+  // ── Telephony (yay.com) ──
+  const yayHook = has(process.env.YAY_WEBHOOK_SECRET);
+  const yayApi = has(process.env.YAY_API_KEY);
+  items.push({
+    id: 'telephony',
+    name: 'Telephony (yay.com)',
+    category: 'Communications',
+    description: 'Call logging, recordings, transcripts and caller→client matching, plus click-to-dial. Webhook: /api/integrations/yay',
+    status: yayHook && yayApi ? 'connected' : yayHook || yayApi ? 'partial' : 'not_configured',
+    detail: yayHook ? (yayApi ? 'Receiving calls; click-to-dial enabled.' : 'Receiving calls — add YAY_API_KEY for click-to-dial.') : 'Add YAY_WEBHOOK_SECRET and point your yay.com webhook here.',
+    envVars: [
+      { name: 'YAY_WEBHOOK_SECRET', set: yayHook },
+      { name: 'YAY_API_KEY', set: yayApi, optional: true },
+      { name: 'YAY_API_BASE', set: has(process.env.YAY_API_BASE), optional: true },
+    ],
+    docsHref: 'https://www.yay.com/',
+  });
+
   // ── Payments (Stripe) ──
   const stripeSecret = has(process.env.STRIPE_SECRET_KEY);
   const stripePub = has(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);

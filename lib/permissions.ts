@@ -83,6 +83,10 @@ export const PERMISSIONS: Permission[] = [
   // Finance
   { key: 'finance.view', group: 'Finance', label: 'View finances', description: 'See cashflow forecasts and cash reserves.', sensitive: true },
   { key: 'finance.manage', group: 'Finance', label: 'Manage finances', description: 'Edit forecast lines, reserves and ring-fenced funds.', sensitive: true },
+
+  // Telephony
+  { key: 'calls.view', group: 'Telephony', label: 'View calls', description: 'See the call log, recordings and transcripts.' },
+  { key: 'calls.manage', group: 'Telephony', label: 'Place & annotate calls', description: 'Use click-to-dial and add notes to call records.' },
 ];
 
 export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
@@ -105,6 +109,7 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     'inventory.view',
     'inventory.manage',
     'rewards.view',
+    'calls.view',
   ],
   FRONT_DESK: [
     'dashboard.view',
@@ -122,6 +127,8 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     'inventory.view',
     'inventory.manage',
     'rewards.view',
+    'calls.view',
+    'calls.manage',
   ],
   STAFF: ['dashboard.view', 'bookings.view', 'consultations.view', 'clients.view', 'calendar.view', 'inventory.view'],
 };
