@@ -14,11 +14,11 @@ export const site = {
     'K Clinics is an Islington clinic uniting advanced laser & skin aesthetics with aesthetic dentistry — precision treatments, qualified clinicians, and an experience designed around you.',
 
   // ── Contact / NAP (Name, Address, Phone) ───────────────────────────────────
-  // PLACEHOLDERS — replace with verified details before launch.
-  phone: '075 00 075 775',
-  phoneHref: 'tel:+447500075775',
+  // Landline via yay.com VoIP. All public phone references read from here.
+  phone: '020 8050 0750',
+  phoneHref: 'tel:+442080500750',
   // WhatsApp business number (digits only, intl format). Overridable via env.
-  whatsapp: '447500075775',
+  whatsapp: '442080500750',
   email: 'support@kclinics.co.uk',
   emailHref: 'mailto:support@kclinics.co.uk',
   address: {
@@ -49,7 +49,7 @@ export const site = {
   // First-party booking (Stripe-backed). Treatwell/Fresha removed.
   booking: {
     path: '/book',
-    phoneCta: 'tel:+447500075775',
+    phoneCta: 'tel:+442080500750',
   },
 
   // ── Social ──────────────────────────────────────────────────────────────────
