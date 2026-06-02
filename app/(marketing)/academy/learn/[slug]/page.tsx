@@ -5,7 +5,7 @@ import { crmEnabled } from '@/lib/crm';
 import { CoursePlayer } from '@/components/academy/CoursePlayer';
 import { pageMeta } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({ title: 'Course — K Academy', description: 'Your K Academy course.', path: '/academy/learn' });
+export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: 'Course — K Academy', description: 'Your K Academy course.', path: '/academy/learn' });
 export const dynamic = 'force-dynamic';
 
 export default async function LearnPage({ params }: { params: Promise<{ slug: string }> }) {

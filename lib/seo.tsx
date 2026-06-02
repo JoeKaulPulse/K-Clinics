@@ -3,8 +3,14 @@ import { site } from './site';
 
 const base = site.url;
 
-/** Build per-page metadata with sensible premium defaults + OG/Twitter. */
-export function pageMeta({
+/**
+ * Build per-page metadata with premium defaults + per-page OG/Twitter, then
+ * merge any admin SEO override (title/description/canonical/keyword/OG image/
+ * noindex) from the PageSeo table over the code defaults. Async because it reads
+ * the override; the DB call is best-effort and never throws. Callers use it from
+ * `generateMetadata` (static pages: `export const generateMetadata = () => pageMeta({…})`).
+ */
+export async function pageMeta({
   title,
   description,
   path = '/',
@@ -15,37 +21,53 @@ export function pageMeta({
   description: string;
   path?: string;
   keywords?: string[];
-  /** When true, omit the site-wide OG image so a route's own
-   *  `opengraph-image.tsx` file convention is used instead. */
+  /** When true, defer to a route's own `opengraph-image.tsx` instead of the
+   *  dynamic /og card — unless an admin override supplies a custom OG image. */
   ownOgImage?: boolean;
-}): Metadata {
+}): Promise<Metadata> {
+  // Best-effort admin override (no-op without a DB / in the client bundle).
+  let ov: { title?: string | null; description?: string | null; canonical?: string | null; focusKeyword?: string | null; ogImage?: string | null; noindex?: boolean } | null = null;
+  try {
+    const { getPageOverride } = await import('./seo-audit');
+    ov = await getPageOverride(path);
+  } catch { /* overrides are best-effort */ }
+
+  const fullTitle = ov?.title || title;
+  const desc = ov?.description || description;
   const url = `${base}${path}`;
-  const fullTitle = title;
+  const canonical = ov?.canonical || url;
+  const finalKeywords = ov?.focusKeyword && !(keywords || []).includes(ov.focusKeyword) ? [ov.focusKeyword, ...(keywords || [])] : keywords;
+
   // Per-page social card: feed the page's own heading + description into the
   // dynamic /og generator so every shared link previews uniquely & on-brand.
-  // Pages with their own `opengraph-image.tsx` (treatments, journal) opt out.
-  const ogHeading = title.split(' | ')[0];
-  const ogUrl = `${base}/og?title=${encodeURIComponent(ogHeading)}&tag=${encodeURIComponent(description)}`;
-  const images = ownOgImage ? undefined : [{ url: ogUrl, width: 1200, height: 630, alt: fullTitle }];
+  const customOg = ov?.ogImage ? (/^https?:\/\//.test(ov.ogImage) ? ov.ogImage : `${base}${ov.ogImage}`) : null;
+  const ogHeading = fullTitle.split(' | ')[0];
+  const ogUrl = customOg || `${base}/og?title=${encodeURIComponent(ogHeading)}&tag=${encodeURIComponent(desc)}`;
+  // Use the dynamic/custom card unless the route owns a bespoke opengraph-image
+  // (and no custom override is set).
+  const useImage = !!customOg || !ownOgImage;
+  const images = useImage ? [{ url: ogUrl, width: 1200, height: 630, alt: fullTitle }] : undefined;
+
   return {
     // metaTitles already carry the brand, so bypass the layout's title template.
     title: { absolute: fullTitle },
-    description,
-    keywords,
-    alternates: { canonical: url },
+    description: desc,
+    keywords: finalKeywords,
+    alternates: { canonical },
+    ...(ov?.noindex ? { robots: { index: false, follow: false } } : {}),
     openGraph: {
       type: 'website',
       url,
       siteName: site.name,
       title: fullTitle,
-      description,
+      description: desc,
       locale: site.locale,
       ...(images ? { images } : {}),
     },
     twitter: {
       card: 'summary_large_image',
       title: fullTitle,
-      description,
+      description: desc,
       ...(images ? { images: [ogUrl] } : {}),
     },
   };

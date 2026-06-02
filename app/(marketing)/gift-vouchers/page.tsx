@@ -5,7 +5,7 @@ import { GiftVoucherFlow } from '@/components/gift/GiftVoucherFlow';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Gift Vouchers — Give the Gift of K Clinics | London',
   description: 'Buy a K Clinics gift voucher online in minutes. Choose any amount from £10 to £500, add a personal message, and we’ll email it instantly or on a date you choose.',
   path: '/gift-vouchers',

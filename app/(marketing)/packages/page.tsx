@@ -8,7 +8,7 @@ import { ArrowIcon } from '@/components/ui/Button';
 import { packages } from '@/lib/packages';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Treatment Packages & Programmes in London | K Clinics',
   description:
     'Curated treatment packages at K Clinics, Islington — Total Rejuvenation, Perfect Skin, Smooth & Slim and Ultimate Hair-Free programmes for transformative, lasting results.',

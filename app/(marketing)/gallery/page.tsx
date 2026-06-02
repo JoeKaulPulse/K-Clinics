@@ -8,7 +8,7 @@ import { treatmentImage } from '@/lib/treatment-images';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Before & After Gallery | K Clinics London',
   description:
     'Real client before-and-after results from K Clinics, Islington — published only with the client’s consent. Drag any case to reveal the transformation.',

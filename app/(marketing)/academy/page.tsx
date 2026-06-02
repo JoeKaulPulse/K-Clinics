@@ -7,7 +7,7 @@ import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 import { ACCREDITATION_LABELS, formatFee } from '@/lib/academy';
 import { site } from '@/lib/site';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'K Academy — Accredited Aesthetics Training in London | K Clinics',
   description:
     'Train as an aesthetics practitioner at K Academy, Islington. Ofqual-regulated, VTCT and CPD-accredited courses from Level 2 to Level 7 — blended Thinkific theory, hands-on practical days and in-house exams. Finance available with Clearpay.',

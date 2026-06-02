@@ -6,7 +6,7 @@ import { EnquiryForm } from '@/components/contact/EnquiryForm';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Contact & Find Us — Islington, London | K Clinics',
   description:
     'Visit K Clinics at 4 Charterhouse Buildings, Goswell Road, Islington, London. Book online, call, or email. Opening hours and directions.',

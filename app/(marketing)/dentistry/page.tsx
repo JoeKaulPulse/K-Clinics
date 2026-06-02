@@ -9,7 +9,7 @@ import { dentistry, groupByGroup } from '@/lib/treatments';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: site.dentistryLive
     ? 'Aesthetic & Cosmetic Dentistry in London | K Clinics'
     : 'Aesthetic & Cosmetic Dentistry — Opening Soon | K Clinics London',

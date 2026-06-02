@@ -5,7 +5,7 @@ import { ConsultForm } from '@/components/consult/ConsultForm';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Book a Free Consultation — Islington, London | K Clinics',
   description:
     'Request your complimentary consultation at K Clinics, Islington. Tell us your goals and our expert team will design a bespoke treatment plan. New clients enjoy 15% off.',

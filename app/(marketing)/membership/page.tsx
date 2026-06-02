@@ -7,7 +7,7 @@ import { LOYALTY } from '@/lib/client-loyalty';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Membership & Beauty Points Rewards | K Clinics London',
   description:
     'Join K Clinics’ free Beauty Points programme — earn 1 point per £1, plus bonuses for reviews, birthdays and referrals. Redeem points as money off future treatments in Islington, London.',

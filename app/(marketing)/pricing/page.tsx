@@ -7,7 +7,7 @@ import { priceList, formatGBP } from '@/lib/pricing';
 import { OffersStrip } from '@/components/marketing/OffersStrip';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Price List — Aesthetics & Laser Treatments in London | K Clinics',
   description:
     'Full, transparent price list for K Clinics, Islington — laser hair removal, HIFU lifting, HydraFacial, carbon peel, tattoo & pigmentation removal, body contouring and more. Course savings available.',

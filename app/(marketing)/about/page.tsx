@@ -11,7 +11,7 @@ import { CountUp } from '@/components/motion/CountUp';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'About K Clinics — Premium Aesthetics & Dentistry, Islington London',
   description:
     'Meet K Clinics: a premium Islington clinic uniting advanced aesthetics and aesthetic dentistry, built on clinical excellence, artistry and uncommon care.',

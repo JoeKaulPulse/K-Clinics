@@ -4,7 +4,7 @@ import { Stagger, StaggerItem, Reveal } from '@/components/motion/Reveal';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Special Offers & Savings | K Clinics London',
   description:
     'Current offers at K Clinics, Islington — 15% off your first visit, complimentary consultations, refer-a-friend rewards, gift vouchers and savings on treatment packages.',

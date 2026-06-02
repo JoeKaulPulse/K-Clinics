@@ -5,7 +5,7 @@ import { Button, ArrowIcon } from '@/components/ui/Button';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Cost & Finance — Flexible Payment Options | K Clinics London',
   description:
     'Spread the cost of your treatment at K Clinics, Islington. Transparent pricing, pay-as-you-go courses, 0% interest-free options and Buy Now, Pay Later with Clearpay and Klarna.',
