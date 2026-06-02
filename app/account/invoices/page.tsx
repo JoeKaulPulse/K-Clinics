@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { redirect } from 'next/navigation';
 import { PortalShell } from '@/components/portal/PortalShell';
+import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
 import { crmEnabled } from '@/lib/crm';
 import { formatPrice } from '@/lib/treatments';
 import { pt } from '@/lib/i18n-portal';
@@ -22,18 +23,16 @@ export default async function InvoicesPage() {
 
   return (
     <PortalShell firstName={client.firstName} locale={locale}>
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="eyebrow mb-2">{t('inv.eyebrow')}</p>
-          <h1 className="font-[family-name:var(--font-display)] text-[clamp(1.8rem,1.3rem+2vw,2.75rem)]">{t('inv.title')}</h1>
-        </div>
-        {invoices.length > 0 && (
+      <PortalPageHeader
+        eyebrow={t('inv.eyebrow')}
+        title={t('inv.title')}
+        action={invoices.length > 0 ? (
           <div className="text-right">
             <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{t('inv.total')}</p>
             <p className="font-[family-name:var(--font-display)] text-2xl">{formatPrice(total)}</p>
           </div>
-        )}
-      </div>
+        ) : undefined}
+      />
 
       {invoices.length ? (
         <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-soft)]">

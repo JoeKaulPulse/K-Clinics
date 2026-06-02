@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PortalShell } from '@/components/portal/PortalShell';
+import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
 import { RedeemPoints } from '@/components/portal/RedeemPoints';
 import { crmEnabled } from '@/lib/crm';
 import { formatPrice } from '@/lib/treatments';
@@ -39,13 +40,11 @@ export default async function AppointmentsPage() {
 
   return (
     <PortalShell firstName={client.firstName} locale={locale}>
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="eyebrow mb-2">{t('nav.appointments')}</p>
-          <h1 className="font-[family-name:var(--font-display)] text-[clamp(1.8rem,1.3rem+2vw,2.75rem)]">{t('appt.title')}</h1>
-        </div>
-        <Link href="/book" className="rounded-full bg-[var(--color-gold)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">{t('appt.bookNew')}</Link>
-      </div>
+      <PortalPageHeader
+        eyebrow={t('nav.appointments')}
+        title={t('appt.title')}
+        action={<Link href="/book" className="rounded-full bg-[var(--color-gold)] px-6 py-3 text-sm font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)]">{t('appt.bookNew')}</Link>}
+      />
 
       <h2 className="eyebrow mb-3">{t('appt.upcoming')}</h2>
       {upcoming.length ? (
