@@ -3,6 +3,8 @@
 // submissions store the `key` + `version` so answers always map to the exact
 // wording shown. Add new versions rather than editing live questions.
 
+import { importedQuestionnaires } from './questionnaires-imported';
+
 export type FieldType = 'single' | 'multi' | 'boolean' | 'text' | 'longtext' | 'scale' | 'date' | 'signature';
 
 export type Question = {
@@ -213,6 +215,9 @@ export const treatmentConsent: Questionnaire = {
 export const questionnaires: Record<string, Questionnaire> = {
   [medicalHistory.key]: medicalHistory,
   [treatmentConsent.key]: treatmentConsent,
+  // Read-only definitions for records migrated from the old site (view only;
+  // intentionally absent from `portalAssessments`, so never offered to fill).
+  ...Object.fromEntries(importedQuestionnaires.map((q) => [q.key, q] as [string, Questionnaire])),
 };
 
 export const getQuestionnaire = (key: string): Questionnaire | undefined => questionnaires[key];

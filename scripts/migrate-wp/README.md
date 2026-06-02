@@ -39,27 +39,46 @@ DATABASE_URL="<new-db-url>" node scripts/migrate-wp/migrate.mjs \
   --file scripts/migrate-wp/data/full-dump.sql --commit
 ```
 
-Only **Node** is needed for steps 1–2 (already installed if you can run the site).
-Step 3 needs the new database URL.
+Only **Node** is needed for the dry runs (already installed if you can run the
+site). The `--commit` steps need the new database URL.
 
-## What gets imported (step 2/3)
+## Then history + clinical (same pattern: dry-run, paste, commit)
 
-- **Clients** ← WordPress users **+** WooCommerce customers (incl. guest orders),
-  de-duplicated by email. Keeps original signup dates, names, phone, DOB (if the
-  site stored it), marketing opt-in (only when explicitly recorded), and preserves
-  any address / extra fields in the client's notes so nothing is lost.
-- Passwords are **not** imported — clients set one via "forgot password" on first
-  visit (no mass email, no data loss).
+```bash
+# Appointments → bookings, testimonials → reviews, loyalty → points
+node scripts/migrate-wp/migrate-history.mjs  --file scripts/migrate-wp/data/full-dump.sql --dry-run
+DATABASE_URL="<new-db-url>" node scripts/migrate-wp/migrate-history.mjs --file scripts/migrate-wp/data/full-dump.sql --commit
 
-## What's deliberately next (after the inventory)
+# Consents, skin-quiz, care plans, recommendations, enquiry forms (ENCRYPTED)
+node scripts/migrate-wp/migrate-clinical.mjs --file scripts/migrate-wp/data/full-dump.sql --dry-run
+DATABASE_URL="<new-db-url>" HEALTH_ENCRYPTION_KEY="<same-as-prod>" [HEALTH_HMAC_KEY="<same-as-prod>"] \
+  node scripts/migrate-wp/migrate-clinical.mjs --file scripts/migrate-wp/data/full-dump.sql --commit
+```
 
-Health/consent forms → encrypted records, and order/booking history, depend on
-*which* plugins your site uses. The inventory (step 1) tells us exactly that —
-including flagging any non-empty table we don't recognise — and then I build the
-mapping for those before we import them.
+Run order for `--commit`: **clients first** (history & clinical link to them by
+email), then history, then clinical. All steps are re-runnable (each row carries
+a source marker and is skipped if already imported).
+
+## What gets imported
+
+- **Clients** ← WordPress users + WooCommerce customers, de-duped by email. Keeps
+  signup dates, names, phone (incl. `booked_phone`), DOB (`birthday`), address,
+  and marketing/SMS consent (custom columns + MailPoet + the signup checkbox).
+- **Bookings** ← `grafik`/`grafik_dent` (COMPLETED, or CANCELLED when `del=1`).
+- **Reviews** ← `review_user`. **Loyalty** ← `bonus` → ClientPoints.
+- **Encrypted clinical** ← `sign_table` (consents + signature image),
+  `skviz` (skin quiz), `care_plan`(+dent), `recommendation` → HealthAssessment
+  using the app's encryption (needs `HEALTH_ENCRYPTION_KEY`).
+- **Consultations** ← `wp_db7_forms` (CF7) + Elementor form submissions.
+- Passwords are **not** imported — clients set one via "forgot password".
+- **Not migrated** (ripped-template content/config + plumbing): `level*`,
+  `price*`, `time_consultation`, `test`, `logs`, Action Scheduler, Yoast, etc.
 
 ## Files
 
-- `inventory.mjs` — step 1: lists tables, counts, categories, flags unknowns.
-- `migrate.mjs` — step 2/3: builds & imports clients; `--dry-run` / `--commit`.
-- `lib-dump.mjs` — shared streaming `.sql` parser (no dependencies).
+- `inventory.mjs` / `columns.mjs` / `profile.mjs` — read-only discovery (tables,
+  structures, masked data shapes). All PII-free; safe to paste back.
+- `migrate.mjs` — clients. `migrate-history.mjs` — bookings/reviews/loyalty.
+  `migrate-clinical.mjs` — encrypted clinical + consultations.
+- `lib-dump.mjs` (SQL parser), `lib-crypto.mjs` (app-compatible encryption),
+  `lib-php.mjs` (PHP unserialize) — shared helpers, no external dependencies.
