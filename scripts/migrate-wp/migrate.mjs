@@ -22,6 +22,7 @@ const args = process.argv.slice(2);
 const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : null; };
 const file = opt('--file') || args.find((a) => a.endsWith('.sql'));
 const commit = args.includes('--commit');
+const refresh = args.includes('--refresh'); // overwrite name/contact on existing WP clients
 const dryRun = args.includes('--dry-run') || !commit;
 if (!file) { console.error('Provide --file <dump.sql>'); process.exit(1); }
 
@@ -95,6 +96,26 @@ let fromUsers = 0, fromOrders = 0, skippedNoEmail = 0;
 
 function blank(s) { return s == null || String(s).trim() === ''; }
 function firstToken(s) { return (s || '').trim().split(/\s+/)[0] || ''; }
+const titleCase = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
+// A display name is usable only if it's an actual name — has a letter (any
+// script, incl. Cyrillic), no digits, not an email. Handles like "abc1.abc1"
+// or "99999" are rejected so we don't show logins as names.
+function usableDisplayName(s) { return !blank(s) && !/\d/.test(s) && !/@/.test(s) && /\p{L}/u.test(s); }
+// Last resort: reconstruct a name from the email local part (anna.smith → Anna
+// Smith). Flags `review` so staff can sanity-check these.
+function nameFromEmail(email) {
+  const local = (String(email || '').split('@')[0] || '').replace(/\+.*$/, '');
+  const toks = local.split(/[._-]+/).filter((t) => t && !/^\d+$/.test(t));
+  if (!toks.length) return { first: 'Client', last: '', review: true };
+  return { first: titleCase(toks[0]), last: toks.slice(1).map(titleCase).join(' '), review: true };
+}
+// Best available name: proper meta → billing → real display name → email.
+function deriveName(m, display, email) {
+  if (!blank(m.billing_first_name) || !blank(m.billing_last_name)) return { first: (m.billing_first_name || m.first_name || '').trim(), last: (m.billing_last_name || m.last_name || '').trim(), review: false };
+  if (!blank(m.first_name) || !blank(m.last_name)) return { first: (m.first_name || '').trim(), last: (m.last_name || '').trim(), review: false };
+  if (usableDisplayName(display)) { const p = display.trim().split(/\s+/); return { first: p[0], last: p.slice(1).join(' '), review: false }; }
+  return nameFromEmail(email);
+}
 // Birthday/date columns on this site may be ISO, dd.mm.yyyy, dd/mm/yyyy or unix.
 function parseFlexDate(v) {
   if (v == null) return null;
@@ -121,8 +142,9 @@ for (const [id, u] of users) {
   const email = u.email || normEmail(m.billing_email);
   if (!email) { skippedNoEmail++; continue; }
   fromUsers++;
-  const firstName = m.billing_first_name || m.first_name || firstToken(u.display) || email.split('@')[0];
-  const lastName = m.billing_last_name || m.last_name || u.display?.split(/\s+/).slice(1).join(' ') || null;
+  const nm = deriveName(m, u.display, email);
+  const firstName = nm.first || email.split('@')[0];
+  const lastName = nm.last || null;
   // DOB: custom `birthday` column first, then any meta fallback.
   let dob = parseFlexDate(u.birthday);
   if (!dob) for (const k of DOB_KEYS) if (!blank(m[k])) { dob = parseFlexDate(m[k]); break; }
@@ -134,6 +156,7 @@ for (const [id, u] of users) {
   const phone = u.phone || m.billing_phone || m.booked_phone;
   upsertLocal(email, { firstName, lastName, phone, dob, source: 'wordpress', wpUserId: id, registered: u.registered }, u.registered, false);
   const c = clients.get(email);
+  if (nm.review) c.tags.add('needs-name-review');
   if (optIn) c.marketingOptIn = true;
   if (sms) c.smsReminders = true;
   // preserve address (custom columns first, then billing meta) + any unmapped meta
@@ -151,7 +174,8 @@ for (const [postId, m] of orderMeta) {
   if (!email) continue;
   fromOrders++;
   const addr = [m._billing_address_1, m._billing_address_2, m._billing_city, m._billing_postcode, m._billing_country].filter((x) => !blank(x)).join(', ');
-  upsertLocal(email, { firstName: m._billing_first_name || email.split('@')[0], lastName: m._billing_last_name, phone: m._billing_phone, source: 'wordpress', address: addr || null }, shopOrders.get(postId), true);
+  const g = nameFromEmail(email);
+  upsertLocal(email, { firstName: m._billing_first_name || g.first, lastName: m._billing_last_name || g.last, phone: m._billing_phone, source: 'wordpress', address: addr || null }, shopOrders.get(postId), true);
 }
 // WooCommerce orders — HPOS (wc_order_addresses)
 for (const a of hposAddr) {
@@ -159,13 +183,15 @@ for (const a of hposAddr) {
   if (!email) continue;
   fromOrders++;
   const addr = [a.address_1, a.address_2, a.city, a.postcode, a.country].filter((x) => !blank(x)).join(', ');
-  upsertLocal(email, { firstName: a.first_name || email.split('@')[0], lastName: a.last_name, phone: a.phone, source: 'wordpress', address: addr || null }, null, true);
+  const g = nameFromEmail(email);
+  upsertLocal(email, { firstName: a.first_name || g.first, lastName: a.last_name || g.last, phone: a.phone, source: 'wordpress', address: addr || null }, null, true);
 }
 // wc_customer_lookup (supplemental — fills gaps, last-active date)
 for (const r of lookup) {
   const email = normEmail(r.email);
   if (!email) continue;
-  upsertLocal(email, { firstName: r.first_name || email.split('@')[0], lastName: r.last_name, source: 'wordpress', lastVisitAt: parseDate(r.date_last_active) }, null, true);
+  const g = nameFromEmail(email);
+  upsertLocal(email, { firstName: r.first_name || g.first, lastName: r.last_name || g.last, source: 'wordpress', lastVisitAt: parseDate(r.date_last_active) }, null, true);
 }
 
 // ── report ──────────────────────────────────────────────────────────────────
@@ -174,6 +200,7 @@ const withPhone = list.filter((c) => !blank(c.phone)).length;
 const withDob = list.filter((c) => c.dob).length;
 const withAddr = list.filter((c) => !blank(c.address)).length;
 const optedIn = list.filter((c) => c.marketingOptIn).length;
+const needsReview = list.filter((c) => c.tags.has('needs-name-review')).length;
 const num = (n) => n.toLocaleString('en-GB');
 
 console.log('\n=== WordPress → Clients reconciliation ===');
@@ -184,6 +211,7 @@ console.log(`   with phone   : ${num(withPhone)}`);
 console.log(`   with DOB     : ${num(withDob)}`);
 console.log(`   with address : ${num(withAddr)}  (kept in notes until we add address fields)`);
 console.log(`   marketing opt-in (explicit) : ${num(optedIn)}`);
+console.log(`   names needing review (no real name in source): ${num(needsReview)}  ${refresh ? '[--refresh: messy names will be overwritten]' : ''}`);
 
 if (unmapped.size) {
   console.log('\nUnmapped usermeta keys seen (PII-free key names — paste back so I can map them):');
@@ -217,10 +245,26 @@ try {
       lastVisitAt: c.lastVisitAt || null,
       ...(c.createdAt ? { createdAt: c.createdAt } : {}),
     };
-    const existing = await db.client.findUnique({ where: { email: c.email }, select: { id: true, phone: true, dob: true, tags: true, notes: true } });
+    const existing = await db.client.findUnique({ where: { email: c.email }, select: { id: true, source: true, firstName: true, lastName: true, phone: true, dob: true, tags: true, notes: true, marketingOptIn: true, smsReminders: true } });
     if (!existing) {
       await db.client.create({ data: baseCreate });
       created++;
+    } else if (refresh && existing.source === 'wordpress') {
+      // --refresh: re-derive and OVERWRITE name/contact on WP-imported clients
+      // (e.g. to clean up messy names). Only touches migration-owned records.
+      await db.client.update({
+        where: { id: existing.id },
+        data: {
+          firstName: baseCreate.firstName,
+          lastName: baseCreate.lastName,
+          phone: baseCreate.phone ?? existing.phone,
+          dob: baseCreate.dob ?? existing.dob,
+          marketingOptIn: existing.marketingOptIn || baseCreate.marketingOptIn,
+          smsReminders: existing.smsReminders || baseCreate.smsReminders,
+          tags: [...new Set([...(existing.tags || []), ...baseCreate.tags])],
+        },
+      });
+      updated++;
     } else {
       // Conservative: only fill blanks, merge tags — never overwrite live edits.
       await db.client.update({
