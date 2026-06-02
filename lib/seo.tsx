@@ -280,6 +280,27 @@ export function courseLd(c: { title: string; description: string; path: string; 
   return o;
 }
 
+/** Price-list catalogue → OfferCatalog of priced Services (rich price results
+ *  & strong grounding for AI shopping/answer engines). Prices are in GBP. */
+export function offerCatalogLd(items: { name: string; price: number }[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'OfferCatalog',
+    name: `${site.name} — Price List`,
+    url: `${base}/pricing`,
+    provider: { '@id': `${base}/#clinic` },
+    itemListElement: items.map((it, i) => ({
+      '@type': 'Offer',
+      position: i + 1,
+      itemOffered: { '@type': 'Service', name: it.name, provider: { '@id': `${base}/#clinic` } },
+      price: it.price.toFixed(2),
+      priceCurrency: 'GBP',
+      availability: 'https://schema.org/InStock',
+      url: `${base}/book`,
+    })),
+  };
+}
+
 export function faqLd(faqs: { q: string; a: string }[]) {
   return {
     '@context': 'https://schema.org',
