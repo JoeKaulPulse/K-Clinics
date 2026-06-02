@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation';
 import { PortalShell } from '@/components/portal/PortalShell';
 import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
 import { ReferralCard } from '@/components/portal/ReferralCard';
+import { Reveal } from '@/components/motion/Reveal';
+import { KMark } from '@/components/brand/marks';
 import { crmEnabled } from '@/lib/crm';
 import { formatPrice } from '@/lib/treatments';
 import { site } from '@/lib/site';
@@ -44,19 +46,26 @@ export default async function RewardsPage() {
     <PortalShell firstName={client.firstName} locale={locale}>
       <PortalPageHeader eyebrow={t('nav.rewards')} title={t('rw.title')} subtitle={t('rw.sub')} />
 
-      {/* Balance */}
+      {/* Balance — premium membership card */}
+      <Reveal>
       <div className="grid gap-5 lg:grid-cols-3">
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-ink)] p-6 text-[var(--color-porcelain)]">
-          <p className="text-xs uppercase tracking-wide text-[var(--color-porcelain)]/60">{t('rw.balance')}</p>
-          <p className="mt-2 font-[family-name:var(--font-display)] text-5xl text-[var(--color-gold-soft)]">{summary.balance.toLocaleString(lc)}</p>
-          <p className="mt-1 text-sm text-[var(--color-porcelain)]/70">{t('rw.points')} · {t('rw.worth', { value: formatPrice(summary.valuePence) })}</p>
+        <div className="relative flex flex-col justify-between overflow-hidden rounded-[var(--radius-lg)] border border-white/10 bg-[var(--color-ink)] p-7 text-[var(--color-porcelain)] shadow-[var(--shadow-lift)]">
+          <span aria-hidden className="pointer-events-none absolute inset-0">
+            <span className="absolute inset-0 bg-[radial-gradient(115%_120%_at_88%_4%,color-mix(in_oklab,var(--color-gold)_36%,transparent),transparent_58%)]" />
+            <span className="absolute -bottom-14 -right-10 h-48 w-48 text-[var(--color-gold)] opacity-[0.12]"><KMark animated /></span>
+          </span>
+          <div className="relative z-10">
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-[var(--color-porcelain)]/60">{t('rw.balance')}</p>
+            <p className="mt-3 font-[family-name:var(--font-display)] text-[clamp(2.8rem,2rem+3vw,4rem)] leading-none text-[var(--color-gold-soft)]">{summary.balance.toLocaleString(lc)}</p>
+            <p className="mt-2 text-sm text-[var(--color-porcelain)]/75">{t('rw.points')} · {t('rw.worth', { value: formatPrice(summary.valuePence) })}</p>
+          </div>
           {summary.expiringSoon > 0 && (
-            <p className="mt-3 inline-block rounded-full bg-[var(--color-porcelain)]/10 px-3 py-1 text-xs text-[var(--color-gold-soft)]">{t('rw.expiringSoon', { n: summary.expiringSoon })}</p>
+            <p className="relative z-10 mt-4 inline-block self-start rounded-full bg-[var(--color-porcelain)]/10 px-3 py-1 text-xs text-[var(--color-gold-soft)] backdrop-blur-sm">{t('rw.expiringSoon', { n: summary.expiringSoon })}</p>
           )}
         </div>
 
         {/* How to earn */}
-        <div className="lg:col-span-2 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
+        <div className="lg:col-span-2 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-soft)]">
           <h2 className="mb-3 text-sm font-medium">{t('rw.howTitle')}</h2>
           <ul className="grid gap-2.5 sm:grid-cols-2">
             {[
@@ -74,8 +83,10 @@ export default async function RewardsPage() {
           <p className="mt-4 border-t border-[var(--color-line)] pt-3 text-xs text-[var(--color-stone-soft)]">{t('rw.redeemNote')}</p>
         </div>
       </div>
+      </Reveal>
 
       {/* Referral */}
+      <Reveal delay={0.06}>
       <div className="mt-5">
         <ReferralCard
           link={link}
@@ -86,6 +97,7 @@ export default async function RewardsPage() {
           }}
         />
       </div>
+      </Reveal>
 
       {/* Activity */}
       <h2 className="eyebrow mb-3 mt-10">{t('rw.activity')}</h2>
