@@ -6,19 +6,15 @@ import { MaskReveal } from '@/components/motion/MaskReveal';
 import { MediaArt } from '@/components/ui/MediaArt';
 import { ReadingProgress } from '@/components/journal/ReadingProgress';
 import { BookingButtons } from '@/components/booking/BookingButtons';
-import { articleImage, treatmentImage } from '@/lib/treatment-images';
-import { getArticle, articleSlugs, sortedArticles } from '@/lib/articles';
+import { getBlogPost, moreBlogCards } from '@/lib/blog';
 import { getTreatment } from '@/lib/treatments';
 import { pageMeta, JsonLd, articleLd, breadcrumbLd } from '@/lib/seo';
 
-export const dynamicParams = false;
-export function generateStaticParams() {
-  return articleSlugs.map((slug) => ({ slug }));
-}
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const a = getArticle(slug);
+  const a = await getBlogPost(slug);
   if (!a) return {};
   return pageMeta({ title: `${a.title} | KClinics Journal`, description: a.metaDescription, path: `/journal/${a.slug}`, keywords: a.keywords, ownOgImage: true });
 }
@@ -27,21 +23,18 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day
 
 export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const a = getArticle(slug);
+  const a = await getBlogPost(slug);
   if (!a) notFound();
 
-  const img = articleImage(a.slug);
   const related = (a.related ?? []).map(getTreatment).filter(Boolean);
-  const more = sortedArticles.filter((x) => x.slug !== a.slug).slice(0, 2);
-
-  let firstP = true; // drop-cap the opening paragraph only
+  const more = await moreBlogCards(a.slug, 2);
 
   return (
     <>
       <ReadingProgress />
       <JsonLd
         data={[
-          articleLd({ title: a.title, description: a.metaDescription, path: `/journal/${a.slug}`, published: a.published, updated: a.updated, image: img ?? undefined, keywords: a.keywords }),
+          articleLd({ title: a.title, description: a.metaDescription, path: `/journal/${a.slug}`, published: a.published, updated: a.updated, image: a.image ?? undefined, keywords: a.keywords }),
           breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Journal', path: '/journal' }, { name: a.title, path: `/journal/${a.slug}` }]),
         ]}
       />
@@ -56,7 +49,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           </nav>
           <p className="eyebrow mb-4">{a.category} · {a.readMinutes} min read · {fmtDate(a.published)}</p>
           <h1 className="font-[family-name:var(--font-display)] text-[clamp(2rem,1.4rem+2.6vw,3.5rem)] leading-[1.05]">{a.title}</h1>
-          <p className="mt-5 text-lede leading-relaxed text-[var(--color-stone)]">{a.excerpt}</p>
+          {a.excerpt && <p className="mt-5 text-lede leading-relaxed text-[var(--color-stone)]">{a.excerpt}</p>}
           <div className="mt-7 flex items-center gap-3 border-t border-[var(--color-line)] pt-6">
             <span className="grid h-10 w-10 place-items-center rounded-full bg-[var(--color-ink)] font-[family-name:var(--font-display)] text-sm text-[var(--color-gold-soft)]">K</span>
             <div className="text-sm">
@@ -70,30 +63,14 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       {/* Hero image */}
       <section className="container-lux mt-10">
         <MaskReveal className="aspect-[16/9] w-full overflow-hidden rounded-[var(--radius-2xl)] shadow-[var(--shadow-lift)]">
-          <MediaArt src={img} from="#a98a6d" to="#3d352f" alt={a.title} priority className="h-full w-full" />
+          <MediaArt src={a.image} from="#a98a6d" to="#3d352f" alt={a.title} priority className="h-full w-full" />
         </MaskReveal>
       </section>
 
-      {/* Body */}
+      {/* Body (HTML) */}
       <section className="container-narrow section-sm">
-        <article>
-          {a.blocks.map((b, i) => {
-            if (b.type === 'h2') return <h2 key={i} className="mt-10 font-[family-name:var(--font-display)] text-2xl md:text-3xl">{b.text}</h2>;
-            if (b.type === 'ul') return (
-              <ul key={i} className="mt-4 space-y-2.5">
-                {b.items.map((it, j) => (
-                  <li key={j} className="flex items-start gap-3 leading-relaxed text-[var(--color-ink-soft)]">
-                    <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-gold)]" />
-                    {it}
-                  </li>
-                ))}
-              </ul>
-            );
-            const drop = firstP;
-            firstP = false;
-            return <p key={i} className={`mt-5 text-lg leading-relaxed text-[var(--color-ink-soft)] ${drop ? 'first-letter:float-left first-letter:mr-3 first-letter:font-[family-name:var(--font-display)] first-letter:text-[3.4rem] first-letter:leading-[0.78] first-letter:text-[var(--color-gold)]' : ''}`}>{b.text}</p>;
-          })}
-        </article>
+        <style dangerouslySetInnerHTML={{ __html: JOURNAL_PROSE_CSS }} />
+        <article className="journal-prose" dangerouslySetInnerHTML={{ __html: a.html }} />
 
         {/* Related treatments CTA */}
         {related.length > 0 && (
@@ -120,7 +97,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
               {more.map((m) => (
                 <Link key={m.slug} href={`/journal/${m.slug}`} className="group flex gap-5 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
                   <div className="relative h-24 w-32 shrink-0 overflow-hidden rounded-[var(--radius-md)]">
-                    <MediaArt src={articleImage(m.slug)} from="#a98a6d" to="#7b6a5d" alt={m.title} className="h-full w-full" />
+                    <MediaArt src={m.image} from="#a98a6d" to="#7b6a5d" alt={m.title} className="h-full w-full" />
                   </div>
                   <div>
                     <p className="eyebrow mb-1 text-xs">{m.category}</p>
@@ -135,3 +112,22 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     </>
   );
 }
+
+// Typographic styling for the HTML body (imported WordPress + admin-authored).
+const JOURNAL_PROSE_CSS = `
+.journal-prose{color:var(--color-ink-soft);font-size:1.075rem;line-height:1.75;}
+.journal-prose > :first-child{margin-top:0;}
+.journal-prose h2{font-family:var(--font-display),serif;font-size:clamp(1.5rem,1.2rem+1vw,2rem);line-height:1.15;margin:2.5rem 0 0.75rem;color:var(--color-ink);}
+.journal-prose h3{font-family:var(--font-display),serif;font-size:1.3rem;margin:2rem 0 0.5rem;color:var(--color-ink);}
+.journal-prose p{margin:1.1rem 0;}
+.journal-prose ul,.journal-prose ol{margin:1.1rem 0;padding-left:1.4rem;}
+.journal-prose li{margin:0.4rem 0;}
+.journal-prose ul li{list-style:disc;}
+.journal-prose ol li{list-style:decimal;}
+.journal-prose a{color:var(--color-gold);text-decoration:underline;text-underline-offset:3px;}
+.journal-prose strong{color:var(--color-ink);font-weight:600;}
+.journal-prose img{max-width:100%;height:auto;border-radius:var(--radius-lg);margin:1.5rem 0;}
+.journal-prose blockquote{border-left:3px solid var(--color-gold);padding-left:1rem;margin:1.5rem 0;color:var(--color-stone);font-style:italic;}
+.journal-prose figure{margin:1.5rem 0;}
+.journal-prose h2:first-child,.journal-prose h3:first-child{margin-top:0;}
+`;

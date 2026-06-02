@@ -1691,3 +1691,34 @@ model ChatMessage {
 
   @@index([conversationId, createdAt])
 }
+
+// ── Blog / Journal posts (DB-backed CMS) ────────────────────────────────────
+// Admin-managed articles for /journal. Native curated articles (lib/articles.ts)
+// still render as a fallback for any slug not present here, so nothing vanishes.
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model Post {
+  id              String     @id @default(cuid())
+  slug            String     @unique
+  title           String
+  excerpt         String?
+  metaDescription String?
+  content         String     // HTML body
+  category        String?    // Skin | Laser | Injectables | Dentistry | Wellbeing
+  tags            String[]   @default([])
+  keywords        String[]   @default([])
+  related         String[]   @default([]) // treatment slugs mentioned (for CTAs)
+  coverImage      String?    // image URL/path (optional → generative art fallback)
+  readMinutes     Int        @default(5)
+  status          PostStatus @default(DRAFT)
+  source          String?    // 'wordpress' | 'native' | null (admin-authored)
+  authorName      String?    @default("The KClinics team")
+  publishedAt     DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([status, publishedAt])
+}
