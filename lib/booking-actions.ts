@@ -118,6 +118,9 @@ export async function cancelBooking(
     data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Cancelled ${booking.treatmentTitle}${late ? ' (within 24h)' : ''}${charged ? ` — charged £${(charged / 100).toFixed(2)}` : opts.waiveFee && late ? ' — fee waived' : ''}`, author: opts.by },
   });
 
+  // Remove from the shared clinic calendar (Hostinger CalDAV; no-op if unconfigured).
+  import('@/lib/hostinger-calendar').then((m) => m.removeBooking(booking.id)).catch(() => {});
+
   // Return any loyalty points the client had applied to this booking.
   try {
     const { refundBookingPoints } = await import('@/lib/client-loyalty');
