@@ -104,7 +104,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
           <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
             <Link href={`/admin/clients/${b.clientId}`} className="font-medium hover:text-[var(--color-gold)]">{name}</Link>
             <p className="mt-1 text-sm text-[var(--color-stone)]">{b.client.email}{b.client.phone ? ` · ${b.client.phone}` : ''}</p>
-            {b.notes && <p className="mt-3 border-t border-[var(--color-line)] pt-3 text-sm">{b.notes}</p>}
+            {(() => { const n = (b.notes || '').replace(/\s*\[wp:[^\]]+\]/g, '').trim(); return n ? <p className="mt-3 whitespace-pre-line border-t border-[var(--color-line)] pt-3 text-sm">{n}</p> : null; })()}
             <p className="mt-3 text-xs text-[var(--color-stone-soft)]">
               Card {b.stripePaymentMethodId ? 'saved ✓' : 'not saved'} · booked {new Date(b.createdAt).toLocaleDateString('en-GB')}
             </p>
