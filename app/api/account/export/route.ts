@@ -8,11 +8,15 @@ export const dynamic = 'force-dynamic';
 // client's own record as JSON. Secrets are never included; clinical answers are
 // summarised (the encrypted detail is shared by the clinic on request, with
 // identity checks) — this gives the client their account + booking history.
-export async function GET() {
+export async function GET(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
   const { getClientSession } = await import('@/lib/auth');
   const session = await getClientSession();
   if (!session) return NextResponse.json({ ok: false, error: 'Please sign in.' }, { status: 401 });
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'export', 5, 3600))) {
+    return NextResponse.json({ ok: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
+  }
 
   const { db } = await import('@/lib/db');
   const c = await db.client.findUnique({
