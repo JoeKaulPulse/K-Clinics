@@ -19,11 +19,19 @@ import { CountUp } from '@/components/motion/CountUp';
 import { Aurora } from '@/components/ui/Aurora';
 import { FaqAccordion } from '@/components/ui/FaqAccordion';
 import { allGeneralFaqs } from '@/lib/faqs';
-import { faqLd, JsonLd as JsonLdHome } from '@/lib/seo';
+import { faqLd, JsonLd as JsonLdHome, pageMeta } from '@/lib/seo';
 import { treatments, getTreatment } from '@/lib/treatments';
 import { packages } from '@/lib/packages';
 import { site } from '@/lib/site';
 import { JsonLd, breadcrumbLd, aggregateRatingLd } from '@/lib/seo';
+
+// Home page is the most-shared URL — give it explicit canonical + OG/Twitter
+// (it otherwise inherits only the layout defaults, with no social tags).
+export const metadata = pageMeta({
+  title: `${site.name} — ${site.tagline} | Islington, London`,
+  description: site.description,
+  path: '/',
+});
 
 const featured = ['laser-hair-removal', 'smas-hifu-lifting', 'hydraglow-facial', 'veneers', 'body-contouring', 'cosmetic-injections']
   .map(getTreatment)
