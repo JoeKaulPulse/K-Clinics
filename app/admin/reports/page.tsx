@@ -16,13 +16,16 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const session = await getSession();
   if (!sessionCan(session, 'finance.view')) redirect('/admin');
   const { range } = await searchParams;
-  const days = RANGES.includes(Number(range)) ? Number(range) : 90;
-  const since = new Date(Date.now() - days * 864e5);
+  const all = range === 'all';
+  const days = all ? 0 : (RANGES.includes(Number(range)) ? Number(range) : 90);
+  const since = all ? new Date(0) : new Date(Date.now() - days * 864e5);
 
   const { db } = await import('@/lib/db');
   const [completed, items, consumables] = await Promise.all([
     db.booking.findMany({
-      where: { status: 'COMPLETED', finishedAt: { gte: since } },
+      // Filter on the appointment date (startAt) so imported/historical completed
+      // bookings — which have no finishedAt — are counted too.
+      where: { status: 'COMPLETED', startAt: { gte: since } },
       select: { practitionerId: true, actualMinutes: true, durationMin: true, pricePence: true, chargedPence: true, treatmentTitle: true, practitioner: { select: { name: true, email: true } } },
     }),
     db.stockItem.findMany({ where: { active: true }, select: { currentQty: true, costPence: true } }),
@@ -67,12 +70,13 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-[family-name:var(--font-display)] text-3xl">{L('Reports', 'Звіти')}</h1>
-          <p className="mt-1 text-sm text-[var(--color-stone)]">{L(`Performance over the last ${days} days.`, `Показники за останні ${days} днів.`)}</p>
+          <p className="mt-1 text-sm text-[var(--color-stone)]">{all ? L('Performance — all time (incl. imported history).', 'Показники — за весь час.') : L(`Performance over the last ${days} days.`, `Показники за останні ${days} днів.`)}</p>
         </div>
         <div className="flex gap-1 rounded-full border border-[var(--color-line)] p-0.5 text-sm">
           {RANGES.map((r) => (
-            <Link key={r} href={`/admin/reports?range=${r}`} className={`rounded-full px-3 py-1 ${days === r ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)]'}`}>{r}d</Link>
+            <Link key={r} href={`/admin/reports?range=${r}`} className={`rounded-full px-3 py-1 ${!all && days === r ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)]'}`}>{r}d</Link>
           ))}
+          <Link href="/admin/reports?range=all" className={`rounded-full px-3 py-1 ${all ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)]'}`}>{L('All', 'Усе')}</Link>
         </div>
       </div>
 
