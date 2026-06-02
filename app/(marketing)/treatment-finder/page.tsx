@@ -3,7 +3,7 @@ import { PageHero } from '@/components/ui/PageHero';
 import { TreatmentFinder } from '@/components/finder/TreatmentFinder';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Treatment Finder — Find Your Ideal Treatment | K Clinics London',
   description:
     'Answer a few quick questions and discover the K Clinics treatments best suited to your skin, smile or body goals. Personalised, no obligation.',

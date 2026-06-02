@@ -5,7 +5,7 @@ import { sortedArticles } from '@/lib/articles';
 import { articleImage } from '@/lib/treatment-images';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'The Journal — Expert Skin, Laser & Dentistry Guides | K Clinics London',
   description:
     'Expert guidance from K Clinics, Islington — honest, practical articles on laser, skin, injectables and aesthetic dentistry to help you make confident, informed choices.',

@@ -27,7 +27,7 @@ import { JsonLd, breadcrumbLd, aggregateRatingLd } from '@/lib/seo';
 
 // Home page is the most-shared URL — give it explicit canonical + OG/Twitter
 // (it otherwise inherits only the layout defaults, with no social tags).
-export const metadata = pageMeta({
+export const generateMetadata = () => pageMeta({
   title: `${site.name} — ${site.tagline} | Islington, London`,
   description: site.description,
   path: '/',

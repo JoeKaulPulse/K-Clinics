@@ -20,26 +20,14 @@ export async function generateMetadata({
   const { slug } = await params;
   const t = getTreatment(slug);
   if (!t) return {};
-  const meta = pageMeta({
+  // Override merge (title/description/canonical/OG/noindex) is centralised in pageMeta.
+  return pageMeta({
     title: t.metaTitle,
     description: t.metaDescription,
     path: `/${t.slug}`,
     keywords: t.keywords,
     ownOgImage: true,
   });
-  // Merge any admin SEO override (best-effort; no-op without a DB).
-  try {
-    const { getPageOverride } = await import('@/lib/seo-audit');
-    const ov = await getPageOverride(`/${t.slug}`);
-    if (ov) {
-      if (ov.title) meta.title = { absolute: ov.title };
-      if (ov.description) meta.description = ov.description;
-      if (ov.canonical) meta.alternates = { ...(meta.alternates || {}), canonical: ov.canonical };
-      if (ov.noindex) meta.robots = { index: false, follow: true };
-      if (ov.ogImage) meta.openGraph = { ...(meta.openGraph || {}), images: [{ url: ov.ogImage }] };
-    }
-  } catch { /* overrides are best-effort */ }
-  return meta;
 }
 
 export default async function TreatmentPage({ params }: { params: Promise<{ slug: string }> }) {

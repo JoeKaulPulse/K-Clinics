@@ -5,7 +5,7 @@ import { BookingFlow } from '@/components/booking/BookingFlow';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Book an Appointment — Islington, London | K Clinics',
   description:
     'Book your appointment at K Clinics, Islington. Create your free account for 15% off your first visit, choose your treatment and time; your card is saved securely and only charged when your service is delivered. Free cancellation up to 24 hours before.',

@@ -6,7 +6,7 @@ import { AccessBadges } from '@/components/ui/AccessBadges';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Our Clinic — Find Us in Islington, London | K Clinics',
   description:
     'Visit K Clinics on the border of the City of London and Islington — 4 Charterhouse Buildings, Goswell Road, EC1M 7AN. Step-free access, parking nearby and minutes from Barbican, Farringdon and Old Street.',

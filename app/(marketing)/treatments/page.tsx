@@ -6,7 +6,7 @@ import { BookingButtons } from '@/components/booking/BookingButtons';
 import { aesthetics, groupByGroup } from '@/lib/treatments';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Aesthetic Treatments in London — Laser, Skin & Body | K Clinics',
   description:
     'Explore K Clinics’ full menu of aesthetic treatments in Islington, London — laser hair removal, HIFU lifting, advanced facials, body contouring and injectables.',

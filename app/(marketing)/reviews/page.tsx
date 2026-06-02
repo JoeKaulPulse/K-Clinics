@@ -6,7 +6,7 @@ import { Stars } from '@/components/ui/Stars';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd, aggregateRatingLd } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Client Reviews & Testimonials | K Clinics London',
   description:
     'Real, verified reviews from K Clinics, Islington — across laser, skin, body and aesthetic dentistry. We only ever publish 5-star reviews left by genuine clients.',

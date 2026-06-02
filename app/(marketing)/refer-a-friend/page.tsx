@@ -6,7 +6,7 @@ import { Button, ArrowIcon } from '@/components/ui/Button';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Refer a Friend — Give £25, Get £25 | K Clinics London',
   description: 'Share K Clinics with a friend: they get £25 off their first treatment and you get £25 credit when they visit. Generous, simple, and automatic.',
   path: '/refer-a-friend',

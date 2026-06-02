@@ -7,7 +7,7 @@ import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 import type { TeamMember } from '@/lib/team-data';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Our Team — Expert Clinicians & Practitioners | K Clinics London',
   description:
     'Meet the K Clinics team — qualified aesthetic doctors, laser specialists and cosmetic dentists, with their experience, ratings and specialisms, delivering safe, artful results in Islington, London.',

@@ -6,7 +6,7 @@ import { BookingButtons } from '@/components/booking/BookingButtons';
 import { generalFaqs, allGeneralFaqs } from '@/lib/faqs';
 import { pageMeta, JsonLd, breadcrumbLd, faqLd } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Frequently Asked Questions | K Clinics London',
   description:
     'Answers to common questions about treatments, booking, pricing and safety at K Clinics, Islington, London. Complimentary consultations and 15% off your first visit.',

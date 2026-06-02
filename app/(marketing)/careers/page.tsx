@@ -6,7 +6,7 @@ import { ApplyForm } from '@/components/careers/ApplyForm';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
-export const metadata: Metadata = pageMeta({
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Careers — Join K Clinics | Islington, London',
   description: 'Build your career at K Clinics, Islington — a place that invests in its people. See our live vacancies and apply, or send a speculative application.',
   path: '/careers',

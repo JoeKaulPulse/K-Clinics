@@ -25,12 +25,17 @@ export async function POST(req: Request) {
       updatedBy: session.email,
     };
     await db.pageSeo.upsert({ where: { path }, update: data, create: { path, ...data } });
+    const { revalidatePath } = await import('next/cache');
+    revalidatePath(path); // overrides now apply on the live page immediately
     return NextResponse.json({ ok: true });
   }
 
   if (body.op === 'clear') {
     if (!body.path) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
-    await db.pageSeo.deleteMany({ where: { path: String(body.path) } });
+    const path = String(body.path);
+    await db.pageSeo.deleteMany({ where: { path } });
+    const { revalidatePath } = await import('next/cache');
+    revalidatePath(path);
     return NextResponse.json({ ok: true });
   }
 
