@@ -116,6 +116,22 @@ function deriveName(m, display, email) {
   if (usableDisplayName(display)) { const p = display.trim().split(/\s+/); return { first: p[0], last: p.slice(1).join(' '), review: false }; }
   return nameFromEmail(email);
 }
+
+// Spot junk/test signups from the old site (keyboard-mash, repeated words, bot
+// gibberish) so they can be filtered + bulk-archived rather than counted as real
+// clients. Conservative: real clients don't have digits in their name, repeated
+// first==last, or dotless gibberish emails with embedded digits.
+const KB_MASH = /^(qwerty|asdf|zxcv|qwe|asd|zxc|wsx|edc|test|demo|sample|www+|abcd?|abc123|sdfg|dfgd?|fghj|hjkl|xxx+|aaa+|zzz+|qqq+|wer|ert|rty|asdasd|qweqwe)$/i;
+function isLikelyTest(first, last, email) {
+  const f = (first || '').trim(), l = (last || '').trim();
+  if (f && l && f.toLowerCase() === l.toLowerCase()) return true; // "November November", "qwerty qwerty"
+  if (/\d/.test(f)) return true;                                   // "Www5"
+  if (KB_MASH.test(f)) return true;
+  const local = String(email || '').split('@')[0];
+  const gibberish = local.length >= 6 && local.length <= 14 && !/[._-]/.test(local) && /[a-z]\d/i.test(local) && /\d[a-z]/i.test(local);
+  if (gibberish && f.length <= 8) return true;                     // bot signup e.g. "jrq17j9t"
+  return false;
+}
 // Birthday/date columns on this site may be ISO, dd.mm.yyyy, dd/mm/yyyy or unix.
 function parseFlexDate(v) {
   if (v == null) return null;
@@ -157,6 +173,7 @@ for (const [id, u] of users) {
   upsertLocal(email, { firstName, lastName, phone, dob, source: 'wordpress', wpUserId: id, registered: u.registered }, u.registered, false);
   const c = clients.get(email);
   if (nm.review) c.tags.add('needs-name-review');
+  if (isLikelyTest(firstName, lastName, email)) c.tags.add('likely-test');
   if (optIn) c.marketingOptIn = true;
   if (sms) c.smsReminders = true;
   // preserve address (custom columns first, then billing meta) + any unmapped meta
@@ -201,6 +218,7 @@ const withDob = list.filter((c) => c.dob).length;
 const withAddr = list.filter((c) => !blank(c.address)).length;
 const optedIn = list.filter((c) => c.marketingOptIn).length;
 const needsReview = list.filter((c) => c.tags.has('needs-name-review')).length;
+const likelyTest = list.filter((c) => c.tags.has('likely-test')).length;
 const num = (n) => n.toLocaleString('en-GB');
 
 console.log('\n=== WordPress → Clients reconciliation ===');
@@ -212,6 +230,7 @@ console.log(`   with DOB     : ${num(withDob)}`);
 console.log(`   with address : ${num(withAddr)}  (kept in notes until we add address fields)`);
 console.log(`   marketing opt-in (explicit) : ${num(optedIn)}`);
 console.log(`   names needing review (no real name in source): ${num(needsReview)}  ${refresh ? '[--refresh: messy names will be overwritten]' : ''}`);
+console.log(`   likely test/junk accounts (tagged 'likely-test'): ${num(likelyTest)}`);
 
 if (unmapped.size) {
   console.log('\nUnmapped usermeta keys seen (PII-free key names — paste back so I can map them):');

@@ -15,6 +15,7 @@ const FLAGS = [
   { k: '', label: 'All' },
   { k: 'optin', label: 'Marketing opt-in' },
   { k: 'review', label: 'Needs name review' },
+  { k: 'likelytest', label: 'Likely test/junk' },
   { k: 'wordpress', label: 'Imported' },
 ];
 
@@ -98,6 +99,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         {rows.length === 0 && <p className="p-6 text-sm text-[var(--color-stone)]">No clients found.</p>}
         {rows.map((c) => {
           const review = c.tags?.includes('needs-name-review');
+          const test = c.tags?.includes('likely-test');
           return (
             <Link key={c.id} href={`/admin/clients/${c.id}`} className={`${rowCls} hover:bg-[var(--color-bone)]`}>
               <p className="font-medium">{c.firstName} {c.lastName ?? ''}</p>
@@ -105,6 +107,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
               <p className="hidden text-sm text-[var(--color-stone)] sm:block">{c.phone ?? '—'}</p>
               <p className="hidden text-sm text-[var(--color-stone)] sm:block">{fmtDate(c.createdAt)}</p>
               <div className="flex flex-wrap justify-end gap-1.5">
+                {test && <span className="rounded-full bg-[color-mix(in_oklab,#c0392b_18%,transparent)] px-2.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-[var(--color-ink)]" title="Looks like an old test/junk signup — review and archive">test</span>}
                 {review && <span className="rounded-full bg-[color-mix(in_oklab,#d9a441_22%,transparent)] px-2.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-[var(--color-ink)]" title="No real name in the imported data — please review">review</span>}
                 {c.marketingOptIn && <span className="rounded-full bg-[var(--color-bone)] px-2.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-[var(--color-stone)]">opt-in</span>}
               </div>
