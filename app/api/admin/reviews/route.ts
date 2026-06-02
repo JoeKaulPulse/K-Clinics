@@ -50,6 +50,8 @@ export async function POST(req: Request) {
     await logAudit({ action: 'REVIEW_PUBLISHED', actor: session.email, actorRole: session.role, clientId: r.clientId, summary: 'Review published' });
     const { revalidatePath } = await import('next/cache');
     revalidatePath('/reviews'); revalidatePath('/');
+    const { indexNow } = await import('@/lib/indexnow');
+    await indexNow(['/reviews', '/']);
     return NextResponse.json({ ok: true });
   }
 
