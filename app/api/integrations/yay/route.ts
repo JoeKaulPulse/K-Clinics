@@ -3,6 +3,12 @@ import { timingSafeEqual } from 'node:crypto';
 
 export const runtime = 'nodejs';
 
+// Reachability check — open this URL in a browser to confirm the endpoint is
+// deployed and public (does NOT reveal the secret or accept events; events are POST).
+export async function GET() {
+  return NextResponse.json({ ok: true, service: 'yay-webhook', expects: 'POST', configured: !!process.env.YAY_WEBHOOK_SECRET });
+}
+
 // yay.com call webhook → immutable CallRecord. Configure yay to POST call/CDR
 // events here with ?token=<YAY_WEBHOOK_SECRET> (or an Authorization: Bearer
 // header). Idempotent on the yay call id, so duplicate deliveries are safe.
