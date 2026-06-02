@@ -87,6 +87,10 @@ export const PERMISSIONS: Permission[] = [
   // Telephony
   { key: 'calls.view', group: 'Telephony', label: 'View calls', description: 'See the call log, recordings and transcripts.' },
   { key: 'calls.manage', group: 'Telephony', label: 'Place & annotate calls', description: 'Use click-to-dial and add notes to call records.' },
+
+  // Suppliers
+  { key: 'suppliers.view', group: 'Suppliers', label: 'View suppliers', description: 'See supplier contacts, account details and their Xero bills.' },
+  { key: 'suppliers.manage', group: 'Suppliers', label: 'Manage suppliers', description: 'Add, edit and link suppliers (incl. Xero contacts).' },
 ];
 
 export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
@@ -129,6 +133,8 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     'rewards.view',
     'calls.view',
     'calls.manage',
+    'suppliers.view',
+    'suppliers.manage',
   ],
   STAFF: ['dashboard.view', 'bookings.view', 'consultations.view', 'clients.view', 'calendar.view', 'inventory.view'],
 };

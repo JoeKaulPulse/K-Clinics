@@ -22,7 +22,7 @@ export async function POST(req: Request) {
         : {};
       const rows = await db.callRecord.findMany({
         where, orderBy: { startedAt: 'desc' }, take: 100,
-        include: { matchedClient: { select: { id: true, firstName: true, lastName: true } } },
+        include: { matchedClient: { select: { id: true, firstName: true, lastName: true } }, matchedSupplier: { select: { id: true, name: true } } },
       });
       return NextResponse.json({ ok: true, calls: rows.map((c) => ({
         id: c.id, direction: c.direction, fromNumber: c.fromNumber, toNumber: c.toNumber,
@@ -30,6 +30,7 @@ export async function POST(req: Request) {
         recordingUrl: c.recordingUrl, transcriptStatus: c.transcriptStatus, hasTranscript: !!c.transcript,
         matchType: c.matchType, matchedLabel: c.matchedLabel,
         client: c.matchedClient ? { id: c.matchedClient.id, name: [c.matchedClient.firstName, c.matchedClient.lastName].filter(Boolean).join(' ') } : null,
+        supplier: c.matchedSupplier ? { id: c.matchedSupplier.id, name: c.matchedSupplier.name } : null,
         agentEmail: c.agentEmail, notes: c.notes,
       })) });
     }
@@ -37,13 +38,14 @@ export async function POST(req: Request) {
       if (!b.id) return NextResponse.json({ ok: false }, { status: 400 });
       const c = await db.callRecord.findUnique({
         where: { id: String(b.id) },
-        include: { matchedClient: { select: { id: true, firstName: true, lastName: true } } },
+        include: { matchedClient: { select: { id: true, firstName: true, lastName: true } }, matchedSupplier: { select: { id: true, name: true } } },
       });
       if (!c) return NextResponse.json({ ok: false }, { status: 404 });
       return NextResponse.json({ ok: true, call: {
         ...c, startedAt: c.startedAt.toISOString(), answeredAt: c.answeredAt?.toISOString() ?? null,
         endedAt: c.endedAt?.toISOString() ?? null, createdAt: c.createdAt.toISOString(), raw: undefined,
         client: c.matchedClient ? { id: c.matchedClient.id, name: [c.matchedClient.firstName, c.matchedClient.lastName].filter(Boolean).join(' ') } : null,
+        supplier: c.matchedSupplier ? { id: c.matchedSupplier.id, name: c.matchedSupplier.name } : null,
       } });
     }
     case 'note': {

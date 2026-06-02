@@ -46,6 +46,7 @@ export const DICT: Record<string, Entry> = {
   'nav.gallery': { en: 'Before & after', uk: 'До та після' },
   'nav.gift': { en: 'Gift vouchers', uk: 'Подарункові' },
   'nav.inventory': { en: 'Inventory', uk: 'Склад' },
+  'nav.suppliers': { en: 'Suppliers', uk: 'Постачальники' },
   'nav.reorder': { en: 'Reorder', uk: 'Замовлення' },
   'nav.sops': { en: 'SOPs', uk: 'Стандарти (SOP)' },
   'nav.campaigns': { en: 'Campaigns', uk: 'Кампанії' },
