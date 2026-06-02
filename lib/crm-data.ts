@@ -190,6 +190,18 @@ export async function listBookings(opts: { filter?: string; q?: string; from?: s
 export async function getBooking(id: string) {
   return db.booking.findUnique({
     where: { id },
-    include: { client: true, practitioner: { select: { name: true, email: true } }, auditEvents: { orderBy: { createdAt: 'asc' } } },
+    include: {
+      client: {
+        include: {
+          assessments: {
+            where: { supersedesId: null },
+            orderBy: { submittedAt: 'desc' },
+            select: { id: true, type: true, questionnaireKey: true, submittedAt: true },
+          },
+        },
+      },
+      practitioner: { select: { name: true, email: true } },
+      auditEvents: { orderBy: { createdAt: 'asc' } },
+    },
   });
 }

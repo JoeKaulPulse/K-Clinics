@@ -78,6 +78,12 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const multiLocation = (await getSetting('multi_location_enabled')) || activeLocations.length > 1;
 
   const can = await sessionPermissions();
+  const TYPE_LABEL: Record<string, string> = { MEDICAL_HISTORY: 'Medical history', TREATMENT_CONSENT: 'Treatment consent', PRE_TREATMENT: 'Pre-treatment', SKIN_PROFILE: 'Skin profile', DENTAL_HISTORY: 'Dental history' };
+  const assessmentLabel = (a: { type: string; questionnaireKey: string }) => {
+    const key = (a.questionnaireKey || '').split('@')[0];
+    if (key.startsWith('imported-')) return 'Imported ' + key.replace('imported-', '').replace(/-/g, ' ');
+    return TYPE_LABEL[a.type] || a.type;
+  };
   return (
     <AdminShell user={session?.email} can={can}>
       <Link href="/admin/bookings" className="text-sm text-[var(--color-gold)] hover:underline">← Bookings</Link>
@@ -108,6 +114,28 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             <p className="mt-3 text-xs text-[var(--color-stone-soft)]">
               Card {b.stripePaymentMethodId ? 'saved ✓' : 'not saved'} · booked {new Date(b.createdAt).toLocaleDateString('en-GB')}
             </p>
+          </div>
+
+          {/* Health & consent — clinical safety at a glance */}
+          <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
+            <p className="eyebrow mb-3 text-[var(--color-stone)]">Health &amp; consent</p>
+            {b.client.medicalFlag && (
+              <p className="mb-3 rounded-[var(--radius-sm)] bg-[color-mix(in_oklab,#c0392b_14%,transparent)] px-3 py-2 text-sm font-medium text-[var(--color-ink)]">⚠ {b.client.medicalFlag}</p>
+            )}
+            {b.client.allergies && <p className="mb-3 text-sm"><span className="text-[var(--color-stone)]">Allergies:</span> {b.client.allergies}</p>}
+            {b.client.assessments.length === 0 ? (
+              <p className="text-sm text-[var(--color-stone)]">No health or consent forms on file.</p>
+            ) : (
+              <ul className="space-y-1.5 text-sm">
+                {b.client.assessments.map((a) => (
+                  <li key={a.id} className="flex items-center justify-between gap-3">
+                    <span>{assessmentLabel(a)}</span>
+                    <span className="text-xs text-[var(--color-stone)]">{a.submittedAt ? new Date(a.submittedAt).toLocaleDateString('en-GB') : '—'}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link href={`/admin/clients/${b.clientId}`} className="mt-3 inline-block text-xs text-[var(--color-gold)] hover:underline">View full health records →</Link>
           </div>
         </section>
 
