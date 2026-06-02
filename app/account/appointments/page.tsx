@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { PortalShell } from '@/components/portal/PortalShell';
 import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
 import { RedeemPoints } from '@/components/portal/RedeemPoints';
+import { Reveal } from '@/components/motion/Reveal';
 import { crmEnabled } from '@/lib/crm';
 import { formatPrice } from '@/lib/treatments';
 import { pt } from '@/lib/i18n-portal';
@@ -46,6 +47,7 @@ export default async function AppointmentsPage() {
         action={<Link href="/book" className="rounded-full bg-[var(--color-gold)] px-6 py-3 text-sm font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)]">{t('appt.bookNew')}</Link>}
       />
 
+      <Reveal>
       <h2 className="eyebrow mb-3">{t('appt.upcoming')}</h2>
       {upcoming.length ? (
         <ul className="mb-10 grid gap-3">
@@ -97,7 +99,9 @@ export default async function AppointmentsPage() {
       ) : (
         <p className="mb-10 text-[var(--color-stone)]">{t('appt.none')} <Link href="/book" className="font-medium text-[var(--color-gold)]">{t('appt.bookNow')} →</Link></p>
       )}
+      </Reveal>
 
+      <Reveal delay={0.06}>
       <h2 className="eyebrow mb-3">{t('appt.past')}</h2>
       {past.length ? (
         <ul className="grid gap-2">
@@ -114,6 +118,7 @@ export default async function AppointmentsPage() {
       ) : (
         <p className="text-[var(--color-stone)]">{t('appt.noPast')}</p>
       )}
+      </Reveal>
     </PortalShell>
   );
 }
