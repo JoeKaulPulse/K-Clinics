@@ -13,9 +13,11 @@ export async function GET() {
 
   const { db } = await import('@/lib/db');
   const canApprove = sessionCan(session, 'schedule.manage');
-  const [pendingTimeOff, openTasks] = await Promise.all([
+  const canChat = sessionCan(session, 'clients.view');
+  const [pendingTimeOff, openTasks, chatUnread] = await Promise.all([
     canApprove ? db.staffTimeOff.count({ where: { status: 'PENDING' } }) : Promise.resolve(0),
     db.task.count({ where: { assigneeId: session.sub, status: 'OPEN' } }),
+    canChat ? db.chatConversation.count({ where: { status: 'OPEN', staffUnread: { gt: 0 } } }) : Promise.resolve(0),
   ]);
-  return NextResponse.json({ ok: true, pendingTimeOff, openTasks });
+  return NextResponse.json({ ok: true, pendingTimeOff, openTasks, chatUnread });
 }

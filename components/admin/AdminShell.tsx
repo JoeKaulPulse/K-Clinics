@@ -9,7 +9,7 @@ import { GlobalSearch } from '@/components/admin/GlobalSearch';
 import { I18nProvider } from '@/components/i18n/I18nProvider';
 import { translator, isLocale, LOCALES, LOCALE_LABELS, DEFAULT_LOCALE, type Locale } from '@/lib/i18n';
 
-type NavItem = { href: string; key: string; exact?: boolean; perm?: string; badge?: 'tasks' | 'timeoff' };
+type NavItem = { href: string; key: string; exact?: boolean; perm?: string; badge?: 'tasks' | 'timeoff' | 'chat' };
 const navGroups: { heading?: string; items: NavItem[] }[] = [
   { heading: 'nav.group.today', items: [
     { href: '/admin', key: 'nav.overview', exact: true, perm: 'dashboard.view' },
@@ -21,6 +21,7 @@ const navGroups: { heading?: string; items: NavItem[] }[] = [
   { heading: 'nav.group.clients', items: [
     { href: '/admin/bookings', key: 'nav.bookings', perm: 'bookings.view' },
     { href: '/admin/consultations', key: 'nav.consultations', perm: 'consultations.view' },
+    { href: '/admin/chat', key: 'nav.chat', perm: 'clients.view', badge: 'chat' },
     { href: '/admin/clients', key: 'nav.clients', perm: 'clients.view' },
     { href: '/admin/reviews', key: 'nav.reviews', perm: 'reviews.manage' },
     { href: '/admin/discounts', key: 'nav.discounts', perm: 'discounts.manage' },
@@ -97,18 +98,21 @@ export function AdminShell({
   // Sidebar badges — a single lightweight request per shell mount.
   const [pendingTimeOff, setPendingTimeOff] = useState(0);
   const [openTasks, setOpenTasks] = useState(0);
+  const [chatUnread, setChatUnread] = useState(0);
   const canApproveTimeOff = allowed.has('schedule.manage');
   useEffect(() => {
     let on = true;
-    fetch('/api/admin/badges')
+    const load = () => fetch('/api/admin/badges')
       .then((r) => r.json())
-      .then((j) => { if (on && j?.ok) { setPendingTimeOff(j.pendingTimeOff || 0); setOpenTasks(j.openTasks || 0); } })
+      .then((j) => { if (on && j?.ok) { setPendingTimeOff(j.pendingTimeOff || 0); setOpenTasks(j.openTasks || 0); setChatUnread(j.chatUnread || 0); } })
       .catch(() => {});
-    return () => { on = false; };
+    load();
+    const t = setInterval(load, 30000); // keep the live-chat badge fresh
+    return () => { on = false; clearInterval(t); };
   }, []);
 
   const badgeCount = (badge?: string) =>
-    badge === 'timeoff' ? (canApproveTimeOff ? pendingTimeOff : 0) : badge === 'tasks' ? openTasks : 0;
+    badge === 'timeoff' ? (canApproveTimeOff ? pendingTimeOff : 0) : badge === 'tasks' ? openTasks : badge === 'chat' ? chatUnread : 0;
 
   // Collapsible sidebar sections (desktop). Collapsed by default; the section
   // containing the current page opens automatically so you can see where you are.
