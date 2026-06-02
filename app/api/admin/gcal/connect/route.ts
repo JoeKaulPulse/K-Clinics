@@ -17,7 +17,9 @@ export async function GET(req: Request) {
 
   const staffId = new URL(req.url).searchParams.get('staffId') || session!.sub;
 
-  const { googleAuthUrl } = await import('@/lib/google-calendar');
+  const { googleAuthUrl, googleEnabled } = await import('@/lib/google-calendar');
+  // Parked while the clinic is on Hostinger — kept intact for a future Workspace move.
+  if (!googleEnabled()) return NextResponse.json({ ok: false, error: 'Google Calendar is parked (the clinic is on Hostinger). Set GOOGLE_INTEGRATION_ENABLED=true to re-enable.' }, { status: 503 });
   const url = googleAuthUrl(staffId);
   if (!url) return NextResponse.json({ ok: false, error: 'Google Calendar is not configured.' }, { status: 503 });
   return NextResponse.redirect(url);

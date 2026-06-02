@@ -16,6 +16,15 @@ export function googleConfigured(): boolean {
   return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_REDIRECT_URI);
 }
 
+/**
+ * Whether the Google Workspace integration is *active*. The clinic is currently
+ * on Hostinger, so Google is PARKED by default — the code is kept intact but
+ * inert until GOOGLE_INTEGRATION_ENABLED=true (e.g. on a future Workspace move).
+ */
+export function googleEnabled(): boolean {
+  return process.env.GOOGLE_INTEGRATION_ENABLED === 'true' && googleConfigured();
+}
+
 const SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
 
 /** URL to start the OAuth consent flow for a given staff member. */

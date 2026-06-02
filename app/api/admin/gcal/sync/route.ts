@@ -11,7 +11,8 @@ export async function POST(req: Request) {
   if (!sessionCan(session, 'schedule.manage')) return NextResponse.json({ ok: false, error: 'Not permitted' }, { status: 403 });
 
   const { staffId } = (await req.json().catch(() => ({}))) as { staffId?: string };
-  const { syncStaffCalendar, syncAllCalendars } = await import('@/lib/google-calendar');
+  const { syncStaffCalendar, syncAllCalendars, googleEnabled } = await import('@/lib/google-calendar');
+  if (!googleEnabled()) return NextResponse.json({ ok: false, error: 'Google Calendar is parked (clinic is on Hostinger).' }, { status: 503 });
   const result = staffId ? await syncStaffCalendar(staffId) : await syncAllCalendars();
   return NextResponse.json(result);
 }
