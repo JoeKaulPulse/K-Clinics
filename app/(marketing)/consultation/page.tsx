@@ -6,9 +6,9 @@ import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const metadata: Metadata = pageMeta({
-  title: 'Book a Free Consultation — Islington, London | K Clinics',
+  title: 'Book a Free Consultation — Islington, London | KClinics',
   description:
-    'Request your complimentary consultation at K Clinics, Islington. Tell us your goals and our expert team will design a bespoke treatment plan. New clients enjoy 15% off.',
+    'Request your complimentary consultation at KClinics, Islington. Tell us your goals and our expert team will design a bespoke treatment plan. New clients enjoy 15% off.',
   path: '/consultation',
   keywords: ['free consultation London', 'aesthetics consultation Islington', 'book consultation clinic'],
 });

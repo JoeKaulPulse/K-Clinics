@@ -7,11 +7,11 @@ import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const metadata: Metadata = pageMeta({
-  title: 'Contact & Find Us — Islington, London | K Clinics',
+  title: 'Contact & Find Us — Islington, London | KClinics',
   description:
-    'Visit K Clinics at 4 Charterhouse Buildings, Goswell Road, Islington, London. Book online, call, or email. Opening hours and directions.',
+    'Visit KClinics at 4 Charterhouse Buildings, Goswell Road, Islington, London. Book online, call, or email. Opening hours and directions.',
   path: '/contact',
-  keywords: ['K Clinics contact', 'aesthetics clinic Islington address', 'book appointment London'],
+  keywords: ['KClinics contact', 'aesthetics clinic Islington address', 'book appointment London'],
 });
 
 export default function ContactPage() {
@@ -79,7 +79,7 @@ export default function ContactPage() {
         <Reveal delay={0.1}>
           <div className="h-full min-h-[28rem] overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] shadow-[var(--shadow-soft)]">
             <iframe
-              title="K Clinics location map"
+              title="KClinics location map"
               src={site.mapEmbed}
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"

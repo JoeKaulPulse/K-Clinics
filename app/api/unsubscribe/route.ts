@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   }
 
   return new NextResponse(
-    `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Unsubscribed — K Clinics</title></head>
+    `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Unsubscribed — KClinics</title></head>
      <body style="font-family:Georgia,serif;background:#f6ece3;color:#2a2420;display:grid;place-items:center;height:100vh;margin:0;text-align:center;">
        <div><h1 style="letter-spacing:4px;">K CLINICS</h1><p>You have been unsubscribed from marketing emails.<br>We're sorry to see you go.</p></div>
      </body></html>`,

@@ -1,5 +1,5 @@
 // Treatment finder — a short, friendly quiz that maps a client's goals to
-// recommended K Clinics treatments. Pure data (client-safe). The recommendation
+// recommended KClinics treatments. Pure data (client-safe). The recommendation
 // is indicative; every plan is confirmed at a complimentary consultation.
 
 export type FinderOption = {
@@ -22,7 +22,7 @@ export const finderQuestions: FinderQuestion[] = [
     id: 'focus',
     prompt: 'What would you most love to improve?',
     options: [
-      { value: 'skin', label: 'Skin quality & glow', suggests: [{ slug: 'hydraglow-facial', weight: 3 }, { slug: 'carbon-laser-peel', weight: 2 }] },
+      { value: 'skin', label: 'Skin quality & glow', suggests: [{ slug: 'hydraglow-facial', weight: 3 }, { slug: 'ipl-phototherapy', weight: 2 }] },
       { value: 'hair', label: 'Unwanted hair', suggests: [{ slug: 'laser-hair-removal', weight: 3 }, { slug: 'laser-hair-removal-for-men', weight: 3 }] },
       { value: 'lines', label: 'Lines & firmness', suggests: [{ slug: 'cosmetic-injections', weight: 3 }, { slug: 'smas-hifu-lifting', weight: 2 }, { slug: 'rf-lifting', weight: 2 }] },
       { value: 'smile', label: 'My smile', suggests: [{ slug: 'veneers', weight: 3 }, { slug: 'teeth-whitening', weight: 2 }] },
@@ -35,8 +35,8 @@ export const finderQuestions: FinderQuestion[] = [
     multi: true,
     help: 'Choose any that resonate.',
     options: [
-      { value: 'dullness', label: 'Dullness / uneven tone', suggests: [{ slug: 'carbon-laser-peel', weight: 2 }, { slug: 'hydraglow-facial', weight: 2 }] },
-      { value: 'pigmentation', label: 'Pigmentation / sun damage', suggests: [{ slug: 'carbon-laser-peel', weight: 3 }] },
+      { value: 'dullness', label: 'Dullness / uneven tone', suggests: [{ slug: 'ipl-phototherapy', weight: 2 }, { slug: 'hydraglow-facial', weight: 2 }] },
+      { value: 'pigmentation', label: 'Pigmentation / sun damage', suggests: [{ slug: 'ipl-phototherapy', weight: 3 }] },
       { value: 'laxity', label: 'Loss of firmness', suggests: [{ slug: 'smas-hifu-lifting', weight: 3 }, { slug: 'rf-lifting', weight: 2 }] },
       { value: 'wrinkles', label: 'Fine lines & wrinkles', suggests: [{ slug: 'cosmetic-injections', weight: 3 }] },
       { value: 'hairgrowth', label: 'Regrowth after shaving/waxing', suggests: [{ slug: 'laser-hair-removal', weight: 3 }, { slug: 'laser-hair-removal-for-men', weight: 3 }] },

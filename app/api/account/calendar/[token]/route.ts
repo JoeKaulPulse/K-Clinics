@@ -26,7 +26,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
   const ics = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//K Clinics//Portal//EN',
+    'PRODID:-//KClinics//Portal//EN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',
     `UID:booking-${b.id}@kclinics`,

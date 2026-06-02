@@ -59,7 +59,7 @@ export async function notifyBookingConfirmed(bookingId: string): Promise<void> {
     if (smsConfigured()) {
       const when = booking.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
       const arrive = firstVisit ? ' Please arrive 15 mins early for your first visit.' : '';
-      tasks.push(sendSms(c.phone, `K Clinics: your ${booking.treatmentTitle} is booked for ${when}.${arrive} Manage: ${manageUrl}`));
+      tasks.push(sendSms(c.phone, `KClinics: your ${booking.treatmentTitle} is booked for ${when}.${arrive} Manage: ${manageUrl}`));
     }
   }
 

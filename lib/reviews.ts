@@ -32,7 +32,7 @@ export const reviews: Review[] = [
   },
   {
     name: 'Daniel O.',
-    treatment: 'Carbon Laser Peel',
+    treatment: 'HydraGlow Facial',
     location: 'Farringdon',
     quote:
       'My skin has never looked clearer. Pores refined, tone even, and zero downtime — straight back to the office looking like I had been on holiday.',

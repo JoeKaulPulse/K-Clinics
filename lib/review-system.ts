@@ -58,7 +58,7 @@ export async function sendReviewRequest(reviewId: string, channel: 'EMAIL' | 'SM
 
   if (channel === 'SMS') {
     const { sendSms } = await import('@/lib/sms');
-    const res = await sendSms(review.client.phone, `Hi ${name}, thank you for visiting K Clinics. We'd love your feedback — leave a quick review here: ${link}`);
+    const res = await sendSms(review.client.phone, `Hi ${name}, thank you for visiting KClinics. We'd love your feedback — leave a quick review here: ${link}`);
     await db.review.update({ where: { id: reviewId }, data: { channel: 'SMS', requestedAt: new Date() } });
     return res;
   }
@@ -66,7 +66,7 @@ export async function sendReviewRequest(reviewId: string, channel: 'EMAIL' | 'SM
   const { sendEmail, tmplReviewRequest } = await import('@/lib/email');
   const res = await sendEmail({
     to: review.client.email,
-    subject: 'How was your visit to K Clinics?',
+    subject: 'How was your visit to KClinics?',
     html: tmplReviewRequest(name, link, review.treatmentTitle || undefined),
   });
   await db.review.update({ where: { id: reviewId }, data: { channel: 'EMAIL', requestedAt: new Date() } });

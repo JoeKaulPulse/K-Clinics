@@ -34,7 +34,7 @@ export type ThemeTokens = {
 };
 
 export const defaultTheme: ThemeTokens = {
-  // Official K Clinics "warm taupe & cream" identity (cream #F6ECE3, taupe #91766E).
+  // Official KClinics "warm taupe & cream" identity (cream #F6ECE3, taupe #91766E).
   ink: '#2a2420',
   inkSoft: '#3d352f',
   espresso: '#4a3f37',

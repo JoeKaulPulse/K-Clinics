@@ -138,7 +138,7 @@ export function ConsultForm() {
         >
           {step === 0 && (
             <div>
-              <h3 className="font-[family-name:var(--font-display)] text-2xl">What brings you to K Clinics?</h3>
+              <h3 className="font-[family-name:var(--font-display)] text-2xl">What brings you to KClinics?</h3>
               <p className="mt-2 text-sm text-[var(--color-stone)]">Choose the area you’re most interested in.</p>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {([['aesthetics', 'Aesthetics', 'Laser, skin & body'], ['dentistry', 'Dentistry', 'Smile & dental'], ['both', 'Both', 'A complete plan'], ['general', 'Just exploring', 'Help me decide']] as const).map(([val, title, sub]) => (
@@ -196,7 +196,7 @@ export function ConsultForm() {
               </label>
               <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]">
                 <input type="checkbox" checked={d.consent} onChange={(e) => set('consent', e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />
-                I consent to K Clinics contacting me about my enquiry. *
+                I consent to KClinics contacting me about my enquiry. *
               </label>
               {error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
             </div>

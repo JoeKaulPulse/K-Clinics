@@ -84,7 +84,7 @@ export async function POST(req: Request) {
     // Fire emails (don't block the response on provider latency-failures).
     const notifyTo = process.env.CLINIC_NOTIFY_EMAIL || site.email;
     const [reply, notify] = await Promise.all([
-      sendEmail({ to: data.email, subject: 'We received your enquiry — K Clinics', html: tmplConsultReply(data.firstName) }),
+      sendEmail({ to: data.email, subject: 'We received your enquiry — KClinics', html: tmplConsultReply(data.firstName) }),
       sendEmail({
         to: notifyTo,
         subject: `New consultation — ${fullName}`,

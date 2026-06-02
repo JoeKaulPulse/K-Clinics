@@ -7,11 +7,11 @@ import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const metadata: Metadata = pageMeta({
-  title: 'Client Reviews & Testimonials | K Clinics London',
+  title: 'Client Reviews & Testimonials | KClinics London',
   description:
-    `Read why clients rate K Clinics ${site.ratingValue}/5. Real stories from our Islington clinic across laser, skin, body and aesthetic dentistry treatments.`,
+    `Read why clients rate KClinics ${site.ratingValue}/5. Real stories from our Islington clinic across laser, skin, body and aesthetic dentistry treatments.`,
   path: '/reviews',
-  keywords: ['K Clinics reviews', 'aesthetic clinic reviews London', 'dentist reviews Islington'],
+  keywords: ['KClinics reviews', 'aesthetic clinic reviews London', 'dentist reviews Islington'],
 });
 
 function reviewsLd() {

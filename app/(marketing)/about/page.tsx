@@ -12,14 +12,14 @@ import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const metadata: Metadata = pageMeta({
-  title: 'About K Clinics — Premium Aesthetics & Dentistry, Islington London',
+  title: 'About KClinics — Premium Aesthetics & Dentistry, Islington London',
   description:
-    'Meet K Clinics: a premium Islington clinic uniting advanced aesthetics and aesthetic dentistry, built on clinical excellence, artistry and uncommon care.',
+    'Meet KClinics: a premium Islington clinic uniting advanced aesthetics and aesthetic dentistry, built on clinical excellence, artistry and uncommon care.',
   path: '/about',
-  keywords: ['about K Clinics', 'premium clinic London', 'Islington aesthetics dentistry'],
+  keywords: ['about KClinics', 'premium clinic London', 'Islington aesthetics dentistry'],
 });
 
-// Authentic pillars from the existing K Clinics site.
+// Authentic pillars from the existing KClinics site.
 const values = [
   { t: 'Innovation', d: 'We employ the most recent equipment in aesthetic medicine to provide results that are safe, efficient and long-lasting.' },
   { t: 'Professionalism', d: 'Our team consists of certified specialists with years of experience, adhering to the highest standards of care.' },
@@ -34,7 +34,7 @@ export default function AboutPage() {
       <PageHero
         eyebrow={`Established ${site.founded} · Islington, London`}
         title="Redefining cosmetic dermatology and dentistry."
-        lede="Luxury treatments, perfect smiles and world-class providers. At K Clinics, we believe aesthetic medicine should feel empowering, welcoming and simple to navigate — for every skin tone, gender and lifestyle."
+        lede="Luxury treatments, perfect smiles and world-class providers. At KClinics, we believe aesthetic medicine should feel empowering, welcoming and simple to navigate — for every skin tone, gender and lifestyle."
         gradient={['#7b6a5d', '#2a2420']}
       >
         <BookingButtons />
@@ -43,7 +43,7 @@ export default function AboutPage() {
       {/* Story */}
       <section className="container-lux grid gap-12 py-20 md:grid-cols-2 md:items-center md:py-28">
         <MaskReveal className="aspect-[4/5] rounded-[var(--radius-2xl)] shadow-[var(--shadow-lift)]">
-          <MediaArt src={pageImage('about')} from="#a98a6d" to="#7b6a5d" alt="K Clinics, Islington" className="h-full w-full" />
+          <MediaArt src={pageImage('about')} from="#a98a6d" to="#7b6a5d" alt="KClinics, Islington" className="h-full w-full" />
         </MaskReveal>
         <Reveal delay={0.1}>
           <p className="eyebrow mb-4">Your natural beauty, our mission</p>
@@ -53,7 +53,7 @@ export default function AboutPage() {
               We believe beauty is more than your appearance in the mirror. Our mission is to emphasise your natural beauty using innovative technology and a professional approach — creating a personalised care plan for every client that delivers a feeling of harmony, confidence and beauty.
             </p>
             <p>
-              The goal of K Clinics is to make high-quality, customised care accessible to everyone. Whether you’re looking for a subtle improvement or a life-changing outcome, our clinics are made to make you feel appreciated and cared for — the focus is always on you: your goals, your journey, your beauty.
+              The goal of KClinics is to make high-quality, customised care accessible to everyone. Whether you’re looking for a subtle improvement or a life-changing outcome, our clinics are made to make you feel appreciated and cared for — the focus is always on you: your goals, your journey, your beauty.
             </p>
           </div>
         </Reveal>

@@ -6,7 +6,7 @@ import { crmEnabled } from '@/lib/crm';
 import { site } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = { title: 'Manage your booking | K Clinics', robots: { index: false } };
+export const metadata: Metadata = { title: 'Manage your booking | KClinics', robots: { index: false } };
 
 export default async function ManageBookingPage({ searchParams }: { searchParams: Promise<{ t?: string }> }) {
   const { t } = await searchParams;

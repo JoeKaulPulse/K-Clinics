@@ -12,7 +12,7 @@ export const primaryNav: NavGroup[] = [
         links: [
           { label: 'Laser Hair Removal', href: '/laser-hair-removal', description: 'Smooth, lasting freedom' },
           { label: 'Laser Hair Removal for Men', href: '/laser-hair-removal-for-men', description: 'Tailored for him' },
-          { label: 'Carbon Laser Peel', href: '/carbon-laser-peel', description: 'The Hollywood facial' },
+          { label: 'IPL Phototherapy', href: '/ipl-phototherapy', description: 'Pigmentation & redness' },
           { label: 'Laser Tattoo Removal', href: '/laser-tattoo-removal', description: 'Clean-slate clarity' },
         ],
       },
@@ -33,7 +33,6 @@ export const primaryNav: NavGroup[] = [
           { label: 'Anti-Wrinkle (Botox)', href: '/botox', description: 'Soften expression lines' },
           { label: 'Dermal Fillers', href: '/dermal-fillers', description: 'Restore & define' },
           { label: 'Body Contouring', href: '/body-contouring', description: 'Define & refine' },
-          { label: 'Laser Tattoo Removal', href: '/laser-tattoo-removal', description: 'Clean-slate clarity' },
           { label: 'Intimate Rejuvenation', href: '/intimate-rejuvenation', description: 'Discreet & advanced' },
           { label: 'All Aesthetic Treatments', href: '/treatments', description: 'Browse the full menu' },
         ],
@@ -86,9 +85,9 @@ export const primaryNav: NavGroup[] = [
     href: '/about',
     columns: [
       {
-        heading: 'The K Clinics World',
+        heading: 'The KClinics World',
         links: [
-          { label: 'About K Clinics', href: '/about', description: 'Our philosophy' },
+          { label: 'About KClinics', href: '/about', description: 'Our philosophy' },
           { label: 'Our Team', href: '/team', description: 'Meet the clinicians' },
           { label: 'Treatment Finder', href: '/treatment-finder', description: 'Find your ideal treatment' },
           { label: 'Book a Consultation', href: '/consultation', description: 'Complimentary & bespoke' },

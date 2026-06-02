@@ -5,9 +5,9 @@ import { BookingButtons } from '@/components/booking/BookingButtons';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const metadata: Metadata = pageMeta({
-  title: 'Membership & Beauty Points Rewards | K Clinics London',
+  title: 'Membership & Beauty Points Rewards | KClinics London',
   description:
-    'Join K Clinics’ Beauty Points programme — earn rewards on every treatment, with priority booking, members-only events and seasonal privileges in Islington, London.',
+    'Join KClinics’ Beauty Points programme — earn rewards on every treatment, with priority booking, members-only events and seasonal privileges in Islington, London.',
   path: '/membership',
   keywords: ['clinic membership London', 'beauty rewards programme', 'loyalty points aesthetics'],
 });

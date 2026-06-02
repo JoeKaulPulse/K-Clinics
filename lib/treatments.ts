@@ -28,6 +28,9 @@ export type Treatment = {
   faqs: Faq[];
   facts: { label: string; value: string }[];
   priceFrom?: string;
+  /** Optional price variants rendered as a pricing block on the page (e.g. the
+   *  different HydraGlow tiers). Each is a name + price, with an optional note. */
+  priceOptions?: { name: string; price: string; note?: string }[];
   related: string[];
   /** Two-stop gradient used for the page's generative hero art (no baked text). */
   gradient: [string, string];
@@ -66,9 +69,9 @@ export const treatments: Treatment[] = [
     group: 'Laser & Skin',
     title: 'Laser Hair Removal',
     tagline: 'The end of the endless routine. Skin, simplified.',
-    metaTitle: 'Laser Hair Removal in London (Islington) | K Clinics',
+    metaTitle: 'Laser Hair Removal in London (Islington) | KClinics',
     metaDescription:
-      'Medical-grade laser hair removal in Islington, London. Permanent hair reduction for face & body, all skin tones, with expert clinicians at K Clinics. Free consultation.',
+      'Medical-grade laser hair removal in Islington, London. Permanent hair reduction for face & body, all skin tones, with expert clinicians at KClinics. Free consultation.',
     keywords: ['laser hair removal London', 'laser hair removal Islington', 'permanent hair reduction', 'diode laser'],
     eyebrow: 'Laser & Skin',
     intro:
@@ -95,7 +98,7 @@ export const treatments: Treatment[] = [
       { label: 'Downtime', value: 'None' },
     ],
     priceFrom: '£11',
-    related: ['laser-hair-removal-for-men', 'carbon-laser-peel', 'hydraglow-facial'],
+    related: ['laser-hair-removal-for-men', 'ipl-phototherapy', 'hydraglow-facial'],
     gradient: ['#c2a589', '#7b6a5d'],
   },
   {
@@ -106,9 +109,9 @@ export const treatments: Treatment[] = [
     menuTitle: 'Laser Hair Removal — Men',
     audience: 'male',
     tagline: 'Groomed, effortless, permanent. Engineered for him.',
-    metaTitle: "Men's Laser Hair Removal London | Back, Chest & Beard | K Clinics",
+    metaTitle: "Men's Laser Hair Removal London | Back, Chest & Beard | KClinics",
     metaDescription:
-      "Men's laser hair removal in Islington, London. Back, chest, shoulders, beard-line shaping and more with medical-grade lasers at K Clinics. Discreet, powerful, lasting.",
+      "Men's laser hair removal in Islington, London. Back, chest, shoulders, beard-line shaping and more with medical-grade lasers at KClinics. Discreet, powerful, lasting.",
     keywords: ['mens laser hair removal London', 'back hair removal', 'beard line laser', 'male grooming London'],
     eyebrow: 'Laser & Skin',
     intro:
@@ -135,46 +138,8 @@ export const treatments: Treatment[] = [
       { label: 'Downtime', value: 'None' },
     ],
     priceFrom: '£33',
-    related: ['laser-hair-removal', 'carbon-laser-peel', 'rf-lifting'],
+    related: ['laser-hair-removal', 'ipl-phototherapy', 'rf-lifting'],
     gradient: ['#7b6a5d', '#2a2420'],
-  },
-  {
-    slug: 'carbon-laser-peel',
-    category: 'aesthetics',
-    group: 'Laser & Skin',
-    title: 'Carbon Laser Peel',
-    tagline: 'The red-carpet glow, on demand.',
-    metaTitle: 'Carbon Laser Peel (Hollywood Facial) London | K Clinics',
-    metaDescription:
-      'The Carbon Laser Peel — a "Hollywood Facial" in Islington, London. Refine pores, clear congestion and reveal instant radiance with zero downtime at K Clinics.',
-    keywords: ['carbon laser peel London', 'Hollywood facial', 'carbon facial', 'pore refining London'],
-    eyebrow: 'Laser & Skin',
-    intro:
-      'A liquid carbon mask is drawn deep into the pores, then vaporised by laser light — lifting impurities, oil and dead cells while stimulating fresh collagen. The result is the famed "Hollywood" finish: tighter pores, an even tone and a luminous, photo-ready glow you can wear the same evening.',
-    benefits: [
-      { title: 'Instant radiance', text: 'Skin looks refined and luminous immediately — no downtime required.' },
-      { title: 'Pore refinement', text: 'Deeply clears congestion and visibly minimises enlarged pores.' },
-      { title: 'Oil & breakout control', text: 'Calms excess sebum and the conditions that drive breakouts.' },
-      { title: 'Collagen kick', text: 'Gentle laser warmth stimulates fresh collagen for firmer texture.' },
-    ],
-    process: [
-      { title: 'Carbon application', text: 'A fine carbon layer is applied and left to settle into the pores.' },
-      { title: 'Laser pass', text: 'Laser light bonds to the carbon, vaporising impurities as it goes.' },
-      { title: 'Reveal', text: 'Skin is instantly smoother, brighter and tightened — ready for anything.' },
-    ],
-    faqs: [
-      { q: 'Is there any downtime?', a: 'None. The Carbon Laser Peel is a true "lunchtime" treatment — you can return to your day, or your evening, immediately.' },
-      { q: 'How often should I have it?', a: 'A single treatment glows beautifully for an event; a short course every few weeks delivers cumulative refinement.' },
-      { q: 'Is it suitable for oily, congested skin?', a: 'Ideally so — it is one of the most effective treatments for oil control and pore congestion.' },
-    ],
-    facts: [
-      { label: 'Time', value: '30–45 min' },
-      { label: 'Downtime', value: 'None' },
-      { label: 'Glow', value: 'Immediate' },
-    ],
-    priceFrom: '£121',
-    related: ['hydraglow-facial', 'face-treatments', 'laser-hair-removal'],
-    gradient: ['#3d352f', '#a98a6d'],
   },
   {
     slug: 'laser-tattoo-removal',
@@ -182,9 +147,9 @@ export const treatments: Treatment[] = [
     group: 'Laser & Skin',
     title: 'Laser Tattoo Removal',
     tagline: 'A clean slate, drawn with light.',
-    metaTitle: 'Laser Tattoo Removal London (Islington) | K Clinics',
+    metaTitle: 'Laser Tattoo Removal London (Islington) | KClinics',
     metaDescription:
-      'Advanced laser tattoo removal in Islington, London. Fade or fully remove unwanted ink safely across colours and skin tones at K Clinics. Free assessment.',
+      'Advanced laser tattoo removal in Islington, London. Fade or fully remove unwanted ink safely across colours and skin tones at KClinics. Free assessment.',
     keywords: ['laser tattoo removal London', 'tattoo removal Islington', 'Q-switched laser', 'tattoo fading'],
     eyebrow: 'Laser & Skin',
     intro:
@@ -211,7 +176,7 @@ export const treatments: Treatment[] = [
       { label: 'Consult', value: 'Complimentary' },
     ],
     priceFrom: '£44',
-    related: ['carbon-laser-peel', 'face-treatments', 'laser-hair-removal'],
+    related: ['ipl-phototherapy', 'face-treatments', 'laser-hair-removal'],
     gradient: ['#2a2420', '#7b6a5d'],
   },
   {
@@ -220,9 +185,9 @@ export const treatments: Treatment[] = [
     group: 'Face & Lifting',
     title: 'SMAS HIFU Lifting',
     tagline: 'A lift from within — no scalpel, no downtime.',
-    metaTitle: 'SMAS HIFU Face Lift London (Non-Surgical) | K Clinics',
+    metaTitle: 'SMAS HIFU Face Lift London (Non-Surgical) | KClinics',
     metaDescription:
-      'Non-surgical HIFU face lift in Islington, London. Targeted ultrasound tightens the SMAS layer for a visibly lifted jaw, brow and neck at K Clinics. From £215.',
+      'Non-surgical HIFU face lift in Islington, London. Targeted ultrasound tightens the SMAS layer for a visibly lifted jaw, brow and neck at KClinics. From £215.',
     keywords: ['HIFU London', 'SMAS lifting', 'non-surgical face lift London', 'ultrasound skin tightening'],
     eyebrow: 'Face & Lifting',
     intro:
@@ -259,9 +224,9 @@ export const treatments: Treatment[] = [
     title: 'RF Skin Tightening',
     menuTitle: 'RF Skin Tightening',
     tagline: 'Firm, sculpt, renew — wrapped in warmth.',
-    metaTitle: 'Radiofrequency (RF) Skin Tightening London | K Clinics',
+    metaTitle: 'Radiofrequency (RF) Skin Tightening London | KClinics',
     metaDescription:
-      'Radiofrequency skin tightening in Islington, London. Gently heats the dermis to firm, smooth and lift skin on face and body at K Clinics. From £175.',
+      'Radiofrequency skin tightening in Islington, London. Gently heats the dermis to firm, smooth and lift skin on face and body at KClinics. From £175.',
     keywords: ['RF skin tightening London', 'radiofrequency facial', 'skin firming London', 'collagen induction'],
     eyebrow: 'Face & Lifting',
     intro:
@@ -297,13 +262,13 @@ export const treatments: Treatment[] = [
     group: 'Face & Lifting',
     title: 'HydraGlow Facial',
     tagline: 'Cleanse, infuse, illuminate — in one breath.',
-    metaTitle: 'HydraGlow Facial London (HydraFacial) | K Clinics',
+    metaTitle: 'HydraGlow Facial London (HydraFacial) | KClinics',
     metaDescription:
-      'The HydraGlow Facial in Islington, London. Cleanse, exfoliate, extract and infuse for instant hydration and luminous skin at K Clinics. From £79.',
+      'The HydraGlow Facial in Islington, London. Cleanse, exfoliate, extract and infuse for instant hydration and luminous skin at KClinics. From £79.',
     keywords: ['hydrafacial London', 'hydrating facial Islington', 'glow facial London', 'deep cleanse facial'],
     eyebrow: 'Face & Lifting',
     intro:
-      'A multi-step ritual that cleanses, gently resurfaces, extracts and then floods the skin with serums of antioxidants, peptides and hyaluronic acid. Non-invasive and deeply restorative, the HydraGlow leaves skin plump, dewy and radiant — the perfect reset before an event, or a monthly indulgence that keeps skin in its best form.',
+      'A multi-step ritual that cleanses, gently resurfaces, extracts and then floods the skin with serums of antioxidants, peptides and hyaluronic acid. Non-invasive and deeply restorative, the HydraGlow leaves skin plump, dewy and radiant — the perfect reset before an event, or a monthly indulgence that keeps skin in its best form. Choose from three tiers — Signature Express, Full Face Deluxe and Platinum — each adding deeper resurfacing and more targeted boosters.',
     benefits: [
       { title: 'Instant hydration', text: 'Skin drinks in serums for a plump, dewy, luminous finish.' },
       { title: 'Painless extraction', text: 'Gentle vortex suction clears congestion without the pinch.' },
@@ -325,8 +290,13 @@ export const treatments: Treatment[] = [
       { label: 'Downtime', value: 'None' },
       { label: 'Glow', value: 'Immediate' },
     ],
-    priceFrom: '£110',
-    related: ['carbon-laser-peel', 'face-treatments', 'cosmetic-injections'],
+    priceFrom: '£95',
+    priceOptions: [
+      { name: 'Signature Express', price: '£95', note: '30 min · course of 3 £267 · 6 £474' },
+      { name: 'Full Face Deluxe', price: '£145', note: '50 min · course of 3 £399 · 6 £708' },
+      { name: 'Platinum', price: '£185', note: '60 min · Anti-Acne / Collagen / Pigmentation / Brightening · course of 3 £519 · 6 £948' },
+    ],
+    related: ['ipl-phototherapy', 'face-treatments', 'cosmetic-injections'],
     gradient: ['#cdb4a3', '#c2a589'],
   },
   {
@@ -335,14 +305,14 @@ export const treatments: Treatment[] = [
     group: 'Face & Lifting',
     title: 'Signature Facials & Skin',
     menuTitle: 'Signature Facials',
-    tagline: 'Peels, microneedling, PRP — the science of skin, curated.',
-    metaTitle: 'Facials, Chemical Peels & Microneedling London | K Clinics',
+    tagline: 'A bespoke, results-driven facial — peels, microneedling & PRP, curated to your skin.',
+    metaTitle: 'Signature Facials, Chemical Peels & Microneedling London | KClinics',
     metaDescription:
-      'Advanced facials in Islington, London: chemical peels, microneedling, PRP and skin resurfacing for acne, pigmentation, scarring and tone at K Clinics.',
-    keywords: ['chemical peel London', 'microneedling London', 'PRP facial', 'skin resurfacing Islington'],
+      'The KClinics Signature Facial in Islington, London — a bespoke clinical facial combining chemical peels, microneedling, PRP and skin resurfacing for acne, pigmentation, scarring and tone.',
+    keywords: ['signature facial London', 'chemical peel London', 'microneedling London', 'PRP facial', 'skin resurfacing Islington'],
     eyebrow: 'Face & Lifting',
     intro:
-      'Our advanced skin menu addresses what facials alone cannot: stubborn pigmentation, acne scarring, fine lines and uneven texture. From medical-grade chemical peels to collagen-inducing microneedling and regenerative PRP, each protocol is prescribed to your skin and layered into a plan that delivers visible, lasting change.',
+      'The Signature Facial is our bespoke, results-driven alternative to an ordinary facial — a clinical treatment built around your skin on the day. Rather than a single fixed routine, your clinician combines the right advanced steps (medical-grade chemical peels, collagen-inducing microneedling and regenerative PRP) to target what facials alone cannot: stubborn pigmentation, acne scarring, fine lines and uneven texture. Each protocol is prescribed to your skin and layered into a plan that delivers visible, lasting change.',
     benefits: [
       { title: 'Chemical peels', text: 'Resurface to soften pigmentation, scarring and dullness.' },
       { title: 'Microneedling', text: 'Stimulate collagen to refine texture, pores and fine lines.' },
@@ -365,7 +335,7 @@ export const treatments: Treatment[] = [
       { label: 'Consult', value: 'Complimentary' },
     ],
     priceFrom: '£115',
-    related: ['hydraglow-facial', 'carbon-laser-peel', 'smas-hifu-lifting'],
+    related: ['hydraglow-facial', 'ipl-phototherapy', 'smas-hifu-lifting'],
     gradient: ['#7b6a5d', '#c2a589'],
   },
   {
@@ -374,9 +344,9 @@ export const treatments: Treatment[] = [
     group: 'Body & Injectables',
     title: 'Body Contouring',
     tagline: 'Sculpted, smoothed, defined — your shape, refined.',
-    metaTitle: 'Body Contouring & Cellulite Treatment London | K Clinics',
+    metaTitle: 'Body Contouring & Cellulite Treatment London | KClinics',
     metaDescription:
-      'Non-invasive body contouring in Islington, London. Endosphere, anti-cellulite vacuum therapy and RF to firm, smooth and define at K Clinics.',
+      'Non-invasive body contouring in Islington, London. Endosphere, anti-cellulite vacuum therapy and RF to firm, smooth and define at KClinics.',
     keywords: ['body contouring London', 'cellulite treatment Islington', 'endosphere', 'body sculpting London'],
     eyebrow: 'Body & Injectables',
     intro:
@@ -413,9 +383,9 @@ export const treatments: Treatment[] = [
     title: 'Cosmetic Injectables',
     menuTitle: 'Cosmetic Injections',
     tagline: 'Refined, never reinvented. The art of looking like you.',
-    metaTitle: 'Anti-Wrinkle & Dermal Filler Injections London | K Clinics',
+    metaTitle: 'Anti-Wrinkle & Dermal Filler Injections London | KClinics',
     metaDescription:
-      'Expert cosmetic injectables in Islington, London — anti-wrinkle treatment, dermal filler and fat-dissolving — delivered with a natural, refined aesthetic at K Clinics.',
+      'Expert cosmetic injectables in Islington, London — anti-wrinkle treatment, dermal filler and fat-dissolving — delivered with a natural, refined aesthetic at KClinics.',
     keywords: ['Botox London', 'dermal filler London', 'anti-wrinkle injections Islington', 'lip filler London'],
     eyebrow: 'Body & Injectables',
     intro:
@@ -452,9 +422,9 @@ export const treatments: Treatment[] = [
     title: 'Intimate Rejuvenation',
     audience: 'female',
     tagline: 'Confidence, restored — with discretion and care.',
-    metaTitle: 'Intimate Rejuvenation & Whitening London | K Clinics',
+    metaTitle: 'Intimate Rejuvenation & Whitening London | KClinics',
     metaDescription:
-      'Advanced intimate rejuvenation in Islington, London — CO2 laser tightening and intimate whitening, delivered with absolute discretion and expert care at K Clinics.',
+      'Advanced intimate rejuvenation in Islington, London — CO2 laser tightening and intimate whitening, delivered with absolute discretion and expert care at KClinics.',
     keywords: ['intimate rejuvenation London', 'CO2 laser intimate', 'intimate whitening London', 'feminine wellness'],
     eyebrow: 'Body & Injectables',
     intro:
@@ -492,9 +462,9 @@ export const treatments: Treatment[] = [
     group: 'Aesthetic Dentistry',
     title: 'Porcelain Veneers',
     tagline: 'A smile, designed. Hand-crafted in fine ceramic.',
-    metaTitle: 'Porcelain Veneers London (Islington) | K Clinics',
+    metaTitle: 'Porcelain Veneers London (Islington) | KClinics',
     metaDescription:
-      'Bespoke porcelain veneers in Islington, London. Hand-crafted ceramic veneers to perfect shape, shade and symmetry for a natural, luminous smile at K Clinics.',
+      'Bespoke porcelain veneers in Islington, London. Hand-crafted ceramic veneers to perfect shape, shade and symmetry for a natural, luminous smile at KClinics.',
     keywords: ['porcelain veneers London', 'veneers Islington', 'smile makeover London', 'composite vs porcelain veneers'],
     eyebrow: 'Aesthetic Dentistry',
     intro:
@@ -530,9 +500,9 @@ export const treatments: Treatment[] = [
     group: 'Aesthetic Dentistry',
     title: 'Teeth Whitening',
     tagline: 'Brighter, lighter, luminous — safely.',
-    metaTitle: 'Professional Teeth Whitening London | K Clinics',
+    metaTitle: 'Professional Teeth Whitening London | KClinics',
     metaDescription:
-      'Professional teeth whitening in Islington, London. In-clinic power whitening and bespoke at-home kits for a brighter, natural-looking smile at K Clinics.',
+      'Professional teeth whitening in Islington, London. In-clinic power whitening and bespoke at-home kits for a brighter, natural-looking smile at KClinics.',
     keywords: ['teeth whitening London', 'professional whitening Islington', 'in-clinic whitening', 'home whitening kit'],
     eyebrow: 'Aesthetic Dentistry',
     intro:
@@ -568,9 +538,9 @@ export const treatments: Treatment[] = [
     group: 'Aesthetic Dentistry',
     title: 'Composite Bonding',
     tagline: 'Reshape, repair, perfect — in a single visit.',
-    metaTitle: 'Composite Bonding London (Islington) | K Clinics',
+    metaTitle: 'Composite Bonding London (Islington) | KClinics',
     metaDescription:
-      'Composite bonding in Islington, London. Reshape chips, close gaps and refine your smile in a single visit with minimal preparation at K Clinics.',
+      'Composite bonding in Islington, London. Reshape chips, close gaps and refine your smile in a single visit with minimal preparation at KClinics.',
     keywords: ['composite bonding London', 'edge bonding Islington', 'tooth bonding', 'gap closing London'],
     eyebrow: 'Aesthetic Dentistry',
     intro:
@@ -606,9 +576,9 @@ export const treatments: Treatment[] = [
     group: 'Aesthetic Dentistry',
     title: 'Aesthetic Dentistry',
     tagline: 'Where dental health and beauty become one.',
-    metaTitle: 'Aesthetic & Cosmetic Dentistry London | K Clinics',
+    metaTitle: 'Aesthetic & Cosmetic Dentistry London | KClinics',
     metaDescription:
-      'Aesthetic dentistry in Islington, London. Smile design uniting veneers, whitening, bonding, straightening and implants for a healthy, beautiful smile at K Clinics.',
+      'Aesthetic dentistry in Islington, London. Smile design uniting veneers, whitening, bonding, straightening and implants for a healthy, beautiful smile at KClinics.',
     keywords: ['aesthetic dentistry London', 'cosmetic dentistry Islington', 'smile makeover London', 'smile design'],
     eyebrow: 'Aesthetic Dentistry',
     intro:
@@ -645,9 +615,9 @@ export const treatments: Treatment[] = [
     title: 'Dental Implants',
     menuTitle: 'Dental Implant Placement',
     tagline: 'A permanent foundation for a confident smile.',
-    metaTitle: 'Dental Implants London (Islington) | K Clinics',
+    metaTitle: 'Dental Implants London (Islington) | KClinics',
     metaDescription:
-      'Dental implants in Islington, London. Titanium implants to replace missing teeth permanently — secure, natural-looking and built to last at K Clinics.',
+      'Dental implants in Islington, London. Titanium implants to replace missing teeth permanently — secure, natural-looking and built to last at KClinics.',
     keywords: ['dental implants London', 'tooth implant Islington', 'single tooth implant', 'implant dentist London'],
     eyebrow: 'Restorative & Specialist',
     intro:
@@ -684,9 +654,9 @@ export const treatments: Treatment[] = [
     title: 'Dentures & Implant Dentures',
     menuTitle: 'Dentures',
     tagline: 'Comfort, function and a natural smile — restored.',
-    metaTitle: 'Dentures & Implant-Supported Dentures London | K Clinics',
+    metaTitle: 'Dentures & Implant-Supported Dentures London | KClinics',
     metaDescription:
-      'Bespoke dentures and implant-supported dentures in Islington, London. Comfortable, secure, natural-looking tooth replacement at K Clinics.',
+      'Bespoke dentures and implant-supported dentures in Islington, London. Comfortable, secure, natural-looking tooth replacement at KClinics.',
     keywords: ['dentures London', 'implant supported dentures', 'denture clinic Islington', 'All-on-4 London'],
     eyebrow: 'Restorative & Specialist',
     intro:
@@ -722,9 +692,9 @@ export const treatments: Treatment[] = [
     group: 'Restorative & Specialist',
     title: 'Specialist Dentistry',
     tagline: 'Complex care, in considered hands.',
-    metaTitle: 'Specialist Dentistry London (Islington) | K Clinics',
+    metaTitle: 'Specialist Dentistry London (Islington) | KClinics',
     metaDescription:
-      'Specialist dental care in Islington, London — advanced restorative, endodontic and complex treatment planning delivered with precision at K Clinics.',
+      'Specialist dental care in Islington, London — advanced restorative, endodontic and complex treatment planning delivered with precision at KClinics.',
     keywords: ['specialist dentist London', 'root canal Islington', 'restorative dentistry London', 'complex dental care'],
     eyebrow: 'Restorative & Specialist',
     intro:
@@ -760,9 +730,9 @@ export const treatments: Treatment[] = [
     group: 'Restorative & Specialist',
     title: 'Dental Consultations',
     tagline: 'Every great smile begins with a conversation.',
-    metaTitle: 'Dental Consultation London (Islington) | K Clinics',
+    metaTitle: 'Dental Consultation London (Islington) | KClinics',
     metaDescription:
-      'Book a dental consultation in Islington, London. A thorough assessment and a clear, personalised treatment plan for your smile at K Clinics.',
+      'Book a dental consultation in Islington, London. A thorough assessment and a clear, personalised treatment plan for your smile at KClinics.',
     keywords: ['dental consultation London', 'dentist Islington', 'smile assessment', 'treatment plan dentist'],
     eyebrow: 'Restorative & Specialist',
     intro:
@@ -805,7 +775,6 @@ export const bookingConfig: Record<string, BookingCfg> = {
   // "from" = lowest single-session price from the official price sheet.
   'laser-hair-removal':          { pricePence: 1100,  durationMin: 15, bufferMin: 10, requiresResource: 'laser' },  // eyebrows from £11
   'laser-hair-removal-for-men':  { pricePence: 3300,  durationMin: 15, bufferMin: 10, requiresResource: 'laser' },  // underarms from £33
-  'carbon-laser-peel':           { pricePence: 12100, durationMin: 40, bufferMin: 10, requiresResource: 'laser' },  // Hollywood peel full face from £121
   'laser-tattoo-removal':        { pricePence: 4400,  durationMin: 15, bufferMin: 10, requiresResource: 'laser' },  // very small from £44
   'smas-hifu-lifting':           { pricePence: 34900, durationMin: 30, bufferMin: 10, requiresResource: 'hifu' },  // eyebrow/forehead/neck lift from £349
   'rf-lifting':                  { pricePence: 26000, durationMin: 45, bufferMin: 10 },  // from £260

@@ -53,7 +53,7 @@ export async function chargeBooking(
       await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment receipt', status: 'SENT' } });
       await sendEmail({
         to: booking.client.email,
-        subject: opts.late ? 'Late-cancellation fee — K Clinics' : `Receipt — ${booking.treatmentTitle}`,
+        subject: opts.late ? 'Late-cancellation fee — KClinics' : `Receipt — ${booking.treatmentTitle}`,
         html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountPence, late: opts.late }),
       });
       return { ok: true };
@@ -67,7 +67,7 @@ export async function chargeBooking(
       await db.booking.update({ where: { id: booking.id }, data: { chargePaymentIntentId: err.raw.payment_intent.id } });
       await sendEmail({
         to: booking.client.email,
-        subject: 'Action needed to complete your payment — K Clinics',
+        subject: 'Action needed to complete your payment — KClinics',
         html: tmplPaymentActionRequired({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, payUrl, pricePence: amountPence }),
       });
       return { ok: false, requiresAction: true, error: 'Card needs authentication; client emailed.' };

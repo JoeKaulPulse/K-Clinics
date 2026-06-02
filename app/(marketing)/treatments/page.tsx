@@ -7,9 +7,9 @@ import { aesthetics, groupByGroup } from '@/lib/treatments';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const metadata: Metadata = pageMeta({
-  title: 'Aesthetic Treatments in London — Laser, Skin & Body | K Clinics',
+  title: 'Aesthetic Treatments in London — Laser, Skin & Body | KClinics',
   description:
-    'Explore K Clinics’ full menu of aesthetic treatments in Islington, London — laser hair removal, HIFU lifting, advanced facials, body contouring and injectables.',
+    'Explore KClinics’ full menu of aesthetic treatments in Islington, London — laser hair removal, HIFU lifting, advanced facials, body contouring and injectables.',
   path: '/treatments',
   keywords: ['aesthetic clinic London', 'laser clinic Islington', 'skin treatments London', 'non-surgical treatments'],
 });

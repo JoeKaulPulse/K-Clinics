@@ -51,7 +51,7 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
   return (
     <div className="mx-auto flex min-h-screen max-w-[88rem] flex-col px-[var(--gutter)]">
       <header className="flex items-center justify-between gap-4 border-b border-[var(--color-line)] py-5">
-        <Link href="/account" aria-label="K Clinics" className="flex items-center gap-2.5 text-[var(--color-ink)]">
+        <Link href="/account" aria-label="KClinics" className="flex items-center gap-2.5 text-[var(--color-ink)]">
           <span className="block h-8 w-[1.25rem]"><KMark /></span>
           <span className="hidden h-[0.62rem] w-[5.5rem] sm:block"><ClinicsWordmark /></span>
         </Link>

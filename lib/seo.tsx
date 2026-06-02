@@ -174,7 +174,7 @@ export function serviceLd({
   return proc;
 }
 
-/** Local areas K Clinics serves — strengthens "near me" / borough GEO ranking. */
+/** Local areas KClinics serves — strengthens "near me" / borough GEO ranking. */
 export function londonAreas() {
   return [
     { '@type': 'City', name: 'London' },

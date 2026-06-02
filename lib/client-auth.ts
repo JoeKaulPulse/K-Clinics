@@ -217,7 +217,7 @@ export async function requestPasswordReset(email: string): Promise<{ ok: true }>
     const url = `${base}/account/reset?token=${token}&id=${client.id}`;
     try {
       const { sendEmail, tmplPasswordReset } = await import('@/lib/email');
-      const res = await sendEmail({ to: client.email, subject: 'Reset your K Clinics password', html: tmplPasswordReset(client.firstName, url) });
+      const res = await sendEmail({ to: client.email, subject: 'Reset your KClinics password', html: tmplPasswordReset(client.firstName, url) });
       await db.emailEvent.create({ data: { clientId: client.id, kind: 'PASSWORD_RESET', to: client.email, subject: 'Password reset', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error } });
     } catch {
       /* swallow — never reveal whether the email exists */

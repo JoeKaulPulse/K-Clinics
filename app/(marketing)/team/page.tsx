@@ -8,11 +8,11 @@ import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const metadata: Metadata = pageMeta({
-  title: 'Our Team — Expert Clinicians & Practitioners | K Clinics London',
+  title: 'Our Team — Expert Clinicians & Practitioners | KClinics London',
   description:
-    'Meet the K Clinics team — qualified, registered aesthetic doctors, laser specialists and cosmetic dentists delivering safe, artful results in Islington, London.',
+    'Meet the KClinics team — qualified, registered aesthetic doctors, laser specialists and cosmetic dentists delivering safe, artful results in Islington, London.',
   path: '/team',
-  keywords: ['K Clinics team', 'aesthetic doctor London', 'cosmetic dentist Islington', 'laser specialist London'],
+  keywords: ['KClinics team', 'aesthetic doctor London', 'cosmetic dentist Islington', 'laser specialist London'],
 });
 
 function teamLd() {
@@ -71,7 +71,7 @@ export default function TeamPage() {
 
         <Reveal>
           <p className="mx-auto mt-12 max-w-2xl text-center text-sm text-[var(--color-stone)]">
-            All K Clinics practitioners hold the relevant professional registrations and undertake ongoing training.
+            All KClinics practitioners hold the relevant professional registrations and undertake ongoing training.
             Registration details are available on request and displayed in clinic.
           </p>
         </Reveal>

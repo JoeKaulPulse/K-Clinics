@@ -9,9 +9,9 @@ import { packages } from '@/lib/packages';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const metadata: Metadata = pageMeta({
-  title: 'Treatment Packages & Programmes in London | K Clinics',
+  title: 'Treatment Packages & Programmes in London | KClinics',
   description:
-    'Curated treatment packages at K Clinics, Islington — Total Rejuvenation, Perfect Skin, Smooth & Slim and Ultimate Hair-Free programmes for transformative, lasting results.',
+    'Curated treatment packages at KClinics, Islington — Total Rejuvenation, Perfect Skin, Smooth & Slim and Ultimate Hair-Free programmes for transformative, lasting results.',
   path: '/packages',
   keywords: ['treatment packages London', 'skin programme London', 'body sculpting package', 'laser hair removal package'],
 });
