@@ -53,10 +53,21 @@ export async function POST(req: Request) {
   });
   const customerId = await ensureCustomer(client);
 
-  // One-time welcome discount: apply if this client has an ACTIVE claim.
-  let finalPrice = pricePence ?? 0;
+  const basePrice = pricePence ?? 0;
+  let finalPrice = basePrice;
+
+  // A valid promo code takes precedence over the one-time welcome claim (no
+  // stacking). Validated server-side here; redeemed after the booking is held.
+  let promo: { promoId: string; discountPence: number } | null = null;
+  if (basePrice > 0 && d.promoCode) {
+    const { priceWithPromo } = await import('@/lib/promo');
+    const r = await priceWithPromo(d.promoCode, { clientId: client.id, email: client.email, treatmentSlug: d.slug, pricePence: basePrice });
+    if (r.ok) { finalPrice = r.finalPence; promo = { promoId: r.promoId, discountPence: r.discountPence }; }
+  }
+
+  // One-time welcome discount: apply only if no promo code was used.
   const claim =
-    finalPrice > 0 ? await db.discountClaim.findFirst({ where: { clientId: client.id, status: 'ACTIVE' } }) : null;
+    !promo && finalPrice > 0 ? await db.discountClaim.findFirst({ where: { clientId: client.id, status: 'ACTIVE' } }) : null;
   if (claim) finalPrice = Math.round((finalPrice * (100 - claim.percent)) / 100);
 
   // Hold the slot.
@@ -85,6 +96,12 @@ export async function POST(req: Request) {
   });
   if (practitionerId) {
     await logAudit({ action: 'PRACTITIONER_ASSIGNED', actor: 'system', bookingId: booking.id, clientId: client.id, summary: 'Clinician auto-assigned' });
+  }
+
+  // Record the promo redemption (increments the code's usage counter).
+  if (promo) {
+    const { redeemPromo } = await import('@/lib/promo');
+    await redeemPromo(promo.promoId, { clientId: client.id, email: client.email, bookingId: booking.id, amountOffPence: promo.discountPence });
   }
 
   // Burn the welcome discount so it can only ever be used once.

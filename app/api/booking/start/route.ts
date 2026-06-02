@@ -51,6 +51,14 @@ export async function POST(req: Request) {
     const w = Math.round((base * welcomeClaim.percent) / 100);
     if (w > primaryDiscount) { primaryDiscount = w; usedWelcome = true; }
   }
+  // A promo code applies to the primary treatment and wins if it beats the best
+  // automatic discount (no stacking). Validated server-side; redeemed below.
+  let promo: { promoId: string } | null = null;
+  if (base > 0 && d.promoCode) {
+    const { priceWithPromo } = await import('@/lib/promo');
+    const r = await priceWithPromo(d.promoCode, { clientId: client.id, email: client.email, treatmentSlug: primary.service.treatmentSlug, pricePence: base });
+    if (r.ok && r.discountPence >= primaryDiscount) { primaryDiscount = r.discountPence; usedWelcome = false; promo = { promoId: r.promoId }; }
+  }
   items.push({
     variantId: primary.variant.id, treatmentSlug: primary.service.treatmentSlug,
     label: `${primary.service.name} — ${primary.variant.name}`, sessions,
@@ -124,6 +132,11 @@ export async function POST(req: Request) {
   // Burn the welcome discount if it was the best offer used.
   if (usedWelcome && welcomeClaim) {
     await db.discountClaim.update({ where: { id: welcomeClaim.id }, data: { status: 'REDEEMED', redeemedBookingId: booking.id } });
+  }
+  // Record the promo redemption (increments its usage counter).
+  if (promo) {
+    const { redeemPromo } = await import('@/lib/promo');
+    await redeemPromo(promo.promoId, { clientId: client.id, email: client.email, bookingId: booking.id, amountOffPence: primaryDiscount });
   }
 
   const { logAudit } = await import('@/lib/audit');

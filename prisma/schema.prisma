@@ -1534,3 +1534,49 @@ model SecurityEvent {
   @@index([ip, createdAt])
   @@index([createdAt])
 }
+
+// Promotional discount codes — two kinds:
+//  • UNIVERSAL: one code anyone can use (e.g. "K10SUMMERREADY", 10% off in June)
+//  • PERSONAL:  a unique code generated per campaign recipient, tied to their email
+model PromoCode {
+  id             String   @id @default(cuid())
+  code           String   @unique               // stored uppercased
+  kind           String   @default("UNIVERSAL") // UNIVERSAL | PERSONAL
+  discountType   String   @default("PERCENT")   // PERCENT | FIXED
+  percent        Int?                            // when PERCENT (1–100)
+  amountPence    Int?                            // when FIXED
+  treatmentSlugs String[] @default([])           // empty = all treatments
+  minSpendPence  Int?
+  maxRedemptions Int?                            // null = unlimited (per code)
+  redeemedCount  Int      @default(0)
+  oncePerClient  Boolean  @default(true)
+  assignedEmail  String?                         // PERSONAL: locks the code to a recipient
+  campaignId     String?                         // links to the Campaign that generated it
+  label          String?                         // internal promo name
+  startsAt       DateTime?
+  expiresAt      DateTime?
+  active         Boolean  @default(true)
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  redemptions    PromoRedemption[]
+
+  @@index([active, expiresAt])
+  @@index([campaignId])
+  @@index([assignedEmail])
+}
+
+model PromoRedemption {
+  id             String    @id @default(cuid())
+  promo          PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+  promoCodeId    String
+  clientId       String?
+  email          String?
+  bookingId      String?
+  amountOffPence Int       @default(0)
+  createdAt      DateTime  @default(now())
+
+  @@index([promoCodeId])
+  @@index([clientId])
+}

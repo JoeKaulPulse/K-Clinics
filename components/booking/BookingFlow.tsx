@@ -53,6 +53,9 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
   const [refreshments, setRefreshments] = useState<Set<string>>(new Set());
   const [allergyNote, setAllergyNote] = useState('');
   const [aftercareAck, setAftercareAck] = useState(false);
+  const [promoInput, setPromoInput] = useState('');
+  const [promo, setPromo] = useState<{ ok: boolean; code?: string; label?: string | null; discountPence?: number; finalPence?: number; error?: string } | null>(null);
+  const [promoBusy, setPromoBusy] = useState(false);
 
   const [clientSecret, setClientSecret] = useState('');
   const [bookingId, setBookingId] = useState('');
@@ -119,7 +122,7 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
     try {
       const res = await fetch('/api/booking/start', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variantId, sessions, startISO: slot, addOnVariantIds: [...addOns], smsReminders: smsPref, refreshments: [...refreshments], allergyNote, aftercareAck }),
+        body: JSON.stringify({ variantId, sessions, startISO: slot, addOnVariantIds: [...addOns], smsReminders: smsPref, refreshments: [...refreshments], allergyNote, aftercareAck, promoCode: promo?.ok ? promo.code : undefined }),
       });
       const j = await res.json();
       if (!j.ok) { setError(j.error || 'Could not book.'); setSubmitting(false); return; }
@@ -127,6 +130,16 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
       else { setStage('done'); }
     } catch { setError('Network error. Please try again.'); }
     finally { setSubmitting(false); }
+  }
+
+  async function applyPromo() {
+    if (!promoInput.trim() || !service) return;
+    setPromoBusy(true);
+    try {
+      const res = await fetch('/api/promo/validate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: promoInput.trim(), slug: service.treatmentSlug }) });
+      setPromo(await res.json().catch(() => ({ ok: false, error: 'Could not check that code.' })));
+    } catch { setPromo({ ok: false, error: 'Network error.' }); }
+    finally { setPromoBusy(false); }
   }
 
   const steps: { key: Stage; label: string }[] = [
@@ -297,9 +310,22 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
                 </div>
               </div>
 
-              <div className="mt-6 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] p-4 text-sm">
+              {/* Promo code */}
+              <div className="mt-6">
+                <label className={label}>Promo code (optional)</label>
+                <div className="mt-1 flex gap-2">
+                  <input value={promoInput} onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromo(null); }} placeholder="e.g. K10SUMMERREADY" className={`${field} uppercase`} />
+                  <button type="button" onClick={applyPromo} disabled={promoBusy || !promoInput.trim()} className="shrink-0 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-4 text-sm font-medium hover:border-[var(--color-gold)] disabled:opacity-50">{promoBusy ? '…' : 'Apply'}</button>
+                </div>
+                {promo && (promo.ok
+                  ? <p className="mt-1.5 text-sm text-[var(--color-jade,#3f7a5a)]">✓ {promo.label || 'Code applied'} — you save {money(promo.discountPence || 0)} on this treatment.</p>
+                  : <p className="mt-1.5 text-sm text-[var(--color-blush)]">{promo.error || 'That code isn’t valid.'}</p>)}
+              </div>
+
+              <div className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] p-4 text-sm">
                 <div className="flex justify-between"><span className="text-[var(--color-stone)]">Total today</span><span className="font-medium">£0.00</span></div>
                 <div className="flex justify-between"><span className="text-[var(--color-stone)]">Total at your visit</span><span className="font-medium text-[var(--color-ink)]">{money(orderTotal)}</span></div>
+                {promo?.ok && <div className="mt-1 flex justify-between text-[var(--color-jade,#3f7a5a)]"><span>Promo {promo.code}</span><span>−{money(promo.discountPence || 0)} applied</span></div>}
                 <p className="mt-2 text-xs text-[var(--color-stone-soft)]">{totalDuration} min · {[service.name, ...[...addOns].map((id) => catalogue.flatMap((s) => s.variants).find((v) => v.id === id)?.name).filter(Boolean)].join(' + ')}</p>
               </div>
 

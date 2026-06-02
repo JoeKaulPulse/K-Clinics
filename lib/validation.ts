@@ -81,6 +81,7 @@ export const bookingStartSchema = z.object({
   refreshments: z.array(z.string().max(40)).max(12).default([]),
   allergyNote: z.string().max(300).optional().or(z.literal('')),
   aftercareAck: z.boolean().default(false),
+  promoCode: z.string().max(40).optional().or(z.literal('')),
 });
 export type BookingStartInput = z.infer<typeof bookingStartSchema>;
 
@@ -94,6 +95,7 @@ export const bookingCreateSchema = z.object({
   notes: z.string().max(2000).optional().or(z.literal('')),
   marketingOptIn: z.boolean().default(false),
   consent: z.literal(true, { errorMap: () => ({ message: 'Please accept the booking terms' }) }),
+  promoCode: z.string().max(40).optional().or(z.literal('')),
   company: z.string().max(0).optional().or(z.literal('')), // honeypot
 });
 
