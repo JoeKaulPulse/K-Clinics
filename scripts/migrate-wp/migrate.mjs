@@ -16,6 +16,7 @@
 // yet — they depend on which plugins the inventory reveals. This step nails the
 // backbone (the people); the rest is layered on once we see the inventory.
 
+import './lib-env.mjs';
 import { streamDump, normEmail, parseDate } from './lib-dump.mjs';
 
 const args = process.argv.slice(2);
