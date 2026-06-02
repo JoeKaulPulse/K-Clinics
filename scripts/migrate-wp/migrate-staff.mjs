@@ -9,6 +9,7 @@
 // practitionerId, matched via the [wp:grafik#id] marker in the booking notes.
 // Re-runnable: upserts staff by email; never modifies an existing account.
 
+import './lib-env.mjs';
 import { streamDump, normEmail } from './lib-dump.mjs';
 
 const args = process.argv.slice(2);

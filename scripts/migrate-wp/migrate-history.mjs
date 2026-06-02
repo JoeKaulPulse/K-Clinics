@@ -10,6 +10,7 @@
 // Clients must be imported first (migrate.mjs) — we link by matching the old
 // user's email to the new Client. Re-runnable: skips rows already imported.
 
+import './lib-env.mjs';
 import { streamDump, normEmail, parseDate } from './lib-dump.mjs';
 
 const args = process.argv.slice(2);
