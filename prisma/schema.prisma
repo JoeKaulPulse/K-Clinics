@@ -1580,3 +1580,36 @@ model PromoRedemption {
   @@index([promoCodeId])
   @@index([clientId])
 }
+
+// In-house live chat: a visitor conversation + its messages. No third-party
+// processor — everything stays in our database. Visitors are identified by an
+// unguessable token stored in their browser; staff reply from the CRM.
+model ChatConversation {
+  id            String   @id @default(cuid())
+  token         String   @unique @default(cuid())
+  visitorName   String?
+  visitorEmail  String?
+  clientId      String?               // if a signed-in client started it
+  status        String   @default("OPEN") // OPEN | CLOSED
+  staffUnread   Int      @default(0)   // messages awaiting staff
+  page          String?               // path the chat was opened from
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  messages      ChatMessage[]
+
+  @@index([status, lastMessageAt])
+}
+
+model ChatMessage {
+  id             String   @id @default(cuid())
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String
+  sender         String   // VISITOR | STAFF
+  author         String?  // staff email, when sender = STAFF
+  body           String   @db.Text
+  createdAt      DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+}
