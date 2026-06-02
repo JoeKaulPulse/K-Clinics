@@ -1,5 +1,6 @@
 import { site } from '@/lib/site';
 import { treatments } from '@/lib/treatments';
+import { allGeneralFaqs } from '@/lib/faqs';
 
 export const dynamic = 'force-static';
 
@@ -35,6 +36,21 @@ ${dentistry.map(line).join('\n')}
 
 ## Training (K Academy)
 - [Courses & enrolment](${base}/academy): Ofqual-regulated, VTCT & CPD-accredited; blended Thinkific theory + practical days + in-house VTCT exam; Clearpay finance available.
+
+## Opening hours (Europe/London)
+${site.hours.map((h) => `- ${h.day}: ${h.open === 'Closed' ? 'Closed' : `${h.open}–${h.close}`}`).join('\n')}
+
+## Key facts
+- Consultations are complimentary, with no obligation to proceed.
+- New clients enjoy 15% off their first visit (aesthetic or dental).
+- Booking is online: pick a treatment & time, save a card securely — charged only once the treatment is delivered.
+- Free cancellation up to 24 hours before an appointment; within 24 hours the full fee applies.
+- Finance: pay-as-you-go courses, 0% interest-free options and Buy Now, Pay Later via Clearpay & Klarna.
+- Location & transport: ${site.address.street}, ${site.address.locality}, ${site.address.postalCode} — minutes from Farringdon, Barbican and Old Street; step-free access.
+- Dentistry is ${site.dentistryLive ? 'open and bookable' : 'opening soon (register interest on the dentistry page)'}.
+
+## FAQs
+${allGeneralFaqs.map((f) => `### ${f.q}\n${f.a}`).join('\n\n')}
 `;
 
   return new Response(body, { headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'public, max-age=3600' } });

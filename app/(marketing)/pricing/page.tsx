@@ -5,7 +5,7 @@ import { BookingButtons } from '@/components/booking/BookingButtons';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { priceList, formatGBP } from '@/lib/pricing';
 import { OffersStrip } from '@/components/marketing/OffersStrip';
-import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
+import { pageMeta, JsonLd, breadcrumbLd, offerCatalogLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Price List — Aesthetics & Laser Treatments in London | K Clinics',
@@ -16,9 +16,16 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({
 });
 
 export default function PricingPage() {
+  // Build a priced OfferCatalog from every single-session price on the list.
+  const offerItems = priceList.flatMap((g) =>
+    g.rows.filter((r) => typeof r.session === 'number').map((r) => ({ name: r.name, price: r.session as number })),
+  );
   return (
     <>
-      <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Pricing', path: '/pricing' }])} />
+      <JsonLd data={[
+        breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Pricing', path: '/pricing' }]),
+        offerCatalogLd(offerItems),
+      ]} />
       <PageHero
         eyebrow="Transparent pricing"
         title="Every price, in plain sight."
