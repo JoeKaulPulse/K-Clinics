@@ -1,0 +1,212 @@
+// Step 2 of the migration: build K Clinics Clients from a WordPress/WooCommerce
+// dump — every registered user AND every WooCommerce customer (incl. guests),
+// de-duplicated by email, with original signup dates and contact details kept.
+//
+//   Dry run (no database needed, prints a reconciliation report):
+//     node scripts/migrate-wp/migrate.mjs --file data/full-dump.sql --dry-run
+//
+//   Commit (writes via Prisma; needs DATABASE_URL):
+//     DATABASE_URL=... node scripts/migrate-wp/migrate.mjs --file data/full-dump.sql --commit
+//
+// Safety: WordPress is read-only here. We never import password hashes (clients
+// set a password via "forgot password" on first visit). Re-runnable: upserts by
+// email and only fills blank fields, so a second run never clobbers edits.
+//
+// Health/consent forms, order history and bookings are deliberately NOT imported
+// yet — they depend on which plugins the inventory reveals. This step nails the
+// backbone (the people); the rest is layered on once we see the inventory.
+
+import { streamDump, normEmail, parseDate } from './lib-dump.mjs';
+
+const args = process.argv.slice(2);
+const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : null; };
+const file = opt('--file') || args.find((a) => a.endsWith('.sql'));
+const commit = args.includes('--commit');
+const dryRun = args.includes('--dry-run') || !commit;
+if (!file) { console.error('Provide --file <dump.sql>'); process.exit(1); }
+
+const suf = (t) => t.replace(/^[a-z0-9]+_/i, '');
+
+// ── usermeta keys we understand ─────────────────────────────────────────────
+const MAP = new Set([
+  'first_name', 'last_name', 'description',
+  'billing_first_name', 'billing_last_name', 'billing_email', 'billing_phone',
+  'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city',
+  'billing_state', 'billing_postcode', 'billing_country',
+]);
+const DOB_KEYS = ['dob', 'date_of_birth', 'birth_date', 'birthday', 'billing_dob'];
+const OPTIN_KEYS = ['newsletter', 'marketing_optin', 'subscribe', 'email_marketing', 'mailchimp_woocommerce_is_subscribed'];
+// Internal WordPress noise we never preserve into client notes.
+const NOISE = /^(wp_|_wp|session_tokens|capabilities|user_level|rich_editing|syntax_highlighting|comment_shortcuts|admin_color|use_ssl|show_admin_bar|dismissed_|nickname|locale|last_update|community-events|managenav|metaboxhidden|closedpostboxes|meta-box-order|screen_layout|primary_blog|source_domain|_yoast|_application_passwords|wc_last_active|paying_customer)/i;
+
+const truthy = (v) => /^(1|yes|true|on|subscribed)$/i.test(String(v ?? '').trim());
+
+// ── gather from the dump ────────────────────────────────────────────────────
+const users = new Map();           // id -> { login, email, registered, display }
+const meta = new Map();            // userId -> { key: value }
+const shopOrders = new Map();      // postId -> date
+const orderMeta = new Map();       // postId -> { key: value }   (billing_* for shop_order)
+const hposAddr = [];               // [{ email, first, last, phone, ... , customer_id }]
+const lookup = [];                 // wc_customer_lookup rows
+const unmapped = new Map();        // meta_key -> frequency (for refining the map)
+
+const BILLING_PM = new Set(['_billing_email', '_billing_first_name', '_billing_last_name', '_billing_phone', '_billing_company', '_billing_address_1', '_billing_address_2', '_billing_city', '_billing_state', '_billing_postcode', '_billing_country', '_customer_user', '_date_completed', '_completed_date', '_order_currency']);
+
+const wantRows = (t) => /(^|_)(users|usermeta|posts|postmeta|wc_order_addresses|wc_customer_lookup)$/i.test(t);
+
+await streamDump(file, {
+  wantRows,
+  onRows: (t, rows) => {
+    const s = suf(t);
+    if (s === 'users') {
+      for (const r of rows) users.set(r.ID ?? r.id, { login: r.user_login, email: normEmail(r.user_email), registered: parseDate(r.user_registered), display: r.display_name });
+    } else if (s === 'usermeta') {
+      for (const r of rows) {
+        const id = r.user_id; const k = r.meta_key;
+        if (id == null || k == null) continue;
+        let m = meta.get(id); if (!m) meta.set(id, (m = {}));
+        m[k] = r.meta_value;
+        if (!MAP.has(k) && !DOB_KEYS.includes(k) && !OPTIN_KEYS.includes(k) && !NOISE.test(k)) unmapped.set(k, (unmapped.get(k) || 0) + 1);
+      }
+    } else if (s === 'posts') {
+      for (const r of rows) if (r.post_type === 'shop_order' || r.post_type === 'shop_subscription') shopOrders.set(r.ID ?? r.id, parseDate(r.post_date));
+    } else if (s === 'postmeta') {
+      for (const r of rows) if (BILLING_PM.has(r.meta_key)) { let m = orderMeta.get(r.post_id); if (!m) orderMeta.set(r.post_id, (m = {})); m[r.meta_key] = r.meta_value; }
+    } else if (s === 'wc_order_addresses') {
+      for (const r of rows) if ((r.address_type || 'billing') === 'billing') hposAddr.push(r);
+    } else if (s === 'wc_customer_lookup') {
+      for (const r of rows) lookup.push(r);
+    }
+  },
+});
+
+// ── resolve into client records, de-duplicated by normalised email ──────────
+const clients = new Map(); // email -> record
+let fromUsers = 0, fromOrders = 0, skippedNoEmail = 0;
+
+function blank(s) { return s == null || String(s).trim() === ''; }
+function firstToken(s) { return (s || '').trim().split(/\s+/)[0] || ''; }
+function upsertLocal(email, data, createdAt, fromOrder) {
+  if (!email) { skippedNoEmail++; return; }
+  let c = clients.get(email);
+  if (!c) { c = { email, tags: new Set(['migrated:wordpress']), notes: [], marketingOptIn: false, smsReminders: false }; clients.set(email, c); }
+  for (const [k, v] of Object.entries(data)) if (!blank(v) && blank(c[k])) c[k] = v;
+  if (createdAt && (!c.createdAt || createdAt < c.createdAt)) c.createdAt = createdAt;
+  if (fromOrder) c.tags.add('woocommerce-customer');
+}
+
+// Registered users
+for (const [id, u] of users) {
+  const m = meta.get(id) || {};
+  const email = u.email || normEmail(m.billing_email);
+  if (!email) { skippedNoEmail++; continue; }
+  fromUsers++;
+  const firstName = m.billing_first_name || m.first_name || firstToken(u.display) || email.split('@')[0];
+  const lastName = m.billing_last_name || m.last_name || u.display?.split(/\s+/).slice(1).join(' ') || null;
+  let dob = null;
+  for (const k of DOB_KEYS) if (!blank(m[k])) { dob = parseDate(String(m[k]).includes(' ') ? m[k] : m[k] + ' 00:00:00'); break; }
+  const optIn = OPTIN_KEYS.some((k) => truthy(m[k]));
+  upsertLocal(email, { firstName, lastName, phone: m.billing_phone, dob, source: 'wordpress', wpUserId: id, registered: u.registered }, u.registered, false);
+  const c = clients.get(email);
+  if (optIn) c.marketingOptIn = true;
+  // preserve address + any unmapped, non-noise meta so nothing is lost
+  const addr = [m.billing_address_1, m.billing_address_2, m.billing_city, m.billing_postcode, m.billing_country].filter((x) => !blank(x)).join(', ');
+  if (addr) c.address = c.address || addr;
+  for (const [k, v] of Object.entries(m)) if (!MAP.has(k) && !DOB_KEYS.includes(k) && !OPTIN_KEYS.includes(k) && !NOISE.test(k) && !blank(v) && !String(v).startsWith('a:')) c.notes.push(`${k}: ${String(v).slice(0, 160)}`);
+}
+
+// WooCommerce orders — legacy (post-based)
+for (const [postId, m] of orderMeta) {
+  const email = normEmail(m._billing_email);
+  if (!email) continue;
+  fromOrders++;
+  const addr = [m._billing_address_1, m._billing_address_2, m._billing_city, m._billing_postcode, m._billing_country].filter((x) => !blank(x)).join(', ');
+  upsertLocal(email, { firstName: m._billing_first_name || email.split('@')[0], lastName: m._billing_last_name, phone: m._billing_phone, source: 'wordpress', address: addr || null }, shopOrders.get(postId), true);
+}
+// WooCommerce orders — HPOS (wc_order_addresses)
+for (const a of hposAddr) {
+  const email = normEmail(a.email);
+  if (!email) continue;
+  fromOrders++;
+  const addr = [a.address_1, a.address_2, a.city, a.postcode, a.country].filter((x) => !blank(x)).join(', ');
+  upsertLocal(email, { firstName: a.first_name || email.split('@')[0], lastName: a.last_name, phone: a.phone, source: 'wordpress', address: addr || null }, null, true);
+}
+// wc_customer_lookup (supplemental — fills gaps, last-active date)
+for (const r of lookup) {
+  const email = normEmail(r.email);
+  if (!email) continue;
+  upsertLocal(email, { firstName: r.first_name || email.split('@')[0], lastName: r.last_name, source: 'wordpress', lastVisitAt: parseDate(r.date_last_active) }, null, true);
+}
+
+// ── report ──────────────────────────────────────────────────────────────────
+const list = [...clients.values()];
+const withPhone = list.filter((c) => !blank(c.phone)).length;
+const withDob = list.filter((c) => c.dob).length;
+const withAddr = list.filter((c) => !blank(c.address)).length;
+const optedIn = list.filter((c) => c.marketingOptIn).length;
+const num = (n) => n.toLocaleString('en-GB');
+
+console.log('\n=== WordPress → Clients reconciliation ===');
+console.log(`Source rows scanned : users=${num(users.size)}  usermeta-users=${num(meta.size)}  legacy-orders=${num(orderMeta.size)}  hpos-addr=${num(hposAddr.length)}  lookup=${num(lookup.length)}`);
+console.log(`Contributed         : from users=${num(fromUsers)}  from orders=${num(fromOrders)}  skipped(no email)=${num(skippedNoEmail)}`);
+console.log(`\n→ UNIQUE CLIENTS (deduped by email): ${num(list.length)}`);
+console.log(`   with phone   : ${num(withPhone)}`);
+console.log(`   with DOB     : ${num(withDob)}`);
+console.log(`   with address : ${num(withAddr)}  (kept in notes until we add address fields)`);
+console.log(`   marketing opt-in (explicit) : ${num(optedIn)}`);
+
+if (unmapped.size) {
+  console.log('\nUnmapped usermeta keys seen (PII-free key names — paste back so I can map them):');
+  for (const [k, n] of [...unmapped.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40)) console.log(`   ${String(n).padStart(6)}  ${k}`);
+}
+
+if (dryRun) {
+  console.log('\nDRY RUN — nothing written. Re-run with --commit (and DATABASE_URL) to import.\n');
+  process.exit(0);
+}
+
+// ── commit via Prisma ────────────────────────────────────────────────────────
+const { PrismaClient } = await import('@prisma/client');
+const db = new PrismaClient();
+let created = 0, updated = 0, n = 0;
+try {
+  for (const c of list) {
+    n++;
+    const notes = c.notes.length ? `Imported from WordPress.\n${c.notes.join('\n')}` : 'Imported from WordPress.';
+    const baseCreate = {
+      email: c.email,
+      firstName: (c.firstName || c.email.split('@')[0]).slice(0, 120),
+      lastName: c.lastName ? String(c.lastName).slice(0, 120) : null,
+      phone: c.phone ? String(c.phone).slice(0, 40) : null,
+      dob: c.dob || null,
+      source: 'wordpress',
+      tags: [...c.tags],
+      notes: notes.slice(0, 4000),
+      marketingOptIn: c.marketingOptIn,
+      smsReminders: false,
+      lastVisitAt: c.lastVisitAt || null,
+      ...(c.createdAt ? { createdAt: c.createdAt } : {}),
+    };
+    const existing = await db.client.findUnique({ where: { email: c.email }, select: { id: true, phone: true, dob: true, tags: true, notes: true } });
+    if (!existing) {
+      await db.client.create({ data: baseCreate });
+      created++;
+    } else {
+      // Conservative: only fill blanks, merge tags — never overwrite live edits.
+      await db.client.update({
+        where: { id: existing.id },
+        data: {
+          phone: existing.phone ?? baseCreate.phone,
+          dob: existing.dob ?? baseCreate.dob,
+          tags: [...new Set([...(existing.tags || []), ...baseCreate.tags])],
+          notes: existing.notes ?? baseCreate.notes,
+        },
+      });
+      updated++;
+    }
+    if (n % 200 === 0) console.log(`  …${n}/${list.length}`);
+  }
+  console.log(`\n✓ Done. Created ${num(created)}, updated ${num(updated)}, total ${num(list.length)}.\n`);
+} finally {
+  await db.$disconnect();
+}
