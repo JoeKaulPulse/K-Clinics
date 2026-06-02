@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { ApplyForm } from '@/components/academy/ApplyForm';
-import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
+import { pageMeta, JsonLd, breadcrumbLd, courseLd } from '@/lib/seo';
 import { ACCREDITATION_LABELS, formatFee } from '@/lib/academy';
 
 export const dynamic = 'force-dynamic';
@@ -33,7 +33,10 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
 
   return (
     <>
-      <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Academy', path: '/academy' }, { name: course.title, path: `/academy/${slug}` }])} />
+      <JsonLd data={[
+        breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Academy', path: '/academy' }, { name: course.title, path: `/academy/${slug}` }]),
+        courseLd({ title: course.title, description: course.summary || course.description || course.title, path: `/academy/${slug}`, pricePence: course.pricePence, durationText: course.durationText }),
+      ]} />
       <PageHero
         eyebrow={course.level ? `K Academy · ${course.level}` : 'K Academy'}
         title={course.title}
