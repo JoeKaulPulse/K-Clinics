@@ -19,6 +19,16 @@ export async function POST(req: Request) {
   const ok = (extra: object = {}) => NextResponse.json({ ok: true, ...extra });
   const bad = () => NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
 
+  // Refresh the public academy pages + sitemap and nudge search engines when a
+  // course changes (the course list is published in both places).
+  const revalidateAcademy = async (slug?: string | null) => {
+    const { revalidatePath } = await import('next/cache');
+    revalidatePath('/academy'); revalidatePath('/sitemap.xml');
+    const paths = ['/academy'];
+    if (slug) { revalidatePath(`/academy/${slug}`); paths.push(`/academy/${slug}`); }
+    import('@/lib/indexnow').then((m) => m.indexNow(paths)).catch(() => {});
+  };
+
   switch (body.op) {
     case 'upsertCourse': {
       const b = body as Record<string, unknown>;
@@ -40,21 +50,26 @@ export async function POST(req: Request) {
         featured: !!b.featured,
         active: b.active === undefined ? true : !!b.active,
       };
-      if (b.id) await db.course.update({ where: { id: String(b.id) }, data });
+      let slug: string | null = null;
+      if (b.id) { const u = await db.course.update({ where: { id: String(b.id) }, data, select: { slug: true } }); slug = u.slug; }
       else {
         const order = await db.course.count();
-        await db.course.create({ data: { ...data, slug: `${slugify(data.title)}-${Date.now().toString(36).slice(-4)}`, order } });
+        const c = await db.course.create({ data: { ...data, slug: `${slugify(data.title)}-${Date.now().toString(36).slice(-4)}`, order }, select: { slug: true } });
+        slug = c.slug;
       }
+      await revalidateAcademy(slug);
       return ok();
     }
     case 'toggleCourse': {
       if (!body.id) return bad();
-      await db.course.update({ where: { id: body.id }, data: { active: !!body.active } });
+      const c = await db.course.update({ where: { id: body.id }, data: { active: !!body.active }, select: { slug: true } });
+      await revalidateAcademy(c.slug);
       return ok();
     }
     case 'removeCourse': {
       if (!body.id) return bad();
-      await db.course.delete({ where: { id: body.id } });
+      const c = await db.course.delete({ where: { id: body.id }, select: { slug: true } });
+      await revalidateAcademy(c.slug);
       return ok();
     }
     case 'upsertCohort': {
