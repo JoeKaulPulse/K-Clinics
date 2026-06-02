@@ -6,7 +6,7 @@ import { packageImage } from '@/lib/treatment-images';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { ArrowIcon } from '@/components/ui/Button';
 import { packages } from '@/lib/packages';
-import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
+import { pageMeta, JsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Treatment Packages & Programmes in London | K Clinics',
@@ -19,7 +19,10 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({
 export default function PackagesPage() {
   return (
     <>
-      <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Packages', path: '/packages' }])} />
+      <JsonLd data={[
+        breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Packages', path: '/packages' }]),
+        itemListLd('K Clinics treatment packages', packages.map((p) => ({ name: p.name, path: `/packages/${p.slug}` }))),
+      ]} />
       <PageHero
         eyebrow="Curated programmes"
         title="Signature packages, designed to transform."
