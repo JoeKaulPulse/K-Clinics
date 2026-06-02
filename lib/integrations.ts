@@ -119,20 +119,22 @@ export async function getIntegrations(): Promise<Integration[]> {
 
   // ── Telephony (yay.com) ──
   const yayHook = has(process.env.YAY_WEBHOOK_SECRET);
-  const yayApi = has(process.env.YAY_API_KEY);
+  const yayApi = has(process.env.YAY_AUTH_RESELLER) && has(process.env.YAY_AUTH_PASSWORD);
   items.push({
     id: 'telephony',
     name: 'Telephony (yay.com)',
     category: 'Communications',
-    description: 'Call logging, recordings, transcripts and caller→client matching, plus click-to-dial. Webhook: /api/integrations/yay',
-    status: yayHook && yayApi ? 'connected' : yayHook || yayApi ? 'partial' : 'not_configured',
-    detail: yayHook ? (yayApi ? 'Receiving calls; click-to-dial enabled.' : 'Receiving calls — add YAY_API_KEY for click-to-dial.') : 'Add YAY_WEBHOOK_SECRET and point your yay.com webhook here.',
+    description: 'Call logging, voicemail transcripts and caller→client/supplier matching (inbound webhook), plus click-to-dial. Webhook: /api/integrations/yay',
+    status: yayHook ? 'connected' : 'not_configured',
+    detail: yayHook ? (yayApi ? 'Logging calls; click-to-dial enabled.' : 'Logging calls. Add the API credentials (+ allow-list this server’s IP in yay) for click-to-dial.') : 'Add YAY_WEBHOOK_SECRET and point your yay.com Call Ended + Voicemail webhooks here.',
     envVars: [
       { name: 'YAY_WEBHOOK_SECRET', set: yayHook },
-      { name: 'YAY_API_KEY', set: yayApi, optional: true },
+      { name: 'YAY_AUTH_RESELLER', set: has(process.env.YAY_AUTH_RESELLER), optional: true },
+      { name: 'YAY_AUTH_USER', set: has(process.env.YAY_AUTH_USER), optional: true },
+      { name: 'YAY_AUTH_PASSWORD', set: has(process.env.YAY_AUTH_PASSWORD), optional: true },
       { name: 'YAY_API_BASE', set: has(process.env.YAY_API_BASE), optional: true },
     ],
-    docsHref: 'https://www.yay.com/',
+    docsHref: 'https://docs.yay.com/',
   });
 
   // ── Payments (Stripe) ──

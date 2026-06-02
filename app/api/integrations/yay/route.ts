@@ -16,14 +16,22 @@ export async function POST(req: Request) {
   const secret = process.env.YAY_WEBHOOK_SECRET;
   if (!secret) return NextResponse.json({ ok: false, error: 'Telephony webhook not configured.' }, { status: 503 });
 
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body !== 'object') return NextResponse.json({ ok: false, error: 'Bad payload.' }, { status: 400 });
+
+  // yay's webhook offers an "Auth Token" field but doesn't pin its transport, so
+  // accept the token from the URL, the Authorization / X-Auth-Token headers, or
+  // the JSON body — whichever yay uses. Constant-time compared to the secret.
   const url = new URL(req.url);
-  const token = url.searchParams.get('token') || (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+  const b = body as Record<string, unknown>;
+  const token = url.searchParams.get('token')
+    || (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')
+    || req.headers.get('x-auth-token')
+    || (typeof b.auth_token === 'string' ? b.auth_token : '')
+    || (typeof b.token === 'string' ? b.token : '');
   if (!token || !safeEqual(token, secret)) {
     return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
   }
-
-  const body = await req.json().catch(() => null);
-  if (!body || typeof body !== 'object') return NextResponse.json({ ok: false, error: 'Bad payload.' }, { status: 400 });
 
   const { parseYayEvent, ingestCall } = await import('@/lib/yay');
   const parsed = parseYayEvent(body as Record<string, unknown>);
