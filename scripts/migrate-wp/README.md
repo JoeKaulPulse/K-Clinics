@@ -9,6 +9,27 @@ later step) health/consent forms and history.
 > the dump file sitting on your computer and (for the final step) writes to the
 > new database. The dump never leaves your machine.
 
+## Easiest: one command
+
+```bash
+# 0) one-time: pull, drop full-dump.sql into scripts/migrate-wp/data/, and put
+#    your secrets in scripts/migrate-wp/.env (git-ignored). Easiest way:
+git pull
+vercel env pull scripts/migrate-wp/.env          # fills DATABASE_URL + keys
+#    …or create that .env by hand with DATABASE_URL=… and HEALTH_ENCRYPTION_KEY=…
+
+# 1) PREVIEW — writes nothing, shows the counts for all three steps
+node scripts/migrate-wp/import-all.mjs
+
+# 2) GO LIVE — writes clients + history + clinical to the database, in order
+node scripts/migrate-wp/import-all.mjs --commit
+```
+
+`import-all.mjs` auto-finds the dump, loads `.env`, and runs the three importers
+in the right order (stops if any step fails; skips clinical if no
+`HEALTH_ENCRYPTION_KEY`). Re-runnable — it never duplicates. The manual,
+step-by-step commands below are for when you want to run one piece at a time.
+
 ## Ground rules
 
 1. **WordPress is read-only.** Nothing is written to or deleted from the old site.
