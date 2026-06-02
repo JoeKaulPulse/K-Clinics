@@ -13,6 +13,7 @@ const STATUS_BADGE: Record<string, string> = {
   connected: 'bg-green-100 text-green-800',
   partial: 'bg-amber-100 text-amber-800',
   not_configured: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
+  parked: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
 };
 
 export default async function IntegrationsPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
@@ -29,8 +30,8 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
   const uk = locale === 'uk';
 
   const statusLabel = (s: string) => uk
-    ? s === 'connected' ? 'підключено' : s === 'partial' ? 'частково' : 'не налаштовано'
-    : s === 'connected' ? 'connected' : s === 'partial' ? 'partial' : 'not configured';
+    ? s === 'connected' ? 'підключено' : s === 'partial' ? 'частково' : s === 'parked' ? 'призупинено' : 'не налаштовано'
+    : s === 'connected' ? 'connected' : s === 'partial' ? 'partial' : s === 'parked' ? 'parked' : 'not configured';
 
   const categories = Array.from(new Set(integrations.map((i) => i.category)));
 

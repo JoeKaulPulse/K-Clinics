@@ -33,8 +33,8 @@ export async function GET(req: Request) {
   // isn't configured / nobody connected).
   let gcal = { ok: false, staff: 0, imported: 0 };
   try {
-    const { syncAllCalendars } = await import('@/lib/google-calendar');
-    gcal = await syncAllCalendars();
+    const { googleEnabled, syncAllCalendars } = await import('@/lib/google-calendar');
+    if (googleEnabled()) gcal = await syncAllCalendars(); // parked while on Hostinger
   } catch {
     /* never fail the cron on a calendar sync issue */
   }

@@ -6,7 +6,7 @@ import { isConnected } from '@/lib/oauth-connections';
 // what's connected and what still needs configuring. Secrets themselves are
 // never returned — only whether each required variable is present.
 
-export type IntegrationStatus = 'connected' | 'partial' | 'not_configured';
+export type IntegrationStatus = 'connected' | 'partial' | 'not_configured' | 'parked';
 
 export type Integration = {
   id: string;
@@ -50,11 +50,12 @@ export async function getIntegrations(): Promise<Integration[]> {
     ],
   });
 
-  // ── Google Calendar ──
-  const { googleConfigured } = await import('@/lib/google-calendar');
+  // ── Google Calendar (PARKED — clinic is on Hostinger) ──
+  const { googleConfigured, googleEnabled } = await import('@/lib/google-calendar');
   const gConfigured = googleConfigured();
+  const gEnabled = googleEnabled();
   let connectedStaff = 0;
-  if (dbConnected) {
+  if (dbConnected && gEnabled) {
     try {
       const { db } = await import('@/lib/db');
       connectedStaff = await db.adminUser.count({ where: { googleRefreshToken: { not: null }, active: true } });
@@ -65,11 +66,12 @@ export async function getIntegrations(): Promise<Integration[]> {
     name: 'Google Calendar',
     category: 'Scheduling',
     description: 'Syncs each clinician’s busy times so availability stays accurate automatically.',
-    status: !gConfigured ? 'not_configured' : connectedStaff > 0 ? 'connected' : 'partial',
-    detail: !gConfigured
-      ? 'Add Google OAuth credentials to enable.'
+    status: !gEnabled ? 'parked' : connectedStaff > 0 ? 'connected' : 'partial',
+    detail: !gEnabled
+      ? 'Parked — the clinic is on Hostinger. Set GOOGLE_INTEGRATION_ENABLED=true to re-enable on a Workspace move.'
       : connectedStaff > 0 ? `${connectedStaff} staff calendar${connectedStaff === 1 ? '' : 's'} connected` : 'Configured — no staff connected yet.',
     envVars: [
+      { name: 'GOOGLE_INTEGRATION_ENABLED', set: gEnabled, optional: true },
       { name: 'GOOGLE_CLIENT_ID', set: has(process.env.GOOGLE_CLIENT_ID) },
       { name: 'GOOGLE_CLIENT_SECRET', set: has(process.env.GOOGLE_CLIENT_SECRET) },
       { name: 'GOOGLE_REDIRECT_URI', set: has(process.env.GOOGLE_REDIRECT_URI) },
