@@ -129,6 +129,21 @@ function PageEditor({ p }: { p: PageScore }) {
           <label className="mt-5 flex items-center gap-2 text-sm text-[var(--color-stone)]"><input type="checkbox" checked={f.noindex} onChange={(e) => set('noindex', e.target.checked)} className="h-4 w-4 accent-[var(--color-gold)]" />Noindex this page</label>
         </div>
       </div>
+      <div className="mt-4">
+        <p className="mb-1.5 text-xs text-[var(--color-stone)]">Social share preview (Open Graph)</p>
+        <img
+          key={f.ogImage || `${f.title}|${f.description}`}
+          src={f.ogImage?.trim()
+            ? (/^https?:\/\//.test(f.ogImage) ? f.ogImage : f.ogImage)
+            : `/og?title=${encodeURIComponent((f.title || '').split(' | ')[0])}&tag=${encodeURIComponent(f.description || '')}`}
+          alt="Open Graph card preview"
+          width={400}
+          height={210}
+          loading="lazy"
+          className="w-full max-w-[400px] rounded-[var(--radius-sm)] border border-[var(--color-line)]"
+        />
+        <p className="mt-1 text-[0.7rem] text-[var(--color-stone-soft)]">How this page looks when shared on WhatsApp, iMessage, LinkedIn, X & Slack. Leave OG image blank to auto-generate from the title + description.</p>
+      </div>
       {recs.length > 0 && (
         <div className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-bone)] p-3">
           <p className="text-xs font-medium text-[var(--color-ink)]">Recommendations</p>
