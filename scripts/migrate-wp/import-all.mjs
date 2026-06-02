@@ -89,7 +89,7 @@ if (commit) {
 for (const { label, script } of steps) {
   console.log(`\n${bar}\n  ▶ ${label}\n${bar}`);
   const stepArgs = [path.join(here, script), '--file', dump, commit ? '--commit' : '--dry-run'];
-  if (refresh && script === 'migrate.mjs') stepArgs.push('--refresh');
+  if (refresh && (script === 'migrate.mjs' || script === 'migrate-history.mjs')) stepArgs.push('--refresh');
   const r = spawnSync(process.execPath, stepArgs, { stdio: 'inherit', env: process.env });
   if (r.status !== 0) {
     console.error(`\n✖ "${label}" failed (exit ${r.status}). Stopping — nothing further was run.`);

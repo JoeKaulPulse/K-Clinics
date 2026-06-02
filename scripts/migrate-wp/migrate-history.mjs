@@ -16,19 +16,22 @@ const args = process.argv.slice(2);
 const opt = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : null; };
 const file = opt('--file') || args.find((a) => a.endsWith('.sql'));
 const commit = args.includes('--commit');
+const refresh = args.includes('--refresh'); // re-title / re-price already-imported bookings
 if (!file) { console.error('Provide --file <dump.sql>'); process.exit(1); }
 const num = (n) => n.toLocaleString('en-GB');
 const slug = (s) => String(s || 'treatment').toLowerCase().normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').slice(0, 60) || 'treatment';
 
 // ── gather ──────────────────────────────────────────────────────────────────
 const userEmail = new Map();   // wp user id -> email
-const usluga = new Map();       // id -> treatment title
+const service = new Map();      // service id -> real treatment name (from `price` table)
 const staff = new Map();        // id -> "First Last"
 const grafik = [];              // appointment rows (+ dent flag)
 const reviews = [];
 const loyalty = [];
 
-const want = (t) => /(^|_)(users|uslugi|sotrudniki|sotrudniki_dent|grafik|grafik_dent|review_user|bonus)$/i.test(t);
+// grafik.id_usluga references price.id (confirmed by diagnose-services), and
+// price.name is the real service name (e.g. "Back of Neck 6 session").
+const want = (t) => /(^|_)users$/i.test(t) || ['price', 'sotrudniki', 'sotrudniki_dent', 'grafik', 'grafik_dent', 'review_user', 'bonus'].includes(t);
 
 await streamDump(file, {
   wantRows: want,
@@ -36,7 +39,7 @@ await streamDump(file, {
     // Custom tables have no wp_ prefix but DO contain underscores, so match by
     // exact name (only wp_users gets the prefix-tolerant test).
     if (/(^|_)users$/i.test(t)) for (const r of rows) userEmail.set(r.ID ?? r.id, normEmail(r.user_email));
-    else if (t === 'uslugi') for (const r of rows) usluga.set(r.id, (r.name1 || r.name || '').trim() || `Service ${r.id}`);
+    else if (t === 'price') for (const r of rows) { const n = (r.name || '').trim(); if (n) service.set(String(r.id), n); }
     else if (t === 'sotrudniki' || t === 'sotrudniki_dent') for (const r of rows) staff.set(`${t}:${r.id}`, `${r.fname || ''} ${r.lname || ''}`.trim());
     else if (t === 'grafik' || t === 'grafik_dent') { const dent = t === 'grafik_dent'; for (const r of rows) grafik.push({ ...r, dent }); }
     else if (t === 'review_user') for (const r of rows) reviews.push(r);
@@ -58,17 +61,17 @@ for (const g of grafik) {
   const email = userEmail.get(g.id_user);
   const startAt = startFrom(g.dat, g.tim);
   if (!startAt) continue;
-  const title = (g.dent ? '[Dentistry] ' : '') + (usluga.get(g.id_usluga) || `Service ${g.id_usluga}`);
+  const title = (g.dent ? '[Dentistry] ' : '') + (service.get(String(g.id_usluga)) || `Service ${g.id_usluga}`);
   const practitioner = staff.get(`${g.dent ? 'sotrudniki_dent' : 'sotrudniki'}:${g.id_sotrudnik}`);
   const cancelled = String(g.del) === '1';
-  const noteParts = [];
+  const marker = `[wp:${g.dent ? 'grafik_dent' : 'grafik'}#${g.id}]`;
+  const noteParts = [marker]; // marker first so it's never truncated (used for dedup/refresh)
   if (g.info) noteParts.push(String(g.info));
   if (cancelled && g.prichina) noteParts.push(`Cancelled: ${g.prichina}`);
   if (practitioner) noteParts.push(`Practitioner: ${practitioner}`);
   if (g.photo) noteParts.push(`Photo: ${g.photo}`);
-  noteParts.push(`[wp:${g.dent ? 'grafik_dent' : 'grafik'}#${g.id}]`);
   bookings.push({
-    email, title, slug: slug(title), startAt,
+    email, title, slug: slug(title), startAt, marker,
     pricePence: Math.round((parseFloat(g.cost) || 0) * 100),
     status: cancelled ? 'CANCELLED' : 'COMPLETED',
     notes: noteParts.join(' · ').slice(0, 2000),
@@ -80,7 +83,7 @@ const revRecs = [];
 for (const r of reviews) {
   const email = userEmail.get(r.id_user);
   if (!r.message) continue;
-  revRecs.push({ email, body: String(r.message).slice(0, 4000), treatmentTitle: usluga.get(r.id_uslugi) || null, submittedAt: parseDate(r.dat) });
+  revRecs.push({ email, body: String(r.message).slice(0, 4000), treatmentTitle: service.get(String(r.id_uslugi)) || null, submittedAt: parseDate(r.dat) });
 }
 
 const ptRecs = [];
@@ -96,7 +99,7 @@ console.log('\n=== WordPress history → bookings / reviews / loyalty ===');
 console.log(`Appointments : ${num(bookings.length)}  (cancelled ${num(bookings.filter((b) => b.status === 'CANCELLED').length)}; no matching user ${num(bkNoClient)})`);
 console.log(`Reviews      : ${num(revRecs.length)}`);
 console.log(`Loyalty pts  : ${num(ptRecs.length)} entries`);
-console.log(`Services seen: ${num(usluga.size)}   Staff seen: ${num(staff.size)}`);
+console.log(`Services seen: ${num(service.size)}   Staff seen: ${num(staff.size)}`);
 
 if (!commit) { console.log('\nDRY RUN — nothing written. Re-run with --commit (and DATABASE_URL) to import.\n'); process.exit(0); }
 
@@ -107,13 +110,17 @@ const byEmail = new Map();
 for (const c of await db.client.findMany({ select: { id: true, email: true } })) byEmail.set(c.email, c.id);
 const cid = (email) => (email ? byEmail.get(email) : null);
 
-let bk = 0, rv = 0, pt = 0, skipped = 0;
+let bk = 0, rv = 0, pt = 0, skipped = 0, retitled = 0;
 try {
   for (const b of bookings) {
     const clientId = cid(b.email);
     if (!clientId) { skipped++; continue; }
-    const dup = await db.booking.findFirst({ where: { clientId, startAt: b.startAt, treatmentTitle: b.title }, select: { id: true } });
-    if (dup) continue;
+    // Dedup/refresh by the stable wp marker in notes (title can change between runs).
+    const dup = await db.booking.findFirst({ where: { clientId, notes: { contains: b.marker } }, select: { id: true } });
+    if (dup) {
+      if (refresh) { await db.booking.update({ where: { id: dup.id }, data: { treatmentTitle: b.title, treatmentSlug: b.slug, pricePence: b.pricePence } }); retitled++; }
+      continue;
+    }
     const endAt = new Date(b.startAt.getTime() + 60 * 60000);
     await db.booking.create({ data: { clientId, treatmentSlug: b.slug, treatmentTitle: b.title, startAt: b.startAt, endAt, durationMin: 60, pricePence: b.pricePence, status: b.status, notes: b.notes, createdAt: b.startAt } });
     bk++;
@@ -134,7 +141,7 @@ try {
     await db.clientPoints.create({ data: { clientId, points: p.points, category: 'MANUAL', reason: `Imported loyalty (WordPress) [${p.src}]`, awardedBy: 'import', createdAt: p.createdAt || undefined } });
     pt++;
   }
-  console.log(`\n✓ Created: ${num(bk)} bookings, ${num(rv)} reviews, ${num(pt)} loyalty entries. Skipped (no matching client): ${num(skipped)}.\n`);
+  console.log(`\n✓ Created: ${num(bk)} bookings${retitled ? `, re-titled ${num(retitled)}` : ''}, ${num(rv)} reviews, ${num(pt)} loyalty entries. Skipped (no matching client): ${num(skipped)}.\n`);
 } finally {
   await db.$disconnect();
 }
