@@ -40,6 +40,10 @@ export type Treatment = {
    *  tailor recommendations — never to exclude clients who haven't told us their
    *  gender, or who are non-binary / other / prefer-not-to-say. */
   audience?: 'all' | 'female' | 'male';
+  /** Available-on-request: the treatment stays on the website but online booking
+   *  is closed (e.g. the machine isn't in yet — "coming soon"). The page shows an
+   *  enquiry CTA instead of Book, and the booking API rejects it. */
+  onRequest?: boolean;
 };
 
 /** Audiences to hide from a client's *recommendations* given their gender.
@@ -181,6 +185,7 @@ export const treatments: Treatment[] = [
     category: 'aesthetics',
     group: 'Laser & Skin',
     title: 'Laser Tattoo Removal',
+    onRequest: true, // machine not in yet — page stays live, bookings closed (on request / coming soon)
     tagline: 'A clean slate, drawn with light.',
     metaTitle: 'Laser Tattoo Removal London (Islington) | K Clinics',
     metaDescription:

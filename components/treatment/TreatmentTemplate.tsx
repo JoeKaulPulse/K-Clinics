@@ -16,6 +16,7 @@ export function TreatmentTemplate({ t }: { t: Treatment }) {
   const categoryHref = t.category === 'aesthetics' ? '/treatments' : '/dentistry';
   const categoryLabel = t.category === 'aesthetics' ? 'Aesthetics' : 'Dentistry';
   const comingSoon = t.category === 'dentistry' && !site.dentistryLive;
+  const onRequest = t.onRequest === true; // machine not in yet — bookings closed
   const related = t.related.map(getTreatment).filter(Boolean) as Treatment[];
 
   return (
@@ -62,6 +63,17 @@ export function TreatmentTemplate({ t }: { t: Treatment }) {
                     </p>
                     <Button href="/dentistry#interest" variant="gold" size="lg">Register your interest <ArrowIcon /></Button>
                   </div>
+                ) : onRequest ? (
+                  <div>
+                    <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-[var(--color-gold-soft)] px-3 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-ink)]">Coming soon</span>
+                    <p className="mb-5 max-w-xl text-sm text-[color-mix(in_oklab,var(--color-porcelain)_72%,transparent)]">
+                      This treatment is available on request only while we bring the technology in-house. Enquire and we’ll be in touch to arrange a consultation and let you know the moment online booking opens.
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      <Button href="/contact" variant="gold" size="lg">Enquire / request <ArrowIcon /></Button>
+                      <Button href={site.phoneHref} variant="outline" size="lg">{site.phone}</Button>
+                    </div>
+                  </div>
                 ) : (
                   <BookingButtons />
                 )}
@@ -87,9 +99,9 @@ export function TreatmentTemplate({ t }: { t: Treatment }) {
               {t.priceFrom && (
                 <div className="card-glass absolute -bottom-5 -left-5 rounded-[var(--radius-md)] px-6 py-4 shadow-[var(--shadow-soft)]">
                   <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">
-                    {t.priceFrom.startsWith('£') ? 'From' : 'Pricing'}
+                    {onRequest ? 'Pricing' : t.priceFrom.startsWith('£') ? 'From' : 'Pricing'}
                   </p>
-                  <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">{t.priceFrom}</p>
+                  <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">{onRequest ? 'On request' : t.priceFrom}</p>
                 </div>
               )}
             </div>

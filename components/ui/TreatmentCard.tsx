@@ -27,7 +27,11 @@ export function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: number }
           <span className="absolute left-4 top-4 rounded-full bg-black/25 px-3 py-1 text-[0.68rem] font-medium uppercase tracking-[0.18em] text-white/90 backdrop-blur-sm">
             {t.group}
           </span>
-          {t.priceFrom && (
+          {t.onRequest ? (
+            <span className="absolute bottom-4 right-4 rounded-full bg-[var(--color-gold-soft)] px-3 py-1 text-xs font-semibold text-[var(--color-ink)] backdrop-blur-sm">
+              Coming soon
+            </span>
+          ) : t.priceFrom && (
             <span className="absolute bottom-4 right-4 rounded-full bg-[var(--color-porcelain)]/92 px-3 py-1 text-xs font-medium text-[var(--color-ink)] backdrop-blur-sm">
               {t.priceFrom.startsWith('£') ? `from ${t.priceFrom}` : t.priceFrom}
             </span>
