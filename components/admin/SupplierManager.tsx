@@ -20,11 +20,28 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
   const [editing, setEditing] = useState<Partial<Full> | null>(null);
   const [busy, setBusy] = useState(false);
   const [q, setQ] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [bills, setBills] = useState<{ invoiceNumber: string; date: string | null; total: number; amountDue: number; status: string; currency: string }[] | null>(null);
+  const [billsMsg, setBillsMsg] = useState('');
 
   const load = useCallback(async () => { const r = await post({ op: 'list' }); if (r.ok) setRows(r.suppliers); }, []);
   useEffect(() => { load(); }, [load]);
 
-  async function openEdit(id: string) { const r = await post({ op: 'get', id }); if (r.ok) setEditing(r.supplier); }
+  async function openEdit(id: string) { setBills(null); setBillsMsg(''); const r = await post({ op: 'get', id }); if (r.ok) setEditing(r.supplier); }
+  async function importXero() {
+    if (!confirm('Import / refresh supplier contacts from Xero?')) return;
+    setImporting(true);
+    const r = await post({ op: 'importXero' });
+    setImporting(false);
+    if (r.ok) { alert(`Imported ${r.created} new and updated ${r.updated} supplier(s) from Xero.`); load(); }
+    else alert(r.error || 'Could not import from Xero.');
+  }
+  async function loadBills(id: string) {
+    setBillsMsg('Loading bills from Xero…'); setBills(null);
+    const r = await post({ op: 'bills', id });
+    if (r.ok) { setBills(r.bills); setBillsMsg(r.bills.length ? '' : 'No bills found in Xero.'); }
+    else setBillsMsg(r.error || 'Could not load bills.');
+  }
   async function save() {
     if (!editing?.name?.trim()) return;
     setBusy(true);
@@ -45,6 +62,7 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search suppliers…" className={`${field} max-w-xs`} />
         {canManage && <button onClick={() => setEditing(blank())} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-gold)]">Add supplier</button>}
+        {canManage && <button onClick={importXero} disabled={importing} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)] disabled:opacity-50">{importing ? 'Importing…' : 'Import from Xero'}</button>}
       </div>
 
       <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
@@ -100,6 +118,28 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
                     </li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {editing.id && (
+              <div className="mt-5">
+                <div className="flex items-center justify-between">
+                  <p className={label}>Xero bills</p>
+                  {editing.xeroContactId
+                    ? <button onClick={() => loadBills(editing.id!)} className="text-xs font-medium text-[var(--color-gold)] hover:underline">Load bills →</button>
+                    : <span className="text-xs text-[var(--color-stone-soft)]">Add a Xero contact ID to see bills</span>}
+                </div>
+                {billsMsg && <p className="mt-1 text-sm text-[var(--color-stone)]">{billsMsg}</p>}
+                {bills && bills.length > 0 && (
+                  <ul className="mt-2 divide-y divide-[var(--color-line)] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white text-sm">
+                    {bills.map((bl, i) => (
+                      <li key={i} className="flex items-center justify-between px-3 py-2">
+                        <span>{bl.invoiceNumber} · {bl.date ? new Date(bl.date).toLocaleDateString('en-GB') : '—'} <span className="text-[var(--color-stone-soft)]">({bl.status})</span></span>
+                        <span className="font-medium">£{bl.total.toFixed(2)}{bl.amountDue > 0 && <span className="ml-1 text-[var(--color-blush)]">· £{bl.amountDue.toFixed(2)} due</span>}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
 

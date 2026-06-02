@@ -58,6 +58,29 @@ export async function POST(req: Request) {
       await db.supplier.update({ where: { id: String(b.id) }, data: { active: false } });
       return NextResponse.json({ ok: true });
     }
+    case 'bills': {
+      if (!b.id) return NextResponse.json({ ok: false }, { status: 400 });
+      const s = await db.supplier.findUnique({ where: { id: String(b.id) }, select: { xeroContactId: true } });
+      if (!s?.xeroContactId) return NextResponse.json({ ok: false, error: 'This supplier isn’t linked to a Xero contact.' }, { status: 400 });
+      const { getSupplierBills } = await import('@/lib/xero');
+      const res = await getSupplierBills(s.xeroContactId);
+      return NextResponse.json(res);
+    }
+    case 'importXero': {
+      const manage = await requirePermission('suppliers.manage');
+      if (!manage) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
+      const { getXeroSupplierContacts } = await import('@/lib/xero');
+      const res = await getXeroSupplierContacts();
+      if (!res.ok) return NextResponse.json({ ok: false, error: res.error || 'Could not reach Xero.' }, { status: 400 });
+      let created = 0, updated = 0;
+      for (const x of res.suppliers) {
+        const existing = await db.supplier.findFirst({ where: { OR: [{ xeroContactId: x.xeroContactId }, { name: x.name }] }, select: { id: true } });
+        const data = { name: x.name, email: x.email, phone: x.phone, website: x.website, accountNumber: x.accountNumber, addressLine: x.addressLine, city: x.city, postcode: x.postcode, country: x.country, xeroContactId: x.xeroContactId };
+        if (existing) { await db.supplier.update({ where: { id: existing.id }, data }); updated++; }
+        else { await db.supplier.create({ data: { ...data, createdBy: session.email } }); created++; }
+      }
+      return NextResponse.json({ ok: true, created, updated });
+    }
   }
   return NextResponse.json({ ok: false, error: 'Unknown op' }, { status: 400 });
 }
