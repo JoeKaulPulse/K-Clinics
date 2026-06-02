@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 // Lightweight health probe for diagnosing the live deployment. Visit
 // /api/health to confirm the server can reach the database and the schema is
 // present. Never exposes secrets — only booleans/counts.
-export async function GET() {
+export async function GET(req: Request) {
   const report: Record<string, unknown> = {
     ok: false,
     crmEnabled:
@@ -83,6 +83,24 @@ export async function GET() {
       secrets.encryptionSelfTest = `FAIL: ${(e as Error)?.message?.slice(0, 120)}`;
     }
     report.secrets = secrets;
+
+    // Gated integration report (config booleans only — never secrets). Pass the
+    // CRON_SECRET via ?secret= or an Authorization: Bearer header to unlock.
+    const reqUrl = new URL(req.url);
+    const provided = reqUrl.searchParams.get('secret') || (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+    if (process.env.CRON_SECRET && provided === process.env.CRON_SECRET) {
+      try {
+        const { getIntegrations } = await import('@/lib/integrations');
+        report.integrations = (await getIntegrations()).map((i) => ({
+          id: i.id,
+          name: i.name,
+          status: i.status,
+          missing: i.envVars.filter((v) => !v.set && !v.optional).map((v) => v.name),
+        }));
+      } catch (e) {
+        report.integrations = `error: ${(e as Error)?.message?.slice(0, 120)}`;
+      }
+    }
 
     report.ok = true;
   } catch (err) {
