@@ -14,7 +14,7 @@ export const metadata: Metadata = pageMeta({
   keywords: ['K Clinics reviews', 'aesthetic clinic reviews London', 'dentist reviews Islington'],
 });
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300; // ISR: cached, revalidated in the background
 
 export default async function ReviewsPage() {
   const { getReviewAggregate } = await import('@/lib/reviews-aggregate');

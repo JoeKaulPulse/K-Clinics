@@ -13,7 +13,7 @@ export const metadata: Metadata = pageMeta({
   keywords: ['aesthetics jobs London', 'clinic careers Islington', 'cosmetic dentistry jobs'],
 });
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300; // ISR: cached, revalidated in the background
 
 const PERKS = [
   { t: 'Grow with us', d: 'Funded training and a clear path — including places at K Academy, our accredited training centre.' },

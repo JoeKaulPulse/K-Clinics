@@ -15,7 +15,7 @@ export const metadata: Metadata = pageMeta({
   keywords: ['K Clinics team', 'aesthetic doctor London', 'cosmetic dentist Islington', 'laser specialist London'],
 });
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 600; // ISR: cached, revalidated in the background
 
 function teamLd(members: TeamMember[]) {
   const base = site.url;

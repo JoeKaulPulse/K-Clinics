@@ -16,7 +16,7 @@ export const metadata: Metadata = pageMeta({
   keywords: ['before after K Clinics', 'aesthetics results London', 'aesthetic dentistry results Islington'],
 });
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 120; // ISR: cached, revalidated in the background
 
 // Treatment breadth — illustrative imagery of what we offer (NOT before/after
 // results). Used only as the honest fallback before any real cases are added.
