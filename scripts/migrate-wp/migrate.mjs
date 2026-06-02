@@ -52,7 +52,8 @@ const unmapped = new Map();        // meta_key -> frequency (for refining the ma
 
 const BILLING_PM = new Set(['_billing_email', '_billing_first_name', '_billing_last_name', '_billing_phone', '_billing_company', '_billing_address_1', '_billing_address_2', '_billing_city', '_billing_state', '_billing_postcode', '_billing_country', '_customer_user', '_date_completed', '_completed_date', '_order_currency']);
 
-const wantRows = (t) => /(^|_)(users|usermeta|posts|postmeta|wc_order_addresses|wc_customer_lookup)$/i.test(t);
+const mailpoet = new Map();        // email -> subscription status (marketing consent)
+const wantRows = (t) => /(^|_)(users|usermeta|posts|postmeta|wc_order_addresses|wc_customer_lookup|mailpoet_subscribers)$/i.test(t);
 
 await streamDump(file, {
   wantRows,
@@ -82,6 +83,8 @@ await streamDump(file, {
       for (const r of rows) if ((r.address_type || 'billing') === 'billing') hposAddr.push(r);
     } else if (s === 'wc_customer_lookup') {
       for (const r of rows) lookup.push(r);
+    } else if (s === 'mailpoet_subscribers') {
+      for (const r of rows) { const e = normEmail(r.email); if (e) mailpoet.set(e, String(r.status || '').toLowerCase()); }
     }
   },
 });
@@ -123,10 +126,12 @@ for (const [id, u] of users) {
   // DOB: custom `birthday` column first, then any meta fallback.
   let dob = parseFlexDate(u.birthday);
   if (!dob) for (const k of DOB_KEYS) if (!blank(m[k])) { dob = parseFlexDate(m[k]); break; }
-  // Consent comes from the custom columns (authoritative), with meta as fallback.
-  const optIn = truthy(u.subsNews) || OPTIN_KEYS.some((k) => truthy(m[k]));
+  // Consent: custom column, the registration newsletter checkbox, an active
+  // MailPoet subscription, or any opt-in meta — any of these = opted in.
+  const optIn = truthy(u.subsNews) || truthy(m['xoo-mailpoet-subscribe'])
+    || mailpoet.get(email) === 'subscribed' || OPTIN_KEYS.some((k) => truthy(m[k]));
   const sms = truthy(u.sms);
-  const phone = u.phone || m.billing_phone;
+  const phone = u.phone || m.billing_phone || m.booked_phone;
   upsertLocal(email, { firstName, lastName, phone, dob, source: 'wordpress', wpUserId: id, registered: u.registered }, u.registered, false);
   const c = clients.get(email);
   if (optIn) c.marketingOptIn = true;
