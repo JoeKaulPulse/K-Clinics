@@ -171,11 +171,11 @@ export function ConsultForm() {
 
           {step === 2 && (
             <div className="grid gap-5 sm:grid-cols-2">
-              <div><label className={label} htmlFor="fn">First name *</label><input id="fn" className={field} value={d.firstName} onChange={(e) => set('firstName', e.target.value)} /></div>
-              <div><label className={label} htmlFor="ln">Last name</label><input id="ln" className={field} value={d.lastName} onChange={(e) => set('lastName', e.target.value)} /></div>
-              <div className="sm:col-span-2"><label className={label} htmlFor="em">Email *</label><input id="em" type="email" className={field} value={d.email} onChange={(e) => set('email', e.target.value)} /></div>
-              <div><label className={label} htmlFor="ph">Phone</label><input id="ph" type="tel" className={field} value={d.phone} onChange={(e) => set('phone', e.target.value)} /></div>
-              <div><label className={label} htmlFor="db">Date of birth</label><input id="db" type="date" className={field} value={d.dob} onChange={(e) => set('dob', e.target.value)} /></div>
+              <div><label className={label} htmlFor="fn">First name *</label><input id="fn" autoComplete="given-name" className={field} value={d.firstName} onChange={(e) => set('firstName', e.target.value)} /></div>
+              <div><label className={label} htmlFor="ln">Last name</label><input id="ln" autoComplete="family-name" className={field} value={d.lastName} onChange={(e) => set('lastName', e.target.value)} /></div>
+              <div className="sm:col-span-2"><label className={label} htmlFor="em">Email *</label><input id="em" type="email" autoComplete="email" className={field} value={d.email} onChange={(e) => set('email', e.target.value)} /></div>
+              <div><label className={label} htmlFor="ph">Phone</label><input id="ph" type="tel" autoComplete="tel" className={field} value={d.phone} onChange={(e) => set('phone', e.target.value)} /></div>
+              <div><label className={label} htmlFor="db">Date of birth</label><input id="db" type="date" autoComplete="bday" className={field} value={d.dob} onChange={(e) => set('dob', e.target.value)} /></div>
               <div>
                 <label className={label} htmlFor="pc">Preferred contact</label>
                 <select id="pc" className={field} value={d.preferredContact} onChange={(e) => set('preferredContact', e.target.value as Data['preferredContact'])}>

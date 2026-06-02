@@ -418,11 +418,11 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
 
       {mode === 'signup' ? (
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div><label className={label}>First name *</label><input className={field} value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} /></div>
-          <div><label className={label}>Last name</label><input className={field} value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} /></div>
-          <div className="sm:col-span-2"><label className={label}>Email *</label><input type="email" className={field} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
-          <div><label className={label}>Mobile</label><input type="tel" className={field} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
-          <div><label className={label}>Password * (8+)</label><input type="password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
+          <div><label className={label}>First name *</label><input autoComplete="given-name" className={field} value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} /></div>
+          <div><label className={label}>Last name</label><input autoComplete="family-name" className={field} value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} /></div>
+          <div className="sm:col-span-2"><label className={label}>Email *</label><input type="email" autoComplete="email" className={field} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
+          <div><label className={label}>Mobile</label><input type="tel" autoComplete="tel" className={field} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
+          <div><label className={label}>Password * (8+)</label><input type="password" autoComplete="new-password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
           <div className="sm:col-span-2"><label className={label}>Gender (optional — tailors recommendations)</label>
             <select className={field} value={f.gender} onChange={(e) => setF({ ...f, gender: e.target.value })}>
               <option value="">Prefer not to say</option>

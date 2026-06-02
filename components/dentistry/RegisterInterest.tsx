@@ -29,6 +29,7 @@ export function RegisterInterest({ className = '' }: { className?: string }) {
       <div className="flex max-w-md overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] focus-within:border-[var(--color-gold)]">
         <input
           type="email"
+          autoComplete="email"
           value={email}
           onChange={(e) => { setEmail(e.target.value); if (state === 'error') setState('idle'); }}
           placeholder="Your email address"
