@@ -36,6 +36,14 @@ export async function middleware(req: NextRequest) {
     url.searchParams.set('from', pathname);
     return NextResponse.redirect(url);
   }
+  // 2FA enforcement: a setup-only session may reach the profile page only,
+  // until the user enrols (which re-issues a full session).
+  if (session.needsSetup && !pathname.startsWith('/admin/profile')) {
+    const url = req.nextUrl.clone();
+    url.pathname = '/admin/profile';
+    url.searchParams.set('setup2fa', '1');
+    return NextResponse.redirect(url);
+  }
   return NextResponse.next();
 }
 

@@ -61,8 +61,12 @@ export async function POST(req: Request) {
     }
     await recordSecurity('TWOFA_OK', 'admin', email, req, v.usedRecovery ? { recovery: true } : undefined);
   } else if (await is2faRequiredForRole(user.role)) {
-    // Policy requires 2FA for this role but the user hasn't set it up yet.
-    return NextResponse.json({ ok: false, mustEnroll: true, error: 'Two-factor authentication is required for your role. Please set it up to continue.' }, { status: 403 });
+    // Policy requires 2FA for this role but it isn't set up yet. Grant a
+    // setup-only session (middleware confines it to the profile page) so they
+    // can enrol, then re-authenticate with their new second factor.
+    await createSession({ sub: user.id, email: user.email, name: user.name || undefined, role: user.role, grant: user.permGrant ?? [], revoke: user.permRevoke ?? [], needsSetup: true });
+    await recordSecurity('LOGIN_OK', 'admin', email, req, { setup: true });
+    return NextResponse.json({ ok: true, setup: true });
   }
 
   await db.adminUser.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });

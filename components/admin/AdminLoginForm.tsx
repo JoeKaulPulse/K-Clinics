@@ -38,7 +38,7 @@ function Inner() {
       });
       const json = await res.json();
       if (json.ok) {
-        router.push(params.get('from') || '/admin');
+        router.push(json.setup ? '/admin/profile?setup2fa=1' : params.get('from') || '/admin');
         router.refresh();
         return;
       }
