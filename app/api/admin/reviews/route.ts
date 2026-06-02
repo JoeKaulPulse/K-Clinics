@@ -30,6 +30,7 @@ export async function POST(req: Request) {
         await logAudit({ action: 'POINTS_AWARDED', actor: session.email, actorRole: session.role, summary: 'Review points awarded to clinician' });
       } catch { /* non-fatal */ }
     }
+    if (status === 'HIDDEN') { const { revalidatePath } = await import('next/cache'); revalidatePath('/reviews'); revalidatePath('/'); }
     return NextResponse.json({ ok: true });
   }
 
@@ -47,6 +48,8 @@ export async function POST(req: Request) {
       await awardClientReview(id);
     } catch { /* non-fatal */ }
     await logAudit({ action: 'REVIEW_PUBLISHED', actor: session.email, actorRole: session.role, clientId: r.clientId, summary: 'Review published' });
+    const { revalidatePath } = await import('next/cache');
+    revalidatePath('/reviews'); revalidatePath('/');
     return NextResponse.json({ ok: true });
   }
 

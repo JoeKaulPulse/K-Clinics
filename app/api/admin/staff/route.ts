@@ -58,6 +58,8 @@ export async function POST(req: Request) {
         ...(b.profileOrder !== undefined ? { profileOrder: num(b.profileOrder) ?? 0 } : {}),
       },
     });
+    const { revalidatePath } = await import('next/cache');
+    revalidatePath('/team');
     return NextResponse.json({ ok: true, id });
   }
 
