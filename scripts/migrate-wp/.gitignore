@@ -1,0 +1,7 @@
+# Never commit WordPress dumps, extracted data, or anything with PII.
+# Only the code + docs in this folder are tracked.
+*
+!.gitignore
+!README.md
+!*.mjs
+!*.ts
