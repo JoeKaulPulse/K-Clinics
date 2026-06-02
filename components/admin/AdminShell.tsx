@@ -22,6 +22,7 @@ const navGroups: { heading?: string; items: NavItem[] }[] = [
     { href: '/admin/bookings', key: 'nav.bookings', perm: 'bookings.view' },
     { href: '/admin/consultations', key: 'nav.consultations', perm: 'consultations.view' },
     { href: '/admin/chat', key: 'nav.chat', perm: 'clients.view', badge: 'chat' },
+    { href: '/admin/calls', key: 'nav.calls', perm: 'calls.view' },
     { href: '/admin/clients', key: 'nav.clients', perm: 'clients.view' },
     { href: '/admin/reviews', key: 'nav.reviews', perm: 'reviews.manage' },
     { href: '/admin/discounts', key: 'nav.discounts', perm: 'discounts.manage' },
