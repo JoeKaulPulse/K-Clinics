@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
+import { Aurora } from '@/components/ui/Aurora';
+import { site } from '@/lib/site';
 import { portalTranslator, PORTAL_LOCALE_COOKIE } from '@/lib/i18n-portal';
 import { LOCALES, LOCALE_LABELS, isLocale, DEFAULT_LOCALE, type Locale } from '@/lib/i18n';
 
@@ -44,50 +46,71 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
   }
 
   const navLink = (active: boolean, mobile = false) =>
-    `${mobile ? 'shrink-0' : ''} rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-      active ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]'
+    `relative ${mobile ? 'shrink-0' : ''} rounded-full px-4 py-2 text-sm font-medium [transition:color_0.4s_var(--ease-lux),background-color_0.4s_var(--ease-lux)] ${
+      active ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)] shadow-[var(--shadow-soft)]' : 'text-[var(--color-ink-soft)] hover:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] hover:text-[var(--color-ink)]'
     }`;
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-[88rem] flex-col px-[var(--gutter)]">
-      <header className="flex items-center justify-between gap-4 border-b border-[var(--color-line)] py-5">
-        <Link href="/account" aria-label="K Clinics" className="flex items-center gap-2.5 text-[var(--color-ink)]">
-          <span className="block h-8 w-[1.25rem]"><KMark /></span>
-          <span className="hidden h-[0.62rem] w-[5.5rem] sm:block"><ClinicsWordmark /></span>
-        </Link>
-        <nav className="hidden items-center gap-1 md:flex" aria-label="Portal">
-          {nav.map((n) => {
-            const active = n.href === '/account' ? pathname === n.href : pathname.startsWith(n.href);
-            return (
-              <Link key={n.href} href={n.href} aria-current={active ? 'page' : undefined} className={navLink(active)}>
-                {t(n.key)}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="flex items-center gap-3">
-          <LanguageToggle locale={locale} onChange={changeLanguage} label={t('portal.language')} />
-          <span className="hidden text-sm text-[var(--color-stone)] sm:block">{t('portal.greeting', { name: firstName })}</span>
-          <button onClick={signOut} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
-            {t('portal.signOut')}
-          </button>
+    <div className="relative flex min-h-screen flex-col">
+      {/* Ambient brand wash — the marketing-site depth treatment, kept whisper-soft
+          on the light portal so content stays crisp. */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
+        <Aurora className="opacity-50" />
+        <span className="absolute inset-0 bg-[radial-gradient(130%_90%_at_85%_-10%,color-mix(in_oklab,var(--color-gold)_10%,transparent),transparent_55%)]" />
+        <span className="grain absolute inset-0 opacity-[0.5]" />
+      </div>
+
+      {/* Sticky frosted bar: header + mobile nav */}
+      <div className="sticky top-0 z-40 border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-porcelain)_82%,transparent)] backdrop-blur-xl">
+        <div className="mx-auto w-full max-w-[88rem] px-[var(--gutter)]">
+          <header className="flex items-center justify-between gap-4 py-4">
+            <Link href="/account" aria-label="K Clinics" className="group flex items-center gap-2.5 text-[var(--color-ink)]">
+              <span className="block h-8 w-[1.25rem] transition-transform duration-500 [transition-timing-function:var(--ease-lux)] group-hover:-translate-y-0.5"><KMark /></span>
+              <span className="hidden h-[0.62rem] w-[5.5rem] sm:block"><ClinicsWordmark /></span>
+            </Link>
+            <nav className="hidden items-center gap-1 md:flex" aria-label="Portal">
+              {nav.map((n) => {
+                const active = n.href === '/account' ? pathname === n.href : pathname.startsWith(n.href);
+                return (
+                  <Link key={n.href} href={n.href} aria-current={active ? 'page' : undefined} className={navLink(active)}>
+                    {t(n.key)}
+                  </Link>
+                );
+              })}
+            </nav>
+            <div className="flex items-center gap-3">
+              <LanguageToggle locale={locale} onChange={changeLanguage} label={t('portal.language')} />
+              <span className="hidden text-sm text-[var(--color-stone)] sm:block">{t('portal.greeting', { name: firstName })}</span>
+              <button onClick={signOut} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
+                {t('portal.signOut')}
+              </button>
+            </div>
+          </header>
+
+          {/* Mobile nav */}
+          <nav className="flex gap-1 overflow-x-auto pb-3 md:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Portal">
+            {nav.map((n) => {
+              const active = n.href === '/account' ? pathname === n.href : pathname.startsWith(n.href);
+              return <Link key={n.href} href={n.href} aria-current={active ? 'page' : undefined} className={navLink(active, true)}>{t(n.key)}</Link>;
+            })}
+          </nav>
         </div>
-      </header>
+      </div>
 
-      {/* Mobile nav */}
-      <nav className="flex gap-1 overflow-x-auto border-b border-[var(--color-line)] py-3 md:hidden" aria-label="Portal">
-        {nav.map((n) => {
-          const active = n.href === '/account' ? pathname === n.href : pathname.startsWith(n.href);
-          return <Link key={n.href} href={n.href} className={navLink(active, true)}>{t(n.key)}</Link>;
-        })}
-      </nav>
+      <div className="mx-auto flex w-full max-w-[88rem] flex-1 flex-col px-[var(--gutter)]">
+        <main className="flex-1 py-9 md:py-14">{children}</main>
 
-      <main className="flex-1 py-8 md:py-12">{children}</main>
-
-      <footer className="border-t border-[var(--color-line)] py-6 text-xs text-[var(--color-stone)]">
-        {t('portal.footer')}{' '}
-        <a href="tel:+442072500000" className="font-medium text-[var(--color-ink-soft)]">+44 20 7250 0000</a>.
-      </footer>
+        <footer className="mt-8 flex flex-col gap-3 border-t border-[var(--color-line)] py-7 text-xs text-[var(--color-stone)] sm:flex-row sm:items-center sm:justify-between">
+          <p>{t('portal.footer')}{' '}
+            <a href={site.phoneHref} className="font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-gold)]">{site.phone}</a>.
+          </p>
+          <nav className="flex flex-wrap gap-x-5 gap-y-1" aria-label="Portal footer">
+            <Link href="/book" className="hover:text-[var(--color-gold)]">{t('dash.book')}</Link>
+            <Link href="/contact" className="hover:text-[var(--color-gold)]">Contact</Link>
+            <Link href="/info/website-privacy-terms" className="hover:text-[var(--color-gold)]">Privacy</Link>
+          </nav>
+        </footer>
+      </div>
     </div>
   );
 }
