@@ -70,6 +70,7 @@ console.log(`  dump:    ${path.relative(repoRoot, dump)}`);
 const steps = [
   { label: 'Clients', script: 'migrate.mjs' },
   { label: 'History — bookings, reviews, loyalty', script: 'migrate-history.mjs' },
+  { label: 'Staff — practitioners + booking assignment', script: 'migrate-staff.mjs' },
   { label: 'Clinical — consents, skin-quiz, care plans (encrypted)', script: 'migrate-clinical.mjs' },
 ];
 
