@@ -1,6 +1,9 @@
 import 'server-only';
 import { db } from '@/lib/db';
 import { treatments } from '@/lib/treatments';
+import { articles } from '@/lib/articles';
+import { packages } from '@/lib/packages';
+import { infoPages } from '@/lib/info-pages';
 
 // ── SEO / GEO / agentic audit engine ────────────────────────────────────────
 // Self-contained rules-based scoring. Each page is rated across four lenses —
@@ -116,7 +119,12 @@ export async function auditSite(): Promise<{ pages: PageScore[]; health: number;
   const overrides = await db.pageSeo.findMany().catch(() => []);
   const ovMap = new Map(overrides.map((o) => [o.path, o]));
 
-  const treatmentPages: Omit<PageInput, 'overridden' | 'noindex'>[] = treatments.map((t) => ({
+  type Entry = Omit<PageInput, 'overridden' | 'noindex'>;
+
+  // Every content source is enumerated dynamically, so a new treatment, blog
+  // post, package, info page or academy course is picked up by the SEO centre
+  // automatically — no separate registry to maintain.
+  const treatmentPages: Entry[] = treatments.map((t) => ({
     path: `/${t.slug}`,
     title: t.metaTitle,
     description: t.metaDescription,
@@ -128,7 +136,59 @@ export async function auditSite(): Promise<{ pages: PageScore[]; health: number;
     ogImage: true,
   }));
 
-  const base = [...STATIC, ...treatmentPages];
+  const articlePages: Entry[] = articles.map((a) => ({
+    path: `/journal/${a.slug}`,
+    title: `${a.title} | K Clinics Journal`,
+    description: a.metaDescription,
+    keywords: a.keywords ?? [],
+    focusKeyword: a.keywords?.[0],
+    type: 'content',
+    hasSchema: true,                 // journal posts emit Article + Breadcrumb LD
+    hasFaq: false,
+    ogImage: true,
+  }));
+
+  const packagePages: Entry[] = packages.map((p) => ({
+    path: `/packages/${p.slug}`,
+    title: `${p.name} Package — ${p.subtitle} | K Clinics London`,
+    description: `${p.description} Available at K Clinics, Islington, London.`.slice(0, 300),
+    keywords: [`${p.name} package London`, 'treatment package Islington'],
+    type: 'commerce',
+    hasSchema: true,                 // breadcrumb LD
+    hasFaq: false,
+    ogImage: true,
+  }));
+
+  const infoPagesList: Entry[] = infoPages.map((p) => ({
+    path: `/info/${p.slug}`,
+    title: `${p.title} | K Clinics`,
+    description: p.intro.slice(0, 160),
+    keywords: [],
+    type: 'content',
+    hasSchema: false,
+    hasFaq: false,
+    ogImage: true,
+  }));
+
+  // Academy courses live in the DB → query live (best-effort).
+  let coursePages: Entry[] = [];
+  try {
+    const { listCourses } = await import('@/lib/academy');
+    const courses = await listCourses(false);
+    coursePages = courses.map((c) => ({
+      path: `/academy/${c.slug}`,
+      title: `${c.title}${c.level ? ` (${c.level})` : ''} — K Academy`,
+      description: c.summary || `Accredited aesthetics training: ${c.title} at K Academy, Islington, London.`,
+      keywords: ['aesthetics course London', `${c.title} course`],
+      focusKeyword: 'aesthetics course London',
+      type: 'academy',
+      hasSchema: true,               // courseLd
+      hasFaq: false,
+      ogImage: true,
+    }));
+  } catch { /* DB optional */ }
+
+  const base = [...STATIC, ...treatmentPages, ...articlePages, ...packagePages, ...infoPagesList, ...coursePages];
   const pages = base.map((b) => {
     const ov = ovMap.get(b.path);
     const merged: PageInput = {
