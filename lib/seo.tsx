@@ -231,6 +231,28 @@ export function reviewLd(r: { author: string; rating: number; body: string; date
   };
 }
 
+/** Course schema for K Academy training pages (rich-result eligible). */
+export function courseLd(c: { title: string; description: string; path: string; pricePence?: number | null; durationText?: string | null }) {
+  const o: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': 'Course',
+    name: c.title,
+    description: c.description,
+    url: `${base}${c.path}`,
+    provider: { '@type': 'Organization', name: 'K Academy', sameAs: base },
+    hasCourseInstance: [{
+      '@type': 'CourseInstance',
+      courseMode: 'Blended',
+      ...(c.durationText ? { courseWorkload: c.durationText } : {}),
+      location: { '@type': 'Place', name: 'K Academy', address: { '@type': 'PostalAddress', addressLocality: site.address.locality, addressRegion: site.address.region, addressCountry: 'GB' } },
+    }],
+  };
+  if (c.pricePence && c.pricePence > 0) {
+    o.offers = { '@type': 'Offer', category: 'Tuition', price: (c.pricePence / 100).toFixed(2), priceCurrency: 'GBP', url: `${base}${c.path}`, availability: 'https://schema.org/InStock' };
+  }
+  return o;
+}
+
 export function faqLd(faqs: { q: string; a: string }[]) {
   return {
     '@context': 'https://schema.org',
