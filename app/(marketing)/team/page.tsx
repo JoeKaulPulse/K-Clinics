@@ -8,11 +8,11 @@ import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 import type { TeamMember } from '@/lib/team-data';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'Our Team — Expert Clinicians & Practitioners | K Clinics London',
+  title: 'Our Team — Expert Clinicians & Practitioners | KClinics London',
   description:
-    'Meet the K Clinics team — qualified aesthetic doctors, laser specialists and cosmetic dentists, with their experience, ratings and specialisms, delivering safe, artful results in Islington, London.',
+    'Meet the KClinics team — qualified aesthetic doctors, laser specialists and cosmetic dentists, with their experience, ratings and specialisms, delivering safe, artful results in Islington, London.',
   path: '/team',
-  keywords: ['K Clinics team', 'aesthetic doctor London', 'cosmetic dentist Islington', 'laser specialist London'],
+  keywords: ['KClinics team', 'aesthetic doctor London', 'cosmetic dentist Islington', 'laser specialist London'],
 });
 
 export const revalidate = 600; // ISR: cached, revalidated in the background
@@ -101,7 +101,7 @@ function Card({ m }: { m: TeamMember }) {
       <div className="flex items-center gap-4">
         {m.photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={m.photoUrl} alt={`${m.name}${m.title ? `, ${m.title}` : ''} — K Clinics`} width={80} height={80} loading="lazy" decoding="async" className="h-20 w-20 shrink-0 rounded-full object-cover" />
+          <img src={m.photoUrl} alt={`${m.name}${m.title ? `, ${m.title}` : ''} — KClinics`} width={80} height={80} loading="lazy" decoding="async" className="h-20 w-20 shrink-0 rounded-full object-cover" />
         ) : (
           <span className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-[var(--color-ink)] font-[family-name:var(--font-display)] text-2xl text-[var(--color-gold-soft)]">{initials}</span>
         )}

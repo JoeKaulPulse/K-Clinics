@@ -38,7 +38,7 @@ export function renderOg({ eyebrow, title, accent = 'perfected.' }: { eyebrow: s
           >
             K
           </div>
-          <div style={{ fontSize: 28, letterSpacing: 1 }}>K Clinics · London</div>
+          <div style={{ fontSize: 28, letterSpacing: 1 }}>KClinics · London</div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column' }}>

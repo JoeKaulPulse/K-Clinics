@@ -5,7 +5,7 @@ import { site } from '@/lib/site';
 export function WhatsAppButton() {
   const number = (process.env.NEXT_PUBLIC_WHATSAPP || site.whatsapp || '').replace(/\D/g, '');
   if (!number) return null;
-  const msg = encodeURIComponent('Hi K Clinics, I’d like to ask about a treatment.');
+  const msg = encodeURIComponent('Hi KClinics, I’d like to ask about a treatment.');
   return (
     <a
       href={`https://wa.me/${number}?text=${msg}`}

@@ -5,17 +5,17 @@ import { Button, ArrowIcon } from '@/components/ui/Button';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'Special Offers & Savings | K Clinics London',
+  title: 'Special Offers & Savings | KClinics London',
   description:
-    'Current offers at K Clinics, Islington — 15% off your first visit, complimentary consultations, refer-a-friend rewards, gift vouchers and savings on treatment packages.',
+    'Current offers at KClinics, Islington — 15% off your first visit, complimentary consultations, refer-a-friend rewards, gift vouchers and savings on treatment packages.',
   path: '/offers',
   keywords: ['aesthetics offers London', 'first visit discount clinic', 'treatment package savings'],
 });
 
 const OFFERS = [
-  { tag: 'New clients', t: '15% off your first visit', d: 'Create an account and enjoy 15% off your first treatment — our welcome to K Clinics.', href: '/book', cta: 'Book your first visit' },
+  { tag: 'New clients', t: '15% off your first visit', d: 'Create an account and enjoy 15% off your first treatment — our welcome to KClinics.', href: '/book', cta: 'Book your first visit' },
   { tag: 'Always free', t: 'Complimentary consultations', d: 'Every journey begins with a no-obligation consultation and honest, expert advice — never a fee.', href: '/consultation', cta: 'Book a consultation' },
-  { tag: 'Give £25, get £25', t: 'Refer a friend', d: 'Share K Clinics with someone you love — they get £25 off their first treatment, and so do you.', href: '/refer-a-friend', cta: 'How it works' },
+  { tag: 'Give £25, get £25', t: 'Refer a friend', d: 'Share KClinics with someone you love — they get £25 off their first treatment, and so do you.', href: '/refer-a-friend', cta: 'How it works' },
   { tag: 'Better together', t: 'Package & course savings', d: 'Our curated packages bundle complementary treatments for better results — and better value.', href: '/packages', cta: 'Explore packages' },
   { tag: 'Beauty Points', t: 'Earn as you go', d: 'Collect points on every visit, plus bonuses for reviews, birthdays and referrals — redeemable as money off.', href: '/membership', cta: 'Discover rewards' },
   { tag: 'The perfect gift', t: 'Gift vouchers', d: 'Treat someone to a voucher for any amount — redeemable across our entire menu, valid for 12 months.', href: '/gift-vouchers', cta: 'Buy a voucher' },
@@ -28,7 +28,7 @@ export default function OffersPage() {
       <PageHero
         eyebrow="Special offers"
         title="Considered care, rewarded."
-        lede="We’d rather offer genuine, lasting value than gimmicks. Here’s how to make the most of K Clinics — from your very first visit onwards."
+        lede="We’d rather offer genuine, lasting value than gimmicks. Here’s how to make the most of KClinics — from your very first visit onwards."
         gradient={['#a98a6d', '#3d352f']}
       />
 

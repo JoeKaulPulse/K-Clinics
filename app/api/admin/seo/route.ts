@@ -54,7 +54,7 @@ export async function POST(req: Request) {
 // ANTHROPIC_API_KEY is absent or the call fails — the feature never hard-errors.
 async function aiSuggest(input: { title?: string; description?: string; path?: string; focusKeyword?: string; issues?: string[] }) {
   const key = process.env.ANTHROPIC_API_KEY;
-  const brand = 'K Clinics (aesthetics & dentistry, Islington, London)';
+  const brand = 'KClinics (aesthetics & dentistry, Islington, London)';
   if (!key) {
     return {
       ai: false,

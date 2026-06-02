@@ -111,7 +111,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
               {enabled
                 ? <button onClick={begin} className="group mt-10 inline-flex items-center gap-3 rounded-full bg-[var(--color-gold,#c8a96a)] px-8 py-4 text-base font-medium text-[#0c0b0a] transition-transform hover:scale-[1.03]">Get my plan <span className="transition-transform group-hover:translate-x-1">→</span></button>
                 : <p className="mt-10 text-sm text-[#cdbfae]">Coming soon.</p>}
-              <p className="mt-6 text-xs text-[#9a8f80]">Personalised cosmetic guidance — not a medical diagnosis. Free with a K Clinics account.</p>
+              <p className="mt-6 text-xs text-[#9a8f80]">Personalised cosmetic guidance — not a medical diagnosis. Free with a KClinics account.</p>
             </motion.div>
           )}
 
@@ -138,7 +138,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
                 <p>This gives <strong className="text-[#f4ece1]">personalised cosmetic guidance</strong> from your photos — not a medical diagnosis. Anything we suggest is confirmed by a clinician at your in-clinic consultation and patch test.</p>
                 <p>Please upload clear photos of your <strong className="text-[#f4ece1]">face, skin, teeth, hair or body</strong> — never intimate areas. Your photos are sensitive data and are <strong className="text-[#f4ece1]">encrypted</strong>.</p>
                 <label className="flex items-start gap-3 pt-1"><input type="checkbox" checked={storeImages} onChange={(e) => setStoreImages(e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold,#c8a96a)]" /> Save my photos to my record so my clinician can see them (recommended).</label>
-                <label className="flex items-start gap-3"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold,#c8a96a)]" /> I consent to K Clinics processing my photos for this analysis, and I understand this is cosmetic guidance, not a diagnosis. *</label>
+                <label className="flex items-start gap-3"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold,#c8a96a)]" /> I consent to KClinics processing my photos for this analysis, and I understand this is cosmetic guidance, not a diagnosis. *</label>
               </div>
               <NavRow onBack={() => setStage('budget')} next={{ label: 'Continue', onClick: () => consent ? setStage('capture') : setError('Please tick the consent box.') }} />
             </motion.div>

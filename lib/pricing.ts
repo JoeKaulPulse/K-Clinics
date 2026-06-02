@@ -67,14 +67,6 @@ export const priceList: PriceGroup[] = [
     ],
   },
   {
-    heading: 'Carbon Laser Facial (Hollywood Peel)',
-    rows: [
-      { name: 'Full Face', session: 121, course: [{ sessions: 3, total: 331 }, { sessions: 6, total: 599 }] },
-      { name: 'Face & Neck', session: 205, course: [{ sessions: 3, total: 552 }, { sessions: 6, total: 977 }] },
-      { name: 'Face, Neck & Décolleté', session: 237, course: [{ sessions: 3, total: 624 }, { sessions: 6, total: 1122 }] },
-    ],
-  },
-  {
     heading: 'Skin & Rejuvenation',
     rows: [
       { name: 'RF Lifting', session: 260, course: [{ sessions: 3, total: 690 }, { sessions: 5, total: 1075 }] },

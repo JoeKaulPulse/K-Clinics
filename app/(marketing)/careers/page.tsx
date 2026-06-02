@@ -7,8 +7,8 @@ import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'Careers — Join K Clinics | Islington, London',
-  description: 'Build your career at K Clinics, Islington — a place that invests in its people. See our live vacancies and apply, or send a speculative application.',
+  title: 'Careers — Join KClinics | Islington, London',
+  description: 'Build your career at KClinics, Islington — a place that invests in its people. See our live vacancies and apply, or send a speculative application.',
   path: '/careers',
   keywords: ['aesthetics jobs London', 'clinic careers Islington', 'cosmetic dentistry jobs'],
 });
@@ -71,7 +71,7 @@ export default async function CareersPage() {
       <section id="apply" className="container-lux section grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
         <Reveal>
           <div className="lg:sticky lg:top-28">
-            <h2 className="text-title">Apply to K Clinics.</h2>
+            <h2 className="text-title">Apply to KClinics.</h2>
             <p className="mt-4 text-[var(--color-ink-soft)]">Pick a role or send a speculative application. Prefer to talk first? Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>.</p>
             <Link href="/" className="mt-6 inline-block text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Back to the homepage</Link>
           </div>

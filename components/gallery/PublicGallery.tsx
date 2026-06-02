@@ -47,7 +47,7 @@ export function PublicGallery({ items }: { items: PublicGalleryItem[] }) {
       </Stagger>
 
       <p className="mt-8 text-center text-xs text-[var(--color-stone)]">
-        Every case shown is a real K Clinics client, published with their consent. Individual results vary.
+        Every case shown is a real KClinics client, published with their consent. Individual results vary.
       </p>
     </>
   );

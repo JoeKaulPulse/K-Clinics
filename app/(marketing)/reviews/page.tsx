@@ -7,11 +7,11 @@ import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd, aggregateRatingLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'Client Reviews & Testimonials | K Clinics London',
+  title: 'Client Reviews & Testimonials | KClinics London',
   description:
-    'Real, verified reviews from K Clinics, Islington — across laser, skin, body and aesthetic dentistry. We only ever publish 5-star reviews left by genuine clients.',
+    'Real, verified reviews from KClinics, Islington — across laser, skin, body and aesthetic dentistry. We only ever publish 5-star reviews left by genuine clients.',
   path: '/reviews',
-  keywords: ['K Clinics reviews', 'aesthetic clinic reviews London', 'dentist reviews Islington'],
+  keywords: ['KClinics reviews', 'aesthetic clinic reviews London', 'dentist reviews Islington'],
 });
 
 export const revalidate = 300; // ISR: cached, revalidated in the background

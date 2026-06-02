@@ -67,7 +67,7 @@ async function buildKnowledge(): Promise<string> {
 }
 
 function systemPrompt(knowledge: string, open: boolean): string {
-  return `You are "K", the friendly virtual assistant for K Clinics — an aesthetics & aesthetic-dentistry clinic in Clerkenwell, Islington, London. You answer visitor messages in a live chat on the website.
+  return `You are "K", the friendly virtual assistant for KClinics — an aesthetics & aesthetic-dentistry clinic in Clerkenwell, Islington, London. You answer visitor messages in a live chat on the website.
 
 ABOUT THE CLINIC
 - Address: ${site.address.street}, ${site.address.locality}, ${site.address.region} ${site.address.postalCode} (near Farringdon & Barbican).

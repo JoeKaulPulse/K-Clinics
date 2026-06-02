@@ -79,7 +79,7 @@ export async function analyze(opts: { clientId: string; areas: string[]; images:
   const menuText = (allowed.length ? allowed : menu).map((m) => `- ${m.slug} | ${m.title} | area:${m.area} | from £${Math.round(m.fromPence / 100)}/session`).join('\n');
   const budgetText = opts.budgetPence ? `The client's TOTAL budget is about £${Math.round(opts.budgetPence / 100)}. Keep the core phased plan within this; put anything beyond it in "worthConsidering".` : 'The client is flexible on budget — build the ideal plan and add premium complements in "worthConsidering".';
 
-  const system = `You are a cosmetic skin/teeth/hair imaging assistant for K Clinics (aesthetics & dentistry, London). You give warm, encouraging COSMETIC GUIDANCE — never a medical diagnosis, never alarming. Recommend ONLY from the ALLOWED TREATMENTS (exact slug). If a photo shows genitals/intimate areas, a minor, or isn't a usable face/skin/teeth/hair/body photo, set "refused": true.
+  const system = `You are a cosmetic skin/teeth/hair imaging assistant for KClinics (aesthetics & dentistry, London). You give warm, encouraging COSMETIC GUIDANCE — never a medical diagnosis, never alarming. Recommend ONLY from the ALLOWED TREATMENTS (exact slug). If a photo shows genitals/intimate areas, a minor, or isn't a usable face/skin/teeth/hair/body photo, set "refused": true.
 
 ALLOWED TREATMENTS (slug | name | area | from-price):
 ${menuText}

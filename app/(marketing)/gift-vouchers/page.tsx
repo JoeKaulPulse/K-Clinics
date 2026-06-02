@@ -6,10 +6,10 @@ import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'Gift Vouchers — Give the Gift of K Clinics | London',
-  description: 'Buy a K Clinics gift voucher online in minutes. Choose any amount from £10 to £500, add a personal message, and we’ll email it instantly or on a date you choose.',
+  title: 'Gift Vouchers — Give the Gift of KClinics | London',
+  description: 'Buy a KClinics gift voucher online in minutes. Choose any amount from £10 to £500, add a personal message, and we’ll email it instantly or on a date you choose.',
   path: '/gift-vouchers',
-  keywords: ['K Clinics gift voucher', 'beauty gift card London', 'aesthetics gift voucher', 'gift card Islington clinic'],
+  keywords: ['KClinics gift voucher', 'beauty gift card London', 'aesthetics gift voucher', 'gift card Islington clinic'],
 });
 
 export const dynamic = 'force-dynamic';
@@ -29,7 +29,7 @@ export default function GiftVouchersPage() {
       <PageHero
         eyebrow="Gift vouchers"
         title="Give the gift of confidence."
-        lede="A K Clinics voucher is the thoughtful way to treat someone — fully flexible, beautifully presented, and valid across our entire menu of treatments. Buy online in minutes."
+        lede="A KClinics voucher is the thoughtful way to treat someone — fully flexible, beautifully presented, and valid across our entire menu of treatments. Buy online in minutes."
         gradient={['#2a2420', '#a98a6d']}
       >
         <a href="#buy" className="inline-flex items-center gap-2 rounded-full bg-[var(--color-gold)] px-7 py-3.5 text-sm font-medium text-white transition-colors hover:bg-[var(--color-ink)]">Buy a voucher →</a>
@@ -54,7 +54,7 @@ export default function GiftVouchersPage() {
           <div className="lg:sticky lg:top-28">
             <p className="eyebrow mb-3">Redeemable on everything</p>
             <h2 className="text-title">One voucher, the whole menu.</h2>
-            <p className="mt-4 text-[var(--color-ink-soft)]">Vouchers can be put towards any treatment, product or consultation at K Clinics. They’re valid for 12 months, can be used across several visits, and the balance is tracked automatically.</p>
+            <p className="mt-4 text-[var(--color-ink-soft)]">Vouchers can be put towards any treatment, product or consultation at KClinics. They’re valid for 12 months, can be used across several visits, and the balance is tracked automatically.</p>
             <ul className="mt-6 grid gap-2 sm:grid-cols-2">
               {USES.map((u) => (
                 <li key={u} className="flex items-start gap-2.5 text-sm text-[var(--color-ink-soft)]"><span className="mt-1 text-[var(--color-gold)]">✦</span> {u}</li>

@@ -296,7 +296,7 @@ export async function awardBirthdayPoints(): Promise<number> {
     const since = new Date(Date.now() - 350 * 864e5);
     const recent = await db.clientPoints.findFirst({ where: { clientId: c.id, category: 'BIRTHDAY', createdAt: { gte: since } } });
     if (recent) continue;
-    const res = await awardClientPoints({ clientId: c.id, points: LOYALTY.birthdayBonus, category: 'BIRTHDAY', reason: 'Happy birthday from K Clinics 🎂' });
+    const res = await awardClientPoints({ clientId: c.id, points: LOYALTY.birthdayBonus, category: 'BIRTHDAY', reason: 'Happy birthday from KClinics 🎂' });
     if (res.ok) n++;
   }
   return n;

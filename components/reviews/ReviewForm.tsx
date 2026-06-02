@@ -70,7 +70,7 @@ export function ReviewForm({ token, googleUrl }: { token: string; googleUrl: str
       </div>
       <label className="flex cursor-pointer items-start gap-3 text-sm text-[var(--color-stone)]">
         <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-gold)]" />
-        <span>I’m happy for K Clinics to feature my review — and my first name — on their website and marketing. (Optional. We only ever publish 5-star reviews with a written comment.)</span>
+        <span>I’m happy for KClinics to feature my review — and my first name — on their website and marketing. (Optional. We only ever publish 5-star reviews with a written comment.)</span>
       </label>
       {error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm">{error}</p>}
       <button onClick={submit} disabled={loading} className="w-full rounded-full bg-[var(--color-gold)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60">

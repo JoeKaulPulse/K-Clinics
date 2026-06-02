@@ -4,7 +4,7 @@ import { renderOg, ogSize, ogContentType } from '@/lib/og';
 export const dynamic = 'force-static';
 export const size = ogSize;
 export const contentType = ogContentType;
-export const alt = 'K Clinics Journal article';
+export const alt = 'KClinics Journal article';
 
 export function generateStaticParams() {
   return articleSlugs.map((slug) => ({ slug }));

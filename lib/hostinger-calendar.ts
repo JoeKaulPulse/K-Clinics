@@ -33,7 +33,7 @@ function buildICS(ev: { uid: string; start: Date; end: Date; summary: string; de
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//K Clinics//Booking//EN',
+    'PRODID:-//KClinics//Booking//EN',
     'CALSCALE:GREGORIAN',
     `METHOD:${ev.cancelled ? 'CANCEL' : 'PUBLISH'}`,
     'BEGIN:VEVENT',

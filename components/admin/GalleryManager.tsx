@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 type Item = { id: string; category: string; treatmentSlug: string | null; caption: string | null; published: boolean; consent: boolean; v: number };
 
-const CATEGORIES = ['Veneers', 'Composite Bonding', 'Teeth Whitening', 'Clear Aligners', 'Braces', 'Dentures', 'Botox', 'Dermal Fillers', 'Lip Fillers', 'HydraGlow Facial', 'Carbon Laser Peel', 'Chemical Peel', 'Microneedling', 'PRP Therapy', 'Laser Hair Removal', 'IPL Phototherapy', 'Body Contouring', 'SMAS HIFU Lifting', 'RF Lifting', 'Anti-Cellulite'];
+const CATEGORIES = ['Veneers', 'Composite Bonding', 'Teeth Whitening', 'Clear Aligners', 'Braces', 'Dentures', 'Botox', 'Dermal Fillers', 'Lip Fillers', 'HydraGlow Facial', 'Chemical Peel', 'Microneedling', 'PRP Therapy', 'Laser Hair Removal', 'IPL Phototherapy', 'Body Contouring', 'SMAS HIFU Lifting', 'RF Lifting', 'Anti-Cellulite'];
 const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
 
 // Downscale an image file to a JPEG data URL (max 1400px, quality ~0.82).
@@ -107,7 +107,7 @@ function UploadForm() {
       </div>
       <label className="mt-4 flex items-start gap-2.5 text-sm text-[var(--color-ink-soft)]">
         <input type="checkbox" checked={f.consent} onChange={(e) => set('consent', e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-gold)]" />
-        <span>I confirm this is K Clinics’ own client and we hold their <strong>written consent</strong> to publish these photos. (Required before a case can go live.)</span>
+        <span>I confirm this is KClinics’ own client and we hold their <strong>written consent</strong> to publish these photos. (Required before a case can go live.)</span>
       </label>
       <div className="mt-4">
         <button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-60">{busy ? 'Saving…' : 'Save case (hidden until published)'}</button>

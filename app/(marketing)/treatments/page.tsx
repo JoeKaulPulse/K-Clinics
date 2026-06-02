@@ -7,9 +7,9 @@ import { aesthetics, groupByGroup } from '@/lib/treatments';
 import { pageMeta, JsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'Aesthetic Treatments in London — Laser, Skin & Body | K Clinics',
+  title: 'Aesthetic Treatments in London — Laser, Skin & Body | KClinics',
   description:
-    'Explore K Clinics’ full menu of aesthetic treatments in Islington, London — laser hair removal, HIFU lifting, advanced facials, body contouring and injectables.',
+    'Explore KClinics’ full menu of aesthetic treatments in Islington, London — laser hair removal, HIFU lifting, advanced facials, body contouring and injectables.',
   path: '/treatments',
   keywords: ['aesthetic clinic London', 'laser clinic Islington', 'skin treatments London', 'non-surgical treatments'],
 });
@@ -21,7 +21,7 @@ export default function TreatmentsPage() {
     <>
       <JsonLd data={[
         breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Aesthetics', path: '/treatments' }]),
-        itemListLd('Aesthetic treatments at K Clinics', aesthetics.map((t) => ({ name: t.title, path: `/${t.slug}` }))),
+        itemListLd('Aesthetic treatments at KClinics', aesthetics.map((t) => ({ name: t.title, path: `/${t.slug}` }))),
       ]} />
       <PageHero
         eyebrow="Aesthetics · Laser · Skin · Body"

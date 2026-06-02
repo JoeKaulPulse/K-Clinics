@@ -12,7 +12,7 @@ type Step = { n: string; t: string; d: string; grad: [string, string]; img: stri
 const steps: Step[] = [
   { n: '01', t: 'Consultation', d: 'We listen first. A thorough, unhurried assessment of your goals, your skin or your smile — and complete transparency on what is possible.', grad: ['#a98a6d', '#7b6a5d'], img: treatmentImage('hydraglow-facial') },
   { n: '02', t: 'Your bespoke plan', d: 'A clear, staged plan tailored to you, with the right treatments sequenced for results that build beautifully over time.', grad: ['#7b6a5d', '#2a2420'], img: treatmentImage('rf-lifting') },
-  { n: '03', t: 'Refined results', d: 'Expert delivery, attentive aftercare and outcomes that look natural, considered and unmistakably yours.', grad: ['#c2a589', '#4a3f37'], img: treatmentImage('veneers') },
+  { n: '03', t: 'Refined results', d: 'Expert delivery, attentive aftercare and outcomes that look natural, considered and unmistakably yours.', grad: ['#c2a589', '#4a3f37'], img: treatmentImage('laser-skin-rejuvenation') },
 ];
 
 /**
@@ -31,7 +31,7 @@ export function PinnedExperience() {
       <div className="container-lux relative section-t pb-6 text-center md:pb-10">
         <p className="eyebrow mb-6 inline-flex items-center gap-2.5 text-[var(--color-gold-soft)]">
           <span className="h-px w-7 bg-[var(--color-gold-soft)]/60" />
-          The K Clinics experience
+          The KClinics experience
         </p>
         <h2 className="text-title mx-auto max-w-3xl text-[var(--color-porcelain)]">Considered from the first hello.</h2>
       </div>

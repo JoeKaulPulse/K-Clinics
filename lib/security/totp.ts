@@ -35,7 +35,7 @@ export function generateTotpSecret(): string {
 }
 
 /** otpauth:// URI for QR codes / manual entry. */
-export function totpUri(secret: string, account: string, issuer = 'K Clinics CRM'): string {
+export function totpUri(secret: string, account: string, issuer = 'KClinics CRM'): string {
   const label = encodeURIComponent(`${issuer}:${account}`);
   const params = new URLSearchParams({ secret, issuer, algorithm: 'SHA1', digits: '6', period: '30' });
   return `otpauth://totp/${label}?${params.toString()}`;

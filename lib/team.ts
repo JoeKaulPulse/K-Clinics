@@ -26,7 +26,7 @@ export const team: Practitioner[] = [
     name: 'Senior Laser & Skin Specialist',
     role: 'Laser & Skin Therapist',
     credentials: 'Core of Knowledge · Advanced Laser Certified',
-    focus: ['Laser hair removal', 'Carbon laser peel', 'Pigmentation'],
+    focus: ['Laser hair removal', 'IPL phototherapy', 'Pigmentation'],
     bio: 'Working across skin types and tones, our laser specialist calibrates every protocol for safety and results — with a calm, precise and reassuring treatment experience.',
   },
   {

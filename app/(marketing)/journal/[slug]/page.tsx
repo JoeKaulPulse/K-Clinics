@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const a = getArticle(slug);
   if (!a) return {};
-  return pageMeta({ title: `${a.title} | K Clinics Journal`, description: a.metaDescription, path: `/journal/${a.slug}`, keywords: a.keywords, ownOgImage: true });
+  return pageMeta({ title: `${a.title} | KClinics Journal`, description: a.metaDescription, path: `/journal/${a.slug}`, keywords: a.keywords, ownOgImage: true });
 }
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -60,7 +60,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           <div className="mt-7 flex items-center gap-3 border-t border-[var(--color-line)] pt-6">
             <span className="grid h-10 w-10 place-items-center rounded-full bg-[var(--color-ink)] font-[family-name:var(--font-display)] text-sm text-[var(--color-gold-soft)]">K</span>
             <div className="text-sm">
-              <p className="font-medium text-[var(--color-ink)]">The K Clinics team</p>
+              <p className="font-medium text-[var(--color-ink)]">The KClinics team</p>
               <p className="text-[var(--color-stone)]">Clinically reviewed{a.updated ? ` · Updated ${fmtDate(a.updated)}` : ''}</p>
             </div>
           </div>

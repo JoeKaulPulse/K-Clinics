@@ -7,16 +7,16 @@ import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'Refer a Friend — Give £25, Get £25 | K Clinics London',
-  description: 'Share K Clinics with a friend: they get £25 off their first treatment and you get £25 credit when they visit. Generous, simple, and automatic.',
+  title: 'Refer a Friend — Give £25, Get £25 | KClinics London',
+  description: 'Share KClinics with a friend: they get £25 off their first treatment and you get £25 credit when they visit. Generous, simple, and automatic.',
   path: '/refer-a-friend',
-  keywords: ['refer a friend', 'K Clinics referral', 'aesthetics referral London'],
+  keywords: ['refer a friend', 'KClinics referral', 'aesthetics referral London'],
 });
 
 export const dynamic = 'force-dynamic';
 
 const STEPS = [
-  { n: '01', t: 'Share your link', d: 'Sign in and grab your unique referral link from your rewards page. Send it to a friend who’d love K Clinics.' },
+  { n: '01', t: 'Share your link', d: 'Sign in and grab your unique referral link from your rewards page. Send it to a friend who’d love KClinics.' },
   { n: '02', t: 'They book their first treatment', d: 'Your friend creates an account and books their first treatment (£100 or more). They keep their 15% welcome discount too.' },
   { n: '03', t: 'You both get £25', d: 'Once their first qualifying treatment is complete, £25 lands automatically for both of you — to spend on your next visit.' },
 ];
@@ -28,7 +28,7 @@ export default async function ReferPage() {
   return (
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Refer a Friend', path: '/refer-a-friend' }])} />
-      <PageHero eyebrow="Refer a friend" title="Give £25, get £25." lede="The best compliment is a recommendation. Share K Clinics with someone you love — they get £25 off their first treatment, and you get £25 to spend on your next." gradient={['#2a2420', '#a98a6d']}>
+      <PageHero eyebrow="Refer a friend" title="Give £25, get £25." lede="The best compliment is a recommendation. Share KClinics with someone you love — they get £25 off their first treatment, and you get £25 to spend on your next." gradient={['#2a2420', '#a98a6d']}>
         {client
           ? <Button href="/account/rewards" variant="gold">Get your referral link <ArrowIcon /></Button>
           : <div className="flex flex-wrap gap-3"><Button href="/account/signup" variant="gold">Create your account <ArrowIcon /></Button><Button href="/account/login" variant="outline">Sign in</Button></div>}

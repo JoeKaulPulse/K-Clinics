@@ -1,5 +1,5 @@
 /**
- * Official K Clinics brand marks — supplied artwork, rendered as inline SVG.
+ * Official KClinics brand marks — supplied artwork, rendered as inline SVG.
  *  • KMark            — the hook monogram ("K"). Used alone on mobile + atop the
  *                       desktop lockup.
  *  • ClinicsWordmark  — the "CLINICS" wordmark.
@@ -25,7 +25,7 @@ export function KMark({ className = '', animated = false }: { className?: string
       height="100%"
       className={`${animated ? 'k-mark--animated' : ''} ${className}`}
       role="img"
-      aria-label="K Clinics"
+      aria-label="KClinics"
       preserveAspectRatio="xMidYMid meet"
     >
       {animated && (
@@ -63,7 +63,7 @@ export function ClinicsWordmark({ className = '' }: { className?: string }) {
       height="100%"
       className={className}
       role="img"
-      aria-label="K Clinics"
+      aria-label="KClinics"
       preserveAspectRatio="xMidYMid meet"
       fill="currentColor"
     >

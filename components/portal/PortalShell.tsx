@@ -64,7 +64,7 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
       <div className="sticky top-0 z-40 border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-porcelain)_82%,transparent)] backdrop-blur-xl">
         <div className="mx-auto w-full max-w-[88rem] px-[var(--gutter)]">
           <header className="flex items-center justify-between gap-4 py-4">
-            <Link href="/account" aria-label="K Clinics" className="group flex items-center gap-2.5 text-[var(--color-ink)]">
+            <Link href="/account" aria-label="KClinics" className="group flex items-center gap-2.5 text-[var(--color-ink)]">
               <span className="block h-8 w-[1.25rem] transition-transform duration-500 [transition-timing-function:var(--ease-lux)] group-hover:-translate-y-0.5"><KMark /></span>
               <span className="hidden h-[0.62rem] w-[5.5rem] sm:block"><ClinicsWordmark /></span>
             </Link>

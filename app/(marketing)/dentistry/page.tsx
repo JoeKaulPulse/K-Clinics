@@ -11,10 +11,10 @@ import { pageMeta, JsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: site.dentistryLive
-    ? 'Aesthetic & Cosmetic Dentistry in London | K Clinics'
-    : 'Aesthetic & Cosmetic Dentistry — Opening Soon | K Clinics London',
+    ? 'Aesthetic & Cosmetic Dentistry in London | KClinics'
+    : 'Aesthetic & Cosmetic Dentistry — Opening Soon | KClinics London',
   description:
-    'Aesthetic dentistry coming soon to K Clinics, Islington — porcelain veneers, teeth whitening, composite bonding, dental implants and specialist care. Register your interest.',
+    'Aesthetic dentistry coming soon to KClinics, Islington — porcelain veneers, teeth whitening, composite bonding, dental implants and specialist care. Register your interest.',
   path: '/dentistry',
   keywords: ['cosmetic dentist London', 'dental clinic Islington', 'veneers London', 'dental implants London'],
 });
@@ -27,13 +27,13 @@ export default function DentistryPage() {
     <>
       <JsonLd data={[
         breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Dentistry', path: '/dentistry' }]),
-        itemListLd('Dentistry treatments at K Clinics', dentistry.map((t) => ({ name: t.title, path: `/${t.slug}` }))),
+        itemListLd('Dentistry treatments at KClinics', dentistry.map((t) => ({ name: t.title, path: `/${t.slug}` }))),
       ]} />
       <PageHero
         eyebrow={comingSoon ? 'Aesthetic Dentistry · Opening soon' : 'Aesthetic & Restorative Dentistry'}
         title="A smile, designed around you."
         lede={comingSoon
-          ? 'Our dentistry suite is coming soon to Clerkenwell — veneers, whitening, bonding, implants and specialist care, to the same meticulous standard as the rest of K Clinics. Register your interest and you’ll be first to know when it opens.'
+          ? 'Our dentistry suite is coming soon to Clerkenwell — veneers, whitening, bonding, implants and specialist care, to the same meticulous standard as the rest of KClinics. Register your interest and you’ll be first to know when it opens.'
           : 'Health-led, beauty-driven dentistry — uniting veneers, whitening, bonding, implants and specialist care under one meticulous standard.'}
         gradient={['#7b6a5d', '#2a2420']}
       >

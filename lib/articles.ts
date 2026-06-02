@@ -1,4 +1,4 @@
-// Journal / blog — original, SEO-targeted articles for K Clinics. Pure data
+// Journal / blog — original, SEO-targeted articles for KClinics. Pure data
 // (client-safe). Each article maps to a treatment area and target keywords to
 // build topical authority. Keep paragraphs tight and genuinely useful.
 
@@ -50,7 +50,7 @@ export const articles: Article[] = [
       { type: 'ul', items: ['Shave the area 24 hours before (don’t wax or pluck — the root must be intact)', 'Avoid sun exposure and self-tan for two weeks beforehand', 'Skip retinoids and strong acids on the area for a few days', 'Arrive with clean, product-free skin'] },
       { type: 'h2', text: 'Aftercare for the best results' },
       { type: 'p', text: 'Keep the area cool and protected, use SPF daily, and avoid heat (saunas, hot workouts) for 48 hours. Some shedding over the following week is normal and a good sign the treatment is working.' },
-      { type: 'p', text: 'At K Clinics, every course begins with a complimentary consultation and patch test, so your protocol is calibrated to your skin tone and hair type for safe, effective results.' },
+      { type: 'p', text: 'At KClinics, every course begins with a complimentary consultation and patch test, so your protocol is calibrated to your skin tone and hair type for safe, effective results.' },
     ],
   },
   {
@@ -76,7 +76,7 @@ export const articles: Article[] = [
       { type: 'p', text: 'Typically three to four months. Many clients settle into a rhythm of two to three treatments a year, and find lines soften over time as the habit of over-using those muscles fades.' },
       { type: 'h2', text: 'Choosing your clinician' },
       { type: 'ul', items: ['Look for medically-qualified, registered practitioners', 'Ask to see natural, realistic before-and-afters', 'Expect a thorough consultation and honest advice — including when not to treat', 'Never choose on price alone'] },
-      { type: 'p', text: 'Every injectable treatment at K Clinics begins with a full consultation and a tailored plan, delivered by experienced clinicians with an artist’s eye for balance.' },
+      { type: 'p', text: 'Every injectable treatment at KClinics begins with a full consultation and a tailored plan, delivered by experienced clinicians with an artist’s eye for balance.' },
     ],
   },
   {
@@ -102,7 +102,7 @@ export const articles: Article[] = [
       { type: 'ul', items: ['Whitening: healthy teeth, good shape, just want them brighter', 'Bonding: small chips, gaps or reshaping on a budget', 'Veneers: a comprehensive, lasting smile transformation', 'Often, a combination — whiten first, then refine'] },
       { type: 'h2', text: 'How long do veneers last?' },
       { type: 'p', text: 'With good care, quality porcelain veneers can last 10–15 years or more. They resist staining beautifully and, designed well, look entirely natural.' },
-      { type: 'p', text: 'At K Clinics, smile design starts with listening — we craft a smile that looks like yours, only better, and show you a preview before any treatment begins.' },
+      { type: 'p', text: 'At KClinics, smile design starts with listening — we craft a smile that looks like yours, only better, and show you a preview before any treatment begins.' },
     ],
   },
   {
@@ -117,7 +117,7 @@ export const articles: Article[] = [
     published: '2026-03-20',
     keywords: ['laser treatment aftercare', 'skincare after laser', 'laser facial recovery London'],
     image: 'Carbon-Laser-Peel.png',
-    related: ['carbon-laser-peel', 'hydraglow-facial', 'laser-skin-rejuvenation'],
+    related: ['ipl-phototherapy', 'hydraglow-facial', 'laser-skin-rejuvenation'],
     blocks: [
       { type: 'p', text: 'Laser skin treatments work by stimulating your skin’s natural renewal. What you do in the days afterwards has a real impact on both comfort and results.' },
       { type: 'h2', text: 'The first 48 hours' },
@@ -126,7 +126,7 @@ export const articles: Article[] = [
       { type: 'p', text: 'Pause active ingredients like retinoids and strong acids until your clinician advises. Keep your routine simple — cleanse, hydrate, protect. Some mild redness or a “sandpaper” texture is normal as the skin renews.' },
       { type: 'h2', text: 'Protecting your investment' },
       { type: 'p', text: 'Sun protection is the single most important habit. UV exposure undoes results and risks pigmentation, so daily SPF 50 is non-negotiable — particularly after treatments targeting tone and pigmentation.' },
-      { type: 'p', text: 'Your K Clinics clinician will give you a personalised aftercare plan and check in on your progress, so your skin stays calm and your results last.' },
+      { type: 'p', text: 'Your KClinics clinician will give you a personalised aftercare plan and check in on your progress, so your skin stays calm and your results last.' },
     ],
   },
   {
@@ -155,11 +155,11 @@ export const articles: Article[] = [
   },
   {
     slug: 'preparing-for-your-first-consultation',
-    title: 'Preparing for Your First Consultation at K Clinics',
+    title: 'Preparing for Your First Consultation at KClinics',
     excerpt:
       'What happens at a complimentary consultation, what to bring, and how to get the most from your visit.',
     metaDescription:
-      'What to expect at your first aesthetics or dentistry consultation at K Clinics, London — how it works, what to bring, and the questions to ask for a confident decision.',
+      'What to expect at your first aesthetics or dentistry consultation at KClinics, London — how it works, what to bring, and the questions to ask for a confident decision.',
     category: 'Wellbeing',
     readMinutes: 4,
     published: '2026-04-15',
@@ -167,7 +167,7 @@ export const articles: Article[] = [
     image: 'HydraFacial-Anti-Ageing.png',
     related: ['cosmetic-injections', 'veneers'],
     blocks: [
-      { type: 'p', text: 'Every great result begins with a great consultation. At K Clinics it’s complimentary, unhurried and entirely no-obligation — here’s how to make the most of it.' },
+      { type: 'p', text: 'Every great result begins with a great consultation. At KClinics it’s complimentary, unhurried and entirely no-obligation — here’s how to make the most of it.' },
       { type: 'h2', text: 'What happens during your visit' },
       { type: 'p', text: 'Your clinician will listen to your goals, assess your skin, smile or area of concern, talk you through the realistic options, and design a plan around you. You’ll get honest advice — including, sometimes, that less is more or that now isn’t the right time.' },
       { type: 'h2', text: 'What to bring' },

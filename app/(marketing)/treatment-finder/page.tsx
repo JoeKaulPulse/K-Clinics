@@ -4,9 +4,9 @@ import { TreatmentFinder } from '@/components/finder/TreatmentFinder';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'Treatment Finder — Find Your Ideal Treatment | K Clinics London',
+  title: 'Treatment Finder — Find Your Ideal Treatment | KClinics London',
   description:
-    'Answer a few quick questions and discover the K Clinics treatments best suited to your skin, smile or body goals. Personalised, no obligation.',
+    'Answer a few quick questions and discover the KClinics treatments best suited to your skin, smile or body goals. Personalised, no obligation.',
   path: '/treatment-finder',
   keywords: ['treatment finder', 'which aesthetic treatment', 'skin treatment quiz London', 'best treatment for me'],
 });
