@@ -21,7 +21,12 @@ export function pageMeta({
 }): Metadata {
   const url = `${base}${path}`;
   const fullTitle = title;
-  const images = ownOgImage ? undefined : [{ url: `${base}/opengraph-image`, width: 1200, height: 630, alt: site.name }];
+  // Per-page social card: feed the page's own heading + description into the
+  // dynamic /og generator so every shared link previews uniquely & on-brand.
+  // Pages with their own `opengraph-image.tsx` (treatments, journal) opt out.
+  const ogHeading = title.split(' | ')[0];
+  const ogUrl = `${base}/og?title=${encodeURIComponent(ogHeading)}&tag=${encodeURIComponent(description)}`;
+  const images = ownOgImage ? undefined : [{ url: ogUrl, width: 1200, height: 630, alt: fullTitle }];
   return {
     // metaTitles already carry the brand, so bypass the layout's title template.
     title: { absolute: fullTitle },
@@ -41,7 +46,7 @@ export function pageMeta({
       card: 'summary_large_image',
       title: fullTitle,
       description,
-      ...(images ? { images: [`${base}/opengraph-image`] } : {}),
+      ...(images ? { images: [ogUrl] } : {}),
     },
   };
 }
