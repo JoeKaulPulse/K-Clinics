@@ -3,9 +3,9 @@ import { KVision } from '@/components/ai/KVision';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'Get My Plan — AI Skin, Smile & Hair Consultation | K Clinics',
+  title: 'Get My Plan — AI Skin, Smile & Hair Consultation | KClinics',
   description:
-    'Upload a photo and our AI analyses your skin, smile and hair, then builds a personalised, phased, bookable treatment plan to your budget. Free with a K Clinics account.',
+    'Upload a photo and our AI analyses your skin, smile and hair, then builds a personalised, phased, bookable treatment plan to your budget. Free with a KClinics account.',
   path: '/ai-consultation',
   keywords: ['AI skin analysis London', 'AI consultation aesthetics', 'personalised treatment plan'],
 });

@@ -50,7 +50,7 @@ export function SignupForm() {
         <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-full bg-[var(--color-ink)] text-[var(--color-gold-soft)]">
           <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </div>
-        <h2 className="font-[family-name:var(--font-display)] text-2xl">Welcome to K Clinics, {d.firstName}.</h2>
+        <h2 className="font-[family-name:var(--font-display)] text-2xl">Welcome to KClinics, {d.firstName}.</h2>
         {done.granted ? (
           <p className="mx-auto mt-3 max-w-sm text-[var(--color-stone)]">
             Your <strong>{done.percent}% welcome discount</strong> is ready — code{' '}

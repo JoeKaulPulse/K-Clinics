@@ -2,7 +2,7 @@ import type { Faq } from '@/lib/treatments';
 
 export const generalFaqs: { heading: string; items: Faq[] }[] = [
   {
-    heading: 'Visiting K Clinics',
+    heading: 'Visiting KClinics',
     items: [
       { q: 'Where are you located?', a: 'We are in the heart of Clerkenwell, Islington — at 4 Charterhouse Buildings, Goswell Road, moments from Farringdon and Barbican stations.' },
       { q: 'Do you offer free consultations?', a: 'Yes. Every consultation is complimentary, and there is never any obligation to proceed. It is simply the best way to design the right plan for you.' },

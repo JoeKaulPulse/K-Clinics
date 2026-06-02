@@ -1,91 +1,84 @@
-# WordPress → K Clinics migration
+# WordPress → KClinics migration
 
-Goal: move **everything** off the old WordPress/WooCommerce site into the new
-CRM with **zero data loss** — clients, contact details, consent, health/consent
-forms, enquiry submissions, and history (appointments, reviews, orders/invoices).
+Move **everything** off the old WordPress/WooCommerce site into the new CRM with
+**zero data loss** — every client, their contact details and consent, plus (in a
+later step) health/consent forms and history.
 
-## Ground rules (safety)
+> **You run these on your own machine** (your laptop), in a terminal — **not on
+> Vercel**. Vercel hosts the live website; this is a one-off local job that reads
+> the dump file sitting on your computer and (for the final step) writes to the
+> new database. The dump never leaves your machine.
 
-1. **WordPress is read-only.** We never write to or delete from the old site. It
-   stays the source of truth until the new data is verified and signed off.
-2. **No PII in git or chat.** Dumps and any extracted data live only in
-   `scripts/migrate-wp/data/` (git-ignored). Never paste real client rows into
-   chat — share schema + redacted samples to design the mapping; share the full
-   dump through a secure channel for the actual run.
-3. **Idempotent + reversible.** The importer upserts (never duplicates) and tags
-   every imported record (`source = "wordpress"`, plus the original WP id) so a
-   migration can be re-run or rolled back cleanly.
+## Ground rules
 
-## The four phases
+1. **WordPress is read-only.** Nothing is written to or deleted from the old site.
+2. **No PII in git or chat.** Dumps live only in `scripts/migrate-wp/data/`
+   (git-ignored — anything you drop there is automatically *not* committed). The
+   script *output* (table names + counts) is safe to paste back.
+3. **Re-runnable & non-destructive.** Imports upsert by email and only fill blank
+   fields, so re-running never duplicates or clobbers.
 
-### 1 · Discovery (what's in the dump)
-Inventory every table + row count and locate where users, customers, forms,
-orders and bookings live. Output: a data-inventory report — nothing unaccounted
-for. (Designed from the **schema-only** dump first — no PII needed.)
-
-### 2 · Mapping
-A field-by-field map: each WordPress source field → the K Clinics field it lands
-in. Where there's no home for a value, we **add a new field** to the schema (the
-owner expects this). Anything genuinely orphaned is preserved verbatim in the
-client's notes / a raw JSON sidecar so it's never dropped.
-
-### 3 · Dry run + reconciliation
-Run the importer in `--dry-run` against a copy of the data. It writes nothing and
-produces a **reconciliation report**: source count vs would-import count for every
-category, plus samples and a list of any unmapped fields. The owner signs this off.
-
-### 4 · Go-live import
-Run with `--commit` against production. Re-run the reconciliation to confirm the
-live counts match source. Existing clients keep their records; on first visit they
-use "forgot password" to set a login (no mass email, no data loss).
-
-## What I need from you to start (no PII)
-
-From the WordPress hosting (phpMyAdmin or shell), produce these and drop them in
-`scripts/migrate-wp/data/` (git-ignored) or share securely:
+## Do this — three commands, in order
 
 ```bash
-# A) Schema only — table + column structure, NO data (safe to share):
-mysqldump --no-data -u USER -p DBNAME > schema.sql
+# 0) Get the toolkit + put your dump in place (one time)
+git pull                                   # pull this branch
+mkdir -p scripts/migrate-wp/data
+#   …copy your full-dump.sql into scripts/migrate-wp/data/  (it stays git-ignored)
 
-# B) Row counts per table (tells us where the volume is):
-mysql -u USER -p -e "
-  SELECT table_name, table_rows
-  FROM information_schema.tables
-  WHERE table_schema = 'DBNAME'
-  ORDER BY table_rows DESC;" > table-counts.txt
+# 1) INVENTORY — read-only, no database, no setup. Paste the output back to me.
+node scripts/migrate-wp/inventory.mjs scripts/migrate-wp/data/full-dump.sql
 
-# C) A few REDACTED sample rows from the key tables so we can map fields, e.g.:
-#    wp_users, wp_usermeta, and the WooCommerce customer/order tables
-#    (wp_wc_customer_lookup, wp_postmeta for shop_order), plus any form tables.
-#    Replace names/emails/phones with dummy values before sharing.
+# 2) DRY RUN — read-only, no database. Shows how many clients we'd create +
+#    any fields I still need to map. Paste the output back to me.
+node scripts/migrate-wp/migrate.mjs --file scripts/migrate-wp/data/full-dump.sql --dry-run
+
+# 3) COMMIT — writes the clients into the new database (only after we've both
+#    signed off on the dry-run numbers).
+DATABASE_URL="<new-db-url>" node scripts/migrate-wp/migrate.mjs \
+  --file scripts/migrate-wp/data/full-dump.sql --commit
 ```
 
-Then, for the real run, the **full** dump + `/wp-content/uploads`:
+Only **Node** is needed for the dry runs (already installed if you can run the
+site). The `--commit` steps need the new database URL.
+
+## Then history + clinical (same pattern: dry-run, paste, commit)
 
 ```bash
-mysqldump -u USER -p DBNAME > full-dump.sql   # full data dump
-# and a copy of wp-content/uploads/ for any uploaded files/forms
+# Appointments → bookings, testimonials → reviews, loyalty → points
+node scripts/migrate-wp/migrate-history.mjs  --file scripts/migrate-wp/data/full-dump.sql --dry-run
+DATABASE_URL="<new-db-url>" node scripts/migrate-wp/migrate-history.mjs --file scripts/migrate-wp/data/full-dump.sql --commit
+
+# Consents, skin-quiz, care plans, recommendations, enquiry forms (ENCRYPTED)
+node scripts/migrate-wp/migrate-clinical.mjs --file scripts/migrate-wp/data/full-dump.sql --dry-run
+DATABASE_URL="<new-db-url>" HEALTH_ENCRYPTION_KEY="<same-as-prod>" [HEALTH_HMAC_KEY="<same-as-prod>"] \
+  node scripts/migrate-wp/migrate-clinical.mjs --file scripts/migrate-wp/data/full-dump.sql --commit
 ```
 
-## Target model (where things land)
+Run order for `--commit`: **clients first** (history & clinical link to them by
+email), then history, then clinical. All steps are re-runnable (each row carries
+a source marker and is skipped if already imported).
 
-- **Clients** ← WordPress users + WooCommerce customers, de-duplicated by email.
-  `firstName, lastName, email, phone, dob, gender, address, tags, notes,
-  marketingOptIn, smsReminders, source="wordpress"`.
-- **Health/consent forms** → encrypted `HealthAssessment` records linked to the
-  client (uses the app's health-encryption key).
-- **Enquiry/contact forms** → `Consultation` / `Interaction` timeline entries.
-- **History** → `Booking` (appointments), `Review` (testimonials), and
-  order/invoice history (mapped to invoices/loyalty as agreed).
-- New fields added to the Prisma schema wherever a value has no existing home.
+## What gets imported
 
-## Running (filled in once the schema is known)
+- **Clients** ← WordPress users + WooCommerce customers, de-duped by email. Keeps
+  signup dates, names, phone (incl. `booked_phone`), DOB (`birthday`), address,
+  and marketing/SMS consent (custom columns + MailPoet + the signup checkbox).
+- **Bookings** ← `grafik`/`grafik_dent` (COMPLETED, or CANCELLED when `del=1`).
+- **Reviews** ← `review_user`. **Loyalty** ← `bonus` → ClientPoints.
+- **Encrypted clinical** ← `sign_table` (consents + signature image),
+  `skviz` (skin quiz), `care_plan`(+dent), `recommendation` → HealthAssessment
+  using the app's encryption (needs `HEALTH_ENCRYPTION_KEY`).
+- **Consultations** ← `wp_db7_forms` (CF7) + Elementor form submissions.
+- Passwords are **not** imported — clients set one via "forgot password".
+- **Not migrated** (ripped-template content/config + plumbing): `level*`,
+  `price*`, `time_consultation`, `test`, `logs`, Action Scheduler, Yoast, etc.
 
-```bash
-# Dry run — writes nothing, prints the reconciliation report:
-DATABASE_URL=... node scripts/migrate-wp/migrate.mjs --file data/full-dump.sql --dry-run
+## Files
 
-# Commit — writes to the target database:
-DATABASE_URL=... node scripts/migrate-wp/migrate.mjs --file data/full-dump.sql --commit
-```
+- `inventory.mjs` / `columns.mjs` / `profile.mjs` — read-only discovery (tables,
+  structures, masked data shapes). All PII-free; safe to paste back.
+- `migrate.mjs` — clients. `migrate-history.mjs` — bookings/reviews/loyalty.
+  `migrate-clinical.mjs` — encrypted clinical + consultations.
+- `lib-dump.mjs` (SQL parser), `lib-crypto.mjs` (app-compatible encryption),
+  `lib-php.mjs` (PHP unserialize) — shared helpers, no external dependencies.

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'K Clinics CRM',
+  title: 'KClinics CRM',
   robots: { index: false, follow: false },
 };
 

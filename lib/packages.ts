@@ -1,4 +1,4 @@
-// Curated treatment packages — real packages from the existing K Clinics site.
+// Curated treatment packages — real packages from the existing KClinics site.
 export type Pkg = {
   slug: string;
   name: string;
@@ -16,18 +16,18 @@ export const packages: Pkg[] = [
     slug: "skinglow",
     name: "SkinGlow",
     subtitle: "Radiant, deeply hydrated skin — all year round",
-    description: "The SkinGlow Package at K Clinics is a premium skincare treatment designed to rejuvenate your skin, enhance its natural radiance, and leave you glowing with confidence. Perfect for achieving a refreshed and youthful appearance.",
-    includes: ["HydraGlow facial ritual","Carbon Laser (Hollywood) peel","Brightening & antioxidant therapy","Personalised homecare plan","Concierge support throughout"],
+    description: "The SkinGlow Package at KClinics is a premium skincare treatment designed to rejuvenate your skin, enhance its natural radiance, and leave you glowing with confidence. Perfect for achieving a refreshed and youthful appearance.",
+    includes: ["HydraGlow facial ritual","Laser skin-brightening session","Brightening & antioxidant therapy","Personalised homecare plan","Concierge support throughout"],
     bestFor: "Achieving radiant, deeply hydrated and rejuvenated skin throughout the year.",
     priceFrom: "On consultation",
     gradient: ["#a98a6d","#7b6a5d"],
-    related: ["hydraglow-facial","carbon-laser-peel","face-treatments"],
+    related: ["hydraglow-facial","ipl-phototherapy","face-treatments"],
   },
   {
     slug: "smoothskin",
     name: "SmoothSkin",
     subtitle: "Smooth, firmer skin on the face & around the eyes",
-    description: "The SmoothSkin Package at K Clinics offers advanced treatments to refine your skin’s texture, reduce imperfections, and leave it feeling silky smooth. Ideal for achieving a flawless and polished look.",
+    description: "The SmoothSkin Package at KClinics offers advanced treatments to refine your skin’s texture, reduce imperfections, and leave it feeling silky smooth. Ideal for achieving a flawless and polished look.",
     includes: ["SMAS HIFU lifting","RF skin tightening","Microneedling for texture","Bespoke treatment plan","Expert aftercare"],
     bestFor: "Smoothing wrinkles and improving skin firmness on the face and around the eyes.",
     priceFrom: "On consultation",
@@ -38,7 +38,7 @@ export const packages: Pkg[] = [
     slug: "rejuvenation",
     name: "Rejuvenation",
     subtitle: "Intensive rejuvenation & wrinkle reduction",
-    description: "The Rejuvenation Package at K Clinics is expertly crafted to restore your skin’s vitality, reduce signs of aging, and leave you with a refreshed, youthful glow. Perfect for revitalizing your natural beauty.",
+    description: "The Rejuvenation Package at KClinics is expertly crafted to restore your skin’s vitality, reduce signs of aging, and leave you with a refreshed, youthful glow. Perfect for revitalizing your natural beauty.",
     includes: ["Intensive SMAS HIFU lifting","Collagen-induction microneedling","HydraGlow facial ritual","Prescriptive skincare","Progress tracking"],
     bestFor: "Intensive skin rejuvenation and a visible reduction in wrinkles.",
     priceFrom: "On consultation",
@@ -49,7 +49,7 @@ export const packages: Pkg[] = [
     slug: "bodycontour",
     name: "BodyContour",
     subtitle: "Sculpted contours & smoother, firmer skin",
-    description: "The BodyContour Package at K Clinics offers advanced treatments to sculpt and tone your body, helping you achieve a slimmer, more contoured silhouette. Perfect for enhancing your natural shape with lasting results.",
+    description: "The BodyContour Package at KClinics offers advanced treatments to sculpt and tone your body, helping you achieve a slimmer, more contoured silhouette. Perfect for enhancing your natural shape with lasting results.",
     includes: ["Endosphere body sculpting","Anti-cellulite vacuum therapy","RF body tightening","Lymphatic drainage focus","Progress tracking"],
     bestFor: "Improving body contours and reducing the appearance of cellulite.",
     priceFrom: "On consultation",
@@ -65,7 +65,7 @@ export const packages: Pkg[] = [
     bestFor: "A long-term, comprehensive solution to remove unwanted hair.",
     priceFrom: "On consultation",
     gradient: ["#dcc4a8","#a98a6d"],
-    related: ["laser-hair-removal","carbon-laser-peel","hydraglow-facial"],
+    related: ["laser-hair-removal","ipl-phototherapy","hydraglow-facial"],
   },
   {
     slug: "luxelift",
@@ -120,7 +120,7 @@ export const packages: Pkg[] = [
     bestFor: "Clients who want maximum flexibility in choosing your treatments throughout the year.",
     priceFrom: "On consultation",
     gradient: ["#a98a6d","#2a2420"],
-    related: ["hydraglow-facial","smas-hifu-lifting","carbon-laser-peel"],
+    related: ["hydraglow-facial","smas-hifu-lifting","ipl-phototherapy"],
   },
 ];
 

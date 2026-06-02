@@ -81,7 +81,7 @@ export default async function HomePage() {
           </div>
           <div className="flex flex-col justify-end lg:col-span-5">
             <ScrollReveal className="text-lede leading-relaxed text-[var(--color-ink)]">
-              K Clinics was built on a simple conviction: that aesthetics and dentistry, practised at the highest level under one roof, create a more complete kind of confidence.
+              KClinics was built on a simple conviction: that aesthetics and dentistry, practised at the highest level under one roof, create a more complete kind of confidence.
             </ScrollReveal>
             <Reveal delay={0.12}>
               <div className="mt-8 flex gap-3">
@@ -153,7 +153,7 @@ export default async function HomePage() {
       <section className="section container-lux">
         <div className="grid gap-x-16 gap-y-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <SectionHeading
-            eyebrow="Why K Clinics"
+            eyebrow="Why KClinics"
             title="Exceptional results begin with exceptional standards."
             lede="Advanced technology means little without the judgement to wield it. Our clinicians pair clinical rigour with an artist's eye — and the patience to do things properly."
           />
@@ -300,7 +300,7 @@ export default async function HomePage() {
           <Reveal delay={0.1}>
             <div className="overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] shadow-[var(--shadow-soft)]">
               <iframe
-                title="K Clinics location map"
+                title="KClinics location map"
                 src={site.mapEmbed}
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"

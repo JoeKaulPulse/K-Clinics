@@ -21,7 +21,7 @@ export function ReferralCard({ link, labels }: { link: string; labels: Labels })
 
   async function share() {
     if (typeof navigator !== 'undefined' && 'share' in navigator) {
-      try { await navigator.share({ title: 'K Clinics', text: labels.shareText, url: link }); return; } catch { /* cancelled */ }
+      try { await navigator.share({ title: 'KClinics', text: labels.shareText, url: link }); return; } catch { /* cancelled */ }
     }
     copy();
   }

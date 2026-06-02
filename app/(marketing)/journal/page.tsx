@@ -6,9 +6,9 @@ import { articleImage } from '@/lib/treatment-images';
 import { pageMeta, JsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'The Journal — Expert Skin, Laser & Dentistry Guides | K Clinics London',
+  title: 'The Journal — Expert Skin, Laser & Dentistry Guides | KClinics London',
   description:
-    'Expert guidance from K Clinics, Islington — honest, practical articles on laser, skin, injectables and aesthetic dentistry to help you make confident, informed choices.',
+    'Expert guidance from KClinics, Islington — honest, practical articles on laser, skin, injectables and aesthetic dentistry to help you make confident, informed choices.',
   path: '/journal',
   keywords: ['aesthetics blog London', 'skincare advice', 'laser hair removal guide', 'aesthetic dentistry tips'],
 });
@@ -23,7 +23,7 @@ export default function JournalPage() {
     <>
       <JsonLd data={[
         breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Journal', path: '/journal' }]),
-        itemListLd('K Clinics Journal articles', sortedArticles.map((a) => ({ name: a.title, path: `/journal/${a.slug}` }))),
+        itemListLd('KClinics Journal articles', sortedArticles.map((a) => ({ name: a.title, path: `/journal/${a.slug}` }))),
       ]} />
       <PageHero
         eyebrow="The Journal"

@@ -5,7 +5,7 @@ import { allGeneralFaqs } from '@/lib/faqs';
 export const dynamic = 'force-static';
 
 // llms.txt — a concise, machine-readable guide for AI answer engines & agents
-// (the emerging convention at llmstxt.org). Helps assistants cite K Clinics
+// (the emerging convention at llmstxt.org). Helps assistants cite KClinics
 // accurately. Static and dependency-free so it's safe in any build.
 export function GET() {
   const base = (process.env.NEXT_PUBLIC_SITE_URL || site.url).replace(/\/$/, '');

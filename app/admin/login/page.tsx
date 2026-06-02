@@ -3,7 +3,7 @@ import { AuthShell } from '@/components/portal/AuthShell';
 import { AdminLoginForm } from '@/components/admin/AdminLoginForm';
 
 export const metadata: Metadata = {
-  title: 'Staff sign in | K Clinics CRM',
+  title: 'Staff sign in | KClinics CRM',
   robots: { index: false, follow: false },
 };
 

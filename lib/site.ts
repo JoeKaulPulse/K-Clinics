@@ -4,14 +4,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const site = {
-  name: 'K Clinics',
-  legalName: 'K Clinics London',
+  name: 'KClinics',
+  legalName: 'KClinics London',
   tagline: 'Aesthetics & Aesthetic Dentistry, Reimagined',
   // Used for absolute URLs (metadata, sitemap, JSON-LD). Update at launch.
   url: 'https://kclinics.co.uk',
   locale: 'en_GB',
   description:
-    'K Clinics is an Islington clinic uniting advanced laser & skin aesthetics with aesthetic dentistry — precision treatments, qualified clinicians, and an experience designed around you.',
+    'KClinics is an Islington clinic uniting advanced laser & skin aesthetics with aesthetic dentistry — precision treatments, qualified clinicians, and an experience designed around you.',
 
   // ── Contact / NAP (Name, Address, Phone) ───────────────────────────────────
   // Landline via yay.com VoIP. All public phone references read from here.

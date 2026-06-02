@@ -7,11 +7,11 @@ import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'Our Clinic — Find Us in Islington, London | K Clinics',
+  title: 'Our Clinic — Find Us in Islington, London | KClinics',
   description:
-    'Visit K Clinics on the border of the City of London and Islington — 4 Charterhouse Buildings, Goswell Road, EC1M 7AN. Step-free access, parking nearby and minutes from Barbican, Farringdon and Old Street.',
+    'Visit KClinics on the border of the City of London and Islington — 4 Charterhouse Buildings, Goswell Road, EC1M 7AN. Step-free access, parking nearby and minutes from Barbican, Farringdon and Old Street.',
   path: '/clinics',
-  keywords: ['K Clinics location', 'aesthetics clinic Islington', 'clinic near Barbican Farringdon'],
+  keywords: ['KClinics location', 'aesthetics clinic Islington', 'clinic near Barbican Farringdon'],
 });
 
 const TUBE = ['Barbican', 'Farringdon', 'Old Street', "St Paul's", 'Angel'];
@@ -28,7 +28,7 @@ export default function ClinicsPage() {
       <PageHero
         eyebrow="Our clinic"
         title="Find us in Clerkenwell."
-        lede="K Clinics sits on the border of the City of London and Islington — a calm, private space minutes from Barbican, Farringdon and Old Street, easily reached on foot, by tube or by car."
+        lede="KClinics sits on the border of the City of London and Islington — a calm, private space minutes from Barbican, Farringdon and Old Street, easily reached on foot, by tube or by car."
         gradient={['#2a2420', '#7b6a5d']}
       >
         <BookingButtons />
@@ -65,7 +65,7 @@ export default function ClinicsPage() {
         </Reveal>
         <Reveal delay={0.1}>
           <div className="overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] shadow-[var(--shadow-soft)]">
-            <iframe title="K Clinics location map" src={site.mapEmbed} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="h-[460px] w-full grayscale-[0.2]" />
+            <iframe title="KClinics location map" src={site.mapEmbed} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="h-[460px] w-full grayscale-[0.2]" />
           </div>
         </Reveal>
       </section>

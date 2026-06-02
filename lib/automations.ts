@@ -55,7 +55,7 @@ async function birthdays(t: Tally) {
     if (!c.dob || !canEmail(c)) continue;
     if (c.dob.getMonth() !== today.getMonth() || c.dob.getDate() !== today.getDate()) continue;
     if (await sentRecently(c.id, 'BIRTHDAY', 350)) continue;
-    const res = await sendEmail({ to: c.email, subject: `Happy birthday, ${c.firstName} — a gift from K Clinics`, html: tmplBirthday(c.firstName, unsub(c.unsubToken)) });
+    const res = await sendEmail({ to: c.email, subject: `Happy birthday, ${c.firstName} — a gift from KClinics`, html: tmplBirthday(c.firstName, unsub(c.unsubToken)) });
     await logEvent(c.id, 'BIRTHDAY', c.email, 'Birthday greeting', res);
     res.ok ? t.birthdays++ : t.errors++;
   }
@@ -162,7 +162,7 @@ async function reminders(t: Tally) {
     // SMS reminder when the client opted in to text reminders.
     if (smsOn && b.client.smsReminders && b.client.phone) {
       const when = b.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-      await sendSms(b.client.phone, `K Clinics reminder: your ${b.treatmentTitle} is tomorrow, ${when}. Manage: ${manageUrl}`).catch(() => {});
+      await sendSms(b.client.phone, `KClinics reminder: your ${b.treatmentTitle} is tomorrow, ${when}. Manage: ${manageUrl}`).catch(() => {});
     }
     await db.booking.update({ where: { id: b.id }, data: { remindersSent: true } });
   }

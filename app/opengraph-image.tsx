@@ -41,7 +41,7 @@ export default function OG() {
           >
             K
           </div>
-          <div style={{ fontSize: 30, letterSpacing: 1 }}>K Clinics · London</div>
+          <div style={{ fontSize: 30, letterSpacing: 1 }}>KClinics · London</div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column' }}>

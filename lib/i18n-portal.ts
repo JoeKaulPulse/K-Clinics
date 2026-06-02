@@ -15,7 +15,7 @@ type Entry = Record<Locale, string>;
 export const PORTAL_DICT: Record<string, Entry> = {
   // Signup wizard
   'signup.eyebrow': { en: 'Client portal', uk: 'Кабінет клієнта' },
-  'signup.welcome': { en: 'Welcome to K Clinics', uk: 'Ласкаво просимо до K Clinics' },
+  'signup.welcome': { en: 'Welcome to KClinics', uk: 'Ласкаво просимо до KClinics' },
   'signup.step': { en: 'Step {n} of {total}', uk: 'Крок {n} з {total}' },
   'signup.langTitle': { en: 'Choose your language', uk: 'Оберіть мову' },
   'signup.langSub': { en: 'Your portal will be shown in this language. You can change it any time.', uk: 'Кабінет відображатиметься цією мовою. Її можна змінити будь-коли.' },
@@ -42,7 +42,7 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'action.creating': { en: 'Creating your account…', uk: 'Створення акаунту…' },
   'signup.haveAccount': { en: 'Already have an account?', uk: 'Вже маєте акаунт?' },
   'action.signin': { en: 'Sign in', uk: 'Увійти' },
-  'signup.doneTitle': { en: 'Welcome to K Clinics, {name}.', uk: 'Ласкаво просимо до K Clinics, {name}.' },
+  'signup.doneTitle': { en: 'Welcome to KClinics, {name}.', uk: 'Ласкаво просимо до KClinics, {name}.' },
   'signup.discountReady': { en: 'Your {percent}% welcome discount is ready — code {code}. It’s saved to your account.', uk: 'Ваша знижка {percent}% готова — код {code}. Її збережено у вашому акаунті.' },
   'signup.goPortal': { en: 'Go to my portal', uk: 'Перейти до кабінету' },
   'signup.errFirstName': { en: 'Please enter your first name.', uk: 'Будь ласка, введіть своє імʼя.' },
@@ -84,7 +84,7 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'rw.copied': { en: 'Copied', uk: 'Скопійовано' },
   'rw.share': { en: 'Share', uk: 'Поділитися' },
   'rw.referStats': { en: '{qualified} rewarded · {pending} pending', uk: '{qualified} винагороджено · {pending} в очікуванні' },
-  'rw.shareText': { en: 'Join me at K Clinics and we’ll both get £25 off.', uk: 'Приєднуйтесь до мене в K Clinics — ми обоє отримаємо £25 знижки.' },
+  'rw.shareText': { en: 'Join me at KClinics and we’ll both get £25 off.', uk: 'Приєднуйтесь до мене в KClinics — ми обоє отримаємо £25 знижки.' },
 
   // Redemption (on appointments)
   'rw.applyPoints': { en: 'Use points', uk: 'Використати бали' },

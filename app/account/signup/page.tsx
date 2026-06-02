@@ -12,7 +12,7 @@ export default async function SignupPage() {
   return (
     <AuthShell
       heading="Create your account"
-      sub="Join K Clinics and enjoy 15% off your first treatment."
+      sub="Join KClinics and enjoy 15% off your first treatment."
       panelTitle="15% off your first treatment."
       panelPoints={[
         'An exclusive welcome offer, applied once',

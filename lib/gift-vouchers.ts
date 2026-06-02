@@ -48,7 +48,7 @@ export async function createVoucherIntent(input: VoucherInput): Promise<{ ok: bo
   try {
     const pi = await stripe().paymentIntents.create({
       amount, currency: 'gbp', automatic_payment_methods: { enabled: true },
-      description: `K Clinics gift voucher ${money(amount)}`,
+      description: `KClinics gift voucher ${money(amount)}`,
       receipt_email: input.purchaserEmail.trim().toLowerCase(),
       metadata: { voucherId: voucher.id, kind: 'gift_voucher' },
     });
@@ -84,10 +84,10 @@ async function sendVoucherEmails(voucherId: string, sendToRecipient: boolean) {
   if (!v) return;
   const { sendEmail, tmplGiftVoucher, tmplGiftVoucherReceipt } = await import('@/lib/email');
   const tasks: Promise<unknown>[] = [
-    sendEmail({ to: v.purchaserEmail, subject: `Your K Clinics gift voucher — ${money(v.amountPence)}`, html: tmplGiftVoucherReceipt({ purchaserName: v.purchaserName, amount: money(v.amountPence), code: v.code, recipientName: v.recipientName, scheduled: !sendToRecipient && !!v.deliverAt, deliverAt: v.deliverAt }) }),
+    sendEmail({ to: v.purchaserEmail, subject: `Your KClinics gift voucher — ${money(v.amountPence)}`, html: tmplGiftVoucherReceipt({ purchaserName: v.purchaserName, amount: money(v.amountPence), code: v.code, recipientName: v.recipientName, scheduled: !sendToRecipient && !!v.deliverAt, deliverAt: v.deliverAt }) }),
   ];
   if (sendToRecipient && v.recipientEmail) {
-    tasks.push(sendEmail({ to: v.recipientEmail, subject: `${v.purchaserName} sent you a K Clinics gift voucher 🎁`, html: tmplGiftVoucher({ recipientName: v.recipientName || 'there', fromName: v.purchaserName, amount: money(v.amountPence), code: v.code, message: v.message, bookUrl: `${baseUrl()}/book` }) }));
+    tasks.push(sendEmail({ to: v.recipientEmail, subject: `${v.purchaserName} sent you a KClinics gift voucher 🎁`, html: tmplGiftVoucher({ recipientName: v.recipientName || 'there', fromName: v.purchaserName, amount: money(v.amountPence), code: v.code, message: v.message, bookUrl: `${baseUrl()}/book` }) }));
   }
   await Promise.allSettled(tasks);
 }

@@ -4,7 +4,7 @@ import { FollowUpForm } from '@/components/FollowUpForm';
 import { site } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = { title: 'How are you getting on? — K Clinics', robots: { index: false } };
+export const metadata: Metadata = { title: 'How are you getting on? — KClinics', robots: { index: false } };
 
 export default async function FollowUpPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;

@@ -5,7 +5,7 @@ import { site } from './site';
 const apiKey = process.env.RESEND_API_KEY;
 const resend = apiKey ? new Resend(apiKey) : null;
 
-const FROM = process.env.EMAIL_FROM || `K Clinics <hello@kclinics.co.uk>`;
+const FROM = process.env.EMAIL_FROM || `KClinics <hello@kclinics.co.uk>`;
 const REPLY_TO = process.env.EMAIL_REPLY_TO || site.email;
 
 export type SendResult = { ok: boolean; id?: string; error?: string };
@@ -73,19 +73,19 @@ export function tmplConsultReply(firstName: string) {
     <p>In the meantime, you are warmly invited to explore our treatments, or simply reply to this email with any questions.</p>
     <p style="margin:28px 0;">${btn(site.url + '/treatments', 'Explore treatments')}</p>
     <p style="color:#91766e;font-size:14px;">As a new client, enjoy <strong>15% off your first visit</strong>.</p>
-    <p style="margin-top:24px;">With warmth,<br>The K Clinics team</p>`,
+    <p style="margin-top:24px;">With warmth,<br>The KClinics team</p>`,
   });
 }
 
 export function tmplPasswordReset(firstName: string, resetUrl: string) {
   return emailShell({
-    preheader: 'Reset your K Clinics password',
+    preheader: 'Reset your KClinics password',
     body: `<h1 style="font-size:24px;margin:0 0 16px;color:#2a2420;">Reset your password</h1>
     <p>Hello ${escape(firstName)},</p>
-    <p>We received a request to reset the password for your K Clinics account. Click below to choose a new one — the link is valid for 60 minutes.</p>
+    <p>We received a request to reset the password for your KClinics account. Click below to choose a new one — the link is valid for 60 minutes.</p>
     <p style="margin:28px 0;">${btn(resetUrl, 'Reset my password')}</p>
     <p style="color:#91766e;font-size:14px;">If you didn’t request this, you can safely ignore this email — your password won’t change.</p>
-    <p style="margin-top:24px;">With warmth,<br>The K Clinics team</p>`,
+    <p style="margin-top:24px;">With warmth,<br>The KClinics team</p>`,
   });
 }
 
@@ -112,10 +112,10 @@ export function tmplBirthday(firstName: string, unsubUrl: string) {
     preheader: 'A little something for your birthday',
     unsubUrl,
     body: `<h1 style="font-size:26px;margin:0 0 16px;">Happy birthday, ${escape(firstName)}.</h1>
-    <p>From all of us at K Clinics — we hope your day is wonderful.</p>
+    <p>From all of us at KClinics — we hope your day is wonderful.</p>
     <p>To celebrate, we would love to treat you to a <strong>complimentary upgrade</strong> on your next visit this month. Simply mention this email when you book.</p>
     <p style="margin:28px 0;">${btn(site.url + site.booking.path, 'Book your visit')}</p>
-    <p>With warmth,<br>The K Clinics team</p>`,
+    <p>With warmth,<br>The KClinics team</p>`,
   });
 }
 
@@ -127,7 +127,7 @@ export function tmplFollowUp(firstName: string, treatment: string, unsubUrl: str
     <p>It was a pleasure to welcome you for your ${escape(treatment)}. We wanted to check in and make sure you are delighted with your results.</p>
     <p>If you have any questions about aftercare, just reply — we are always here. When you are ready, we would love to see you again.</p>
     <p style="margin:28px 0;">${btn(site.url + site.booking.path, 'Book your next visit')}</p>
-    <p>With warmth,<br>The K Clinics team</p>`,
+    <p>With warmth,<br>The KClinics team</p>`,
   });
 }
 
@@ -138,7 +138,7 @@ export function tmplFollowUpQuestionnaire(o: { firstName: string; treatment: str
     <p>It's been about a week since your <strong>${escape(o.treatment)}</strong>. We'd love a quick update on how you're feeling — it takes less than a minute, and lets us step in early if anything needs attention.</p>
     <p style="margin:28px 0;">${btn(o.url, 'Share how you’re doing')}</p>
     <p>If you have any concerns at all, this goes straight to our clinical team.</p>
-    <p>With warmth,<br>The K Clinics team</p>`,
+    <p>With warmth,<br>The KClinics team</p>`,
   });
 }
 
@@ -149,8 +149,8 @@ export function tmplWinBack(firstName: string, unsubUrl: string) {
     body: `<h1 style="font-size:24px;margin:0 0 16px;">We have missed you, ${escape(firstName)}.</h1>
     <p>It has been a little while since your last visit, and we would love to welcome you back.</p>
     <p>As a thank you for your loyalty, enjoy a special privilege on your next treatment — reply and we will arrange it.</p>
-    <p style="margin:28px 0;">${btn(site.url + site.booking.path, 'Rediscover K Clinics')}</p>
-    <p>With warmth,<br>The K Clinics team</p>`,
+    <p style="margin:28px 0;">${btn(site.url + site.booking.path, 'Rediscover KClinics')}</p>
+    <p>With warmth,<br>The KClinics team</p>`,
   });
 }
 
@@ -158,11 +158,11 @@ export function tmplReviewRequest(firstName: string, link: string, treatment?: s
   return emailShell({
     preheader: 'We would love your feedback',
     body: `<h1 style="font-size:26px;margin:0 0 16px;">How did we do, ${escape(firstName)}?</h1>
-    <p>We hope you are loving the results of your recent visit to K Clinics${treatment ? ` for your ${escape(treatment)}` : ''}.</p>
+    <p>We hope you are loving the results of your recent visit to KClinics${treatment ? ` for your ${escape(treatment)}` : ''}.</p>
     <p>If you have a moment, we would be so grateful if you could share your experience — it helps us, and helps others discover the clinic.</p>
     <p style="margin:28px 0;">${btn(link, 'Leave a review')}</p>
     <p>It only takes a minute, from any device.</p>
-    <p>With warmth,<br>The K Clinics team</p>`,
+    <p>With warmth,<br>The KClinics team</p>`,
   });
 }
 
@@ -173,7 +173,7 @@ export function tmplManual(bodyHtml: string, unsubUrl?: string) {
 // ── Gift voucher templates ───────────────────────────────────────────────────
 function voucherCard(amount: string, code: string) {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;"><tr><td style="background:#2a2420;border-radius:14px;padding:26px;text-align:center;color:#f6ece3;">
-    <div style="font-size:10px;letter-spacing:4px;text-transform:uppercase;color:#c2a589;">K Clinics Gift Voucher</div>
+    <div style="font-size:10px;letter-spacing:4px;text-transform:uppercase;color:#c2a589;">KClinics Gift Voucher</div>
     <div style="font-family:Georgia,serif;font-size:40px;margin:10px 0;">${amount}</div>
     <div style="font-size:12px;color:#c2a589;text-transform:uppercase;letter-spacing:2px;">Code</div>
     <div style="font-family:monospace;font-size:20px;letter-spacing:2px;margin-top:4px;">${escape(code)}</div>
@@ -182,27 +182,27 @@ function voucherCard(amount: string, code: string) {
 
 export function tmplGiftVoucher(o: { recipientName: string; fromName: string; amount: string; code: string; message?: string | null; bookUrl: string }) {
   return emailShell({
-    preheader: `${o.fromName} sent you a ${o.amount} K Clinics gift voucher`,
+    preheader: `${o.fromName} sent you a ${o.amount} KClinics gift voucher`,
     body: `<h1 style="font-size:26px;margin:0 0 12px;">A gift for you, ${escape(o.recipientName)}.</h1>
-    <p><strong>${escape(o.fromName)}</strong> has sent you a K Clinics gift voucher to spend on any of our treatments.</p>
+    <p><strong>${escape(o.fromName)}</strong> has sent you a KClinics gift voucher to spend on any of our treatments.</p>
     ${o.message ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-style:italic;">“${escape(o.message)}”</p>` : ''}
     ${voucherCard(o.amount, o.code)}
     <p style="font-size:14px;">Quote your code when you book or at the clinic. Valid for 12 months; partial use is fine — any balance stays on your code.</p>
     <p style="margin:24px 0;">${btn(o.bookUrl, 'Book your treatment')}</p>
-    <p>With warmth,<br>The K Clinics team</p>`,
+    <p>With warmth,<br>The KClinics team</p>`,
   });
 }
 
 export function tmplGiftVoucherReceipt(o: { purchaserName: string; amount: string; code: string; recipientName?: string | null; scheduled?: boolean; deliverAt?: Date | null }) {
   const when = o.deliverAt ? o.deliverAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
   return emailShell({
-    preheader: `Your ${o.amount} K Clinics gift voucher`,
+    preheader: `Your ${o.amount} KClinics gift voucher`,
     body: `<h1 style="font-size:24px;margin:0 0 12px;">Thank you, ${escape(o.purchaserName)}.</h1>
     <p>Your ${o.amount} gift voucher is ready${o.recipientName ? ` for <strong>${escape(o.recipientName)}</strong>` : ''}.</p>
     ${o.scheduled ? `<p>We’ll deliver it to them on <strong>${when}</strong>.</p>` : `<p>${o.recipientName ? 'We’ve sent it to them too.' : 'Here it is to share however you like.'}</p>`}
     ${voucherCard(o.amount, o.code)}
     <p style="font-size:14px;">Valid for 12 months. Redeemable against any treatment; partial use keeps the balance on the code.</p>
-    <p>With warmth,<br>The K Clinics team</p>`,
+    <p>With warmth,<br>The KClinics team</p>`,
   });
 }
 
@@ -219,7 +219,7 @@ export function tmplBookingConfirmation(o: { firstName: string; treatment: strin
   return emailShell({
     preheader: `Your ${o.treatment} is booked for ${fmtWhen(o.start)}`,
     body: `<h1 style="font-size:26px;margin:0 0 16px;">You're booked in, ${escape(o.firstName)}.</h1>
-    <p>We look forward to welcoming you to K Clinics.</p>
+    <p>We look forward to welcoming you to KClinics.</p>
     <table style="font-family:Helvetica,Arial,sans-serif;font-size:15px;color:#3d352f;line-height:2;margin:8px 0;">
       ${itemsRows}
       <tr><td style="color:#91766e;padding-right:20px;">When</td><td><strong>${fmtWhen(o.start)}</strong></td></tr>
@@ -233,7 +233,7 @@ export function tmplBookingConfirmation(o: { firstName: string; treatment: strin
     ${o.nextNote ? `<p style="font-size:14px;">💡 ${escape(o.nextNote)}</p>` : ''}
     ${o.formsUrl ? `<p style="font-size:14px;">Please complete your pre-treatment forms before your visit — it only takes a few minutes (you can also do them in clinic when you arrive).</p><p style="margin:16px 0;">${btn(o.formsUrl, 'Complete my forms')}</p>` : ''}
     <p style="margin:24px 0;">${btn(o.manageUrl, 'Manage or cancel booking')}</p>
-    <p>${site.address.street}, ${site.address.locality}.<br>With warmth,<br>The K Clinics team</p>`,
+    <p>${site.address.street}, ${site.address.locality}.<br>With warmth,<br>The KClinics team</p>`,
   });
 }
 
@@ -263,7 +263,7 @@ export function tmplBookingCancelled(o: { firstName: string; treatment: string; 
     <p>Hi ${escape(o.firstName)}, your <strong>${escape(o.treatment)}</strong> appointment on ${fmtWhen(o.start)} has been cancelled.</p>
     ${fee}
     <p style="margin:24px 0;">${btn(site.url + '/book', 'Book again')}</p>
-    <p>With warmth,<br>The K Clinics team</p>`,
+    <p>With warmth,<br>The KClinics team</p>`,
   });
 }
 
@@ -276,7 +276,7 @@ export function tmplChargeReceipt(o: { firstName: string; treatment: string; pri
       <tr><td style="color:#91766e;padding-right:20px;">Amount</td><td><strong>${fmtMoney(o.pricePence)}</strong></td></tr>
     </table>
     <p style="margin-top:20px;">This is your receipt. ${o.late ? '' : 'We hope you love your results.'}</p>
-    <p>With warmth,<br>The K Clinics team</p>`,
+    <p>With warmth,<br>The KClinics team</p>`,
   });
 }
 
@@ -286,7 +286,7 @@ export function tmplPaymentActionRequired(o: { firstName: string; treatment: str
     body: `<h1 style="font-size:24px;margin:0 0 16px;">One quick step, ${escape(o.firstName)}.</h1>
     <p>Your bank needs you to confirm the payment of <strong>${fmtMoney(o.pricePence)}</strong> for your ${escape(o.treatment)}. It only takes a moment.</p>
     <p style="margin:24px 0;">${btn(o.payUrl, 'Confirm payment')}</p>
-    <p>With warmth,<br>The K Clinics team</p>`,
+    <p>With warmth,<br>The KClinics team</p>`,
   });
 }
 
@@ -299,7 +299,7 @@ export function tmplAppointmentReminder(o: { firstName: string; treatment: strin
   return emailShell({
     preheader: `Reminder: your ${o.treatment} is tomorrow`,
     body: `<h1 style="font-size:24px;margin:0 0 16px;">See you soon, ${escape(o.firstName)}.</h1>
-    <p>This is a gentle reminder of your upcoming appointment at K Clinics:</p>
+    <p>This is a gentle reminder of your upcoming appointment at KClinics:</p>
     <table style="font-family:Helvetica,Arial,sans-serif;font-size:16px;color:#3d352f;line-height:2;">
       <tr><td style="color:#91766e;padding-right:20px;">Treatment</td><td><strong>${escape(o.treatment)}</strong></td></tr>
       <tr><td style="color:#91766e;padding-right:20px;">When</td><td><strong>${fmtWhen(o.start)}</strong></td></tr>
@@ -307,7 +307,7 @@ export function tmplAppointmentReminder(o: { firstName: string; treatment: strin
     </table>
     <p style="margin:24px 0;">${btn(o.manageUrl, 'Manage your appointment')}</p>
     <p style="font-size:14px;color:#91766e;">Need to reschedule? You can do so free of charge up to 24 hours before. We look forward to welcoming you.</p>
-    <p>With warmth,<br>The K Clinics team</p>`,
+    <p>With warmth,<br>The KClinics team</p>`,
   });
 }
 
@@ -318,6 +318,6 @@ export function tmplFormReminder(o: { firstName: string; treatment: string; star
     <p>To make your <strong>${escape(o.treatment)}</strong> on ${fmtWhen(o.start)} as smooth and safe as possible, please complete your confidential health forms beforehand — it only takes a few minutes.</p>
     <p style="margin:24px 0;">${btn(o.formsUrl, 'Complete my forms')}</p>
     <p style="font-size:14px;color:#91766e;">Your answers are encrypted and seen only by your clinical team. Completing them in advance saves time at the clinic and helps us tailor your care.</p>
-    <p>With warmth,<br>The K Clinics team</p>`,
+    <p>With warmth,<br>The KClinics team</p>`,
   });
 }

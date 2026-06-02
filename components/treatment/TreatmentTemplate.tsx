@@ -158,6 +158,55 @@ export function TreatmentTemplate({ t }: { t: Treatment }) {
         </div>
       </section>
 
+      {/* Pricing */}
+      {(t.priceOptions?.length || t.priceFrom) && (
+        <section className="container-lux section">
+          <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+            <Reveal>
+              <p className="eyebrow mb-4">Investment</p>
+              <h2 className="text-title">Transparent pricing.</h2>
+              <p className="mt-5 max-w-md text-[var(--color-stone)]">
+                {onRequest
+                  ? 'This treatment is available on request — get in touch and we’ll confirm pricing and availability.'
+                  : t.priceOptions?.length
+                    ? 'Choose the option that suits you — course savings are available on most treatments.'
+                    : 'Your exact price is confirmed at your complimentary consultation, tailored to your treatment plan.'}
+              </p>
+              <div className="mt-7 flex flex-wrap gap-3">
+                {onRequest ? (
+                  <Button href="/contact">Enquire <ArrowIcon /></Button>
+                ) : (
+                  <BookingButtons consult />
+                )}
+                <Button href="/pricing" variant="outline">Full price list <ArrowIcon /></Button>
+              </div>
+            </Reveal>
+            <Reveal delay={0.1}>
+              {!onRequest && t.priceOptions?.length ? (
+                <ul className="divide-y divide-[var(--color-line)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+                  {t.priceOptions.map((o) => (
+                    <li key={o.name} className="flex items-baseline justify-between gap-4 bg-[var(--color-porcelain)] px-6 py-5">
+                      <div>
+                        <p className="font-[family-name:var(--font-display)] text-lg text-[var(--color-ink)]">{o.name}</p>
+                        {o.note && <p className="mt-0.5 text-sm text-[var(--color-stone)]">{o.note}</p>}
+                      </div>
+                      <p className="shrink-0 font-[family-name:var(--font-display)] text-xl text-[var(--color-ink)]">{o.price}</p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-8 py-10 text-center">
+                  <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">
+                    {onRequest ? 'Pricing' : t.priceFrom?.startsWith('£') ? 'From' : 'Pricing'}
+                  </p>
+                  <p className="mt-2 font-[family-name:var(--font-display)] text-4xl text-[var(--color-ink)]">{onRequest ? 'On request' : t.priceFrom}</p>
+                </div>
+              )}
+            </Reveal>
+          </div>
+        </section>
+      )}
+
       {/* FAQ */}
       <section className="bg-[var(--color-bone)] section">
         <div className="container-lux grid gap-12 lg:grid-cols-[0.7fr_1.3fr] lg:items-start">

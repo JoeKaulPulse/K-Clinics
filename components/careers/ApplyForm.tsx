@@ -50,7 +50,7 @@ export function ApplyForm({ roles }: { roles: { id: string; title: string }[] })
         <div><label className={label}>Email *</label><input type="email" className={field} value={f.email} onChange={(e) => set('email', e.target.value)} /></div>
         <div><label className={label}>Phone</label><input type="tel" className={field} value={f.phone} onChange={(e) => set('phone', e.target.value)} /></div>
         <div><label className={label}>CV / portfolio link</label><input className={field} value={f.cvUrl} onChange={(e) => set('cvUrl', e.target.value)} placeholder="https://…" /></div>
-        <div className="sm:col-span-2"><label className={label}>Cover note</label><textarea rows={4} className={field} value={f.coverNote} onChange={(e) => set('coverNote', e.target.value)} placeholder="Why you, why K Clinics…" /></div>
+        <div className="sm:col-span-2"><label className={label}>Cover note</label><textarea rows={4} className={field} value={f.coverNote} onChange={(e) => set('coverNote', e.target.value)} placeholder="Why you, why KClinics…" /></div>
         <input type="text" tabIndex={-1} autoComplete="off" value={f.company} onChange={(e) => set('company', e.target.value)} className="absolute -left-[9999px] h-0 w-0" aria-hidden />
       </div>
       {error && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}

@@ -39,7 +39,7 @@ export async function POST(req: Request) {
       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || site.url;
       const money = `£${(v.amountPence / 100).toLocaleString('en-GB')}`;
       const to = v.recipientEmail || v.purchaserEmail;
-      const res = await sendEmail({ to, subject: `Your K Clinics gift voucher — ${money}`, html: tmplGiftVoucher({ recipientName: v.recipientName || 'there', fromName: v.purchaserName, amount: money, code: v.code, message: v.message, bookUrl: `${baseUrl}/book` }) });
+      const res = await sendEmail({ to, subject: `Your KClinics gift voucher — ${money}`, html: tmplGiftVoucher({ recipientName: v.recipientName || 'there', fromName: v.purchaserName, amount: money, code: v.code, message: v.message, bookUrl: `${baseUrl}/book` }) });
       if (res.ok) await db.giftVoucher.update({ where: { id: v.id }, data: { delivered: true } });
       return NextResponse.json({ ok: res.ok, error: res.ok ? undefined : 'Could not send email.' });
     }

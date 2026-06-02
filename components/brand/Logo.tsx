@@ -2,7 +2,7 @@ import { site } from '@/lib/site';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 
 /**
- * K Clinics logo — a SINGLE "K" monogram above the CLINICS wordmark.
+ * KClinics logo — a SINGLE "K" monogram above the CLINICS wordmark.
  *
  * Deliberately one inline SVG (one path), so it can never double-render. The
  * "animation" is a smooth gold colour fill on hover (handled in CSS via the

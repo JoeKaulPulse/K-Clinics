@@ -9,11 +9,11 @@ import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'Before & After Gallery | K Clinics London',
+  title: 'Before & After Gallery | KClinics London',
   description:
-    'Real client before-and-after results from K Clinics, Islington — published only with the client’s consent. Drag any case to reveal the transformation.',
+    'Real client before-and-after results from KClinics, Islington — published only with the client’s consent. Drag any case to reveal the transformation.',
   path: '/gallery',
-  keywords: ['before after K Clinics', 'aesthetics results London', 'aesthetic dentistry results Islington'],
+  keywords: ['before after KClinics', 'aesthetics results London', 'aesthetic dentistry results Islington'],
 });
 
 export const revalidate = 120; // ISR: cached, revalidated in the background

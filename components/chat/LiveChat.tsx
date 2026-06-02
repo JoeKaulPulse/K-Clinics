@@ -81,14 +81,14 @@ export function LiveChat() {
           >
             <div className="surface-ink flex items-center justify-between px-4 py-3 text-[var(--color-porcelain)]">
               <div>
-                <p className="font-[family-name:var(--font-display)] text-lg leading-none">Chat with K Clinics</p>
+                <p className="font-[family-name:var(--font-display)] text-lg leading-none">Chat with KClinics</p>
                 <p className="mt-1 text-[0.7rem] text-[color-mix(in_oklab,var(--color-porcelain)_65%,transparent)]">Our assistant replies instantly · our team can jump in too.</p>
               </div>
               <button onClick={() => setOpen(false)} aria-label="Close chat" className="grid h-7 w-7 place-items-center rounded-full hover:bg-white/10">✕</button>
             </div>
 
             <div ref={scroller} className="flex-1 space-y-2 overflow-y-auto p-4">
-              {msgs.length === 0 && <p className="text-sm text-[var(--color-stone)]">Hi 👋 I’m K, the K Clinics assistant. Ask me about treatments, pricing, opening hours or booking — and I’ll bring in our team whenever you need a person.</p>}
+              {msgs.length === 0 && <p className="text-sm text-[var(--color-stone)]">Hi 👋 I’m K, the KClinics assistant. Ask me about treatments, pricing, opening hours or booking — and I’ll bring in our team whenever you need a person.</p>}
               {msgs.map((m) => (
                 <div key={m.id} className={`max-w-[80%] rounded-[var(--radius-md)] px-3 py-2 text-sm ${m.sender === 'VISITOR' ? 'ml-auto bg-[var(--color-gold)] text-white' : 'bg-[var(--color-bone)] text-[var(--color-ink)]'}`}>{m.body}</div>
               ))}

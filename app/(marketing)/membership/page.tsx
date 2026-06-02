@@ -8,9 +8,9 @@ import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'Membership & Beauty Points Rewards | K Clinics London',
+  title: 'Membership & Beauty Points Rewards | KClinics London',
   description:
-    'Join K Clinics’ free Beauty Points programme — earn 1 point per £1, plus bonuses for reviews, birthdays and referrals. Redeem points as money off future treatments in Islington, London.',
+    'Join KClinics’ free Beauty Points programme — earn 1 point per £1, plus bonuses for reviews, birthdays and referrals. Redeem points as money off future treatments in Islington, London.',
   path: '/membership',
   keywords: ['clinic membership London', 'beauty rewards programme', 'loyalty points aesthetics'],
 });

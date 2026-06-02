@@ -61,7 +61,7 @@ export const DICT: Record<string, Entry> = {
   'nav.settings': { en: 'Settings', uk: 'Налаштування' },
 
   // ── Shell / common ──
-  'shell.crm': { en: 'K Clinics CRM', uk: 'K Clinics CRM' },
+  'shell.crm': { en: 'KClinics CRM', uk: 'KClinics CRM' },
   'shell.signOut': { en: 'Sign out', uk: 'Вийти' },
   'shell.profile': { en: 'My profile', uk: 'Мій профіль' },
   'shell.language': { en: 'Language', uk: 'Мова' },

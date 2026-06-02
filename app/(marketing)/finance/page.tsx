@@ -6,9 +6,9 @@ import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'Cost & Finance — Flexible Payment Options | K Clinics London',
+  title: 'Cost & Finance — Flexible Payment Options | KClinics London',
   description:
-    'Spread the cost of your treatment at K Clinics, Islington. Transparent pricing, pay-as-you-go courses, 0% interest-free options and Buy Now, Pay Later with Clearpay and Klarna.',
+    'Spread the cost of your treatment at KClinics, Islington. Transparent pricing, pay-as-you-go courses, 0% interest-free options and Buy Now, Pay Later with Clearpay and Klarna.',
   path: '/finance',
   keywords: ['pay monthly aesthetics London', 'buy now pay later clinic', '0% finance treatment', 'Clearpay Klarna clinic'],
 });
@@ -64,7 +64,7 @@ export default function FinancePage() {
               <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> A soft check at sign-up — your treatment plan stays exactly the same.</li>
             </ul>
             <p className="mt-6 text-xs text-[var(--color-stone-soft)]">
-              Buy Now, Pay Later is provided by Clearpay and Klarna, not by K Clinics. Subject to status and eligibility; 18+, UK residents. Missed payments may affect your ability to use these services and could incur fees charged by the provider. Please review each provider’s terms before you commit.
+              Buy Now, Pay Later is provided by Clearpay and Klarna, not by KClinics. Subject to status and eligibility; 18+, UK residents. Missed payments may affect your ability to use these services and could incur fees charged by the provider. Please review each provider’s terms before you commit.
             </p>
           </Reveal>
           <Reveal delay={0.1}>

@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const p = getInfoPage(slug);
   if (!p) return {};
-  return pageMeta({ title: `${p.title} | K Clinics`, description: p.intro.slice(0, 155), path: `/info/${slug}` });
+  return pageMeta({ title: `${p.title} | KClinics`, description: p.intro.slice(0, 155), path: `/info/${slug}` });
 }
 
 // Pages that now have richer, dedicated routes.
@@ -29,7 +29,7 @@ export default async function InfoPage({ params }: { params: Promise<{ slug: str
   return (
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: p.title, path: `/info/${slug}` }])} />
-      <PageHero eyebrow="K Clinics" title={p.title} lede={p.intro} gradient={['#3d352f', '#7b6a5d']} />
+      <PageHero eyebrow="KClinics" title={p.title} lede={p.intro} gradient={['#3d352f', '#7b6a5d']} />
 
       <section className="container-narrow section">
         <div className="space-y-8">

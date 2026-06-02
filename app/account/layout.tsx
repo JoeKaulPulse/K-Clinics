@@ -3,7 +3,7 @@ import '../globals.css';
 import { MotionProvider } from '@/components/motion/MotionProvider';
 
 export const metadata: Metadata = {
-  title: 'Client portal | K Clinics',
+  title: 'Client portal | KClinics',
   description: 'Manage your appointments, payments and pre-treatment assessments.',
   robots: { index: false, follow: false },
 };
