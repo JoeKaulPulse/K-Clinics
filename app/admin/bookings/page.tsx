@@ -22,16 +22,30 @@ const FILTERS = [
 
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
 
-export default async function BookingsPage({ searchParams }: { searchParams: Promise<{ filter?: string }> }) {
+type SP = { filter?: string; q?: string; from?: string; to?: string };
+
+export default async function BookingsPage({ searchParams }: { searchParams: Promise<SP> }) {
   if (!crmEnabled) return <CrmDisabled />;
-  const { filter = 'upcoming' } = await searchParams;
+  const { filter = 'upcoming', q = '', from = '', to = '' } = await searchParams;
   const { listBookings } = await import('@/lib/crm-data');
   const session = await getSession();
   if (!sessionCan(session, 'bookings.view')) redirect('/admin');
-  const rows = await listBookings(filter);
+  const rows = await listBookings({ filter, q, from, to });
 
   const can = await sessionPermissions();
   const locale = await getLocale();
+
+  const tabHref = (k: string) => {
+    const p = new URLSearchParams();
+    p.set('filter', k);
+    if (q) p.set('q', q);
+    if (from) p.set('from', from);
+    if (to) p.set('to', to);
+    return `/admin/bookings?${p.toString()}`;
+  };
+
+  const rowCls = 'grid grid-cols-[1fr_auto] gap-3 border-b border-[var(--color-line)] px-5 py-4 last:border-0 sm:grid-cols-[1.3fr_1.4fr_1fr_auto] sm:items-center';
+
   return (
     <AdminShell user={session?.email} can={can} locale={locale}>
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -43,24 +57,55 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
 
       <div className="mt-6 flex flex-wrap gap-2">
         {FILTERS.map((f) => (
-          <Link key={f.k} href={`/admin/bookings?filter=${f.k}`}
+          <Link key={f.k} href={tabHref(f.k)}
             className={`rounded-full px-4 py-1.5 text-sm transition-colors ${filter === f.k ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'border border-[var(--color-line)] hover:bg-[var(--color-bone)]'}`}>
             {f.label}
           </Link>
         ))}
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
+      {/* Search + date range */}
+      <form className="mt-4 flex flex-wrap items-end gap-3">
+        <input type="hidden" name="filter" value={filter} />
+        <label className="text-xs text-[var(--color-stone)]">
+          Search
+          <input name="q" defaultValue={q} placeholder="Client or treatment…"
+            className="mt-1 block w-56 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+        </label>
+        <label className="text-xs text-[var(--color-stone)]">
+          From
+          <input type="date" name="from" defaultValue={from}
+            className="mt-1 block rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+        </label>
+        <label className="text-xs text-[var(--color-stone)]">
+          To
+          <input type="date" name="to" defaultValue={to}
+            className="mt-1 block rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+        </label>
+        <button className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)]">Apply</button>
+        {(q || from || to) && (
+          <Link href={`/admin/bookings?filter=${filter}`} className="px-2 py-2 text-sm text-[var(--color-stone)] underline">Clear</Link>
+        )}
+      </form>
+
+      <div className="mt-5 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
+        <p className="px-5 pt-3 text-sm text-[var(--color-stone)]">{rows.length}{rows.length === 300 ? '+' : ''} {rows.length === 1 ? 'booking' : 'bookings'}</p>
+        {/* Header row */}
+        <div className={`${rowCls} mt-2 bg-[var(--color-bone)] text-xs uppercase tracking-[0.12em] text-[var(--color-stone)]`}>
+          <span>Client / treatment</span>
+          <span className="hidden sm:block">Date</span>
+          <span className="hidden sm:block">Price</span>
+          <span className="justify-self-end">Status</span>
+        </div>
         {rows.length === 0 && <p className="p-6 text-sm text-[var(--color-stone)]">No bookings in this view.</p>}
         {rows.map((b) => (
-          <Link key={b.id} href={`/admin/bookings/${b.id}`}
-            className="grid grid-cols-[1fr_auto] gap-3 border-b border-[var(--color-line)] px-5 py-4 last:border-0 hover:bg-[var(--color-bone)] sm:grid-cols-[1.3fr_1.4fr_1fr_auto] sm:items-center">
+          <Link key={b.id} href={`/admin/bookings/${b.id}`} className={`${rowCls} hover:bg-[var(--color-bone)]`}>
             <div>
               <p className="font-medium">{b.client.firstName} {b.client.lastName ?? ''}</p>
               <p className="text-xs text-[var(--color-stone)]">{b.treatmentTitle}</p>
             </div>
             <p className="hidden text-sm text-[var(--color-stone)] sm:block">
-              {new Date(b.startAt).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              {new Date(b.startAt).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </p>
             <p className="hidden text-sm sm:block">{b.chargedAt ? `${money(b.chargedPence || 0)} paid` : b.pricePence > 0 ? money(b.pricePence) : '—'}</p>
             <span className="justify-self-end rounded-full bg-[var(--color-bone)] px-3 py-1 text-xs">{b.status}</span>

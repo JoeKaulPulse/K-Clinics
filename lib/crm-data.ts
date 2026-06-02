@@ -118,13 +118,25 @@ export async function listConsultations(status?: string) {
   });
 }
 
-export async function listClients(q?: string) {
+export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc' | 'desc'; flag?: string } = {}) {
+  const { q, sort = 'created', dir = 'desc', flag } = opts;
+  const and: Record<string, unknown>[] = [];
+  if (q) and.push({ OR: [
+    { firstName: { contains: q, mode: 'insensitive' } },
+    { lastName: { contains: q, mode: 'insensitive' } },
+    { email: { contains: q, mode: 'insensitive' } },
+    { phone: { contains: q, mode: 'insensitive' } },
+  ] });
+  if (flag === 'optin') and.push({ marketingOptIn: true });
+  else if (flag === 'review') and.push({ tags: { has: 'needs-name-review' } });
+  else if (flag === 'wordpress') and.push({ source: 'wordpress' });
+  const SORTS: Record<string, string> = { name: 'firstName', email: 'email', created: 'createdAt', visit: 'lastVisitAt' };
+  const field = SORTS[sort] || 'createdAt';
   return db.client.findMany({
-    where: q
-      ? { OR: [{ firstName: { contains: q, mode: 'insensitive' } }, { lastName: { contains: q, mode: 'insensitive' } }, { email: { contains: q, mode: 'insensitive' } }] }
-      : undefined,
-    orderBy: { createdAt: 'desc' },
-    take: 100,
+    where: and.length ? { AND: and } : undefined,
+    orderBy: { [field]: dir },
+    take: 200,
+    select: { id: true, firstName: true, lastName: true, email: true, phone: true, marketingOptIn: true, source: true, tags: true, createdAt: true, lastVisitAt: true },
   });
 }
 
@@ -151,17 +163,26 @@ export async function getClient(id: string) {
   });
 }
 
-export async function listBookings(filter?: string) {
+export async function listBookings(opts: { filter?: string; q?: string; from?: string; to?: string } = {}) {
+  const { filter = 'upcoming', q, from, to } = opts;
   const now = new Date();
-  let where: Record<string, unknown> | undefined;
-  if (filter === 'upcoming') where = { startAt: { gte: now }, status: { in: ['PENDING', 'CONFIRMED'] } };
-  else if (filter === 'past') where = { startAt: { lt: now } };
-  else if (filter && filter !== 'ALL') where = { status: filter };
+  const and: Record<string, unknown>[] = [];
+  if (filter === 'upcoming') { and.push({ startAt: { gte: now } }, { status: { in: ['PENDING', 'CONFIRMED'] } }); }
+  else if (filter === 'past') and.push({ startAt: { lt: now } });
+  else if (filter && filter !== 'ALL') and.push({ status: filter });
+  if (from) { const d = new Date(from); if (!isNaN(+d)) and.push({ startAt: { gte: d } }); }
+  if (to) { const d = new Date(to); if (!isNaN(+d)) { d.setHours(23, 59, 59, 999); and.push({ startAt: { lte: d } }); } }
+  if (q) and.push({ OR: [
+    { treatmentTitle: { contains: q, mode: 'insensitive' } },
+    { client: { firstName: { contains: q, mode: 'insensitive' } } },
+    { client: { lastName: { contains: q, mode: 'insensitive' } } },
+    { client: { email: { contains: q, mode: 'insensitive' } } },
+  ] });
   return db.booking.findMany({
-    where,
+    where: and.length ? { AND: and } : undefined,
     orderBy: { startAt: filter === 'past' ? 'desc' : 'asc' },
     include: { client: true },
-    take: 200,
+    take: 300,
   });
 }
 
