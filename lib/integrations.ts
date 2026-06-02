@@ -209,18 +209,6 @@ export async function getIntegrations(): Promise<Integration[]> {
     docsHref: 'https://www.deepl.com/pro-api',
   });
 
-  // ── Content (WordPress) ──
-  const wp = has(process.env.WORDPRESS_API_URL);
-  items.push({
-    id: 'cms',
-    name: 'Content (WordPress)',
-    category: 'Content',
-    description: 'Optional source for journal/blog content pulled into the public site.',
-    status: wp ? 'connected' : 'not_configured',
-    detail: wp ? 'Connected' : 'Optional — set WORDPRESS_API_URL to pull content.',
-    envVars: [{ name: 'WORDPRESS_API_URL', set: wp }],
-  });
-
   // ── Security & encryption ──
   const jwt = has(process.env.ADMIN_JWT_SECRET);
   const enc = has(process.env.HEALTH_ENCRYPTION_KEY);

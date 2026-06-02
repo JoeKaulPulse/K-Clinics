@@ -1,12 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Editable brand palette.
 //
-// These are the DEFAULT brand colours. In the headless-WordPress setup they can
-// be overridden from the CMS: expose an ACF "Options" colour group (or a custom
-// /wp-json/kclinics/v1/theme endpoint) returning any subset of these keys, and
-// `getTheme()` merges them over the defaults. The values are injected as CSS
-// custom properties on <html> (see ThemeStyle), so a colour change in WordPress
-// re-skins the entire site with no code change.
+// These are the brand colours, injected as CSS custom properties on <html>
+// (see ThemeStyle). Edit `defaultTheme` below to re-skin the site.
 //
 // Editor mapping (what each role controls):
 //   ink         – primary text + dark sections
@@ -67,22 +63,9 @@ const cssVar: Record<keyof ThemeTokens, string> = {
   blush: '--color-blush',
 };
 
-const WP_API = process.env.WORDPRESS_API_URL?.replace(/\/$/, '') ?? '';
-
-/** Fetches palette overrides from WordPress (if configured), merged over defaults. */
+/** The active theme. (Palette is built-in; edit defaultTheme to change brand colours.) */
 export async function getTheme(): Promise<ThemeTokens> {
-  if (!WP_API) return defaultTheme;
-  try {
-    const res = await fetch(`${WP_API}/kclinics/v1/theme`, { next: { revalidate: 300 } });
-    if (!res.ok) return defaultTheme;
-    const data = (await res.json()) as Partial<ThemeTokens>;
-    const clean = Object.fromEntries(
-      Object.entries(data).filter(([k, v]) => k in cssVar && typeof v === 'string' && /^#?[0-9a-fA-F]{3,8}$/.test(v)),
-    ) as Partial<ThemeTokens>;
-    return { ...defaultTheme, ...clean };
-  } catch {
-    return defaultTheme;
-  }
+  return defaultTheme;
 }
 
 /** Renders the active theme as a CSS variable override on :root. */

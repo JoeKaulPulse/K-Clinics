@@ -1,7 +1,7 @@
 // Final-pass health check — pings the live /api/health and prints a green/red
 // checklist of the deployment + integrations.
 //
-//   node scripts/healthcheck.mjs                       # checks NEXT_PUBLIC_SITE_URL (or k-clinics.vercel.app)
+//   node scripts/healthcheck.mjs                       # checks NEXT_PUBLIC_SITE_URL (or kclinics.co.uk)
 //   node scripts/healthcheck.mjs https://your-domain   # explicit site
 //
 // Set CRON_SECRET (env, or scripts/migrate-wp/.env) to unlock the integration
@@ -28,7 +28,7 @@ function envVal(file, key) {
 const fromEnvFiles = (key) => process.env[key] || envVal(path.join(root, 'scripts/migrate-wp/.env'), key) || envVal(path.join(root, '.env'), key);
 
 const arg = process.argv.slice(2).find((a) => a.startsWith('http'));
-const site = (arg || fromEnvFiles('NEXT_PUBLIC_SITE_URL') || 'https://k-clinics.vercel.app').replace(/\/$/, '');
+const site = (arg || fromEnvFiles('NEXT_PUBLIC_SITE_URL') || 'https://kclinics.co.uk').replace(/\/$/, '');
 const secret = fromEnvFiles('CRON_SECRET');
 
 const G = '\x1b[32m', R = '\x1b[31m', Y = '\x1b[33m', D = '\x1b[2m', X = '\x1b[0m';
