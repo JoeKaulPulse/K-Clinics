@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { redirect } from 'next/navigation';
 import { PortalShell } from '@/components/portal/PortalShell';
+import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
 import { ProfileForm } from '@/components/portal/ProfileForm';
 import { crmEnabled } from '@/lib/crm';
 import { pt } from '@/lib/i18n-portal';
@@ -16,10 +17,7 @@ export default async function ProfilePage() {
 
   return (
     <PortalShell firstName={client.firstName} locale={locale}>
-      <div className="mb-8">
-        <p className="eyebrow mb-2">{pt(locale, 'nav.profile')}</p>
-        <h1 className="font-[family-name:var(--font-display)] text-[clamp(1.8rem,1.3rem+2vw,2.75rem)]">{pt(locale, 'profile.title')}</h1>
-      </div>
+      <PortalPageHeader eyebrow={pt(locale, 'nav.profile')} title={pt(locale, 'profile.title')} />
       <ProfileForm
         locale={locale}
         initial={{

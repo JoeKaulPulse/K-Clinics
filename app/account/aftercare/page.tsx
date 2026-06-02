@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PortalShell } from '@/components/portal/PortalShell';
+import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
 import { Reveal } from '@/components/motion/Reveal';
 import { crmEnabled } from '@/lib/crm';
 import { getTreatment } from '@/lib/treatments';
@@ -44,11 +45,7 @@ export default async function AftercarePage() {
 
   return (
     <PortalShell firstName={client.firstName} locale={locale}>
-      <div className="mb-8">
-        <p className="eyebrow mb-2 inline-flex items-center gap-2.5"><span className="h-px w-7 bg-[var(--color-gold)]/60" />{t('after.eyebrow')}</p>
-        <h1 className="font-[family-name:var(--font-display)] text-[clamp(1.8rem,1.3rem+2vw,2.75rem)]">{t('after.title')}</h1>
-        <p className="mt-2 max-w-xl text-[var(--color-stone)]">{t('after.intro')}</p>
-      </div>
+      <PortalPageHeader eyebrow={t('after.eyebrow')} title={t('after.title')} subtitle={t('after.intro')} />
 
       {treatments.length === 0 ? (
         <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] bg-[var(--color-porcelain)] p-10 text-center">

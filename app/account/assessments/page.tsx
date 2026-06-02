@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PortalShell } from '@/components/portal/PortalShell';
+import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
 import { crmEnabled } from '@/lib/crm';
 import { portalAssessments } from '@/lib/questionnaires';
 import { localizeQuestionnaire } from '@/lib/questionnaires-uk';
@@ -27,11 +28,7 @@ export default async function AssessmentsPage() {
 
   return (
     <PortalShell firstName={client.firstName} locale={locale}>
-      <div className="mb-8">
-        <p className="eyebrow mb-2 inline-flex items-center gap-2.5"><span className="h-px w-7 bg-[var(--color-gold)]/60" />{t('asmt.eyebrow')}</p>
-        <h1 className="font-[family-name:var(--font-display)] text-[clamp(1.8rem,1.3rem+2vw,2.75rem)]">{t('asmt.title')}</h1>
-        <p className="mt-2 max-w-xl text-[var(--color-stone)]">{t('asmt.intro')}</p>
-      </div>
+      <PortalPageHeader eyebrow={t('asmt.eyebrow')} title={t('asmt.title')} subtitle={t('asmt.intro')} />
 
       {/* Progress band */}
       <div className="mb-8 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-soft)]">

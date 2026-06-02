@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PortalShell } from '@/components/portal/PortalShell';
+import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
 import { ReferralCard } from '@/components/portal/ReferralCard';
 import { crmEnabled } from '@/lib/crm';
 import { formatPrice } from '@/lib/treatments';
@@ -41,11 +42,7 @@ export default async function RewardsPage() {
 
   return (
     <PortalShell firstName={client.firstName} locale={locale}>
-      <div className="mb-8">
-        <p className="eyebrow mb-2">{t('nav.rewards')}</p>
-        <h1 className="font-[family-name:var(--font-display)] text-[clamp(1.8rem,1.3rem+2vw,2.75rem)]">{t('rw.title')}</h1>
-        <p className="mt-2 max-w-lg text-[var(--color-stone)]">{t('rw.sub')}</p>
-      </div>
+      <PortalPageHeader eyebrow={t('nav.rewards')} title={t('rw.title')} subtitle={t('rw.sub')} />
 
       {/* Balance */}
       <div className="grid gap-5 lg:grid-cols-3">
