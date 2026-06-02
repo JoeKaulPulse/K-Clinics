@@ -52,6 +52,8 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
+  // Tree-shake large client libraries → smaller client bundles.
+  experimental: { optimizePackageImports: ['motion'] },
   // Exposed to client + server so image paths from /public can be prefixed with
   // the Pages sub-path. next/image does NOT prepend basePath to unoptimized
   // /public images in a static export, so we do it ourselves (see treatment-images).
