@@ -27,6 +27,8 @@ export async function POST(req: Request) {
     await db.pageSeo.upsert({ where: { path }, update: data, create: { path, ...data } });
     const { revalidatePath } = await import('next/cache');
     revalidatePath(path); // overrides now apply on the live page immediately
+    const { indexNow } = await import('@/lib/indexnow');
+    await indexNow([path]); // ask Bing/Yandex to recrawl the updated page
     return NextResponse.json({ ok: true });
   }
 

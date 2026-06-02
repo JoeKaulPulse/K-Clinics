@@ -60,6 +60,7 @@ export async function POST(req: Request) {
     });
     const { revalidatePath } = await import('next/cache');
     revalidatePath('/team');
+    import('@/lib/indexnow').then((m) => m.indexNow(['/team'])).catch(() => {});
     return NextResponse.json({ ok: true, id });
   }
 
