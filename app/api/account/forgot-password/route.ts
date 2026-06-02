@@ -11,6 +11,8 @@ export async function POST(req: Request) {
   const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ ok: true }); // no enumeration
   try {
+    const { enforceRateLimit } = await import('@/lib/security/guard');
+    if (!(await enforceRateLimit(req, 'forgot', 5, 900))) return NextResponse.json({ ok: true }); // throttle silently
     const { requestPasswordReset } = await import('@/lib/client-auth');
     await requestPasswordReset(parsed.data.email);
   } catch (err) {

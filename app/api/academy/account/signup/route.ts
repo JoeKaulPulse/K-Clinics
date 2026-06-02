@@ -18,6 +18,13 @@ export async function POST(req: Request) {
   const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ ok: false, error: parsed.error.errors[0]?.message || 'Check your details.' }, { status: 422 });
   if (parsed.data.company) return NextResponse.json({ ok: true });
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'academy-signup', 10, 600, 'academy'))) {
+    return NextResponse.json({ ok: false, error: 'Too many attempts. Please wait a few minutes and try again.' }, { status: 429 });
+  }
+  if (await (await import('@/lib/security/breached-password')).isBreachedPassword(parsed.data.password)) {
+    return NextResponse.json({ ok: false, error: 'That password has appeared in a known data breach. Please choose a different one.' }, { status: 400 });
+  }
   const { signupStudent } = await import('@/lib/academy-auth');
   const result = await signupStudent(parsed.data);
   return NextResponse.json(result, { status: result.ok ? 200 : 409 });

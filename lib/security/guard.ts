@@ -71,6 +71,15 @@ export async function unlock(opts: { identifier?: string; ip?: string }, portal:
   if (opts.ip) await db.securityEvent.create({ data: { type: 'UNLOCK', portal, ip: opts.ip } }).catch(() => {});
 }
 
+/** Per-IP rate limit for a sensitive endpoint. Returns true if allowed.
+ *  Records a RATE_LIMITED event when the limit is hit. */
+export async function enforceRateLimit(req: Request, scope: string, limit: number, windowSec: number, portal: Portal = 'client'): Promise<boolean> {
+  const ip = clientIp(req);
+  const r = await rateLimit(`${scope}:${ip}`, limit, windowSec);
+  if (!r.allowed) await recordSecurity('RATE_LIMITED', portal, null, req, { scope });
+  return r.allowed;
+}
+
 // ── Cloudflare Turnstile ─────────────────────────────────────────────────────
 export const turnstileConfigured = Boolean(process.env.TURNSTILE_SECRET_KEY);
 

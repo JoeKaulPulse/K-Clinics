@@ -11,6 +11,10 @@ export async function POST(req: Request) {
   const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ ok: false, error: 'Please use at least 8 characters.' }, { status: 422 });
   try {
+    const { enforceRateLimit } = await import('@/lib/security/guard');
+    if (!(await enforceRateLimit(req, 'reset', 10, 900))) {
+      return NextResponse.json({ ok: false, error: 'Too many attempts. Please wait a few minutes and try again.' }, { status: 429 });
+    }
     const { performPasswordReset } = await import('@/lib/client-auth');
     const result = await performPasswordReset(parsed.data.id, parsed.data.token, parsed.data.password);
     return NextResponse.json(result, { status: result.ok ? 200 : 400 });

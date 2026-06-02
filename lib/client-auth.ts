@@ -36,6 +36,11 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
     return { ok: false, error: 'An account already exists for this email. Try signing in.' };
   }
 
+  const { isBreachedPassword } = await import('@/lib/security/breached-password');
+  if (await isBreachedPassword(input.password)) {
+    return { ok: false, error: 'That password has appeared in a known data breach. Please choose a different one.' };
+  }
+
   const emailNorm = fingerprint.email(email);
   const phoneNorm = fingerprint.phone(input.phone);
   const nameDobKey = fingerprint.nameDob(input.firstName, input.lastName, input.dob);
@@ -234,6 +239,8 @@ export async function performPasswordReset(clientId: string, token: string, newP
     return { ok: false, error: 'This reset link has expired. Please request a new one.' };
   }
   if (sha256(token) !== client.resetTokenHash) return { ok: false, error: 'Invalid reset link.' };
+  const { isBreachedPassword } = await import('@/lib/security/breached-password');
+  if (await isBreachedPassword(newPassword)) return { ok: false, error: 'That password has appeared in a known data breach. Please choose a different one.' };
   await db.client.update({
     where: { id: client.id },
     data: { passwordHash: await hashPassword(newPassword), resetTokenHash: null, resetTokenExp: null, portalActive: true },
