@@ -40,5 +40,8 @@ export async function POST(req: Request) {
   const { notifyBookingConfirmed } = await import('@/lib/booking-notify');
   await notifyBookingConfirmed(booking.id);
 
+  // Push to the shared clinic calendar (Hostinger CalDAV; no-op until configured).
+  import('@/lib/hostinger-calendar').then((m) => m.pushBooking(booking.id)).catch(() => {});
+
   return NextResponse.json({ ok: true, manageToken: booking.manageToken });
 }

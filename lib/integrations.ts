@@ -80,6 +80,24 @@ export async function getIntegrations(): Promise<Integration[]> {
     docsHref: 'https://console.cloud.google.com/apis/credentials',
   });
 
+  // ── Calendar (Hostinger / CalDAV) ──
+  const caldavUrl = has(process.env.HOSTINGER_CALDAV_URL);
+  const caldavCreds = has(process.env.HOSTINGER_CALDAV_USER) && has(process.env.HOSTINGER_CALDAV_PASS);
+  items.push({
+    id: 'hostinger-calendar',
+    name: 'Calendar (Hostinger / CalDAV)',
+    category: 'Scheduling',
+    description: 'Pushes confirmed appointments to a shared clinic calendar via CalDAV so they appear in Hostinger webmail.',
+    status: caldavUrl && caldavCreds ? 'connected' : caldavUrl || caldavCreds ? 'partial' : 'not_configured',
+    detail: caldavUrl && caldavCreds ? 'Appointments sync to the clinic calendar.' : 'Add the CalDAV collection URL + mailbox app password to enable.',
+    envVars: [
+      { name: 'HOSTINGER_CALDAV_URL', set: caldavUrl },
+      { name: 'HOSTINGER_CALDAV_USER', set: has(process.env.HOSTINGER_CALDAV_USER) },
+      { name: 'HOSTINGER_CALDAV_PASS', set: has(process.env.HOSTINGER_CALDAV_PASS) },
+    ],
+    docsHref: 'https://support.hostinger.com/',
+  });
+
   // ── Email (Resend) ──
   const resendSet = has(process.env.RESEND_API_KEY);
   const fromSet = has(process.env.EMAIL_FROM);
