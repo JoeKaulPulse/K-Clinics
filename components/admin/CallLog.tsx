@@ -8,6 +8,7 @@ type Call = {
   status: string | null; startedAt: string; durationSec: number;
   recordingUrl: string | null; transcriptStatus: string; hasTranscript: boolean;
   matchType: string; matchedLabel: string | null; client: { id: string; name: string } | null;
+  supplier: { id: string; name: string } | null;
   agentEmail: string | null; notes: string | null;
 };
 type Detail = Call & { transcript: string | null; answeredAt: string | null; endedAt: string | null; recordingMime: string | null };
@@ -78,8 +79,9 @@ export function CallLog({ canManage }: { canManage: boolean }) {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
-                        <span className="truncate text-sm font-medium">{c.client ? c.client.name : (c.matchedLabel || ext)}</span>
+                        <span className="truncate text-sm font-medium">{c.client ? c.client.name : c.supplier ? c.supplier.name : (c.matchedLabel || ext)}</span>
                         {c.client && <span className="rounded-full bg-[var(--color-gold)]/15 px-1.5 py-0.5 text-[0.6rem] font-medium text-[var(--color-gold)]">Client</span>}
+                        {c.supplier && <span className="rounded-full bg-[var(--color-jade)]/15 px-1.5 py-0.5 text-[0.6rem] font-medium text-[var(--color-jade)]">Supplier</span>}
                       </span>
                       <span className="mt-0.5 block truncate text-xs text-[var(--color-stone-soft)]">{ext} · {fmtTime(c.startedAt)} · {fmtDur(c.durationSec)}</span>
                     </span>
@@ -105,7 +107,9 @@ export function CallLog({ canManage }: { canManage: boolean }) {
             <div>
               <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{detail.direction === 'INBOUND' ? 'Inbound call' : 'Outbound call'}</p>
               <p className="mt-1 font-[family-name:var(--font-display)] text-xl">
-                {detail.client ? <Link href={`/admin/clients/${detail.client.id}`} className="hover:text-[var(--color-gold)]">{detail.client.name}</Link> : (detail.matchedLabel || (detail.direction === 'INBOUND' ? detail.fromNumber : detail.toNumber))}
+                {detail.client ? <Link href={`/admin/clients/${detail.client.id}`} className="hover:text-[var(--color-gold)]">{detail.client.name}</Link>
+                  : detail.supplier ? <Link href="/admin/suppliers" className="hover:text-[var(--color-gold)]">{detail.supplier.name}</Link>
+                  : (detail.matchedLabel || (detail.direction === 'INBOUND' ? detail.fromNumber : detail.toNumber))}
               </p>
               <p className="mt-0.5 text-sm text-[var(--color-stone)]">{detail.direction === 'INBOUND' ? detail.fromNumber : detail.toNumber} · {fmtTime(detail.startedAt)} · {fmtDur(detail.durationSec)}</p>
               {detail.agentEmail && <p className="text-xs text-[var(--color-stone-soft)]">Handled by {detail.agentEmail}</p>}

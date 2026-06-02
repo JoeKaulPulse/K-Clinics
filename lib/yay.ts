@@ -32,11 +32,10 @@ const first = (o: Pick, keys: string[]): string | undefined => {
   return undefined;
 };
 
-export type CallerMatch = { type: 'CLIENT' | 'STAFF' | 'UNKNOWN'; clientId?: string; label: string };
+export type CallerMatch = { type: 'CLIENT' | 'SUPPLIER' | 'STAFF' | 'UNKNOWN'; clientId?: string; supplierId?: string; label: string };
 
-/** Resolve an inbound/outbound number to a CRM entity. Clients are matched on
- *  their phone; staff on theirs; otherwise the formatted number is the label.
- *  (Suppliers aren't a structured entity yet — see note in the calls UI.) */
+/** Resolve an inbound/outbound number to a CRM entity — a client first, then a
+ *  supplier, both matched on phone; otherwise the formatted number is the label. */
 export async function matchCaller(number: string): Promise<CallerMatch> {
   const s = sig(number);
   if (s.length >= 6) {
@@ -45,6 +44,12 @@ export async function matchCaller(number: string): Promise<CallerMatch> {
       select: { id: true, firstName: true, lastName: true },
     }).catch(() => null);
     if (client) return { type: 'CLIENT', clientId: client.id, label: [client.firstName, client.lastName].filter(Boolean).join(' ') || number };
+
+    const supplier = await db.supplier.findFirst({
+      where: { active: true, phone: { contains: s } },
+      select: { id: true, name: true },
+    }).catch(() => null);
+    if (supplier) return { type: 'SUPPLIER', supplierId: supplier.id, label: supplier.name };
   }
   return { type: 'UNKNOWN', label: number || 'Unknown caller' };
 }
@@ -147,7 +152,8 @@ export async function ingestCall(parsed: ParsedCall, raw: unknown): Promise<{ id
       transcriptStatus: parsed.transcript ? 'ready' : 'pending',
       matchType: match.type,
       matchedClientId: match.clientId ?? null,
-      matchedLabel: match.type === 'CLIENT' ? null : match.label,
+      matchedSupplierId: match.supplierId ?? null,
+      matchedLabel: match.type === 'CLIENT' || match.type === 'SUPPLIER' ? null : match.label,
       raw: (raw ?? null) as object,
     },
     select: { id: true },

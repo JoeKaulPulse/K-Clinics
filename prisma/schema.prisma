@@ -325,8 +325,37 @@ enum CallDirection {
 
 enum CallMatchType {
   CLIENT
+  SUPPLIER
   STAFF
   UNKNOWN
+}
+
+// A supplier / business contact. Holds full contact info and links to the Xero
+// contact so bills/invoices for them can be surfaced. Also used for caller-ID
+// recognition on inbound calls.
+model Supplier {
+  id            String       @id @default(cuid())
+  name          String
+  category      String?                       // e.g. Consumables, Equipment, Utilities, Marketing
+  contactName   String?
+  email         String?
+  phone         String?
+  website       String?
+  addressLine   String?
+  city          String?
+  postcode      String?
+  country       String?      @default("GB")
+  accountNumber String?                       // our account reference with them
+  notes         String?
+  xeroContactId String?      @unique          // link to the Xero contact for bills/invoices
+  active        Boolean      @default(true)
+  createdBy     String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  calls         CallRecord[]
+
+  @@index([active])
+  @@index([phone])
 }
 
 model CallRecord {
@@ -349,7 +378,9 @@ model CallRecord {
   matchType        CallMatchType @default(UNKNOWN)
   matchedClientId  String?
   matchedClient    Client?       @relation(fields: [matchedClientId], references: [id], onDelete: SetNull)
-  matchedLabel     String?                        // display label when not a known client
+  matchedSupplierId String?
+  matchedSupplier  Supplier?     @relation(fields: [matchedSupplierId], references: [id], onDelete: SetNull)
+  matchedLabel     String?                        // display label when neither client nor supplier
   notes            String?                        // free-text staff note (the only mutable field)
   raw              Json?                          // original webhook payload, for audit
   createdAt        DateTime      @default(now())
