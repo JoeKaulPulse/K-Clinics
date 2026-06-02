@@ -19,6 +19,8 @@ export type Session = {
   /** Set when 2FA is required for this role but not yet enrolled — the user is
    *  signed in only far enough to complete setup (gated in middleware). */
   needsSetup?: boolean;
+  /** Session-revocation epoch, validated against the DB in getSession(). */
+  epoch?: number;
 };
 export type ClientSession = { sub: string; email: string; firstName: string };
 export type AcademySession = { sub: string; email: string; firstName: string };
