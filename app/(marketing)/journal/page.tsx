@@ -3,7 +3,7 @@ import { PageHero } from '@/components/ui/PageHero';
 import { JournalBrowser } from '@/components/journal/JournalBrowser';
 import { sortedArticles } from '@/lib/articles';
 import { articleImage } from '@/lib/treatment-images';
-import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
+import { pageMeta, JsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'The Journal — Expert Skin, Laser & Dentistry Guides | K Clinics London',
@@ -21,7 +21,10 @@ export default function JournalPage() {
 
   return (
     <>
-      <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Journal', path: '/journal' }])} />
+      <JsonLd data={[
+        breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Journal', path: '/journal' }]),
+        itemListLd('K Clinics Journal articles', sortedArticles.map((a) => ({ name: a.title, path: `/journal/${a.slug}` }))),
+      ]} />
       <PageHero
         eyebrow="The Journal"
         title="Considered guidance, beautifully clear."
