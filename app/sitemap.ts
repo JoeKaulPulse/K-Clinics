@@ -5,9 +5,23 @@ import { packages } from '@/lib/packages';
 import { infoSlugs } from '@/lib/info-pages';
 import { articleSlugs } from '@/lib/articles';
 
-export const dynamic = 'force-static';
+// ISR so newly-published academy courses (DB-backed) appear without a redeploy.
+export const revalidate = 3600;
 
-export default function sitemap(): MetadataRoute.Sitemap {
+// Fallback academy slugs if the DB can't be reached at build/revalidate time.
+const FALLBACK_COURSE_SLUGS = ['level-2-foundation-skin-laser', 'level-3-laser-aesthetic-therapies', 'level-4-certificate-aesthetic-practice', 'advanced-aesthetics-level-5-7'];
+
+async function courseSlugs(): Promise<string[]> {
+  try {
+    const { listCourses } = await import('@/lib/academy');
+    const courses = await listCourses(false);
+    return courses.length ? courses.map((c) => c.slug) : FALLBACK_COURSE_SLUGS;
+  } catch {
+    return FALLBACK_COURSE_SLUGS;
+  }
+}
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
   const base = site.url;
 
@@ -69,7 +83,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly' as const,
       priority: 0.55,
     })),
-    ...['level-2-foundation-skin-laser', 'level-3-laser-aesthetic-therapies', 'level-4-certificate-aesthetic-practice', 'advanced-aesthetics-level-5-7'].map((slug) => ({
+    ...(await courseSlugs()).map((slug) => ({
       url: `${base}/academy/${slug}`,
       lastModified: now,
       changeFrequency: 'monthly' as const,
