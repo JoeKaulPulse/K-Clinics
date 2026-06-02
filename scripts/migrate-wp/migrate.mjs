@@ -59,7 +59,13 @@ await streamDump(file, {
   onRows: (t, rows) => {
     const s = suf(t);
     if (s === 'users') {
-      for (const r of rows) users.set(r.ID ?? r.id, { login: r.user_login, email: normEmail(r.user_email), registered: parseDate(r.user_registered), display: r.display_name });
+      // This site added custom columns to wp_users — the richest source of
+      // phone, DOB, address and consent. Capture them alongside the standard ones.
+      for (const r of rows) users.set(r.ID ?? r.id, {
+        login: r.user_login, email: normEmail(r.user_email), registered: parseDate(r.user_registered), display: r.display_name,
+        phone: r.phone, birthday: r.birthday, city: r.city, street: r.street, postalcode: r.postalcode,
+        subsNews: r.subs_news, sms: r.sms, skidka: r.skidka, refMy: r.my_referal, refLink: r.referal_link,
+      });
     } else if (s === 'usermeta') {
       for (const r of rows) {
         const id = r.user_id; const k = r.meta_key;
@@ -86,6 +92,17 @@ let fromUsers = 0, fromOrders = 0, skippedNoEmail = 0;
 
 function blank(s) { return s == null || String(s).trim() === ''; }
 function firstToken(s) { return (s || '').trim().split(/\s+/)[0] || ''; }
+// Birthday/date columns on this site may be ISO, dd.mm.yyyy, dd/mm/yyyy or unix.
+function parseFlexDate(v) {
+  if (v == null) return null;
+  const s = String(v).trim();
+  if (!s || s.startsWith('0000')) return null;
+  let m = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+  if (m) return parseDate(`${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')} 00:00:00`);
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return parseDate(/[ T]/.test(s) ? s : s + ' 00:00:00');
+  if (/^\d{9,10}$/.test(s)) { const d = new Date(Number(s) * 1000); return isNaN(d) ? null : d; }
+  return parseDate(s);
+}
 function upsertLocal(email, data, createdAt, fromOrder) {
   if (!email) { skippedNoEmail++; return; }
   let c = clients.get(email);
@@ -103,15 +120,23 @@ for (const [id, u] of users) {
   fromUsers++;
   const firstName = m.billing_first_name || m.first_name || firstToken(u.display) || email.split('@')[0];
   const lastName = m.billing_last_name || m.last_name || u.display?.split(/\s+/).slice(1).join(' ') || null;
-  let dob = null;
-  for (const k of DOB_KEYS) if (!blank(m[k])) { dob = parseDate(String(m[k]).includes(' ') ? m[k] : m[k] + ' 00:00:00'); break; }
-  const optIn = OPTIN_KEYS.some((k) => truthy(m[k]));
-  upsertLocal(email, { firstName, lastName, phone: m.billing_phone, dob, source: 'wordpress', wpUserId: id, registered: u.registered }, u.registered, false);
+  // DOB: custom `birthday` column first, then any meta fallback.
+  let dob = parseFlexDate(u.birthday);
+  if (!dob) for (const k of DOB_KEYS) if (!blank(m[k])) { dob = parseFlexDate(m[k]); break; }
+  // Consent comes from the custom columns (authoritative), with meta as fallback.
+  const optIn = truthy(u.subsNews) || OPTIN_KEYS.some((k) => truthy(m[k]));
+  const sms = truthy(u.sms);
+  const phone = u.phone || m.billing_phone;
+  upsertLocal(email, { firstName, lastName, phone, dob, source: 'wordpress', wpUserId: id, registered: u.registered }, u.registered, false);
   const c = clients.get(email);
   if (optIn) c.marketingOptIn = true;
-  // preserve address + any unmapped, non-noise meta so nothing is lost
-  const addr = [m.billing_address_1, m.billing_address_2, m.billing_city, m.billing_postcode, m.billing_country].filter((x) => !blank(x)).join(', ');
+  if (sms) c.smsReminders = true;
+  // preserve address (custom columns first, then billing meta) + any unmapped meta
+  const addr = [u.street, u.city, u.postalcode].filter((x) => !blank(x)).join(', ')
+    || [m.billing_address_1, m.billing_address_2, m.billing_city, m.billing_postcode, m.billing_country].filter((x) => !blank(x)).join(', ');
   if (addr) c.address = c.address || addr;
+  if (!blank(u.skidka) && String(u.skidka) !== '0') c.notes.push(`legacy loyalty discount: ${u.skidka}`);
+  if (!blank(u.refMy)) c.notes.push(`referral code: ${u.refMy}`);
   for (const [k, v] of Object.entries(m)) if (!MAP.has(k) && !DOB_KEYS.includes(k) && !OPTIN_KEYS.includes(k) && !NOISE.test(k) && !blank(v) && !String(v).startsWith('a:')) c.notes.push(`${k}: ${String(v).slice(0, 160)}`);
 }
 
@@ -183,7 +208,7 @@ try {
       tags: [...c.tags],
       notes: notes.slice(0, 4000),
       marketingOptIn: c.marketingOptIn,
-      smsReminders: false,
+      smsReminders: c.smsReminders,
       lastVisitAt: c.lastVisitAt || null,
       ...(c.createdAt ? { createdAt: c.createdAt } : {}),
     };
