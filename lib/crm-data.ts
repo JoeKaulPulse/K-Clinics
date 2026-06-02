@@ -129,6 +129,7 @@ export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc'
   ] });
   if (flag === 'optin') and.push({ marketingOptIn: true });
   else if (flag === 'review') and.push({ tags: { has: 'needs-name-review' } });
+  else if (flag === 'likelytest') and.push({ tags: { has: 'likely-test' } });
   else if (flag === 'wordpress') and.push({ source: 'wordpress' });
   const SORTS: Record<string, string> = { name: 'firstName', email: 'email', created: 'createdAt', visit: 'lastVisitAt' };
   const field = SORTS[sort] || 'createdAt';
