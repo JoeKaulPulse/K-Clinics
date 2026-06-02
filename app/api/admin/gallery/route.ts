@@ -30,7 +30,8 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const { db } = await import('@/lib/db');
-  const ok = (extra: object = {}) => NextResponse.json({ ok: true, ...extra });
+  const { revalidatePath } = await import('next/cache');
+  const ok = (extra: object = {}) => { revalidatePath('/gallery'); return NextResponse.json({ ok: true, ...extra }); };
   const bad = (error = 'Bad request') => NextResponse.json({ ok: false, error }, { status: 400 });
 
   switch (body.op) {
