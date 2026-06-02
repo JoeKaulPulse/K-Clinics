@@ -25,7 +25,14 @@ export function LiveChat() {
       if (j.ok && j.messages?.length) {
         setMsgs((prev) => {
           const seen = new Set(prev.map((m: Msg) => m.id));
-          const next = [...prev, ...j.messages.filter((m: Msg) => !seen.has(m.id))];
+          const fresh = (j.messages as Msg[]).filter((m) => !seen.has(m.id));
+          if (!fresh.length) return prev;
+          // The server now echoes back the visitor's own messages with their
+          // real ids. Drop the matching optimistic placeholders (temp id, same
+          // text) so a sent message doesn't appear twice.
+          const confirmed = new Set(fresh.filter((m) => m.sender === 'VISITOR').map((m) => m.body));
+          const base = prev.filter((m) => !(m.id.startsWith('tmp-') && m.sender === 'VISITOR' && confirmed.has(m.body)));
+          const next = [...base, ...fresh];
           lastAt.current = next[next.length - 1]?.createdAt ?? lastAt.current;
           return next;
         });
