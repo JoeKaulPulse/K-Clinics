@@ -621,6 +621,7 @@ model AdminUser {
   totpSecret    String?    // encrypted base32 secret (lib/crypto keyring)
   totpEnabledAt DateTime?  // set once enrolment is confirmed with a valid code
   recoveryCodes String[]  @default([]) // bcrypt-hashed single-use recovery codes
+  sessionEpoch  Int       @default(0)  // bump to revoke all existing sessions
 
   lastLoginAt  DateTime?
   createdBy    String?

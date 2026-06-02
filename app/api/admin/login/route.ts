@@ -64,13 +64,13 @@ export async function POST(req: Request) {
     // Policy requires 2FA for this role but it isn't set up yet. Grant a
     // setup-only session (middleware confines it to the profile page) so they
     // can enrol, then re-authenticate with their new second factor.
-    await createSession({ sub: user.id, email: user.email, name: user.name || undefined, role: user.role, grant: user.permGrant ?? [], revoke: user.permRevoke ?? [], needsSetup: true });
+    await createSession({ sub: user.id, email: user.email, name: user.name || undefined, role: user.role, grant: user.permGrant ?? [], revoke: user.permRevoke ?? [], epoch: user.sessionEpoch ?? 0, needsSetup: true });
     await recordSecurity('LOGIN_OK', 'admin', email, req, { setup: true });
     return NextResponse.json({ ok: true, setup: true });
   }
 
   await db.adminUser.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-  await createSession({ sub: user.id, email: user.email, name: user.name || undefined, role: user.role, grant: user.permGrant ?? [], revoke: user.permRevoke ?? [] });
+  await createSession({ sub: user.id, email: user.email, name: user.name || undefined, role: user.role, grant: user.permGrant ?? [], revoke: user.permRevoke ?? [], epoch: user.sessionEpoch ?? 0 });
   await recordLogin('admin', email, true, req);
 
   const res = NextResponse.json({ ok: true });

@@ -27,8 +27,8 @@ export async function POST(req: Request) {
         // Re-issue a full session so the setup-only gate (needsSetup) is cleared.
         const { db } = await import('@/lib/db');
         const { createSession } = await import('@/lib/auth');
-        const u = await db.adminUser.findUnique({ where: { id: session.sub }, select: { id: true, email: true, name: true, role: true, permGrant: true, permRevoke: true } });
-        if (u) await createSession({ sub: u.id, email: u.email, name: u.name || undefined, role: u.role, grant: u.permGrant ?? [], revoke: u.permRevoke ?? [] });
+        const u = await db.adminUser.findUnique({ where: { id: session.sub }, select: { id: true, email: true, name: true, role: true, permGrant: true, permRevoke: true, sessionEpoch: true } });
+        if (u) await createSession({ sub: u.id, email: u.email, name: u.name || undefined, role: u.role, grant: u.permGrant ?? [], revoke: u.permRevoke ?? [], epoch: u.sessionEpoch ?? 0 });
       }
       return NextResponse.json(res, { status: res.ok ? 200 : 400 });
     }

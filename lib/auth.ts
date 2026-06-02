@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { SignJWT } from 'jose';
 import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
@@ -53,18 +54,24 @@ export async function verifyPassword(plain: string, hash: string) {
   return bcrypt.compare(plain, hash);
 }
 
+// Staff sessions: 12h absolute lifetime (JWT exp); the cookie carries a shorter
+// idle window that middleware slides on each request, so an unattended session
+// expires while an active one is kept alive (up to the 12h cap).
+export const ADMIN_ABSOLUTE_TTL = '12h';
+export const ADMIN_IDLE_SEC = 60 * 60 * 2; // 2h idle
+
 export async function createSession(payload: Session) {
   const token = await new SignJWT({ ...payload })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('7d')
+    .setExpirationTime(ADMIN_ABSOLUTE_TTL)
     .sign(secret());
   (await cookies()).set(COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: ADMIN_IDLE_SEC,
   });
 }
 
@@ -72,24 +79,37 @@ export async function destroySession() {
   (await cookies()).set(COOKIE, '', { path: '/', maxAge: 0 });
 }
 
-export async function getSession(): Promise<Session | null> {
+// Authoritative session check: verify the JWT, then confirm the account is
+// still active and the token's revocation epoch matches the DB (so deactivation
+// and "sign out everywhere" take effect immediately). Memoised per request.
+export const getSession = cache(async (): Promise<Session | null> => {
   const token = (await cookies()).get(COOKIE)?.value;
-  return verifyToken(token);
-}
+  const session = await verifyToken(token);
+  if (!session) return null;
+  try {
+    const { db } = await import('@/lib/db');
+    const u = await db.adminUser.findUnique({ where: { id: session.sub }, select: { active: true, sessionEpoch: true } });
+    if (!u || u.active === false) return null;
+    if ((session.epoch ?? 0) !== (u.sessionEpoch ?? 0)) return null;
+  } catch {
+    // If the DB is unreachable, fall back to the (valid, signed) token claims.
+  }
+  return session;
+});
 
 // ── Client portal sessions (separate cookie + secret) ───────────────────────
 export async function createClientSession(payload: ClientSession) {
   const token = await new SignJWT({ ...payload })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('30d')
+    .setExpirationTime('7d')
     .sign(clientSecret());
   (await cookies()).set(CLIENT_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: 60 * 60 * 24 * 7,
   });
 }
 
@@ -107,10 +127,10 @@ export async function createAcademySession(payload: AcademySession) {
   const token = await new SignJWT({ ...payload })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('30d')
+    .setExpirationTime('7d')
     .sign(academySecret());
   (await cookies()).set(ACADEMY_COOKIE, token, {
-    httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 30,
+    httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 7,
   });
 }
 

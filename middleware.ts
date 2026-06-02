@@ -44,7 +44,13 @@ export async function middleware(req: NextRequest) {
     url.searchParams.set('setup2fa', '1');
     return NextResponse.redirect(url);
   }
-  return NextResponse.next();
+  // Slide the idle window: refresh the cookie lifetime on each request so an
+  // active session stays alive (up to the JWT's 12h absolute cap) while an idle
+  // one expires after the idle window.
+  const res = NextResponse.next();
+  const token = req.cookies.get(SESSION_COOKIE)?.value;
+  if (token) res.cookies.set(SESSION_COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 60 * 60 * 2 });
+  return res;
 }
 
 export const config = {
