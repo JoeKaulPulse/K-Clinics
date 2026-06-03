@@ -77,6 +77,39 @@ Brief: ${input.brief || 'Promote the clinic and drive bookings.'}`;
   return callHaiku<CampaignPack>(system, user);
 }
 
+export type OptimiseInput = {
+  name: string; goal: string; audience: string; daysRunning: number;
+  bookings: number; revenuePence: number; spendPence: number; budgetPence: number | null;
+  roi: number | null; targetRevenuePence: number | null; targetBookings: number | null;
+  topSources: { label: string; bookings: number; revenuePence: number }[];
+};
+export type CampaignAdvice = {
+  summary: string;
+  actions: { title: string; detail: string; impact: 'high' | 'medium' | 'low' }[];
+  budgetAdvice: string;
+  audienceIdeas: string[];
+  testIdeas: string[];
+};
+
+/** Analyse a campaign's live performance and recommend concrete optimisations. */
+export async function optimiseCampaign(i: OptimiseInput): Promise<CampaignAdvice | null> {
+  const brand = await getBrandKit();
+  const gbp = (p: number) => `£${(p / 100).toLocaleString('en-GB')}`;
+  const system = [
+    `You are a senior growth/performance marketer for ${site.name}, a premium London aesthetics & dental clinic.`,
+    brandContextForAI(brand),
+    'Give sharp, specific, realistic optimisation advice for a UK clinic. No fluff, no guarantees. British English.',
+    'Respond ONLY with minified JSON of this type: {"summary":string,"actions":[{"title":string,"detail":string,"impact":"high"|"medium"|"low"}],"budgetAdvice":string,"audienceIdeas":string[],"testIdeas":string[]}.',
+    '3-6 actions ordered by impact; 3-4 audienceIdeas; 3-4 testIdeas. Be concrete (channels, offers, timing, creative angles).',
+  ].join('\n\n');
+  const user = `Campaign: ${i.name}
+Goal: ${i.goal} · Audience: ${i.audience || 'broad'} · Running ${i.daysRunning} days
+Results so far: ${i.bookings} bookings, ${gbp(i.revenuePence)} revenue, spend ${gbp(i.spendPence)}, ROI ${i.roi == null ? 'n/a' : i.roi + '%'}
+Targets: ${i.targetRevenuePence ? gbp(i.targetRevenuePence) : 'none'} revenue, ${i.targetBookings ?? 'none'} bookings, budget ${i.budgetPence ? gbp(i.budgetPence) : 'none'}
+Top sources: ${i.topSources.length ? i.topSources.map((s) => `${s.label} (${s.bookings} bk, ${gbp(s.revenuePence)})`).join('; ') : 'no attributed sources yet'}`;
+  return callHaiku<CampaignAdvice>(system, user, 1200);
+}
+
 /** Generate N on-brand variants of a single line (subject line, ad headline…) — for A/B or quick rewrites. */
 export async function rewriteVariants(kind: string, text: string, n = 4): Promise<string[] | null> {
   const brand = await getBrandKit();
