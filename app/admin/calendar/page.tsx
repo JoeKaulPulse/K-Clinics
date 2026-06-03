@@ -36,7 +36,10 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       orderBy: { startAt: 'asc' },
       include: { client: { select: { firstName: true, lastName: true, medicalFlag: true } } },
     }),
-    db.staffTimeOff.findMany({ where: { startAt: { lt: dayEnd }, endAt: { gt: dayStart } } }),
+    // Match the booking engine (lib/availability.ts): only time-off that
+    // actually blocks bookings — exclude declined/cancelled requests, and
+    // Google "busy" mirrors are shown with their own label below.
+    db.staffTimeOff.findMany({ where: { startAt: { lt: dayEnd }, endAt: { gt: dayStart }, status: { notIn: ['DECLINED', 'CANCELLED'] } } }),
   ]);
   const closures = await db.clinicClosure.findMany({ where: { startAt: { lt: dayEnd }, endAt: { gt: dayStart } }, select: { reason: true } });
   const canManageSchedule = sessionCan(session, 'schedule.manage');

@@ -19,9 +19,14 @@ export async function POST(req: Request) {
     const { staffId, blocks } = body as { staffId: string; blocks: { dayOfWeek: number; startMin: number; endMin: number; breakStartMin?: number | null; breakEndMin?: number | null; locationId?: string | null }[] };
     if (!staffId || !Array.isArray(blocks)) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
     const clean = blocks.filter((b) => b.dayOfWeek >= 0 && b.dayOfWeek <= 6 && b.endMin > b.startMin);
-    // Keep a break only when it's a valid window inside the working day.
+    // A break is valid only when it's a window inside the working day.
     const validBreak = (b: { startMin: number; endMin: number; breakStartMin?: number | null; breakEndMin?: number | null }) =>
       b.breakStartMin != null && b.breakEndMin != null && b.breakEndMin > b.breakStartMin && b.breakStartMin >= b.startMin && b.breakEndMin <= b.endMin;
+    // Reject (rather than silently discard) a break that was supplied but doesn't
+    // sit inside the working window — otherwise the manager sees "saved" but no
+    // break was stored and bookings get offered over lunch.
+    const badBreak = clean.find((b) => (b.breakStartMin != null || b.breakEndMin != null) && !validBreak(b));
+    if (badBreak) return NextResponse.json({ ok: false, error: 'A break must fall within that day’s working hours, with the end after the start.' }, { status: 400 });
     // One block per weekday → one location per day (a clinician can't be in two
     // places at once). locationId is kept per block.
     await db.$transaction([
@@ -60,7 +65,8 @@ export async function POST(req: Request) {
   if (body.op === 'removeTimeOff') {
     const { id } = body as { id: string };
     if (!id) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
-    await db.staffTimeOff.delete({ where: { id } });
+    // deleteMany is idempotent — no P2025 throw if the row was already removed.
+    await db.staffTimeOff.deleteMany({ where: { id } });
     return NextResponse.json({ ok: true });
   }
 
