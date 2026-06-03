@@ -17,6 +17,7 @@ const TOOLS: { href: string; title: string; desc: string }[] = [
   { href: '/admin/marketing/ab', title: 'A/B testing', desc: 'Split-test landing-page headlines & CTAs to find the winner.' },
   { href: '/admin/marketing/insights', title: 'Behaviour insights', desc: 'Click heatmaps, scroll depth and full session replay.' },
   { href: '/admin/marketing/connections', title: 'Connections', desc: 'One-click connect Google, Meta, TikTok & email platforms.' },
+  { href: '/admin/marketing/templates', title: 'Email templates', desc: 'Preview every client email, live and on-brand.' },
   { href: '/admin/automations', title: 'Automations', desc: 'Birthday, follow-up and win-back email flows.' },
   { href: '/admin/seo', title: 'SEO & pixels', desc: 'Search health, AI answers, and ad/analytics tracking.' },
   { href: '/admin/qr', title: 'QR codes', desc: 'Dynamic QR codes for print & in-clinic, with scan analytics.' },
