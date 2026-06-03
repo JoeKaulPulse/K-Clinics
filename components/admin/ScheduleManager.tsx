@@ -67,31 +67,36 @@ function Editor({ staff, treatments, googleConfigured, locations, multiLocation 
   // Locations this clinician may be scheduled at (selected set, else all).
   const allowedLocs = locations.filter((l) => locs.size === 0 || locs.has(l.id));
 
-  async function post(payload: object) {
+  // Returns { ok, error } so callers can surface the server's message.
+  async function post(payload: object): Promise<{ ok: boolean; error?: string }> {
     const res = await fetch('/api/admin/schedule', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    return res.ok;
+    if (res.ok) return { ok: true };
+    const j = await res.json().catch(() => ({}));
+    return { ok: false, error: j.error };
   }
 
   async function saveSchedule() {
-    setMsg('Saving…');
     const blocks = rows.map((r, d) => (r.on ? {
       dayOfWeek: d, startMin: toMin(r.start), endMin: toMin(r.end),
       breakStartMin: r.breakStart ? toMin(r.breakStart) : null, breakEndMin: r.breakEnd ? toMin(r.breakEnd) : null,
       locationId: r.locationId || null,
     } : null)).filter(Boolean);
-    const ok = await post({ op: 'setSchedule', staffId: staff.id, blocks });
-    setMsg(ok ? 'Schedule saved ✓' : 'Could not save');
-    router.refresh();
+    // Replacing the rota with an empty week clears all availability — confirm.
+    if (blocks.length === 0 && !confirm(`Clear ${staff.name || 'this clinician'}’s entire weekly schedule? They won’t be bookable until a new rota is set.`)) return;
+    setMsg('Saving…');
+    const r = await post({ op: 'setSchedule', staffId: staff.id, blocks });
+    setMsg(r.ok ? 'Schedule saved ✓' : r.error || 'Could not save');
+    if (r.ok) router.refresh();
   }
   async function saveClinician() {
-    const ok = await post({ op: 'setClinician', staffId: staff.id, isClinician, competencies: [...comp] });
-    setMsg(ok ? 'Saved ✓' : 'Could not save');
-    router.refresh();
+    const r = await post({ op: 'setClinician', staffId: staff.id, isClinician, competencies: [...comp] });
+    setMsg(r.ok ? 'Saved ✓' : r.error || 'Could not save');
+    if (r.ok) router.refresh();
   }
   async function saveLocations() {
-    const ok = await post({ op: 'setLocations', staffId: staff.id, locationIds: [...locs] });
-    setMsg(ok ? 'Locations saved ✓' : 'Could not save');
-    router.refresh();
+    const r = await post({ op: 'setLocations', staffId: staff.id, locationIds: [...locs] });
+    setMsg(r.ok ? 'Locations saved ✓' : r.error || 'Could not save');
+    if (r.ok) router.refresh();
   }
 
   return (
@@ -236,14 +241,23 @@ function TimeOff({ staff, onChange }: { staff: Staff; onChange: () => void }) {
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
   const [reason, setReason] = useState('');
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
 
   async function add() {
     if (!start || !end) return;
-    await fetch('/api/admin/schedule', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'addTimeOff', staffId: staff.id, kind, startAt: start, endAt: end, reason }) });
+    if (new Date(end) <= new Date(start)) { setMsg('End must be after start.'); return; }
+    setBusy(true); setMsg('');
+    const res = await fetch('/api/admin/schedule', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'addTimeOff', staffId: staff.id, kind, startAt: start, endAt: end, reason }) });
+    setBusy(false);
+    if (!res.ok) { const j = await res.json().catch(() => ({})); setMsg(j.error || 'Could not add time off.'); return; }
     setStart(''); setEnd(''); setReason(''); onChange();
   }
   async function remove(id: string) {
-    await fetch('/api/admin/schedule', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'removeTimeOff', id }) });
+    setBusy(true); setMsg('');
+    const res = await fetch('/api/admin/schedule', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'removeTimeOff', id }) });
+    setBusy(false);
+    if (!res.ok) { const j = await res.json().catch(() => ({})); setMsg(j.error || 'Could not remove this entry.'); return; }
     onChange();
   }
 
@@ -256,8 +270,9 @@ function TimeOff({ staff, onChange }: { staff: Staff; onChange: () => void }) {
         <label className="text-xs text-[var(--color-stone)]">From<br /><input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className={f} /></label>
         <label className="text-xs text-[var(--color-stone)]">To<br /><input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} className={f} /></label>
         <input placeholder="Reason (optional)" value={reason} onChange={(e) => setReason(e.target.value)} className={`${f} flex-1`} />
-        <button onClick={add} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)]">Add</button>
+        <button disabled={busy} onClick={add} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">Add</button>
       </div>
+      {msg && <p className="mt-2 text-sm text-[var(--color-blush)]">{msg}</p>}
       <ul className="mt-4 divide-y divide-[var(--color-line)]">
         {staff.timeOff.length === 0 && <li className="py-2 text-sm text-[var(--color-stone)]">None scheduled.</li>}
         {staff.timeOff.map((t) => (
@@ -267,7 +282,7 @@ function TimeOff({ staff, onChange }: { staff: Staff; onChange: () => void }) {
               {new Date(t.startAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} – {new Date(t.endAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
               {t.reason ? ` · ${t.reason}` : ''}
             </span>
-            <button onClick={() => remove(t.id)} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)]">Remove</button>
+            <button disabled={busy} onClick={() => remove(t.id)} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)] disabled:opacity-50">Remove</button>
           </li>
         ))}
       </ul>

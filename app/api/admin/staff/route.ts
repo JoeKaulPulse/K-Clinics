@@ -72,6 +72,18 @@ export async function POST(req: Request) {
     if (target.role === 'OWNER' && actor.role !== 'OWNER') {
       return NextResponse.json({ ok: false, error: 'Only an owner can modify an owner.' }, { status: 403 });
     }
+    // Self-lockout guard: you can't switch off or change the role of your own
+    // account from the staff console (do it from another admin if needed).
+    const isSelf = target.email.toLowerCase() === actor.email.toLowerCase();
+    if (isSelf && (active === false || (role && validRole.includes(role) && role !== target.role))) {
+      return NextResponse.json({ ok: false, error: 'You can’t deactivate or change the role of your own account here.' }, { status: 400 });
+    }
+    // Never leave the clinic with zero active owners — block deactivating or
+    // demoting the last one.
+    if (target.role === 'OWNER' && (active === false || (role && validRole.includes(role) && role !== 'OWNER'))) {
+      const otherActiveOwners = await db.adminUser.count({ where: { role: 'OWNER', active: true, id: { not: target.id } } });
+      if (otherActiveOwners === 0) return NextResponse.json({ ok: false, error: 'This is the last active owner — add or promote another owner first.' }, { status: 400 });
+    }
     const data: Record<string, unknown> = {};
     if (name !== undefined) data.name = name;
     if (role && validRole.includes(role) && actor.role === 'OWNER') {

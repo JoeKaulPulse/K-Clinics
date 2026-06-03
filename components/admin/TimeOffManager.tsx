@@ -129,9 +129,10 @@ function MyTimeOff({ mine }: { mine: Mine[] }) {
 
   async function cancel(id: string) {
     setBusyId(id);
-    await postTimeOff({ op: 'cancel', id });
+    const { ok, json } = await postTimeOff({ op: 'cancel', id });
     setBusyId('');
-    router.refresh();
+    if (ok) router.refresh();
+    else alert(json?.error || 'Could not cancel this request.');
   }
 
   return (
@@ -176,9 +177,10 @@ function Approvals({ pending }: { pending: Pending[] }) {
       note = window.prompt('Reason for declining (optional, shown to the staff member):') || undefined;
     }
     setBusyId(id);
-    await postTimeOff({ op, id, note });
+    const { ok, json } = await postTimeOff({ op, id, note });
     setBusyId('');
-    router.refresh();
+    if (ok) router.refresh();
+    else alert(json?.error || 'Could not update this request.');
   }
 
   return (

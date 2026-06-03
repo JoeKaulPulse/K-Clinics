@@ -17,7 +17,8 @@ export async function POST(req: Request) {
 
   if (body.op === 'remove') {
     if (!body.id) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
-    await db.clinicClosure.delete({ where: { id: body.id } });
+    // Idempotent — no P2025 throw if the closure was already removed elsewhere.
+    await db.clinicClosure.deleteMany({ where: { id: body.id } });
     return NextResponse.json({ ok: true });
   }
 
