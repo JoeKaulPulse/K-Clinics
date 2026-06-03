@@ -156,7 +156,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
         </section>
 
         <section className="space-y-6">
-          <ClinicalWorkflow
+          <div data-tour="clinical-workflow"><ClinicalWorkflow
             bookingId={b.id}
             sop={{ title: sop.title, content: sop.content }}
             sopSteps={sopSteps}
@@ -171,8 +171,8 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
               durationMin: b.durationMin,
               status: b.status,
             }}
-          />
-          <ConsentPanel
+          /></div>
+          <div data-tour="clinical-consent"><ConsentPanel
             bookingId={b.id}
             clientId={b.client.id}
             treatmentForm={consentTemplate && consentTemplate.active ? { key: consentTemplate.key, title: consentTemplate.title } : null}
@@ -181,21 +181,21 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             baseUrl={site.url.replace(/\/$/, '')}
             canClinical={sessionCan(session, 'clients.clinical.view')}
             canManage={sessionCan(session, 'bookings.manage')}
-          />
+          /></div>
           {isLaser && (
-            <BeforePhotoCapture
+            <div data-tour="clinical-photo"><BeforePhotoCapture
               bookingId={b.id}
               clientId={b.client.id}
               photos={beforePhotos.map((p) => ({ id: p.id, area: p.area, capturedBy: p.capturedBy, createdAt: p.createdAt.toISOString() }))}
               optOutSigned={optOutSigned}
               baseUrl={site.url.replace(/\/$/, '')}
               canManage={sessionCan(session, 'bookings.manage')}
-            />
+            /></div>
           )}
           {canConsumables && <ConsumablesPanel bookingId={b.id} items={stockItems} used={used} />}
-          {canClinical && <ClinicalNote bookingId={b.id} initial={clinicalNote} savedBy={b.clinicalNoteBy} savedAt={b.clinicalNoteAt ? b.clinicalNoteAt.toISOString() : null} />}
+          {canClinical && <div data-tour="clinical-note"><ClinicalNote bookingId={b.id} initial={clinicalNote} savedBy={b.clinicalNoteBy} savedAt={b.clinicalNoteAt ? b.clinicalNoteAt.toISOString() : null} /></div>}
           {multiLocation && activeLocations.length > 0 && <BookingLocation bookingId={b.id} current={b.locationId} locations={activeLocations} />}
-          <div>
+          <div data-tour="clinical-actions">
             <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Actions</h2>
             <BookingActions
               bookingId={b.id}
