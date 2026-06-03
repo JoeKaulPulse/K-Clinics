@@ -148,6 +148,7 @@ enum AuditAction {
   POINTS_AWARDED
   REWARD_REDEEMED
   SERVICE_PRICES_BULK
+  SETTINGS_UPDATED
   CLIENT_DELETED
 }
 
@@ -1847,4 +1848,39 @@ model SiteConfigRevision {
   createdBy String?
 
   @@index([configId, createdAt])
+}
+
+// ── Dynamic QR codes ─────────────────────────────────────────────────────────
+// Internal QR tool: each code is a short, stable slug served at /qr/{code} that
+// 302-redirects to an editable destination — so a printed/in-clinic code can be
+// re-pointed without reprinting. Scans are logged for lightweight analytics
+// (coarse device/referer/country only — no IP or personal data stored).
+model QrCode {
+  id          String   @id @default(cuid())
+  code        String   @unique  // slug used in the public /qr/{code} URL
+  label       String            // internal name, e.g. "Reception poster"
+  destination String            // current redirect target (editable any time)
+  active      Boolean  @default(true)
+  notes       String?
+  scanCount   Int      @default(0) // denormalised running total for quick display
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  scans       QrScan[]
+
+  @@index([active])
+}
+
+model QrScan {
+  id        String   @id @default(cuid())
+  qr        QrCode   @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  qrCodeId  String
+  at        DateTime @default(now())
+  device    String?  // mobile | tablet | desktop
+  referer   String?
+  country   String?  // coarse, from edge header when available
+  userAgent String?
+
+  @@index([qrCodeId, at])
 }

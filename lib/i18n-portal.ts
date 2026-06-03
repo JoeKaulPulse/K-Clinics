@@ -87,6 +87,9 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'rw.copied': { en: 'Copied', uk: 'Скопійовано' },
   'rw.share': { en: 'Share', uk: 'Поділитися' },
   'rw.referStats': { en: '{qualified} rewarded · {pending} pending', uk: '{qualified} винагороджено · {pending} в очікуванні' },
+  'rw.qrShow': { en: 'Show QR code', uk: 'Показати QR-код' },
+  'rw.qrHide': { en: 'Hide QR code', uk: 'Сховати QR-код' },
+  'rw.qrHint': { en: 'Let a friend scan this to open your invite.', uk: 'Дайте другові відсканувати це, щоб відкрити запрошення.' },
   'rw.shareText': { en: 'Join me at KClinics and we’ll both get £25 off.', uk: 'Приєднуйтесь до мене в KClinics — ми обоє отримаємо £25 знижки.' },
 
   // Redemption (on appointments)
