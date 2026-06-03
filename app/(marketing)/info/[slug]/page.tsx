@@ -26,6 +26,14 @@ export default async function InfoPage({ params }: { params: Promise<{ slug: str
   const p = getInfoPage(slug);
   if (!p) notFound();
 
+  // Render an admin-published CMS layout for this policy page if one exists.
+  const { getPublishedPage } = await import('@/lib/pages');
+  const cms = await getPublishedPage(`/info/${slug}`);
+  if (cms) {
+    const { SectionRenderer } = await import('@/components/cms/SectionRenderer');
+    return (<><JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: p.title, path: `/info/${slug}` }])} /><SectionRenderer sections={cms} /></>);
+  }
+
   return (
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: p.title, path: `/info/${slug}` }])} />
