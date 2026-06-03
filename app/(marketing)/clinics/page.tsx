@@ -21,7 +21,13 @@ const CARPARKS = [
   ['Smithfield Car Park', 'EC1A 9DY'],
 ];
 
-export default function ClinicsPage() {
+export default async function ClinicsPage() {
+  const { getPublishedPage } = await import('@/lib/pages');
+  const cms = await getPublishedPage('/clinics');
+  if (cms) {
+    const { SectionRenderer } = await import('@/components/cms/SectionRenderer');
+    return (<><JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Our Clinics', path: '/clinics' }])} /><SectionRenderer sections={cms} /></>);
+  }
   return (
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Our Clinics', path: '/clinics' }])} />

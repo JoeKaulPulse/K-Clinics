@@ -30,7 +30,13 @@ const STEPS = [
   { t: 'Keep them fresh', d: `Points stay valid for ${LOYALTY.expiryMonths} months from the day you earn them, so there’s always a reason to treat yourself again soon.` },
 ];
 
-export default function MembershipPage() {
+export default async function MembershipPage() {
+  const { getPublishedPage } = await import('@/lib/pages');
+  const cms = await getPublishedPage('/membership');
+  if (cms) {
+    const { SectionRenderer } = await import('@/components/cms/SectionRenderer');
+    return (<><JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Membership', path: '/membership' }])} /><SectionRenderer sections={cms} /></>);
+  }
   return (
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Membership', path: '/membership' }])} />

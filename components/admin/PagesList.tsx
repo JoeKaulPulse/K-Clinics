@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 type PageRow = { id: string; path: string; title: string | null; status: string; updatedAt: string };
-// Editorial routes that can be taken over by the builder (catalogues excluded).
-const SUGGESTED = ['/about', '/contact', '/careers', '/finance', '/membership', '/clinics', '/gift-vouchers', '/refer-a-friend'];
+// Editorial routes wired to the builder (with seeded starting content).
+const SUGGESTED = ['/about', '/contact', '/finance', '/membership', '/clinics'];
 
 export function PagesList({ pages }: { pages: PageRow[] }) {
   const router = useRouter();

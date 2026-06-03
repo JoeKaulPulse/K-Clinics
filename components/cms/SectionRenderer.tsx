@@ -8,6 +8,8 @@ import { MediaArt } from '@/components/ui/MediaArt';
 import { Marquee } from '@/components/ui/Marquee';
 import { CountUp } from '@/components/motion/CountUp';
 import { BookingButtons } from '@/components/booking/BookingButtons';
+import { EnquiryForm } from '@/components/contact/EnquiryForm';
+import { getSiteConfig } from '@/lib/site-config';
 
 // Renders an array of CMS sections as native, on-brand markup. Server component.
 export function SectionRenderer({ sections }: { sections: Section[] }) {
@@ -179,9 +181,93 @@ function SectionView({ section: { type, data } }: { section: Section }) {
       return <div className="border-y border-[var(--color-line)] py-6"><Marquee items={items} /></div>;
     }
 
+    case 'tags':
+      return (
+        <section className="container-lux section-sm">
+          {(str(data.eyebrow) || str(data.heading)) && (
+            <div className="mb-6">
+              {str(data.eyebrow) && <p className="eyebrow mb-3">{str(data.eyebrow)}</p>}
+              {str(data.heading) && <h2 className="text-title">{str(data.heading)}</h2>}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {arr<{ label: string }>(data.items).map((it, i) => (
+              <span key={i} className="rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm text-[var(--color-ink-soft)]">{it.label}</span>
+            ))}
+          </div>
+        </section>
+      );
+
+    case 'contactInfo':
+      return <ContactInfoSection data={data} />;
+    case 'map':
+      return <MapSection data={data} />;
+    case 'enquiryForm':
+      return (
+        <section className="bg-[var(--color-bone)] section">
+          <div className="container-lux grid gap-12 lg:grid-cols-[0.7fr_1.3fr] lg:items-start">
+            <Reveal>
+              <div className="lg:sticky lg:top-28">
+                {str(data.eyebrow) && <p className="eyebrow mb-4">{str(data.eyebrow)}</p>}
+                <h2 className="text-title">{str(data.heading, 'Get in touch')}</h2>
+                {str(data.intro) && <p className="mt-5 text-[var(--color-stone)]">{str(data.intro)}</p>}
+              </div>
+            </Reveal>
+            <Reveal delay={0.1}><EnquiryForm /></Reveal>
+          </div>
+        </section>
+      );
+
     default:
       return null;
   }
+}
+
+// Pulls live contact details from Site settings so they stay in sync.
+async function ContactInfoSection({ data }: { data: Record<string, unknown> }) {
+  const c = await getSiteConfig();
+  return (
+    <section className="container-lux section-sm">
+      <div className="space-y-8">
+        {str(data.heading) && <h2 className="text-title">{str(data.heading)}</h2>}
+        <div>
+          <p className="eyebrow mb-3">Address</p>
+          <p className="font-[family-name:var(--font-display)] text-2xl leading-snug">{c.address.street}<br />{c.address.locality}<br />{c.address.region} {c.address.postalCode}</p>
+          <a href={c.mapLink} target="_blank" rel="noopener noreferrer" className="link-underline mt-3 inline-block text-sm font-medium text-[var(--color-gold)]">Get directions →</a>
+        </div>
+        <div className="grid grid-cols-2 gap-8">
+          <div><p className="eyebrow mb-2">Call</p><a href={c.phoneHref} className="link-underline text-lg">{c.phone}</a></div>
+          <div><p className="eyebrow mb-2">Email</p><a href={c.emailHref} className="link-underline text-lg">{c.email}</a></div>
+        </div>
+        {data.showHours !== false && (
+          <div>
+            <p className="eyebrow mb-3">Opening hours</p>
+            <ul className="divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
+              {c.hours.map((h) => (
+                <li key={h.day} className="flex items-center justify-between py-2.5 text-sm">
+                  <span className="text-[var(--color-ink-soft)]">{h.day}</span>
+                  <span className={h.open === 'Closed' ? 'text-[var(--color-stone)]' : 'font-medium'}>{h.open === 'Closed' ? 'Closed' : `${h.open} – ${h.close}`}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {data.showBooking !== false && <div><p className="eyebrow mb-4">Book instantly</p><BookingButtons /></div>}
+      </div>
+    </section>
+  );
+}
+
+async function MapSection({ data }: { data: Record<string, unknown> }) {
+  const c = await getSiteConfig();
+  const h = str(data.height, 'md') === 'lg' ? 'min-h-[34rem]' : str(data.height) === 'sm' ? 'min-h-[20rem]' : 'min-h-[28rem]';
+  return (
+    <section className="container-lux section-sm">
+      <div className={`overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] shadow-[var(--shadow-soft)] ${h}`}>
+        <iframe title="KClinics location map" src={c.mapEmbed} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className={`w-full grayscale-[0.2] ${h}`} />
+      </div>
+    </section>
+  );
 }
 
 const PROSE_CSS = `
