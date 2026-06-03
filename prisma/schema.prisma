@@ -2032,3 +2032,16 @@ model HeatmapEvent {
   @@index([path, type])
   @@index([at])
 }
+
+// ── Audience segments ────────────────────────────────────────────────────────
+// Reusable, rule-based client segments for campaign + email targeting. Rules are
+// evaluated against Client fields (gender, source, tags, opt-in, recency).
+model Segment {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  rules       Json     // { gender?, source?, tag?, lapsedDays?, optInOnly?, visited? }
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
