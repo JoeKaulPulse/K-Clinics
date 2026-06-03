@@ -30,14 +30,34 @@ if (isPages || !dbUrl) {
   process.exit(0);
 }
 
-try {
-  console.log('[db-sync] prisma db push — syncing schema to the database…');
-  execSync('npx prisma db push --skip-generate --accept-data-loss', {
-    stdio: 'inherit',
-    env: { ...process.env, DATABASE_URL: dbUrl },
-  });
-  console.log('[db-sync] done.');
-} catch (err) {
-  console.error('[db-sync] WARNING: schema sync failed — deploy continues. Error:', err?.message || err);
-  process.exit(0);
+// Sync the schema, retrying a few times to ride out a transient DB blip. If it
+// STILL can't reach the database, FAIL the build — better to keep the last good
+// deploy than to ship code whose Prisma client expects schema the database
+// doesn't have (which silently breaks the app once the DB is back).
+const ATTEMPTS = 3;
+const sleep = (s) => { try { execSync(`sleep ${s}`); } catch { /* non-posix shell */ } };
+
+for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+  try {
+    console.log(`[db-sync] prisma db push — syncing schema (attempt ${attempt}/${ATTEMPTS})…`);
+    execSync('npx prisma db push --skip-generate --accept-data-loss', {
+      stdio: 'inherit',
+      env: { ...process.env, DATABASE_URL: dbUrl },
+    });
+    console.log('[db-sync] done.');
+    process.exit(0);
+  } catch (err) {
+    console.error(`[db-sync] attempt ${attempt}/${ATTEMPTS} failed:`, err?.message || err);
+    if (attempt < ATTEMPTS) {
+      const wait = attempt * 5; // 5s, then 10s
+      console.error(`[db-sync] retrying in ${wait}s…`);
+      sleep(wait);
+    }
+  }
 }
+
+console.error(
+  '[db-sync] FATAL: could not sync the schema after retries. Failing the build so we never deploy code ahead of the database. ' +
+  'Check the database is reachable (e.g. not suspended) and redeploy.',
+);
+process.exit(1);
