@@ -1767,6 +1767,28 @@ model PageRevision {
   @@index([pageId, createdAt])
 }
 
+// Per-treatment marketing content override. Keyed by Treatment.slug; any field
+// set here replaces the static copy in lib/treatments.ts on the /[slug] page.
+// Edited from Admin → Services → a service's "Edit page content".
+model TreatmentContent {
+  slug            String   @id
+  title           String?
+  tagline         String?
+  eyebrow         String?
+  intro           String?
+  metaTitle       String?
+  metaDescription String?
+  keywords        String[] @default([])
+  priceFrom       String?
+  benefits        Json?    // { title, text }[]
+  process         Json?    // { title, text }[]
+  faqs            Json?    // { q, a }[]
+  facts           Json?    // { label, value }[]
+  related         String[] @default([])
+  updatedAt       DateTime @updatedAt
+  updatedBy       String?
+}
+
 // Uploaded media (Vercel Blob). The library powering image pickers across the
 // admin (journal covers, page builder sections, etc.).
 model MediaAsset {

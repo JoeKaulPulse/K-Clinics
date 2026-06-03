@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { getTreatment, treatmentSlugs, bookingFor } from '@/lib/treatments';
+import { treatmentSlugs, bookingFor } from '@/lib/treatments';
+import { getMergedTreatment } from '@/lib/treatment-content';
 import { TreatmentTemplate } from '@/components/treatment/TreatmentTemplate';
 import { pageMeta, JsonLd, serviceLd, faqLd, breadcrumbLd } from '@/lib/seo';
 
@@ -18,7 +19,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const t = getTreatment(slug);
+  const t = await getMergedTreatment(slug);
   if (!t) return {};
   // Override merge (title/description/canonical/OG/noindex) is centralised in pageMeta.
   return pageMeta({
@@ -32,7 +33,7 @@ export async function generateMetadata({
 
 export default async function TreatmentPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const t = getTreatment(slug);
+  const t = await getMergedTreatment(slug);
   if (!t) notFound();
 
   const categoryHref = t.category === 'aesthetics' ? '/treatments' : '/dentistry';

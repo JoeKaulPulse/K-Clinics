@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { parsePriceMatrix } from '@/lib/price-import';
 
 type Variant = { id: string; name: string; durationMin: number; pricePence: number; costPence: number | null; courses: { sessions: number; totalPence: number }[] };
-type Service = { id: string; slug: string; name: string; category: string; active: boolean; variants: Variant[] };
+type Service = { id: string; slug: string; treatmentSlug: string; name: string; category: string; active: boolean; variants: Variant[] };
 type Offer = { id: string; name: string; scope: string; serviceId: string | null; variantId: string | null; percentOff: number | null; amountOffPence: number | null; startAt: string | null; endAt: string | null; promoted: boolean };
 type TreatmentOpt = { slug: string; title: string; category: string };
 
@@ -169,7 +170,10 @@ function ServiceCard({ service }: { service: Service }) {
           <h3 className="font-[family-name:var(--font-display)] text-lg">{service.name}</h3>
           <p className="text-xs text-[var(--color-stone-soft)]">{service.variants.length} variant(s) · {service.category} · {open ? 'hide' : 'show'}</p>
         </button>
-        <button onClick={() => act({ op: 'updateService', id: service.id, active: !service.active })} className="text-xs text-[var(--color-stone)] hover:underline">{service.active ? 'Disable' : 'Enable'}</button>
+        <div className="flex items-center gap-3">
+          <Link href={`/admin/services/content/${service.treatmentSlug}`} className="text-xs font-medium text-[var(--color-gold)] hover:underline">Edit page content →</Link>
+          <button onClick={() => act({ op: 'updateService', id: service.id, active: !service.active })} className="text-xs text-[var(--color-stone)] hover:underline">{service.active ? 'Disable' : 'Enable'}</button>
+        </div>
       </div>
       {open && (
         <div className="mt-4 overflow-x-auto">
