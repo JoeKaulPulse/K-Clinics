@@ -48,6 +48,18 @@ export const SECTION_DEFS: SectionDef[] = [
     ],
   },
   {
+    type: 'abHeadline', label: 'A/B test hero', glyph: '⇄',
+    description: 'A hero whose headline/CTA is split-tested. Create the test in Marketing → A/B testing, then enter its code here.',
+    defaults: { testSlug: '', headline: 'Your headline', subhead: '', ctaLabel: 'Book now', ctaHref: '/book' },
+    fields: [
+      { key: 'testSlug', label: 'A/B test code', type: 'text', placeholder: 'e.g. valentines-hero' },
+      { key: 'headline', label: 'Fallback headline', type: 'textarea' },
+      { key: 'subhead', label: 'Fallback subhead', type: 'textarea' },
+      { key: 'ctaLabel', label: 'Fallback CTA label', type: 'text' },
+      { key: 'ctaHref', label: 'Fallback CTA link', type: 'link', placeholder: '/book' },
+    ],
+  },
+  {
     type: 'hero', label: 'Hero', glyph: '◖', description: 'Full-width page header with heading, intro and buttons.',
     defaults: { eyebrow: '', title: 'Heading', lede: '', image: '', ctaPrimaryLabel: 'Book now', ctaPrimaryHref: '/book', ctaSecondaryLabel: '', ctaSecondaryHref: '' },
     fields: [

@@ -10,6 +10,7 @@ import { CountUp } from '@/components/motion/CountUp';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { EnquiryForm } from '@/components/contact/EnquiryForm';
 import { PersonalizedRail } from '@/components/marketing/PersonalizedRail';
+import { AbBlock } from '@/components/marketing/AbBlock';
 import { getSiteConfig } from '@/lib/site-config';
 
 // Renders an array of CMS sections as native, on-brand markup. Server component.
@@ -77,6 +78,14 @@ function CmsButton({ label, href, variant = 'ink' }: { label: string; href: stri
 
 function SectionView({ section: { type, data } }: { section: Section }) {
   switch (type) {
+    case 'abHeadline':
+      return (
+        <AbBlock
+          slug={str(data.testSlug)}
+          fallback={{ headline: str(data.headline) || undefined, subhead: str(data.subhead) || undefined, ctaLabel: str(data.ctaLabel) || undefined, ctaHref: str(data.ctaHref) || undefined }}
+        />
+      );
+
     case 'personalizedTreatments':
       return (
         <PersonalizedRail
