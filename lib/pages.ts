@@ -11,16 +11,20 @@ const normPath = (p: string) => '/' + String(p || '').trim().replace(/^\/+|\/+$/
 
 async function loadPublished(path: string): Promise<Section[] | null> {
   try {
-    const row = await db.page.findUnique({ where: { path: normPath(path) }, select: { published: true, status: true } });
+    const row = await db.page.findUnique({ where: { path: normPath(path) }, select: { published: true, status: true, publishAt: true, unpublishAt: true } });
     if (!row || row.status !== 'PUBLISHED' || !row.published) return null;
+    const now = Date.now();
+    if (row.publishAt && now < +row.publishAt) return null;      // not yet live
+    if (row.unpublishAt && now >= +row.unpublishAt) return null; // window passed
     const sections = asSections(row.published);
     return sections.length ? sections : null;
   } catch { return null; }
 }
 
-/** Published sections for a route, or null to fall back to the coded page. */
+/** Published sections for a route, or null to fall back to the coded page.
+ *  Short revalidate so scheduled publish/unpublish windows flip on their own. */
 export function getPublishedPage(path: string) {
-  return unstable_cache(() => loadPublished(path), ['cms-page', normPath(path)], { tags: [PAGES_TAG], revalidate: 3600 })();
+  return unstable_cache(() => loadPublished(path), ['cms-page', normPath(path)], { tags: [PAGES_TAG], revalidate: 300 })();
 }
 
 export async function listPages() {
@@ -36,6 +40,8 @@ export async function getPageForEdit(id: string) {
     return {
       id: p.id, path: p.path, title: p.title ?? '', status: p.status as 'DRAFT' | 'PUBLISHED',
       draft: asSections(p.draft), hasPublished: !!p.published,
+      publishAt: p.publishAt ? p.publishAt.toISOString() : null,
+      unpublishAt: p.unpublishAt ? p.unpublishAt.toISOString() : null,
     };
   } catch { return null; }
 }

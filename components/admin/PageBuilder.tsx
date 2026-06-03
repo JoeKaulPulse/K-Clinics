@@ -7,7 +7,7 @@ import { SectionFields } from '@/components/admin/SectionFields';
 import { MediaField } from '@/components/admin/MediaPicker';
 
 type Revision = { id: string; label: string | null; createdAt: string; createdBy: string | null };
-type Initial = { id: string; path: string; title: string; status: 'DRAFT' | 'PUBLISHED'; draft: Section[]; hasPublished: boolean };
+type Initial = { id: string; path: string; title: string; status: 'DRAFT' | 'PUBLISHED'; draft: Section[]; hasPublished: boolean; publishAt?: string | null; unpublishAt?: string | null };
 type Seo = { title: string; description: string; ogImage: string; noindex: boolean };
 
 const card = 'rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]';
@@ -37,6 +37,9 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit }: { initia
   const [previewOn, setPreviewOn] = useState(false);
   const [device, setDevice] = useState<Device>('desktop');
   const [nonce, setNonce] = useState(0);
+  const toLocal = (iso?: string | null) => (iso ? new Date(iso).toISOString().slice(0, 16) : '');
+  const [publishAt, setPublishAt] = useState(toLocal(initial.publishAt));
+  const [unpublishAt, setUnpublishAt] = useState(toLocal(initial.unpublishAt));
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Any content mutation marks the page dirty.
@@ -65,7 +68,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit }: { initia
 
   const saveDraftSilent = useCallback(async () => { setBusy(true); const ok = await call('saveDraft'); setBusy(false); if (ok) { setDirty(false); setSavedTick((t) => t + 1); } return ok; }, [call]);
   const saveDraft = async () => { if (await saveDraftSilent()) setMsg({ kind: 'ok', text: 'Draft saved.' }); router.refresh(); };
-  const publish = async () => { setBusy(true); const ok = await call('publish'); setBusy(false); if (ok) { setStatus('PUBLISHED'); setHasPublished(true); setDirty(false); setMsg({ kind: 'ok', text: 'Published — live now.' }); setNonce((n) => n + 1); router.refresh(); } };
+  const publish = async () => { setBusy(true); const ok = await call('publish', { publishAt: publishAt || null, unpublishAt: unpublishAt || null }); setBusy(false); if (ok) { setStatus('PUBLISHED'); setHasPublished(true); setDirty(false); const future = publishAt && new Date(publishAt) > new Date(); setMsg({ kind: 'ok', text: future ? `Scheduled for ${new Date(publishAt).toLocaleString('en-GB')}.` : 'Published — live now.' }); setNonce((n) => n + 1); router.refresh(); } };
   const unpublish = async () => { if (confirm('Unpublish? The route reverts to its built-in version.') && await call('unpublish')) { setStatus('DRAFT'); setHasPublished(false); setMsg({ kind: 'ok', text: 'Unpublished.' }); router.refresh(); } };
   const rollback = async (revisionId: string) => { if (confirm('Restore this version and publish it?') && await call('rollback', { revisionId })) { setStatus('PUBLISHED'); setDirty(false); router.refresh(); } };
   const del = async () => { if (confirm('Delete this page entirely?') && await call('delete')) router.push('/admin/pages'); };
@@ -197,6 +200,15 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit }: { initia
               <input className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={title} placeholder={initial.path} onChange={(e) => setTitle(e.target.value)} />
               {hasPublished && <button disabled={busy} onClick={unpublish} className="mt-4 text-sm text-[var(--color-stone)] hover:text-[#c0392b] disabled:opacity-50">Unpublish</button>}
             </div>
+            <div className={`${card} p-4`}>
+              <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-stone)]">Schedule</h3>
+              <div className="space-y-3">
+                <div><label className="mb-1 block text-xs text-[var(--color-stone)]">Go live at <span className="text-[var(--color-stone-soft)]">(optional)</span></label><input type="datetime-local" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={publishAt} onChange={(e) => setPublishAt(e.target.value)} /></div>
+                <div><label className="mb-1 block text-xs text-[var(--color-stone)]">Take down at <span className="text-[var(--color-stone-soft)]">(optional)</span></label><input type="datetime-local" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={unpublishAt} onChange={(e) => setUnpublishAt(e.target.value)} /></div>
+                <p className="text-xs text-[var(--color-stone-soft)]">Set a future go-live, then press Publish to schedule. Windows apply within a few minutes.</p>
+              </div>
+            </div>
+
             <div className={`${card} p-4`}>
               <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-stone)]">SEO</h3>
               <div className="space-y-3">
