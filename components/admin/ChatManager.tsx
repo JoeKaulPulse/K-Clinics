@@ -33,10 +33,18 @@ export function ChatManager() {
   async function open(id: string) { setActiveId(id); setConvos((c) => c.map((x) => (x.id === id ? { ...x, staffUnread: 0 } : x))); }
   async function reply() {
     const body = draft.trim(); if (!body || !activeId) return;
+    const tmpId = `tmp-${Date.now()}`;
     setBusy(true); setDraft('');
-    setMsgs((m) => [...m, { id: `tmp-${Date.now()}`, sender: 'STAFF', author: 'you', body, createdAt: new Date().toISOString() }]);
-    await post({ op: 'reply', conversationId: activeId, body });
-    setBusy(false); loadThread(activeId); loadList();
+    setMsgs((m) => [...m, { id: tmpId, sender: 'STAFF', author: 'you', body, createdAt: new Date().toISOString() }]);
+    const r = await post({ op: 'reply', conversationId: activeId, body });
+    setBusy(false);
+    if (r.ok) { loadThread(activeId); loadList(); }
+    else {
+      // Roll back the optimistic bubble and restore the draft so nothing is lost.
+      setMsgs((m) => m.filter((x) => x.id !== tmpId));
+      setDraft(body);
+      alert(r.error || 'Your reply could not be sent. Please try again.');
+    }
   }
   async function close() { if (!activeId) return; await post({ op: 'close', conversationId: activeId }); loadThread(activeId); loadList(); }
   async function setMode(mode: 'AI' | 'STAFF') {

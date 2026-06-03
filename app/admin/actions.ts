@@ -91,17 +91,25 @@ export async function togglePinNote(noteId: string, clientId: string, pinned: bo
   revalidatePath(`/admin/clients/${clientId}`);
 }
 
-export async function setConsultStatus(consultId: string, clientId: string, status: string) {
-  if (!crmEnabled) return;
+const CONSULT_STATUSES = ['NEW', 'CONTACTED', 'BOOKED', 'COMPLETED', 'CLOSED'];
+
+export async function setConsultStatus(consultId: string, clientId: string, status: string): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'Unavailable.' };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'consultations.manage')) return;
+  if (!session || !sessionCan(session, 'consultations.manage')) return { ok: false, error: 'You don’t have permission to change consultation status.' };
+  if (!CONSULT_STATUSES.includes(status)) return { ok: false, error: 'Invalid status.' };
   const { db } = await import('@/lib/db');
-  await db.consultation.update({ where: { id: consultId }, data: { status: status as never } });
+  try {
+    await db.consultation.update({ where: { id: consultId }, data: { status: status as never } });
+  } catch {
+    return { ok: false, error: 'Could not update the consultation.' };
+  }
   await db.interaction.create({
     data: { clientId, type: 'SYSTEM', summary: `Status changed to ${status}`, author: session.email },
   });
   revalidatePath(`/admin/clients/${clientId}`);
   revalidatePath('/admin/consultations');
+  return { ok: true };
 }
 
 export async function sendManualEmail(clientId: string, to: string, subject: string, body: string) {

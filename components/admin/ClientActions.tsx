@@ -16,11 +16,20 @@ const NOTE_TYPE_OPTIONS = [
 
 export function StatusSelect({ consultId, clientId, current }: { consultId: string; clientId: string; current: string }) {
   const [pending, start] = useTransition();
+  const [value, setValue] = useState(current);
   return (
     <select
-      defaultValue={current}
+      value={value}
       disabled={pending}
-      onChange={(e) => start(() => setConsultStatus(consultId, clientId, e.target.value))}
+      onChange={(e) => {
+        const next = e.target.value;
+        const prev = value;
+        setValue(next);
+        start(async () => {
+          const r = await setConsultStatus(consultId, clientId, next);
+          if (r && r.ok === false) { setValue(prev); alert(r.error || 'Could not update status.'); }
+        });
+      }}
       className="rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1 text-xs outline-none focus:border-[var(--color-gold)]"
     >
       {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}

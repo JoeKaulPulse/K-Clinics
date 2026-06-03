@@ -61,10 +61,9 @@ export async function POST(req: Request) {
       const to = String(b.to || '').trim();
       if (!to) return NextResponse.json({ ok: false, error: 'No number to dial.' }, { status: 400 });
       const { clickToCall } = await import('@/lib/yay');
-      // Agent = the staff member's yay extension (set on their profile) or the
-      // extension passed from the client; falls back to their email handle.
-      const agent = String(b.agent || session.email);
-      const res = await clickToCall({ agent, to });
+      // Agent is always the authenticated caller — never a request-supplied
+      // extension — so a user can only ring out from their own handset.
+      const res = await clickToCall({ agent: session.email, to });
       return NextResponse.json(res, { status: res.ok ? 200 : 400 });
     }
   }

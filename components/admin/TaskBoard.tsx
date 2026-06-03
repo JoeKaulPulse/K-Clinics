@@ -132,17 +132,21 @@ function Row({ t, staff, uk }: { t: Task; staff: Staff[]; uk: boolean }) {
 
   async function toggle() {
     setBusy(true);
-    await post({ op: done ? 'reopen' : 'complete', id: t.id });
-    setBusy(false); router.refresh();
+    const ok = await post({ op: done ? 'reopen' : 'complete', id: t.id });
+    setBusy(false);
+    if (ok) router.refresh();
+    else alert(L('Could not update this task.', 'Не вдалося оновити завдання.'));
   }
   async function reassign(assigneeId: string) {
-    await post({ op: 'assign', id: t.id, assigneeId });
-    router.refresh();
+    const ok = await post({ op: 'assign', id: t.id, assigneeId });
+    if (ok) router.refresh();
+    else alert(L('Could not reassign this task.', 'Не вдалося перепризначити завдання.'));
   }
   async function remove() {
     if (!confirm(L('Delete this task?', 'Видалити це завдання?'))) return;
-    await post({ op: 'delete', id: t.id });
-    router.refresh();
+    const ok = await post({ op: 'delete', id: t.id });
+    if (ok) router.refresh();
+    else alert(L('Could not delete this task.', 'Не вдалося видалити завдання.'));
   }
 
   return (
