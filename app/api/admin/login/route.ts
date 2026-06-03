@@ -4,7 +4,26 @@ import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
 
+// A database that's unreachable (e.g. briefly suspended) should surface as a
+// calm "try again" 503, not a raw 500 that the UI shows as a "network error".
+function isDbUnavailable(e: unknown): boolean {
+  const name = (e as { name?: string })?.name || '';
+  const msg = (e as Error)?.message || '';
+  return name === 'PrismaClientInitializationError' || /can'?t reach database|connection|ECONNREFUSED|ETIMEDOUT|terminated/i.test(msg);
+}
+
 export async function POST(req: Request) {
+  try {
+    return await handleLogin(req);
+  } catch (e) {
+    if (isDbUnavailable(e)) {
+      return NextResponse.json({ ok: false, error: 'The service is temporarily unavailable. Please try again in a moment.' }, { status: 503 });
+    }
+    throw e;
+  }
+}
+
+async function handleLogin(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'CRM is not enabled in this environment.' }, { status: 503 });
 
   const raw = await req.json().catch(() => ({}));
