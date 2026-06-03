@@ -9,7 +9,7 @@ export type OrderRow = {
 };
 
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
-const STATUS: Record<string, string> = { PAID: 'bg-blue-100 text-blue-800', FULFILLED: 'bg-green-100 text-green-800', REFUNDED: 'bg-[var(--color-bone)] text-[var(--color-stone)]', CANCELLED: 'bg-[var(--color-blush)]/30 text-[var(--color-ink)]' };
+const STATUS: Record<string, string> = { PENDING: 'bg-amber-100 text-amber-800', PAID: 'bg-blue-100 text-blue-800', FULFILLED: 'bg-green-100 text-green-800', REFUNDED: 'bg-[var(--color-bone)] text-[var(--color-stone)]', CANCELLED: 'bg-[var(--color-blush)]/30 text-[var(--color-ink)]' };
 
 export function OrdersManager({ rows, canManage }: { rows: OrderRow[]; canManage: boolean }) {
   const [open, setOpen] = useState<string | null>(null);
@@ -31,7 +31,17 @@ export function OrdersManager({ rows, canManage }: { rows: OrderRow[]; canManage
 function Row({ r, open, onToggle, canManage }: { r: OrderRow; open: boolean; onToggle: () => void; canManage: boolean }) {
   const router = useRouter();
   const [tracking, setTracking] = useState(r.trackingNote);
-  async function update(payload: object) { await fetch('/api/admin/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id, ...payload }) }); router.refresh(); }
+  const [busy, setBusy] = useState(false);
+  async function update(payload: object) {
+    setBusy(true);
+    const res = await fetch('/api/admin/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id, ...payload }) });
+    setBusy(false);
+    if (res.ok) router.refresh();
+    else { const j = await res.json().catch(() => ({})); alert(j.error || 'Could not update this order.'); }
+  }
+  // A closed order (refunded/cancelled) shouldn't be silently flipped back to
+  // FULFILLED just because its shipping note changes — only promote PAID orders.
+  const closed = r.status === 'REFUNDED' || r.status === 'CANCELLED';
   return (
     <>
       <tr className="cursor-pointer border-t border-[var(--color-line)] hover:bg-[var(--color-bone)]/50" onClick={onToggle}>
@@ -53,17 +63,19 @@ function Row({ r, open, onToggle, canManage }: { r: OrderRow; open: boolean; onT
             {canManage && (
               <div className="space-y-2">
                 <label className="block text-xs text-[var(--color-stone)]">Fulfilment
-                  <select defaultValue={r.fulfillment} onChange={(e) => update({ fulfillment: e.target.value, status: e.target.value === 'unfulfilled' ? undefined : 'FULFILLED' })} className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm">
+                  <select disabled={busy} defaultValue={r.fulfillment} onChange={(e) => update({ fulfillment: e.target.value, status: e.target.value !== 'unfulfilled' && r.status === 'PAID' ? 'FULFILLED' : undefined })} className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-50">
                     <option value="unfulfilled">Unfulfilled</option><option value="shipped">Shipped</option><option value="collected">Collected</option>
                   </select>
                 </label>
                 <label className="block text-xs text-[var(--color-stone)]">Tracking / note
-                  <input value={tracking} onChange={(e) => setTracking(e.target.value)} onBlur={() => tracking !== r.trackingNote && update({ trackingNote: tracking })} className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm" />
+                  <input disabled={busy} value={tracking} onChange={(e) => setTracking(e.target.value)} onBlur={() => tracking !== r.trackingNote && update({ trackingNote: tracking })} className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-50" />
                 </label>
-                <div className="flex gap-2 text-xs">
-                  <button onClick={() => update({ status: 'REFUNDED' })} className="text-[var(--color-stone)] hover:underline">Mark refunded</button>
-                  <button onClick={() => update({ status: 'CANCELLED' })} className="text-[var(--color-blush)] hover:underline">Cancel</button>
-                </div>
+                {!closed && (
+                  <div className="flex gap-3 text-xs">
+                    <button disabled={busy} onClick={() => { if (confirm(`Mark order ${r.number} as refunded? Refund the payment in Stripe separately.`)) update({ status: 'REFUNDED' }); }} className="text-[var(--color-stone)] hover:underline disabled:opacity-50">Mark refunded</button>
+                    <button disabled={busy} onClick={() => { if (confirm(`Cancel order ${r.number}? This can't be undone here.`)) update({ status: 'CANCELLED' }); }} className="text-[var(--color-blush)] hover:underline disabled:opacity-50">Cancel</button>
+                  </div>
+                )}
               </div>
             )}
           </div>

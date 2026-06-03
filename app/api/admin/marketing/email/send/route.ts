@@ -47,12 +47,24 @@ export async function POST(req: Request) {
 
   const campaign = await db.campaign.create({ data: { name, subject, body: JSON.stringify(blocks), segment: aud.type === 'all' ? null : String(aud.value || '') } });
 
+  // Send with bounded concurrency so large audiences don't run serially (and
+  // time out). Each send is wrapped so a thrown error counts as a failure for
+  // that recipient rather than aborting the whole campaign half-way.
   let sent = 0, failed = 0;
-  for (const c of recipients) {
+  const CONCURRENCY = 8;
+  async function deliver(c: (typeof recipients)[number]) {
     const html = emailShell({ body: bodyHtml, preheader: subject, unsubUrl: `${SITE}/api/unsubscribe?t=${c.unsubToken}` });
-    const res = await sendEmail({ to: c.email, subject, html });
+    let res: { ok: boolean; id?: string; error?: string };
+    try {
+      res = await sendEmail({ to: c.email, subject, html });
+    } catch (e) {
+      res = { ok: false, error: (e as Error)?.message?.slice(0, 200) || 'Send failed.' };
+    }
     res.ok ? sent++ : failed++;
     await db.emailEvent.create({ data: { clientId: c.id, kind: 'CAMPAIGN', to: c.email, subject, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, campaignId: campaign.id } }).catch(() => {});
+  }
+  for (let i = 0; i < recipients.length; i += CONCURRENCY) {
+    await Promise.all(recipients.slice(i, i + CONCURRENCY).map(deliver));
   }
 
   const { logAudit } = await import('@/lib/audit');
