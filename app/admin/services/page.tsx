@@ -29,7 +29,7 @@ export default async function ServicesPage() {
       </p>
       <div className="mt-8">
         <ServicesManager
-          services={services.map((s) => ({ id: s.id, slug: s.slug, name: s.name, category: s.category, active: s.active, variants: s.variants }))}
+          services={services.map((s) => ({ id: s.id, slug: s.slug, treatmentSlug: s.treatmentSlug, name: s.name, category: s.category, active: s.active, variants: s.variants }))}
           offers={offers.map((o) => ({ ...o, startAt: o.startAt?.toISOString() ?? null, endAt: o.endAt?.toISOString() ?? null }))}
           treatments={treatmentOptions}
         />
