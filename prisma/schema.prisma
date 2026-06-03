@@ -149,6 +149,10 @@ enum AuditAction {
   REWARD_REDEEMED
   SERVICE_PRICES_BULK
   SETTINGS_UPDATED
+  CONSENT_REQUESTED
+  CONSENT_SIGNED
+  CONSENT_DECLINED
+  BEFORE_PHOTO_CAPTURED
   CLIENT_DELETED
 }
 
@@ -2044,4 +2048,71 @@ model Segment {
   createdBy   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// ── Consent forms (DocuSign-grade e-signature) ───────────────────────────────
+// Editable per-category templates; each signature is captured immutably with a
+// content hash, timestamps, IP and the exact text version signed. Held under the
+// Health Data API (AES-256-GCM + integrity HMAC).
+model ConsentTemplate {
+  id               String   @id @default(cuid())
+  key              String   @unique // general | laser | injectables | facials | dental | photo_opt_out
+  title            String
+  category         String   @default("general")
+  version          Int      @default(1)
+  bodyMd           String   // consent wording (markdown)
+  acknowledgements String[] @default([]) // required tick statements
+  active           Boolean  @default(true)
+  updatedBy        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+enum ConsentStatus {
+  PENDING
+  SIGNED
+  DECLINED
+  EXPIRED
+}
+
+// A request to sign a specific form for a specific client/appointment. Opens via
+// an unguessable token on a phone or the clinic iPad (no login needed).
+model ConsentRequest {
+  id              String        @id @default(cuid())
+  token           String        @unique @default(cuid())
+  clientId        String
+  bookingId       String?
+  templateKey     String
+  title           String
+  kind            String        @default("treatment") // treatment | photo_opt_out
+  status          ConsentStatus @default(PENDING)
+  signedConsentId String?
+  createdBy       String?
+  createdAt       DateTime      @default(now())
+  expiresAt       DateTime?
+
+  @@index([bookingId])
+  @@index([clientId, status])
+}
+
+// The immutable signed record. Never updated — a correction is a new record.
+model SignedConsent {
+  id              String   @id @default(cuid())
+  clientId        String
+  bookingId       String?
+  templateKey     String
+  templateVersion Int
+  title           String
+  kind            String   @default("treatment")
+  declined        Boolean  @default(false)
+  signerName      String
+  cipher          String   // encrypted JSON: body, ticks, signature image, timestamps, IP, UA
+  integrityHash   String   // HMAC binding cipher to metadata
+  contentHash     String   // SHA-256 of the canonical signed payload (certificate id)
+  signedAt        DateTime @default(now())
+  ip              String?
+  createdAt       DateTime @default(now())
+
+  @@index([bookingId])
+  @@index([clientId])
 }

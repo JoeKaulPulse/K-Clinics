@@ -14,7 +14,9 @@ export type SettingKey =
   | 'multi_location_enabled'     // surface location pickers across the CRM
   | 'room_equipment_binding'     // equipment is tied to the room it sits in
   | 'ai_consultation_enabled'    // K Vision AI photo consultation is live
-  | 'review_requests_enabled';   // auto-send a review request after a treatment
+  | 'review_requests_enabled'    // auto-send a review request after a treatment
+  | 'require_consent'            // signed treatment consent required before starting
+  | 'require_before_photo';      // laser: before-photo (or signed opt-out) required before starting
 
 export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   allow_clinician_choice: false,
@@ -27,6 +29,8 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   room_equipment_binding: false,
   ai_consultation_enabled: true,
   review_requests_enabled: true,
+  require_consent: false,
+  require_before_photo: true,
 };
 
 export const SETTING_META: Record<SettingKey, { label: string; description: string }> = {
@@ -69,6 +73,14 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   review_requests_enabled: {
     label: 'Post-treatment review requests',
     description: 'Automatically invite clients to leave a review after a completed treatment (email; SMS when configured).',
+  },
+  require_consent: {
+    label: 'Require signed consent before treatment',
+    description: 'An appointment can’t be started until the client has e-signed the consent form for that treatment. Enable once your consent wording is approved.',
+  },
+  require_before_photo: {
+    label: 'Require before-photo for laser',
+    description: 'Laser appointments can’t be started until a before-photo is captured in-app, or the client has signed a photo opt-out. Strongly recommended for insurance.',
   },
 };
 

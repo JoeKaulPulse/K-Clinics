@@ -105,6 +105,11 @@ export async function startAppointment(bookingId: string) {
   if ((await getSetting('require_medical_review')) && b.client.medicalFlag && !b.medicalFlagReviewedAt) {
     return { ok: false, error: 'Please review the client’s medical flag before starting.' };
   }
+  // Consent gate: a signed treatment consent must exist for this appointment.
+  if (await getSetting('require_consent')) {
+    const consent = await db.signedConsent.findFirst({ where: { bookingId, kind: 'treatment' }, select: { id: true } });
+    if (!consent) return { ok: false, error: 'The client must sign the treatment consent form before starting.' };
+  }
 
   await db.booking.update({ where: { id: bookingId }, data: { startedAt: new Date() } });
   await logAudit({ action: 'APPOINTMENT_STARTED', actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId, summary: 'Appointment started (clock running)' });

@@ -9,7 +9,9 @@ import { ClinicalWorkflow } from '@/components/admin/ClinicalWorkflow';
 import { ConsumablesPanel } from '@/components/admin/ConsumablesPanel';
 import { ClinicalNote } from '@/components/admin/ClinicalNote';
 import { BookingLocation } from '@/components/admin/BookingLocation';
+import { ConsentPanel } from '@/components/admin/ConsentPanel';
 import { sessionCan } from '@/lib/auth';
+import { site } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +30,17 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const name = [b.client.firstName, b.client.lastName].filter(Boolean).join(' ');
   const sop = await getSop(b.treatmentSlug);
   const sopSteps = parseSopSteps(sop.content);
+
+  // Consent: the form mapped to this treatment + any signed/pending records.
+  const { db } = await import('@/lib/db');
+  const { categoryForTreatment, ensureDefaultTemplates } = await import('@/lib/consent');
+  await ensureDefaultTemplates();
+  const consentKey = await categoryForTreatment(b.treatmentSlug);
+  const [consentTemplate, signedConsents, pendingConsents] = await Promise.all([
+    db.consentTemplate.findUnique({ where: { key: consentKey } }),
+    db.signedConsent.findMany({ where: { bookingId: b.id }, orderBy: { signedAt: 'desc' }, select: { id: true, title: true, signedAt: true, declined: true, kind: true } }),
+    db.consentRequest.findMany({ where: { bookingId: b.id, status: 'PENDING' }, select: { token: true, title: true, kind: true } }),
+  ]);
   // Decrypt any saved SOP-checklist progress for this booking.
   let sopSaved: { step: string; checked: boolean; response?: string }[] | null = null;
   if (b.sopChecklistEnc) {
@@ -39,7 +52,6 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
 
   // Consumables (inventory) — items to pick from + what's already logged here.
   const canConsumables = sessionCan(session, 'bookings.manage') && sessionCan(session, 'inventory.view');
-  const { db } = await import('@/lib/db');
   // Rooms / equipment held by this booking (auto-assigned at booking).
   const heldResources = await db.resource.findMany({ where: { bookings: { some: { id } } }, orderBy: { kind: 'asc' }, select: { name: true, kind: true, floor: true } });
   // Hospitality + aftercare + recommended next session for staff.
@@ -155,6 +167,16 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
               durationMin: b.durationMin,
               status: b.status,
             }}
+          />
+          <ConsentPanel
+            bookingId={b.id}
+            clientId={b.client.id}
+            treatmentForm={consentTemplate && consentTemplate.active ? { key: consentTemplate.key, title: consentTemplate.title } : null}
+            signed={signedConsents.map((s) => ({ id: s.id, title: s.title, signedAt: s.signedAt.toISOString(), declined: s.declined, kind: s.kind }))}
+            pending={pendingConsents}
+            baseUrl={site.url.replace(/\/$/, '')}
+            canClinical={sessionCan(session, 'clients.clinical.view')}
+            canManage={sessionCan(session, 'bookings.manage')}
           />
           {canConsumables && <ConsumablesPanel bookingId={b.id} items={stockItems} used={used} />}
           {canClinical && <ClinicalNote bookingId={b.id} initial={clinicalNote} savedBy={b.clinicalNoteBy} savedAt={b.clinicalNoteAt ? b.clinicalNoteAt.toISOString() : null} />}
