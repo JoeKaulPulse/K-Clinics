@@ -36,6 +36,7 @@ export function CampaignAiPanel({ campaignId, enabled, initial }: { campaignId: 
   const [advice, setAdvice] = useState<CampaignAdvice | null>(null);
   const [busy, setBusy] = useState(false);
   const [optBusy, setOptBusy] = useState(false);
+  const [emailBusy, setEmailBusy] = useState(false);
   const [err, setErr] = useState('');
 
   async function generate() {
@@ -52,6 +53,27 @@ export function CampaignAiPanel({ campaignId, enabled, initial }: { campaignId: 
     const j = await res.json().catch(() => ({}));
     setOptBusy(false);
     if (j.ok) setAdvice(j.advice); else setErr(j.error || 'Failed');
+  }
+
+  // Turn the AI's email copy into composer blocks and open it as a draft, so
+  // staff can refine/personalise and send — no copy-paste.
+  async function createEmailDraft() {
+    if (!pack) return;
+    setEmailBusy(true); setErr('');
+    const paras = pack.email.body.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean);
+    const blocks = [
+      { type: 'heading', text: pack.email.headline || pack.email.subject, align: 'left' },
+      ...paras.map((text) => ({ type: 'paragraph', text, align: 'left' })),
+      { type: 'button', label: 'Book now', href: 'https://kclinics.co.uk/book', align: 'left' },
+    ];
+    const res = await fetch('/api/admin/marketing/email/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ op: 'saveDraft', name: pack.email.subject?.slice(0, 80) || 'AI draft', subject: pack.email.subject, preheader: pack.email.preview, blocks, audience: { type: 'all' } }),
+    });
+    const j = await res.json().catch(() => ({ ok: false }));
+    setEmailBusy(false);
+    if (j.ok && j.id) router.push(`/admin/marketing/email/new?id=${j.id}`);
+    else setErr(j.error || 'Could not create the email draft.');
   }
 
   return (
@@ -98,6 +120,9 @@ export function CampaignAiPanel({ campaignId, enabled, initial }: { campaignId: 
             <Copy label="Preview" text={pack.email.preview} />
             <Copy label="Headline" text={pack.email.headline} />
             <Copy label="Body" text={pack.email.body} multiline />
+            <button onClick={createEmailDraft} disabled={emailBusy} className="w-full rounded-full bg-[var(--color-gold)] px-4 py-2 text-sm text-white hover:bg-[var(--color-ink)] disabled:opacity-50">
+              {emailBusy ? 'Creating…' : 'Create email draft →'}
+            </button>
           </Group>
           <Group title="Landing page">
             <Copy label="Eyebrow" text={pack.landing.hero.eyebrow} />
