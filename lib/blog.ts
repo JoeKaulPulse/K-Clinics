@@ -2,6 +2,7 @@ import 'server-only';
 import { db } from './db';
 import { sortedArticles, getArticle, type Article, type ArticleBlock } from './articles';
 import { articleImage } from './treatment-images';
+import { asBlocks, htmlToBlocks, type Block } from './blocks';
 
 // DB-backed journal. Admin-managed Post rows are the source of truth; the native
 // curated articles (lib/articles.ts) still render for any slug NOT in the DB, so
@@ -73,4 +74,28 @@ export async function listAllPosts() {
 }
 export async function getPostById(id: string) {
   return db.post.findUnique({ where: { id } });
+}
+
+export type EditablePost = {
+  id: string; slug: string; title: string; excerpt: string | null; metaDescription: string | null;
+  content: string; category: string | null; coverImage: string | null; readMinutes: number;
+  keywords: string[]; related: string[]; status: 'DRAFT' | 'PUBLISHED';
+};
+
+/** Load a post for the block editor: its blocks (or imported HTML → blocks). */
+export async function getPostForEdit(id: string): Promise<{ post: EditablePost; blocks: Block[] } | null> {
+  const cols = { id: true, slug: true, title: true, excerpt: true, metaDescription: true, content: true, category: true, coverImage: true, readMinutes: true, keywords: true, related: true, status: true } as const;
+  let p: EditablePost | null;
+  let raw: unknown = null;
+  try {
+    const full = await db.post.findUnique({ where: { id } });
+    if (full) raw = (full as { blocks?: unknown }).blocks ?? null;
+    p = full as EditablePost | null;
+  } catch {
+    // `blocks` column not migrated yet → read the rest and derive from HTML.
+    p = (await db.post.findUnique({ where: { id }, select: cols })) as EditablePost | null;
+  }
+  if (!p) return null;
+  const blocks: Block[] = asBlocks(raw) ?? htmlToBlocks(p.content);
+  return { post: p, blocks };
 }

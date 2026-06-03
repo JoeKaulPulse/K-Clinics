@@ -129,5 +129,13 @@ const JOURNAL_PROSE_CSS = `
 .journal-prose img{max-width:100%;height:auto;border-radius:var(--radius-lg);margin:1.5rem 0;}
 .journal-prose blockquote{border-left:3px solid var(--color-gold);padding-left:1rem;margin:1.5rem 0;color:var(--color-stone);font-style:italic;}
 .journal-prose figure{margin:1.5rem 0;}
+.journal-prose figcaption{margin-top:0.5rem;font-size:0.85rem;color:var(--color-stone);text-align:center;}
+.journal-prose blockquote cite{display:block;margin-top:0.5rem;font-style:normal;font-size:0.85rem;color:var(--color-stone-soft);}
+.journal-prose hr{border:0;height:1px;background:linear-gradient(90deg,transparent,var(--color-line),transparent);margin:2.5rem 0;}
+.journal-prose .journal-callout{display:block;background:var(--color-bone);border:1px solid var(--color-line);border-left:3px solid var(--color-gold);border-radius:var(--radius-md);padding:1.1rem 1.3rem;margin:1.6rem 0;color:var(--color-ink-soft);}
+.journal-prose .journal-cta{margin:1.8rem 0;}
+.journal-prose .journal-cta a{display:inline-block;background:var(--color-ink);color:var(--color-porcelain);border-radius:999px;padding:0.7rem 1.6rem;text-decoration:none;font-weight:500;transition:background .2s;}
+.journal-prose .journal-cta a:hover{background:var(--color-gold);}
+.journal-prose code{background:var(--color-bone);border-radius:4px;padding:0.1rem 0.35rem;font-size:0.9em;}
 .journal-prose h2:first-child,.journal-prose h3:first-child{margin-top:0;}
 `;
