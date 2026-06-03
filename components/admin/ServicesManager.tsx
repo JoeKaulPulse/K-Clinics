@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { parsePriceMatrix } from '@/lib/price-import';
+import { PriceListUpload } from '@/components/admin/PriceListUpload';
 
 type Variant = { id: string; name: string; durationMin: number; pricePence: number; costPence: number | null; courses: { sessions: number; totalPence: number }[] };
 type Service = { id: string; slug: string; treatmentSlug: string; name: string; category: string; active: boolean; variants: Variant[] };
@@ -71,7 +72,9 @@ function ImportPanel({ services, treatments }: { services: Service[]; treatments
       </div>
 
       {open && (
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 space-y-4">
+          <PriceListUpload treatments={treatments} onImported={() => router.refresh()} />
+          <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone-soft)]">Or paste a single block manually</p>
           <div className="flex flex-wrap items-end gap-2">
             <label className="text-xs text-[var(--color-stone)]">Import into<br />
               <select value={target} onChange={(e) => setTarget(e.target.value)} className={field}>
