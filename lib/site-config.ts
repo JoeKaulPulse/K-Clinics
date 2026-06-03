@@ -25,6 +25,7 @@ export type AnnouncementConfig = {
 export type SiteConfig = {
   name: string;
   legalName: string;
+  companyNumber: string;
   tagline: string;
   description: string;
   phone: string;

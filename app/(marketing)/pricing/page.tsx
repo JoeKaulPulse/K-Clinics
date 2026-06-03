@@ -90,7 +90,7 @@ export default function PricingPage() {
 
         <Reveal>
           <p className="mt-10 text-center text-sm text-[var(--color-stone)]">
-            All prices in GBP and include VAT where applicable. Course prices show the total for the package. Your full, fixed quote is always agreed before treatment begins.
+            All prices in GBP. Course prices show the total for the package. Your full, fixed quote is always agreed before treatment begins.
           </p>
         </Reveal>
       </section>
