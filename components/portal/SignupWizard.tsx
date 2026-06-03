@@ -28,7 +28,10 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
 
   function validateStep(): boolean {
     if (step === 1 && !d.firstName.trim()) { setError(t('signup.errFirstName')); return false; }
+    if (step === 1 && !d.lastName.trim()) { setError(t('signup.errLastName')); return false; }
     if (step === 2 && !/.+@.+\..+/.test(d.email)) { setError(t('signup.errEmail')); return false; }
+    if (step === 2 && (d.phone.match(/\d/g) || []).length < 7) { setError(t('signup.errPhone')); return false; }
+    if (step === 2 && !d.dob) { setError(t('signup.errDob')); return false; }
     if (step === 3) {
       if (d.password.length < 8) { setError(t('signup.errPassword')); return false; }
       if (!d.consent) { setError(t('signup.consentRequired')); return false; }
@@ -131,7 +134,7 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
               <Step title={t('signup.nameTitle')} sub={t('signup.nameSub')}>
                 <div className="space-y-4">
                   <div><label className={authLabel}>{t('field.firstName')}</label><input autoFocus className={authField} value={d.firstName} onChange={(e) => set('firstName', e.target.value)} onKeyDown={(e) => e.key === 'Enter' && next()} /></div>
-                  <div><label className={authLabel}>{t('field.lastName')} <span className="text-[var(--color-stone-soft)]">({t('field.optional')})</span></label><input className={authField} value={d.lastName} onChange={(e) => set('lastName', e.target.value)} onKeyDown={(e) => e.key === 'Enter' && next()} /></div>
+                  <div><label className={authLabel}>{t('field.lastName')}</label><input className={authField} value={d.lastName} onChange={(e) => set('lastName', e.target.value)} onKeyDown={(e) => e.key === 'Enter' && next()} /></div>
                 </div>
               </Step>
             )}
