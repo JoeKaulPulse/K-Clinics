@@ -9,6 +9,7 @@ import { Marquee } from '@/components/ui/Marquee';
 import { CountUp } from '@/components/motion/CountUp';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { EnquiryForm } from '@/components/contact/EnquiryForm';
+import { PersonalizedRail } from '@/components/marketing/PersonalizedRail';
 import { getSiteConfig } from '@/lib/site-config';
 
 // Renders an array of CMS sections as native, on-brand markup. Server component.
@@ -76,6 +77,16 @@ function CmsButton({ label, href, variant = 'ink' }: { label: string; href: stri
 
 function SectionView({ section: { type, data } }: { section: Section }) {
   switch (type) {
+    case 'personalizedTreatments':
+      return (
+        <PersonalizedRail
+          heading={str(data.heading) || undefined}
+          subheading={str(data.subheading) || undefined}
+          count={Number(str(data.count, '6')) || 6}
+          showGiftCard={data.showGiftCard !== false && data.showGiftCard !== 'false'}
+        />
+      );
+
     case 'hero':
       return (
         <PageHero eyebrow={str(data.eyebrow, ' ')} title={str(data.title, '')} lede={str(data.lede) || undefined} gradient={['#7b6a5d', '#2a2420']}>

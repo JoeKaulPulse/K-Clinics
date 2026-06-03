@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { verifyToken, verifyClientToken, SESSION_COOKIE, CLIENT_SESSION_COOKIE } from '@/lib/auth-edge';
 import { ATTRIB_COOKIE, ATTRIB_MAX_AGE, attributionFromUrl } from '@/lib/attribution';
+import { SEG_COOKIE, SEG_MAX_AGE, segmentFromUrl } from '@/lib/personalize';
 
 // Public client-portal pages (no auth required).
 const PUBLIC_ACCOUNT = new Set([
@@ -92,6 +93,12 @@ export async function middleware(req: NextRequest) {
   const attrib = attributionFromUrl(req.nextUrl);
   if (attrib && !req.cookies.get(ATTRIB_COOKIE)) {
     res.cookies.set(ATTRIB_COOKIE, JSON.stringify(attrib), { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: ATTRIB_MAX_AGE });
+  }
+  // Audience personalisation: remember the ad-declared segment (content only,
+  // no personal data) so the personalised rail adapts across the visit.
+  const seg = segmentFromUrl(req.nextUrl);
+  if (seg) {
+    res.cookies.set(SEG_COOKIE, seg, { sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: SEG_MAX_AGE });
   }
   return res;
 }
