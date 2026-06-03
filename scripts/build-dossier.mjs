@@ -81,8 +81,9 @@ function ul(items, color = C.gold) {
     const x = M + 15, y = doc.y;
     doc.save(); doc.circle(M + 4.5, y + 5.5, 1.8).fill(color); doc.restore();
     if (lead) {
-      doc.font('semi').fontSize(9.7).fillColor(C.ink).text(lead + ' ', x, y, { continued: true });
-      doc.font('body').fillColor(C.espresso).text(' ' + rest, { width: CW - 15, lineGap: 2.6 });
+      // width MUST be on the first fragment — it governs wrapping for the whole continued run.
+      doc.font('semi').fontSize(9.7).fillColor(C.ink).text(lead + '  ', x, y, { continued: true, width: CW - 15, lineGap: 2.6 });
+      doc.font('body').fillColor(C.espresso).text(rest, { lineGap: 2.6 });
     } else { doc.font('body').fontSize(9.7).fillColor(C.espresso).text(rest, x, y, { width: CW - 15, lineGap: 2.6 }); }
     doc.moveDown(0.34);
   }
