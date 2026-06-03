@@ -2,20 +2,24 @@ import 'server-only';
 import { db } from '@/lib/db';
 import { hashPassword, verifyPassword, createAcademySession, getAcademySession } from '@/lib/auth';
 
-export type AcademySignup = { firstName: string; lastName?: string; email: string; phone?: string; password: string };
+export type AcademySignup = { firstName: string; lastName?: string; email: string; phone?: string; password: string; dob?: string };
 
 /** Create a trainee (academy) account — separate from the clinic client portal. */
 export async function signupStudent(input: AcademySignup): Promise<{ ok: boolean; error?: string }> {
   const email = input.email.trim().toLowerCase();
   if (!input.firstName?.trim() || !email || input.password.length < 8) return { ok: false, error: 'Please complete all fields (password 8+ characters).' };
+  // Age gate: the academy accepts students aged 16 or over.
+  const { meetsMinAge, MIN_STUDENT_AGE } = await import('@/lib/age');
+  if (!input.dob || !meetsMinAge(input.dob, MIN_STUDENT_AGE)) return { ok: false, error: 'You must be 16 or over to join the academy.' };
   const existing = await db.academyStudent.findUnique({ where: { email }, select: { passwordHash: true } });
   if (existing?.passwordHash) return { ok: false, error: 'An account already exists for this email. Try signing in.' };
 
   const passwordHash = await hashPassword(input.password);
+  const dob = new Date(input.dob);
   const student = await db.academyStudent.upsert({
     where: { email },
-    update: { firstName: input.firstName, lastName: input.lastName || undefined, phone: input.phone || undefined, passwordHash, portalActive: true },
-    create: { email, firstName: input.firstName, lastName: input.lastName || null, phone: input.phone || null, passwordHash, portalActive: true },
+    update: { firstName: input.firstName, lastName: input.lastName || undefined, phone: input.phone || undefined, dob, ageDeclaredAt: new Date(), passwordHash, portalActive: true },
+    create: { email, firstName: input.firstName, lastName: input.lastName || null, phone: input.phone || null, dob, ageDeclaredAt: new Date(), passwordHash, portalActive: true },
   });
   // Link any prior applications made with this email to the new account.
   await db.enrolment.updateMany({ where: { applicantEmail: email, studentId: null }, data: { studentId: student.id } }).catch(() => {});

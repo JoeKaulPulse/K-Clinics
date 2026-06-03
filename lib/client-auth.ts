@@ -31,6 +31,11 @@ export type SignupResult =
  */
 export async function signupClient(input: SignupInput): Promise<SignupResult> {
   const email = input.email.trim().toLowerCase();
+  // Age gate: the clinic only serves 18+. Validate the declared DOB server-side.
+  const { meetsMinAge, MIN_CLIENT_AGE } = await import('@/lib/age');
+  if (!input.dob || !meetsMinAge(input.dob, MIN_CLIENT_AGE)) {
+    return { ok: false, error: 'You must be 18 or over to register with the clinic.' };
+  }
   const existing = await db.client.findUnique({ where: { email }, select: { passwordHash: true, source: true } });
   if (existing?.passwordHash) {
     return { ok: false, error: 'An account already exists for this email. Try signing in.' };
@@ -84,6 +89,7 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
       genderSelfDescribe,
       passwordHash,
       portalActive: true,
+      ageDeclaredAt: new Date(),
       locale: input.locale === 'uk' ? 'uk' : 'en',
       marketingOptIn: input.marketingOptIn || undefined,
       signupIp: input.ip || undefined,
@@ -95,6 +101,7 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
       lastName: input.lastName || undefined,
       phone: input.phone || undefined,
       dob: input.dob ? new Date(input.dob) : undefined,
+      ageDeclaredAt: new Date(),
       gender,
       genderSelfDescribe,
       passwordHash,

@@ -38,6 +38,12 @@ export async function POST(req: Request) {
   const start = new Date(d.startISO);
   const end = new Date(start.getTime() + durationMin * 60_000);
 
+  // Age gate: the client must be 18+ on the appointment date.
+  const { isAdultOn } = await import('@/lib/age');
+  if (!isAdultOn(d.dob, start)) {
+    return NextResponse.json({ ok: false, error: 'Clinic treatments are available to clients aged 18 or over.' }, { status: 403 });
+  }
+
   const { db } = await import('@/lib/db');
   const { isSlotFree, pickPractitioner, assignResources } = await import('@/lib/availability');
   const { stripe, ensureCustomer } = await import('@/lib/stripe');
@@ -56,10 +62,10 @@ export async function POST(req: Request) {
   // Upsert client + Stripe customer.
   const client = await db.client.upsert({
     where: { email: d.email.toLowerCase() },
-    update: { firstName: d.firstName, lastName: d.lastName || undefined, phone: d.phone || undefined, marketingOptIn: d.marketingOptIn || undefined },
+    update: { firstName: d.firstName, lastName: d.lastName || undefined, phone: d.phone || undefined, dob: new Date(d.dob), ageDeclaredAt: new Date(), marketingOptIn: d.marketingOptIn || undefined },
     create: {
       firstName: d.firstName, lastName: d.lastName || null, email: d.email.toLowerCase(),
-      phone: d.phone || null, source: 'website-booking', marketingOptIn: d.marketingOptIn,
+      phone: d.phone || null, dob: new Date(d.dob), ageDeclaredAt: new Date(), source: 'website-booking', marketingOptIn: d.marketingOptIn,
     },
   });
   const customerId = await ensureCustomer(client);
