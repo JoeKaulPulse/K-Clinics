@@ -13,6 +13,7 @@ const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { maximumFra
 const TOOLS: { href: string; title: string; desc: string }[] = [
   { href: '/admin/marketing/campaigns', title: 'Campaigns', desc: 'Plan & run cross-channel campaigns — email, paid, SEO & landing pages, with AI assist.' },
   { href: '/admin/marketing/performance', title: 'Performance & forecast', desc: 'Revenue by source & campaign, attribution and a data-driven forecast.' },
+  { href: '/admin/marketing/audiences', title: 'Audiences', desc: 'Reusable client segments with live size estimates for targeting.' },
   { href: '/admin/brand', title: 'Brand kit', desc: 'Colours, fonts, logos & tone of voice — the source of brand truth.' },
   { href: '/admin/marketing/ab', title: 'A/B testing', desc: 'Split-test landing-page headlines & CTAs to find the winner.' },
   { href: '/admin/marketing/insights', title: 'Behaviour insights', desc: 'Click heatmaps, scroll depth and full session replay.' },
