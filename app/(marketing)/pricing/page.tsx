@@ -3,9 +3,12 @@ import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { Button, ArrowIcon } from '@/components/ui/Button';
-import { listServices, formatPence, type ServiceView } from '@/lib/services';
+import { listServices, liveOffers, bestOffer, effectiveStatus, statusLabel, formatPence, type ServiceStatus } from '@/lib/services';
 import { getTreatment } from '@/lib/treatments';
 import { crmEnabled } from '@/lib/crm';
+
+type PricedRow = { id: string; name: string; courses: { sessions: number; totalPence: number }[]; status: ServiceStatus; pricePence: number; offerPence: number | null; offerName: string | null };
+type PricedService = { id: string; name: string; rows: PricedRow[] };
 import { OffersStrip } from '@/components/marketing/OffersStrip';
 import { pageMeta, JsonLd, breadcrumbLd, offerCatalogLd } from '@/lib/seo';
 
@@ -23,25 +26,26 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({
 export default async function PricingPage() {
   // Every price comes from the live admin catalogue — nothing is hardcoded.
   // Safe (empty) when the CRM/DB isn't available, e.g. the static demo build.
-  let services: ServiceView[] = [];
+  const groups = new Map<string, PricedService[]>();
+  let offerItems: { name: string; price: number }[] = [];
   if (crmEnabled) {
-    try { services = (await listServices(false)).filter((s) => s.variants.length > 0); }
-    catch { /* no DB → show the consultation fallback below */ }
+    try {
+      const [services, offers] = await Promise.all([listServices(false), liveOffers(false)]);
+      for (const s of services.filter((x) => x.variants.length > 0 && x.status !== 'UNAVAILABLE')) {
+        const rows: PricedRow[] = s.variants.map((v) => {
+          const status = effectiveStatus(s.status, v.status);
+          const off = status === 'NORMAL' && v.pricePence > 0 ? bestOffer(offers, s.id, v.id, v.pricePence) : null;
+          return { id: v.id, name: v.name, courses: v.courses, status, pricePence: v.pricePence, offerPence: off ? Math.max(0, v.pricePence - off.discountPence) : null, offerName: off?.offer.name ?? null };
+        });
+        const group = getTreatment(s.treatmentSlug)?.group || 'Treatments';
+        const arr = groups.get(group) ?? [];
+        arr.push({ id: s.id, name: s.name, rows });
+        groups.set(group, arr);
+        // Priced OfferCatalog from bookable single-session prices, for rich SEO snippets.
+        offerItems = offerItems.concat(rows.filter((r) => r.status === 'NORMAL' && r.pricePence > 0).map((r) => ({ name: `${s.name} — ${r.name}`, price: (r.offerPence ?? r.pricePence) / 100 })));
+      }
+    } catch { /* no DB → show the consultation fallback below */ }
   }
-
-  // Group services under their treatment's marketing group for a tidy menu.
-  const groups = new Map<string, typeof services>();
-  for (const s of services) {
-    const group = getTreatment(s.treatmentSlug)?.group || 'Treatments';
-    const arr = groups.get(group) ?? [];
-    arr.push(s);
-    groups.set(group, arr);
-  }
-
-  // Priced OfferCatalog from every single-session price, for rich SEO snippets.
-  const offerItems = services.flatMap((s) =>
-    s.variants.filter((v) => v.pricePence > 0).map((v) => ({ name: `${s.name} — ${v.name}`, price: v.pricePence / 100 })),
-  );
 
   return (
     <>
@@ -74,19 +78,33 @@ export default async function PricingPage() {
                       <div key={s.id}>
                         <h3 className="mb-3 font-[family-name:var(--font-display)] text-xl">{s.name}</h3>
                         <ul className="divide-y divide-[var(--color-line)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
-                          {s.variants.map((v) => (
-                            <li key={v.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 py-4 transition-colors hover:bg-[var(--color-bone)]">
-                              <div className="min-w-0">
-                                <span className="font-[family-name:var(--font-display)] text-lg leading-tight">{v.name}</span>
-                                {v.courses.length > 0 && (
-                                  <span className="mt-0.5 block text-sm text-[var(--color-stone)]">
-                                    {v.courses.map((c) => `×${c.sessions} ${formatPence(c.totalPence)}`).join(' · ')}
-                                  </span>
-                                )}
-                              </div>
-                              <span className="shrink-0 font-[family-name:var(--font-display)] text-lg text-[var(--color-ink)]">{formatPence(v.pricePence)}</span>
-                            </li>
-                          ))}
+                          {s.rows.map((v) => {
+                            const unavailable = v.status === 'COMING_SOON' || v.status === 'UNAVAILABLE';
+                            return (
+                              <li key={v.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 py-4 transition-colors hover:bg-[var(--color-bone)]">
+                                <div className="min-w-0">
+                                  <span className="font-[family-name:var(--font-display)] text-lg leading-tight">{v.name}</span>
+                                  {!unavailable && v.courses.length > 0 && (
+                                    <span className="mt-0.5 block text-sm text-[var(--color-stone)]">
+                                      {v.courses.map((c) => `×${c.sessions} ${formatPence(c.totalPence)}`).join(' · ')}
+                                    </span>
+                                  )}
+                                  {v.offerName && <span className="mt-0.5 block text-sm font-medium text-[var(--color-gold)]">{v.offerName}</span>}
+                                </div>
+                                <span className="shrink-0 font-[family-name:var(--font-display)] text-lg text-[var(--color-ink)]">
+                                  {unavailable ? (
+                                    <span className="text-sm font-medium uppercase tracking-wide text-[var(--color-stone)]">{statusLabel(v.status)}</span>
+                                  ) : v.status === 'CONSULTATION' ? (
+                                    <span className="text-base text-[var(--color-stone)]">On consultation</span>
+                                  ) : v.offerPence != null ? (
+                                    <span><span className="mr-2 text-base text-[var(--color-stone-soft)] line-through">{formatPence(v.pricePence)}</span>{formatPence(v.offerPence)}</span>
+                                  ) : (
+                                    formatPence(v.pricePence)
+                                  )}
+                                </span>
+                              </li>
+                            );
+                          })}
                         </ul>
                       </div>
                     ))}

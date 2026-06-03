@@ -16,6 +16,8 @@ export async function POST(req: Request) {
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
   const num = (v: unknown) => (v == null || v === '' ? null : Math.round(Number(v)));
+  const STATUSES = ['NORMAL', 'CONSULTATION', 'COMING_SOON', 'UNAVAILABLE'];
+  const asStatus = (v: unknown) => (typeof v === 'string' && STATUSES.includes(v) ? v : null);
 
   switch (body.op) {
     // ── Variants ──
@@ -29,6 +31,8 @@ export async function POST(req: Request) {
           ...(body.costPence !== undefined ? { costPence: body.costPence === null || body.costPence === '' ? null : Math.max(0, num(body.costPence) ?? 0) } : {}),
           ...(body.durationMin != null ? { durationMin: Math.max(5, num(body.durationMin) ?? 30) } : {}),
           ...(typeof body.active === 'boolean' ? { active: body.active } : {}),
+          // status: a valid value, or null to clear the per-option override (inherit).
+          ...('status' in body ? { status: asStatus(body.status) as never } : {}),
         },
       });
       return ok();
@@ -48,7 +52,12 @@ export async function POST(req: Request) {
     }
     case 'updateService': {
       if (!body.id) return bad();
-      await db.service.update({ where: { id: body.id }, data: { ...(typeof body.active === 'boolean' ? { active: body.active } : {}), ...(body.name ? { name: String(body.name).slice(0, 120) } : {}) } });
+      const svcStatus = asStatus(body.status);
+      await db.service.update({ where: { id: body.id }, data: {
+        ...(typeof body.active === 'boolean' ? { active: body.active } : {}),
+        ...(body.name ? { name: String(body.name).slice(0, 120) } : {}),
+        ...(svcStatus ? { status: svcStatus as never } : {}),
+      } });
       return ok();
     }
 

@@ -11,7 +11,7 @@ import { FaqAccordion } from '@/components/ui/FaqAccordion';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { site } from '@/lib/site';
-import { pricingForTreatment, formatPence } from '@/lib/services';
+import { pricingForTreatment, formatPence, statusLabel, type ServiceStatus } from '@/lib/services';
 
 /** Build the small print under a variant — duration + any course savings. */
 function variantNote(durationMin: number, courses: { sessions: number; totalPence: number }[]): string {
@@ -25,14 +25,22 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
   const categoryHref = t.category === 'aesthetics' ? '/treatments' : '/dentistry';
   const categoryLabel = t.category === 'aesthetics' ? 'Aesthetics' : 'Dentistry';
   const comingSoon = t.category === 'dentistry' && !site.dentistryLive;
-  const onRequest = t.onRequest === true; // machine not in yet — bookings closed
   const related = t.related.map(getTreatment).filter(Boolean) as Treatment[];
 
-  // Pricing is derived live from the admin catalogue (single source of truth).
+  // Pricing + presentation status derived live from the admin catalogue (SSOT).
   const pricing = await pricingForTreatment(t.slug);
   const fromPence = pricing?.fromPence ?? null;
+  const fromOfferPence = pricing?.fromOfferPence ?? null;
+  const offerName = pricing?.offerName ?? null;
   const variants = pricing?.variants ?? [];
   const hasPrice = fromPence != null;
+
+  // Effective service status: admin status wins; code-level onRequest forces
+  // "coming soon" (machine not in yet) when admin hasn't set a non-normal status.
+  let status: ServiceStatus = pricing?.status ?? 'NORMAL';
+  if (status === 'NORMAL' && t.onRequest) status = 'COMING_SOON';
+  const enquiryOnly = status === 'COMING_SOON' || status === 'UNAVAILABLE'; // not bookable
+  const onConsultation = status === 'CONSULTATION';
 
   return (
     <article>
@@ -78,11 +86,13 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
                     </p>
                     <Button href="/dentistry#interest" variant="gold" size="lg">Register your interest <ArrowIcon /></Button>
                   </div>
-                ) : onRequest ? (
+                ) : enquiryOnly ? (
                   <div>
-                    <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-[var(--color-gold-soft)] px-3 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-ink)]">Coming soon</span>
+                    <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-[var(--color-gold-soft)] px-3 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-ink)]">{statusLabel(status)}</span>
                     <p className="mb-5 max-w-xl text-sm text-[color-mix(in_oklab,var(--color-porcelain)_72%,transparent)]">
-                      This treatment is available on request only while we bring the technology in-house. Enquire and we’ll be in touch to arrange a consultation and let you know the moment online booking opens.
+                      {status === 'COMING_SOON'
+                        ? 'This treatment is available on request only while we bring the technology in-house. Enquire and we’ll be in touch to arrange a consultation and let you know the moment online booking opens.'
+                        : 'This treatment is temporarily unavailable to book online. Register your interest and we’ll let you know as soon as it returns.'}
                     </p>
                     <div className="flex flex-wrap gap-3">
                       <Button href="/contact" variant="gold" size="lg">Enquire / request <ArrowIcon /></Button>
@@ -90,7 +100,7 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
                     </div>
                   </div>
                 ) : (
-                  <BookingButtons />
+                  <BookingButtons consult={onConsultation} />
                 )}
               </div>
             </Reveal>
@@ -111,12 +121,29 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
               <MaskReveal className="aspect-[4/5] w-full rounded-[var(--radius-2xl)] shadow-[var(--shadow-lift)]">
                 <MediaArt src={treatmentImage(t.slug)} from={t.gradient[0]} to={t.gradient[1]} alt={t.title} priority className="h-full w-full" />
               </MaskReveal>
-              {(onRequest || hasPrice) && (
+              {(enquiryOnly || onConsultation || hasPrice) && (
                 <div className="card-glass absolute -bottom-5 -left-5 rounded-[var(--radius-md)] px-6 py-4 shadow-[var(--shadow-soft)]">
-                  <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">
-                    {onRequest || !hasPrice ? 'Pricing' : 'From'}
-                  </p>
-                  <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">{onRequest ? 'On request' : formatPence(fromPence)}</p>
+                  {enquiryOnly ? (
+                    <>
+                      <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">Status</p>
+                      <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">{statusLabel(status)}</p>
+                    </>
+                  ) : onConsultation || !hasPrice ? (
+                    <>
+                      <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">Pricing</p>
+                      <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">On consultation</p>
+                    </>
+                  ) : fromOfferPence != null ? (
+                    <>
+                      <p className="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">From <span className="rounded-full bg-[var(--color-gold)] px-1.5 py-0.5 text-[0.6rem] font-semibold normal-case tracking-normal text-white">Offer</span></p>
+                      <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]"><span className="mr-2 text-lg text-[var(--color-stone-soft)] line-through">{formatPence(fromPence)}</span>{formatPence(fromOfferPence)}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">From</p>
+                      <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">{formatPence(fromPence)}</p>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -174,21 +201,29 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
       </section>
 
       {/* Pricing */}
-      {(variants.length || hasPrice || onRequest) && (
+      {(variants.length || hasPrice || enquiryOnly || onConsultation) && (
         <section className="container-lux section">
           <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
             <Reveal>
               <p className="eyebrow mb-4">Investment</p>
               <h2 className="text-title">Transparent pricing.</h2>
+              {offerName && !enquiryOnly && (
+                <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--color-gold-soft)] px-3 py-1 text-sm font-medium text-[var(--color-ink)]">
+                  <span className="rounded-full bg-[var(--color-gold)] px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-white">Offer</span>
+                  {offerName}
+                </p>
+              )}
               <p className="mt-5 max-w-md text-[var(--color-stone)]">
-                {onRequest
-                  ? 'This treatment is available on request — get in touch and we’ll confirm pricing and availability.'
-                  : variants.length
-                    ? 'Choose the option that suits you — course savings are available on most treatments.'
-                    : 'Your exact price is confirmed at your complimentary consultation, tailored to your treatment plan.'}
+                {enquiryOnly
+                  ? 'This treatment isn’t bookable online right now — get in touch and we’ll confirm pricing and availability.'
+                  : onConsultation
+                    ? 'Your exact price is confirmed at your complimentary consultation, tailored to your treatment plan.'
+                    : variants.length
+                      ? 'Choose the option that suits you — course savings are available on most treatments.'
+                      : 'Your exact price is confirmed at your complimentary consultation, tailored to your treatment plan.'}
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
-                {onRequest ? (
+                {enquiryOnly ? (
                   <Button href="/contact">Enquire <ArrowIcon /></Button>
                 ) : (
                   <BookingButtons consult />
@@ -197,27 +232,37 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
               </div>
             </Reveal>
             <Reveal delay={0.1}>
-              {!onRequest && variants.length ? (
+              {!enquiryOnly && variants.length ? (
                 <ul className="divide-y divide-[var(--color-line)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
                   {variants.map((v) => {
                     const note = variantNote(v.durationMin, v.courses);
+                    const unavailable = v.status === 'COMING_SOON' || v.status === 'UNAVAILABLE';
                     return (
                       <li key={v.id} className="flex items-baseline justify-between gap-4 bg-[var(--color-porcelain)] px-6 py-5">
                         <div>
                           <p className="font-[family-name:var(--font-display)] text-lg text-[var(--color-ink)]">{v.name}</p>
-                          {note && <p className="mt-0.5 text-sm text-[var(--color-stone)]">{note}</p>}
+                          {!unavailable && note && <p className="mt-0.5 text-sm text-[var(--color-stone)]">{note}</p>}
+                          {v.offerPence != null && v.offerName && <p className="mt-0.5 text-sm font-medium text-[var(--color-gold)]">{v.offerName}</p>}
                         </div>
-                        <p className="shrink-0 font-[family-name:var(--font-display)] text-xl text-[var(--color-ink)]">{formatPence(v.pricePence)}</p>
+                        <p className="shrink-0 font-[family-name:var(--font-display)] text-xl text-[var(--color-ink)]">
+                          {unavailable ? (
+                            <span className="text-sm font-medium uppercase tracking-wide text-[var(--color-stone)]">{statusLabel(v.status)}</span>
+                          ) : v.status === 'CONSULTATION' ? (
+                            <span className="text-base text-[var(--color-stone)]">On consultation</span>
+                          ) : v.offerPence != null ? (
+                            <span><span className="mr-2 text-base text-[var(--color-stone-soft)] line-through">{formatPence(v.pricePence)}</span>{formatPence(v.offerPence)}</span>
+                          ) : (
+                            formatPence(v.pricePence)
+                          )}
+                        </p>
                       </li>
                     );
                   })}
                 </ul>
               ) : (
                 <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-8 py-10 text-center">
-                  <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">
-                    {onRequest || !hasPrice ? 'Pricing' : 'From'}
-                  </p>
-                  <p className="mt-2 font-[family-name:var(--font-display)] text-4xl text-[var(--color-ink)]">{onRequest ? 'On request' : formatPence(fromPence)}</p>
+                  <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">{enquiryOnly ? 'Status' : 'Pricing'}</p>
+                  <p className="mt-2 font-[family-name:var(--font-display)] text-4xl text-[var(--color-ink)]">{enquiryOnly ? statusLabel(status) : 'On consultation'}</p>
                 </div>
               )}
             </Reveal>

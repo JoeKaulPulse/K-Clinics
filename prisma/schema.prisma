@@ -541,6 +541,20 @@ model Booking {
 // ── Service catalogue (CRM-managed pricing) ──────────────────────────────────
 // Marketing copy lives in lib/treatments.ts; the bookable + priced catalogue
 // lives here so prices, costs, durations and offers are editable in the CRM.
+
+// Public presentation state for a service/variant. Prices are always kept
+// internally; this only controls what the public site shows + whether it books.
+//   NORMAL       – price shown, bookable online (offers applied)
+//   CONSULTATION – price hidden ("On consultation"), still bookable as a £0 hold
+//   COMING_SOON  – not bookable, shown with a "Coming soon" badge + enquiry CTA
+//   UNAVAILABLE  – not bookable, shown with a "Currently unavailable" badge + enquiry
+enum ServiceStatus {
+  NORMAL
+  CONSULTATION
+  COMING_SOON
+  UNAVAILABLE
+}
+
 model Service {
   id            String          @id @default(cuid())
   slug          String          @unique
@@ -549,6 +563,7 @@ model Service {
   category      String          @default("aesthetics") // aesthetics | dentistry
   order         Int             @default(0)
   active        Boolean         @default(true)
+  status        ServiceStatus   @default(NORMAL) // service-level public state
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
@@ -571,6 +586,7 @@ model ServiceVariant {
   courses     Json?
   order       Int             @default(0)
   active      Boolean         @default(true)
+  status      ServiceStatus?  // optional per-option override of the service status
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 

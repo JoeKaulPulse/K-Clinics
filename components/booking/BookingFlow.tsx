@@ -185,7 +185,7 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
                       <span className="block font-[family-name:var(--font-display)] text-base leading-tight">{s.name}</span>
                       <span className="text-xs text-[var(--color-stone)]">{s.variants.length} option{s.variants.length > 1 ? 's' : ''}</span>
                     </span>
-                    <span className="shrink-0 text-sm font-medium text-[var(--color-gold)]">from {money(Math.min(...s.variants.map((v) => v.offerPence ?? v.pricePence).filter((p) => p > 0)) || 0)}</span>
+                    <span className="shrink-0 text-sm font-medium text-[var(--color-gold)]">{(() => { const ps = s.variants.map((v) => v.offerPence ?? v.pricePence).filter((p) => p > 0); return ps.length ? `from ${money(Math.min(...ps))}` : 'On consultation'; })()}</span>
                   </button>
                 ))}
               </div>
