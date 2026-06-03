@@ -756,6 +756,21 @@ model Campaign {
   @@index([status, scheduledAt])
 }
 
+// A reusable marketing-email design (subject + sender + content blocks) a user
+// can start a new campaign from. Distinct from the static transactional-email
+// previews shown on /admin/marketing/templates.
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  subject   String?
+  preheader String?
+  fromName  String?
+  body      String   // JSON EmailBlock[]
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
 model AdminUser {
   id           String   @id @default(cuid())
   email        String   @unique

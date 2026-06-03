@@ -15,11 +15,20 @@ export default async function NewEmailPage({ searchParams }: { searchParams: Pro
   const { id, clone } = await searchParams;
 
   const { db } = await import('@/lib/db');
-  const [segments, clients] = await Promise.all([
+  const [segments, clients, saved] = await Promise.all([
     db.segment.findMany({ orderBy: { createdAt: 'desc' }, select: { id: true, name: true } }),
     db.client.findMany({ where: { marketingOptIn: true, unsubscribed: false }, select: { tags: true }, take: 2000 }),
+    db.emailTemplate.findMany({ orderBy: { updatedAt: 'desc' }, take: 50 }),
   ]);
   const tags = [...new Set(clients.flatMap((c) => c.tags))].sort().slice(0, 50);
+
+  // Templates the composer can start from: built-in starters + the clinic's own.
+  const { STARTER_TEMPLATES } = await import('@/lib/email-templates');
+  const parseBlocks = (s: string) => { try { return JSON.parse(s); } catch { return []; } };
+  const templates = [
+    ...STARTER_TEMPLATES.map((t) => ({ id: `starter:${t.key}`, name: t.name, subject: t.subject, preheader: t.preheader ?? '', fromName: '', blocks: t.blocks, saved: false })),
+    ...saved.map((t) => ({ id: t.id, name: t.name, subject: t.subject ?? '', preheader: t.preheader ?? '', fromName: t.fromName ?? '', blocks: parseBlocks(t.body), saved: true })),
+  ];
 
   // Load an existing draft (editable) or clone a past/scheduled campaign (new copy).
   let initial: import('@/components/admin/EmailComposer').ComposerInitial | undefined;
@@ -46,7 +55,7 @@ export default async function NewEmailPage({ searchParams }: { searchParams: Pro
       <h1 className="font-[family-name:var(--font-display)] text-3xl">{editing ? 'Edit email' : 'New email'}</h1>
       <p className="mt-1 text-sm text-[var(--color-stone)]">Build a branded email, choose who receives it, preview, test, then send or schedule via Resend.</p>
       <div className="mt-6">
-        <EmailComposer segments={segments} tags={tags} initial={initial} />
+        <EmailComposer segments={segments} tags={tags} initial={initial} templates={templates} />
       </div>
     </AdminShell>
   );
