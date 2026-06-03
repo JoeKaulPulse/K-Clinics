@@ -40,6 +40,23 @@ export async function getPageForEdit(id: string) {
   } catch { return null; }
 }
 
+/** Derive a sensible <title>/description for a CMS page from its sections. */
+export function pageMetaFromSections(sections: Section[]): { title: string; description: string } {
+  const hero = sections.find((s) => s.type === 'hero');
+  const heading = sections.find((s) => s.type === 'heading' || s.type === 'imageText' || s.type === 'featureGrid');
+  const title = String((hero?.data?.title as string) || (heading?.data?.heading as string) || '').trim();
+  const desc = String((hero?.data?.lede as string) || (heading?.data?.intro as string) || (heading?.data?.body as string) || '').replace(/\s+/g, ' ').trim().slice(0, 160);
+  return { title, description: desc };
+}
+
+/** Slugs (single-segment) of published CMS pages, for static generation. */
+export async function publishedTopLevelSlugs(): Promise<string[]> {
+  try {
+    const rows = await db.page.findMany({ where: { status: 'PUBLISHED' }, select: { path: true } });
+    return rows.map((r) => r.path).filter((p) => /^\/[a-z0-9-]+$/.test(p)).map((p) => p.slice(1));
+  } catch { return []; }
+}
+
 export async function pageRevisions(pageId: string) {
   try {
     const revs = await db.pageRevision.findMany({ where: { pageId }, orderBy: { createdAt: 'desc' }, take: 15, select: { id: true, label: true, createdAt: true, createdBy: true } });
