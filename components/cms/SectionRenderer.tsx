@@ -13,7 +13,17 @@ import { getSiteConfig } from '@/lib/site-config';
 
 // Renders an array of CMS sections as native, on-brand markup. Server component.
 export function SectionRenderer({ sections, includeHidden = false }: { sections: Section[]; includeHidden?: boolean }) {
-  return <>{sections.filter((s) => includeHidden || !s.hidden).map((s) => <SectionView key={s.id} section={s} />)}</>;
+  return <>{sections.filter((s) => includeHidden || !s.hidden).map((s) => (
+    <SectionFrame key={s.id} data={s.data}><SectionView section={s} /></SectionFrame>
+  ))}</>;
+}
+
+// Optional per-section background band + extra spacing (editor "Layout" controls).
+function SectionFrame({ data, children }: { data: Record<string, unknown>; children: React.ReactNode }) {
+  const bg = data._bg === 'cream' ? 'bg-[var(--color-bone)]' : data._bg === 'sand' ? 'bg-[var(--color-sand)]' : '';
+  const pad = data._pad === 'sm' ? 'py-8' : data._pad === 'md' ? 'py-16' : data._pad === 'lg' ? 'py-28' : '';
+  if (!bg && !pad) return <>{children}</>;
+  return <div className={`${bg} ${pad}`.trim()}>{children}</div>;
 }
 
 const str = (v: unknown, d = '') => (typeof v === 'string' ? v : d);

@@ -4,16 +4,24 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { SECTION_DEFS, sectionDef, newSection, cloneSection, type Section } from '@/lib/sections';
 import { SectionFields } from '@/components/admin/SectionFields';
+import { MediaField } from '@/components/admin/MediaPicker';
 
 type Revision = { id: string; label: string | null; createdAt: string; createdBy: string | null };
 type Initial = { id: string; path: string; title: string; status: 'DRAFT' | 'PUBLISHED'; draft: Section[]; hasPublished: boolean };
+type Seo = { title: string; description: string; ogImage: string; noindex: boolean };
 
 const card = 'rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]';
 const DEVICES = { desktop: '100%', tablet: '820px', mobile: '390px' } as const;
 type Device = keyof typeof DEVICES;
 
-export function PageBuilder({ initial, revisions, seed }: { initial: Initial; revisions: Revision[]; seed?: Section[] | null }) {
+export function PageBuilder({ initial, revisions, seed, seo: seoInit }: { initial: Initial; revisions: Revision[]; seed?: Section[] | null; seo?: Seo }) {
   const router = useRouter();
+  const [seo, setSeo] = useState<Seo>(seoInit ?? { title: '', description: '', ogImage: '', noindex: false });
+  const [seoMsg, setSeoMsg] = useState('');
+  const saveSeo = async () => {
+    const res = await fetch('/api/admin/seo', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: 'save', path: initial.path, ...seo }) });
+    setSeoMsg(res.ok ? 'SEO saved.' : 'Could not save SEO.');
+  };
   const [sections, setSectionsRaw] = useState<Section[]>(initial.draft);
   const [title, setTitleRaw] = useState(initial.title);
   const [openId, setOpenId] = useState<string | null>(initial.draft[0]?.id ?? null);
@@ -134,6 +142,19 @@ export function PageBuilder({ initial, revisions, seed }: { initial: Initial; re
                   </div>
                   {open && def && (
                     <div className="border-t border-[var(--color-line)] p-4">
+                      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] bg-[var(--color-bone)] p-2 text-xs">
+                        <span className="uppercase tracking-[0.12em] text-[var(--color-stone)]">Layout</span>
+                        <label className="flex items-center gap-1">Background
+                          <select value={String(sec.data._bg ?? 'none')} onChange={(e) => update(sec.id, { ...sec.data, _bg: e.target.value })} className="rounded border border-[var(--color-line)] bg-[var(--color-porcelain)] px-1.5 py-1">
+                            <option value="none">Default</option><option value="cream">Cream band</option><option value="sand">Sand band</option>
+                          </select>
+                        </label>
+                        <label className="flex items-center gap-1">Spacing
+                          <select value={String(sec.data._pad ?? 'none')} onChange={(e) => update(sec.id, { ...sec.data, _pad: e.target.value })} className="rounded border border-[var(--color-line)] bg-[var(--color-porcelain)] px-1.5 py-1">
+                            <option value="none">Default</option><option value="sm">Compact</option><option value="md">Roomy</option><option value="lg">Spacious</option>
+                          </select>
+                        </label>
+                      </div>
                       <SectionFields fields={def.fields} data={sec.data} onChange={(d) => update(sec.id, d)} />
                     </div>
                   )}
@@ -176,6 +197,18 @@ export function PageBuilder({ initial, revisions, seed }: { initial: Initial; re
               <input className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={title} placeholder={initial.path} onChange={(e) => setTitle(e.target.value)} />
               {hasPublished && <button disabled={busy} onClick={unpublish} className="mt-4 text-sm text-[var(--color-stone)] hover:text-[#c0392b] disabled:opacity-50">Unpublish</button>}
             </div>
+            <div className={`${card} p-4`}>
+              <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-stone)]">SEO</h3>
+              <div className="space-y-3">
+                <div><label className="mb-1 block text-xs text-[var(--color-stone)]">Page title</label><input className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={seo.title} onChange={(e) => setSeo((s) => ({ ...s, title: e.target.value }))} placeholder="Defaults to the hero heading" /></div>
+                <div><label className="mb-1 block text-xs text-[var(--color-stone)]">Meta description</label><textarea className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={seo.description} onChange={(e) => setSeo((s) => ({ ...s, description: e.target.value }))} /></div>
+                <MediaField label="Social share image" value={seo.ogImage} onChange={(v) => setSeo((s) => ({ ...s, ogImage: v }))} />
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={seo.noindex} onChange={(e) => setSeo((s) => ({ ...s, noindex: e.target.checked }))} /> Hide from search engines</label>
+                <button onClick={saveSeo} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)]">Save SEO</button>
+                {seoMsg && <p className="text-xs text-[var(--color-jade)]">{seoMsg}</p>}
+              </div>
+            </div>
+
             <div className={`${card} p-4`}>
               <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-stone)]">Version history</h3>
               {revisions.length === 0 ? <p className="text-sm text-[var(--color-stone-soft)]">Publishing creates restore points.</p> : (

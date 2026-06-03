@@ -20,12 +20,19 @@ export default async function EditPagePage({ params }: { params: Promise<{ id: s
   // Offer the page's original content if it was taken over empty.
   const { pageSeed } = await import('@/lib/page-seeds');
   const seed = page.draft.length ? null : pageSeed(page.path);
+  // Current per-path SEO override (applied site-wide via pageMeta).
+  let seo: { title: string; description: string; ogImage: string; noindex: boolean } = { title: '', description: '', ogImage: '', noindex: false };
+  try {
+    const { db } = await import('@/lib/db');
+    const row = await db.pageSeo.findUnique({ where: { path: page.path }, select: { title: true, description: true, ogImage: true, noindex: true } });
+    if (row) seo = { title: row.title ?? '', description: row.description ?? '', ogImage: row.ogImage ?? '', noindex: row.noindex };
+  } catch { /* table optional */ }
 
   const can = await sessionPermissions();
   const locale = await getLocale();
   return (
     <AdminShell user={session?.email} can={can} locale={locale}>
-      <PageBuilder initial={page} revisions={revisions} seed={seed} />
+      <PageBuilder initial={page} revisions={revisions} seed={seed} seo={seo} />
     </AdminShell>
   );
 }
