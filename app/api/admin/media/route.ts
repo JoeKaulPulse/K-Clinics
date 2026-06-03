@@ -40,6 +40,8 @@ export async function POST(req: Request) {
   if (file.type && !OK_MIME.test(file.type)) return NextResponse.json({ ok: false, error: 'Only image files are allowed.' }, { status: 415 });
 
   const alt = String(form?.get('alt') || '');
+  const width = Number(form?.get('width')) || null;
+  const height = Number(form?.get('height')) || null;
   const folder = String(form?.get('folder') || 'general').replace(/[^a-z0-9-]/gi, '').slice(0, 40) || 'general';
   const safe = (file.name || 'image').replace(/[^a-zA-Z0-9.\-_]/g, '-').slice(0, 80);
   const key = `${folder}/${Date.now().toString(36)}-${safe}`;
@@ -50,12 +52,21 @@ export async function POST(req: Request) {
     const { db } = await import('@/lib/db');
     const { session } = g;
     const asset = await db.mediaAsset.create({
-      data: { url: blob.url, pathname: blob.pathname, filename: safe, alt: alt || null, mime: file.type || null, size: file.size, folder, createdBy: (session as { email?: string })?.email ?? null },
+      data: { url: blob.url, pathname: blob.pathname, filename: safe, alt: alt || null, mime: file.type || null, size: file.size, width, height, folder, createdBy: (session as { email?: string })?.email ?? null },
     });
     return NextResponse.json({ ok: true, asset });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error)?.message || 'Upload failed.' }, { status: 500 });
   }
+}
+
+export async function PUT(req: Request) {
+  const g = await guard(); if (g.error) return g.error;
+  const { id, alt } = await req.json().catch(() => ({ id: '' }));
+  if (!id) return NextResponse.json({ ok: false, error: 'No id.' }, { status: 400 });
+  const { db } = await import('@/lib/db');
+  await db.mediaAsset.update({ where: { id: String(id) }, data: { alt: String(alt ?? '').slice(0, 300) || null } }).catch(() => {});
+  return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(req: Request) {
