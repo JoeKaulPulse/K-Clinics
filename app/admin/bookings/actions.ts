@@ -28,6 +28,13 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
   if (!booking) return { ok: false, error: 'Not found' };
   if (booking.chargedAt) return { ok: false, error: 'Already charged' };
+  // Safety gateway: only ever take payment for a delivered treatment. The booking
+  // must be marked COMPLETED first — this prevents charging a client before (or
+  // instead of) their service. (Late-cancellation / no-show fees go through the
+  // separate cancel flow and are unaffected.)
+  if (booking.status !== 'COMPLETED') {
+    return { ok: false, error: 'Mark the appointment as completed before taking payment.' };
+  }
 
   const res = await chargeBooking(booking, Math.round(amountPence), { late: false });
   const { logAudit } = await import('@/lib/audit');
