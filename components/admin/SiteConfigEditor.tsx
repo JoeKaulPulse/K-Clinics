@@ -74,6 +74,7 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
             <div className="grid gap-4 sm:grid-cols-2">
               <div><label className={label}>Name</label><input className={field} value={c.name} onChange={(e) => top('name', e.target.value)} /></div>
               <div><label className={label}>Legal name</label><input className={field} value={c.legalName} onChange={(e) => top('legalName', e.target.value)} /></div>
+              <div><label className={label}>Company number</label><input className={field} value={c.companyNumber} onChange={(e) => top('companyNumber', e.target.value)} placeholder="17101088" /></div>
             </div>
             <div className="mt-4"><label className={label}>Tagline</label><input className={field} value={c.tagline} onChange={(e) => top('tagline', e.target.value)} /></div>
             <div className="mt-4"><label className={label}>Description <span className="normal-case text-[var(--color-stone-soft)]">(SEO / meta default)</span></label><textarea className={`${field} min-h-[80px]`} value={c.description} onChange={(e) => top('description', e.target.value)} /></div>

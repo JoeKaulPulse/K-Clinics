@@ -36,7 +36,7 @@ function SocialIcon({ name }: { name: string }) {
 }
 
 export function Footer({ config }: { config: SiteConfig }) {
-  const { social, mapLink, address, phone, phoneHref, email, emailHref, legalName } = config;
+  const { social, mapLink, address, phone, phoneHref, email, emailHref, legalName, companyNumber } = config;
   const footerNav = config.nav.footer;
   const year = new Date().getFullYear();
   return (
@@ -132,7 +132,7 @@ export function Footer({ config }: { config: SiteConfig }) {
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
           <CookieSettingsLink />
           <span className="hidden md:inline text-white/15">·</span>
-          <p>© {year} {legalName}. All rights reserved.</p>
+          <p>© {year} {legalName}{companyNumber ? ` · Registered in England & Wales, company no. ${companyNumber}` : ''}. All rights reserved.</p>
         </div>
       </div>
     </footer>

@@ -5,7 +5,10 @@
 
 export const site = {
   name: 'KClinics',
-  legalName: 'KClinics London',
+  // The trading name's sole legal entity (aesthetics & laser). Not VAT registered.
+  // A separate company will operate the dental services once that launches.
+  legalName: 'KCLINICS SKIN & LASER LIMITED',
+  companyNumber: '17101088',
   tagline: 'Aesthetics & Aesthetic Dentistry, Reimagined',
   // Used for absolute URLs (metadata, sitemap, JSON-LD). Update at launch.
   url: 'https://kclinics.co.uk',
