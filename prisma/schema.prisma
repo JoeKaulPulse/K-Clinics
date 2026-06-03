@@ -1737,6 +1737,25 @@ model SiteConfig {
   revisions SiteConfigRevision[]
 }
 
+// Uploaded media (Vercel Blob). The library powering image pickers across the
+// admin (journal covers, page builder sections, etc.).
+model MediaAsset {
+  id        String   @id @default(cuid())
+  url       String                 // public Blob URL
+  pathname  String                 // Blob pathname (for deletion)
+  filename  String
+  alt       String?
+  mime      String?
+  size      Int?
+  width     Int?
+  height    Int?
+  folder    String?  @default("general")
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  @@index([createdAt])
+}
+
 model SiteConfigRevision {
   id        String     @id @default(cuid())
   configId  String
