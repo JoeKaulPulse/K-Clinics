@@ -1951,3 +1951,43 @@ model Redirect {
 
   @@index([active])
 }
+
+// ── A/B testing ──────────────────────────────────────────────────────────────
+// Content experiments (e.g. competing landing-page headlines). Visitors are
+// split by weight into a variant (sticky via a cookie); we count exposures and
+// conversions (CTA clicks) to find the winner. Aggregate counters only.
+enum AbStatus {
+  DRAFT
+  RUNNING
+  STOPPED
+}
+
+model AbTest {
+  id        String      @id @default(cuid())
+  name      String
+  slug      String      @unique // used by the page section + cookie key
+  status    AbStatus    @default(DRAFT)
+  goal      String      @default("cta_click")
+  createdBy String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  variants  AbVariant[]
+}
+
+model AbVariant {
+  id          String  @id @default(cuid())
+  test        AbTest  @relation(fields: [testId], references: [id], onDelete: Cascade)
+  testId      String
+  key         String  // A | B | C …
+  label       String
+  weight      Int     @default(1)
+  headline    String?
+  subhead     String?
+  ctaLabel    String?
+  ctaHref     String?
+  exposures   Int     @default(0)
+  conversions Int     @default(0)
+
+  @@unique([testId, key])
+}
