@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { SECTION_DEFS, sectionDef, newSection, cloneSection, type Section } from '@/lib/sections';
+import Link from 'next/link';
+import { SECTION_DEFS, sectionDef, newSection, cloneSection, uid, type Section } from '@/lib/sections';
 import { SectionFields } from '@/components/admin/SectionFields';
 import { MediaField } from '@/components/admin/MediaPicker';
 
 type Revision = { id: string; label: string | null; createdAt: string; createdBy: string | null };
+type Reusable = { id: string; name: string; type: string };
 type Initial = { id: string; path: string; title: string; status: 'DRAFT' | 'PUBLISHED'; draft: Section[]; hasPublished: boolean; publishAt?: string | null; unpublishAt?: string | null };
 type Seo = { title: string; description: string; ogImage: string; noindex: boolean };
 
@@ -14,8 +16,9 @@ const card = 'rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[v
 const DEVICES = { desktop: '100%', tablet: '820px', mobile: '390px' } as const;
 type Device = keyof typeof DEVICES;
 
-export function PageBuilder({ initial, revisions, seed, seo: seoInit }: { initial: Initial; revisions: Revision[]; seed?: Section[] | null; seo?: Seo }) {
+export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables = [] }: { initial: Initial; revisions: Revision[]; seed?: Section[] | null; seo?: Seo; reusables?: Reusable[] }) {
   const router = useRouter();
+  const reuseName = (id: string) => reusables.find((r) => r.id === id)?.name ?? 'Reusable block';
   const [seo, setSeo] = useState<Seo>(seoInit ?? { title: '', description: '', ogImage: '', noindex: false });
   const [seoMsg, setSeoMsg] = useState('');
   const saveSeo = async () => {
@@ -52,6 +55,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit }: { initia
   const toggleHide = (id: string) => setSections((s) => s.map((x) => (x.id === id ? { ...x, hidden: !x.hidden } : x)));
   const moveSec = (i: number, d: -1 | 1) => setSections((s) => { const j = i + d; if (j < 0 || j >= s.length) return s; const n = [...s]; [n[i], n[j]] = [n[j], n[i]]; return n; });
   const insert = (at: number, type: string) => { const sec = newSection(type); setSections((s) => { const n = [...s]; n.splice(at, 0, sec); return n; }); setOpenId(sec.id); setAdderAt(null); };
+  const insertRef = (at: number, refId: string) => { const sec: Section = { id: uid(), type: 'ref', data: { refId } }; setSections((s) => { const n = [...s]; n.splice(at, 0, sec); return n; }); setAdderAt(null); };
   const reorder = (fromId: string, toId: string) => setSections((s) => {
     if (fromId === toId) return s;
     const from = s.findIndex((x) => x.id === fromId); const to = s.findIndex((x) => x.id === toId);
@@ -115,10 +119,12 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit }: { initia
             <span className="text-xs uppercase tracking-[0.12em] text-[var(--color-stone)]">{sections.length} section{sections.length === 1 ? '' : 's'}</span>
             {sections.length > 0 && <button onClick={() => setOpenId(null)} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-ink)]">Collapse all</button>}
           </div>
-          <Adder open={adderAt === 0} onToggle={() => setAdderAt(adderAt === 0 ? null : 0)} onPick={(t) => insert(0, t)} />
+          <Adder open={adderAt === 0} onToggle={() => setAdderAt(adderAt === 0 ? null : 0)} onPick={(t) => insert(0, t)} reusables={reusables} onPickRef={(r) => insertRef(0, r)} />
           {sections.map((sec, i) => {
             const def = sectionDef(sec.type);
             const open = openId === sec.id;
+            const isRef = sec.type === 'ref';
+            const refId = String((sec.data as { refId?: string }).refId || '');
             return (
               <div key={sec.id}>
                 <div
@@ -128,19 +134,21 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit }: { initia
                 >
                   <div className="flex items-center gap-2 px-3 py-3">
                     <button draggable onDragStart={() => setDragId(sec.id)} onDragEnd={() => { setDragId(null); setOverId(null); }} className="cursor-grab text-[var(--color-stone-soft)] hover:text-[var(--color-ink)] active:cursor-grabbing" title="Drag to reorder" aria-label="Drag to reorder">⠿</button>
-                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[var(--radius-sm)] bg-[var(--color-bone)] text-sm text-[var(--color-stone)]">{def?.glyph ?? '▢'}</span>
-                    <button onClick={() => setOpenId(open ? null : sec.id)} className="min-w-0 flex-1 text-left">
-                      <span className="font-medium">{def?.label ?? sec.type}</span>
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[var(--radius-sm)] bg-[var(--color-bone)] text-sm text-[var(--color-stone)]">{isRef ? '⟐' : def?.glyph ?? '▢'}</span>
+                    <button onClick={() => !isRef && setOpenId(open ? null : sec.id)} className="min-w-0 flex-1 text-left">
+                      <span className="font-medium">{isRef ? 'Reusable block' : def?.label ?? sec.type}</span>
                       {sec.hidden && <span className="ml-2 rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">Hidden</span>}
-                      <span className="ml-2 truncate text-sm text-[var(--color-stone-soft)]">{sectionSummary(sec)}</span>
+                      <span className="ml-2 truncate text-sm text-[var(--color-stone-soft)]">{isRef ? reuseName(refId) : sectionSummary(sec)}</span>
                     </button>
                     <span className="flex items-center gap-1.5 text-[var(--color-stone-soft)]">
                       <button onClick={() => toggleHide(sec.id)} title={sec.hidden ? 'Show' : 'Hide'} aria-label="Toggle visibility" className="hover:text-[var(--color-ink)]">{sec.hidden ? '◌' : '◉'}</button>
-                      <button onClick={() => duplicate(i)} title="Duplicate" aria-label="Duplicate" className="hover:text-[var(--color-ink)]">⧉</button>
+                      {!isRef && <button onClick={() => duplicate(i)} title="Duplicate" aria-label="Duplicate" className="hover:text-[var(--color-ink)]">⧉</button>}
                       <button onClick={() => moveSec(i, -1)} aria-label="Up" className="hover:text-[var(--color-ink)] disabled:opacity-30" disabled={i === 0}>▲</button>
                       <button onClick={() => moveSec(i, 1)} aria-label="Down" className="hover:text-[var(--color-ink)] disabled:opacity-30" disabled={i === sections.length - 1}>▼</button>
                       <button onClick={() => remove(sec.id)} aria-label="Delete" className="hover:text-[#c0392b]">✕</button>
-                      <button onClick={() => setOpenId(open ? null : sec.id)} aria-label="Edit" className="hover:text-[var(--color-ink)]">{open ? '▾' : '▸'}</button>
+                      {isRef
+                        ? <Link href={`/admin/blocks/${refId}`} target="_blank" title="Edit reusable block" className="hover:text-[var(--color-gold)]">↗</Link>
+                        : <button onClick={() => setOpenId(open ? null : sec.id)} aria-label="Edit" className="hover:text-[var(--color-ink)]">{open ? '▾' : '▸'}</button>}
                     </span>
                   </div>
                   {open && def && (
@@ -162,7 +170,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit }: { initia
                     </div>
                   )}
                 </div>
-                <Adder open={adderAt === i + 1} onToggle={() => setAdderAt(adderAt === i + 1 ? null : i + 1)} onPick={(t) => insert(i + 1, t)} />
+                <Adder open={adderAt === i + 1} onToggle={() => setAdderAt(adderAt === i + 1 ? null : i + 1)} onPick={(t) => insert(i + 1, t)} reusables={reusables} onPickRef={(r) => insertRef(i + 1, r)} />
               </div>
             );
           })}
@@ -242,18 +250,33 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit }: { initia
   );
 }
 
-function Adder({ open, onToggle, onPick }: { open: boolean; onToggle: () => void; onPick: (type: string) => void }) {
+function Adder({ open, onToggle, onPick, reusables = [], onPickRef }: { open: boolean; onToggle: () => void; onPick: (type: string) => void; reusables?: Reusable[]; onPickRef?: (refId: string) => void }) {
   return (
     <div className="relative flex justify-center">
       <button onClick={onToggle} className="z-[1] -my-1 inline-flex items-center gap-1 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1 text-xs text-[var(--color-stone)] hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">＋ Section</button>
       {open && (
-        <div className="absolute top-7 z-20 grid w-[22rem] max-w-[90vw] grid-cols-2 gap-1 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-2 shadow-[var(--shadow-lift)]">
-          {SECTION_DEFS.map((d) => (
-            <button key={d.type} onClick={() => onPick(d.type)} className="flex items-start gap-2 rounded-[var(--radius-sm)] p-2 text-left hover:bg-[var(--color-bone)]">
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[var(--radius-sm)] bg-[var(--color-bone)] text-sm text-[var(--color-stone)]">{d.glyph}</span>
-              <span><span className="block text-sm font-medium">{d.label}</span><span className="block text-xs text-[var(--color-stone-soft)]">{d.description}</span></span>
-            </button>
-          ))}
+        <div className="absolute top-7 z-20 w-[22rem] max-w-[90vw] rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-2 shadow-[var(--shadow-lift)]">
+          <div className="grid grid-cols-2 gap-1">
+            {SECTION_DEFS.map((d) => (
+              <button key={d.type} onClick={() => onPick(d.type)} className="flex items-start gap-2 rounded-[var(--radius-sm)] p-2 text-left hover:bg-[var(--color-bone)]">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[var(--radius-sm)] bg-[var(--color-bone)] text-sm text-[var(--color-stone)]">{d.glyph}</span>
+                <span><span className="block text-sm font-medium">{d.label}</span><span className="block text-xs text-[var(--color-stone-soft)]">{d.description}</span></span>
+              </button>
+            ))}
+          </div>
+          {reusables.length > 0 && (
+            <div className="mt-2 border-t border-[var(--color-line)] pt-2">
+              <p className="px-2 pb-1 text-[0.6rem] uppercase tracking-[0.12em] text-[var(--color-stone-soft)]">Reusable blocks</p>
+              <div className="grid gap-1">
+                {reusables.map((r) => (
+                  <button key={r.id} onClick={() => onPickRef?.(r.id)} className="flex items-center gap-2 rounded-[var(--radius-sm)] p-2 text-left hover:bg-[var(--color-bone)]">
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[var(--radius-sm)] bg-[var(--color-bone)] text-sm text-[var(--color-stone)]">⟐</span>
+                    <span className="text-sm font-medium">{r.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -28,11 +28,14 @@ export default async function EditPagePage({ params }: { params: Promise<{ id: s
     if (row) seo = { title: row.title ?? '', description: row.description ?? '', ogImage: row.ogImage ?? '', noindex: row.noindex };
   } catch { /* table optional */ }
 
+  const { listGlobalSections } = await import('@/lib/global-sections');
+  const reusables = (await listGlobalSections()).map((b) => ({ id: b.id, name: b.name, type: b.type }));
+
   const can = await sessionPermissions();
   const locale = await getLocale();
   return (
     <AdminShell user={session?.email} can={can} locale={locale}>
-      <PageBuilder initial={page} revisions={revisions} seed={seed} seo={seo} />
+      <PageBuilder initial={page} revisions={revisions} seed={seed} seo={seo} reusables={reusables} />
     </AdminShell>
   );
 }

@@ -1757,6 +1757,17 @@ model Page {
   @@index([status])
 }
 
+// Reusable/global section: authored once, referenced from many pages via a
+// section of type "ref" ({ refId }). Editing it updates every page that uses it.
+model GlobalSection {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   // a section type from lib/sections.ts
+  data      Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}
+
 model PageRevision {
   id        String   @id @default(cuid())
   pageId    String
