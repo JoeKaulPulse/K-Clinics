@@ -11,12 +11,16 @@ export function BookingActions({
   pricePence,
   within24h,
   charged,
+  canManage = true,
+  canCharge = true,
 }: {
   bookingId: string;
   status: string;
   pricePence: number;
   within24h: boolean;
   charged: number | null;
+  canManage?: boolean;
+  canCharge?: boolean;
 }) {
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState('');
@@ -29,29 +33,33 @@ export function BookingActions({
   const active = status === 'CONFIRMED' || status === 'PENDING';
   const completed = status === 'COMPLETED';
 
+  if (!canManage && !canCharge) {
+    return <p className="rounded-[var(--radius-sm)] bg-[var(--color-bone)] px-4 py-3 text-sm text-[var(--color-stone)]">You don’t have permission to manage or charge this appointment.</p>;
+  }
+
   return (
     <div className="space-y-6">
       {msg && <p className="rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] px-4 py-3 text-sm">{msg}</p>}
 
       {/* Status controls */}
-      {active && (
+      {active && canManage && (
         <div className="flex flex-wrap gap-2">
-          <button disabled={pending} onClick={() => start(async () => { await setBookingStatus(bookingId, 'COMPLETED'); setMsg('Marked completed.'); })}
+          <button disabled={pending} onClick={() => start(async () => { const r = await setBookingStatus(bookingId, 'COMPLETED'); setMsg(r.ok ? 'Marked completed.' : r.error || 'Could not update.'); })}
             className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">Mark completed</button>
-          <button disabled={pending} onClick={() => start(async () => { await setBookingStatus(bookingId, 'NO_SHOW'); setMsg('Marked no-show.'); })}
+          <button disabled={pending} onClick={() => start(async () => { const r = await setBookingStatus(bookingId, 'NO_SHOW'); setMsg(r.ok ? 'Marked no-show.' : r.error || 'Could not update.'); })}
             className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:bg-[var(--color-bone)] disabled:opacity-60">No-show</button>
         </div>
       )}
 
       {/* Charge — gated behind completion so a client is never charged before
           their treatment is delivered. */}
-      {active && !charged && (
+      {canCharge && active && !charged && (
         <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-line)] bg-[var(--color-bone)] p-4">
           <p className="text-sm font-medium text-[var(--color-stone)]">Take payment</p>
           <p className="mt-1 text-xs text-[var(--color-stone)]">Available once the appointment is marked <strong>completed</strong> — this prevents charging before the treatment is delivered.</p>
         </div>
       )}
-      {completed && !charged && (
+      {canCharge && completed && !charged && (
         <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
           <p className="mb-2 text-sm font-medium">Charge card on file</p>
           <div className="flex flex-wrap items-center gap-2">
@@ -84,7 +92,7 @@ export function BookingActions({
       )}
 
       {/* Cancel with override */}
-      {active && (
+      {canManage && active && (
         <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] p-4">
           <p className="mb-2 text-sm font-medium">Cancel booking</p>
           {within24h && (
@@ -104,7 +112,7 @@ export function BookingActions({
             <div className="flex items-center gap-3">
               <button disabled={pending} onClick={() => start(async () => {
                 const r = await cancelBookingAction(bookingId, { reason, waiveFee: waive });
-                setMsg(r.ok ? (r.charged ? `Cancelled — charged ${money(r.charged)}.` : 'Cancelled — no charge.') : r.error || 'Failed');
+                setMsg(r.ok ? (r.charged ? `Cancelled — charged ${money(r.charged)}.` : r.feeFailed ? 'Cancelled — late fee FAILED, please follow up.' : r.requiresAction ? 'Cancelled — fee needs card authentication (client emailed).' : 'Cancelled — no charge.') : r.error || 'Failed');
                 setConfirmCancel(false);
               })} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">{pending ? 'Cancelling…' : 'Confirm cancel'}</button>
               <button onClick={() => setConfirmCancel(false)} className="text-sm text-[var(--color-stone)]">Keep</button>

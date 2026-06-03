@@ -8,6 +8,7 @@ import {
   tmplChargeReceipt,
   tmplPaymentActionRequired,
 } from './email';
+import { logAudit } from './audit';
 import type { Booking, Client } from '@prisma/client';
 
 const CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -84,7 +85,7 @@ export async function chargeBooking(
 export async function cancelBooking(
   bookingId: string,
   opts: { by: string; reason?: string; waiveFee?: boolean },
-): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; error?: string }> {
+): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; feeFailed?: boolean; error?: string }> {
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
   if (!booking) return { ok: false, error: 'Booking not found' };
   if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(booking.status)) {
@@ -95,12 +96,13 @@ export async function cancelBooking(
   const shouldCharge = late && !opts.waiveFee && booking.pricePence > 0;
   let charged = 0;
   let requiresAction = false;
+  let feeFailed = false;
 
   if (shouldCharge) {
     const res = await chargeBooking(booking, booking.pricePence, { late: true });
     if (res.ok) charged = booking.pricePence;
     else if (res.requiresAction) requiresAction = true;
-    // If the charge fails, we still cancel but flag it for staff follow-up.
+    else feeFailed = true; // charge declined — cancel anyway, but flag for follow-up.
   }
 
   await db.booking.update({
@@ -115,8 +117,11 @@ export async function cancelBooking(
     },
   });
   await db.interaction.create({
-    data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Cancelled ${booking.treatmentTitle}${late ? ' (within 24h)' : ''}${charged ? ` — charged £${(charged / 100).toFixed(2)}` : opts.waiveFee && late ? ' — fee waived' : ''}`, author: opts.by },
+    data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Cancelled ${booking.treatmentTitle}${late ? ' (within 24h)' : ''}${charged ? ` — charged £${(charged / 100).toFixed(2)}` : feeFailed ? ' — LATE FEE FAILED (follow up)' : opts.waiveFee && late ? ' — fee waived' : ''}`, author: opts.by },
   });
+  if (feeFailed) {
+    await logAudit({ action: 'PAYMENT_FAILED', actor: opts.by, bookingId: booking.id, clientId: booking.clientId, summary: `Late-cancellation fee (£${(booking.pricePence / 100).toFixed(2)}) failed — follow up.` }).catch(() => {});
+  }
 
   // Remove from the shared clinic calendar (Hostinger CalDAV; no-op if unconfigured).
   import('@/lib/hostinger-calendar').then((m) => m.removeBooking(booking.id)).catch(() => {});
@@ -136,5 +141,5 @@ export async function cancelBooking(
     html: tmplBookingCancelled({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, start: booking.startAt, feeCharged: charged || undefined }),
   });
 
-  return { ok: true, charged, requiresAction };
+  return { ok: true, charged, requiresAction, feeFailed };
 }

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
@@ -25,6 +25,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const { getBooking } = await import('@/lib/crm-data');
   const { getSop, parseSopSteps } = await import('@/lib/sops');
   const session = await getSession();
+  if (!sessionCan(session, 'bookings.view')) redirect('/admin');
   const b = await getBooking(id);
   if (!b) notFound();
 
@@ -217,6 +218,8 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
               pricePence={b.pricePence}
               within24h={within24h}
               charged={b.chargedAt ? (b.chargedPence ?? 0) : null}
+              canManage={sessionCan(session, 'bookings.manage')}
+              canCharge={sessionCan(session, 'bookings.charge')}
             />
           </div>
         </section>

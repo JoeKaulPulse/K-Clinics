@@ -15,6 +15,7 @@ export async function createManualBooking(input: {
   treatmentSlug: string;
   startISO: string;
   notes?: string;
+  override?: boolean;
 }) {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
@@ -33,8 +34,13 @@ export async function createManualBooking(input: {
   const end = new Date(start.getTime() + durationMin * 60000);
 
   const { db } = await import('@/lib/db');
-  // Hold any room/equipment the treatment needs (best-effort; staff can override).
-  const { assignResources } = await import('@/lib/availability');
+  const { isSlotFree, assignResources, pickPractitioner } = await import('@/lib/availability');
+  // Guard against double-booking a room/clinician (unless explicitly overridden).
+  if (!input.override && !(await isSlotFree(input.startISO, durationMin, input.treatmentSlug))) {
+    return { ok: false, error: 'That slot clashes with an existing appointment, closure, or has no free room/clinician. Tick “book anyway” to override.', clash: true };
+  }
+  // Assign a competent, available clinician (so it shows in their day) + hold resources.
+  const practitionerId = await pickPractitioner(input.startISO, durationMin, input.treatmentSlug);
   const resourceIds = await assignResources(input.startISO, durationMin, input.treatmentSlug);
   const client = await db.client.upsert({
     where: { email: input.email.toLowerCase() },
@@ -64,6 +70,7 @@ export async function createManualBooking(input: {
       pricePence: pricePence ?? 0,
       status: 'CONFIRMED',
       notes: input.notes || null,
+      practitionerId,
       resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,
     },
   });
