@@ -181,6 +181,11 @@ export const SECTION_DEFS: SectionDef[] = [
     ],
   },
   {
+    type: 'tableOfContents', label: 'Table of contents', glyph: '≡', description: 'Auto-built list of the rich-text headings on this page.',
+    defaults: { heading: 'On this page' },
+    fields: [{ key: 'heading', label: 'Heading', type: 'text' }],
+  },
+  {
     type: 'tags', label: 'Tag list', glyph: '⬡', description: 'A heading with a wrap of pill-style tags.',
     defaults: { eyebrow: '', heading: '', items: [{ label: 'Tag' }] },
     fields: [
