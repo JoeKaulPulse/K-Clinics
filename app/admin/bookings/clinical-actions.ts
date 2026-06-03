@@ -173,8 +173,10 @@ export async function finishAppointment(bookingId: string) {
   const { logAudit } = await import('@/lib/audit');
   const b = await db.booking.findUnique({ where: { id: bookingId } });
   if (!b) return { ok: false, error: 'Not found' };
+  if (!b.startedAt) return { ok: false, error: 'Start the appointment before finishing it.' };
+  if (b.finishedAt) return { ok: true };
   const finishedAt = new Date();
-  const actualMinutes = b.startedAt ? Math.max(1, Math.round((finishedAt.getTime() - b.startedAt.getTime()) / 60000)) : null;
+  const actualMinutes = Math.max(1, Math.round((finishedAt.getTime() - b.startedAt.getTime()) / 60000));
   await db.booking.update({ where: { id: bookingId }, data: { finishedAt, actualMinutes, status: 'COMPLETED' } });
   await db.client.update({ where: { id: b.clientId }, data: { lastVisitAt: finishedAt } });
   await logAudit({ action: 'APPOINTMENT_COMPLETED', actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId, summary: `Appointment completed${actualMinutes ? ` (${actualMinutes} min actual vs ${b.durationMin} booked)` : ''}` });

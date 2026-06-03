@@ -68,19 +68,22 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
 
   // Per-appointment readiness alerts (consent / laser before-photo outstanding).
   const allBk = [...mine, ...clinic];
-  const ids = allBk.map((b) => b.id);
+  const ids = [...new Set(allBk.map((b) => b.id))];
   const { getSetting } = await import('@/lib/settings');
   const { isLaserTreatment } = await import('@/lib/consent');
-  const [signedRows, photoRows, reqConsent, reqPhoto] = await Promise.all([
+  const [signedRows, photoRows, reqConsent, reqPhoto, reqSop, reqMedical] = await Promise.all([
     ids.length ? db.signedConsent.findMany({ where: { bookingId: { in: ids } }, select: { bookingId: true, kind: true } }) : [],
     ids.length ? db.beforePhoto.findMany({ where: { bookingId: { in: ids } }, select: { bookingId: true } }) : [],
-    getSetting('require_consent'), getSetting('require_before_photo'),
+    getSetting('require_consent'), getSetting('require_before_photo'), getSetting('require_sop_ack'), getSetting('require_medical_review'),
   ]);
   const consentTreat = new Set(signedRows.filter((s) => s.kind === 'treatment').map((s) => s.bookingId));
   const photoOrOpt = new Set([...photoRows.map((p) => p.bookingId), ...signedRows.filter((s) => s.kind === 'photo_opt_out').map((s) => s.bookingId)]);
-  const alertsFor = (b: { id: string; treatmentSlug: string; status: string }) => {
+  // Mirrors the startAppointment gate so the day view can't show a false "all clear".
+  const alertsFor = (b: { id: string; treatmentSlug: string; status: string; sopAcknowledgedAt: Date | null; medicalFlagReviewedAt: Date | null; client: { medicalFlag: string | null } }) => {
     if (b.status === 'COMPLETED') return [] as string[];
     const a: string[] = [];
+    if (reqMedical && b.client.medicalFlag && !b.medicalFlagReviewedAt) a.push('Med review');
+    if (reqSop && !b.sopAcknowledgedAt) a.push('SOP');
     if (reqConsent && !consentTreat.has(b.id)) a.push('Consent');
     if (isLaserTreatment(b.treatmentSlug) && reqPhoto && !photoOrOpt.has(b.id)) a.push('Photo');
     return a;

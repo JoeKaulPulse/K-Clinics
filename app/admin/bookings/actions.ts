@@ -64,10 +64,10 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
   return res.ok ? { ok: true } : { ok: false, error: res.requiresAction ? 'Card needs authentication — client emailed a confirm link.' : res.error };
 }
 
-export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 'NO_SHOW' | 'CONFIRMED') {
-  if (!crmEnabled) return;
+export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 'NO_SHOW' | 'CONFIRMED'): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'bookings.manage')) return;
+  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to update appointments.' };
   const { db } = await import('@/lib/db');
   await db.booking.update({ where: { id: bookingId }, data: { status } });
   const b = await db.booking.findUnique({ where: { id: bookingId } });
@@ -110,6 +110,7 @@ export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 
   }
   revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath('/admin/bookings');
+  return { ok: true };
 }
 
 // Staff cancel with optional fee waiver (override of the within-24h charge).

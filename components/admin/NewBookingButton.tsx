@@ -23,17 +23,18 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState('');
+  const [clash, setClash] = useState(false);
   const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', treatmentSlug: treatments[0]?.slug ?? '', date: '', time: '10:00', notes: '' });
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD((p) => ({ ...p, [k]: v }));
 
-  function submit() {
+  function submit(override = false) {
     setError('');
     if (!d.date) return setError('Choose a date.');
     const startISO = new Date(`${d.date}T${d.time}`).toISOString();
     start(async () => {
-      const r = await createManualBooking({ ...d, startISO });
+      const r = await createManualBooking({ ...d, startISO, override });
       if (r.ok) { router.push(`/admin/bookings/${r.bookingId}`); router.refresh(); }
-      else setError(r.error || 'Could not create booking.');
+      else { setError(r.error || 'Could not create booking.'); setClash(Boolean(r.clash)); }
     });
   }
 
@@ -63,7 +64,10 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
           {error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm">{error}</p>}
           <div className="flex justify-end gap-3">
             <button onClick={onClose} className="px-4 py-2.5 text-sm text-[var(--color-stone)]">Cancel</button>
-            <button onClick={submit} disabled={pending} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
+            {clash && (
+              <button onClick={() => submit(true)} disabled={pending} className="rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium hover:border-[var(--color-gold)] disabled:opacity-60">Book anyway</button>
+            )}
+            <button onClick={() => submit(false)} disabled={pending} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
               {pending ? 'Creating…' : 'Create booking'}
             </button>
           </div>
