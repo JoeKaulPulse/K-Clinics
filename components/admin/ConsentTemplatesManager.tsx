@@ -30,7 +30,12 @@ function Card({ r }: { r: TemplateRow }) {
     setBusy(false);
     if (res.ok) { setMsg('Saved ✓ — new version'); router.refresh(); } else setMsg('Save failed');
   }
-  async function toggle() { await fetch('/api/admin/consent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'updateTemplate', key: r.key, active: !r.active }) }); router.refresh(); }
+  async function toggle() {
+    setBusy(true); setMsg('');
+    const res = await fetch('/api/admin/consent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'updateTemplate', key: r.key, active: !r.active }) });
+    setBusy(false);
+    if (res.ok) router.refresh(); else setMsg('Could not update');
+  }
 
   return (
     <section className={`rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 ${r.active ? '' : 'opacity-70'}`}>

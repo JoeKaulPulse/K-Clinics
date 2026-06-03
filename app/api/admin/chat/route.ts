@@ -10,6 +10,13 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
 
   const b = await req.json().catch(() => ({}));
+  // Replying as the clinic, taking a chat off the AI, or closing it are write
+  // actions — read-only staff (clients.view) shouldn't be able to message
+  // visitors. Gate the mutating ops behind consultations.manage.
+  if (['reply', 'setMode', 'close'].includes(b.op)) {
+    const writer = await requirePermission('consultations.manage');
+    if (!writer) return NextResponse.json({ ok: false, error: 'You don’t have permission to respond to chats.' }, { status: 403 });
+  }
   const { db } = await import('@/lib/db');
 
   switch (b.op) {

@@ -29,6 +29,7 @@ export function CallLog({ canManage }: { canManage: boolean }) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [note, setNote] = useState('');
   const [savingNote, setSavingNote] = useState(false);
+  const [noteMsg, setNoteMsg] = useState('');
 
   const load = useCallback(async () => {
     const r = await post({ op: 'list', filter });
@@ -46,9 +47,10 @@ export function CallLog({ canManage }: { canManage: boolean }) {
   async function saveNote() {
     if (!activeId) return;
     setSavingNote(true);
-    await post({ op: 'note', id: activeId, notes: note });
+    const r = await post({ op: 'note', id: activeId, notes: note });
     setSavingNote(false);
-    load();
+    if (r.ok) { setNoteMsg('Saved ✓'); load(); }
+    else setNoteMsg(r.error || 'Could not save note — your text is still here.');
   }
 
   async function dial(to: string) {
@@ -132,11 +134,12 @@ export function CallLog({ canManage }: { canManage: boolean }) {
 
             <div>
               <p className="mb-1 text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">Note</p>
-              <textarea value={note} onChange={(e) => setNote(e.target.value)} disabled={!canManage} rows={3} placeholder={canManage ? 'Add a note about this call…' : 'No note'} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-2.5 text-sm outline-none focus:border-[var(--color-gold)] disabled:opacity-60" />
+              <textarea value={note} onChange={(e) => { setNote(e.target.value); if (noteMsg) setNoteMsg(''); }} disabled={!canManage} rows={3} placeholder={canManage ? 'Add a note about this call…' : 'No note'} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-2.5 text-sm outline-none focus:border-[var(--color-gold)] disabled:opacity-60" />
               {canManage && (
-                <div className="mt-2 flex gap-2">
+                <div className="mt-2 flex items-center gap-2">
                   <button onClick={saveNote} disabled={savingNote} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{savingNote ? 'Saving…' : 'Save note'}</button>
                   <button onClick={() => dial(detail.direction === 'INBOUND' ? detail.fromNumber : detail.toNumber)} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Call back</button>
+                  {noteMsg && <span className="text-xs text-[var(--color-stone)]">{noteMsg}</span>}
                 </div>
               )}
             </div>

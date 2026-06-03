@@ -18,6 +18,7 @@ export default async function TasksPage() {
     db.task.findMany({
       where: { status: 'OPEN' },
       orderBy: [{ dueAt: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }],
+      take: 200,
       include: { assignee: { select: { name: true, email: true } }, client: { select: { id: true, firstName: true, lastName: true } } },
     }),
     db.task.findMany({
