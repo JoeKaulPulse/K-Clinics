@@ -11,6 +11,7 @@ import { WhatsAppButton } from '@/components/layout/WhatsAppButton';
 import { LiveChat } from '@/components/chat/LiveChat';
 import { MotionProvider } from '@/components/motion/MotionProvider';
 import { CookieConsent } from '@/components/legal/CookieConsent';
+import { EditBar } from '@/components/admin/EditBar';
 import { getSiteConfig, announcementActive } from '@/lib/site-config';
 
 // Marketing chrome: header, footer, scroll/cursor flourishes, page transitions.
@@ -38,6 +39,7 @@ export default async function MarketingLayout({ children }: { children: React.Re
       <BackToTop />
       <WhatsAppButton config={config} />
       <LiveChat />
+      <EditBar />
       <CookieConsent />
     </MotionProvider>
   );
