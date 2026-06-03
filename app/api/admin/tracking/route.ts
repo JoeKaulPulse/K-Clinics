@@ -28,6 +28,19 @@ export async function POST(req: Request) {
     update: { value, updatedBy: session.email },
   });
 
+  // Server-side conversion secrets — only updated when a non-empty value is sent
+  // (so saving the form doesn't wipe an existing secret you didn't re-enter).
+  const ga4ApiSecret = typeof body.ga4ApiSecret === 'string' ? body.ga4ApiSecret.trim() : '';
+  const metaCapiToken = typeof body.metaCapiToken === 'string' ? body.metaCapiToken.trim() : '';
+  if (ga4ApiSecret || metaCapiToken) {
+    const existing = await db.setting.findUnique({ where: { key: 'conversion_secrets' } });
+    const cur = existing?.value ? (JSON.parse(existing.value) as Record<string, string>) : {};
+    if (ga4ApiSecret) cur.ga4ApiSecret = ga4ApiSecret.slice(0, 200);
+    if (metaCapiToken) cur.metaCapiToken = metaCapiToken.slice(0, 400);
+    const cval = JSON.stringify(cur);
+    await db.setting.upsert({ where: { key: 'conversion_secrets' }, create: { key: 'conversion_secrets', value: cval, updatedBy: session.email }, update: { value: cval, updatedBy: session.email } });
+  }
+
   const { logAudit } = await import('@/lib/audit');
   await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: 'Updated marketing tracking pixels' });
   revalidatePath('/', 'layout');

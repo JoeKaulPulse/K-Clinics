@@ -4,20 +4,22 @@ import { useState } from 'react';
 
 const field = 'mt-1 w-full max-w-xs rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-mono';
 
-export function TrackingSettings({ initial }: { initial: { ga4Id: string; googleAdsId: string; metaPixelId: string } }) {
+export function TrackingSettings({ initial, conversions }: { initial: { ga4Id: string; googleAdsId: string; metaPixelId: string }; conversions?: { ga4: boolean; meta: boolean } }) {
   const [ga4Id, setGa4] = useState(initial.ga4Id);
   const [googleAdsId, setAds] = useState(initial.googleAdsId);
   const [metaPixelId, setMeta] = useState(initial.metaPixelId);
+  const [ga4ApiSecret, setGa4Secret] = useState('');
+  const [metaCapiToken, setMetaToken] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
 
-  const dirty = ga4Id !== initial.ga4Id || googleAdsId !== initial.googleAdsId || metaPixelId !== initial.metaPixelId;
+  const dirty = ga4Id !== initial.ga4Id || googleAdsId !== initial.googleAdsId || metaPixelId !== initial.metaPixelId || ga4ApiSecret !== '' || metaCapiToken !== '';
 
   async function save() {
     setBusy(true); setMsg('');
-    const res = await fetch('/api/admin/tracking', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ga4Id, googleAdsId, metaPixelId }) });
+    const res = await fetch('/api/admin/tracking', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ga4Id, googleAdsId, metaPixelId, ga4ApiSecret, metaCapiToken }) });
     setBusy(false);
-    setMsg(res.ok ? 'Saved ✓ — live within a minute.' : 'Save failed.');
+    if (res.ok) { setGa4Secret(''); setMetaToken(''); setMsg('Saved ✓ — live within a minute.'); } else setMsg('Save failed.');
   }
 
   return (
@@ -38,6 +40,18 @@ export function TrackingSettings({ initial }: { initial: { ga4Id: string; google
         <label className="text-xs text-[var(--color-stone)]">Meta (Facebook) Pixel ID
           <input value={metaPixelId} onChange={(e) => setMeta(e.target.value)} placeholder="1234567890" className={field} />
         </label>
+      </div>
+      <div className="mt-5 border-t border-[var(--color-line)] pt-4">
+        <h3 className="text-sm font-medium">Server-side conversions <span className="text-xs font-normal text-[var(--color-stone)]">(optional, recommended)</span></h3>
+        <p className="mt-1 max-w-2xl text-xs text-[var(--color-stone)]">Send purchases to GA4 &amp; Meta from the server when a booking is charged — accurate, ad-blocker-proof and privacy-safe (email is hashed). Leave blank to keep the current value.</p>
+        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <label className="text-xs text-[var(--color-stone)]">GA4 API secret {conversions?.ga4 && <span className="text-[var(--color-jade)]">· set ✓</span>}
+            <input type="password" value={ga4ApiSecret} onChange={(e) => setGa4Secret(e.target.value)} placeholder={conversions?.ga4 ? '•••••••• (set)' : 'paste secret'} className={field} />
+          </label>
+          <label className="text-xs text-[var(--color-stone)]">Meta Conversions API token {conversions?.meta && <span className="text-[var(--color-jade)]">· set ✓</span>}
+            <input type="password" value={metaCapiToken} onChange={(e) => setMetaToken(e.target.value)} placeholder={conversions?.meta ? '•••••••• (set)' : 'paste token'} className={field} />
+          </label>
+        </div>
       </div>
       <div className="mt-4 flex items-center gap-3">
         <button onClick={save} disabled={busy || !dirty} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Saving…' : 'Save'}</button>

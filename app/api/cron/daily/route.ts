@@ -38,5 +38,21 @@ export async function GET(req: Request) {
   } catch {
     /* never fail the cron on a calendar sync issue */
   }
-  return NextResponse.json({ ok: true, ...result, loyalty, gcal });
+  // Behaviour-analytics retention: prune old session replays (90d) and heatmap
+  // points (180d) so storage stays bounded and we hold data no longer than needed.
+  let retention = { replays: 0, heatmap: 0 };
+  try {
+    const { db } = await import('@/lib/db');
+    const replayCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const heatCutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
+    const [r, h] = await Promise.all([
+      db.replaySession.deleteMany({ where: { startedAt: { lt: replayCutoff } } }), // cascades to chunks
+      db.heatmapEvent.deleteMany({ where: { at: { lt: heatCutoff } } }),
+    ]);
+    retention = { replays: r.count, heatmap: h.count };
+  } catch (e) {
+    console.error('[cron] analytics retention failed (continuing):', (e as Error)?.message);
+  }
+
+  return NextResponse.json({ ok: true, ...result, loyalty, gcal, retention });
 }
