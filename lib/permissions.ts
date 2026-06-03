@@ -69,6 +69,7 @@ export const PERMISSIONS: Permission[] = [
   { key: 'staff.view', group: 'Administration', label: 'View staff', description: 'See the staff & access-control area.' },
   { key: 'staff.manage', group: 'Administration', label: 'Manage staff & access', description: 'Create staff, set roles and customise permissions.', sensitive: true },
   { key: 'settings.manage', group: 'Administration', label: 'Manage settings', description: 'Edit clinic settings and configuration.', sensitive: true },
+  { key: 'content.publish', group: 'Administration', label: 'Publish website content', description: 'Make page-builder changes live. Without this, an editor can draft but not publish.', sensitive: true },
   { key: 'security.manage', group: 'Administration', label: 'Security centre', description: 'View threats, manage lockouts, 2FA policy and key rotation.', sensitive: true },
 
   // Scheduling

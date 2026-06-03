@@ -16,7 +16,7 @@ const card = 'rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[v
 const DEVICES = { desktop: '100%', tablet: '820px', mobile: '390px' } as const;
 type Device = keyof typeof DEVICES;
 
-export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables = [] }: { initial: Initial; revisions: Revision[]; seed?: Section[] | null; seo?: Seo; reusables?: Reusable[] }) {
+export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables = [], canPublish = true }: { initial: Initial; revisions: Revision[]; seed?: Section[] | null; seo?: Seo; reusables?: Reusable[]; canPublish?: boolean }) {
   const router = useRouter();
   const reuseName = (id: string) => reusables.find((r) => r.id === id)?.name ?? 'Reusable block';
   const [seo, setSeo] = useState<Seo>(seoInit ?? { title: '', description: '', ogImage: '', noindex: false });
@@ -136,7 +136,9 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
         </div>
         <button onClick={() => (previewOn ? setPreviewOn(false) : openPreview())} className={`rounded-full border px-4 py-2 text-sm ${previewOn ? 'border-[var(--color-gold)] text-[var(--color-gold)]' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}>{previewOn ? 'Hide preview' : 'Live preview'}</button>
         <button disabled={busy} onClick={saveDraft} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">Save draft</button>
-        <button disabled={busy} onClick={publish} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Working…' : 'Publish'}</button>
+        {canPublish
+          ? <button disabled={busy} onClick={publish} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Working…' : 'Publish'}</button>
+          : <span className="rounded-full bg-[var(--color-bone)] px-4 py-2 text-xs text-[var(--color-stone)]" title="Ask a manager to publish">Draft only</span>}
       </div>
       {msg && <p className={`mb-3 text-sm ${msg.kind === 'ok' ? 'text-[var(--color-jade)]' : 'text-[#c0392b]'}`}>{msg.text}</p>}
 

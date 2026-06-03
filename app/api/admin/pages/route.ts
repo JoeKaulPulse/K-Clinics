@@ -21,6 +21,14 @@ export async function POST(req: Request) {
   const { db } = await import('@/lib/db');
   const op = body.op as string;
 
+  // Publishing (going live) needs the dedicated permission; drafting does not.
+  if (['publish', 'unpublish', 'rollback'].includes(op)) {
+    const { sessionCan } = await import('@/lib/auth');
+    if (!sessionCan(session, 'content.publish')) {
+      return NextResponse.json({ ok: false, error: 'You can save drafts, but publishing requires the “Publish website content” permission.' }, { status: 403 });
+    }
+  }
+
   try {
     if (op === 'create') {
       const path = normPath(body.path);
