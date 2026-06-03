@@ -30,7 +30,10 @@ export async function POST(req: Request) {
         await logAudit({ action: 'POINTS_AWARDED', actor: session.email, actorRole: session.role, summary: 'Review points awarded to clinician' });
       } catch { /* non-fatal */ }
     }
-    if (status === 'HIDDEN') { const { revalidatePath } = await import('next/cache'); revalidatePath('/reviews'); revalidatePath('/'); }
+    // Either way the public surface may change (hiding removes a published review;
+    // approving/restoring a PUBLISHED one un-publishes it) — refresh both pages.
+    const { revalidatePath } = await import('next/cache');
+    revalidatePath('/reviews'); revalidatePath('/');
     return NextResponse.json({ ok: true });
   }
 

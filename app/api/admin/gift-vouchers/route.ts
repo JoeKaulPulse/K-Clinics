@@ -4,11 +4,11 @@ import { crmEnabled } from '@/lib/crm';
 export const runtime = 'nodejs';
 
 // Manage gift vouchers from the CRM: redeem against a balance, cancel, or
-// re-send the voucher email. Requires the `finance.view` permission.
+// re-send the voucher email. These change money state, so require finance.manage.
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
   const { requirePermission } = await import('@/lib/auth');
-  const session = await requirePermission('finance.view');
+  const session = await requirePermission('finance.manage');
   if (!session) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));
@@ -37,9 +37,9 @@ export async function POST(req: Request) {
       const { sendEmail, tmplGiftVoucher } = await import('@/lib/email');
       const { site } = await import('@/lib/site');
       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || site.url;
-      const money = `£${(v.amountPence / 100).toLocaleString('en-GB')}`;
+      const money = `£${(v.amountPence / 100).toLocaleString('en-GB', { minimumFractionDigits: v.amountPence % 100 ? 2 : 0 })}`;
       const to = v.recipientEmail || v.purchaserEmail;
-      const res = await sendEmail({ to, subject: `Your KClinics gift voucher — ${money}`, html: tmplGiftVoucher({ recipientName: v.recipientName || 'there', fromName: v.purchaserName, amount: money, code: v.code, message: v.message, bookUrl: `${baseUrl}/book` }) });
+      const res = await sendEmail({ to, subject: `Your KClinics gift voucher — ${money}`, html: tmplGiftVoucher({ recipientName: v.recipientName || 'there', fromName: v.purchaserName, amount: money, code: v.code, message: v.message, bookUrl: `${baseUrl.replace(/\/$/, '')}/account/gift-cards?code=${v.code}` }) });
       if (res.ok) await db.giftVoucher.update({ where: { id: v.id }, data: { delivered: true } });
       return NextResponse.json({ ok: res.ok, error: res.ok ? undefined : 'Could not send email.' });
     }

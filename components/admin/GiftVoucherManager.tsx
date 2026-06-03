@@ -24,7 +24,7 @@ async function post(payload: object) {
   return r.json().catch(() => ({ ok: false }));
 }
 
-export function GiftVoucherManager({ vouchers }: { vouchers: Voucher[] }) {
+export function GiftVoucherManager({ vouchers, canManage = false }: { vouchers: Voucher[]; canManage?: boolean }) {
   const [filter, setFilter] = useState<'ALL' | 'ACTIVE' | 'REDEEMED' | 'PENDING' | 'CANCELLED'>('ALL');
   const [q, setQ] = useState('');
 
@@ -64,7 +64,7 @@ export function GiftVoucherManager({ vouchers }: { vouchers: Voucher[] }) {
           <tbody>
             {filtered.length === 0 ? (
               <tr><td colSpan={7} className="px-3 py-6 text-center text-[var(--color-stone-soft)]">No vouchers found.</td></tr>
-            ) : filtered.map((v) => <Row key={v.id} v={v} />)}
+            ) : filtered.map((v) => <Row key={v.id} v={v} canManage={canManage} />)}
           </tbody>
         </table>
       </div>
@@ -81,7 +81,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Row({ v }: { v: Voucher }) {
+function Row({ v, canManage }: { v: Voucher; canManage: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   async function act(payload: object) { setBusy(true); const r = await post(payload); setBusy(false); if (r.ok) router.refresh(); else alert(r.error || 'Failed.'); }
@@ -98,11 +98,13 @@ function Row({ v }: { v: Voucher }) {
       <td className="px-3 py-2"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[v.status] || ''}`}>{v.status}</span></td>
       <td className="px-3 py-2 text-xs text-[var(--color-stone)]">{fmt(v.expiresAt)}</td>
       <td className="px-3 py-2 text-right">
-        <div className="flex flex-wrap justify-end gap-2 text-xs">
-          {redeemable && <button disabled={busy} onClick={() => { const a = prompt(`Redeem amount (£), balance ${money(v.balancePence)}:`); const p = Math.round(Number(a) * 100); if (p > 0) act({ op: 'redeem', id: v.id, amountPence: p }); }} className="text-[var(--color-gold)] hover:underline disabled:opacity-50">Redeem</button>}
-          {(v.status === 'ACTIVE' || v.status === 'REDEEMED') && <button disabled={busy} onClick={() => act({ op: 'resend', id: v.id })} className="text-[var(--color-stone)] hover:underline disabled:opacity-50">Resend</button>}
-          {v.status !== 'CANCELLED' && <button disabled={busy} onClick={() => { if (confirm('Cancel this voucher? The balance will no longer be redeemable.')) act({ op: 'cancel', id: v.id }); }} className="text-[var(--color-blush)] hover:underline disabled:opacity-50">Cancel</button>}
-        </div>
+        {canManage ? (
+          <div className="flex flex-wrap justify-end gap-2 text-xs">
+            {redeemable && <button disabled={busy} onClick={() => { const a = prompt(`Redeem amount (£), balance ${money(v.balancePence)}:`); const p = Math.round(Number(a) * 100); if (p > 0) act({ op: 'redeem', id: v.id, amountPence: p }); }} className="text-[var(--color-gold)] hover:underline disabled:opacity-50">Redeem</button>}
+            {(v.status === 'ACTIVE' || v.status === 'REDEEMED') && <button disabled={busy} onClick={() => act({ op: 'resend', id: v.id })} className="text-[var(--color-stone)] hover:underline disabled:opacity-50">Resend</button>}
+            {v.status !== 'CANCELLED' && <button disabled={busy} onClick={() => { if (confirm('Cancel this voucher? The balance will no longer be redeemable.')) act({ op: 'cancel', id: v.id }); }} className="text-[var(--color-blush)] hover:underline disabled:opacity-50">Cancel</button>}
+          </div>
+        ) : <span className="text-xs text-[var(--color-stone-soft)]">—</span>}
       </td>
     </tr>
   );
