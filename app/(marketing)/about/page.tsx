@@ -27,7 +27,19 @@ const values = [
   { t: 'Quiet luxury', d: 'Cutting-edge technology meets expert care in an inclusive, luxurious and welcoming environment built around you.' },
 ];
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  // If an admin has published a CMS layout for /about, render that instead.
+  const { getPublishedPage } = await import('@/lib/pages');
+  const { SectionRenderer } = await import('@/components/cms/SectionRenderer');
+  const cms = await getPublishedPage('/about');
+  if (cms) {
+    return (
+      <>
+        <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'About', path: '/about' }])} />
+        <SectionRenderer sections={cms} />
+      </>
+    );
+  }
   return (
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'About', path: '/about' }])} />

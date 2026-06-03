@@ -1737,6 +1737,36 @@ model SiteConfig {
   revisions SiteConfigRevision[]
 }
 
+// CMS pages: an ordered list of modular sections (see lib/sections.ts). A page
+// can override an existing editorial route by `path`, or create a brand-new one.
+// draft = work in progress; published = live (null until first publish).
+model Page {
+  id        String   @id @default(cuid())
+  path      String   @unique
+  title     String?
+  draft     Json     // Section[]
+  published Json?    // Section[] (null = route shows its coded default)
+  status    String   @default("DRAFT") // DRAFT | PUBLISHED
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  revisions PageRevision[]
+
+  @@index([status])
+}
+
+model PageRevision {
+  id        String   @id @default(cuid())
+  pageId    String
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  data      Json     // Section[] snapshot
+  label     String?
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  @@index([pageId, createdAt])
+}
+
 // Uploaded media (Vercel Blob). The library powering image pickers across the
 // admin (journal covers, page builder sections, etc.).
 model MediaAsset {
