@@ -49,6 +49,10 @@ export default async function AdminOverview() {
   ]);
   const lowStock = stockItems.filter((i) => i.lowStockAt > 0 && i.currentQty <= i.lowStockAt).length;
   const productsLow = retailProducts.filter((p) => p.stockQty <= p.lowStockThreshold).length;
+  // Completed treatments in the last 30 days that haven't been charged (revenue at risk).
+  const unchargedCompleted = canFinance
+    ? await db.booking.count({ where: { status: 'COMPLETED', chargedAt: null, pricePence: { gt: 0 }, finishedAt: { gte: new Date(Date.now() - 30 * 864e5) } } })
+    : 0;
 
   // Today's appointments still missing consent or a laser before-photo.
   let todayNotReady = 0;
@@ -65,6 +69,7 @@ export default async function AdminOverview() {
   }
   const attention = [
     { show: todayNotReady > 0, label: 'Appointments not ready today', value: todayNotReady, href: '/admin/my-day', tone: 'amber' },
+    { show: canFinance && unchargedCompleted > 0, label: 'Completed, not charged', value: unchargedCompleted, href: '/admin/bookings', tone: 'amber' },
     { show: ordersToFulfil > 0, label: 'Orders to fulfil', value: ordersToFulfil, href: '/admin/orders', tone: 'amber' },
     { show: canFinance && productsLow > 0, label: 'Products to restock', value: productsLow, href: '/admin/products', tone: 'blush' },
     { show: canApproveTimeOff && pendingTimeOff > 0, label: 'Time-off to approve', value: pendingTimeOff, href: '/admin/time-off', tone: 'amber' },
