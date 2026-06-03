@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { CampaignPack } from '@/lib/ai-marketing';
+import type { CampaignPack, CampaignAdvice } from '@/lib/ai-marketing';
+
+const IMPACT: Record<string, string> = { high: 'bg-green-100 text-green-800', medium: 'bg-amber-100 text-amber-800', low: 'bg-[var(--color-bone)] text-[var(--color-stone)]' };
 
 function Copy({ label, text, multiline }: { label?: string; text: string; multiline?: boolean }) {
   const [done, setDone] = useState(false);
@@ -31,7 +33,9 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
 export function CampaignAiPanel({ campaignId, enabled, initial }: { campaignId: string; enabled: boolean; initial: CampaignPack | null }) {
   const router = useRouter();
   const [pack, setPack] = useState<CampaignPack | null>(initial);
+  const [advice, setAdvice] = useState<CampaignAdvice | null>(null);
   const [busy, setBusy] = useState(false);
+  const [optBusy, setOptBusy] = useState(false);
   const [err, setErr] = useState('');
 
   async function generate() {
@@ -42,6 +46,14 @@ export function CampaignAiPanel({ campaignId, enabled, initial }: { campaignId: 
     if (j.ok) { setPack(j.pack); router.refresh(); } else setErr(j.error || 'Failed');
   }
 
+  async function optimise() {
+    setOptBusy(true); setErr('');
+    const res = await fetch('/api/admin/marketing/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'optimise', campaignId }) });
+    const j = await res.json().catch(() => ({}));
+    setOptBusy(false);
+    if (j.ok) setAdvice(j.advice); else setErr(j.error || 'Failed');
+  }
+
   return (
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-gold)]/30 bg-gradient-to-br from-[var(--color-gold)]/8 to-transparent p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -49,10 +61,33 @@ export function CampaignAiPanel({ campaignId, enabled, initial }: { campaignId: 
           <h2 className="font-[family-name:var(--font-display)] text-lg">✦ AI assistant</h2>
           <p className="text-sm text-[var(--color-stone)]">Generate on-brand email, ad copy, landing-page sections &amp; SEO from your brief. Review &amp; use what you like — nothing is published automatically.</p>
         </div>
-        <button onClick={generate} disabled={busy || !enabled} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">
-          {busy ? 'Generating…' : pack ? 'Regenerate' : 'Generate content'}
-        </button>
+        <div className="flex gap-2">
+          <button onClick={optimise} disabled={optBusy || !enabled} className="rounded-full border border-[var(--color-line)] bg-white px-4 py-2 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">{optBusy ? 'Analysing…' : 'Optimise performance'}</button>
+          <button onClick={generate} disabled={busy || !enabled} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">
+            {busy ? 'Generating…' : pack ? 'Regenerate' : 'Generate content'}
+          </button>
+        </div>
       </div>
+
+      {advice && (
+        <div className="mt-5 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4">
+          <h3 className="mb-1 text-sm font-semibold">Optimisation analysis</h3>
+          <p className="text-sm text-[var(--color-stone)]">{advice.summary}</p>
+          <ul className="mt-3 space-y-2">
+            {advice.actions.map((a, i) => (
+              <li key={i} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] p-2.5">
+                <div className="flex items-center gap-2"><span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-semibold uppercase ${IMPACT[a.impact] ?? ''}`}>{a.impact}</span><span className="text-sm font-medium">{a.title}</span></div>
+                <p className="mt-1 text-sm text-[var(--color-stone)]">{a.detail}</p>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div><p className="text-xs font-semibold text-[var(--color-ink)]">Budget</p><p className="text-sm text-[var(--color-stone)]">{advice.budgetAdvice}</p></div>
+            <div><p className="text-xs font-semibold text-[var(--color-ink)]">Audience ideas</p><ul className="ml-4 list-disc text-sm text-[var(--color-stone)]">{advice.audienceIdeas.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
+          </div>
+          {advice.testIdeas?.length > 0 && <div className="mt-3"><p className="text-xs font-semibold text-[var(--color-ink)]">A/B test ideas</p><ul className="ml-4 list-disc text-sm text-[var(--color-stone)]">{advice.testIdeas.map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
+        </div>
+      )}
       {!enabled && <p className="mt-2 text-xs text-[var(--color-blush)]">AI isn’t configured yet (missing ANTHROPIC_API_KEY).</p>}
       {err && <p className="mt-2 text-sm text-[var(--color-blush)]">{err}</p>}
 
