@@ -31,6 +31,7 @@ const navGroups: { heading?: string; items: NavItem[] }[] = [
   ] },
   { heading: 'nav.group.catalogue', items: [
     { href: '/admin/services', key: 'nav.services', perm: 'settings.manage' },
+    { href: '/admin/products', key: 'nav.products', perm: 'settings.manage' },
     { href: '/admin/pages', key: 'nav.pages', perm: 'settings.manage' },
     { href: '/admin/blocks', key: 'nav.blocks', perm: 'settings.manage' },
     { href: '/admin/journal', key: 'nav.journal', perm: 'settings.manage' },
