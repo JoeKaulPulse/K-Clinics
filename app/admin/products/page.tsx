@@ -15,7 +15,7 @@ export default async function ProductsPage() {
 
   const { db } = await import('@/lib/db');
   const { stockState } = await import('@/lib/products');
-  const products = await db.product.findMany({ orderBy: { updatedAt: 'desc' } });
+  const products = await db.product.findMany({ orderBy: { updatedAt: 'desc' }, take: 500 });
   const rows: ProductRow[] = products.map((p) => ({
     id: p.id, name: p.name, image: p.images[0] ?? null, pricePence: p.pricePence, status: p.status,
     ageRestricted: p.ageRestricted, stockQty: p.stockQty, stock: stockState(p),

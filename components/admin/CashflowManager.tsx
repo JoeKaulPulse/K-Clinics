@@ -282,7 +282,7 @@ function Entries({ entries, canManage, uk }: { entries: Entry[]; canManage: bool
     if (!v.label.trim()) return;
     if (await post({ op: 'createEntry', ...v })) { setV({ type: 'INCOME', category: '', label: '', amountPounds: '', cadence: 'MONTHLY', startDate: '', endDate: '' }); setOpen(false); router.refresh(); }
   }
-  async function del(id: string) { if (await post({ op: 'deleteEntry', id })) router.refresh(); }
+  async function del(id: string) { if (!confirm(L('Delete this forecast line?', 'Видалити цей рядок прогнозу?'))) return; if (await post({ op: 'deleteEntry', id })) router.refresh(); }
 
   const cadenceLabel = (c: string) => ({ ONE_OFF: L('one-off', 'разово'), WEEKLY: L('weekly', 'щотижня'), MONTHLY: L('monthly', 'щомісяця'), QUARTERLY: L('quarterly', 'щокварталу'), ANNUAL: L('annual', 'щороку') }[c] || c);
 
