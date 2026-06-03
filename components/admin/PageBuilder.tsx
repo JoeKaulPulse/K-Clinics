@@ -10,7 +10,7 @@ type Initial = { id: string; path: string; title: string; status: 'DRAFT' | 'PUB
 
 const card = 'rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]';
 
-export function PageBuilder({ initial, revisions }: { initial: Initial; revisions: Revision[] }) {
+export function PageBuilder({ initial, revisions, seed }: { initial: Initial; revisions: Revision[]; seed?: Section[] | null }) {
   const router = useRouter();
   const [sections, setSections] = useState<Section[]>(initial.draft);
   const [title, setTitle] = useState(initial.title);
@@ -84,7 +84,17 @@ export function PageBuilder({ initial, revisions }: { initial: Initial; revision
               </div>
             );
           })}
-          {sections.length === 0 && <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] p-8 text-center text-sm text-[var(--color-stone)]">Empty page. Add your first section above.</p>}
+          {sections.length === 0 && (
+            <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] p-10 text-center">
+              <p className="text-sm text-[var(--color-stone)]">This page is empty.</p>
+              {seed && seed.length > 0 && (
+                <button onClick={() => { setSections(seed); setOpenId(seed[0]?.id ?? null); }} className="mt-4 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)]">
+                  Start from the current page content
+                </button>
+              )}
+              <p className="mt-3 text-xs text-[var(--color-stone-soft)]">{seed && seed.length > 0 ? 'Loads this page’s existing content as editable sections, or use “＋ Section” above.' : 'Use “＋ Section” above to add your first section.'}</p>
+            </div>
+          )}
         </div>
 
         {/* Sidebar */}
