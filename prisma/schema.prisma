@@ -710,12 +710,21 @@ model EmailEvent {
   subject    String
   status     EmailStatus @default(QUEUED)
   providerId String?
+  campaignId String?
   error      String?
   meta       Json?
+  openedAt   DateTime?
+  clickedAt  DateTime?
+  bouncedAt  DateTime?
+  complainedAt DateTime?
+  opens      Int         @default(0)
+  clicks     Int         @default(0)
   createdAt  DateTime    @default(now())
 
   @@index([clientId])
   @@index([kind, createdAt])
+  @@index([campaignId])
+  @@index([providerId])
 }
 
 model Campaign {
