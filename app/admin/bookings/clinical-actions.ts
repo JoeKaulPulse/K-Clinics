@@ -110,6 +110,16 @@ export async function startAppointment(bookingId: string) {
     const consent = await db.signedConsent.findFirst({ where: { bookingId, kind: 'treatment' }, select: { id: true } });
     if (!consent) return { ok: false, error: 'The client must sign the treatment consent form before starting.' };
   }
+  // Laser before-photo gate (insurance-critical): a before-photo OR a signed
+  // photo opt-out must be on file for laser treatments.
+  const { isLaserTreatment } = await import('@/lib/consent');
+  if (isLaserTreatment(b.treatmentSlug) && (await getSetting('require_before_photo'))) {
+    const [photo, optOut] = await Promise.all([
+      db.beforePhoto.findFirst({ where: { bookingId }, select: { id: true } }),
+      db.signedConsent.findFirst({ where: { bookingId, kind: 'photo_opt_out' }, select: { id: true } }),
+    ]);
+    if (!photo && !optOut) return { ok: false, error: 'Capture a before photo (or have the client sign the photo opt-out) before starting this laser treatment.' };
+  }
 
   await db.booking.update({ where: { id: bookingId }, data: { startedAt: new Date() } });
   await logAudit({ action: 'APPOINTMENT_STARTED', actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId, summary: 'Appointment started (clock running)' });
