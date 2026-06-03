@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 import { site } from '@/lib/site';
 import { GlobalSearch } from '@/components/admin/GlobalSearch';
+import { GuideHost } from '@/components/guide/GuideHost';
 import { I18nProvider } from '@/components/i18n/I18nProvider';
 import { translator, isLocale, LOCALES, LOCALE_LABELS, DEFAULT_LOCALE, type Locale } from '@/lib/i18n';
 
@@ -152,6 +153,7 @@ export function AdminShell({
     <Link
       key={n.href}
       href={n.href}
+      data-tour={n.key}
       className={`flex items-center justify-between gap-2 whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-2.5 text-sm transition-colors ${
         isActive(n) ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-bone)]'
       }`}
@@ -190,15 +192,15 @@ export function AdminShell({
               </p>
             </div>
           </div>
-          <GlobalSearch placeholder={t('shell.search')} />
+          <div data-tour="admin-search"><GlobalSearch placeholder={t('shell.search')} /></div>
 
           {/* Mobile: flat horizontal bar (all items) */}
-          <nav className="flex gap-1 overflow-x-auto lg:hidden">
+          <nav data-tour="admin-nav" className="flex gap-1 overflow-x-auto lg:hidden">
             {groups.flatMap((g) => g.items).map(renderLink)}
           </nav>
 
           {/* Desktop: collapsible sections (collapsed by default) */}
-          <nav className="hidden flex-col gap-0.5 lg:flex">
+          <nav data-tour="admin-nav" className="hidden flex-col gap-0.5 lg:flex">
             {groups.map((g, gi) => {
               const key = groupKey(g, gi);
               const open = openGroups.has(key);
@@ -245,6 +247,7 @@ export function AdminShell({
         </aside>
         <main className="flex-1 p-5 md:p-8 lg:p-10">{children}</main>
       </div>
+      <GuideHost />
     </I18nProvider>
   );
 }

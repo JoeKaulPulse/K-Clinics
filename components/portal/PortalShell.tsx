@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
+import { GuideHost } from '@/components/guide/GuideHost';
 import { Aurora } from '@/components/ui/Aurora';
 import { site } from '@/lib/site';
 import { portalTranslator, PORTAL_LOCALE_COOKIE } from '@/lib/i18n-portal';
@@ -73,7 +74,7 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
               {nav.map((n) => {
                 const active = n.href === '/account' ? pathname === n.href : pathname.startsWith(n.href);
                 return (
-                  <Link key={n.href} href={n.href} aria-current={active ? 'page' : undefined} className={navLink(active)}>
+                  <Link key={n.href} href={n.href} data-tour={n.key} aria-current={active ? 'page' : undefined} className={navLink(active)}>
                     {t(n.key)}
                   </Link>
                 );
@@ -112,6 +113,7 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
           </nav>
         </footer>
       </div>
+      <GuideHost />
     </div>
   );
 }

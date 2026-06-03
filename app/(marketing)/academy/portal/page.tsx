@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { PageHero } from '@/components/ui/PageHero';
 import { AcademyAuth } from '@/components/academy/AcademyAuth';
 import { AcademyLogout } from '@/components/academy/AcademyLogout';
+import { GuideHost } from '@/components/guide/GuideHost';
 import { ACCREDITATION_LABELS } from '@/lib/academy';
 import { pageMeta } from '@/lib/seo';
 
@@ -44,7 +45,7 @@ export default async function AcademyPortalPage() {
   return (
     <>
       <PageHero eyebrow="K Academy" title={`Welcome, ${student.firstName}.`} lede="Your training, in one place." gradient={['#2a2420', '#7b6a5d']} />
-      <section className="container-lux section">
+      <section className="container-lux section" data-tour="academy-courses">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-title">Your courses</h2>
           <AcademyLogout />
@@ -127,6 +128,7 @@ export default async function AcademyPortalPage() {
           </div>
         )}
       </section>
+      <GuideHost />
     </>
   );
 }
