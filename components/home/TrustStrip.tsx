@@ -6,13 +6,12 @@ const marks = [
   { k: 'Licensed', v: 'High-Risk Special Treatment Licence' },
   { k: 'Level 7', v: 'Qualified injector' },
   { k: 'Prescriber', v: 'Prescriber-led care' },
-  { k: 'Medical-grade', v: 'Technology & protocols' },
 ];
 
 export function TrustStrip() {
   return (
     <section className="border-y border-[var(--color-line)] bg-[var(--color-porcelain)]">
-      <div className="container-lux grid grid-cols-2 gap-px overflow-hidden md:grid-cols-4">
+      <div className="container-lux grid grid-cols-1 gap-px overflow-hidden sm:grid-cols-3">
         {marks.map((m, i) => (
           <Reveal key={m.k} delay={i * 0.06}>
             <div className="flex flex-col items-center px-4 py-8 text-center md:py-10">

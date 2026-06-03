@@ -6,7 +6,6 @@ import { PageTransition } from '@/components/motion/PageTransition';
 import { ScrollProgress } from '@/components/motion/ScrollProgress';
 import { Cursor } from '@/components/motion/Cursor';
 import { Intro } from '@/components/motion/Intro';
-import { BackToTop } from '@/components/motion/BackToTop';
 import { WhatsAppButton } from '@/components/layout/WhatsAppButton';
 import { LiveChat } from '@/components/chat/LiveChat';
 import { MotionProvider } from '@/components/motion/MotionProvider';
@@ -39,7 +38,6 @@ export default async function MarketingLayout({ children }: { children: React.Re
         <PageTransition>{children}</PageTransition>
       </main>
       <Footer config={config} />
-      <BackToTop />
       <WhatsAppButton config={config} />
       <LiveChat />
       <EditBar />
