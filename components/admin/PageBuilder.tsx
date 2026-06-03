@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { SECTION_DEFS, sectionDef, newSection, cloneSection, uid, type Section } from '@/lib/sections';
@@ -76,6 +76,34 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
   const unpublish = async () => { if (confirm('Unpublish? The route reverts to its built-in version.') && await call('unpublish')) { setStatus('DRAFT'); setHasPublished(false); setMsg({ kind: 'ok', text: 'Unpublished.' }); router.refresh(); } };
   const rollback = async (revisionId: string) => { if (confirm('Restore this version and publish it?') && await call('rollback', { revisionId })) { setStatus('PUBLISHED'); setDirty(false); router.refresh(); } };
   const del = async () => { if (confirm('Delete this page entirely?') && await call('delete')) router.push('/admin/pages'); };
+  const duplicatePage = async () => {
+    const path = prompt('Duplicate this page to which path?', `${initial.path}-copy`);
+    if (!path) return;
+    const res = await fetch('/api/admin/pages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: 'duplicate', id: initial.id, path }) });
+    const data = await res.json().catch(() => ({}));
+    if (data.id) router.push(`/admin/pages/${data.id}`); else setMsg({ kind: 'err', text: data.error || 'Could not duplicate.' });
+  };
+
+  // Live accessibility + SEO audit over the current draft.
+  const audit = useMemo(() => {
+    const issues: { level: 'warn' | 'tip'; text: string }[] = [];
+    const visible = sections.filter((s) => !s.hidden);
+    if (!visible.length) issues.push({ level: 'warn', text: 'The page has no visible sections.' });
+    let h2 = 0;
+    for (const s of visible) {
+      const d = s.data as Record<string, unknown>;
+      if (s.type === 'heading' || (typeof d.heading === 'string' && d.heading)) h2++;
+      if (s.type === 'image' && d.src && !String(d.alt || '').trim()) issues.push({ level: 'warn', text: 'An image is missing alt text (accessibility).' });
+      if (s.type === 'hero' && !String(d.title || '').trim()) issues.push({ level: 'warn', text: 'The hero has no heading.' });
+      if (s.type === 'cta' && String(d.ctaLabel || '').trim() && !String(d.ctaHref || '').trim()) issues.push({ level: 'warn', text: 'A button has a label but no link.' });
+      if (s.type === 'video' && !String(d.url || '').trim()) issues.push({ level: 'tip', text: 'A video section has no URL yet.' });
+    }
+    if (!h2 && visible.length) issues.push({ level: 'tip', text: 'Add at least one heading for structure and SEO.' });
+    if (!seo.description.trim()) issues.push({ level: 'tip', text: 'Add a meta description (SEO panel) for better search results.' });
+    else if (seo.description.length > 165) issues.push({ level: 'tip', text: 'Meta description is over ~160 characters and may be truncated.' });
+    if (seo.title && seo.title.length > 62) issues.push({ level: 'tip', text: 'SEO title is long (>62 chars) and may be truncated.' });
+    return issues;
+  }, [sections, seo]);
 
   async function openPreview() { setPreviewOn(true); if (dirty) await saveDraftSilent(); setNonce((n) => n + 1); }
 
@@ -242,7 +270,21 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
                 </ul>
               )}
             </div>
-            <button onClick={del} className="text-sm text-[var(--color-stone-soft)] hover:text-[#c0392b]">Delete page</button>
+            <div className={`${card} p-4`}>
+              <h3 className="mb-3 flex items-center justify-between text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-stone)]">Audit {audit.length === 0 && <span className="text-[var(--color-jade)]">✓ all good</span>}</h3>
+              {audit.length === 0 ? <p className="text-sm text-[var(--color-stone-soft)]">No accessibility or SEO issues found.</p> : (
+                <ul className="space-y-2 text-sm">
+                  {audit.map((a, i) => (
+                    <li key={i} className="flex gap-2"><span className={a.level === 'warn' ? 'text-[#c0392b]' : 'text-[var(--color-gold)]'}>{a.level === 'warn' ? '!' : '○'}</span><span className="text-[var(--color-ink-soft)]">{a.text}</span></li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-4">
+              <button onClick={duplicatePage} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">Duplicate page</button>
+              <button onClick={del} className="text-sm text-[var(--color-stone-soft)] hover:text-[#c0392b]">Delete page</button>
+            </div>
           </aside>
         )}
       </div>

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
 import { PAGES_TAG } from '@/lib/pages';
-import { asSections, type Section } from '@/lib/sections';
+import { asSections, uid, type Section } from '@/lib/sections';
 import type { Prisma } from '@prisma/client';
 
 export const runtime = 'nodejs';
@@ -35,6 +35,17 @@ export async function POST(req: Request) {
     }
 
     if (!body.id) return NextResponse.json({ ok: false, error: 'No page id.' }, { status: 400 });
+
+    if (op === 'duplicate') {
+      const src = await db.page.findUnique({ where: { id: body.id } });
+      if (!src) return NextResponse.json({ ok: false, error: 'Page not found.' }, { status: 404 });
+      const path = normPath(body.path);
+      if (!path || path === '/') return NextResponse.json({ ok: false, error: 'Enter a destination path, e.g. /promo-2.' }, { status: 400 });
+      if (await db.page.findUnique({ where: { path }, select: { id: true } })) return NextResponse.json({ ok: false, error: 'A page for that path already exists.' }, { status: 409 });
+      const sections = asSections(src.draft).map((s) => ({ ...s, id: uid() }));
+      const page = await db.page.create({ data: { path, title: body.title ? String(body.title).slice(0, 120) : src.title, draft: J(sections), status: 'DRAFT', updatedBy: editor } });
+      return NextResponse.json({ ok: true, id: page.id });
+    }
 
     if (op === 'saveDraft') {
       await db.page.update({ where: { id: body.id }, data: { draft: J(asSections(body.sections)), title: body.title !== undefined ? (body.title ? String(body.title).slice(0, 120) : null) : undefined, updatedBy: editor } });
