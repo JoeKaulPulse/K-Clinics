@@ -24,6 +24,8 @@ export function BlockEditor({ blocks, onChange }: { blocks: Block[]; onChange: (
   const update = (id: string, patch: Partial<Block>) =>
     onChange(blocks.map((b) => (b.id === id ? ({ ...b, ...patch } as Block) : b)));
   const remove = (id: string) => { onChange(blocks.filter((b) => b.id !== id)); if (activeId === id) setActiveId(null); };
+  // Slash command: convert the current (empty) block into another type in place.
+  const convert = (id: string, type: BlockType) => onChange(blocks.map((b) => (b.id === id ? { ...emptyBlock(type), id: b.id } : b)));
   const move = (id: string, dir: -1 | 1) => {
     const i = blocks.findIndex((b) => b.id === id); const j = i + dir;
     if (i < 0 || j < 0 || j >= blocks.length) return;
@@ -86,6 +88,7 @@ export function BlockEditor({ blocks, onChange }: { blocks: Block[]; onChange: (
                 block={b} active={activeId === b.id}
                 setActive={() => setActiveId(b.id)}
                 update={(patch) => update(b.id, patch)}
+                convert={(type) => convert(b.id, type)}
                 taRef={(el) => { taRefs.current[b.id] = el; }}
               />
             </div>
@@ -106,16 +109,27 @@ export function BlockEditor({ blocks, onChange }: { blocks: Block[]; onChange: (
 }
 
 // ── One block: live preview, swaps to an editor when active ───────────────────
-function BlockView({ block: b, active, setActive, update, taRef }: {
+const SLASH_TYPES: BlockType[] = ['heading', 'list', 'quote', 'callout', 'image', 'cta', 'divider', 'html'];
+
+function BlockView({ block: b, active, setActive, update, convert, taRef }: {
   block: Block; active: boolean; setActive: () => void;
   update: (patch: Partial<Block>) => void;
+  convert: (type: BlockType) => void;
   taRef: (el: HTMLTextAreaElement | null) => void;
 }) {
   // Text-bearing blocks: true WYSIWYG — formatting renders live as you type.
   if (b.type === 'paragraph' || b.type === 'heading' || b.type === 'quote' || b.type === 'callout') {
     const cls = b.type === 'heading' ? (b.level === 3 ? 'be-h3' : 'be-h2') : b.type === 'quote' ? 'be-quote' : b.type === 'callout' ? 'be-callout' : 'be-p';
+    const slashing = b.type === 'paragraph' && b.text === '/';
     return (
-      <div>
+      <div className="relative">
+        {slashing && (
+          <div className="absolute left-0 top-7 z-30 grid w-56 grid-cols-2 gap-1 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-2 shadow-[var(--shadow-lift)]">
+            {SLASH_TYPES.map((t) => (
+              <button key={t} type="button" onMouseDown={(e) => { e.preventDefault(); convert(t); }} className="rounded-[var(--radius-sm)] px-2 py-1.5 text-left text-sm hover:bg-[var(--color-bone)]">{BLOCK_LABELS[t]}</button>
+            ))}
+          </div>
+        )}
         {b.type === 'heading' && (
           <div className="mb-2 flex gap-1">
             {[2, 3].map((lv) => (
@@ -125,7 +139,7 @@ function BlockView({ block: b, active, setActive, update, taRef }: {
           </div>
         )}
         <RichTextField className={`be-input ${cls}`} value={b.text}
-          placeholder={b.type === 'heading' ? 'Heading' : b.type === 'callout' ? 'A highlighted note…' : b.type === 'quote' ? 'A pull quote…' : 'Write something…'}
+          placeholder={b.type === 'heading' ? 'Heading' : b.type === 'callout' ? 'A highlighted note…' : b.type === 'quote' ? 'A pull quote…' : 'Write something, or “/” for blocks…'}
           onChange={(v) => update({ text: v })} />
         {b.type === 'quote' && (
           <input className="be-cite-input" value={b.cite || ''} placeholder="Attribution (optional)"
