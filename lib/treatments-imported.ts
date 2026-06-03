@@ -81,6 +81,7 @@ export const importedTreatments: Treatment[] = [
   },
   {
     slug: "spider-veins-removal",
+    onRequest: true, // equipment not in yet — enquiry/request only
     category: "aesthetics",
     group: "Laser & Skin",
     title: "Spider Veins Removal",
@@ -157,6 +158,7 @@ export const importedTreatments: Treatment[] = [
   },
   {
     slug: "permanent-makeup-removal",
+    onRequest: true, // equipment not in yet — enquiry/request only
     category: "aesthetics",
     group: "Laser & Skin",
     title: "Permanent MakeUp Removal",
