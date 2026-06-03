@@ -6,7 +6,10 @@ import { db } from '@/lib/db';
 // spend on top once authorised.
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
-const rev = (b: { chargedPence: number | null; pricePence: number }) => b.chargedPence ?? b.pricePence;
+// Net realised value: charged amount where taken, else list price minus any
+// loyalty-points redemption (counting gross would overstate attributed revenue).
+const rev = (b: { chargedPence: number | null; pricePence: number; pointsRedeemedPence?: number | null }) =>
+  b.chargedPence ?? Math.max(0, (b.pricePence ?? 0) - (b.pointsRedeemedPence ?? 0));
 const isoWeek = (d: Date) => { const t = new Date(d); t.setHours(0, 0, 0, 0); t.setDate(t.getDate() - ((t.getDay() + 6) % 7)); return t.getTime(); };
 
 export type Bucket = { key: string; label: string; bookings: number; revenuePence: number };
@@ -23,7 +26,7 @@ export async function marketingPerformance(days = 90): Promise<MarketingPerforma
   const [bookings, campaigns] = await Promise.all([
     db.booking.findMany({
       where: { createdAt: { gte: since }, status: { notIn: ['CANCELLED'] } },
-      select: { pricePence: true, chargedPence: true, createdAt: true, attribSource: true, marketingCampaignId: true },
+      select: { pricePence: true, chargedPence: true, pointsRedeemedPence: true, createdAt: true, attribSource: true, marketingCampaignId: true },
     }),
     db.marketingCampaign.findMany({ select: { id: true, name: true } }),
   ]);

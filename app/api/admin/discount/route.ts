@@ -26,7 +26,14 @@ export async function POST(req: Request) {
       data: { status: 'REVOKED', reviewedBy: session.email, flagged: false },
     });
   } else {
-    // Restore/grant: make this the active claim and mark reviewed.
+    // Restore/grant: make this the active claim and mark reviewed. Guard against
+    // handing a client two welcome offers — refuse if they already hold another
+    // active/redeemed claim.
+    const other = await db.discountClaim.findFirst({
+      where: { clientId: claim.clientId, id: { not: claimId }, status: { in: ['ACTIVE', 'REDEEMED'] } },
+      select: { id: true, status: true },
+    });
+    if (other) return NextResponse.json({ ok: false, error: `This client already has ${other.status === 'REDEEMED' ? 'used' : 'an active'} welcome discount — revoke it first.` }, { status: 409 });
     await db.discountClaim.update({
       where: { id: claimId },
       data: { status: 'ACTIVE', reviewedBy: session.email, flagged: false },

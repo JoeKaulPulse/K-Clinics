@@ -26,13 +26,17 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       // Filter on the appointment date (startAt) so imported/historical completed
       // bookings — which have no finishedAt — are counted too.
       where: { status: 'COMPLETED', startAt: { gte: since } },
-      select: { practitionerId: true, actualMinutes: true, durationMin: true, pricePence: true, chargedPence: true, treatmentTitle: true, practitioner: { select: { name: true, email: true } } },
+      select: { practitionerId: true, actualMinutes: true, durationMin: true, pricePence: true, chargedPence: true, pointsRedeemedPence: true, treatmentTitle: true, practitioner: { select: { name: true, email: true } } },
     }),
     db.stockItem.findMany({ where: { active: true }, select: { currentQty: true, costPence: true } }),
     db.stockMovement.findMany({ where: { reason: { in: ['USED', 'WASTED'] }, createdAt: { gte: since } }, select: { delta: true, item: { select: { costPence: true } } } }),
   ]);
 
-  const rev = (b: { chargedPence: number | null; pricePence: number }) => b.chargedPence ?? b.pricePence ?? 0;
+  // Realised value of a completed treatment: the amount actually charged when
+  // we took payment, otherwise the net list price after any loyalty-points
+  // redemption (which is real money off — counting gross would overstate revenue).
+  const rev = (b: { chargedPence: number | null; pricePence: number; pointsRedeemedPence?: number | null }) =>
+    b.chargedPence ?? Math.max(0, (b.pricePence ?? 0) - (b.pointsRedeemedPence ?? 0));
 
   // Staff performance.
   const staffMap = new Map<string, { name: string; count: number; actualMin: number; bookedMin: number; revenue: number }>();
@@ -83,7 +87,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       {/* KPIs */}
       <div className="mt-6 grid gap-3 sm:grid-cols-4">
         {[
-          { label: L('Revenue (completed)', 'Дохід (завершені)'), value: gbp(totalRevenue) },
+          { label: L('Treatment value (completed)', 'Вартість процедур (завершені)'), value: gbp(totalRevenue) },
           { label: L('Appointments', 'Записи'), value: String(completed.length) },
           { label: L('Clinical hours', 'Клінічні години'), value: hrs(totalActualMin) },
           { label: L('Consumables used', 'Витратні'), value: gbp(consumablesUsed) },

@@ -78,6 +78,13 @@ export async function POST(req: Request) {
     const r = REASONS.includes(reason || '') ? (reason as string) : 'ADJUSTMENT';
     // RECEIVED adds; everything else removes (ADJUSTMENT can be signed via reason choice — kept simple: USED/WASTED/RETURNED subtract).
     const signed = r === 'RECEIVED' ? Math.abs(Number(qty)) : r === 'ADJUSTMENT' ? Number(qty) : -Math.abs(Number(qty));
+    // Don't let a removal drive stock negative — that corrupts inventory
+    // valuation and reorder suggestions. (RECEIVED/positive adjustments skip this.)
+    if (signed < 0) {
+      const current = await db.stockItem.findUnique({ where: { id: itemId }, select: { currentQty: true } });
+      if (!current) return NextResponse.json({ ok: false, error: 'Item not found.' }, { status: 404 });
+      if (current.currentQty + signed < 0) return NextResponse.json({ ok: false, error: `Not enough stock — only ${current.currentQty} on hand.` }, { status: 400 });
+    }
     const [, item] = await db.$transaction([
       db.stockMovement.create({
         data: {

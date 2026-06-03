@@ -31,7 +31,8 @@ export function ProductEditor({ data }: { data: ProductData }) {
   async function adjust(delta: number) {
     const res = await fetch('/api/admin/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'adjustStock', id: f.id, delta }) });
     const j = await res.json().catch(() => ({}));
-    if (j.ok) set('stockQty', j.stockQty);
+    if (j.ok) { set('stockQty', j.stockQty); setMsg(''); }
+    else setMsg(j.error || 'Could not adjust stock.');
   }
   async function remove() { if (!confirm('Delete this product?')) return; await fetch('/api/admin/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'remove', id: f.id }) }); router.push('/admin/products'); }
   const addImg = () => { if (img.trim()) { set('images', [...f.images, img.trim()]); setImg(''); } };
