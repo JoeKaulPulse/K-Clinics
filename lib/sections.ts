@@ -130,6 +130,57 @@ export const SECTION_DEFS: SectionDef[] = [
     ],
   },
   {
+    type: 'twoColumn', label: 'Two columns', glyph: '◫', description: 'Two columns of text side by side.',
+    defaults: { heading: '', left: '', right: '' },
+    fields: [
+      { key: 'heading', label: 'Heading', type: 'text' },
+      { key: 'left', label: 'Left column', type: 'textarea', help: 'Separate paragraphs with a blank line.' },
+      { key: 'right', label: 'Right column', type: 'textarea' },
+    ],
+  },
+  {
+    type: 'steps', label: 'Steps / timeline', glyph: '◷', description: 'Numbered steps or a process timeline.',
+    defaults: { eyebrow: '', heading: 'How it works', items: [{ title: 'Step', text: '' }] },
+    fields: [
+      { key: 'eyebrow', label: 'Eyebrow', type: 'text' },
+      { key: 'heading', label: 'Heading', type: 'text' },
+      { key: 'items', label: 'Steps', type: 'list', itemLabel: 'step', itemFields: [{ key: 'title', label: 'Title', type: 'text' }, { key: 'text', label: 'Text', type: 'textarea' }] },
+    ],
+  },
+  {
+    type: 'pricingTable', label: 'Pricing table', glyph: '£', description: 'A list of named prices.',
+    defaults: { heading: '', items: [{ name: 'Treatment', price: '£0', note: '' }] },
+    fields: [
+      { key: 'heading', label: 'Heading', type: 'text' },
+      { key: 'items', label: 'Rows', type: 'list', itemLabel: 'row', itemFields: [{ key: 'name', label: 'Name', type: 'text' }, { key: 'price', label: 'Price', type: 'text' }, { key: 'note', label: 'Note', type: 'text' }] },
+    ],
+  },
+  {
+    type: 'logos', label: 'Logos / partners', glyph: '⬢', description: 'A row of partner logos or names.',
+    defaults: { heading: '', items: [{ label: '', image: '' }] },
+    fields: [
+      { key: 'heading', label: 'Heading', type: 'text' },
+      { key: 'items', label: 'Logos', type: 'list', itemLabel: 'logo', itemFields: [{ key: 'image', label: 'Logo image', type: 'image' }, { key: 'label', label: 'Name (fallback / alt)', type: 'text' }] },
+    ],
+  },
+  {
+    type: 'video', label: 'Video', glyph: '▷', description: 'An embedded YouTube or Vimeo video.',
+    defaults: { url: '', caption: '' },
+    fields: [
+      { key: 'url', label: 'Video URL', type: 'text', placeholder: 'https://youtube.com/watch?v=…' },
+      { key: 'caption', label: 'Caption', type: 'text' },
+    ],
+  },
+  {
+    type: 'contactCards', label: 'Info cards', glyph: '▣', description: 'A grid of small cards with an optional link.',
+    defaults: { heading: '', columns: '3', items: [{ title: 'Title', text: '', linkLabel: '', linkHref: '' }] },
+    fields: [
+      { key: 'heading', label: 'Heading', type: 'text' },
+      { key: 'columns', label: 'Columns', type: 'select', options: [{ value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4' }] },
+      { key: 'items', label: 'Cards', type: 'list', itemLabel: 'card', itemFields: [{ key: 'title', label: 'Title', type: 'text' }, { key: 'text', label: 'Text', type: 'textarea' }, { key: 'linkLabel', label: 'Link text', type: 'text' }, { key: 'linkHref', label: 'Link URL', type: 'link' }] },
+    ],
+  },
+  {
     type: 'tags', label: 'Tag list', glyph: '⬡', description: 'A heading with a wrap of pill-style tags.',
     defaults: { eyebrow: '', heading: '', items: [{ label: 'Tag' }] },
     fields: [

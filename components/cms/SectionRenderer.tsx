@@ -29,6 +29,13 @@ function SectionFrame({ data, children }: { data: Record<string, unknown>; child
 const str = (v: unknown, d = '') => (typeof v === 'string' ? v : d);
 const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 const paras = (s: string) => s.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+function embedUrl(u: string): string {
+  const yt = u.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]+)/);
+  if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
+  const vimeo = u.match(/vimeo\.com\/(\d+)/);
+  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`;
+  return /^https?:\/\//.test(u) ? u : '';
+}
 
 function CmsButton({ label, href, variant = 'ink' }: { label: string; href: string; variant?: 'ink' | 'gold' | 'outline' }) {
   if (!label || !href) return null;
@@ -189,6 +196,103 @@ function SectionView({ section: { type, data } }: { section: Section }) {
     case 'marquee': {
       const items = arr<{ value?: string } | string>(data.items).map((x) => (typeof x === 'string' ? x : str(x?.value))).filter(Boolean);
       return <div className="border-y border-[var(--color-line)] py-6"><Marquee items={items} /></div>;
+    }
+
+    case 'twoColumn':
+      return (
+        <section className="container-lux section-sm">
+          {str(data.heading) && <h2 className="text-title mb-8">{str(data.heading)}</h2>}
+          <div className="grid gap-10 md:grid-cols-2">
+            {[str(data.left), str(data.right)].map((col, i) => (
+              <div key={i} className="space-y-4 text-lg leading-relaxed text-[var(--color-stone)]">{paras(col).map((p, j) => <p key={j}>{p}</p>)}</div>
+            ))}
+          </div>
+        </section>
+      );
+
+    case 'steps':
+      return (
+        <section className="container-lux section">
+          {(str(data.eyebrow) || str(data.heading)) && (
+            <div className="mb-10 text-center">
+              {str(data.eyebrow) && <p className="eyebrow mb-3">{str(data.eyebrow)}</p>}
+              {str(data.heading) && <h2 className="text-title">{str(data.heading)}</h2>}
+            </div>
+          )}
+          <div className="grid gap-6 md:grid-cols-3">
+            {arr<{ title: string; text: string }>(data.items).map((it, i) => (
+              <Reveal key={i} delay={i * 0.05}>
+                <div className="h-full rounded-[var(--radius-lg)] border border-[var(--color-line)] p-7">
+                  <span className="font-[family-name:var(--font-display)] text-3xl text-[var(--color-gold)]">{String(i + 1).padStart(2, '0')}</span>
+                  <h3 className="mt-3 font-[family-name:var(--font-display)] text-xl">{it.title}</h3>
+                  <p className="mt-2 text-[var(--color-stone)]">{it.text}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </section>
+      );
+
+    case 'pricingTable':
+      return (
+        <section className="container-narrow section">
+          {str(data.heading) && <h2 className="text-title mb-8 text-center">{str(data.heading)}</h2>}
+          <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
+            {arr<{ name: string; price: string; note: string }>(data.items).map((it, i) => (
+              <div key={i} className="flex items-baseline justify-between gap-4 border-b border-[var(--color-line)] px-6 py-4 last:border-0">
+                <span><span className="font-medium">{it.name}</span>{it.note && <span className="ml-2 text-sm text-[var(--color-stone-soft)]">{it.note}</span>}</span>
+                <span className="font-[family-name:var(--font-display)] text-lg text-[var(--color-ink)]">{it.price}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      );
+
+    case 'logos':
+      return (
+        <section className="container-lux section-sm text-center">
+          {str(data.heading) && <p className="eyebrow mb-8">{str(data.heading)}</p>}
+          <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-6">
+            {arr<{ label: string; image: string }>(data.items).map((it, i) => (
+              it.image
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img key={i} src={it.image} alt={it.label || ''} className="h-9 w-auto opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0" />
+                : <span key={i} className="font-[family-name:var(--font-display)] text-xl text-[var(--color-stone)]">{it.label}</span>
+            ))}
+          </div>
+        </section>
+      );
+
+    case 'video': {
+      const url = embedUrl(str(data.url));
+      if (!url) return null;
+      return (
+        <section className="container-lux section-sm">
+          <div className="aspect-video overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] shadow-[var(--shadow-soft)]">
+            <iframe src={url} title={str(data.caption) || 'Video'} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen className="h-full w-full" />
+          </div>
+          {str(data.caption) && <p className="mt-3 text-center text-sm text-[var(--color-stone)]">{str(data.caption)}</p>}
+        </section>
+      );
+    }
+
+    case 'contactCards': {
+      const cols = str(data.columns, '3');
+      const grid = cols === '4' ? 'lg:grid-cols-4 sm:grid-cols-2' : cols === '2' ? 'sm:grid-cols-2' : 'lg:grid-cols-3 sm:grid-cols-2';
+      return (
+        <section className="container-lux section">
+          {str(data.heading) && <h2 className="text-title mb-8 text-center">{str(data.heading)}</h2>}
+          <div className={`grid gap-6 ${grid}`}>
+            {arr<{ title: string; text: string; linkLabel: string; linkHref: string }>(data.items).map((it, i) => (
+              <div key={i} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
+                <h3 className="font-[family-name:var(--font-display)] text-lg">{it.title}</h3>
+                {it.text && <p className="mt-2 text-sm text-[var(--color-stone)]">{it.text}</p>}
+                {it.linkLabel && it.linkHref && <Link href={it.linkHref} className="mt-3 inline-block text-sm font-medium text-[var(--color-gold)] hover:underline">{it.linkLabel} →</Link>}
+              </div>
+            ))}
+          </div>
+        </section>
+      );
     }
 
     case 'tags':
