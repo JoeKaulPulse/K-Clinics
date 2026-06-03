@@ -1991,3 +1991,44 @@ model AbVariant {
 
   @@unique([testId, key])
 }
+
+// ── Behaviour analytics: heatmaps + session replay ───────────────────────────
+// First-party, consent-gated (analytics). Inputs are masked in replay; only
+// coarse interaction data is stored — no keystrokes, no personal data.
+model ReplaySession {
+  id         String        @id @default(cuid())
+  sessionKey String        @unique // client-generated per visit
+  path       String        // entry path
+  device     String?
+  durationMs Int           @default(0)
+  eventCount Int           @default(0)
+  startedAt  DateTime      @default(now())
+  lastAt     DateTime      @default(now())
+  chunks     ReplayChunk[]
+
+  @@index([startedAt])
+}
+
+model ReplayChunk {
+  id        String        @id @default(cuid())
+  session   ReplaySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId String
+  seq       Int
+  events    Json          // batch of rrweb events
+  createdAt DateTime      @default(now())
+
+  @@index([sessionId, seq])
+}
+
+model HeatmapEvent {
+  id        String   @id @default(cuid())
+  path      String
+  type      String   // click | rage | scroll
+  xPct      Int      @default(0) // 0–1000 (tenths of a %) of viewport width
+  yPct      Int      @default(0) // 0–1000 of full page height
+  scrollPct Int      @default(0) // max scroll depth for 'scroll' rows
+  at        DateTime @default(now())
+
+  @@index([path, type])
+  @@index([at])
+}
