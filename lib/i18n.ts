@@ -88,6 +88,7 @@ export const DICT: Record<string, Entry> = {
   'shell.search': { en: 'Search everything…', uk: 'Пошук усюди…' },
   'nav.group.today': { en: 'Today', uk: 'Сьогодні' },
   'nav.security': { en: 'Security centre', uk: 'Безпека' },
+  'nav.golive': { en: 'Go live', uk: 'Запуск' },
   'nav.promotions': { en: 'Promotions', uk: 'Промокоди' },
   'nav.chat': { en: 'Live chat', uk: 'Онлайн-чат' },
   'nav.calls': { en: 'Calls', uk: 'Дзвінки' },

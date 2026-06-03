@@ -69,6 +69,7 @@ const navGroups: { heading?: string; items: NavItem[] }[] = [
     { href: '/admin/reports', key: 'nav.reports', perm: 'finance.view' },
   ] },
   { heading: 'nav.group.admin', items: [
+    { href: '/admin/go-live', key: 'nav.golive', perm: 'settings.manage' },
     { href: '/admin/security', key: 'nav.security', perm: 'security.manage' },
     { href: '/admin/staff', key: 'nav.staff', perm: 'staff.view' },
     { href: '/admin/activity', key: 'nav.activity', perm: 'staff.view' },
