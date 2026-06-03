@@ -1,6 +1,7 @@
 import { organizationLd, websiteLd, JsonLd } from '@/lib/seo';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
+import { AnnouncementBar } from '@/components/layout/AnnouncementBar';
 import { PageTransition } from '@/components/motion/PageTransition';
 import { ScrollProgress } from '@/components/motion/ScrollProgress';
 import { Cursor } from '@/components/motion/Cursor';
@@ -10,10 +11,12 @@ import { WhatsAppButton } from '@/components/layout/WhatsAppButton';
 import { LiveChat } from '@/components/chat/LiveChat';
 import { MotionProvider } from '@/components/motion/MotionProvider';
 import { CookieConsent } from '@/components/legal/CookieConsent';
+import { getSiteConfig, announcementActive } from '@/lib/site-config';
 
 // Marketing chrome: header, footer, scroll/cursor flourishes, page transitions.
 // (The /admin area uses its own layout without any of this.)
-export default function MarketingLayout({ children }: { children: React.ReactNode }) {
+export default async function MarketingLayout({ children }: { children: React.ReactNode }) {
+  const config = await getSiteConfig();
   return (
     <MotionProvider>
       <Intro />
@@ -26,13 +29,14 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
       >
         Skip to content
       </a>
-      <Header />
-      <main id="main">
+      <AnnouncementBar a={config.announcement} active={announcementActive(config.announcement)} />
+      <Header config={config} />
+      <main id="main" className="pt-[var(--ann-h,0px)]">
         <PageTransition>{children}</PageTransition>
       </main>
-      <Footer />
+      <Footer config={config} />
       <BackToTop />
-      <WhatsAppButton />
+      <WhatsAppButton config={config} />
       <LiveChat />
       <CookieConsent />
     </MotionProvider>

@@ -1,6 +1,5 @@
 import Link from 'next/link';
-import { site } from '@/lib/site';
-import { footerNav } from '@/lib/nav';
+import type { SiteConfig } from '@/lib/site-config';
 import { Logo } from '@/components/brand/Logo';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { Aurora } from '@/components/ui/Aurora';
@@ -36,7 +35,9 @@ function SocialIcon({ name }: { name: string }) {
   }
 }
 
-export function Footer() {
+export function Footer({ config }: { config: SiteConfig }) {
+  const { social, mapLink, address, phone, phoneHref, email, emailHref, legalName } = config;
+  const footerNav = config.nav.footer;
   const year = new Date().getFullYear();
   return (
     <footer className="surface-ink grain relative overflow-hidden">
@@ -68,7 +69,7 @@ export function Footer() {
             <NewsletterForm />
           </div>
           <div className="mt-7 flex gap-3">
-            {Object.entries(site.social).map(([k, href]) => (
+            {Object.entries(social).map(([k, href]) => (
               <a
                 key={k}
                 href={href}
@@ -81,7 +82,7 @@ export function Footer() {
               </a>
             ))}
             <a
-              href={site.mapLink}
+              href={mapLink}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Find us on the map"
@@ -115,11 +116,11 @@ export function Footer() {
         <div className="lg:col-span-2">
           <p className="eyebrow mb-5">City of London · Islington</p>
           <address className="space-y-3 text-sm not-italic text-[color-mix(in_oklab,var(--color-porcelain)_72%,transparent)]">
-            <a href={site.mapLink} target="_blank" rel="noopener noreferrer" className="block transition-colors hover:text-[var(--color-gold)]">
-              {site.address.street}, {site.address.region} {site.address.postalCode}
+            <a href={mapLink} target="_blank" rel="noopener noreferrer" className="block transition-colors hover:text-[var(--color-gold)]">
+              {address.street}, {address.region} {address.postalCode}
             </a>
-            <a href={site.phoneHref} className="block transition-colors hover:text-[var(--color-gold)]">{site.phone}</a>
-            <a href={site.emailHref} className="block transition-colors hover:text-[var(--color-gold)]">{site.email}</a>
+            <a href={phoneHref} className="block transition-colors hover:text-[var(--color-gold)]">{phone}</a>
+            <a href={emailHref} className="block transition-colors hover:text-[var(--color-gold)]">{email}</a>
           </address>
           <AccessBadges className="mt-6" />
         </div>
@@ -131,7 +132,7 @@ export function Footer() {
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
           <CookieSettingsLink />
           <span className="hidden md:inline text-white/15">·</span>
-          <p>© {year} {site.legalName}. All rights reserved.</p>
+          <p>© {year} {legalName}. All rights reserved.</p>
         </div>
       </div>
     </footer>
