@@ -7,14 +7,30 @@ import { SITE_PAGE_GROUPS } from '@/lib/site-pages';
 
 type PageRow = { id: string; path: string; title: string | null; status: string; updatedAt: string };
 
-export function PagesList({ pages }: { pages: PageRow[] }) {
+export function PagesList({ pages, legalPages = [] }: { pages: PageRow[]; legalPages?: { path: string; label: string }[] }) {
   const router = useRouter();
   const [path, setPath] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState('');
   const byPath = new Map(pages.map((p) => [p.path, p]));
-  const knownPaths = new Set(SITE_PAGE_GROUPS.flatMap((g) => g.items.map((i) => i.path)));
+  const knownPaths = new Set([...SITE_PAGE_GROUPS.flatMap((g) => g.items.map((i) => i.path)), ...legalPages.map((p) => p.path)]);
   const customPages = pages.filter((p) => !knownPaths.has(p.path));
+
+  // A builder-managed row: Edit if started, else Customise (creates + seeds).
+  const builderRow = (item: { path: string; label: string }) => {
+    const existing = byPath.get(item.path);
+    return (
+      <div key={item.path} className={rowCls}>
+        <span><span className="font-medium">{item.label}</span><span className="ml-2 text-sm text-[var(--color-stone-soft)]">{item.path}</span></span>
+        <span className="flex items-center gap-3">
+          {existing ? <StatusBadge status={existing.status} /> : <span className="text-xs text-[var(--color-stone-soft)]">Built-in</span>}
+          {existing
+            ? <Link href={`/admin/pages/${existing.id}`} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Edit</Link>
+            : <button disabled={!!busy} onClick={() => create(item.path)} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy === item.path ? 'Opening…' : 'Customise'}</button>}
+        </span>
+      </div>
+    );
+  };
 
   async function create(p: string) {
     const clean = '/' + p.trim().toLowerCase().replace(/[^a-z0-9/_-]/g, '').replace(/^\/+|\/+$/g, '');
@@ -54,32 +70,29 @@ export function PagesList({ pages }: { pages: PageRow[] }) {
       {/* The full site directory */}
       {SITE_PAGE_GROUPS.map((g) => (
         <Section key={g.group} title={g.group} hint={g.hint}>
-          {g.items.map((item) => {
-            const existing = byPath.get(item.path);
-            return (
+          {g.items.map((item) => (
+            item.manage === 'builder' ? builderRow(item)
+            : item.manage === 'catalogue' ? (
               <div key={item.path} className={rowCls}>
-                <span>
-                  <span className="font-medium">{item.label}</span>
-                  <span className="ml-2 text-sm text-[var(--color-stone-soft)]">{item.path}</span>
-                </span>
-                <span className="flex items-center gap-3">
-                  {item.manage === 'builder' && existing && <StatusBadge status={existing.status} />}
-                  {item.manage === 'builder' && !existing && <span className="text-xs text-[var(--color-stone-soft)]">Built-in</span>}
-                  {item.manage === 'builder' ? (
-                    existing
-                      ? <Link href={`/admin/pages/${existing.id}`} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Edit</Link>
-                      : <button disabled={!!busy} onClick={() => create(item.path)} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy === item.path ? 'Opening…' : 'Customise'}</button>
-                  ) : item.manage === 'catalogue' ? (
-                    <Link href={item.adminHref!} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Open editor →</Link>
-                  ) : (
-                    <span className="text-xs text-[var(--color-stone-soft)]">Built-in</span>
-                  )}
-                </span>
+                <span><span className="font-medium">{item.label}</span><span className="ml-2 text-sm text-[var(--color-stone-soft)]">{item.path}</span></span>
+                <Link href={item.adminHref!} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Open editor →</Link>
               </div>
-            );
-          })}
+            ) : (
+              <div key={item.path} className={rowCls}>
+                <span><span className="font-medium">{item.label}</span><span className="ml-2 text-sm text-[var(--color-stone-soft)]">{item.path}</span></span>
+                <span className="text-xs text-[var(--color-stone-soft)]">Built-in</span>
+              </div>
+            )
+          ))}
         </Section>
       ))}
+
+      {/* Legal & policy pages (auto-seeded from their existing copy) */}
+      {legalPages.length > 0 && (
+        <Section title="Legal & policies" hint="Policy pages. “Customise” loads the current copy as editable sections.">
+          {legalPages.map(builderRow)}
+        </Section>
+      )}
 
       {/* Create a brand-new page */}
       <Section title="New page" hint="Create a page at a new path, built from sections.">

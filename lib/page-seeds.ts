@@ -1,4 +1,6 @@
 import { uid, type Section } from './sections';
+import { uid as bid, type Block } from './blocks';
+import { getInfoPage } from './info-pages';
 
 // Faithful starting content for editorial routes, so "take over /x" opens the
 // builder pre-filled to match the live page (then edit + publish). Used by the
@@ -74,4 +76,24 @@ export const PAGE_SEEDS: Record<string, () => Section[]> = {
   ],
 };
 
-export const pageSeed = (path: string): Section[] | null => (PAGE_SEEDS[path] ? PAGE_SEEDS[path]() : null);
+// Legal/policy pages (lib/info-pages.ts) auto-convert to a hero + rich-text
+// section, so taking over any /info/* page loads its real copy — no transcription.
+function infoSeed(slug: string): Section[] | null {
+  const p = getInfoPage(slug);
+  if (!p) return null;
+  const blocks: Block[] = [];
+  for (const b of p.blocks) {
+    if (b.heading) blocks.push({ id: bid(), type: 'heading', level: 2, text: b.heading });
+    for (const para of String(b.body).split(/\n{2,}/).map((x) => x.trim()).filter(Boolean)) blocks.push({ id: bid(), type: 'paragraph', text: para });
+  }
+  return [
+    s('hero', { eyebrow: 'KClinics', title: p.title, lede: p.intro, ctaPrimaryLabel: '', ctaPrimaryHref: '', ctaSecondaryLabel: '', ctaSecondaryHref: '' }),
+    s('richText', { width: 'narrow', blocks }),
+  ];
+}
+
+export const pageSeed = (path: string): Section[] | null => {
+  if (PAGE_SEEDS[path]) return PAGE_SEEDS[path]();
+  if (path.startsWith('/info/')) return infoSeed(path.slice('/info/'.length));
+  return null;
+};
