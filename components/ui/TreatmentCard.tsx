@@ -4,10 +4,13 @@ import { MediaArt } from '@/components/ui/MediaArt';
 import { treatmentImage } from '@/lib/treatment-images';
 import { ArrowIcon } from '@/components/ui/Button';
 import { Tilt } from '@/components/motion/Tilt';
+import { pricingByTreatment, fromLabel } from '@/lib/services';
 
 /** A premium, hover-animated treatment card with 3D tilt + glare. Uses the real
- *  photo when available, else generative art — text lives in HTML, never baked in. */
-export function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: number }) {
+ *  photo when available, else generative art — text lives in HTML, never baked in.
+ *  The "from" price is derived live from the admin catalogue (never hardcoded). */
+export async function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: number }) {
+  const fromPence = (await pricingByTreatment()).get(t.slug)?.fromPence ?? null;
   return (
     <Tilt className="h-full">
       <Link
@@ -31,9 +34,9 @@ export function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: number }
             <span className="absolute bottom-4 right-4 rounded-full bg-[var(--color-gold-soft)] px-3 py-1 text-xs font-semibold text-[var(--color-ink)] backdrop-blur-sm">
               Coming soon
             </span>
-          ) : t.priceFrom && (
+          ) : fromPence != null && (
             <span className="absolute bottom-4 right-4 rounded-full bg-[var(--color-porcelain)]/92 px-3 py-1 text-xs font-medium text-[var(--color-ink)] backdrop-blur-sm">
-              {t.priceFrom.startsWith('£') ? `from ${t.priceFrom}` : t.priceFrom}
+              {fromLabel(fromPence)}
             </span>
           )}
         </div>

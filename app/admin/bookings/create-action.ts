@@ -27,7 +27,9 @@ export async function createManualBooking(input: {
   const start = new Date(input.startISO);
   if (isNaN(+start)) return { ok: false, error: 'Invalid date/time.' };
 
-  const { pricePence, durationMin, bufferMin } = bookingFor(input.treatmentSlug);
+  const { durationMin, bufferMin } = bookingFor(input.treatmentSlug);
+  const { lowestPenceForTreatment } = await import('@/lib/services');
+  const pricePence = await lowestPenceForTreatment(input.treatmentSlug);
   const end = new Date(start.getTime() + durationMin * 60000);
 
   const { db } = await import('@/lib/db');

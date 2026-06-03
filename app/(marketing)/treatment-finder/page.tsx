@@ -17,13 +17,16 @@ export const dynamic = 'force-dynamic';
 
 export default async function TreatmentFinderPage() {
   let gender: string | null = null;
+  const prices: Record<string, number | null> = {};
   try {
     const { crmEnabled } = await import('@/lib/crm');
     if (crmEnabled) {
       const { getCurrentClient } = await import('@/lib/client-auth');
       gender = (await getCurrentClient())?.gender ?? null;
+      const { pricingByTreatment } = await import('@/lib/services');
+      for (const [slug, p] of await pricingByTreatment()) prices[slug] = p.fromPence;
     }
-  } catch { /* finder works fine without a session */ }
+  } catch { /* finder works fine without a session or prices */ }
 
   return (
     <>
@@ -35,7 +38,7 @@ export default async function TreatmentFinderPage() {
         gradient={['#a98a6d', '#3d352f']}
       />
       <section className="container-lux section">
-        <TreatmentFinder gender={gender} />
+        <TreatmentFinder gender={gender} prices={prices} />
       </section>
     </>
   );

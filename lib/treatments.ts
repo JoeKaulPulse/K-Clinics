@@ -27,16 +27,10 @@ export type Treatment = {
   process: Step[];
   faqs: Faq[];
   facts: { label: string; value: string }[];
-  priceFrom?: string;
-  /** Optional price variants rendered as a pricing block on the page (e.g. the
-   *  different HydraGlow tiers). Each is a name + price, with an optional note. */
-  priceOptions?: { name: string; price: string; note?: string }[];
   related: string[];
   /** Two-stop gradient used for the page's generative hero art (no baked text). */
   gradient: [string, string];
   accent?: string;
-  /** Booking: fixed price in pence (null/undefined = "on consultation", £0 hold). */
-  pricePence?: number | null;
   /** Booking: appointment length in minutes. */
   durationMin?: number;
   /** Who a treatment is clinically aimed at. Defaults to 'all' (unisex). Used to
@@ -101,7 +95,6 @@ export const treatments: Treatment[] = [
       { label: 'Interval', value: '4–6 weeks' },
       { label: 'Downtime', value: 'None' },
     ],
-    priceFrom: '£11',
     related: ['laser-hair-removal-for-men', 'ipl-phototherapy', 'hydraglow-facial'],
     gradient: ['#c2a589', '#7b6a5d'],
   },
@@ -141,7 +134,6 @@ export const treatments: Treatment[] = [
       { label: 'Popular areas', value: 'Back · Chest · Neckline' },
       { label: 'Downtime', value: 'None' },
     ],
-    priceFrom: '£33',
     related: ['laser-hair-removal', 'ipl-phototherapy', 'rf-lifting'],
     gradient: ['#7b6a5d', '#2a2420'],
   },
@@ -180,7 +172,6 @@ export const treatments: Treatment[] = [
       { label: 'Approach', value: 'Fade or full removal' },
       { label: 'Consult', value: 'Complimentary' },
     ],
-    priceFrom: '£44',
     related: ['ipl-phototherapy', 'face-treatments', 'laser-hair-removal'],
     gradient: ['#2a2420', '#7b6a5d'],
   },
@@ -218,7 +209,6 @@ export const treatments: Treatment[] = [
       { label: 'Lasts', value: '~12 months' },
       { label: 'Downtime', value: 'None' },
     ],
-    priceFrom: '£349',
     related: ['rf-lifting', 'cosmetic-injections', 'hydraglow-facial'],
     gradient: ['#a98a6d', '#2a2420'],
   },
@@ -257,7 +247,6 @@ export const treatments: Treatment[] = [
       { label: 'Comfort', value: 'Warm & relaxing' },
       { label: 'Downtime', value: 'None' },
     ],
-    priceFrom: '£260',
     related: ['smas-hifu-lifting', 'body-contouring', 'hydraglow-facial'],
     gradient: ['#c2a589', '#3d352f'],
   },
@@ -294,12 +283,6 @@ export const treatments: Treatment[] = [
       { label: 'Time', value: '45–60 min' },
       { label: 'Downtime', value: 'None' },
       { label: 'Glow', value: 'Immediate' },
-    ],
-    priceFrom: '£95',
-    priceOptions: [
-      { name: 'Signature Express', price: '£95', note: '30 min · course of 3 £267 · 6 £474' },
-      { name: 'Full Face Deluxe', price: '£145', note: '50 min · course of 3 £399 · 6 £708' },
-      { name: 'Platinum', price: '£185', note: '60 min · Anti-Acne / Collagen / Pigmentation / Brightening · course of 3 £519 · 6 £948' },
     ],
     related: ['ipl-phototherapy', 'face-treatments', 'cosmetic-injections'],
     gradient: ['#cdb4a3', '#c2a589'],
@@ -339,7 +322,6 @@ export const treatments: Treatment[] = [
       { label: 'Format', value: 'Prescriptive course' },
       { label: 'Consult', value: 'Complimentary' },
     ],
-    priceFrom: '£115',
     related: ['hydraglow-facial', 'ipl-phototherapy', 'smas-hifu-lifting'],
     gradient: ['#7b6a5d', '#c2a589'],
   },
@@ -377,7 +359,6 @@ export const treatments: Treatment[] = [
       { label: 'Downtime', value: 'None' },
       { label: 'Areas', value: 'Abdomen · Thighs · Arms' },
     ],
-    priceFrom: '£95',
     related: ['rf-lifting', 'smas-hifu-lifting', 'cosmetic-injections'],
     gradient: ['#c2a589', '#7b6a5d'],
   },
@@ -416,7 +397,6 @@ export const treatments: Treatment[] = [
       { label: 'Filler', value: '6–18 months' },
       { label: 'Downtime', value: 'Minimal' },
     ],
-    priceFrom: '£150',
     related: ['smas-hifu-lifting', 'hydraglow-facial', 'face-treatments'],
     gradient: ['#cdb4a3', '#a98a6d'],
   },
@@ -455,7 +435,6 @@ export const treatments: Treatment[] = [
       { label: 'Discretion', value: 'Absolute' },
       { label: 'Downtime', value: 'Minimal' },
     ],
-    priceFrom: 'On consultation',
     related: ['rf-lifting', 'body-contouring', 'face-treatments'],
     gradient: ['#cdb4a3', '#3d352f'],
   },
@@ -495,7 +474,6 @@ export const treatments: Treatment[] = [
       { label: 'Lasts', value: '10–15+ years' },
       { label: 'Visits', value: '2–3' },
     ],
-    priceFrom: 'On consultation',
     related: ['composite-bonding', 'teeth-whitening', 'aesthetic-dentistry'],
     gradient: ['#dcc4a8', '#7b6a5d'],
   },
@@ -533,7 +511,6 @@ export const treatments: Treatment[] = [
       { label: 'At-home', value: 'Bespoke trays' },
       { label: 'Result', value: 'Brighter shade' },
     ],
-    priceFrom: 'On consultation',
     related: ['veneers', 'composite-bonding', 'aesthetic-dentistry'],
     gradient: ['#f6ece3', '#c2a589'],
   },
@@ -571,7 +548,6 @@ export const treatments: Treatment[] = [
       { label: 'Lasts', value: '4–8 years' },
       { label: 'Prep', value: 'Minimal' },
     ],
-    priceFrom: 'On consultation',
     related: ['veneers', 'teeth-whitening', 'aesthetic-dentistry'],
     gradient: ['#c2a589', '#f6ece3'],
   },
@@ -609,7 +585,6 @@ export const treatments: Treatment[] = [
       { label: 'Combines', value: 'Veneers · Whitening · More' },
       { label: 'Consult', value: 'Complimentary' },
     ],
-    priceFrom: 'On consultation',
     related: ['veneers', 'teeth-whitening', 'composite-bonding'],
     gradient: ['#7b6a5d', '#dcc4a8'],
   },
@@ -648,7 +623,6 @@ export const treatments: Treatment[] = [
       { label: 'Integration', value: '~3–6 months' },
       { label: 'Lifespan', value: 'Decades' },
     ],
-    priceFrom: 'On consultation',
     related: ['dentures', 'specialist-dentistry', 'dental-consultations'],
     gradient: ['#3d352f', '#c2a589'],
   },
@@ -687,7 +661,6 @@ export const treatments: Treatment[] = [
       { label: 'Fit', value: 'Bespoke' },
       { label: 'Stability', value: 'Implant-secured' },
     ],
-    priceFrom: 'On consultation',
     related: ['dental-implant-placement', 'specialist-dentistry', 'dental-consultations'],
     gradient: ['#91766e', '#f6ece3'],
   },
@@ -725,7 +698,6 @@ export const treatments: Treatment[] = [
       { label: 'Approach', value: 'Specialist-led' },
       { label: 'Planning', value: 'Meticulous' },
     ],
-    priceFrom: 'On consultation',
     related: ['dental-implant-placement', 'dentures', 'dental-consultations'],
     gradient: ['#7b6a5d', '#2a2420'],
   },
@@ -763,7 +735,6 @@ export const treatments: Treatment[] = [
       { label: 'Outcome', value: 'Personalised plan' },
       { label: 'New clients', value: '15% off first visit' },
     ],
-    priceFrom: 'On consultation',
     related: ['aesthetic-dentistry', 'dental-implant-placement', 'veneers'],
     gradient: ['#c2a589', '#7b6a5d'],
   },
@@ -772,59 +743,59 @@ export const treatments: Treatment[] = [
 ];
 
 // ── Booking config ───────────────────────────────────────────────────────────
-// Price (pence) + duration (minutes) per treatment, used by the booking system.
-// price `null` ⇒ "on consultation": booked as a £0 card-on-file hold, with the
-// amount set by staff at charge time. Edit these freely — they are guide values.
-type BookingCfg = { pricePence: number | null; durationMin: number; bufferMin?: number; requiresResource?: string };
+// Operational booking metadata per treatment: appointment length, buffer/turnaround
+// and any room/equipment the treatment needs. NO money lives here — prices are the
+// single source of truth in the admin catalogue (Service → ServiceVariant) and are
+// derived live (see lib/services.ts). Edit these freely; they only affect scheduling.
+type BookingCfg = { durationMin: number; bufferMin?: number; requiresResource?: string };
 export const bookingConfig: Record<string, BookingCfg> = {
-  // "from" = lowest single-session price from the official price sheet.
-  'laser-hair-removal':          { pricePence: 1100,  durationMin: 15, bufferMin: 10, requiresResource: 'laser' },  // eyebrows from £11
-  'laser-hair-removal-for-men':  { pricePence: 3300,  durationMin: 15, bufferMin: 10, requiresResource: 'laser' },  // underarms from £33
-  'laser-tattoo-removal':        { pricePence: 4400,  durationMin: 15, bufferMin: 10, requiresResource: 'laser' },  // very small from £44
-  'smas-hifu-lifting':           { pricePence: 34900, durationMin: 30, bufferMin: 10, requiresResource: 'hifu' },  // eyebrow/forehead/neck lift from £349
-  'rf-lifting':                  { pricePence: 26000, durationMin: 45, bufferMin: 10 },  // from £260
-  'hydraglow-facial':            { pricePence: 9500,  durationMin: 30, bufferMin: 10 },  // signature express from £95
-  'face-treatments':            { pricePence: 11500, durationMin: 30, bufferMin: 10 },  // cosmetic peel full face from £115
-  'body-contouring':             { pricePence: 11000, durationMin: 60, bufferMin: 15 },  // Endosphere from £110
-  'cosmetic-injections':         { pricePence: 15000, durationMin: 30, bufferMin: 10 },  // fat-dissolving from £150/vial
-  'intimate-rejuvenation':       { pricePence: 69000, durationMin: 40, bufferMin: 15, requiresResource: 'laser' },  // CO2 laser from £690
-  'veneers':                     { pricePence: null,  durationMin: 60 },
-  'teeth-whitening':             { pricePence: null,  durationMin: 60 },
-  'composite-bonding':           { pricePence: null,  durationMin: 60 },
-  'aesthetic-dentistry':         { pricePence: null,  durationMin: 45 },
-  'dental-implant-placement':    { pricePence: null,  durationMin: 60 },
-  'dentures':                    { pricePence: null,  durationMin: 45 },
-  'specialist-dentistry':        { pricePence: null,  durationMin: 45 },
-  'dental-consultations':        { pricePence: null,  durationMin: 30 },
-  // Imported treatments — prices from the official price sheet where known.
-  'laser-skin-rejuvenation':     { pricePence: 21000, durationMin: 25, bufferMin: 10, requiresResource: 'laser' },  // Face & Neck from £210
-  'pigmentation-correction':     { pricePence: 1800,  durationMin: 20, bufferMin: 10, requiresResource: 'laser' },  // nose from £18
-  'vascular-lesions-treatment':  { pricePence: 1800,  durationMin: 20, bufferMin: 10, requiresResource: 'laser' },  // single vein from £18
-  'scar-stretch-mark-reduction': { pricePence: null,  durationMin: 45, bufferMin: 10 },
-  'spider-veins-removal':        { pricePence: 23000, durationMin: 25, bufferMin: 10, requiresResource: 'laser' },  // nose thread vein from £230
-  'laser-skin-resurfacing':      { pricePence: 18000, durationMin: 45, bufferMin: 10, requiresResource: 'laser' },  // from £180
-  'ipl-phototherapy':            { pricePence: 20000, durationMin: 45, bufferMin: 10, requiresResource: 'laser' },  // from £200
-  'fungal-nail-infection-treatment': { pricePence: 7900, durationMin: 30 }, // 1 foot from £79
-  'permanent-makeup-removal':    { pricePence: 27500, durationMin: 30 },  // eyebrows from £275
-  'microneedling':               { pricePence: null,  durationMin: 60 },
-  'prp-therapy':                 { pricePence: null,  durationMin: 60 },
-  'chemical-peels':              { pricePence: 11500, durationMin: 30 },  // cosmetic peel full face from £115
-  'microdermabrasion':           { pricePence: null,  durationMin: 45 },
-  'botox':                       { pricePence: null,  durationMin: 30 },
-  'dermal-fillers':              { pricePence: null,  durationMin: 45 },
-  'kybella':                     { pricePence: null,  durationMin: 45 },
-  'anti-cellulite-programs':     { pricePence: 11000, durationMin: 60 },  // Endosphere from £110
-  'vacuum-massage':              { pricePence: null,  durationMin: 50 },
-  'hip-dip-filler':              { pricePence: null,  durationMin: 45 },
-  'body-hifu-lifting':           { pricePence: 30900, durationMin: 60 },  // body HIFU from £309
-  'intimate-area-whitening':     { pricePence: 69000, durationMin: 40 },  // from £690
+  'laser-hair-removal':          { durationMin: 15, bufferMin: 10, requiresResource: 'laser' },
+  'laser-hair-removal-for-men':  { durationMin: 15, bufferMin: 10, requiresResource: 'laser' },
+  'laser-tattoo-removal':        { durationMin: 15, bufferMin: 10, requiresResource: 'laser' },
+  'smas-hifu-lifting':           { durationMin: 30, bufferMin: 10, requiresResource: 'hifu' },
+  'rf-lifting':                  { durationMin: 45, bufferMin: 10 },
+  'hydraglow-facial':            { durationMin: 30, bufferMin: 10 },
+  'face-treatments':             { durationMin: 30, bufferMin: 10 },
+  'body-contouring':             { durationMin: 60, bufferMin: 15 },
+  'cosmetic-injections':         { durationMin: 30, bufferMin: 10 },
+  'intimate-rejuvenation':       { durationMin: 40, bufferMin: 15, requiresResource: 'laser' },
+  'veneers':                     { durationMin: 60 },
+  'teeth-whitening':             { durationMin: 60 },
+  'composite-bonding':           { durationMin: 60 },
+  'aesthetic-dentistry':         { durationMin: 45 },
+  'dental-implant-placement':    { durationMin: 60 },
+  'dentures':                    { durationMin: 45 },
+  'specialist-dentistry':        { durationMin: 45 },
+  'dental-consultations':        { durationMin: 30 },
+  // Imported treatments.
+  'laser-skin-rejuvenation':     { durationMin: 25, bufferMin: 10, requiresResource: 'laser' },
+  'pigmentation-correction':     { durationMin: 20, bufferMin: 10, requiresResource: 'laser' },
+  'vascular-lesions-treatment':  { durationMin: 20, bufferMin: 10, requiresResource: 'laser' },
+  'scar-stretch-mark-reduction': { durationMin: 45, bufferMin: 10 },
+  'spider-veins-removal':        { durationMin: 25, bufferMin: 10, requiresResource: 'laser' },
+  'laser-skin-resurfacing':      { durationMin: 45, bufferMin: 10, requiresResource: 'laser' },
+  'ipl-phototherapy':            { durationMin: 45, bufferMin: 10, requiresResource: 'laser' },
+  'fungal-nail-infection-treatment': { durationMin: 30 },
+  'permanent-makeup-removal':    { durationMin: 30 },
+  'microneedling':               { durationMin: 60 },
+  'prp-therapy':                 { durationMin: 60 },
+  'chemical-peels':              { durationMin: 30 },
+  'microdermabrasion':           { durationMin: 45 },
+  'botox':                       { durationMin: 30 },
+  'dermal-fillers':              { durationMin: 45 },
+  'kybella':                     { durationMin: 45 },
+  'anti-cellulite-programs':     { durationMin: 60 },
+  'vacuum-massage':              { durationMin: 50 },
+  'hip-dip-filler':              { durationMin: 45 },
+  'body-hifu-lifting':           { durationMin: 60 },
+  'intimate-area-whitening':     { durationMin: 40 },
 };
 
 export function bookingFor(slug: string): BookingCfg {
-  return bookingConfig[slug] ?? { pricePence: null, durationMin: 45 };
+  return bookingConfig[slug] ?? { durationMin: 45 };
 }
 
-/** Treatments with a fixed price (bookable with an upfront amount shown). */
+/** Treatments with their scheduling metadata (duration/buffer/resource) merged in. */
 export const bookableTreatments = treatments.map((t) => ({ ...t, ...bookingFor(t.slug) }));
 
 export const formatPrice = (pence: number | null | undefined) =>

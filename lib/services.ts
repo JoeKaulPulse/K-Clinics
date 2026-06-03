@@ -1,5 +1,7 @@
 import 'server-only';
+import { cache } from 'react';
 import { db } from '@/lib/db';
+import { crmEnabled } from '@/lib/crm';
 
 // ── Service catalogue + offer pricing ────────────────────────────────────────
 // The CRM-managed catalogue (Service → ServiceVariant) with special offers.
@@ -114,6 +116,44 @@ export function bestOffer(offers: OfferView[], serviceId: string, variantId: str
 
 export const formatPence = (p: number | null | undefined) =>
   p == null ? 'On consultation' : p === 0 ? 'On consultation' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
+
+// ── Public "from" pricing (single source of truth) ───────────────────────────
+// Displayed prices on the marketing site derive from the live admin catalogue —
+// never hardcoded. The lowest active variant price per treatment is the "from".
+
+export type TreatmentPricing = { fromPence: number | null; variants: VariantView[] };
+
+/** Lowest live price + variants for every treatment, keyed by treatmentSlug.
+ *  Memoised per request. Safe (empty) when the CRM/DB isn't available — e.g. the
+ *  static demo build — so pages fall back to "On consultation" rather than a
+ *  hardcoded number. */
+export const pricingByTreatment = cache(async (): Promise<Map<string, TreatmentPricing>> => {
+  const map = new Map<string, TreatmentPricing>();
+  if (!crmEnabled) return map;
+  try {
+    for (const s of await listServices(false)) {
+      const prev = map.get(s.treatmentSlug);
+      const variants = prev ? [...prev.variants, ...s.variants] : s.variants;
+      const prices = variants.map((v) => v.pricePence).filter((p) => p > 0);
+      map.set(s.treatmentSlug, { fromPence: prices.length ? Math.min(...prices) : null, variants });
+    }
+  } catch { /* no DB at build/demo → on-consultation fallback */ }
+  return map;
+});
+
+/** Live pricing for one treatment (lowest price + its variants), or null. */
+export async function pricingForTreatment(slug: string): Promise<TreatmentPricing | null> {
+  return (await pricingByTreatment()).get(slug) ?? null;
+}
+
+/** Lowest live single-session price (pence) for a treatment, or null. */
+export async function lowestPenceForTreatment(slug: string): Promise<number | null> {
+  return (await pricingForTreatment(slug))?.fromPence ?? null;
+}
+
+/** "from £95" / "On consultation" — for the marketing "from" badges. */
+export const fromLabel = (pence: number | null | undefined) =>
+  pence == null || pence <= 0 ? 'On consultation' : `from ${formatPence(pence)}`;
 
 export type BookingVariant = {
   id: string; name: string; durationMin: number; pricePence: number;

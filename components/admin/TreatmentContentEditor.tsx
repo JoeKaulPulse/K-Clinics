@@ -17,7 +17,7 @@ export function TreatmentContentEditor({ slug, base, override }: { slug: string;
   const pick = <T,>(k: string, fb: T): T => { const v = (o as Record<string, unknown>)[k]; return (v === null || v === undefined || (typeof v === 'string' && !v) || (Array.isArray(v) && !v.length)) ? fb : (v as T); };
   const [f, setF] = useState({
     title: pick('title', base.title), tagline: pick('tagline', base.tagline), eyebrow: pick('eyebrow', base.eyebrow),
-    intro: pick('intro', base.intro), priceFrom: pick('priceFrom', base.priceFrom ?? ''),
+    intro: pick('intro', base.intro),
     metaTitle: pick('metaTitle', base.metaTitle), metaDescription: pick('metaDescription', base.metaDescription),
     keywords: pick<string[]>('keywords', base.keywords).join(', '), related: pick<string[]>('related', base.related).join(', '),
   });
@@ -65,7 +65,7 @@ export function TreatmentContentEditor({ slug, base, override }: { slug: string;
               <div><label className={label}>Title</label><input className={field} value={f.title} onChange={(e) => set('title', e.target.value)} /></div>
               <div><label className={label}>Tagline</label><input className={field} value={f.tagline} onChange={(e) => set('tagline', e.target.value)} /></div>
               <div><label className={label}>Intro</label><textarea className={`${field} min-h-[90px]`} value={f.intro} onChange={(e) => set('intro', e.target.value)} /></div>
-              <div><label className={label}>Price from <span className="normal-case text-[var(--color-stone-soft)]">(display only)</span></label><input className={field} value={f.priceFrom} onChange={(e) => set('priceFrom', e.target.value)} placeholder="£11" /></div>
+              <p className="text-xs text-[var(--color-stone-soft)]">Prices are managed in <span className="font-medium">Services &amp; pricing</span> and shown automatically as a “from” price — there’s nothing to set here.</p>
             </div>
           </section>
 

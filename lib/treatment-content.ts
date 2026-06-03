@@ -15,7 +15,7 @@ const list = (v: unknown) => (Array.isArray(v) && v.length ? v : undefined);
 
 type Override = {
   title: string | null; tagline: string | null; eyebrow: string | null; intro: string | null;
-  metaTitle: string | null; metaDescription: string | null; keywords: string[]; priceFrom: string | null;
+  metaTitle: string | null; metaDescription: string | null; keywords: string[];
   benefits: unknown; process: unknown; faqs: unknown; facts: unknown; related: string[];
 };
 
@@ -30,7 +30,6 @@ function merge(base: Treatment, o: Override | null): Treatment {
     metaTitle: str(o.metaTitle) ?? base.metaTitle,
     metaDescription: str(o.metaDescription) ?? base.metaDescription,
     keywords: list(o.keywords) as string[] ?? base.keywords,
-    priceFrom: str(o.priceFrom) ?? base.priceFrom,
     benefits: (list(o.benefits) as Benefit[]) ?? base.benefits,
     process: (list(o.process) as Step[]) ?? base.process,
     faqs: (list(o.faqs) as Faq[]) ?? base.faqs,
@@ -53,25 +52,25 @@ export function getMergedTreatment(slug: string): Promise<Treatment | null> {
   )();
 }
 
-/** Title/tagline/price overrides for all treatments (for listing-grid cards). */
+/** Title/tagline overrides for all treatments (for listing-grid cards). */
 const cardOverrides = () => unstable_cache(
-  async (): Promise<Record<string, { title: string | null; tagline: string | null; priceFrom: string | null }>> => {
+  async (): Promise<Record<string, { title: string | null; tagline: string | null }>> => {
     try {
-      const rows = await db.treatmentContent.findMany({ select: { slug: true, title: true, tagline: true, priceFrom: true } });
-      const rec: Record<string, { title: string | null; tagline: string | null; priceFrom: string | null }> = {};
-      for (const r of rows) rec[r.slug] = { title: r.title, tagline: r.tagline, priceFrom: r.priceFrom };
+      const rows = await db.treatmentContent.findMany({ select: { slug: true, title: true, tagline: true } });
+      const rec: Record<string, { title: string | null; tagline: string | null }> = {};
+      for (const r of rows) rec[r.slug] = { title: r.title, tagline: r.tagline };
       return rec;
     } catch { return {}; }
   },
   ['treatment-card-overrides'], { tags: [TREATMENT_CONTENT_TAG], revalidate: 3600 },
 )();
 
-/** Apply admin title/tagline/price overrides to a list of treatments (cards). */
+/** Apply admin title/tagline overrides to a list of treatments (cards). */
 export async function withCardOverrides(listIn: Treatment[]): Promise<Treatment[]> {
   const rec = await cardOverrides();
   return listIn.map((t) => {
     const o = rec[t.slug];
-    return o ? { ...t, title: str(o.title) ?? t.title, tagline: str(o.tagline) ?? t.tagline, priceFrom: str(o.priceFrom) ?? t.priceFrom } : t;
+    return o ? { ...t, title: str(o.title) ?? t.title, tagline: str(o.tagline) ?? t.tagline } : t;
   });
 }
 
