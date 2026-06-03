@@ -1744,11 +1744,13 @@ model Page {
   id        String   @id @default(cuid())
   path      String   @unique
   title     String?
-  draft     Json     // Section[]
-  published Json?    // Section[] (null = route shows its coded default)
-  status    String   @default("DRAFT") // DRAFT | PUBLISHED
-  updatedAt DateTime @updatedAt
-  updatedBy String?
+  draft       Json     // Section[]
+  published   Json?    // Section[] (null = route shows its coded default)
+  status      String   @default("DRAFT") // DRAFT | PUBLISHED
+  publishAt   DateTime? // scheduled go-live (null = immediate)
+  unpublishAt DateTime? // scheduled take-down (null = never)
+  updatedAt   DateTime @updatedAt
+  updatedBy   String?
 
   revisions PageRevision[]
 

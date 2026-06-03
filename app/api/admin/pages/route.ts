@@ -44,9 +44,10 @@ export async function POST(req: Request) {
     if (op === 'publish') {
       const page = await db.page.findUnique({ where: { id: body.id }, select: { published: true } });
       const sections = asSections(body.sections);
+      const parseDate = (v: unknown) => { const d = v ? new Date(String(v)) : null; return d && !isNaN(+d) ? d : null; };
       // Snapshot the previously-published version for rollback.
       if (page?.published) await db.pageRevision.create({ data: { pageId: body.id, data: J(page.published), label: 'Published', createdBy: editor } });
-      await db.page.update({ where: { id: body.id }, data: { draft: J(sections), published: J(sections), status: 'PUBLISHED', updatedBy: editor } });
+      await db.page.update({ where: { id: body.id }, data: { draft: J(sections), published: J(sections), status: 'PUBLISHED', publishAt: parseDate(body.publishAt), unpublishAt: parseDate(body.unpublishAt), updatedBy: editor } });
       const old = await db.pageRevision.findMany({ where: { pageId: body.id }, orderBy: { createdAt: 'desc' }, skip: 30, select: { id: true } });
       if (old.length) await db.pageRevision.deleteMany({ where: { id: { in: old.map((r) => r.id) } } });
       revalidateTag(PAGES_TAG);
