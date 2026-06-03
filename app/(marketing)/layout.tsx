@@ -11,13 +11,15 @@ import { WhatsAppButton } from '@/components/layout/WhatsAppButton';
 import { LiveChat } from '@/components/chat/LiveChat';
 import { MotionProvider } from '@/components/motion/MotionProvider';
 import { CookieConsent } from '@/components/legal/CookieConsent';
+import { TrackingScripts } from '@/components/marketing/TrackingScripts';
 import { EditBar } from '@/components/admin/EditBar';
 import { getSiteConfig, announcementActive } from '@/lib/site-config';
+import { getTrackingConfig, hasAnyTracking } from '@/lib/tracking';
 
 // Marketing chrome: header, footer, scroll/cursor flourishes, page transitions.
 // (The /admin area uses its own layout without any of this.)
 export default async function MarketingLayout({ children }: { children: React.ReactNode }) {
-  const config = await getSiteConfig();
+  const [config, tracking] = await Promise.all([getSiteConfig(), getTrackingConfig()]);
   return (
     <MotionProvider>
       <Intro />
@@ -41,6 +43,7 @@ export default async function MarketingLayout({ children }: { children: React.Re
       <LiveChat />
       <EditBar />
       <CookieConsent />
+      {hasAnyTracking(tracking) && <TrackingScripts {...tracking} />}
     </MotionProvider>
   );
 }

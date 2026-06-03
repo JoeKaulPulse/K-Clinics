@@ -63,6 +63,7 @@ const navGroups: { heading?: string; items: NavItem[] }[] = [
     { href: '/admin/site', key: 'nav.site', perm: 'settings.manage' },
     { href: '/admin/locations', key: 'nav.locations', perm: 'settings.manage' },
     { href: '/admin/seo', key: 'nav.seo', perm: 'settings.manage' },
+    { href: '/admin/redirects', key: 'nav.redirects', perm: 'settings.manage' },
     { href: '/admin/integrations', key: 'nav.integrations', perm: 'settings.manage' },
     { href: '/admin/settings', key: 'nav.settings', perm: 'settings.manage' },
   ] },

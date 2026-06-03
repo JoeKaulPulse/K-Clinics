@@ -1884,3 +1884,21 @@ model QrScan {
 
   @@index([qrCodeId, at])
 }
+
+// ── URL redirects ────────────────────────────────────────────────────────────
+// Admin-managed 301/302 redirects so old WordPress URLs (and any printed/static
+// QR destinations) keep resolving on the new site — protects SEO + inbound links.
+// Read by the edge middleware via /api/redirects (cached).
+model Redirect {
+  id        String   @id @default(cuid())
+  fromPath  String   @unique  // site-relative path, e.g. "/old-page"
+  toUrl     String            // destination (relative path or absolute URL)
+  code      Int      @default(301) // 301 permanent | 302 temporary
+  active    Boolean  @default(true)
+  note      String?
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active])
+}

@@ -4,6 +4,7 @@ import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { SeoDashboard } from '@/components/admin/SeoDashboard';
+import { TrackingSettings } from '@/components/admin/TrackingSettings';
 import { getLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
@@ -14,7 +15,8 @@ export default async function SeoPage() {
   if (!sessionCan(session, 'settings.manage')) redirect('/admin');
 
   const { auditSite } = await import('@/lib/seo-audit');
-  const audit = await auditSite();
+  const { getTrackingConfig } = await import('@/lib/tracking');
+  const [audit, tracking] = await Promise.all([auditSite(), getTrackingConfig()]);
 
   const can = await sessionPermissions();
   const locale = await getLocale();
@@ -25,7 +27,8 @@ export default async function SeoPage() {
         Per-page ratings across on-page, technical, AI-answer (GEO) and local search, with an overall site health score.
         Edit any page’s SEO and get AI-written suggestions.
       </p>
-      <div className="mt-8">
+      <div className="mt-8 space-y-8">
+        <TrackingSettings initial={tracking} />
         <SeoDashboard audit={audit} />
       </div>
     </AdminShell>
