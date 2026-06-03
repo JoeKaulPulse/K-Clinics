@@ -2,6 +2,7 @@ import 'server-only';
 import { unstable_cache } from 'next/cache';
 import { db } from './db';
 import { asSections, type Section } from './sections';
+import { resolveSections, GLOBALS_TAG } from './global-sections';
 
 // Data layer for CMS pages. Public render reads the *published* sections via a
 // tagged cache (so editorial routes stay static and refresh on publish).
@@ -16,7 +17,7 @@ async function loadPublished(path: string): Promise<Section[] | null> {
     const now = Date.now();
     if (row.publishAt && now < +row.publishAt) return null;      // not yet live
     if (row.unpublishAt && now >= +row.unpublishAt) return null; // window passed
-    const sections = asSections(row.published);
+    const sections = await resolveSections(asSections(row.published));
     return sections.length ? sections : null;
   } catch { return null; }
 }
@@ -24,7 +25,7 @@ async function loadPublished(path: string): Promise<Section[] | null> {
 /** Published sections for a route, or null to fall back to the coded page.
  *  Short revalidate so scheduled publish/unpublish windows flip on their own. */
 export function getPublishedPage(path: string) {
-  return unstable_cache(() => loadPublished(path), ['cms-page', normPath(path)], { tags: [PAGES_TAG], revalidate: 300 })();
+  return unstable_cache(() => loadPublished(path), ['cms-page', normPath(path)], { tags: [PAGES_TAG, GLOBALS_TAG], revalidate: 300 })();
 }
 
 export async function listPages() {

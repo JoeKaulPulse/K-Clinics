@@ -13,13 +13,15 @@ export default async function PagePreview({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const page = await getPageForEdit(id);
   if (!page) notFound();
+  const { resolveSections } = await import('@/lib/global-sections');
+  const sections = await resolveSections(page.draft);
 
   return (
     <>
       <div className="sticky top-[var(--ann-h,0px)] z-[55] bg-[var(--color-gold)] py-1.5 text-center text-xs font-medium text-[var(--color-ink)]">
         Preview · {page.path} · draft {page.status === 'PUBLISHED' ? '(a published version is live)' : '(not published)'}
       </div>
-      <SectionRenderer sections={page.draft} />
+      <SectionRenderer sections={sections} />
     </>
   );
 }
