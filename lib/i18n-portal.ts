@@ -63,6 +63,7 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'nav.assessments': { en: 'Health forms', uk: 'Анкети здоровʼя' },
   'nav.aftercare': { en: 'Aftercare', uk: 'Догляд' },
   'nav.invoices': { en: 'Invoices', uk: 'Рахунки' },
+  'nav.giftcards': { en: 'Gift cards', uk: 'Подарункові' },
   'nav.profile': { en: 'Profile', uk: 'Профіль' },
   'nav.rewards': { en: 'Rewards', uk: 'Бонуси' },
 
