@@ -34,7 +34,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
       include: { client: { select: { id: true, firstName: true, lastName: true } }, clinician: { select: { name: true } } },
     }),
     db.review.groupBy({ by: ['status'], _count: true }),
-    db.review.aggregate({ _avg: { rating: true }, _count: { rating: true }, where: { rating: { not: null } } }),
+    db.review.aggregate({ _avg: { rating: true }, _count: { rating: true }, where: { rating: { not: null }, status: { in: ['APPROVED', 'PUBLISHED'] } } }),
   ]);
 
   const countOf = (s: string) => counts.find((c) => c.status === s)?._count ?? 0;

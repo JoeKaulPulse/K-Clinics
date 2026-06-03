@@ -34,6 +34,7 @@ export default async function AdminGiftVouchersPage() {
             expiresAt: v.expiresAt?.toISOString() ?? null,
             createdAt: v.createdAt.toISOString(),
           }))}
+          canManage={sessionCan(session, 'finance.manage')}
         />
       </div>
     </AdminShell>

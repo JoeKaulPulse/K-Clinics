@@ -39,7 +39,12 @@ export function AddNote({ clientId, clinical = false }: { clientId: string; clin
 
   function submit() {
     if (!val.trim()) return;
-    start(() => { addNote(clientId, val, type, undefined, pinned); setVal(''); setPinned(false); setType('NOTE'); setExpanded(false); });
+    const text = val;
+    start(async () => {
+      const r = await addNote(clientId, text, type, undefined, pinned);
+      if (r && r.ok === false) { alert(r.error || 'Could not save the note.'); return; }
+      setVal(''); setPinned(false); setType('NOTE'); setExpanded(false);
+    });
   }
 
   return (

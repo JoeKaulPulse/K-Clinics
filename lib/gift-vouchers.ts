@@ -107,7 +107,10 @@ export async function deliverDueVouchers(): Promise<number> {
 /** Staff: deduct from a voucher's balance (manual redemption). */
 export async function redeemVoucher(id: string, amountPence: number): Promise<{ ok: boolean; error?: string; balancePence?: number }> {
   const v = await db.giftVoucher.findUnique({ where: { id } });
-  if (!v || v.status === 'CANCELLED') return { ok: false, error: 'Voucher unavailable.' };
+  if (!v) return { ok: false, error: 'Voucher not found.' };
+  if (v.status !== 'ACTIVE') return { ok: false, error: v.status === 'PENDING' ? 'This voucher isn’t active yet (payment pending).' : 'This voucher is no longer valid.' };
+  if (v.expiresAt && v.expiresAt < new Date()) return { ok: false, error: 'This voucher has expired.' };
+  if (v.balancePence <= 0) return { ok: false, error: 'This voucher has no balance left.' };
   const take = Math.min(Math.max(0, Math.round(amountPence)), v.balancePence);
   const balancePence = v.balancePence - take;
   await db.giftVoucher.update({ where: { id }, data: { balancePence, status: balancePence === 0 ? 'REDEEMED' : 'ACTIVE' } });

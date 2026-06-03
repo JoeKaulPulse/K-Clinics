@@ -109,7 +109,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
             </span>
           </div>
         </div>
-        <SendEmail clientId={c.id} email={c.email} />
+        {sessionCan(session, 'clients.edit') && <SendEmail clientId={c.id} email={c.email} />}
       </div>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.5fr_1fr]">

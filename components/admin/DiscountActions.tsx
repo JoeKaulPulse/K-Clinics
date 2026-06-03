@@ -8,6 +8,7 @@ export function DiscountAction({ claimId, action, label }: { claimId: string; ac
   const router = useRouter();
 
   function run() {
+    if (action === 'revoke' && !confirm('Revoke this client’s welcome discount? They will no longer be able to use it.')) return;
     start(async () => {
       const res = await fetch('/api/admin/discount', {
         method: 'POST',
@@ -15,6 +16,7 @@ export function DiscountAction({ claimId, action, label }: { claimId: string; ac
         body: JSON.stringify({ claimId, action }),
       });
       if (res.ok) router.refresh();
+      else { const j = await res.json().catch(() => ({})); alert(j.error || 'Could not update the discount.'); }
     });
   }
 

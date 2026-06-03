@@ -6,13 +6,13 @@ import { getSession, sessionCan, canViewClinical } from '@/lib/auth';
 
 const NOTE_TYPES = ['NOTE', 'CLINICAL', 'COMPLAINT', 'FOLLOW_UP', 'CALL'] as const;
 
-export async function addNote(clientId: string, summary: string, type: string = 'NOTE', detail?: string, pinned?: boolean) {
-  if (!crmEnabled || !summary.trim()) return;
+export async function addNote(clientId: string, summary: string, type: string = 'NOTE', detail?: string, pinned?: boolean): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled || !summary.trim()) return { ok: false, error: 'Nothing to save.' };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'clients.edit')) return;
+  if (!session || !sessionCan(session, 'clients.edit')) return { ok: false, error: 'You don’t have permission to add notes.' };
   const t = (NOTE_TYPES as readonly string[]).includes(type) ? type : 'NOTE';
   // Clinical notes are restricted to clinical staff.
-  if (t === 'CLINICAL' && !canViewClinical(session.role)) return;
+  if (t === 'CLINICAL' && !canViewClinical(session.role)) return { ok: false, error: 'Clinical notes are restricted to clinical staff.' };
   const { db } = await import('@/lib/db');
   const note = await db.interaction.create({
     data: { clientId, type: t as never, summary: summary.trim(), detail: detail?.trim() || null, author: session.email, pinned: Boolean(pinned) },
@@ -20,6 +20,7 @@ export async function addNote(clientId: string, summary: string, type: string = 
   const { logAudit } = await import('@/lib/audit');
   await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, clientId, summary: `${t.toLowerCase()} note added`, meta: { noteId: note.id } });
   revalidatePath(`/admin/clients/${clientId}`);
+  return { ok: true };
 }
 
 // GDPR right-to-erasure — pseudonymise a client's personal data while keeping
@@ -106,7 +107,7 @@ export async function setConsultStatus(consultId: string, clientId: string, stat
 export async function sendManualEmail(clientId: string, to: string, subject: string, body: string) {
   if (!crmEnabled || !subject.trim() || !body.trim()) return { ok: false, error: 'Subject and body required' };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'clients.view')) return { ok: false, error: 'Unauthorised' };
+  if (!session || !sessionCan(session, 'clients.edit')) return { ok: false, error: 'You don’t have permission to email clients.' };
   const { db } = await import('@/lib/db');
   const { sendEmail, tmplManual } = await import('@/lib/email');
 
