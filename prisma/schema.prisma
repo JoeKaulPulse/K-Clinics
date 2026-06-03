@@ -266,6 +266,8 @@ model Client {
   allergies       String?        // client-stated allergies / dietary notes (hospitality + safety)
   marketingOptIn  Boolean        @default(false)
   smsReminders    Boolean        @default(false) // client opted in to SMS confirmations & reminders
+  concerns        String[]       @default([]) // skin/treatment goals & concerns (onboarding)
+  onboardedAt     DateTime?      // completed the welcome onboarding
   unsubscribed    Boolean        @default(false)
   unsubToken      String         @unique @default(cuid())
   lastVisitAt     DateTime?
@@ -743,6 +745,7 @@ model AdminUser {
   id           String   @id @default(cuid())
   email        String   @unique
   name         String?
+  onboardedAt  DateTime?  // completed the staff welcome onboarding
   passwordHash String
   role         Role     @default(STAFF)
   active       Boolean  @default(true)
@@ -1298,6 +1301,8 @@ model AcademyStudent {
   email        String       @unique
   dob          DateTime?
   ageDeclaredAt DateTime?  // confirmed 16+ at signup
+  goals        String?
+  onboardedAt  DateTime?
   phone        String?
   passwordHash String?
   portalActive Boolean      @default(false)

@@ -10,6 +10,8 @@ import { DiscountChip } from '@/components/portal/DiscountChip';
 import { OffersStrip } from '@/components/marketing/OffersStrip';
 import { PersonalisedOffers } from '@/components/portal/PersonalisedOffers';
 import { MarketingOptInPrompt } from '@/components/portal/MarketingOptInPrompt';
+import { OnboardingHost } from '@/components/onboarding/OnboardingHost';
+import { ONBOARDING } from '@/lib/onboarding-steps';
 import { crmEnabled } from '@/lib/crm';
 import { formatPrice, getTreatment, type Treatment } from '@/lib/treatments';
 import { portalAssessments } from '@/lib/questionnaires';
@@ -34,6 +36,11 @@ export default async function DashboardPage() {
   const { clientLoyaltySummary } = await import('@/lib/client-loyalty');
   const { formatPrice } = await import('@/lib/treatments');
   const loyalty = await clientLoyaltySummary(client.id);
+
+  // Onboarding state (welcome flow for new — and existing — clients).
+  const { db: _db } = await import('@/lib/db');
+  const prof = await _db.client.findUnique({ where: { id: client.id }, select: { onboardedAt: true, phone: true, gender: true, concerns: true, smsReminders: true, marketingOptIn: true } });
+  const onb = prof ? { pending: !prof.onboardedAt, initial: { phone: prof.phone ?? '', gender: prof.gender ?? '', concerns: prof.concerns ?? [], smsReminders: prof.smsReminders, marketingOptIn: prof.marketingOptIn } } : null;
 
   const locale: Locale = client.locale === 'uk' ? 'uk' : 'en';
   const t = (k: string, v?: Record<string, string | number>) => pt(locale, k, v);
@@ -258,6 +265,7 @@ export default async function DashboardPage() {
           </div>
         </section>
       </Reveal>
+      {onb && <OnboardingHost pending={onb.pending} title={ONBOARDING.client.title} intro={ONBOARDING.client.intro} steps={ONBOARDING.client.steps} initial={onb.initial} endpoint={ONBOARDING.client.endpoint} />}
     </PortalShell>
   );
 }

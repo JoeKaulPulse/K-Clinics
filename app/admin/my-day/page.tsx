@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
+import { OnboardingHost } from '@/components/onboarding/OnboardingHost';
+import { ONBOARDING } from '@/lib/onboarding-steps';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { getLocale } from '@/lib/locale';
 import { translator } from '@/lib/i18n';
@@ -38,6 +40,8 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
 
   const canViewAll = sessionCan(session, 'bookings.view');
   const { db } = await import('@/lib/db');
+  const meProf = await db.adminUser.findUnique({ where: { id: session.sub }, select: { onboardedAt: true, name: true, title: true, credentials: true, photoUrl: true, publicPhone: true } });
+  const staffOnb = meProf ? { pending: !meProf.onboardedAt, initial: { name: meProf.name ?? '', title: meProf.title ?? '', credentials: meProf.credentials ?? '', photoUrl: meProf.photoUrl ?? '', publicPhone: meProf.publicPhone ?? '' } } : null;
 
   const selectBooking = {
     id: true, startAt: true, endAt: true, durationMin: true, treatmentTitle: true, status: true,
@@ -149,6 +153,7 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
           </div>
         </section>
       )}
+      {staffOnb && <OnboardingHost pending={staffOnb.pending} title={ONBOARDING.staff.title} intro={ONBOARDING.staff.intro} steps={ONBOARDING.staff.steps} initial={staffOnb.initial} endpoint={ONBOARDING.staff.endpoint} />}
     </AdminShell>
   );
 }

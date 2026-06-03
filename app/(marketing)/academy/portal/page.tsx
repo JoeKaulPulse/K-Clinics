@@ -4,6 +4,8 @@ import { PageHero } from '@/components/ui/PageHero';
 import { AcademyAuth } from '@/components/academy/AcademyAuth';
 import { AcademyLogout } from '@/components/academy/AcademyLogout';
 import { GuideHost } from '@/components/guide/GuideHost';
+import { OnboardingHost } from '@/components/onboarding/OnboardingHost';
+import { ONBOARDING } from '@/lib/onboarding-steps';
 import { ACCREDITATION_LABELS } from '@/lib/academy';
 import { pageMeta } from '@/lib/seo';
 
@@ -29,6 +31,8 @@ export default async function AcademyPortalPage() {
   }
 
   const { db } = await import('@/lib/db');
+  const sprof = await db.academyStudent.findUnique({ where: { id: student.id }, select: { onboardedAt: true, goals: true } });
+  const acadOnb = sprof ? { pending: !sprof.onboardedAt, initial: { goals: sprof.goals ?? '' } } : null;
   const { courseProgress, getStudentCalendar } = await import('@/lib/lms');
   const enrolments = await db.enrolment.findMany({
     where: { studentId: student.id },
@@ -129,6 +133,7 @@ export default async function AcademyPortalPage() {
         )}
       </section>
       <GuideHost />
+      {acadOnb && <OnboardingHost pending={acadOnb.pending} title={ONBOARDING.academy.title} intro={ONBOARDING.academy.intro} steps={ONBOARDING.academy.steps} initial={acadOnb.initial} endpoint={ONBOARDING.academy.endpoint} />}
     </>
   );
 }

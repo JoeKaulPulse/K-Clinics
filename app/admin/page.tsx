@@ -6,6 +6,8 @@ import { formatPrice } from '@/lib/treatments';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { RevenueChart, TopTreatments } from '@/components/admin/Charts';
+import { OnboardingHost } from '@/components/onboarding/OnboardingHost';
+import { ONBOARDING } from '@/lib/onboarding-steps';
 import { getLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
@@ -15,6 +17,9 @@ export default async function AdminOverview() {
   const { getOverview, getAnalytics } = await import('@/lib/crm-data');
   const session = await getSession();
   const { db } = await import('@/lib/db');
+
+  const meProf = session ? await db.adminUser.findUnique({ where: { id: session.sub }, select: { onboardedAt: true, name: true, title: true, credentials: true, photoUrl: true, publicPhone: true } }) : null;
+  const staffOnb = meProf ? { pending: !meProf.onboardedAt, initial: { name: meProf.name ?? '', title: meProf.title ?? '', credentials: meProf.credentials ?? '', photoUrl: meProf.photoUrl ?? '', publicPhone: meProf.publicPhone ?? '' } } : null;
 
   // A practising clinician's home is "My day", not the owner KPI overview.
   // Send clinical-only roles there; managers (OWNER/ADMIN) keep the overview.
@@ -171,6 +176,7 @@ export default async function AdminOverview() {
           </div>
         </section>
       </div>
+      {staffOnb && <OnboardingHost pending={staffOnb.pending} title={ONBOARDING.staff.title} intro={ONBOARDING.staff.intro} steps={ONBOARDING.staff.steps} initial={staffOnb.initial} endpoint={ONBOARDING.staff.endpoint} />}
     </AdminShell>
   );
 }
