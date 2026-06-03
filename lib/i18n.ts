@@ -58,6 +58,7 @@ export const DICT: Record<string, Entry> = {
   'nav.campaigns': { en: 'Campaigns', uk: 'Кампанії' },
   'nav.email': { en: 'Email blasts', uk: 'Email-розсилки' },
   'nav.ab': { en: 'A/B testing', uk: 'A/B тести' },
+  'nav.insights': { en: 'Behaviour insights', uk: 'Поведінкова аналітика' },
   'nav.automations': { en: 'Automations', uk: 'Автоматизації' },
   'nav.qr': { en: 'QR codes', uk: 'QR-коди' },
   'nav.activity': { en: 'Activity log', uk: 'Журнал дій' },

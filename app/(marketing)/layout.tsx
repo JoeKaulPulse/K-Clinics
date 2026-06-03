@@ -12,6 +12,7 @@ import { LiveChat } from '@/components/chat/LiveChat';
 import { MotionProvider } from '@/components/motion/MotionProvider';
 import { CookieConsent } from '@/components/legal/CookieConsent';
 import { TrackingScripts } from '@/components/marketing/TrackingScripts';
+import { BehaviorRecorder } from '@/components/marketing/BehaviorRecorder';
 import { EditBar } from '@/components/admin/EditBar';
 import { getSiteConfig, announcementActive } from '@/lib/site-config';
 import { getTrackingConfig, hasAnyTracking } from '@/lib/tracking';
@@ -44,6 +45,7 @@ export default async function MarketingLayout({ children }: { children: React.Re
       <EditBar />
       <CookieConsent />
       {hasAnyTracking(tracking) && <TrackingScripts {...tracking} />}
+      <BehaviorRecorder />
     </MotionProvider>
   );
 }
