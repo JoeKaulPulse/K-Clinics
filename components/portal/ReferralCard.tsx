@@ -5,11 +5,14 @@ import { useState } from 'react';
 type Labels = {
   title: string; sub: string; yourLink: string; copy: string; copied: string;
   share: string; shareText: string; stats: string;
+  qrShow?: string; qrHide?: string; qrHint?: string;
 };
 
-/** Referral panel — shows the client's invite link with copy + native share. */
-export function ReferralCard({ link, labels }: { link: string; labels: Labels }) {
+/** Referral panel — shows the client's invite link with copy + native share,
+ *  plus a scannable QR of the same link (for sharing in person). */
+export function ReferralCard({ link, labels, qrSvg }: { link: string; labels: Labels; qrSvg?: string }) {
   const [copied, setCopied] = useState(false);
+  const [showQr, setShowQr] = useState(false);
 
   async function copy() {
     try {
@@ -53,6 +56,21 @@ export function ReferralCard({ link, labels }: { link: string; labels: Labels })
           </button>
         )}
       </div>
+
+      {qrSvg && (
+        <div className="mt-4">
+          <button onClick={() => setShowQr((v) => !v)} className="text-sm font-medium text-[var(--color-gold)] hover:underline">
+            {showQr ? (labels.qrHide ?? 'Hide QR code') : (labels.qrShow ?? 'Show QR code')}
+          </button>
+          {showQr && (
+            <div className="mt-3 inline-flex flex-col items-center rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3">
+              {/* eslint-disable-next-line react/no-danger */}
+              <div className="h-44 w-44 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: qrSvg }} />
+              <p className="mt-2 max-w-[11rem] text-center text-xs text-[var(--color-stone-soft)]">{labels.qrHint ?? 'Let a friend scan this to open your invite.'}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       <p className="mt-4 text-xs text-[var(--color-stone-soft)]">{labels.stats}</p>
     </section>

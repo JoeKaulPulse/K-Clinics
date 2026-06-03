@@ -50,6 +50,7 @@ const navGroups: { heading?: string; items: NavItem[] }[] = [
   { heading: 'nav.group.marketing', items: [
     { href: '/admin/campaigns', key: 'nav.campaigns', perm: 'campaigns.view' },
     { href: '/admin/automations', key: 'nav.automations', perm: 'automations.view' },
+    { href: '/admin/qr', key: 'nav.qr', perm: 'settings.manage' },
   ] },
   { heading: 'nav.group.finance', items: [
     { href: '/admin/cashflow', key: 'nav.cashflow', perm: 'finance.view' },

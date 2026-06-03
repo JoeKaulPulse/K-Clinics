@@ -41,6 +41,8 @@ export default async function RewardsPage() {
   const lc = locale === 'uk' ? 'uk-UA' : 'en-GB';
   const base = (process.env.NEXT_PUBLIC_SITE_URL || site.url || '').replace(/\/$/, '');
   const link = `${base}/account/signup?ref=${encodeURIComponent(code)}`;
+  const { qrSvg } = await import('@/lib/qr');
+  const referralQr = await qrSvg(link, { dark: '#1a1a1a' });
 
   return (
     <PortalShell firstName={client.firstName} locale={locale}>
@@ -90,10 +92,12 @@ export default async function RewardsPage() {
       <div className="mt-5">
         <ReferralCard
           link={link}
+          qrSvg={referralQr}
           labels={{
             title: t('rw.referTitle'), sub: t('rw.referSub'), yourLink: t('rw.yourLink'),
             copy: t('rw.copy'), copied: t('rw.copied'), share: t('rw.share'), shareText: t('rw.shareText'),
             stats: t('rw.referStats', { qualified: summary.referralsQualified, pending: summary.referralsPending }),
+            qrShow: t('rw.qrShow'), qrHide: t('rw.qrHide'), qrHint: t('rw.qrHint'),
           }}
         />
       </div>
