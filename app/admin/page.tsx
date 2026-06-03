@@ -30,16 +30,43 @@ export default async function AdminOverview() {
 
   const canApproveTimeOff = sessionCan(session, 'schedule.manage');
   const canInventory = sessionCan(session, 'inventory.view');
-  const [o, a, pendingTimeOff, myTasks, stockItems, expiringSoon] = await Promise.all([
+  const canFinance = sessionCan(session, 'finance.view');
+  const canBookings = sessionCan(session, 'bookings.view');
+  const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(); dayEnd.setHours(23, 59, 59, 999);
+  const [o, a, pendingTimeOff, myTasks, stockItems, expiringSoon, ordersToFulfil, retailProducts, todaysBookings, reqConsent, reqPhoto] = await Promise.all([
     getOverview(),
     getAnalytics(),
     canApproveTimeOff ? db.staffTimeOff.count({ where: { status: 'PENDING' } }) : Promise.resolve(0),
     session ? db.task.count({ where: { assigneeId: session.sub, status: 'OPEN' } }) : Promise.resolve(0),
     canInventory ? db.stockItem.findMany({ where: { active: true }, select: { currentQty: true, lowStockAt: true } }) : Promise.resolve([]),
     canInventory ? db.stockMovement.count({ where: { reason: 'RECEIVED', expiry: { not: null, gte: new Date(), lte: new Date(Date.now() + 90 * 864e5) } } }) : Promise.resolve(0),
+    canFinance ? db.order.count({ where: { status: 'PAID', fulfillment: 'unfulfilled' } }) : Promise.resolve(0),
+    canFinance ? db.product.findMany({ where: { status: 'ACTIVE', trackInventory: true }, select: { stockQty: true, lowStockThreshold: true } }) : Promise.resolve([]),
+    canBookings ? db.booking.findMany({ where: { startAt: { gte: dayStart, lte: dayEnd }, status: { in: ['PENDING', 'CONFIRMED'] } }, select: { id: true, treatmentSlug: true } }) : Promise.resolve([]),
+    import('@/lib/settings').then((m) => m.getSetting('require_consent')),
+    import('@/lib/settings').then((m) => m.getSetting('require_before_photo')),
   ]);
   const lowStock = stockItems.filter((i) => i.lowStockAt > 0 && i.currentQty <= i.lowStockAt).length;
+  const productsLow = retailProducts.filter((p) => p.stockQty <= p.lowStockThreshold).length;
+
+  // Today's appointments still missing consent or a laser before-photo.
+  let todayNotReady = 0;
+  if (todaysBookings.length && (reqConsent || reqPhoto)) {
+    const ids = todaysBookings.map((b) => b.id);
+    const { isLaserTreatment } = await import('@/lib/consent');
+    const [signedRows, photoRows] = await Promise.all([
+      db.signedConsent.findMany({ where: { bookingId: { in: ids } }, select: { bookingId: true, kind: true } }),
+      db.beforePhoto.findMany({ where: { bookingId: { in: ids } }, select: { bookingId: true } }),
+    ]);
+    const consentSet = new Set(signedRows.filter((s) => s.kind === 'treatment').map((s) => s.bookingId));
+    const photoSet = new Set([...photoRows.map((p) => p.bookingId), ...signedRows.filter((s) => s.kind === 'photo_opt_out').map((s) => s.bookingId)]);
+    todayNotReady = todaysBookings.filter((b) => (reqConsent && !consentSet.has(b.id)) || (reqPhoto && isLaserTreatment(b.treatmentSlug) && !photoSet.has(b.id))).length;
+  }
   const attention = [
+    { show: todayNotReady > 0, label: 'Appointments not ready today', value: todayNotReady, href: '/admin/my-day', tone: 'amber' },
+    { show: ordersToFulfil > 0, label: 'Orders to fulfil', value: ordersToFulfil, href: '/admin/orders', tone: 'amber' },
+    { show: canFinance && productsLow > 0, label: 'Products to restock', value: productsLow, href: '/admin/products', tone: 'blush' },
     { show: canApproveTimeOff && pendingTimeOff > 0, label: 'Time-off to approve', value: pendingTimeOff, href: '/admin/time-off', tone: 'amber' },
     { show: myTasks > 0, label: 'My open tasks', value: myTasks, href: '/admin/tasks', tone: 'ink' },
     { show: canInventory && lowStock > 0, label: 'Low-stock items', value: lowStock, href: '/admin/inventory', tone: 'blush' },
