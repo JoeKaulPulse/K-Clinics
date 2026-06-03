@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { crmEnabled } from '@/lib/crm';
+import { meetsMinAge, MIN_STUDENT_AGE } from '@/lib/age';
 
 export const runtime = 'nodejs';
 
@@ -9,6 +10,10 @@ const schema = z.object({
   lastName: z.string().max(80).optional().or(z.literal('')),
   email: z.string().email(),
   phone: z.string().max(40).optional().or(z.literal('')),
+  dob: z.string().min(1, 'Date of birth is required')
+    .refine((v) => { const d = new Date(v); return !isNaN(+d) && d < new Date() && d.getFullYear() > 1900; }, 'Enter a valid date of birth')
+    .refine((v) => meetsMinAge(v, MIN_STUDENT_AGE), 'You must be 16 or over to join the academy.'),
+  ageDeclare: z.literal(true, { errorMap: () => ({ message: 'Please confirm you are 16 or over.' }) }),
   password: z.string().min(8).max(200),
   company: z.string().max(0).optional().or(z.literal('')),
 });

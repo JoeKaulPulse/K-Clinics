@@ -8,7 +8,7 @@ const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--colo
 
 export function AcademyAuth() {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
-  const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', company: '' });
+  const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', password: '', ageDeclare: false, company: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
@@ -37,7 +37,14 @@ export function AcademyAuth() {
         )}
         <div><label className={label}>Email *</label><input type="email" className={field} value={f.email} onChange={(e) => set('email', e.target.value)} /></div>
         {mode === 'signup' && <div><label className={label}>Phone</label><input type="tel" className={field} value={f.phone} onChange={(e) => set('phone', e.target.value)} /></div>}
+        {mode === 'signup' && <div><label className={label}>Date of birth *</label><input type="date" className={field} value={f.dob} onChange={(e) => set('dob', e.target.value)} /></div>}
         <div><label className={label}>Password{mode === 'signup' ? ' (8+ characters) *' : ' *'}</label><input type="password" className={field} value={f.password} onChange={(e) => set('password', e.target.value)} /></div>
+        {mode === 'signup' && (
+          <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]">
+            <input type="checkbox" checked={f.ageDeclare} onChange={(e) => set('ageDeclare', e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]" />
+            I confirm I am 16 years of age or older.
+          </label>
+        )}
         <input type="text" tabIndex={-1} autoComplete="off" value={f.company} onChange={(e) => set('company', e.target.value)} className="absolute -left-[9999px] h-0 w-0" aria-hidden />
       </div>
       {error && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}

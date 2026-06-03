@@ -123,6 +123,13 @@ export async function POST(req: Request) {
   const { isRefreshment } = await import('@/lib/hospitality');
   const refreshments = d.refreshments.filter(isRefreshment);
 
+  // Age gate: the client must be 18+ on the appointment date.
+  const { isAdultOn } = await import('@/lib/age');
+  const dobRow = await db.client.findUnique({ where: { id: client.id }, select: { dob: true } });
+  if (!dobRow?.dob || !isAdultOn(dobRow.dob, start)) {
+    return NextResponse.json({ ok: false, error: 'Clinic treatments are available to clients aged 18 or over. Please check the date of birth on your profile.' }, { status: 403 });
+  }
+
   const { bookingAttribution } = await import('@/lib/marketing');
   const attribution = await bookingAttribution();
 

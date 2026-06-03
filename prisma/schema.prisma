@@ -257,6 +257,7 @@ model Client {
   email           String         @unique
   phone           String?
   dob             DateTime?      // drives birthday automation
+  ageDeclaredAt   DateTime?      // confirmed 18+ at signup
   gender          Gender?        // tailors treatment recommendations (inclusive)
   genderSelfDescribe String?     // free-text identity when gender = OTHER
   source          String?        // website, treatwell, fresha, referral…
@@ -1295,6 +1296,8 @@ model AcademyStudent {
   firstName    String
   lastName     String?
   email        String       @unique
+  dob          DateTime?
+  ageDeclaredAt DateTime?  // confirmed 16+ at signup
   phone        String?
   passwordHash String?
   portalActive Boolean      @default(false)

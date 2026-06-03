@@ -26,7 +26,10 @@ export const clientSignupSchema = z.object({
   lastName: z.string().min(1, 'Surname is required').max(80),
   email: z.string().email('Enter a valid email'),
   phone: z.string().min(7, 'A contact phone number is required').max(40).refine((v) => (v.match(/\d/g) || []).length >= 7, 'Enter a valid phone number'),
-  dob: z.string().min(1, 'Date of birth is required').refine((v) => { const d = new Date(v); return !isNaN(+d) && d < new Date() && d.getFullYear() > 1900; }, 'Enter a valid date of birth'),
+  dob: z.string().min(1, 'Date of birth is required')
+    .refine((v) => { const d = new Date(v); return !isNaN(+d) && d < new Date() && d.getFullYear() > 1900; }, 'Enter a valid date of birth')
+    .refine((v) => { const d = new Date(v); let a = new Date().getFullYear() - d.getFullYear(); const m = new Date().getMonth() - d.getMonth(); if (m < 0 || (m === 0 && new Date().getDate() < d.getDate())) a--; return a >= 18; }, 'You must be 18 or over to register with the clinic.'),
+  ageDeclare: z.literal(true, { errorMap: () => ({ message: 'Please confirm you are 18 or over.' }) }),
   password: z.string().min(8, 'Use at least 8 characters').max(200),
   marketingOptIn: z.boolean().optional(),
   locale: z.enum(['en', 'uk']).optional(),
@@ -92,6 +95,8 @@ export const bookingCreateSchema = z.object({
   lastName: z.string().max(80).optional().or(z.literal('')),
   email: z.string().email(),
   phone: z.string().max(40).optional().or(z.literal('')),
+  dob: z.string().min(1, 'Date of birth is required').refine((v) => { const d = new Date(v); return !isNaN(+d) && d < new Date() && d.getFullYear() > 1900; }, 'Enter a valid date of birth'),
+  ageDeclare: z.literal(true, { errorMap: () => ({ message: 'Please confirm you are 18 or over.' }) }),
   notes: z.string().max(2000).optional().or(z.literal('')),
   marketingOptIn: z.boolean().default(false),
   consent: z.literal(true, { errorMap: () => ({ message: 'Please accept the booking terms' }) }),
