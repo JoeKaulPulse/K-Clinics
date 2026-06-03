@@ -49,10 +49,12 @@ const navGroups: { heading?: string; items: NavItem[] }[] = [
   ] },
   { heading: 'nav.group.marketing', items: [
     { href: '/admin/marketing', key: 'nav.marketing', exact: true, perm: 'campaigns.view' },
+    { href: '/admin/marketing/performance', key: 'nav.performance', perm: 'campaigns.view' },
     { href: '/admin/marketing/campaigns', key: 'nav.campaigns', perm: 'campaigns.view' },
     { href: '/admin/brand', key: 'nav.brand', perm: 'settings.manage' },
     { href: '/admin/marketing/ab', key: 'nav.ab', perm: 'campaigns.view' },
     { href: '/admin/marketing/insights', key: 'nav.insights', perm: 'campaigns.view' },
+    { href: '/admin/marketing/connections', key: 'nav.connections', perm: 'settings.manage' },
     { href: '/admin/campaigns', key: 'nav.email', perm: 'campaigns.view' },
     { href: '/admin/automations', key: 'nav.automations', perm: 'automations.view' },
     { href: '/admin/qr', key: 'nav.qr', perm: 'settings.manage' },
