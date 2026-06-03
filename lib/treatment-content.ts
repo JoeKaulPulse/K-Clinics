@@ -53,6 +53,28 @@ export function getMergedTreatment(slug: string): Promise<Treatment | null> {
   )();
 }
 
+/** Title/tagline/price overrides for all treatments (for listing-grid cards). */
+const cardOverrides = () => unstable_cache(
+  async (): Promise<Record<string, { title: string | null; tagline: string | null; priceFrom: string | null }>> => {
+    try {
+      const rows = await db.treatmentContent.findMany({ select: { slug: true, title: true, tagline: true, priceFrom: true } });
+      const rec: Record<string, { title: string | null; tagline: string | null; priceFrom: string | null }> = {};
+      for (const r of rows) rec[r.slug] = { title: r.title, tagline: r.tagline, priceFrom: r.priceFrom };
+      return rec;
+    } catch { return {}; }
+  },
+  ['treatment-card-overrides'], { tags: [TREATMENT_CONTENT_TAG], revalidate: 3600 },
+)();
+
+/** Apply admin title/tagline/price overrides to a list of treatments (cards). */
+export async function withCardOverrides(listIn: Treatment[]): Promise<Treatment[]> {
+  const rec = await cardOverrides();
+  return listIn.map((t) => {
+    const o = rec[t.slug];
+    return o ? { ...t, title: str(o.title) ?? t.title, tagline: str(o.tagline) ?? t.tagline, priceFrom: str(o.priceFrom) ?? t.priceFrom } : t;
+  });
+}
+
 /** For the editor: the static default + the current override row (if any). */
 export async function getTreatmentContentForEdit(slug: string) {
   const base = getTreatment(slug);

@@ -6,6 +6,7 @@ import { BookingButtons } from '@/components/booking/BookingButtons';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { RegisterInterest } from '@/components/dentistry/RegisterInterest';
 import { dentistry, groupByGroup } from '@/lib/treatments';
+import { withCardOverrides } from '@/lib/treatment-content';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 
@@ -19,15 +20,16 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({
   keywords: ['cosmetic dentist London', 'dental clinic Islington', 'veneers London', 'dental implants London'],
 });
 
-export default function DentistryPage() {
-  const groups = groupByGroup(dentistry);
+export default async function DentistryPage() {
+  const list = await withCardOverrides(dentistry);
+  const groups = groupByGroup(list);
   const comingSoon = !site.dentistryLive;
   let idx = 0;
   return (
     <>
       <JsonLd data={[
         breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Dentistry', path: '/dentistry' }]),
-        itemListLd('Dentistry treatments at KClinics', dentistry.map((t) => ({ name: t.title, path: `/${t.slug}` }))),
+        itemListLd('Dentistry treatments at KClinics', list.map((t) => ({ name: t.title, path: `/${t.slug}` }))),
       ]} />
       <PageHero
         eyebrow={comingSoon ? 'Aesthetic Dentistry · Opening soon' : 'Aesthetic & Restorative Dentistry'}
