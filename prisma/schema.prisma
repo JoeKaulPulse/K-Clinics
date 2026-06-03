@@ -578,6 +578,7 @@ model MarketingCampaign {
   utmCampaign        String?        // utm_campaign value used across channels
   channels           String[]       @default([]) // email | google_ads | meta | tiktok | seo | landing
   brief              String?        // creative brief (feeds the AI assistant)
+  aiDraft            Json?          // last AI-generated content pack (owner reviews before use)
   createdBy          String?
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt

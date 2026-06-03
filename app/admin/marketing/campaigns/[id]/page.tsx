@@ -4,8 +4,11 @@ import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { CampaignEditor, type CampaignData } from '@/components/admin/CampaignEditor';
+import { CampaignAiPanel } from '@/components/admin/CampaignAiPanel';
 import { getLocale } from '@/lib/locale';
 import { site } from '@/lib/site';
+import { aiAvailable } from '@/lib/ai-marketing';
+import type { CampaignPack } from '@/lib/ai-marketing';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,6 +45,9 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
         baseUrl={site.url.replace(/\/$/, '')}
         canManage={sessionCan(session, 'campaigns.send') || sessionCan(session, 'settings.manage')}
       />
+      <div className="mt-6">
+        <CampaignAiPanel campaignId={c.id} enabled={aiAvailable()} initial={(c.aiDraft as CampaignPack | null) ?? null} />
+      </div>
     </AdminShell>
   );
 }
