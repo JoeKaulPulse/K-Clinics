@@ -50,10 +50,14 @@ export async function deliverCampaign(opts: SendOpts): Promise<{ sent: number; f
   async function one(c: (typeof recipients)[number]) {
     const ctx = { first_name: c.firstName || '', last_name: c.lastName || '', email: c.email };
     const subjectR = applyMergeTags(subject, ctx);
-    const html = emailShell({ body: applyMergeTags(bodyHtml, ctx), preheader: applyMergeTags(preheader, ctx), unsubUrl: `${SITE}/api/unsubscribe?t=${c.unsubToken}` });
+    const unsubUrl = `${SITE}/api/unsubscribe?t=${c.unsubToken}`;
+    const html = emailShell({ body: applyMergeTags(bodyHtml, ctx), preheader: applyMergeTags(preheader, ctx), unsubUrl });
+    // RFC 8058 one-click unsubscribe — now required by Gmail/Yahoo for bulk
+    // senders and a strong deliverability signal.
+    const headers = { 'List-Unsubscribe': `<${unsubUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' };
     let res: { ok: boolean; id?: string; error?: string };
     try {
-      res = await sendEmail({ to: c.email, subject: subjectR, html, fromName: opts.fromName, replyTo: opts.replyTo });
+      res = await sendEmail({ to: c.email, subject: subjectR, html, fromName: opts.fromName, replyTo: opts.replyTo, headers });
     } catch (e) {
       res = { ok: false, error: (e as Error)?.message?.slice(0, 200) || 'Send failed.' };
     }

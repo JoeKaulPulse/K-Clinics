@@ -39,5 +39,14 @@ export async function POST(req: Request) {
   };
   const data = map[evt.type];
   if (data) await db.emailEvent.updateMany({ where: { providerId }, data }).catch(() => {});
+
+  // List hygiene: a spam complaint or a hard bounce means we must stop emailing
+  // this client — suppress them so they're excluded from every future send.
+  if (evt.type === 'email.complained' || evt.type === 'email.bounced') {
+    try {
+      const ev = await db.emailEvent.findFirst({ where: { providerId }, select: { clientId: true } });
+      if (ev?.clientId) await db.client.update({ where: { id: ev.clientId }, data: { unsubscribed: true, marketingOptIn: false } });
+    } catch { /* non-fatal */ }
+  }
   return new Response('ok');
 }
