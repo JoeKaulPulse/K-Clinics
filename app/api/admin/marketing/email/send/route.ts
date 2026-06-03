@@ -1,14 +1,12 @@
 import { NextResponse } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
-import { site } from '@/lib/site';
+import type { Audience } from '@/lib/email-campaigns';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const SITE = (process.env.NEXT_PUBLIC_SITE_URL || site.url).replace(/\/$/, '');
-
-// Send a visual-builder email to an audience via Resend, recording per-recipient
-// EmailEvents for analytics. Requires campaigns.send.
+// Email campaign operations: count audience, test, save draft, schedule, send
+// now, delete and immediate send. Requires campaigns.send.
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
   const { requirePermission } = await import('@/lib/auth');
@@ -17,85 +15,101 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const { db } = await import('@/lib/db');
+  const { countAudience, deliverCampaign, sendCampaignById } = await import('@/lib/email-campaigns');
+  const aud: Audience = body.audience || { type: 'all' };
 
-  // Compliance: every audience is restricted to opted-in, non-unsubscribed
-  // clients. Shared by the count preview and the real send.
-  async function audienceWhere(): Promise<Record<string, unknown>> {
-    let where: Record<string, unknown> = { marketingOptIn: true, unsubscribed: false };
-    const aud = body.audience || { type: 'all' };
-    if (aud.type === 'tag' && aud.value) where = { ...where, tags: { has: String(aud.value) } };
-    if (aud.type === 'segment' && aud.value) {
-      const seg = await db.segment.findUnique({ where: { id: String(aud.value) } });
-      if (seg) { const { rulesToWhere } = await import('@/lib/segments'); where = { ...where, ...rulesToWhere(seg.rules as Record<string, unknown>) }; }
-    }
-    return where;
-  }
-
-  // ── Audience-size preview — count only, no send (lets the composer show how
-  //    many people a campaign will reach before the user commits). ──
+  // ── Audience-size preview — count only, no send. ──
   if (body.op === 'count') {
-    const count = await db.client.count({ where: await audienceWhere() });
-    return NextResponse.json({ ok: true, count });
+    return NextResponse.json({ ok: true, count: await countAudience(aud) });
   }
 
+  // ── Send an existing persisted campaign now (from the drafts/scheduled list). ──
+  if (body.op === 'sendNow') {
+    if (!body.id) return NextResponse.json({ ok: false, error: 'Missing id.' }, { status: 400 });
+    const r = await sendCampaignById(String(body.id));
+    if (r.ok) {
+      const { logAudit } = await import('@/lib/audit');
+      await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: `Sent campaign to ${r.sent} recipient(s)` });
+    }
+    return NextResponse.json(r, { status: r.ok ? 200 : 400 });
+  }
+
+  // ── Delete a draft / cancel a scheduled send. (Won't delete a sent campaign's
+  //    history, which carries analytics.) ──
+  if (body.op === 'delete') {
+    if (!body.id) return NextResponse.json({ ok: false, error: 'Missing id.' }, { status: 400 });
+    const c = await db.campaign.findUnique({ where: { id: String(body.id) }, select: { status: true } });
+    if (!c) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
+    if (c.status === 'SENT' || c.status === 'SENDING') return NextResponse.json({ ok: false, error: 'You can’t delete a campaign that has been sent.' }, { status: 400 });
+    await db.campaign.delete({ where: { id: String(body.id) } });
+    return NextResponse.json({ ok: true });
+  }
+
+  // Validate content for the remaining ops (test / draft / schedule / send).
   const subject = String(body.subject || '').trim().slice(0, 200);
   const name = String(body.name || subject || 'Email').slice(0, 120);
   const blocks = Array.isArray(body.blocks) ? body.blocks : [];
-  if (!subject || blocks.length === 0) return NextResponse.json({ ok: false, error: 'Add a subject and some content.' }, { status: 400 });
-
-  // Sender controls (optional) — display name, reply-to and a separate preheader.
   const fromName = String(body.fromName || '').trim().slice(0, 80) || undefined;
   const replyTo = String(body.replyTo || '').trim().slice(0, 120) || undefined;
-  const preheader = String(body.preheader || '').trim().slice(0, 160) || subject;
+  const preheader = String(body.preheader || '').trim().slice(0, 160) || undefined;
 
-  const { emailBlocksToHtml, applyMergeTags } = await import('@/lib/email-builder');
-  const { sendEmail, emailShell } = await import('@/lib/email');
-  const bodyHtml = emailBlocksToHtml(blocks);
-
-  // Test send — no records, no audience. Merge tags resolve to sample values.
+  // ── Test send — no records, no audience. Merge tags resolve to sample values. ──
   if (body.test) {
+    if (!subject || blocks.length === 0) return NextResponse.json({ ok: false, error: 'Add a subject and some content.' }, { status: 400 });
     const to = String(body.test).trim();
     if (!to) return NextResponse.json({ ok: false, error: 'Enter a test address.' }, { status: 400 });
+    const { emailBlocksToHtml, applyMergeTags } = await import('@/lib/email-builder');
+    const { sendEmail, emailShell } = await import('@/lib/email');
     const sample = { first_name: 'Alex', last_name: 'Taylor', email: to };
+    const bodyHtml = emailBlocksToHtml(blocks);
     const res = await sendEmail({
       to,
       subject: `[Test] ${applyMergeTags(subject, sample)}`,
-      html: emailShell({ body: applyMergeTags(bodyHtml, sample), preheader: applyMergeTags(preheader, sample) }),
+      html: emailShell({ body: applyMergeTags(bodyHtml, sample), preheader: applyMergeTags(preheader || subject, sample) }),
       fromName, replyTo,
     });
     return res.ok ? NextResponse.json({ ok: true, test: true }) : NextResponse.json({ ok: false, error: res.error }, { status: 502 });
   }
 
-  const recipients = await db.client.findMany({ where: await audienceWhere(), select: { id: true, email: true, firstName: true, lastName: true, unsubToken: true }, take: 5000 });
-  if (recipients.length === 0) return NextResponse.json({ ok: false, error: 'No opted-in recipients match that audience.' }, { status: 400 });
+  // Persisted fields shared by draft / schedule / send.
+  const persisted = {
+    name, subject, body: JSON.stringify(blocks),
+    segment: aud.type === 'all' ? null : String(aud.value || ''),
+    audienceType: aud.type, audienceValue: aud.value || null,
+    fromName: fromName || null, replyTo: replyTo || null, preheader: preheader || null,
+  };
+  const upsert = async (status: string, extra: Record<string, unknown> = {}) =>
+    body.id
+      ? db.campaign.update({ where: { id: String(body.id) }, data: { ...persisted, status, ...extra } })
+      : db.campaign.create({ data: { ...persisted, status, createdBy: session.email, ...extra } });
 
-  const aud = body.audience || { type: 'all' };
-  const campaign = await db.campaign.create({ data: { name, subject, body: JSON.stringify(blocks), segment: aud.type === 'all' ? null : String(aud.value || '') } });
-
-  // Send with bounded concurrency so large audiences don't run serially (and
-  // time out). Each send is wrapped so a thrown error counts as a failure for
-  // that recipient rather than aborting the whole campaign half-way. Subject,
-  // body and preheader are personalised per recipient.
-  let sent = 0, failed = 0;
-  const CONCURRENCY = 8;
-  async function deliver(c: (typeof recipients)[number]) {
-    const ctx = { first_name: c.firstName || '', last_name: c.lastName || '', email: c.email };
-    const subjectR = applyMergeTags(subject, ctx);
-    const html = emailShell({ body: applyMergeTags(bodyHtml, ctx), preheader: applyMergeTags(preheader, ctx), unsubUrl: `${SITE}/api/unsubscribe?t=${c.unsubToken}` });
-    let res: { ok: boolean; id?: string; error?: string };
-    try {
-      res = await sendEmail({ to: c.email, subject: subjectR, html, fromName, replyTo });
-    } catch (e) {
-      res = { ok: false, error: (e as Error)?.message?.slice(0, 200) || 'Send failed.' };
-    }
-    res.ok ? sent++ : failed++;
-    await db.emailEvent.create({ data: { clientId: c.id, kind: 'CAMPAIGN', to: c.email, subject: subjectR, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, campaignId: campaign.id } }).catch(() => {});
-  }
-  for (let i = 0; i < recipients.length; i += CONCURRENCY) {
-    await Promise.all(recipients.slice(i, i + CONCURRENCY).map(deliver));
+  // ── Save as draft (no content requirement beyond a name/subject so partial
+  //    work isn't lost). ──
+  if (body.op === 'saveDraft') {
+    const c = await upsert('DRAFT', { scheduledAt: null });
+    return NextResponse.json({ ok: true, id: c.id });
   }
 
-  await db.campaign.update({ where: { id: campaign.id }, data: { sentAt: new Date(), recipients: sent } }).catch(() => {});
+  // ── Schedule for a future time. ──
+  if (body.op === 'schedule') {
+    if (!subject || blocks.length === 0) return NextResponse.json({ ok: false, error: 'Add a subject and some content.' }, { status: 400 });
+    const when = body.scheduledAt ? new Date(String(body.scheduledAt)) : null;
+    if (!when || isNaN(+when)) return NextResponse.json({ ok: false, error: 'Choose a valid date and time.' }, { status: 400 });
+    if (when.getTime() < Date.now() + 60_000) return NextResponse.json({ ok: false, error: 'Pick a time at least a minute from now.' }, { status: 400 });
+    const c = await upsert('SCHEDULED', { scheduledAt: when });
+    const { logAudit } = await import('@/lib/audit');
+    await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: `Scheduled email “${name}” for ${when.toLocaleString('en-GB')}` });
+    return NextResponse.json({ ok: true, id: c.id, scheduledAt: when.toISOString() });
+  }
+
+  // ── Send immediately. ──
+  if (!subject || blocks.length === 0) return NextResponse.json({ ok: false, error: 'Add a subject and some content.' }, { status: 400 });
+  if ((await countAudience(aud)) === 0) return NextResponse.json({ ok: false, error: 'No opted-in recipients match that audience.' }, { status: 400 });
+
+  const campaign = await upsert('SENDING');
+  const { sent, failed } = await deliverCampaign({ subject, blocks, audience: aud, campaignId: campaign.id, fromName, replyTo, preheader });
+  await db.campaign.update({ where: { id: campaign.id }, data: { status: 'SENT', sentAt: new Date(), recipients: sent } }).catch(() => {});
+
   const { logAudit } = await import('@/lib/audit');
   await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: `Sent email “${name}” to ${sent} recipient(s)` });
   return NextResponse.json({ ok: true, sent, failed, campaignId: campaign.id });

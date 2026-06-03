@@ -4,6 +4,7 @@ import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
+import { EmailCampaignRows, type DraftRow } from '@/components/admin/EmailCampaignRows';
 import { getLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
@@ -23,8 +24,23 @@ export default async function EmailDashboard() {
     db.emailEvent.count({ where: { kind: 'CAMPAIGN', clickedAt: { not: null }, createdAt: { gte: since } } }),
     db.emailEvent.count({ where: { kind: 'CAMPAIGN', bouncedAt: { not: null }, createdAt: { gte: since } } }),
     db.client.count({ where: { marketingOptIn: true, unsubscribed: false } }),
-    db.campaign.findMany({ orderBy: { createdAt: 'desc' }, take: 12 }),
+    db.campaign.findMany({ where: { status: 'SENT' }, orderBy: { sentAt: 'desc' }, take: 12 }),
   ]);
+
+  // Drafts & scheduled sends, newest first (scheduled shown by due time).
+  const pending = await db.campaign.findMany({
+    where: { status: { in: ['DRAFT', 'SCHEDULED'] } },
+    orderBy: [{ status: 'asc' }, { scheduledAt: 'asc' }, { updatedAt: 'desc' }],
+    take: 30,
+  });
+  const segNames = new Map((await db.segment.findMany({ select: { id: true, name: true } })).map((s) => [s.id, s.name]));
+  const audienceLabel = (t: string | null, v: string | null) =>
+    t === 'segment' ? (segNames.get(v || '') || 'Segment') : t === 'tag' ? `Tag: ${v}` : 'All subscribers';
+  const pendingRows: DraftRow[] = pending.map((c) => ({
+    id: c.id, name: c.name, subject: c.subject, status: c.status,
+    scheduledAt: c.scheduledAt?.toISOString() ?? null, audience: audienceLabel(c.audienceType, c.audienceValue),
+  }));
+  const canSend = sessionCan(session, 'campaigns.send');
 
   const ids = campaigns.map((c) => c.id);
   const events = ids.length ? await db.emailEvent.findMany({ where: { campaignId: { in: ids } }, select: { campaignId: true, status: true, openedAt: true, clickedAt: true } }) : [];
@@ -60,21 +76,29 @@ export default async function EmailDashboard() {
         <Kpi label="Subscribers" value={String(optedIn)} sub="opted-in" />
       </div>
 
+      {canSend && pendingRows.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">Drafts &amp; scheduled</h2>
+          <EmailCampaignRows rows={pendingRows} />
+        </section>
+      )}
+
       <section className="mt-8 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
         <table className="w-full text-sm">
-          <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th className="p-3">Campaign</th><th className="p-3">Date</th><th className="p-3">Sent</th><th className="p-3">Opens</th><th className="p-3">Clicks</th></tr></thead>
+          <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th className="p-3">Campaign</th><th className="p-3">Date</th><th className="p-3">Sent</th><th className="p-3">Opens</th><th className="p-3">Clicks</th><th className="p-3"></th></tr></thead>
           <tbody>
             {campaigns.length === 0 ? (
-              <tr><td colSpan={5} className="p-6 text-center text-sm text-[var(--color-stone)]">No emails sent yet. <Link href="/admin/marketing/email/new" className="text-[var(--color-gold)] underline">Send your first →</Link></td></tr>
+              <tr><td colSpan={6} className="p-6 text-center text-sm text-[var(--color-stone)]">No emails sent yet. <Link href="/admin/marketing/email/new" className="text-[var(--color-gold)] underline">Send your first →</Link></td></tr>
             ) : campaigns.map((c) => {
               const s = stat.get(c.id) ?? { sent: 0, opened: 0, clicked: 0 };
               return (
                 <tr key={c.id} className="border-t border-[var(--color-line)]">
                   <td className="p-3 font-medium">{c.name}<span className="block text-xs text-[var(--color-stone-soft)]">{c.subject}</span></td>
-                  <td className="p-3 text-xs text-[var(--color-stone)]">{new Date(c.createdAt).toLocaleDateString('en-GB')}</td>
+                  <td className="p-3 text-xs text-[var(--color-stone)]">{new Date(c.sentAt ?? c.createdAt).toLocaleDateString('en-GB')}</td>
                   <td className="p-3">{s.sent}</td>
                   <td className="p-3">{s.sent ? `${pct(s.opened, s.sent)}%` : '—'}</td>
                   <td className="p-3">{s.sent ? `${pct(s.clicked, s.sent)}%` : '—'}</td>
+                  <td className="p-3 text-right">{canSend && <Link href={`/admin/marketing/email/new?clone=${c.id}`} className="text-xs text-[var(--color-gold)] hover:underline">Duplicate</Link>}</td>
                 </tr>
               );
             })}
