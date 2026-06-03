@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { SiteConfig } from '@/lib/site-config';
+import { NavEditor } from '@/components/admin/NavEditor';
 
 type Revision = { id: string; label: string | null; createdAt: string; createdBy: string | null };
 
@@ -14,6 +15,7 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
   const router = useRouter();
   const [c, setC] = useState<SiteConfig>(initial);
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<'globals' | 'nav'>('globals');
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   // Setters for nested values, kept terse.
@@ -50,12 +52,22 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-[family-name:var(--font-display)] text-3xl">Site &amp; global variables</h1>
-          <p className="mt-1 text-sm text-[var(--color-stone)]">One place for contact details, social links, hours, booking, the announcement bar and brand text. Changes go live across every page on save.</p>
+          <p className="mt-1 text-sm text-[var(--color-stone)]">One place for contact details, social links, hours, booking, the announcement bar, navigation and brand text. Changes go live across every page on save.</p>
         </div>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_18rem]">
+      <div className="mt-5 inline-flex rounded-full border border-[var(--color-line)] bg-[var(--color-bone)] p-1 text-sm">
+        {([['globals', 'Global variables'], ['nav', 'Navigation']] as const).map(([id, lbl]) => (
+          <button key={id} onClick={() => setTab(id)} className={`rounded-full px-4 py-1.5 transition-colors ${tab === id ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-ink-soft)]'}`}>{lbl}</button>
+        ))}
+      </div>
+
+      <div className="mt-5 grid gap-6 lg:grid-cols-[1fr_18rem]">
         <div className="space-y-6">
+          {tab === 'nav' ? (
+            <NavEditor nav={c.nav} onChange={(nav) => top('nav', nav)} />
+          ) : (
+          <>{/* globals */}
           {/* Brand */}
           <section className={card}>
             <h2 className="mb-4 font-[family-name:var(--font-display)] text-xl">Brand</h2>
@@ -156,7 +168,9 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
             </label>
           </section>
 
-          <p className="text-xs text-[var(--color-stone-soft)]">Navigation menus and the media library are managed separately — coming in the next update.</p>
+          <p className="text-xs text-[var(--color-stone-soft)]">The media library and page builder arrive in the next update.</p>
+          </>
+          )}
         </div>
 
         {/* Sticky save + history */}

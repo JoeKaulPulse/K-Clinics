@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { BlockEditor } from '@/components/admin/BlockEditor';
+import { MediaField } from '@/components/admin/MediaPicker';
 import { type Block, blocksToText, readMinutesOf, starterBlocks } from '@/lib/blocks';
 
 type Initial = {
@@ -103,7 +104,7 @@ export function PostEditor({ initial }: { initial: Initial }) {
 
           <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 space-y-4">
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-stone)]">SEO &amp; links</p>
-            <div><label className={label}>Cover image URL</label><input className={field} value={f.coverImage} onChange={(e) => set('coverImage', e.target.value)} placeholder="https://… (optional)" /></div>
+            <MediaField label="Cover image" value={f.coverImage} onChange={(v) => set('coverImage', v)} />
             <div><label className={label}>Meta description</label><textarea className={`${field} min-h-[60px]`} value={f.metaDescription} onChange={(e) => set('metaDescription', e.target.value)} /></div>
             <div><label className={label}>Keywords <span className="normal-case text-[var(--color-stone-soft)]">(comma-separated)</span></label><input className={field} value={f.keywords} onChange={(e) => set('keywords', e.target.value)} /></div>
             <div><label className={label}>Related treatment slugs <span className="normal-case text-[var(--color-stone-soft)]">(comma-separated)</span></label><input className={field} value={f.related} onChange={(e) => set('related', e.target.value)} placeholder="laser-hair-removal, hydraglow-facial" /></div>
