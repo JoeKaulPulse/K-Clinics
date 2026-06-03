@@ -22,11 +22,19 @@ export async function POST(req: Request) {
 
   const treatment = getTreatment(d.slug);
   if (!treatment) return NextResponse.json({ ok: false, error: 'Unknown treatment' }, { status: 404 });
-  if (treatment.onRequest) return NextResponse.json({ ok: false, error: 'This treatment is available on request only — please enquire and we’ll arrange it for you.' }, { status: 409 });
 
   const { durationMin, bufferMin } = bookingFor(d.slug);
-  const { lowestPenceForTreatment } = await import('@/lib/services');
-  const pricePence = await lowestPenceForTreatment(d.slug);
+  const { pricingForTreatment, isBookableStatus } = await import('@/lib/services');
+  const pricing = await pricingForTreatment(d.slug);
+  // Effective status: admin status wins; onRequest forces "coming soon" only when
+  // status is NORMAL — consistent with the treatment page + the account flow.
+  let status = pricing?.status ?? 'NORMAL';
+  if (status === 'NORMAL' && treatment.onRequest) status = 'COMING_SOON';
+  if (!isBookableStatus(status)) {
+    return NextResponse.json({ ok: false, error: 'This treatment isn’t available to book online right now — please enquire and we’ll be in touch.' }, { status: 409 });
+  }
+  // "On consultation" books as a £0 card-on-file hold; staff price it later.
+  const pricePence = status === 'CONSULTATION' ? 0 : (pricing?.fromPence ?? null);
   const start = new Date(d.startISO);
   const end = new Date(start.getTime() + durationMin * 60_000);
 

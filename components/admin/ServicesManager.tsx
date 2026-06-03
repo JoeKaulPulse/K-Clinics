@@ -6,10 +6,19 @@ import { useRouter } from 'next/navigation';
 import { parsePriceMatrix } from '@/lib/price-import';
 import { PriceListUpload } from '@/components/admin/PriceListUpload';
 
-type Variant = { id: string; name: string; durationMin: number; pricePence: number; costPence: number | null; courses: { sessions: number; totalPence: number }[] };
-type Service = { id: string; slug: string; treatmentSlug: string; name: string; category: string; active: boolean; variants: Variant[] };
+type Variant = { id: string; name: string; durationMin: number; pricePence: number; costPence: number | null; courses: { sessions: number; totalPence: number }[]; status: string | null };
+type Service = { id: string; slug: string; treatmentSlug: string; name: string; category: string; active: boolean; status: string; variants: Variant[] };
 type Offer = { id: string; name: string; scope: string; serviceId: string | null; variantId: string | null; percentOff: number | null; amountOffPence: number | null; startAt: string | null; endAt: string | null; promoted: boolean };
 type TreatmentOpt = { slug: string; title: string; category: string };
+
+// Public presentation states. Price is always kept internally; this controls
+// what the public site shows + whether the service books online.
+const STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: 'NORMAL', label: 'Bookable — show price' },
+  { value: 'CONSULTATION', label: 'On consultation (price hidden, still books)' },
+  { value: 'COMING_SOON', label: 'Coming soon (enquiry only)' },
+  { value: 'UNAVAILABLE', label: 'Currently unavailable (enquiry only)' },
+];
 
 const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm';
 const money = (p: number | null) => (p == null ? '—' : p === 0 ? 'On consult.' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`);
@@ -174,6 +183,12 @@ function ServiceCard({ service }: { service: Service }) {
           <p className="text-xs text-[var(--color-stone-soft)]">{service.variants.length} variant(s) · {service.category} · {open ? 'hide' : 'show'}</p>
         </button>
         <div className="flex items-center gap-3">
+          <label className="flex items-center gap-1.5 text-xs text-[var(--color-stone)]">
+            Public status
+            <select value={service.status} onChange={(e) => act({ op: 'updateService', id: service.id, status: e.target.value })} className={field}>
+              {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </label>
           <Link href={`/admin/services/content/${service.treatmentSlug}`} className="text-xs font-medium text-[var(--color-gold)] hover:underline">Edit page content →</Link>
           <button onClick={() => act({ op: 'updateService', id: service.id, active: !service.active })} className="text-xs text-[var(--color-stone)] hover:underline">{service.active ? 'Disable' : 'Enable'}</button>
         </div>
@@ -182,7 +197,7 @@ function ServiceCard({ service }: { service: Service }) {
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
             <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">
-              <th className="py-1 pr-2">Variant</th><th className="px-2">Min</th><th className="px-2">Price £</th><th className="px-2">Cost £</th><th className="px-2">Margin</th><th className="px-2"></th>
+              <th className="py-1 pr-2">Variant</th><th className="px-2">Min</th><th className="px-2">Price £</th><th className="px-2">Cost £</th><th className="px-2">Margin</th><th className="px-2">Status</th><th className="px-2"></th>
             </tr></thead>
             <tbody>
               {service.variants.map((v) => <VariantRow key={v.id} v={v} />)}
@@ -210,6 +225,7 @@ function VariantRow({ v }: { v: Variant }) {
     setSaved(true); setTimeout(() => setSaved(false), 1500); router.refresh();
   }
   async function remove() { if (confirm(`Remove “${v.name}”?`)) { await post({ op: 'removeVariant', id: v.id }); router.refresh(); } }
+  async function setStatus(status: string) { await post({ op: 'updateVariant', id: v.id, status: status || null }); router.refresh(); }
 
   return (
     <tr className="border-t border-[var(--color-line)]">
@@ -218,6 +234,12 @@ function VariantRow({ v }: { v: Variant }) {
       <td className="px-2"><input value={price} onChange={(e) => setPrice(e.target.value)} className={`${field} w-20`} /></td>
       <td className="px-2"><input value={cost} onChange={(e) => setCost(e.target.value)} placeholder="—" className={`${field} w-20`} /></td>
       <td className="px-2 text-[var(--color-stone)]">{margin == null ? '—' : `${margin}%`}</td>
+      <td className="px-2">
+        <select value={v.status ?? ''} onChange={(e) => setStatus(e.target.value)} className={`${field} max-w-[8.5rem]`} title="Override the service status for this option">
+          <option value="">Inherit</option>
+          {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label.split(' (')[0].split(' — ')[0]}</option>)}
+        </select>
+      </td>
       <td className="px-2 text-right">
         {dirty ? <button onClick={save} className="rounded-full bg-[var(--color-gold)] px-3 py-1 text-xs text-white">Save</button>
           : saved ? <span className="text-xs text-green-700">Saved ✓</span>
@@ -252,28 +274,43 @@ function OffersSection({ services, offers }: { services: Service[]; offers: Offe
   const [name, setName] = useState('');
   const [scope, setScope] = useState('ALL');
   const [serviceId, setServiceId] = useState('');
-  const [percent, setPercent] = useState('');
+  const [variantId, setVariantId] = useState('');
+  const [discType, setDiscType] = useState<'percent' | 'amount'>('percent');
+  const [amount, setAmount] = useState('');
+  const [startAt, setStartAt] = useState('');
   const [endAt, setEndAt] = useState('');
   const [msg, setMsg] = useState('');
 
+  const allVariants = services.flatMap((s) => s.variants.map((v) => ({ id: v.id, label: `${s.name} — ${v.name}` })));
+
   async function create() {
-    if (!name.trim() || !percent) { setMsg('Name + % required.'); return; }
-    const res = await post({ op: 'createOffer', name, scope, serviceId: scope === 'SERVICE' ? serviceId : undefined, percentOff: Number(percent), endAt: endAt || undefined, promoted: true });
-    if (res.ok) { setName(''); setPercent(''); setEndAt(''); setMsg(''); router.refresh(); } else { const j = await res.json(); setMsg(j.error || 'Failed'); }
+    if (!name.trim() || !amount) { setMsg('Name + discount required.'); return; }
+    if (scope === 'SERVICE' && !serviceId) { setMsg('Choose a service.'); return; }
+    if (scope === 'VARIANT' && !variantId) { setMsg('Choose an option.'); return; }
+    const res = await post({
+      op: 'createOffer', name, scope,
+      serviceId: scope === 'SERVICE' ? serviceId : undefined,
+      variantId: scope === 'VARIANT' ? variantId : undefined,
+      percentOff: discType === 'percent' ? Number(amount) : undefined,
+      amountOffPence: discType === 'amount' ? Math.round(Number(amount) * 100) : undefined,
+      startAt: startAt || undefined, endAt: endAt || undefined, promoted: true,
+    });
+    if (res.ok) { setName(''); setAmount(''); setStartAt(''); setEndAt(''); setMsg(''); router.refresh(); } else { const j = await res.json(); setMsg(j.error || 'Failed'); }
   }
   async function act(payload: object) { await post(payload); router.refresh(); }
   const svcName = (id: string | null) => services.find((s) => s.id === id)?.name ?? '';
 
   return (
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
-      <h2 className="mb-1 font-[family-name:var(--font-display)] text-lg">Special offers</h2>
-      <p className="mb-3 text-sm text-[var(--color-stone)]">Promoted offers appear on the marketing site and in client portals, and apply automatically at booking.</p>
+      <h2 className="mb-1 font-[family-name:var(--font-display)] text-lg">Special offers &amp; seasonal discounts</h2>
+      <p className="mb-3 text-sm text-[var(--color-stone)]">Set a site-wide, per-service or per-option discount with optional start/end dates. Promoted offers appear on the marketing site (as a struck-through “was / now” price with the offer label) and apply automatically at booking.</p>
       <div className="flex flex-wrap items-end gap-2">
         <label className="text-xs text-[var(--color-stone)]">Name<br /><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Summer Skin" className={`${field} w-44`} /></label>
         <label className="text-xs text-[var(--color-stone)]">Scope<br />
           <select value={scope} onChange={(e) => setScope(e.target.value)} className={field}>
             <option value="ALL">All services</option>
             <option value="SERVICE">One service</option>
+            <option value="VARIANT">One option</option>
           </select>
         </label>
         {scope === 'SERVICE' && (
@@ -284,7 +321,24 @@ function OffersSection({ services, offers }: { services: Service[]; offers: Offe
             </select>
           </label>
         )}
-        <label className="text-xs text-[var(--color-stone)]">% off<br /><input type="number" value={percent} onChange={(e) => setPercent(e.target.value)} className={`${field} w-20`} /></label>
+        {scope === 'VARIANT' && (
+          <label className="text-xs text-[var(--color-stone)]">Option<br />
+            <select value={variantId} onChange={(e) => setVariantId(e.target.value)} className={`${field} max-w-[16rem]`}>
+              <option value="">Choose…</option>
+              {allVariants.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
+            </select>
+          </label>
+        )}
+        <label className="text-xs text-[var(--color-stone)]">Discount<br />
+          <span className="flex items-center gap-1">
+            <select value={discType} onChange={(e) => setDiscType(e.target.value as 'percent' | 'amount')} className={field}>
+              <option value="percent">% off</option>
+              <option value="amount">£ off</option>
+            </select>
+            <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={discType === 'percent' ? '20' : '15'} className={`${field} w-20`} />
+          </span>
+        </label>
+        <label className="text-xs text-[var(--color-stone)]">Starts<br /><input type="date" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={field} /></label>
         <label className="text-xs text-[var(--color-stone)]">Ends<br /><input type="date" value={endAt} onChange={(e) => setEndAt(e.target.value)} className={field} /></label>
         <button onClick={create} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)]">Add offer</button>
         {msg && <span className="text-sm text-[var(--color-blush)]">{msg}</span>}

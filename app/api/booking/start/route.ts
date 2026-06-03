@@ -23,13 +23,17 @@ export async function POST(req: Request) {
   const client = await getCurrentClient();
   if (!client) return NextResponse.json({ ok: false, error: 'Please create an account or sign in to book.' }, { status: 401 });
 
-  const { getVariant, liveOffers, bestOffer } = await import('@/lib/services');
+  const { getVariant, liveOffers, bestOffer, effectiveStatus, isBookableStatus } = await import('@/lib/services');
   const primary = await getVariant(d.variantId);
   if (!primary) return NextResponse.json({ ok: false, error: 'That service is unavailable. Please choose another.' }, { status: 404 });
-  // Block treatments that are available on request only (machine not in yet).
+  // Effective presentation status governs bookability. Admin status wins; the
+  // code-level onRequest flag forces "coming soon" only when status is NORMAL
+  // (machine not in yet) — keeping this consistent with the treatment page.
   const { getTreatment } = await import('@/lib/treatments');
-  if (getTreatment(primary.service.treatmentSlug)?.onRequest) {
-    return NextResponse.json({ ok: false, error: 'This treatment is available on request only — please enquire and we’ll arrange it for you.' }, { status: 409 });
+  let primaryStatus = effectiveStatus(primary.service.status as 'NORMAL' | 'CONSULTATION' | 'COMING_SOON' | 'UNAVAILABLE', primary.variant.status);
+  if (primaryStatus === 'NORMAL' && getTreatment(primary.service.treatmentSlug)?.onRequest) primaryStatus = 'COMING_SOON';
+  if (!isBookableStatus(primaryStatus)) {
+    return NextResponse.json({ ok: false, error: 'This treatment isn’t available to book online right now — please enquire and we’ll be in touch.' }, { status: 409 });
   }
 
   const addOns = (await Promise.all(d.addOnVariantIds.map((id) => getVariant(id)))).filter(Boolean) as NonNullable<Awaited<ReturnType<typeof getVariant>>>[];
@@ -42,9 +46,11 @@ export async function POST(req: Request) {
   const items: Item[] = [];
 
   // Primary — single session or a course (course total when a matching course exists).
-  let base = primary.variant.pricePence;
+  // "On consultation" books as a £0 card-on-file hold; the price is set by staff later.
+  const onConsultation = primaryStatus === 'CONSULTATION';
+  let base = onConsultation ? 0 : primary.variant.pricePence;
   let sessions = 1;
-  if (d.sessions > 1) {
+  if (!onConsultation && d.sessions > 1) {
     const course = primary.variant.courses.find((c) => c.sessions === d.sessions);
     if (course) { base = course.totalPence; sessions = d.sessions; }
   }
@@ -72,8 +78,10 @@ export async function POST(req: Request) {
 
   for (const ao of addOns) {
     if (ao.variant.id === primary.variant.id) continue;
-    const b = ao.variant.pricePence;
-    const off = bestOffer(offers, ao.service.id, ao.variant.id, b);
+    const aoStatus = effectiveStatus(ao.service.status as 'NORMAL' | 'CONSULTATION' | 'COMING_SOON' | 'UNAVAILABLE', ao.variant.status);
+    if (!isBookableStatus(aoStatus)) continue; // coming soon / unavailable can't be added
+    const b = aoStatus === 'CONSULTATION' ? 0 : ao.variant.pricePence;
+    const off = aoStatus === 'CONSULTATION' ? null : bestOffer(offers, ao.service.id, ao.variant.id, b);
     const discount = Math.max(off?.discountPence ?? 0, Math.round((b * UPSELL_PCT) / 100));
     items.push({
       variantId: ao.variant.id, treatmentSlug: ao.service.treatmentSlug,

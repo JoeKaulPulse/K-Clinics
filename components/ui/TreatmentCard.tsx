@@ -4,13 +4,18 @@ import { MediaArt } from '@/components/ui/MediaArt';
 import { treatmentImage } from '@/lib/treatment-images';
 import { ArrowIcon } from '@/components/ui/Button';
 import { Tilt } from '@/components/motion/Tilt';
-import { pricingByTreatment, fromLabel } from '@/lib/services';
+import { pricingByTreatment, fromLabel, formatPence, statusLabel, type ServiceStatus } from '@/lib/services';
 
 /** A premium, hover-animated treatment card with 3D tilt + glare. Uses the real
  *  photo when available, else generative art — text lives in HTML, never baked in.
- *  The "from" price is derived live from the admin catalogue (never hardcoded). */
+ *  The "from" price + presentation status are derived live from the admin
+ *  catalogue (never hardcoded). */
 export async function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: number }) {
-  const fromPence = (await pricingByTreatment()).get(t.slug)?.fromPence ?? null;
+  const pricing = (await pricingByTreatment()).get(t.slug) ?? null;
+  let status: ServiceStatus = pricing?.status ?? 'NORMAL';
+  if (status === 'NORMAL' && t.onRequest) status = 'COMING_SOON'; // machine not in yet (code-level)
+  const fromPence = pricing?.fromPence ?? null;
+  const fromOfferPence = pricing?.fromOfferPence ?? null;
   return (
     <Tilt className="h-full">
       <Link
@@ -30,15 +35,25 @@ export async function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: nu
           <span className="absolute left-4 top-4 rounded-full bg-black/25 px-3 py-1 text-[0.68rem] font-medium uppercase tracking-[0.18em] text-white/90 backdrop-blur-sm">
             {t.group}
           </span>
-          {t.onRequest ? (
+          {status === 'COMING_SOON' || status === 'UNAVAILABLE' ? (
             <span className="absolute bottom-4 right-4 rounded-full bg-[var(--color-gold-soft)] px-3 py-1 text-xs font-semibold text-[var(--color-ink)] backdrop-blur-sm">
-              Coming soon
+              {statusLabel(status)}
             </span>
-          ) : fromPence != null && (
+          ) : status === 'CONSULTATION' ? (
+            <span className="absolute bottom-4 right-4 rounded-full bg-[var(--color-porcelain)]/92 px-3 py-1 text-xs font-medium text-[var(--color-ink)] backdrop-blur-sm">
+              On consultation
+            </span>
+          ) : fromOfferPence != null && fromPence != null ? (
+            <span className="absolute bottom-4 right-4 flex items-center gap-1.5 rounded-full bg-[var(--color-porcelain)]/92 px-3 py-1 text-xs font-medium text-[var(--color-ink)] backdrop-blur-sm">
+              <span className="rounded-full bg-[var(--color-gold)] px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-white">Offer</span>
+              <span className="text-[var(--color-stone-soft)] line-through">{formatPence(fromPence)}</span>
+              <span>from {formatPence(fromOfferPence)}</span>
+            </span>
+          ) : fromPence != null ? (
             <span className="absolute bottom-4 right-4 rounded-full bg-[var(--color-porcelain)]/92 px-3 py-1 text-xs font-medium text-[var(--color-ink)] backdrop-blur-sm">
               {fromLabel(fromPence)}
             </span>
-          )}
+          ) : null}
         </div>
         <div className="flex flex-1 flex-col p-7">
           <h3 className="font-[family-name:var(--font-display)] text-2xl leading-tight transition-colors duration-500 group-hover:text-[var(--color-gold)]">
