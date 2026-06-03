@@ -497,6 +497,91 @@ render([
   { tip: 'Automations respect marketing opt-in/unsubscribe and never send twice in the same window; they run on a daily scheduled job.' },
 ]);
 
+section('The marketing suite — your growth command centre', 'A complete, integrated marketing department inside the platform: plan campaigns across every channel, see what is working, and let AI help write and optimise it.');
+render([
+  { h2: 'Marketing hub' },
+  { p: 'Marketing → Marketing hub is the front door: live growth KPIs (30-day revenue, bookings, enquiry-to-booking conversion, new clients) and quick access to every tool below.' },
+  { h2: 'Campaigns (cross-channel)' },
+  { p: 'Build a campaign (e.g. “Valentine’s Day”) that ties together email, paid ads, SEO and a landing page. Set the goal, budget, spend and targets; the tracking-link generator produces correctly-tagged URLs for each channel, so every booking and pound of revenue attributes back automatically — with live ROI.' },
+  { h2: 'Brand kit' },
+  { p: 'One source of brand truth — colours, fonts, logos, tagline and tone of voice. Email, generated landing pages and the AI assistant all read from it, so everything stays on-brand.' },
+  { h2: 'AI assistant (Claude Haiku)' },
+  { ul: [
+    ['Generate —', 'one click drafts a full, on-brand content pack from your brief: email, Google & Meta ad copy, landing-page sections, SEO and an SMS.'],
+    ['Optimise —', 'analyses a live campaign’s real numbers and returns ranked actions, budget advice, audience ideas and A/B test ideas.'],
+  ] },
+  { tip: 'AI drafts and recommends — nothing publishes or spends without you. (Requires an Anthropic key.)' },
+  { h2: 'Audiences, A/B testing & personalisation' },
+  { ul: [
+    ['Audiences —', 'reusable client segments (e.g. lapsed female clients) with a live size estimate, to target campaigns and email.'],
+    ['A/B testing —', 'split-test landing headlines and CTAs; see views, clicks and conversion rate with the winner highlighted.'],
+    ['Personalisation —', 'a landing-page section adapts to the visitor (a man arriving from an ad sees male-relevant treatments first) — GDPR-safe, no profiling.'],
+  ] },
+  { h2: 'Behaviour insights (heatmaps & replay)' },
+  { p: 'Consent-gated click heatmaps, scroll depth, rage-click detection and full anonymised session replay (inputs masked) — see exactly how visitors use the site.' },
+  { h2: 'Performance, attribution & forecasting' },
+  { p: 'Revenue by source and by campaign from first-party booking attribution, plus a data-driven 30-day revenue forecast. Server-side conversions report sales to GA4 and Meta (hashed email) for accurate ad optimisation.' },
+  { h2: 'Connections, pixels, QR & redirects' },
+  { ul: [
+    ['Connections —', 'one-click connect Google, Meta, TikTok and email platforms via guided setup.'],
+    ['Pixels —', 'add GA4, Google Ads and Meta Pixel IDs; they load only after cookie consent.'],
+    ['QR codes —', 'dynamic QR codes for print/in-clinic that you can re-point any time, with scan analytics.'],
+    ['Redirects —', 'preserve SEO from old URLs and printed links.'],
+  ] },
+]);
+
+section('Email marketing', 'Mailchimp-grade email, sent through Resend.');
+render([
+  { p: 'Marketing → Email marketing is the home for client email: a dashboard of sent, open-rate, click-rate and bounce-rate, with per-campaign stats.' },
+  { h2: 'Visual builder' },
+  { steps: ['Add blocks (heading, text, image, button, divider) and reorder them.', 'See a live, on-brand preview as you build.', 'Choose the audience — everyone opted-in, a saved segment, or a tag.', 'Send a test, then send. Opens and clicks track automatically.'] },
+  { h2: 'Templates' },
+  { p: 'Every automated email a client receives — confirmations, reminders, receipts, gift cards, follow-ups, review requests, birthday and win-back — is previewable live and on-brand under Email marketing → Templates.' },
+  { tip: 'All email sends through Resend; open/click analytics require the Resend webhook to be connected (see Go live).' },
+]);
+
+section('Consent forms — e-signature & clinical safety', 'DocuSign-grade consent, captured immutably under the encrypted Health Data store.');
+render([
+  { h2: 'How it works' },
+  { steps: ['Edit the wording per category (general, laser, injectables, facials, dental) in Consent forms — every change creates a new version.', 'From a booking, create a signing link; the client reads it and e-signs on their phone or the clinic iPad — no login needed.', 'The signature is stored immutably (encrypted body, signature, timestamps and IP), with a tamper-evident certificate.'] },
+  { ul: [
+    ['Start-gate —', 'with “Require signed consent” on, an appointment can’t be started until the form is signed.'],
+    ['Certificate —', 'a printable record with the exact wording signed, the signature, the time, and a unique certificate ID.'],
+    ['Retention —', 'signed consents auto-purge after 8 years (UK clinical-records norm).'],
+  ] },
+  { tip: 'Starter wording is provided for convenience — review and approve it with your insurer before turning the gate on.' },
+]);
+
+section('Laser before-photos', 'A mandatory, insurance-protecting safeguard — captured securely and never on a personal device.');
+render([
+  { ul: [
+    ['Mandatory —', 'a laser appointment can’t be started until a before-photo is captured, or the client signs a photo opt-out.'],
+    ['In-environment only —', 'captured live with the device camera in the app, encrypted immediately and never saved to the device. Decrypted only for clinical staff, never via a public link.'],
+    ['Safeguards —', 'the clinician confirms it is a non-intimate area and the client consented; no intimate-area photos are permitted.'],
+    ['Client transparency —', 'the booking flow tells clients a before-photo is taken, stored securely in-clinic only, never intimate, with an opt-out.'],
+  ] },
+  { tip: 'This documents the treatment area to support correct treatment and any future clinical or insurance review.' },
+]);
+
+section('Age policy & verification', 'Clear, enforced age rules — no ID collected or held.');
+render([
+  { ul: [
+    ['Treatments — 18+ —', 'enforced at booking: the client confirms they are 18+ and their date of birth must make them 18+ on the appointment date.'],
+    ['Accounts & shopping — any age —', 'anyone can create an account and buy non-restricted products.'],
+    ['Gift cards —', 'buyable at any age; the recipient creates an account and must confirm they are 18+ to validate the card.'],
+    ['Products —', 'not age-gated unless individually marked age-restricted, which forces an 18+ check at checkout.'],
+    ['Academy — 16+ —', 'students confirm they are 16 or over when they register.'],
+  ] },
+]);
+
+section('Products & the online shop', 'Sell retail products with full stock control — like Shopify, inside the platform.');
+render([
+  { h2: 'Managing products' },
+  { p: 'Catalogue → Products: add products with images, price (and a “was” price), cost/margin, SKU/barcode, status (draft/active/archived) and inventory (quick stock adjust and low-stock alerts). Flip the age-restricted toggle for items that need an 18+ check.' },
+  { h2: 'The storefront' },
+  { steps: ['Active products appear at /shop, with a product page and an add-to-bag basket.', 'Checkout takes card payment (Stripe) and supports ship-to-address or collect-in-clinic, applying any gift card balance.', 'Age-restricted items require an 18+ confirmation before payment.', 'On payment, stock is decremented and the customer emailed; manage fulfilment under Finance → Orders.'] },
+]);
+
 section('Finance — cashflow & reports', 'Plan working capital and measure performance.');
 render([
   { ul: [
@@ -586,15 +671,17 @@ render([
   ] },
 ]);
 
-section('Going live — pre-launch checklist', 'The steps to point the domain at the platform and switch payments live.');
+section('Going live — pre-launch checklist', 'A guided, plain-English checklist lives inside the dashboard — these are the steps to point the domain at the platform and switch payments live.');
 render([
+  { tip: 'Open Admin → Go live for an interactive checklist: it shows what is Ready, what needs Action and what is Optional — computed live from your settings — with simple steps for each.' },
   { steps: [
-    'Point kclinics.co.uk at the platform in DNS (GoDaddy), with www redirecting to the non-www address.',
+    'Point kclinics.co.uk at the platform in DNS, with www redirecting to the non-www address.',
     'Set the public site address (NEXT_PUBLIC_SITE_URL) to https://kclinics.co.uk.',
     'Switch Stripe from test to live keys once the business bank account is connected.',
     'Add the live Stripe webhook for the new domain so payments confirm correctly.',
-    'Configure the remaining integrations (Xero, TrueLayer, Google Calendar, translation, VoIP) with the live domain’s redirect URLs.',
-    'Run the health check, then complete a test booking and a test payment end to end.',
+    'Verify the Resend sending domain (and add its webhook for email open/click analytics).',
+    'Configure the remaining integrations (Xero, TrueLayer, Google/Meta/TikTok, VoIP) with the live domain’s redirect URLs.',
+    'Approve your consent wording, then run a test booking and a test payment end to end.',
   ] },
   { tip: 'Each of these is a settings change, not a rebuild — the platform is already production-ready.' },
 ]);
