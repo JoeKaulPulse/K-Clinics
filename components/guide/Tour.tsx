@@ -22,14 +22,31 @@ export function Tour({ steps, open, onClose }: { steps: TourStep[]; open: boolea
 
   const measure = useCallback(() => {
     if (!step?.target) { setRect(null); return; }
-    const el = document.querySelector<HTMLElement>(`[data-tour="${step.target}"]`);
+    // A target may exist more than once in the DOM (e.g. the mobile + desktop
+    // nav). Pick the one that's actually rendered/visible — a display:none copy
+    // returns a 0×0 rect at the top-left, which is the "tiny square" bug.
+    const els = Array.from(document.querySelectorAll<HTMLElement>(`[data-tour="${step.target}"]`));
+    const el = els.find((e) => e.getClientRects().length > 0) ?? null;
     if (!el) { setRect(null); return; }
     el.scrollIntoView({ block: 'center', behavior: 'smooth' });
     const r = el.getBoundingClientRect();
+    if (r.width < 1 && r.height < 1) { setRect(null); return; } // not laid out yet
     setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
   }, [step]);
 
-  useLayoutEffect(() => { if (open) { const t = setTimeout(measure, 60); return () => clearTimeout(t); } }, [open, i, measure]);
+  // Tell the shell a tour is running so it can reveal collapsed nav sections
+  // (their items aren't in the DOM until the group is expanded).
+  useEffect(() => { window.dispatchEvent(new CustomEvent('kc-tour', { detail: open })); }, [open]);
+
+  // Re-measure a few times after each step: the target may only appear once a
+  // nav group expands and the smooth scroll settles.
+  useLayoutEffect(() => {
+    if (!open) return;
+    let n = 0; let timer: ReturnType<typeof setTimeout>;
+    const tick = () => { measure(); if (++n < 10) timer = setTimeout(tick, 90); };
+    timer = setTimeout(tick, 30);
+    return () => clearTimeout(timer);
+  }, [open, i, measure]);
   useEffect(() => {
     if (!open) return;
     const on = () => measure();

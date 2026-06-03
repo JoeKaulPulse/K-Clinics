@@ -34,6 +34,19 @@ import { sessionCan } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
+// Tidy legacy consultation text imported from the old WordPress contact form,
+// which stored slashes as numeric HTML entities (&#047;) and other encoded
+// characters. Output is rendered as plain text (React escapes it), so this is
+// display-only and safe.
+function tidyConsultText(s: string): string {
+  return s
+    .replace(/&#0*47;/g, '/')
+    .replace(/&#(\d+);/g, (_, n) => { try { return String.fromCharCode(Number(n)); } catch { return _; } })
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#0*39;|&apos;/g, "'")
+    .trim();
+}
+
 export default async function ClientDetail({ params }: { params: Promise<{ id: string }> }) {
   if (!crmEnabled) return <CrmDisabled />;
   const { id } = await params;
@@ -322,7 +335,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                     <StatusSelect consultId={cn.id} clientId={c.id} current={cn.status} />
                   </div>
                   {cn.treatments.length > 0 && <p className="mt-1 text-xs text-[var(--color-stone)]">{cn.treatments.join(', ')}</p>}
-                  {cn.message && <p className="mt-2 text-sm">{cn.message}</p>}
+                  {cn.message && <p className="mt-2 whitespace-pre-wrap break-words text-sm">{tidyConsultText(cn.message)}</p>}
                   <p className="mt-2 text-xs text-[var(--color-stone-soft)]">{new Date(cn.createdAt).toLocaleDateString('en-GB')}</p>
                 </div>
               ))}

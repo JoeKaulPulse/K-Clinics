@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 import { site } from '@/lib/site';
 import { GlobalSearch } from '@/components/admin/GlobalSearch';
@@ -148,6 +148,16 @@ export function AdminShell({
     return s;
   });
   const toggleGroup = (k: string) => setOpenGroups((prev) => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n; });
+
+  // While a guided tour is running, expand every nav section so the tour can
+  // spotlight items that would otherwise be hidden inside a collapsed group.
+  const groupKeysRef = useRef<string[]>([]);
+  groupKeysRef.current = groups.map((g, gi) => groupKey(g, gi));
+  useEffect(() => {
+    const onTour = (e: Event) => { if ((e as CustomEvent).detail) setOpenGroups(new Set(groupKeysRef.current)); };
+    window.addEventListener('kc-tour', onTour);
+    return () => window.removeEventListener('kc-tour', onTour);
+  }, []);
 
   const renderLink = (n: NavItem) => (
     <Link
