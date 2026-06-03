@@ -25,7 +25,8 @@ const send = (url: string, data: unknown) => {
 
 export function BehaviorRecorder() {
   useEffect(() => {
-    if (location.pathname.startsWith('/admin') || location.pathname.startsWith('/account')) return;
+    // Never record the app areas or the booking flow (personal data is entered there).
+    if (/^\/(admin|account|book|booking)(\/|$)/.test(location.pathname)) return;
     let stop: (() => void) | undefined;
     let cleanup: (() => void) | undefined;
 
