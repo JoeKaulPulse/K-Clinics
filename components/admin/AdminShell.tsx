@@ -46,6 +46,7 @@ const navGroups: { heading?: string; items: NavItem[] }[] = [
     { href: '/admin/reorder', key: 'nav.reorder', perm: 'inventory.view' },
     { href: '/admin/suppliers', key: 'nav.suppliers', perm: 'suppliers.view' },
     { href: '/admin/sops', key: 'nav.sops', perm: 'sop.manage' },
+    { href: '/admin/consent', key: 'nav.consent', perm: 'settings.manage' },
   ] },
   { heading: 'nav.group.marketing', items: [
     { href: '/admin/marketing', key: 'nav.marketing', exact: true, perm: 'campaigns.view' },

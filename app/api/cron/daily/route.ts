@@ -45,9 +45,14 @@ export async function GET(req: Request) {
     const { db } = await import('@/lib/db');
     const replayCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
     const heatCutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
+    // Clinical records: purge signed consents (and stale requests) after 8 years
+    // (UK adult clinical-records norm).
+    const consentCutoff = new Date(Date.now() - 8 * 365 * 24 * 60 * 60 * 1000);
     const [r, h] = await Promise.all([
       db.replaySession.deleteMany({ where: { startedAt: { lt: replayCutoff } } }), // cascades to chunks
       db.heatmapEvent.deleteMany({ where: { at: { lt: heatCutoff } } }),
+      db.signedConsent.deleteMany({ where: { signedAt: { lt: consentCutoff } } }),
+      db.consentRequest.deleteMany({ where: { status: 'PENDING', expiresAt: { lt: new Date() } } }),
     ]);
     retention = { replays: r.count, heatmap: h.count };
   } catch (e) {
