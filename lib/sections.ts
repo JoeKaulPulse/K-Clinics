@@ -37,6 +37,17 @@ const linkPair = (prefix: string, label: string): Field[] => [
 
 export const SECTION_DEFS: SectionDef[] = [
   {
+    type: 'personalizedTreatments', label: 'Personalised treatments', glyph: '✦',
+    description: 'A treatments rail that adapts to the visitor — prioritises male/female-relevant treatments when an ad sends ?seg=. GDPR-safe (no profiling).',
+    defaults: { heading: 'Recommended for you', subheading: '', count: '6', showGiftCard: 'true' },
+    fields: [
+      { key: 'heading', label: 'Heading', type: 'text' },
+      { key: 'subheading', label: 'Subheading', type: 'text' },
+      { key: 'count', label: 'How many', type: 'select', options: [{ value: '3', label: '3' }, { value: '6', label: '6' }, { value: '9', label: '9' }] },
+      { key: 'showGiftCard', label: 'Show gift-card CTA', type: 'toggle' },
+    ],
+  },
+  {
     type: 'hero', label: 'Hero', glyph: '◖', description: 'Full-width page header with heading, intro and buttons.',
     defaults: { eyebrow: '', title: 'Heading', lede: '', image: '', ctaPrimaryLabel: 'Book now', ctaPrimaryHref: '/book', ctaSecondaryLabel: '', ctaSecondaryHref: '' },
     fields: [
