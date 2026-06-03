@@ -23,10 +23,10 @@ export type ConsultInput = z.infer<typeof consultSchema>;
 // ── Client portal ───────────────────────────────────────────────────────────
 export const clientSignupSchema = z.object({
   firstName: z.string().min(1, 'First name is required').max(80),
-  lastName: z.string().max(80).optional().or(z.literal('')),
+  lastName: z.string().min(1, 'Surname is required').max(80),
   email: z.string().email('Enter a valid email'),
-  phone: z.string().max(40).optional().or(z.literal('')),
-  dob: z.string().optional().or(z.literal('')),
+  phone: z.string().min(7, 'A contact phone number is required').max(40).refine((v) => (v.match(/\d/g) || []).length >= 7, 'Enter a valid phone number'),
+  dob: z.string().min(1, 'Date of birth is required').refine((v) => { const d = new Date(v); return !isNaN(+d) && d < new Date() && d.getFullYear() > 1900; }, 'Enter a valid date of birth'),
   password: z.string().min(8, 'Use at least 8 characters').max(200),
   marketingOptIn: z.boolean().optional(),
   locale: z.enum(['en', 'uk']).optional(),
