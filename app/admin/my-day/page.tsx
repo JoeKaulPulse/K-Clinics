@@ -44,7 +44,7 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
   const staffOnb = meProf ? { pending: !meProf.onboardedAt, initial: { name: meProf.name ?? '', title: meProf.title ?? '', credentials: meProf.credentials ?? '', photoUrl: meProf.photoUrl ?? '', publicPhone: meProf.publicPhone ?? '' } } : null;
 
   const selectBooking = {
-    id: true, startAt: true, endAt: true, durationMin: true, treatmentTitle: true, status: true,
+    id: true, startAt: true, endAt: true, durationMin: true, treatmentTitle: true, treatmentSlug: true, status: true,
     startedAt: true, finishedAt: true, actualMinutes: true,
     sopAcknowledgedAt: true, medicalFlagReviewedAt: true, practitionerId: true,
     client: { select: { id: true, firstName: true, lastName: true, phone: true, medicalFlag: true } },
@@ -65,6 +65,26 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
         select: selectBooking,
       })
     : [];
+
+  // Per-appointment readiness alerts (consent / laser before-photo outstanding).
+  const allBk = [...mine, ...clinic];
+  const ids = allBk.map((b) => b.id);
+  const { getSetting } = await import('@/lib/settings');
+  const { isLaserTreatment } = await import('@/lib/consent');
+  const [signedRows, photoRows, reqConsent, reqPhoto] = await Promise.all([
+    ids.length ? db.signedConsent.findMany({ where: { bookingId: { in: ids } }, select: { bookingId: true, kind: true } }) : [],
+    ids.length ? db.beforePhoto.findMany({ where: { bookingId: { in: ids } }, select: { bookingId: true } }) : [],
+    getSetting('require_consent'), getSetting('require_before_photo'),
+  ]);
+  const consentTreat = new Set(signedRows.filter((s) => s.kind === 'treatment').map((s) => s.bookingId));
+  const photoOrOpt = new Set([...photoRows.map((p) => p.bookingId), ...signedRows.filter((s) => s.kind === 'photo_opt_out').map((s) => s.bookingId)]);
+  const alertsFor = (b: { id: string; treatmentSlug: string; status: string }) => {
+    if (b.status === 'COMPLETED') return [] as string[];
+    const a: string[] = [];
+    if (reqConsent && !consentTreat.has(b.id)) a.push('Consent');
+    if (isLaserTreatment(b.treatmentSlug) && reqPhoto && !photoOrOpt.has(b.id)) a.push('Photo');
+    return a;
+  };
 
   const can = await sessionPermissions();
   const locale = await getLocale();
@@ -89,6 +109,9 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
           {b.client.medicalFlag && (
             <span title="Medical flag — review before treating" className="shrink-0 rounded-full bg-[var(--color-blush)]/25 px-2 py-0.5 text-[0.6rem] font-medium text-[var(--color-ink)]">⚠ {uk ? 'мед. флаг' : 'medical'}</span>
           )}
+          {alertsFor(b).map((a) => (
+            <span key={a} title={`${a} outstanding before treatment`} className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[0.6rem] font-medium text-amber-800">{a}</span>
+          ))}
         </div>
         <p className="truncate text-sm text-[var(--color-stone)]">{b.treatmentTitle}</p>
         <div className="flex flex-wrap items-center gap-x-2 text-xs text-[var(--color-stone-soft)]">
