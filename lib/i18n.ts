@@ -63,6 +63,7 @@ export const DICT: Record<string, Entry> = {
   'nav.site': { en: 'Site & globals', uk: 'Сайт і глобальні' },
   'nav.locations': { en: 'Locations', uk: 'Локації' },
   'nav.seo': { en: 'SEO & AI search', uk: 'SEO та AI-пошук' },
+  'nav.redirects': { en: 'Redirects', uk: 'Перенаправлення' },
   'nav.integrations': { en: 'Integrations', uk: 'Інтеграції' },
   'nav.settings': { en: 'Settings', uk: 'Налаштування' },
 

@@ -12,6 +12,7 @@ import { GenerativeArt } from '@/components/ui/GenerativeArt';
 import { MediaArt } from '@/components/ui/MediaArt';
 import { treatmentImage } from '@/lib/treatment-images';
 import { AccountMenu } from '@/components/layout/AccountMenu';
+import { SiteSearch } from '@/components/layout/SiteSearch';
 
 export function Header({ config }: { config: SiteConfig }) {
   const { nav, booking, name, phone, phoneHref } = config;
@@ -92,6 +93,7 @@ export function Header({ config }: { config: SiteConfig }) {
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
+          <SiteSearch light={light} />
           <AccountMenu light={light} />
           <Button href={booking.path} size="md" variant={light ? 'gold' : 'ink'}>
             Book Now <ArrowIcon />
