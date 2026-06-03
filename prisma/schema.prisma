@@ -2145,3 +2145,39 @@ model BeforePhoto {
 
   @@index([bookingId])
 }
+
+// ── Retail products (Shopify-style) ──────────────────────────────────────────
+// Physical/retail products sold through the site (e.g. skincare). Separate from
+// clinical consumables (StockItem). Age-restricted items require an 18+ check at
+// checkout (per-product toggle); most products are not age-gated.
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model Product {
+  id                String        @id @default(cuid())
+  slug              String        @unique
+  name              String
+  description       String?
+  brand             String?
+  category          String?
+  pricePence        Int           @default(0)
+  compareAtPence    Int?          // "was" price for sale display
+  costPence         Int?          // cost of goods (margin)
+  sku               String?
+  barcode           String?
+  images            String[]      @default([])
+  status            ProductStatus @default(DRAFT)
+  ageRestricted     Boolean       @default(false) // requires 18+ at checkout
+  trackInventory    Boolean       @default(true)
+  stockQty          Int           @default(0)
+  lowStockThreshold Int           @default(5)
+  createdBy         String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([status])
+  @@index([category])
+}
