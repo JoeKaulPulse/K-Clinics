@@ -16,18 +16,29 @@ const SPAMMY = ['free', 'guarantee', 'act now', 'limited time', 'click here', 'w
 
 type FocusTarget = { kind: 'subject' | 'block'; i: number; el: HTMLInputElement | HTMLTextAreaElement };
 
-export function EmailComposer({ segments, tags }: { segments: { id: string; name: string }[]; tags: string[] }) {
+export type ComposerInitial = {
+  id?: string;
+  name: string; subject: string; preheader: string; fromName: string; replyTo: string;
+  blocks: EmailBlock[]; audType: 'all' | 'segment' | 'tag'; audValue: string;
+};
+
+const DEFAULT_BLOCKS: EmailBlock[] = [blankBlock('heading'), blankBlock('paragraph'), blankBlock('button')];
+
+export function EmailComposer({ segments, tags, initial }: { segments: { id: string; name: string }[]; tags: string[]; initial?: ComposerInitial }) {
   const router = useRouter();
-  const [name, setName] = useState('');
-  const [subject, setSubject] = useState('');
-  const [preheader, setPreheader] = useState('');
-  const [fromName, setFromName] = useState('');
-  const [replyTo, setReplyTo] = useState('');
-  const [blocks, setBlocks] = useState<EmailBlock[]>([blankBlock('heading'), blankBlock('paragraph'), blankBlock('button')]);
-  const [audType, setAudType] = useState<'all' | 'segment' | 'tag'>('all');
-  const [audValue, setAudValue] = useState('');
+  const [campaignId, setCampaignId] = useState<string | undefined>(initial?.id);
+  const [name, setName] = useState(initial?.name ?? '');
+  const [subject, setSubject] = useState(initial?.subject ?? '');
+  const [preheader, setPreheader] = useState(initial?.preheader ?? '');
+  const [fromName, setFromName] = useState(initial?.fromName ?? '');
+  const [replyTo, setReplyTo] = useState(initial?.replyTo ?? '');
+  const [blocks, setBlocks] = useState<EmailBlock[]>(initial?.blocks?.length ? initial.blocks : DEFAULT_BLOCKS);
+  const [audType, setAudType] = useState<'all' | 'segment' | 'tag'>(initial?.audType ?? 'all');
+  const [audValue, setAudValue] = useState(initial?.audValue ?? '');
   const [audCount, setAudCount] = useState<number | null>(null);
   const [test, setTest] = useState('');
+  const [scheduleAt, setScheduleAt] = useState('');
+  const [showSchedule, setShowSchedule] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const lastFocus = useRef<FocusTarget | null>(null);
@@ -57,17 +68,40 @@ export function EmailComposer({ segments, tags }: { segments: { id: string; name
     else setBlocks((b) => b.map((bl, j) => (j === f.i && 'text' in bl ? { ...bl, text: splice((bl as { text: string }).text) } : bl)));
   }
 
-  async function send(testMode: boolean) {
+  const payload = (extra: Record<string, unknown> = {}) => ({
+    id: campaignId, name, subject, preheader, fromName, replyTo, blocks,
+    audience: { type: audType, value: audValue }, ...extra,
+  });
+
+  async function call(extra: Record<string, unknown>): Promise<{ ok: boolean; [k: string]: unknown }> {
     setMsg(''); setBusy(true);
     const res = await fetch('/api/admin/marketing/email/send', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, subject, preheader, fromName, replyTo, blocks, audience: { type: audType, value: audValue }, test: testMode ? test : undefined }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload(extra)),
     });
-    const j = await res.json().catch(() => ({}));
+    const j = await res.json().catch(() => ({ ok: false }));
     setBusy(false);
-    if (!j.ok) return setMsg(j.error || 'Failed');
+    return j;
+  }
+
+  async function send(testMode: boolean) {
+    const j = await call({ test: testMode ? test : undefined });
+    if (!j.ok) return setMsg((j.error as string) || 'Failed');
     if (testMode) return setMsg('Test sent ✓');
     setMsg(`Sent to ${j.sent} recipient(s)${j.failed ? `, ${j.failed} failed` : ''} ✓`);
+    setTimeout(() => router.push('/admin/marketing/email'), 1200);
+  }
+  async function saveDraft() {
+    if (!subject && !name) return setMsg('Add a name or subject first.');
+    const j = await call({ op: 'saveDraft' });
+    if (!j.ok) return setMsg((j.error as string) || 'Could not save draft.');
+    if (j.id) setCampaignId(j.id as string);
+    setMsg('Draft saved ✓');
+  }
+  async function schedule() {
+    if (!scheduleAt) return setMsg('Pick a date and time.');
+    const j = await call({ op: 'schedule', scheduledAt: new Date(scheduleAt).toISOString() });
+    if (!j.ok) return setMsg((j.error as string) || 'Could not schedule.');
+    setMsg('Scheduled ✓');
     setTimeout(() => router.push('/admin/marketing/email'), 1200);
   }
 
@@ -167,8 +201,17 @@ export function EmailComposer({ segments, tags }: { segments: { id: string; name
           <div className="flex flex-wrap items-end gap-2">
             <label className="text-xs text-[var(--color-stone)]">Send a test to<input value={test} onChange={(e) => setTest(e.target.value)} placeholder="you@kclinics.co.uk" className={`${field} mt-1 w-56`} /></label>
             <button onClick={() => send(true)} disabled={busy || !test} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">Send test</button>
-            <button onClick={() => { if (confirm(`Send this email to ${audCount ?? 'the selected'} ${audCount === 1 ? 'person' : 'recipients'} now?`)) send(false); }} disabled={busy || !subject || !audCount} className="ml-auto rounded-full bg-[var(--color-ink)] px-6 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Sending…' : 'Send'}</button>
+            <button onClick={saveDraft} disabled={busy} className="ml-auto rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">Save draft</button>
+            <button onClick={() => setShowSchedule((s) => !s)} disabled={busy} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">Schedule…</button>
+            <button onClick={() => { if (confirm(`Send this email to ${audCount ?? 'the selected'} ${audCount === 1 ? 'person' : 'recipients'} now?`)) send(false); }} disabled={busy || !subject || !audCount} className="rounded-full bg-[var(--color-ink)] px-6 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Sending…' : 'Send now'}</button>
           </div>
+          {showSchedule && (
+            <div className="mt-3 flex flex-wrap items-end gap-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3">
+              <label className="text-xs text-[var(--color-stone)]">Send at<input type="datetime-local" value={scheduleAt} onChange={(e) => setScheduleAt(e.target.value)} className={`${field} mt-1`} /></label>
+              <button onClick={schedule} disabled={busy || !scheduleAt || !subject} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm text-white disabled:opacity-50">Schedule send</button>
+              <span className="text-xs text-[var(--color-stone-soft)]">Delivered automatically within ~15 min of the chosen time.</span>
+            </div>
+          )}
           {msg && <p className="mt-2 text-sm text-[var(--color-stone)]">{msg}</p>}
         </section>
       </div>

@@ -20,6 +20,16 @@ export async function GET(req: Request) {
   const { runDailyAutomations } = await import('@/lib/automations');
   const result = await runDailyAutomations();
 
+  // Safety net for scheduled email campaigns in case the frequent dispatch cron
+  // isn't configured (e.g. plan without sub-daily crons) — also runs here daily.
+  let scheduledEmail = { processed: 0, sent: 0 };
+  try {
+    const { dispatchDueCampaigns } = await import('@/lib/email-campaigns');
+    scheduledEmail = await dispatchDueCampaigns();
+  } catch (e) {
+    console.error('[cron] scheduled-email dispatch failed (continuing):', (e as Error)?.message);
+  }
+
   // Client loyalty maintenance: birthday gifts + expire 12-month-old points.
   let loyalty = { birthdays: 0, expired: 0 };
   try {
@@ -60,5 +70,5 @@ export async function GET(req: Request) {
     console.error('[cron] analytics retention failed (continuing):', (e as Error)?.message);
   }
 
-  return NextResponse.json({ ok: true, ...result, loyalty, gcal, retention });
+  return NextResponse.json({ ok: true, ...result, loyalty, gcal, retention, scheduledEmail });
 }

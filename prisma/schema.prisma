@@ -736,9 +736,24 @@ model Campaign {
   subject     String
   body        String
   segment     String?  // tag or rule used to select recipients
+  // Lifecycle: DRAFT (work in progress) → SCHEDULED (queued for scheduledAt) →
+  // SENDING (cron picked it up) → SENT. Defaults to SENT so existing rows,
+  // which were all sent immediately, keep their meaning.
+  status      String   @default("SENT")
+  scheduledAt DateTime?
+  // Sender + audience captured so a draft/scheduled send can be re-sent later.
+  fromName     String?
+  replyTo      String?
+  preheader    String?
+  audienceType String?  // all | segment | tag
+  audienceValue String?
+  createdBy    String?
   sentAt      DateTime?
   recipients  Int      @default(0)
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  @@index([status, scheduledAt])
 }
 
 model AdminUser {
