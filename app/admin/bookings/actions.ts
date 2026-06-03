@@ -49,6 +49,13 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
     } catch (e) {
       console.error('[bookings] loyalty on charge failed:', (e as Error)?.message);
     }
+    // Report the sale to GA4 + Meta server-side (best-effort; hashed email only).
+    try {
+      const { sendPurchase } = await import('@/lib/conversions');
+      await sendPurchase({ bookingId, valuePence: amountPence, clientId: booking.clientId, email: booking.client?.email ?? null, campaign: booking.attribCampaign });
+    } catch (e) {
+      console.error('[bookings] conversion send failed:', (e as Error)?.message);
+    }
   } else {
     await logAudit({ action: 'PAYMENT_FAILED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId, summary: `Charge failed: ${res.error || 'unknown'}` });
   }

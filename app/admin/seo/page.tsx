@@ -16,7 +16,8 @@ export default async function SeoPage() {
 
   const { auditSite } = await import('@/lib/seo-audit');
   const { getTrackingConfig } = await import('@/lib/tracking');
-  const [audit, tracking] = await Promise.all([auditSite(), getTrackingConfig()]);
+  const { conversionStatus } = await import('@/lib/conversions');
+  const [audit, tracking, conversions] = await Promise.all([auditSite(), getTrackingConfig(), conversionStatus()]);
 
   const can = await sessionPermissions();
   const locale = await getLocale();
@@ -28,7 +29,7 @@ export default async function SeoPage() {
         Edit any page’s SEO and get AI-written suggestions.
       </p>
       <div className="mt-8 space-y-8">
-        <TrackingSettings initial={tracking} />
+        <TrackingSettings initial={tracking} conversions={conversions} />
         <SeoDashboard audit={audit} />
       </div>
     </AdminShell>
