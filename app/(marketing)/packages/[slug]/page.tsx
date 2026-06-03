@@ -20,6 +20,8 @@ import { BookingButtons } from '@/components/booking/BookingButtons';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const dynamicParams = false;
+// ISR: refresh hourly so live "from" prices on the related-treatment cards stay current.
+export const revalidate = 3600;
 export function generateStaticParams() {
   return packages.map((p) => ({ slug: p.slug }));
 }

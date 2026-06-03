@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   const s = (v: unknown) => { const t = String(v ?? '').trim(); return t ? t.slice(0, 4000) : null; };
   const data = {
     title: s(body.title), tagline: s(body.tagline), eyebrow: s(body.eyebrow), intro: s(body.intro),
-    metaTitle: s(body.metaTitle), metaDescription: s(body.metaDescription), priceFrom: s(body.priceFrom),
+    metaTitle: s(body.metaTitle), metaDescription: s(body.metaDescription),
     keywords: toCsv(body.keywords), related: toCsv(body.related),
     benefits: cleanList(body.benefits).filter((b) => b.title || b.text),
     process: cleanList(body.process).filter((b) => b.title || b.text),

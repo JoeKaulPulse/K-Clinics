@@ -10,9 +10,10 @@ export async function POST(req: Request) {
   const { code, slug } = await req.json().catch(() => ({}));
   if (!code || !slug) return NextResponse.json({ ok: false, error: 'Enter a code.' }, { status: 400 });
 
-  const { bookingFor, getTreatment } = await import('@/lib/treatments');
+  const { getTreatment } = await import('@/lib/treatments');
   if (!getTreatment(String(slug))) return NextResponse.json({ ok: false, error: 'Unknown treatment.' }, { status: 404 });
-  const { pricePence } = bookingFor(String(slug));
+  const { lowestPenceForTreatment } = await import('@/lib/services');
+  const pricePence = await lowestPenceForTreatment(String(slug));
   if (!pricePence || pricePence <= 0) return NextResponse.json({ ok: false, error: 'This treatment is priced on consultation.' }, { status: 400 });
 
   const { getCurrentClient } = await import('@/lib/client-auth');

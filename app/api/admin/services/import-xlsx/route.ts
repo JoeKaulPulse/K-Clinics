@@ -68,5 +68,10 @@ export async function POST(req: Request) {
     variantCount += variants.length;
   }
   await logAudit({ action: 'SERVICE_PRICES_BULK', actor: session.email, actorRole: session.role, summary: `Bulk price-list import: ${variantCount} variants across ${body.sections.length} section(s)` }).catch(() => {});
+
+  // Refresh the public price surfaces so the new "from" prices show immediately.
+  const { revalidatePath } = await import('next/cache');
+  revalidatePath('/', 'layout');
+
   return NextResponse.json({ ok: true, services, variants: variantCount, skipped });
 }

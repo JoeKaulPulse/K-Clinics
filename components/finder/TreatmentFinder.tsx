@@ -4,12 +4,14 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
 import { finderQuestions, scoreFinder } from '@/lib/treatment-finder';
-import { getTreatment, formatPrice, bookingFor, suitableForGender } from '@/lib/treatments';
+import { getTreatment, formatPrice, suitableForGender } from '@/lib/treatments';
 
 /** `gender` (when a signed-in client uses the finder) tailors which treatments
  *  are suggested — e.g. a man isn't shown women-specific treatments and vice
- *  versa. Anonymous visitors (gender undefined) see the full set. */
-export function TreatmentFinder({ gender }: { gender?: string | null } = {}) {
+ *  versa. Anonymous visitors (gender undefined) see the full set. `prices` maps a
+ *  treatment slug to its lowest live "from" price (pence), derived server-side
+ *  from the admin catalogue — never hardcoded. */
+export function TreatmentFinder({ gender, prices = {} }: { gender?: string | null; prices?: Record<string, number | null> } = {}) {
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
@@ -81,7 +83,7 @@ export function TreatmentFinder({ gender }: { gender?: string | null } = {}) {
             <div className="mt-8 grid gap-4">
               {results.map((t, i) => {
                 if (!t) return null;
-                const price = bookingFor(t.slug).pricePence;
+                const price = prices[t.slug] ?? null;
                 return (
                   <Link key={t.slug} href={`/${t.slug}`} className="group flex items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
                     <div className="flex items-center gap-4">

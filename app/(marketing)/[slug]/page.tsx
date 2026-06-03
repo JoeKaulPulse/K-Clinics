@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { treatmentSlugs, bookingFor } from '@/lib/treatments';
+import { treatmentSlugs } from '@/lib/treatments';
+import { lowestPenceForTreatment } from '@/lib/services';
 import { getMergedTreatment } from '@/lib/treatment-content';
 import { getPublishedPage, pageMetaFromSections } from '@/lib/pages';
 import { TreatmentTemplate } from '@/components/treatment/TreatmentTemplate';
@@ -35,11 +36,12 @@ export default async function TreatmentPage({ params }: { params: Promise<{ slug
   if (t) {
     const categoryHref = t.category === 'aesthetics' ? '/treatments' : '/dentistry';
     const categoryLabel = t.category === 'aesthetics' ? 'Aesthetics' : 'Dentistry';
+    const fromPence = await lowestPenceForTreatment(t.slug);
     return (
       <>
         <JsonLd
           data={[
-            serviceLd({ name: t.title, description: t.metaDescription, path: `/${t.slug}`, category: t.category, pricePence: bookingFor(t.slug).pricePence }),
+            serviceLd({ name: t.title, description: t.metaDescription, path: `/${t.slug}`, category: t.category, pricePence: fromPence }),
             faqLd(t.faqs),
             breadcrumbLd([{ name: 'Home', path: '/' }, { name: categoryLabel, path: categoryHref }, { name: t.title, path: `/${t.slug}` }]),
           ]}

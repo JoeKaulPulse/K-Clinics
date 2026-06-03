@@ -25,6 +25,9 @@ import { packages } from '@/lib/packages';
 import { site } from '@/lib/site';
 import { JsonLd, breadcrumbLd, aggregateRatingLd } from '@/lib/seo';
 
+// ISR: refresh hourly so live "from" prices on the featured cards stay current.
+export const revalidate = 3600;
+
 // Home page is the most-shared URL — give it explicit canonical + OG/Twitter
 // (it otherwise inherits only the layout defaults, with no social tags).
 export const generateMetadata = () => pageMeta({

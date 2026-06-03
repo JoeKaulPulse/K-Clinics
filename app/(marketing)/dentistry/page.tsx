@@ -10,6 +10,9 @@ import { withCardOverrides } from '@/lib/treatment-content';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 
+// ISR: refresh hourly so any live "from" prices on the cards stay current.
+export const revalidate = 3600;
+
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: site.dentistryLive
     ? 'Aesthetic & Cosmetic Dentistry in London | KClinics'

@@ -11,13 +11,28 @@ import { FaqAccordion } from '@/components/ui/FaqAccordion';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { site } from '@/lib/site';
+import { pricingForTreatment, formatPence } from '@/lib/services';
 
-export function TreatmentTemplate({ t }: { t: Treatment }) {
+/** Build the small print under a variant — duration + any course savings. */
+function variantNote(durationMin: number, courses: { sessions: number; totalPence: number }[]): string {
+  const parts: string[] = [];
+  if (durationMin) parts.push(`${durationMin} min`);
+  for (const c of courses) parts.push(`course of ${c.sessions} ${formatPence(c.totalPence)}`);
+  return parts.join(' · ');
+}
+
+export async function TreatmentTemplate({ t }: { t: Treatment }) {
   const categoryHref = t.category === 'aesthetics' ? '/treatments' : '/dentistry';
   const categoryLabel = t.category === 'aesthetics' ? 'Aesthetics' : 'Dentistry';
   const comingSoon = t.category === 'dentistry' && !site.dentistryLive;
   const onRequest = t.onRequest === true; // machine not in yet — bookings closed
   const related = t.related.map(getTreatment).filter(Boolean) as Treatment[];
+
+  // Pricing is derived live from the admin catalogue (single source of truth).
+  const pricing = await pricingForTreatment(t.slug);
+  const fromPence = pricing?.fromPence ?? null;
+  const variants = pricing?.variants ?? [];
+  const hasPrice = fromPence != null;
 
   return (
     <article>
@@ -96,12 +111,12 @@ export function TreatmentTemplate({ t }: { t: Treatment }) {
               <MaskReveal className="aspect-[4/5] w-full rounded-[var(--radius-2xl)] shadow-[var(--shadow-lift)]">
                 <MediaArt src={treatmentImage(t.slug)} from={t.gradient[0]} to={t.gradient[1]} alt={t.title} priority className="h-full w-full" />
               </MaskReveal>
-              {t.priceFrom && (
+              {(onRequest || hasPrice) && (
                 <div className="card-glass absolute -bottom-5 -left-5 rounded-[var(--radius-md)] px-6 py-4 shadow-[var(--shadow-soft)]">
                   <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">
-                    {onRequest ? 'Pricing' : t.priceFrom.startsWith('£') ? 'From' : 'Pricing'}
+                    {onRequest || !hasPrice ? 'Pricing' : 'From'}
                   </p>
-                  <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">{onRequest ? 'On request' : t.priceFrom}</p>
+                  <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">{onRequest ? 'On request' : formatPence(fromPence)}</p>
                 </div>
               )}
             </div>
@@ -159,7 +174,7 @@ export function TreatmentTemplate({ t }: { t: Treatment }) {
       </section>
 
       {/* Pricing */}
-      {(t.priceOptions?.length || t.priceFrom) && (
+      {(variants.length || hasPrice || onRequest) && (
         <section className="container-lux section">
           <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
             <Reveal>
@@ -168,7 +183,7 @@ export function TreatmentTemplate({ t }: { t: Treatment }) {
               <p className="mt-5 max-w-md text-[var(--color-stone)]">
                 {onRequest
                   ? 'This treatment is available on request — get in touch and we’ll confirm pricing and availability.'
-                  : t.priceOptions?.length
+                  : variants.length
                     ? 'Choose the option that suits you — course savings are available on most treatments.'
                     : 'Your exact price is confirmed at your complimentary consultation, tailored to your treatment plan.'}
               </p>
@@ -182,24 +197,27 @@ export function TreatmentTemplate({ t }: { t: Treatment }) {
               </div>
             </Reveal>
             <Reveal delay={0.1}>
-              {!onRequest && t.priceOptions?.length ? (
+              {!onRequest && variants.length ? (
                 <ul className="divide-y divide-[var(--color-line)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
-                  {t.priceOptions.map((o) => (
-                    <li key={o.name} className="flex items-baseline justify-between gap-4 bg-[var(--color-porcelain)] px-6 py-5">
-                      <div>
-                        <p className="font-[family-name:var(--font-display)] text-lg text-[var(--color-ink)]">{o.name}</p>
-                        {o.note && <p className="mt-0.5 text-sm text-[var(--color-stone)]">{o.note}</p>}
-                      </div>
-                      <p className="shrink-0 font-[family-name:var(--font-display)] text-xl text-[var(--color-ink)]">{o.price}</p>
-                    </li>
-                  ))}
+                  {variants.map((v) => {
+                    const note = variantNote(v.durationMin, v.courses);
+                    return (
+                      <li key={v.id} className="flex items-baseline justify-between gap-4 bg-[var(--color-porcelain)] px-6 py-5">
+                        <div>
+                          <p className="font-[family-name:var(--font-display)] text-lg text-[var(--color-ink)]">{v.name}</p>
+                          {note && <p className="mt-0.5 text-sm text-[var(--color-stone)]">{note}</p>}
+                        </div>
+                        <p className="shrink-0 font-[family-name:var(--font-display)] text-xl text-[var(--color-ink)]">{formatPence(v.pricePence)}</p>
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : (
                 <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-8 py-10 text-center">
                   <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">
-                    {onRequest ? 'Pricing' : t.priceFrom?.startsWith('£') ? 'From' : 'Pricing'}
+                    {onRequest || !hasPrice ? 'Pricing' : 'From'}
                   </p>
-                  <p className="mt-2 font-[family-name:var(--font-display)] text-4xl text-[var(--color-ink)]">{onRequest ? 'On request' : t.priceFrom}</p>
+                  <p className="mt-2 font-[family-name:var(--font-display)] text-4xl text-[var(--color-ink)]">{onRequest ? 'On request' : formatPence(fromPence)}</p>
                 </div>
               )}
             </Reveal>
