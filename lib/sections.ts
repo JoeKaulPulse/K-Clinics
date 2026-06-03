@@ -3,7 +3,7 @@
 // the renderer (server). Each section's rendering lives in components/cms.
 import type { Block } from './blocks';
 
-export type FieldType = 'text' | 'textarea' | 'link' | 'toggle' | 'image' | 'select' | 'blocks' | 'list';
+export type FieldType = 'text' | 'textarea' | 'link' | 'toggle' | 'image' | 'select' | 'blocks' | 'list' | 'focal';
 export type Field = {
   key: string;
   label: string;
@@ -13,6 +13,7 @@ export type Field = {
   options?: { value: string; label: string }[]; // select
   itemFields?: Field[];                          // list (repeater)
   itemLabel?: string;                            // list add-button label
+  imageKey?: string;                             // focal: which field holds the image
 };
 
 export type SectionDef = {
@@ -57,12 +58,13 @@ export const SECTION_DEFS: SectionDef[] = [
   },
   {
     type: 'imageText', label: 'Image + text', glyph: '▤', description: 'Two-column image alongside a heading and copy.',
-    defaults: { eyebrow: '', heading: 'Heading', body: '', image: '', side: 'left', ctaLabel: '', ctaHref: '' },
+    defaults: { eyebrow: '', heading: 'Heading', body: '', image: '', focal: '50% 50%', side: 'left', ctaLabel: '', ctaHref: '' },
     fields: [
       { key: 'eyebrow', label: 'Eyebrow', type: 'text' },
       { key: 'heading', label: 'Heading', type: 'text' },
       { key: 'body', label: 'Body', type: 'textarea', help: 'Separate paragraphs with a blank line.' },
       { key: 'image', label: 'Image', type: 'image' },
+      { key: 'focal', label: 'Focal point', type: 'focal', imageKey: 'image', help: 'Click the image to choose what stays in frame when cropped.' },
       { key: 'side', label: 'Image side', type: 'select', options: [{ value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }] },
       ...linkPair('cta', 'Button'),
     ],

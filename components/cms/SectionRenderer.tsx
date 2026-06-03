@@ -101,10 +101,14 @@ function SectionView({ section: { type, data } }: { section: Section }) {
 
     case 'imageText': {
       const right = str(data.side, 'left') === 'right';
+      const img = str(data.image);
       return (
         <section className="container-lux grid items-center gap-12 py-20 md:grid-cols-2 md:py-28">
-          <MaskReveal className={`aspect-[4/5] rounded-[var(--radius-2xl)] shadow-[var(--shadow-lift)] ${right ? 'md:order-2' : ''}`}>
-            <MediaArt src={str(data.image)} from="#a98a6d" to="#7b6a5d" alt={str(data.heading)} className="h-full w-full" />
+          <MaskReveal className={`aspect-[4/5] overflow-hidden rounded-[var(--radius-2xl)] shadow-[var(--shadow-lift)] ${right ? 'md:order-2' : ''}`}>
+            {img
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={img} alt={str(data.heading)} className="h-full w-full object-cover" style={{ objectPosition: str(data.focal, '50% 50%') }} />
+              : <MediaArt src="" from="#a98a6d" to="#7b6a5d" alt={str(data.heading)} className="h-full w-full" />}
           </MaskReveal>
           <Reveal delay={0.1}>
             {str(data.eyebrow) && <p className="eyebrow mb-4">{str(data.eyebrow)}</p>}

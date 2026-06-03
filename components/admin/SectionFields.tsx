@@ -16,12 +16,33 @@ export function SectionFields({ fields, data, onChange }: { fields: Field[]; dat
   const set = (key: string, value: unknown) => onChange({ ...data, [key]: value });
   return (
     <div className="space-y-4">
-      {fields.map((f) => <FieldInput key={f.key} field={f} value={data[f.key]} onChange={(v) => set(f.key, v)} />)}
+      {fields.map((f) => <FieldInput key={f.key} field={f} value={data[f.key]} data={data} onChange={(v) => set(f.key, v)} />)}
     </div>
   );
 }
 
-function FieldInput({ field: f, value, onChange }: { field: Field; value: unknown; onChange: (v: unknown) => void }) {
+function FieldInput({ field: f, value, data, onChange }: { field: Field; value: unknown; data?: Data; onChange: (v: unknown) => void }) {
+  if (f.type === 'focal') {
+    const src = String((data?.[f.imageKey || 'image'] as string) || '');
+    const pos = String(value || '50% 50%');
+    const [x, y] = pos.split(' ');
+    return (
+      <div>
+        <label className={lbl}>{f.label}</label>
+        {src ? (
+          <div
+            className="relative cursor-crosshair overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)]"
+            onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); const px = Math.round(((e.clientX - r.left) / r.width) * 100); const py = Math.round(((e.clientY - r.top) / r.height) * 100); onChange(`${px}% ${py}%`); }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={src} alt="" className="block max-h-52 w-full object-cover" style={{ objectPosition: pos }} />
+            <span className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[var(--color-gold)] shadow" style={{ left: x, top: y }} />
+          </div>
+        ) : <p className="text-xs text-[var(--color-stone-soft)]">Add an image above, then click it to set the focal point.</p>}
+        {f.help && <p className="mt-1 text-xs text-[var(--color-stone-soft)]">{f.help}</p>}
+      </div>
+    );
+  }
   if (f.type === 'blocks') {
     return (
       <div>
