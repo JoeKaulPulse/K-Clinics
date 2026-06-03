@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { type Block, type BlockType, BLOCK_LABELS, emptyBlock, inlineToHtml } from '@/lib/blocks';
+import { RichTextField } from '@/components/admin/RichTextField';
 
 // A block-based content editor for the Journal. Click-to-edit with a live
 // typographic preview, inline markdown (**bold** _italic_ `code` [text](url)),
@@ -48,15 +49,6 @@ export function BlockEditor({ blocks, onChange }: { blocks: Block[]; onChange: (
     return () => document.removeEventListener('mousedown', onDown);
   }, []);
 
-  // Wrap the current textarea selection in markdown markers (B / I / link).
-  const wrap = (id: string, before: string, after = before) => {
-    const ta = taRefs.current[id]; if (!ta) return;
-    const { selectionStart: s, selectionEnd: e, value } = ta;
-    const sel = value.slice(s, e) || 'text';
-    update(id, { text: value.slice(0, s) + before + sel + after + value.slice(e) } as Partial<Block>);
-    requestAnimationFrame(() => { ta.focus(); ta.setSelectionRange(s + before.length, s + before.length + sel.length); autosize(ta); });
-  };
-
   return (
     <div ref={rootRef} className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3 sm:p-6">
       <style dangerouslySetInnerHTML={{ __html: EDITOR_CSS }} />
@@ -95,7 +87,6 @@ export function BlockEditor({ blocks, onChange }: { blocks: Block[]; onChange: (
                 setActive={() => setActiveId(b.id)}
                 update={(patch) => update(b.id, patch)}
                 taRef={(el) => { taRefs.current[b.id] = el; }}
-                wrap={(before, after) => wrap(b.id, before, after)}
               />
             </div>
 
@@ -115,53 +106,32 @@ export function BlockEditor({ blocks, onChange }: { blocks: Block[]; onChange: (
 }
 
 // ── One block: live preview, swaps to an editor when active ───────────────────
-function BlockView({ block: b, active, setActive, update, taRef, wrap }: {
+function BlockView({ block: b, active, setActive, update, taRef }: {
   block: Block; active: boolean; setActive: () => void;
   update: (patch: Partial<Block>) => void;
   taRef: (el: HTMLTextAreaElement | null) => void;
-  wrap: (before: string, after?: string) => void;
 }) {
-  const Toolbar = (
-    <div className="be-toolbar" onMouseDown={(e) => e.preventDefault()}>
-      <button type="button" onClick={() => wrap('**')} title="Bold"><b>B</b></button>
-      <button type="button" onClick={() => wrap('_')} title="Italic"><i>I</i></button>
-      <button type="button" onClick={() => wrap('`')} title="Code"><code>{'<>'}</code></button>
-      <button type="button" onClick={() => wrap('[', '](https://)')} title="Link">🔗</button>
-      <span className="be-hint">**bold** · _italic_ · [text](url)</span>
-    </div>
-  );
-
-  // Text-bearing blocks: click-to-edit with matching typographic preview.
+  // Text-bearing blocks: true WYSIWYG — formatting renders live as you type.
   if (b.type === 'paragraph' || b.type === 'heading' || b.type === 'quote' || b.type === 'callout') {
     const cls = b.type === 'heading' ? (b.level === 3 ? 'be-h3' : 'be-h2') : b.type === 'quote' ? 'be-quote' : b.type === 'callout' ? 'be-callout' : 'be-p';
-    if (active) {
-      return (
-        <div>
-          {Toolbar}
-          {b.type === 'heading' && (
-            <div className="mb-2 flex gap-1">
-              {[2, 3].map((lv) => (
-                <button key={lv} type="button" onClick={() => update({ level: lv as 2 | 3 })}
-                  className={`be-pill ${b.level === lv ? 'be-pill-on' : ''}`}>H{lv}</button>
-              ))}
-            </div>
-          )}
-          <AutoTextarea inputRef={taRef} className={`be-input ${cls}`} value={b.text}
-            placeholder={b.type === 'heading' ? 'Heading' : b.type === 'callout' ? 'A highlighted note…' : b.type === 'quote' ? 'A pull quote…' : 'Write something…'}
-            onChange={(v) => update({ text: v })} autoFocus />
-          {b.type === 'quote' && (
-            <input className="be-cite-input" value={b.cite || ''} placeholder="Attribution (optional)"
-              onChange={(e) => update({ cite: e.target.value })} />
-          )}
-        </div>
-      );
-    }
     return (
-      <button type="button" className="be-preview" onClick={setActive}>
-        {b.text.trim()
-          ? <div className={cls} dangerouslySetInnerHTML={{ __html: inlineToHtml(b.text) + (b.type === 'quote' && b.cite ? ` <cite>${inlineToHtml(b.cite)}</cite>` : '') }} />
-          : <span className="be-placeholder">{b.type === 'heading' ? 'Empty heading' : 'Empty text — click to write'}</span>}
-      </button>
+      <div>
+        {b.type === 'heading' && (
+          <div className="mb-2 flex gap-1">
+            {[2, 3].map((lv) => (
+              <button key={lv} type="button" onClick={() => update({ level: lv as 2 | 3 })}
+                className={`be-pill ${b.level === lv ? 'be-pill-on' : ''}`}>H{lv}</button>
+            ))}
+          </div>
+        )}
+        <RichTextField className={`be-input ${cls}`} value={b.text}
+          placeholder={b.type === 'heading' ? 'Heading' : b.type === 'callout' ? 'A highlighted note…' : b.type === 'quote' ? 'A pull quote…' : 'Write something…'}
+          onChange={(v) => update({ text: v })} />
+        {b.type === 'quote' && (
+          <input className="be-cite-input" value={b.cite || ''} placeholder="Attribution (optional)"
+            onChange={(e) => update({ cite: e.target.value })} />
+        )}
+      </div>
     );
   }
 

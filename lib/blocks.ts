@@ -66,6 +66,21 @@ export function inlineToHtml(text: string): string {
   return s.replace(/\n/g, '<br />');
 }
 
+/** Convert a contentEditable's HTML back into our inline markdown storage. */
+export function htmlToInline(html: string): string {
+  let s = String(html || '');
+  s = s.replace(/<div><br\s*\/?><\/div>/gi, '\n');
+  s = s.replace(/<(div|p)\b[^>]*>/gi, '\n').replace(/<\/(div|p)>/gi, '');
+  s = s.replace(/<br\s*\/?>/gi, '\n');
+  s = s.replace(/<(strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi, '**$2**');
+  s = s.replace(/<(em|i)\b[^>]*>([\s\S]*?)<\/\1>/gi, '_$2_');
+  s = s.replace(/<code\b[^>]*>([\s\S]*?)<\/code>/gi, '`$1`');
+  s = s.replace(/<a\b[^>]*href=["']([^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi, '[$2]($1)');
+  s = s.replace(/<[^>]+>/g, '');
+  s = s.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'");
+  return s.replace(/\n{3,}/g, '\n\n').replace(/[ \t]+\n/g, '\n').replace(/^\n+/, '').trimEnd();
+}
+
 export function blocksToHtml(blocks: Block[]): string {
   if (!Array.isArray(blocks)) return '';
   return blocks.map((b) => {
