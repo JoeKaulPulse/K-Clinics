@@ -528,6 +528,14 @@ model Booking {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
+  // Marketing attribution (first-touch, captured from UTM/campaign params).
+  attribSource        String?
+  attribMedium        String?
+  attribCampaign      String?
+  attribLanding       String?
+  marketingCampaign   MarketingCampaign? @relation(fields: [marketingCampaignId], references: [id], onDelete: SetNull)
+  marketingCampaignId String?
+
   auditEvents   AuditEvent[]
   reviews       Review[]
   items         BookingItem[] // line items: primary treatment + any upsell add-ons
@@ -537,6 +545,46 @@ model Booking {
   @@index([status])
   @@index([clientId])
   @@index([practitionerId])
+  @@index([marketingCampaignId])
+}
+
+// ── Marketing campaigns (umbrella orchestrator) ──────────────────────────────
+// A campaign (e.g. "Valentine's Day") ties together email, paid ads, SEO and
+// landing pages, and is what bookings/revenue are attributed against. It does
+// not replace the email composer or page builder — it coordinates them.
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+model MarketingCampaign {
+  id                 String         @id @default(cuid())
+  name               String
+  slug               String         @unique // also the ?c= attribution token
+  status             CampaignStatus @default(DRAFT)
+  goal               String?        // bookings | leads | revenue | awareness
+  audience           String?        // target segment / notes
+  description        String?
+  heroImage          String?
+  startAt            DateTime?
+  endAt              DateTime?
+  budgetPence        Int?           // planned spend (for ROI)
+  spendPence         Int            @default(0) // recorded/synced ad spend
+  targetRevenuePence Int?
+  targetBookings     Int?
+  utmCampaign        String?        // utm_campaign value used across channels
+  channels           String[]       @default([]) // email | google_ads | meta | tiktok | seo | landing
+  brief              String?        // creative brief (feeds the AI assistant)
+  createdBy          String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  bookings           Booking[]
+
+  @@index([status])
 }
 
 // ── Service catalogue (CRM-managed pricing) ──────────────────────────────────

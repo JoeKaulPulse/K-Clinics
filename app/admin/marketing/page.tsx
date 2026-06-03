@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
 
 const TOOLS: { href: string; title: string; desc: string }[] = [
-  { href: '/admin/campaigns', title: 'Campaigns', desc: 'Plan & run cross-channel campaigns — email, paid, SEO & landing pages.' },
+  { href: '/admin/marketing/campaigns', title: 'Campaigns', desc: 'Plan & run cross-channel campaigns — email, paid, SEO & landing pages.' },
   { href: '/admin/brand', title: 'Brand kit', desc: 'Colours, fonts, logos & tone of voice — the source of brand truth.' },
   { href: '/admin/automations', title: 'Automations', desc: 'Birthday, follow-up and win-back email flows.' },
   { href: '/admin/seo', title: 'SEO & pixels', desc: 'Search health, AI answers, and ad/analytics tracking.' },
