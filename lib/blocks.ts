@@ -81,11 +81,15 @@ export function htmlToInline(html: string): string {
   return s.replace(/\n{3,}/g, '\n\n').replace(/[ \t]+\n/g, '\n').replace(/^\n+/, '').trimEnd();
 }
 
+/** Anchor id for a heading (matched by the table-of-contents section). */
+export const slugifyHeading = (s: string) =>
+  String(s || '').toLowerCase().replace(/[*_`]/g, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+
 export function blocksToHtml(blocks: Block[]): string {
   if (!Array.isArray(blocks)) return '';
   return blocks.map((b) => {
     switch (b.type) {
-      case 'heading': return b.text.trim() ? `<h${b.level}>${inlineToHtml(b.text)}</h${b.level}>` : '';
+      case 'heading': return b.text.trim() ? `<h${b.level} id="${slugifyHeading(b.text)}">${inlineToHtml(b.text)}</h${b.level}>` : '';
       case 'paragraph': return b.text.trim() ? `<p>${inlineToHtml(b.text)}</p>` : '';
       case 'list': {
         const tag = b.ordered ? 'ol' : 'ul';

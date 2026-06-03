@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { SITE_PAGE_GROUPS } from '@/lib/site-pages';
@@ -55,6 +55,8 @@ export function PagesList({ pages, legalPages = [] }: { pages: PageRow[]; legalP
         <p className="mt-1 text-sm text-[var(--color-stone)]">Every page on the site. Edit content in the page builder, jump to a page’s dedicated editor, or create a brand-new page.</p>
       </div>
 
+      <ContentSearch />
+
       {/* Your custom pages (created, not part of the standard site map) */}
       {customPages.length > 0 && (
         <Section title="Your pages" hint="Custom pages you’ve created.">
@@ -105,6 +107,36 @@ export function PagesList({ pages, legalPages = [] }: { pages: PageRow[]; legalP
           {err && <p className="mt-2 text-sm text-[#c0392b]">{err}</p>}
         </div>
       </Section>
+    </div>
+  );
+}
+
+function ContentSearch() {
+  const [q, setQ] = useState('');
+  const [results, setResults] = useState<{ id: string; path: string; title: string | null; snippet: string }[]>([]);
+  const [searched, setSearched] = useState(false);
+  useEffect(() => {
+    if (q.trim().length < 2) { setResults([]); setSearched(false); return; }
+    const t = setTimeout(async () => {
+      const res = await fetch(`/api/admin/pages/search?q=${encodeURIComponent(q)}`);
+      const data = await res.json().catch(() => ({ results: [] }));
+      setResults(data.results || []); setSearched(true);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [q]);
+  return (
+    <div className="mt-5">
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search page content…" className="w-full max-w-md rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+      {searched && (
+        <div className="mt-3 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
+          {results.length === 0 ? <p className="p-4 text-sm text-[var(--color-stone)]">No matches in page content.</p> : results.map((r) => (
+            <Link key={r.id} href={`/admin/pages/${r.id}`} className="block border-b border-[var(--color-line)] px-5 py-3 last:border-0 hover:bg-[var(--color-bone)]">
+              <span className="font-medium">{r.path}</span>
+              {r.snippet && <span className="ml-2 text-sm text-[var(--color-stone)]">{r.snippet}</span>}
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

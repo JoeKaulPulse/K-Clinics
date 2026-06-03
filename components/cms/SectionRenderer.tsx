@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { Section } from '@/lib/sections';
-import { blocksToHtml, type Block } from '@/lib/blocks';
+import { blocksToHtml, slugifyHeading, type Block } from '@/lib/blocks';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { MaskReveal } from '@/components/motion/MaskReveal';
@@ -13,9 +13,36 @@ import { getSiteConfig } from '@/lib/site-config';
 
 // Renders an array of CMS sections as native, on-brand markup. Server component.
 export function SectionRenderer({ sections, includeHidden = false }: { sections: Section[]; includeHidden?: boolean }) {
-  return <>{sections.filter((s) => includeHidden || !s.hidden).map((s) => (
-    <SectionFrame key={s.id} data={s.data}><SectionView section={s} /></SectionFrame>
+  const visible = sections.filter((s) => includeHidden || !s.hidden);
+  // Collect rich-text headings (matching their anchor ids) for any TOC sections.
+  const headings = visible
+    .filter((s) => s.type === 'richText')
+    .flatMap((s) => (Array.isArray((s.data as { blocks?: Block[] }).blocks) ? (s.data as { blocks: Block[] }).blocks : []))
+    .filter((b): b is Extract<Block, { type: 'heading' }> => b.type === 'heading' && !!b.text?.trim())
+    .map((b) => ({ text: b.text, slug: slugifyHeading(b.text), level: b.level }));
+  return <>{visible.map((s) => (
+    <SectionFrame key={s.id} data={s.data}>
+      {s.type === 'tableOfContents' ? <TocSection data={s.data} headings={headings} /> : <SectionView section={s} />}
+    </SectionFrame>
   ))}</>;
+}
+
+function TocSection({ data, headings }: { data: Record<string, unknown>; headings: { text: string; slug: string; level: number }[] }) {
+  if (!headings.length) return null;
+  return (
+    <section className="container-narrow section-sm">
+      <nav className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6">
+        {str(data.heading) && <p className="eyebrow mb-3">{str(data.heading)}</p>}
+        <ul className="space-y-1.5">
+          {headings.map((h, i) => (
+            <li key={i} className={h.level === 3 ? 'pl-4' : ''}>
+              <a href={`#${h.slug}`} className="text-sm text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-gold)]">{h.text.replace(/[*_`]/g, '')}</a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </section>
+  );
 }
 
 // Optional per-section background band + extra spacing (editor "Layout" controls).
@@ -386,6 +413,7 @@ async function MapSection({ data }: { data: Record<string, unknown> }) {
 
 const PROSE_CSS = `
 .journal-prose{color:var(--color-ink-soft);font-size:1.075rem;line-height:1.75;}
+.journal-prose h2,.journal-prose h3{scroll-margin-top:calc(var(--header-h,5.25rem) + 1.5rem);}
 .journal-prose h2{font-family:var(--font-display),serif;font-size:clamp(1.5rem,1.2rem+1vw,2rem);margin:2.2rem 0 0.75rem;color:var(--color-ink);}
 .journal-prose h3{font-family:var(--font-display),serif;font-size:1.3rem;margin:1.8rem 0 0.5rem;color:var(--color-ink);}
 .journal-prose p{margin:1.1rem 0;}
