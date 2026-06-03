@@ -82,6 +82,8 @@ export async function POST(req: Request) {
   if (claim) finalPrice = Math.round((finalPrice * (100 - claim.percent)) / 100);
 
   // Hold the slot.
+  const { bookingAttribution } = await import('@/lib/marketing');
+  const attribution = await bookingAttribution();
   const booking = await db.booking.create({
     data: {
       clientId: client.id,
@@ -94,6 +96,7 @@ export async function POST(req: Request) {
       notes: d.notes || null,
       stripeCustomerId: customerId,
       practitionerId,
+      ...attribution,
       resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,
     },
   });

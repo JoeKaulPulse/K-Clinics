@@ -123,6 +123,9 @@ export async function POST(req: Request) {
   const { isRefreshment } = await import('@/lib/hospitality');
   const refreshments = d.refreshments.filter(isRefreshment);
 
+  const { bookingAttribution } = await import('@/lib/marketing');
+  const attribution = await bookingAttribution();
+
   const booking = await db.booking.create({
     data: {
       clientId: client.id,
@@ -137,6 +140,7 @@ export async function POST(req: Request) {
       aftercareAckAt: d.aftercareAck ? new Date() : null,
       stripeCustomerId: customerId,
       practitionerId,
+      ...attribution,
       resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,
       items: { create: items },
     },
