@@ -2116,3 +2116,20 @@ model SignedConsent {
   @@index([bookingId])
   @@index([clientId])
 }
+
+// ── Pre-treatment "before" photos (laser) ────────────────────────────────────
+// Captured live in-app on the clinic device, encrypted at rest under the Health
+// Data API. Never written to the clinician's device. Intimate areas are
+// prohibited (clinician attestation required at capture).
+model BeforePhoto {
+  id          String   @id @default(cuid())
+  bookingId   String
+  clientId    String
+  area        String?  // non-intimate treatment area label
+  dataEnc     String   // encrypted, downscaled image data URL
+  capturedBy  String   // clinician email
+  attestation Boolean  @default(false) // confirmed: non-intimate area, consented
+  createdAt   DateTime @default(now())
+
+  @@index([bookingId])
+}

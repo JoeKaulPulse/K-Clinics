@@ -196,6 +196,11 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
             <div>
               <h3 className="font-[family-name:var(--font-display)] text-2xl">{service.name}</h3>
               <p className="mt-1 text-sm text-[var(--color-stone)]">Choose your option.</p>
+              {/laser|tattoo|ipl/i.test(service.treatmentSlug) && (
+                <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-gold)]/10 px-3 py-2 text-xs text-[var(--color-ink)]">
+                  📷 For your safety, a <strong>before photo</strong> of the treatment area is taken before laser treatment and stored <strong>securely in the clinic system only</strong> — never on a personal device, and never of intimate areas. You may opt out by signing a short form at your appointment.
+                </p>
+              )}
               <div className="mt-6 grid max-h-[24rem] gap-2 overflow-y-auto pr-1">
                 {service.variants.map((v) => {
                   const pp = primaryPrice(v);

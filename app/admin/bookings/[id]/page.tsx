@@ -10,6 +10,7 @@ import { ConsumablesPanel } from '@/components/admin/ConsumablesPanel';
 import { ClinicalNote } from '@/components/admin/ClinicalNote';
 import { BookingLocation } from '@/components/admin/BookingLocation';
 import { ConsentPanel } from '@/components/admin/ConsentPanel';
+import { BeforePhotoCapture } from '@/components/admin/BeforePhotoCapture';
 import { sessionCan } from '@/lib/auth';
 import { site } from '@/lib/site';
 
@@ -33,14 +34,17 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
 
   // Consent: the form mapped to this treatment + any signed/pending records.
   const { db } = await import('@/lib/db');
-  const { categoryForTreatment, ensureDefaultTemplates } = await import('@/lib/consent');
+  const { categoryForTreatment, ensureDefaultTemplates, isLaserTreatment } = await import('@/lib/consent');
   await ensureDefaultTemplates();
   const consentKey = await categoryForTreatment(b.treatmentSlug);
-  const [consentTemplate, signedConsents, pendingConsents] = await Promise.all([
+  const isLaser = isLaserTreatment(b.treatmentSlug);
+  const [consentTemplate, signedConsents, pendingConsents, beforePhotos] = await Promise.all([
     db.consentTemplate.findUnique({ where: { key: consentKey } }),
     db.signedConsent.findMany({ where: { bookingId: b.id }, orderBy: { signedAt: 'desc' }, select: { id: true, title: true, signedAt: true, declined: true, kind: true } }),
     db.consentRequest.findMany({ where: { bookingId: b.id, status: 'PENDING' }, select: { token: true, title: true, kind: true } }),
+    db.beforePhoto.findMany({ where: { bookingId: b.id }, orderBy: { createdAt: 'asc' }, select: { id: true, area: true, capturedBy: true, createdAt: true } }),
   ]);
+  const optOutSigned = signedConsents.some((s) => s.kind === 'photo_opt_out');
   // Decrypt any saved SOP-checklist progress for this booking.
   let sopSaved: { step: string; checked: boolean; response?: string }[] | null = null;
   if (b.sopChecklistEnc) {
@@ -178,6 +182,16 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             canClinical={sessionCan(session, 'clients.clinical.view')}
             canManage={sessionCan(session, 'bookings.manage')}
           />
+          {isLaser && (
+            <BeforePhotoCapture
+              bookingId={b.id}
+              clientId={b.client.id}
+              photos={beforePhotos.map((p) => ({ id: p.id, area: p.area, capturedBy: p.capturedBy, createdAt: p.createdAt.toISOString() }))}
+              optOutSigned={optOutSigned}
+              baseUrl={site.url.replace(/\/$/, '')}
+              canManage={sessionCan(session, 'bookings.manage')}
+            />
+          )}
           {canConsumables && <ConsumablesPanel bookingId={b.id} items={stockItems} used={used} />}
           {canClinical && <ClinicalNote bookingId={b.id} initial={clinicalNote} savedBy={b.clinicalNoteBy} savedAt={b.clinicalNoteAt ? b.clinicalNoteAt.toISOString() : null} />}
           {multiLocation && activeLocations.length > 0 && <BookingLocation bookingId={b.id} current={b.locationId} locations={activeLocations} />}

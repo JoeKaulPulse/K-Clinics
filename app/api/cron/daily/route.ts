@@ -53,6 +53,7 @@ export async function GET(req: Request) {
       db.heatmapEvent.deleteMany({ where: { at: { lt: heatCutoff } } }),
       db.signedConsent.deleteMany({ where: { signedAt: { lt: consentCutoff } } }),
       db.consentRequest.deleteMany({ where: { status: 'PENDING', expiresAt: { lt: new Date() } } }),
+      db.beforePhoto.deleteMany({ where: { createdAt: { lt: consentCutoff } } }),
     ]);
     retention = { replays: r.count, heatmap: h.count };
   } catch (e) {
