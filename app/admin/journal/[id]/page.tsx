@@ -16,12 +16,13 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
 
   let initial = null;
   if (id !== 'new') {
-    const { getPostById } = await import('@/lib/blog');
-    const p = await getPostById(id);
-    if (!p) notFound();
+    const { getPostForEdit } = await import('@/lib/blog');
+    const loaded = await getPostForEdit(id);
+    if (!loaded) notFound();
+    const p = loaded.post;
     initial = {
       id: p.id, title: p.title, slug: p.slug, excerpt: p.excerpt ?? '', metaDescription: p.metaDescription ?? '',
-      content: p.content, category: p.category ?? '', coverImage: p.coverImage ?? '', readMinutes: p.readMinutes,
+      blocks: loaded.blocks, category: p.category ?? '', coverImage: p.coverImage ?? '', readMinutes: p.readMinutes,
       keywords: p.keywords.join(', '), related: p.related.join(', '), status: p.status,
     };
   }

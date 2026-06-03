@@ -1706,7 +1706,8 @@ model Post {
   title           String
   excerpt         String?
   metaDescription String?
-  content         String     // HTML body
+  content         String     // HTML body (rendered from `blocks`; kept for public render + SEO)
+  blocks          Json?      // structured block-editor content (source of truth when present)
   category        String?    // Skin | Laser | Injectables | Dentistry | Wellbeing
   tags            String[]   @default([])
   keywords        String[]   @default([])

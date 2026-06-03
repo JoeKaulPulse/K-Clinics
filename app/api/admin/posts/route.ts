@@ -27,12 +27,22 @@ export async function POST(req: Request) {
   const title = String(body.title || '').trim();
   if (!title) return NextResponse.json({ ok: false, error: 'Title is required.' }, { status: 400 });
   const status = body.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT';
+
+  // Blocks are the source of truth; render to HTML for the public page + SEO.
+  // (Older posts may still arrive as a raw `content` string — keep that path.)
+  const { asBlocks, blocksToHtml, blocksToText } = await import('@/lib/blocks');
+  const blocks = asBlocks(body.blocks);
+  const content = blocks ? blocksToHtml(blocks) : String(body.content || '');
+  const plain = blocks ? blocksToText(blocks) : content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const autoExcerpt = plain ? (plain.length > 200 ? plain.slice(0, 200).replace(/\s+\S*$/, '') + '…' : plain) : '';
+
   const data = {
     title: title.slice(0, 200),
     slug: slugify(body.slug || title),
-    excerpt: body.excerpt ? String(body.excerpt).slice(0, 400) : null,
+    excerpt: (body.excerpt ? String(body.excerpt) : autoExcerpt).slice(0, 400) || null,
     metaDescription: body.metaDescription ? String(body.metaDescription).slice(0, 320) : null,
-    content: String(body.content || ''),
+    content,
+    blocks: blocks ?? undefined,
     category: body.category ? String(body.category).slice(0, 40) : null,
     coverImage: body.coverImage ? String(body.coverImage).slice(0, 500) : null,
     readMinutes: Math.max(1, Math.min(90, Number(body.readMinutes) || 5)),
