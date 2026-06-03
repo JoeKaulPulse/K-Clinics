@@ -129,6 +129,39 @@ export const SECTION_DEFS: SectionDef[] = [
       { key: 'items', label: 'Phrases', type: 'list', itemLabel: 'phrase', itemFields: [{ key: 'value', label: 'Phrase', type: 'text' }] },
     ],
   },
+  {
+    type: 'tags', label: 'Tag list', glyph: '⬡', description: 'A heading with a wrap of pill-style tags.',
+    defaults: { eyebrow: '', heading: '', items: [{ label: 'Tag' }] },
+    fields: [
+      { key: 'eyebrow', label: 'Eyebrow', type: 'text' },
+      { key: 'heading', label: 'Heading', type: 'text' },
+      { key: 'items', label: 'Tags', type: 'list', itemLabel: 'tag', itemFields: [{ key: 'label', label: 'Tag', type: 'text' }] },
+    ],
+  },
+  // ── Dynamic / embed sections (pull live data or interactive components) ──
+  {
+    type: 'contactInfo', label: 'Contact details', glyph: '✆', description: 'Address, phone, email and opening hours — pulled live from Site settings.',
+    defaults: { heading: 'Visit us', showHours: true, showBooking: true },
+    fields: [
+      { key: 'heading', label: 'Heading', type: 'text' },
+      { key: 'showHours', label: 'Show opening hours', type: 'toggle' },
+      { key: 'showBooking', label: 'Show booking buttons', type: 'toggle' },
+    ],
+  },
+  {
+    type: 'map', label: 'Map', glyph: '⌖', description: 'The clinic location map (from Site settings).',
+    defaults: { height: 'md' },
+    fields: [{ key: 'height', label: 'Height', type: 'select', options: [{ value: 'sm', label: 'Small' }, { value: 'md', label: 'Medium' }, { value: 'lg', label: 'Large' }] }],
+  },
+  {
+    type: 'enquiryForm', label: 'Enquiry form', glyph: '✎', description: 'The contact enquiry form.',
+    defaults: { eyebrow: 'Send an enquiry', heading: 'Tell us what you’re looking for.', intro: '' },
+    fields: [
+      { key: 'eyebrow', label: 'Eyebrow', type: 'text' },
+      { key: 'heading', label: 'Heading', type: 'text' },
+      { key: 'intro', label: 'Intro', type: 'textarea' },
+    ],
+  },
 ];
 
 export const sectionDef = (type: string) => SECTION_DEFS.find((d) => d.type === type);

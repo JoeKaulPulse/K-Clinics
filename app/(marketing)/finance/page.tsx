@@ -20,7 +20,13 @@ const WAYS = [
   { t: '0% interest-free options', d: 'On eligible higher-value treatments we offer flexible, interest-free payment plans so you can focus on your care, not the cost.' },
 ];
 
-export default function FinancePage() {
+export default async function FinancePage() {
+  const { getPublishedPage } = await import('@/lib/pages');
+  const cms = await getPublishedPage('/finance');
+  if (cms) {
+    const { SectionRenderer } = await import('@/components/cms/SectionRenderer');
+    return (<><JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Cost & Finance', path: '/finance' }])} /><SectionRenderer sections={cms} /></>);
+  }
   return (
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Cost & Finance', path: '/finance' }])} />

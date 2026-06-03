@@ -14,7 +14,13 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({
   keywords: ['KClinics contact', 'aesthetics clinic Islington address', 'book appointment London'],
 });
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const { getPublishedPage } = await import('@/lib/pages');
+  const cms = await getPublishedPage('/contact');
+  if (cms) {
+    const { SectionRenderer } = await import('@/components/cms/SectionRenderer');
+    return (<><JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Contact', path: '/contact' }])} /><SectionRenderer sections={cms} /></>);
+  }
   return (
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Contact', path: '/contact' }])} />

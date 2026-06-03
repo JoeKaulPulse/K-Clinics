@@ -27,7 +27,10 @@ export async function POST(req: Request) {
       if (!path || path === '/') return NextResponse.json({ ok: false, error: 'Enter a valid path, e.g. /about.' }, { status: 400 });
       const exists = await db.page.findUnique({ where: { path }, select: { id: true } });
       if (exists) return NextResponse.json({ ok: false, error: 'A page for that path already exists.', id: exists.id }, { status: 409 });
-      const page = await db.page.create({ data: { path, title: body.title ? String(body.title).slice(0, 120) : null, draft: J(asSections(body.sections)), status: 'DRAFT', updatedBy: editor } });
+      // Pre-fill from the page's current content where we have a seed.
+      let sections = asSections(body.sections);
+      if (!sections.length) { const { pageSeed } = await import('@/lib/page-seeds'); sections = pageSeed(path) ?? []; }
+      const page = await db.page.create({ data: { path, title: body.title ? String(body.title).slice(0, 120) : null, draft: J(sections), status: 'DRAFT', updatedBy: editor } });
       return NextResponse.json({ ok: true, id: page.id });
     }
 
