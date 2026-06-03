@@ -32,10 +32,11 @@ export default async function EditPagePage({ params }: { params: Promise<{ id: s
   const reusables = (await listGlobalSections()).map((b) => ({ id: b.id, name: b.name, type: b.type }));
 
   const can = await sessionPermissions();
+  const canPublish = sessionCan(session, 'content.publish');
   const locale = await getLocale();
   return (
     <AdminShell user={session?.email} can={can} locale={locale}>
-      <PageBuilder initial={page} revisions={revisions} seed={seed} seo={seo} reusables={reusables} />
+      <PageBuilder initial={page} revisions={revisions} seed={seed} seo={seo} reusables={reusables} canPublish={canPublish} />
     </AdminShell>
   );
 }
