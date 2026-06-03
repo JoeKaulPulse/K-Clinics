@@ -4,8 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
-import { primaryNav } from '@/lib/nav';
-import { site } from '@/lib/site';
+import type { SiteConfig } from '@/lib/site-config';
 import { getTreatment } from '@/lib/treatments';
 import { Logo } from '@/components/brand/Logo';
 import { Button, ArrowIcon } from '@/components/ui/Button';
@@ -14,7 +13,9 @@ import { MediaArt } from '@/components/ui/MediaArt';
 import { treatmentImage } from '@/lib/treatment-images';
 import { AccountMenu } from '@/components/layout/AccountMenu';
 
-export function Header() {
+export function Header({ config }: { config: SiteConfig }) {
+  const { nav, booking, name, phone, phoneHref } = config;
+  const primaryNav = nav.primary;
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const [mobile, setMobile] = useState(false);
@@ -44,7 +45,7 @@ export function Header() {
 
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-700 [transition-timing-function:var(--ease-lux)] ${
+      className={`fixed inset-x-0 top-[var(--ann-h,0px)] z-50 transition-all duration-700 [transition-timing-function:var(--ease-lux)] ${
         scrolled
           ? 'border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-porcelain)_92%,transparent)] backdrop-blur-sm'
           : 'border-b border-transparent'
@@ -52,7 +53,7 @@ export function Header() {
       onMouseLeave={() => setOpen(null)}
     >
       <div className="container-lux flex h-[var(--header-h,5.25rem)] items-center justify-between">
-        <Link href="/" className="relative z-10 shrink-0" aria-label={`${site.name} home`}>
+        <Link href="/" className="relative z-10 shrink-0" aria-label={`${name} home`}>
           <Logo mono={light} className={light ? 'text-[var(--color-porcelain)]' : ''} />
         </Link>
 
@@ -92,7 +93,7 @@ export function Header() {
 
         <div className="hidden items-center gap-3 lg:flex">
           <AccountMenu light={light} />
-          <Button href={site.booking.path} size="md" variant={light ? 'gold' : 'ink'}>
+          <Button href={booking.path} size="md" variant={light ? 'gold' : 'ink'}>
             Book Now <ArrowIcon />
           </Button>
         </div>
@@ -251,7 +252,7 @@ export function Header() {
               })}
             </nav>
             <div className="mt-8 flex flex-col gap-3">
-              <Button href={site.booking.path} size="lg" className="w-full">
+              <Button href={booking.path} size="lg" className="w-full">
                 Book online <ArrowIcon />
               </Button>
               <Link
@@ -268,8 +269,8 @@ export function Header() {
               <Link href="/consultation" className="mt-1 text-center text-sm font-medium text-[var(--color-gold)] underline-offset-4 hover:underline">
                 Or request a free consultation
               </Link>
-              <a href={site.phoneHref} className="mt-2 text-center text-sm font-medium">
-                {site.phone}
+              <a href={phoneHref} className="mt-2 text-center text-sm font-medium">
+                {phone}
               </a>
             </div>
           </motion.div>

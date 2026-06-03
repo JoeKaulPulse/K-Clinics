@@ -1723,3 +1723,28 @@ model Post {
 
   @@index([status, publishedAt])
 }
+
+// ── Site CMS ──────────────────────────────────────────────────────────────────
+// Global business variables (contact, social, hours, booking, brand text,
+// announcement bar, navigation). Single source of truth, overriding lib/site.ts
+// defaults. Edited from Admin → Site. One singleton row (id = "singleton").
+model SiteConfig {
+  id        String   @id @default("singleton")
+  data      Json     // full SiteConfig shape (see lib/site-config.ts)
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  revisions SiteConfigRevision[]
+}
+
+model SiteConfigRevision {
+  id        String     @id @default(cuid())
+  configId  String
+  config    SiteConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  data      Json       // snapshot taken at each save (for rollback)
+  label     String?
+  createdAt DateTime   @default(now())
+  createdBy String?
+
+  @@index([configId, createdAt])
+}

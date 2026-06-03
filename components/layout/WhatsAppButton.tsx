@@ -1,9 +1,9 @@
-import { site } from '@/lib/site';
+import type { SiteConfig } from '@/lib/site-config';
 
 // Floating "Contact us on WhatsApp" button on public pages. Number comes from
-// NEXT_PUBLIC_WHATSAPP (digits, intl format) or the site config fallback.
-export function WhatsAppButton() {
-  const number = (process.env.NEXT_PUBLIC_WHATSAPP || site.whatsapp || '').replace(/\D/g, '');
+// NEXT_PUBLIC_WHATSAPP (digits, intl format) or the live site config.
+export function WhatsAppButton({ config }: { config: SiteConfig }) {
+  const number = (process.env.NEXT_PUBLIC_WHATSAPP || config.whatsapp || '').replace(/\D/g, '');
   if (!number) return null;
   const msg = encodeURIComponent('Hi KClinics, I’d like to ask about a treatment.');
   return (
