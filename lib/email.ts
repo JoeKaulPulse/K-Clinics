@@ -10,16 +10,23 @@ const REPLY_TO = process.env.EMAIL_REPLY_TO || site.email;
 
 export type SendResult = { ok: boolean; id?: string; error?: string };
 
+// Default sender address (the part inside <…>), used to rebuild the From header
+// when a campaign overrides just the display name.
+const FROM_ADDRESS = (FROM.match(/<([^>]+)>/)?.[1] || FROM).trim();
+
 export async function sendEmail(opts: {
   to: string;
   subject: string;
   html: string;
   replyTo?: string;
+  /** Override the From *display name* only (address stays our verified sender). */
+  fromName?: string;
 }): Promise<SendResult> {
   if (!resend) return { ok: false, error: 'RESEND_API_KEY not configured' };
   try {
+    const from = opts.fromName?.trim() ? `${opts.fromName.trim()} <${FROM_ADDRESS}>` : FROM;
     const { data, error } = await resend.emails.send({
-      from: FROM,
+      from,
       to: opts.to,
       subject: opts.subject,
       html: opts.html,
