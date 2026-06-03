@@ -24,6 +24,7 @@ export function BookingActions({
   const [waive, setWaive] = useState(false);
   const [reason, setReason] = useState('');
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmCharge, setConfirmCharge] = useState(false);
 
   const active = status === 'CONFIRMED' || status === 'PENDING';
   const completed = status === 'COMPLETED';
@@ -42,21 +43,37 @@ export function BookingActions({
         </div>
       )}
 
-      {/* Charge (delivered service) */}
-      {(active || completed) && !charged && (
+      {/* Charge — gated behind completion so a client is never charged before
+          their treatment is delivered. */}
+      {active && !charged && (
+        <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-line)] bg-[var(--color-bone)] p-4">
+          <p className="text-sm font-medium text-[var(--color-stone)]">Take payment</p>
+          <p className="mt-1 text-xs text-[var(--color-stone)]">Available once the appointment is marked <strong>completed</strong> — this prevents charging before the treatment is delivered.</p>
+        </div>
+      )}
+      {completed && !charged && (
         <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
           <p className="mb-2 text-sm font-medium">Charge card on file</p>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-[var(--color-stone)]">£</span>
-            <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal"
+            <input value={amount} onChange={(e) => { setAmount(e.target.value); setConfirmCharge(false); }} inputMode="decimal"
               className="w-28 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
-            <button disabled={pending} onClick={() => start(async () => {
-              const pence = Math.round(parseFloat(amount) * 100);
-              const r = await chargeBookingAction(bookingId, pence);
-              setMsg(r.ok ? `Charged ${money(pence)} ✓` : r.error || 'Charge failed');
-            })} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm text-white disabled:opacity-60">
-              {pending ? 'Charging…' : 'Charge now'}
-            </button>
+            {!confirmCharge ? (
+              <button disabled={pending || !(parseFloat(amount) > 0)} onClick={() => setConfirmCharge(true)}
+                className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm text-white disabled:opacity-60">Charge now…</button>
+            ) : (
+              <span className="flex items-center gap-2">
+                <button disabled={pending} onClick={() => start(async () => {
+                  const pence = Math.round(parseFloat(amount) * 100);
+                  const r = await chargeBookingAction(bookingId, pence);
+                  setMsg(r.ok ? `Charged ${money(pence)} ✓` : r.error || 'Charge failed');
+                  setConfirmCharge(false);
+                })} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">
+                  {pending ? 'Charging…' : `Confirm — charge ${money(Math.round((parseFloat(amount) || 0) * 100))}`}
+                </button>
+                <button onClick={() => setConfirmCharge(false)} className="text-sm text-[var(--color-stone)]">Cancel</button>
+              </span>
+            )}
           </div>
           <p className="mt-2 text-xs text-[var(--color-stone)]">{pricePence > 0 ? `Booked price ${money(pricePence)}. Adjust for add-ons or discounts.` : 'On-consultation booking — set the assessed amount.'}</p>
         </div>
