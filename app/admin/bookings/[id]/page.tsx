@@ -11,6 +11,7 @@ import { ClinicalNote } from '@/components/admin/ClinicalNote';
 import { BookingLocation } from '@/components/admin/BookingLocation';
 import { ConsentPanel } from '@/components/admin/ConsentPanel';
 import { BeforePhotoCapture } from '@/components/admin/BeforePhotoCapture';
+import { ReadinessPanel } from '@/components/admin/ReadinessPanel';
 import { sessionCan } from '@/lib/auth';
 import { site } from '@/lib/site';
 
@@ -45,6 +46,18 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
     db.beforePhoto.findMany({ where: { bookingId: b.id }, orderBy: { createdAt: 'asc' }, select: { id: true, area: true, capturedBy: true, createdAt: true } }),
   ]);
   const optOutSigned = signedConsents.some((s) => s.kind === 'photo_opt_out');
+
+  // Pre-treatment readiness (mirrors the start-gate, shown proactively).
+  const { getSettings } = await import('@/lib/settings');
+  const { computeReadiness } = await import('@/lib/readiness');
+  const S = await getSettings();
+  const readiness = computeReadiness({
+    isLaser,
+    requireConsent: S.require_consent, requireBeforePhoto: S.require_before_photo, requireSop: S.require_sop_ack, requireMedical: S.require_medical_review,
+    medicalFlag: !!b.client.medicalFlag, sopAcknowledgedAt: !!b.sopAcknowledgedAt, medicalFlagReviewedAt: !!b.medicalFlagReviewedAt,
+    consentSigned: signedConsents.some((s) => s.kind === 'treatment'), consentMapped: !!(consentTemplate && consentTemplate.active),
+    photoOrOptOut: beforePhotos.length > 0 || optOutSigned, aftercareAckAt: !!b.aftercareAckAt, started: !!b.startedAt,
+  });
   // Decrypt any saved SOP-checklist progress for this booking.
   let sopSaved: { step: string; checked: boolean; response?: string }[] | null = null;
   if (b.sopChecklistEnc) {
@@ -156,6 +169,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
         </section>
 
         <section className="space-y-6">
+          <ReadinessPanel items={readiness.items} ready={readiness.ready} neededCount={readiness.neededCount} started={!!b.startedAt} />
           <div data-tour="clinical-workflow"><ClinicalWorkflow
             bookingId={b.id}
             sop={{ title: sop.title, content: sop.content }}
