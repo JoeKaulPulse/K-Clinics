@@ -2,9 +2,18 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-export type Asset = { id: string; url: string; filename: string; alt: string | null; mime: string | null; size: number | null; folder: string | null; createdAt: string };
+export type Asset = { id: string; url: string; filename: string; alt: string | null; mime: string | null; size: number | null; width?: number | null; height?: number | null; folder: string | null; createdAt: string };
 
 const fmtSize = (n: number | null) => (n ? (n > 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.round(n / 1024)} KB`) : '');
+/** Read an image's natural dimensions client-side before upload. */
+function readDims(file: File): Promise<{ w: number; h: number }> {
+  return new Promise((res) => {
+    const img = new Image(); const url = URL.createObjectURL(file);
+    img.onload = () => { res({ w: img.naturalWidth, h: img.naturalHeight }); URL.revokeObjectURL(url); };
+    img.onerror = () => { res({ w: 0, h: 0 }); URL.revokeObjectURL(url); };
+    img.src = url;
+  });
+}
 
 // Shared grid: upload + browse + (optionally) pick or delete. Powers both the
 // /admin/media library page and the in-context picker modal.
@@ -14,6 +23,8 @@ export function MediaGrid({ onPick, compact }: { onPick?: (asset: Asset) => void
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [needsStore, setNeedsStore] = useState(false);
+  const [query, setQuery] = useState('');
+  const [drag, setDrag] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
@@ -25,11 +36,14 @@ export function MediaGrid({ onPick, compact }: { onPick?: (asset: Asset) => void
   };
   useEffect(() => { load(); }, []);
 
-  async function upload(files: FileList | null) {
-    if (!files?.length) return;
+  async function upload(files: FileList | File[] | null) {
+    if (!files || !('length' in files) || !files.length) return;
     setBusy(true); setErr(''); setNeedsStore(false);
     for (const file of Array.from(files)) {
+      if (!file.type.startsWith('image/')) continue;
       const fd = new FormData(); fd.append('file', file);
+      const { w, h } = await readDims(file);
+      if (w) { fd.append('width', String(w)); fd.append('height', String(h)); }
       const res = await fetch('/api/admin/media', { method: 'POST', body: fd });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) { setErr(data.error || 'Upload failed.'); if (/Blob store|not connected/i.test(data.error || '')) setNeedsStore(true); break; }
@@ -43,13 +57,26 @@ export function MediaGrid({ onPick, compact }: { onPick?: (asset: Asset) => void
     await fetch('/api/admin/media', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) });
     setAssets((a) => a.filter((x) => x.id !== id));
   }
+  async function saveAlt(id: string, alt: string) {
+    setAssets((a) => a.map((x) => (x.id === id ? { ...x, alt } : x)));
+    await fetch('/api/admin/media', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, alt }) });
+  }
+
+  const shown = query.trim() ? assets.filter((a) => (a.filename + ' ' + (a.alt || '')).toLowerCase().includes(query.toLowerCase())) : assets;
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-3">
-        <button onClick={() => fileRef.current?.click()} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Uploading…' : 'Upload image'}</button>
+      {/* Drag-and-drop upload zone */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={(e) => { e.preventDefault(); setDrag(false); upload(e.dataTransfer.files); }}
+        onClick={() => fileRef.current?.click()}
+        className={`cursor-pointer rounded-[var(--radius-lg)] border-2 border-dashed p-6 text-center transition-colors ${drag ? 'border-[var(--color-gold)] bg-[var(--color-bone)]' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}
+      >
+        <p className="text-sm font-medium">{busy ? 'Uploading…' : 'Drop images here, or click to upload'}</p>
+        <p className="mt-1 text-xs text-[var(--color-stone-soft)]">PNG, JPG, WebP, SVG · up to 8 MB each</p>
         <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => upload(e.target.files)} />
-        <span className="text-xs text-[var(--color-stone)]">PNG, JPG, WebP, SVG · up to 8 MB</span>
       </div>
       {err && <p className="mt-3 text-sm text-[#c0392b]">{err}</p>}
       {needsStore && (
@@ -58,30 +85,41 @@ export function MediaGrid({ onPick, compact }: { onPick?: (asset: Asset) => void
         </p>
       )}
 
+      {assets.length > 0 && (
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search images…" className="w-56 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
+          <span className="text-xs text-[var(--color-stone-soft)]">{shown.length} of {assets.length}</span>
+        </div>
+      )}
+
       {loading ? (
         <p className="mt-6 text-sm text-[var(--color-stone)]">Loading…</p>
       ) : assets.length === 0 ? (
-        <p className="mt-6 text-sm text-[var(--color-stone)]">No images yet. Upload your first above.</p>
+        <p className="mt-6 text-sm text-[var(--color-stone)]">No images yet.</p>
       ) : (
-        <div className={`mt-5 grid gap-3 ${compact ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'}`}>
-          {assets.map((a) => (
-            <div key={a.id} className="group relative overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]">
-              <button
-                type="button"
-                onClick={() => onPick?.(a)}
-                className={`block aspect-square w-full ${onPick ? 'cursor-pointer' : 'cursor-default'}`}
-                title={onPick ? 'Use this image' : a.filename}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={a.url} alt={a.alt || a.filename} className="h-full w-full object-cover transition-transform group-hover:scale-105" loading="lazy" />
-              </button>
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-[linear-gradient(to_top,rgba(42,36,32,0.85),transparent)] p-2 opacity-0 transition-opacity group-hover:opacity-100">
-                <span className="truncate text-[0.65rem] text-[var(--color-porcelain)]">{fmtSize(a.size)}</span>
-                <span className="pointer-events-auto flex gap-1">
-                  <button type="button" onClick={() => navigator.clipboard?.writeText(a.url)} title="Copy URL" className="rounded bg-white/15 px-1.5 py-0.5 text-[0.65rem] text-white hover:bg-white/30">Copy</button>
-                  <button type="button" onClick={() => remove(a.id)} title="Delete" className="rounded bg-white/15 px-1.5 py-0.5 text-[0.65rem] text-white hover:bg-[#c0392b]">✕</button>
-                </span>
+        <div className={`mt-4 grid gap-3 ${compact ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'}`}>
+          {shown.map((a) => (
+            <div key={a.id} className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
+              <div className="group relative bg-[var(--color-bone)]">
+                <button type="button" onClick={() => onPick?.(a)} className={`block aspect-square w-full ${onPick ? 'cursor-pointer' : 'cursor-default'}`} title={onPick ? 'Use this image' : a.filename}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={a.url} alt={a.alt || a.filename} className="h-full w-full object-cover transition-transform group-hover:scale-105" loading="lazy" />
+                </button>
+                <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-end gap-1 p-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                  <button type="button" onClick={() => navigator.clipboard?.writeText(a.url)} title="Copy URL" className="pointer-events-auto rounded bg-black/45 px-1.5 py-0.5 text-[0.65rem] text-white hover:bg-black/70">Copy</button>
+                  <button type="button" onClick={() => remove(a.id)} title="Delete" className="pointer-events-auto rounded bg-black/45 px-1.5 py-0.5 text-[0.65rem] text-white hover:bg-[#c0392b]">✕</button>
+                </div>
               </div>
+              {!compact && (
+                <div className="p-2">
+                  <input
+                    defaultValue={a.alt || ''} placeholder="Alt text…" aria-label="Alt text"
+                    onBlur={(e) => { if (e.target.value !== (a.alt || '')) saveAlt(a.id, e.target.value); }}
+                    className="w-full rounded-[var(--radius-sm)] border border-transparent bg-[var(--color-bone)] px-2 py-1 text-xs outline-none focus:border-[var(--color-gold)]"
+                  />
+                  <p className="mt-1 truncate text-[0.65rem] text-[var(--color-stone-soft)]">{fmtSize(a.size)}{a.width ? ` · ${a.width}×${a.height}` : ''}</p>
+                </div>
+              )}
             </div>
           ))}
         </div>
