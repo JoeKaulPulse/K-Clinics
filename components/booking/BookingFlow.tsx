@@ -53,6 +53,7 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
   const [refreshments, setRefreshments] = useState<Set<string>>(new Set());
   const [allergyNote, setAllergyNote] = useState('');
   const [aftercareAck, setAftercareAck] = useState(false);
+  const [ageDeclare, setAgeDeclare] = useState(false);
   const [promoInput, setPromoInput] = useState('');
   const [promo, setPromo] = useState<{ ok: boolean; code?: string; label?: string | null; discountPence?: number; finalPence?: number; error?: string } | null>(null);
   const [promoBusy, setPromoBusy] = useState(false);
@@ -122,7 +123,7 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
     try {
       const res = await fetch('/api/booking/start', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variantId, sessions, startISO: slot, addOnVariantIds: [...addOns], smsReminders: smsPref, refreshments: [...refreshments], allergyNote, aftercareAck, promoCode: promo?.ok ? promo.code : undefined }),
+        body: JSON.stringify({ variantId, sessions, startISO: slot, addOnVariantIds: [...addOns], smsReminders: smsPref, refreshments: [...refreshments], allergyNote, aftercareAck, ageDeclare, promoCode: promo?.ok ? promo.code : undefined }),
       });
       const j = await res.json();
       if (!j.ok) { setError(j.error || 'Could not book.'); setSubmitting(false); return; }
@@ -339,6 +340,11 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
                 <input type="checkbox" checked={aftercareAck} onChange={(e) => setAftercareAck(e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />
                 I confirm I have read, understood and agree to follow the <a href="/account/aftercare" target="_blank" className="link-underline text-[var(--color-ink)]">aftercare instructions</a> for my treatment. *
               </label>
+              {/* Age declaration (cosmetic treatments are 18+) */}
+              <label className="mt-3 flex items-start gap-3 text-sm text-[var(--color-stone)]">
+                <input type="checkbox" checked={ageDeclare} onChange={(e) => setAgeDeclare(e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />
+                I confirm I am 18 years of age or over. *
+              </label>
             </div>
           )}
 
@@ -365,7 +371,7 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
           <button type="button" onClick={() => goBack()} className="text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Back</button>
           {stage === 'variant' && <Button onClick={() => variant && setStage('time')} variant={variant ? 'gold' : 'outline'}>Continue <ArrowIcon /></Button>}
           {stage === 'time' && <Button onClick={() => slot && setStage('upsell')} variant={slot ? 'gold' : 'outline'}>Continue <ArrowIcon /></Button>}
-          {stage === 'upsell' && <Button onClick={() => { if (!aftercareAck) { setError('Please confirm you’ve read and agree to the aftercare instructions.'); return; } if (!submitting) submitBooking(); }} variant={aftercareAck ? 'gold' : 'outline'}>{submitting ? 'Securing…' : 'Continue to confirm'} <ArrowIcon /></Button>}
+          {stage === 'upsell' && <Button onClick={() => { if (!aftercareAck) { setError('Please confirm you’ve read and agree to the aftercare instructions.'); return; } if (!ageDeclare) { setError('Please confirm you are 18 or over.'); return; } if (!submitting) submitBooking(); }} variant={aftercareAck && ageDeclare ? 'gold' : 'outline'}>{submitting ? 'Securing…' : 'Continue to confirm'} <ArrowIcon /></Button>}
           {stage === 'service' && <span />}
         </div>
       )}

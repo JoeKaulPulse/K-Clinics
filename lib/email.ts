@@ -187,8 +187,8 @@ export function tmplGiftVoucher(o: { recipientName: string; fromName: string; am
     <p><strong>${escape(o.fromName)}</strong> has sent you a KClinics gift voucher to spend on any of our treatments.</p>
     ${o.message ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-style:italic;">“${escape(o.message)}”</p>` : ''}
     ${voucherCard(o.amount, o.code)}
-    <p style="font-size:14px;">Quote your code when you book or at the clinic. Valid for 12 months; partial use is fine — any balance stays on your code.</p>
-    <p style="margin:24px 0;">${btn(o.bookUrl, 'Book your treatment')}</p>
+    <p style="font-size:14px;">Create your free account to add this gift card to your profile and use it against any treatment. Valid for 12 months; partial use is fine — any balance stays on your card. (Treatments are for ages 18+.)</p>
+    <p style="margin:24px 0;">${btn(o.bookUrl, 'Create your account &amp; claim')}</p>
     <p>With warmth,<br>The KClinics team</p>`,
   });
 }

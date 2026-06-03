@@ -87,7 +87,7 @@ async function sendVoucherEmails(voucherId: string, sendToRecipient: boolean) {
     sendEmail({ to: v.purchaserEmail, subject: `Your KClinics gift voucher — ${money(v.amountPence)}`, html: tmplGiftVoucherReceipt({ purchaserName: v.purchaserName, amount: money(v.amountPence), code: v.code, recipientName: v.recipientName, scheduled: !sendToRecipient && !!v.deliverAt, deliverAt: v.deliverAt }) }),
   ];
   if (sendToRecipient && v.recipientEmail) {
-    tasks.push(sendEmail({ to: v.recipientEmail, subject: `${v.purchaserName} sent you a KClinics gift voucher 🎁`, html: tmplGiftVoucher({ recipientName: v.recipientName || 'there', fromName: v.purchaserName, amount: money(v.amountPence), code: v.code, message: v.message, bookUrl: `${baseUrl()}/book` }) }));
+    tasks.push(sendEmail({ to: v.recipientEmail, subject: `${v.purchaserName} sent you a KClinics gift voucher 🎁`, html: tmplGiftVoucher({ recipientName: v.recipientName || 'there', fromName: v.purchaserName, amount: money(v.amountPence), code: v.code, message: v.message, bookUrl: `${baseUrl()}/account/gift-cards?code=${v.code}` }) }));
   }
   await Promise.allSettled(tasks);
 }
@@ -112,4 +112,19 @@ export async function redeemVoucher(id: string, amountPence: number): Promise<{ 
   const balancePence = v.balancePence - take;
   await db.giftVoucher.update({ where: { id }, data: { balancePence, status: balancePence === 0 ? 'REDEEMED' : 'ACTIVE' } });
   return { ok: true, balancePence };
+}
+
+/** Recipient claims/validates a voucher onto their account. The recipient must
+ *  be 18+ (gift cards are for treatments). The API ensures the client is 18+
+ *  before calling this. */
+export async function claimVoucher(clientId: string, code: string): Promise<{ ok: boolean; error?: string; amountPence?: number }> {
+  const v = await db.giftVoucher.findUnique({ where: { code: code.trim().toUpperCase() } });
+  if (!v) return { ok: false, error: 'We couldn’t find that gift card code.' };
+  if (v.status === 'PENDING') return { ok: false, error: 'This gift card isn’t active yet.' };
+  if (v.status === 'CANCELLED') return { ok: false, error: 'This gift card is no longer valid.' };
+  if (v.claimedByClientId && v.claimedByClientId !== clientId) return { ok: false, error: 'This gift card has already been claimed by another account.' };
+  const { db: dbi } = await import('@/lib/db');
+  const client = await dbi.client.findUnique({ where: { id: clientId }, select: { email: true } });
+  await db.giftVoucher.update({ where: { id: v.id }, data: { claimedByClientId: clientId, claimedAt: new Date(), recipientEmail: v.recipientEmail ?? client?.email ?? null } });
+  return { ok: true, amountPence: v.balancePence };
 }

@@ -16,6 +16,7 @@ const nav = [
   { href: '/account/assessments', key: 'nav.assessments' },
   { href: '/account/aftercare', key: 'nav.aftercare' },
   { href: '/account/invoices', key: 'nav.invoices' },
+  { href: '/account/gift-cards', key: 'nav.giftcards' },
   { href: '/account/profile', key: 'nav.profile' },
 ];
 

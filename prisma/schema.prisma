@@ -1630,11 +1630,14 @@ model GiftVoucher {
   status         String   @default("PENDING") // PENDING | ACTIVE | REDEEMED | CANCELLED
   stripePaymentIntentId String? @unique
   expiresAt      DateTime?
+  claimedByClientId String?
+  claimedAt      DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   @@index([status])
   @@index([delivered, deliverAt])
+  @@index([claimedByClientId])
 }
 
 // Footer newsletter sign-ups. Separate from Client — these are marketing

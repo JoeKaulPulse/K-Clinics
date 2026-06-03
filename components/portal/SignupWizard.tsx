@@ -7,7 +7,6 @@ import { AnimatePresence, motion } from 'motion/react';
 import { authField, authLabel } from '@/components/portal/AuthShell';
 import { portalTranslator, PORTAL_LOCALE_COOKIE, type Locale } from '@/lib/i18n-portal';
 import { LOCALE_LABELS } from '@/lib/i18n';
-import { meetsMinAge } from '@/lib/age';
 
 const STEPS = 4;
 
@@ -19,7 +18,7 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
 
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
-  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', gender: '', genderSelfDescribe: '', password: '', marketingOptIn: true, consent: false, ageDeclare: false, company: '' });
+  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', gender: '', genderSelfDescribe: '', password: '', marketingOptIn: true, consent: false, company: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState<null | { granted: boolean; code?: string; percent: number; reason?: string }>(null);
@@ -33,10 +32,8 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
     if (step === 2 && !/.+@.+\..+/.test(d.email)) { setError(t('signup.errEmail')); return false; }
     if (step === 2 && (d.phone.match(/\d/g) || []).length < 7) { setError(t('signup.errPhone')); return false; }
     if (step === 2 && !d.dob) { setError(t('signup.errDob')); return false; }
-    if (step === 2 && d.dob && !meetsMinAge(d.dob, 18)) { setError(t('signup.errAge')); return false; }
     if (step === 3) {
       if (d.password.length < 8) { setError(t('signup.errPassword')); return false; }
-      if (!d.ageDeclare) { setError(t('signup.ageRequired')); return false; }
       if (!d.consent) { setError(t('signup.consentRequired')); return false; }
     }
     return true;
@@ -172,10 +169,6 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
                   <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]">
                     <input type="checkbox" checked={d.marketingOptIn} onChange={(e) => set('marketingOptIn', e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]" />
                     {t('signup.marketing')}
-                  </label>
-                  <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]">
-                    <input type="checkbox" checked={d.ageDeclare} onChange={(e) => set('ageDeclare', e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]" />
-                    <span>{t('signup.ageDeclare')}</span>
                   </label>
                   <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]">
                     <input type="checkbox" checked={d.consent} onChange={(e) => set('consent', e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]" />
