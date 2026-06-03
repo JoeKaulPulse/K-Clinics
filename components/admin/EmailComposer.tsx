@@ -24,7 +24,9 @@ export type ComposerInitial = {
 
 const DEFAULT_BLOCKS: EmailBlock[] = [blankBlock('heading'), blankBlock('paragraph'), blankBlock('button')];
 
-export function EmailComposer({ segments, tags, initial }: { segments: { id: string; name: string }[]; tags: string[]; initial?: ComposerInitial }) {
+export type TemplateChoice = { id: string; name: string; subject: string; preheader: string; fromName: string; blocks: EmailBlock[]; saved: boolean };
+
+export function EmailComposer({ segments, tags, initial, templates = [] }: { segments: { id: string; name: string }[]; tags: string[]; initial?: ComposerInitial; templates?: TemplateChoice[] }) {
   const router = useRouter();
   const [campaignId, setCampaignId] = useState<string | undefined>(initial?.id);
   const [name, setName] = useState(initial?.name ?? '');
@@ -104,10 +106,32 @@ export function EmailComposer({ segments, tags, initial }: { segments: { id: str
     setMsg('Scheduled ✓');
     setTimeout(() => router.push('/admin/marketing/email'), 1200);
   }
+  function applyTemplate(id: string) {
+    const t = templates.find((x) => x.id === id);
+    if (!t) return;
+    if (blocks.length > 0 && !confirm('Replace the current content with this template?')) return;
+    setSubject(t.subject); setPreheader(t.preheader); setFromName(t.fromName);
+    setBlocks(t.blocks.length ? t.blocks : DEFAULT_BLOCKS);
+    setMsg(`Loaded “${t.name}”.`);
+  }
+  async function saveTemplate() {
+    const tname = prompt('Save this design as a template. Name:');
+    if (!tname?.trim()) return;
+    setBusy(true); setMsg('');
+    const res = await fetch('/api/admin/marketing/email/templates', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: tname.trim(), subject, preheader, fromName, blocks }),
+    });
+    const j = await res.json().catch(() => ({ ok: false }));
+    setBusy(false);
+    setMsg(j.ok ? 'Template saved ✓' : (j.error || 'Could not save template.'));
+  }
 
   const previewBody = applyMergeTags(emailBlocksToHtml(blocks), SAMPLE);
   const previewHtml = `<div style="font-family:Helvetica,Arial,sans-serif;background:#f6ece3;padding:20px;"><div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:28px;">${previewBody}</div></div>`;
   const spamHits = SPAMMY.filter((w) => subject.toLowerCase().includes(w));
+  const starterTemplates = templates.filter((t) => !t.saved);
+  const savedTemplates = templates.filter((t) => t.saved);
   const onFocus = (kind: 'subject' | 'block', i: number) => (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => { lastFocus.current = { kind, i, el: e.target }; };
 
   return (
@@ -116,6 +140,25 @@ export function EmailComposer({ segments, tags, initial }: { segments: { id: str
       <div className="space-y-4">
         {/* Setup: name, sender, subject, preheader, audience */}
         <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
+          {templates.length > 0 && (
+            <label className="mb-3 block text-xs text-[var(--color-stone)]">Start from a template
+              <select
+                defaultValue=""
+                onChange={(e) => { const v = e.target.value; e.currentTarget.selectedIndex = 0; if (v) applyTemplate(v); }}
+                className={`${field} mt-1 w-full`}
+              >
+                <option value="">Choose a starting point…</option>
+                <optgroup label="Starters">
+                  {starterTemplates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </optgroup>
+                {savedTemplates.length > 0 && (
+                  <optgroup label="Your templates">
+                    {savedTemplates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </optgroup>
+                )}
+              </select>
+            </label>
+          )}
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-xs text-[var(--color-stone)]">Internal name<input value={name} onChange={(e) => setName(e.target.value)} placeholder="February newsletter" className={`${field} mt-1 w-full`} /></label>
             <label className="text-xs text-[var(--color-stone)]">From name <span className="text-[var(--color-stone-soft)]">(optional)</span><input value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="KClinics" className={`${field} mt-1 w-full`} /></label>
@@ -201,7 +244,8 @@ export function EmailComposer({ segments, tags, initial }: { segments: { id: str
           <div className="flex flex-wrap items-end gap-2">
             <label className="text-xs text-[var(--color-stone)]">Send a test to<input value={test} onChange={(e) => setTest(e.target.value)} placeholder="you@kclinics.co.uk" className={`${field} mt-1 w-56`} /></label>
             <button onClick={() => send(true)} disabled={busy || !test} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">Send test</button>
-            <button onClick={saveDraft} disabled={busy} className="ml-auto rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">Save draft</button>
+            <button onClick={saveTemplate} disabled={busy} className="ml-auto rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">Save as template</button>
+            <button onClick={saveDraft} disabled={busy} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">Save draft</button>
             <button onClick={() => setShowSchedule((s) => !s)} disabled={busy} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">Schedule…</button>
             <button onClick={() => { if (confirm(`Send this email to ${audCount ?? 'the selected'} ${audCount === 1 ? 'person' : 'recipients'} now?`)) send(false); }} disabled={busy || !subject || !audCount} className="rounded-full bg-[var(--color-ink)] px-6 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Sending…' : 'Send now'}</button>
           </div>
