@@ -2184,3 +2184,57 @@ model Product {
   @@index([status])
   @@index([category])
 }
+
+// ── Retail orders (product storefront) ───────────────────────────────────────
+enum OrderStatus {
+  PENDING
+  PAID
+  FULFILLED
+  CANCELLED
+  REFUNDED
+}
+
+model Order {
+  id                    String      @id @default(cuid())
+  number                String      @unique // human-friendly reference
+  clientId              String?
+  email                 String
+  name                  String
+  phone                 String?
+  // Fulfilment: ship to an address, or collect in clinic.
+  method                String      @default("ship") // ship | collect
+  shipName              String?
+  shipLine1             String?
+  shipLine2             String?
+  shipCity              String?
+  shipPostcode          String?
+  subtotalPence         Int
+  shippingPence         Int         @default(0)
+  giftCardCode          String?
+  giftCardPence         Int         @default(0)
+  totalPence            Int
+  ageVerified           Boolean     @default(false)
+  status                OrderStatus @default(PENDING)
+  fulfillment           String      @default("unfulfilled") // unfulfilled | shipped | collected
+  trackingNote          String?
+  stripePaymentIntentId String?     @unique
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  items                 OrderItem[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id            String  @id @default(cuid())
+  order         Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId       String
+  productId     String?
+  name          String
+  sku           String?
+  unitPence     Int
+  qty           Int
+  ageRestricted Boolean @default(false)
+}

@@ -69,6 +69,7 @@ export const DICT: Record<string, Entry> = {
   'nav.qr': { en: 'QR codes', uk: 'QR-коди' },
   'nav.activity': { en: 'Activity log', uk: 'Журнал дій' },
   'nav.staff': { en: 'Staff & access', uk: 'Персонал і доступ' },
+  'nav.orders': { en: 'Orders', uk: 'Замовлення' },
   'nav.cashflow': { en: 'Cashflow', uk: 'Грошовий потік' },
   'nav.reports': { en: 'Reports', uk: 'Звіти' },
   'nav.site': { en: 'Site & globals', uk: 'Сайт і глобальні' },

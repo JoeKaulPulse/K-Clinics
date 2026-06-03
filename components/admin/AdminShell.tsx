@@ -64,6 +64,7 @@ const navGroups: { heading?: string; items: NavItem[] }[] = [
     { href: '/admin/qr', key: 'nav.qr', perm: 'settings.manage' },
   ] },
   { heading: 'nav.group.finance', items: [
+    { href: '/admin/orders', key: 'nav.orders', perm: 'finance.view' },
     { href: '/admin/cashflow', key: 'nav.cashflow', perm: 'finance.view' },
     { href: '/admin/reports', key: 'nav.reports', perm: 'finance.view' },
   ] },
