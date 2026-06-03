@@ -21,6 +21,8 @@ export async function sendEmail(opts: {
   replyTo?: string;
   /** Override the From *display name* only (address stays our verified sender). */
   fromName?: string;
+  /** Extra MIME headers, e.g. List-Unsubscribe for bulk marketing. */
+  headers?: Record<string, string>;
 }): Promise<SendResult> {
   if (!resend) return { ok: false, error: 'RESEND_API_KEY not configured' };
   try {
@@ -31,6 +33,7 @@ export async function sendEmail(opts: {
       subject: opts.subject,
       html: opts.html,
       replyTo: opts.replyTo || REPLY_TO,
+      ...(opts.headers ? { headers: opts.headers } : {}),
     });
     if (error) return { ok: false, error: String(error.message || error) };
     return { ok: true, id: data?.id };
