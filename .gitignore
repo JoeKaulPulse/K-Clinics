@@ -35,3 +35,6 @@ yarn-error.log*
 
 # WordPress import (raw XML too large; keep extracted content.json)
 import/*.xml
+
+# Generated brand dossier (regenerate via scripts/build-dossier.mjs)
+KClinics-Platform-Guide.pdf
