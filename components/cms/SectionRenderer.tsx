@@ -12,8 +12,8 @@ import { EnquiryForm } from '@/components/contact/EnquiryForm';
 import { getSiteConfig } from '@/lib/site-config';
 
 // Renders an array of CMS sections as native, on-brand markup. Server component.
-export function SectionRenderer({ sections }: { sections: Section[] }) {
-  return <>{sections.map((s) => <SectionView key={s.id} section={s} />)}</>;
+export function SectionRenderer({ sections, includeHidden = false }: { sections: Section[]; includeHidden?: boolean }) {
+  return <>{sections.filter((s) => includeHidden || !s.hidden).map((s) => <SectionView key={s.id} section={s} />)}</>;
 }
 
 const str = (v: unknown, d = '') => (typeof v === 'string' ? v : d);

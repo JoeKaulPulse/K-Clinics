@@ -24,7 +24,7 @@ export type SectionDef = {
   fields: Field[];
 };
 
-export type Section = { id: string; type: string; data: Record<string, unknown> };
+export type Section = { id: string; type: string; data: Record<string, unknown>; hidden?: boolean };
 
 let n = 0;
 export const uid = () => `s${Date.now().toString(36)}${(n++).toString(36)}${Math.random().toString(36).slice(2, 5)}`;
@@ -166,11 +166,12 @@ export const SECTION_DEFS: SectionDef[] = [
 
 export const sectionDef = (type: string) => SECTION_DEFS.find((d) => d.type === type);
 export const newSection = (type: string): Section => ({ id: uid(), type, data: JSON.parse(JSON.stringify(sectionDef(type)?.defaults ?? {})) });
+export const cloneSection = (s: Section): Section => ({ id: uid(), type: s.type, hidden: s.hidden, data: JSON.parse(JSON.stringify(s.data ?? {})) });
 
 /** Coerce unknown JSON (Prisma) into a trusted Section[]. */
 export function asSections(value: unknown): Section[] {
   if (!Array.isArray(value)) return [];
   return value
     .filter((s): s is Section => !!s && typeof s === 'object' && typeof (s as Section).type === 'string')
-    .map((s) => ({ id: s.id || uid(), type: s.type, data: (s.data && typeof s.data === 'object') ? s.data : {} }));
+    .map((s) => ({ id: s.id || uid(), type: s.type, data: (s.data && typeof s.data === 'object') ? s.data : {}, hidden: !!s.hidden }));
 }
