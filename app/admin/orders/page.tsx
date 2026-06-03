@@ -28,7 +28,7 @@ export default async function OrdersPage() {
     <AdminShell user={session?.email} can={can} locale={locale}>
       <h1 className="font-[family-name:var(--font-display)] text-3xl">Orders</h1>
       <p className="mt-1 text-sm text-[var(--color-stone)]">Retail product orders — fulfil, add tracking and manage status.</p>
-      <div className="mt-8"><OrdersManager rows={rows} canManage={sessionCan(session, 'finance.view') || sessionCan(session, 'settings.manage')} /></div>
+      <div className="mt-8"><OrdersManager rows={rows} canManage={sessionCan(session, 'finance.manage')} /></div>
     </AdminShell>
   );
 }

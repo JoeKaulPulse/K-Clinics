@@ -105,7 +105,7 @@ export function AdminShell({
   const pathname = usePathname();
   const router = useRouter();
   const allowed = new Set(can);
-  const permitted = (n: NavItem) => !n.perm || allowed.size === 0 || allowed.has(n.perm);
+  const permitted = (n: NavItem) => !n.perm || allowed.has(n.perm);
   const groups = navGroups
     .map((g) => ({ heading: g.heading, items: g.items.filter(permitted) }))
     .filter((g) => g.items.length > 0);

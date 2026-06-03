@@ -49,7 +49,6 @@ export async function POST(req: Request) {
       if (body.utmCampaign !== undefined) data.utmCampaign = slugify(body.utmCampaign) || existing.slug;
       if (body.startAt !== undefined) data.startAt = date(body.startAt);
       if (body.endAt !== undefined) data.endAt = date(body.endAt);
-      if (body.budgetPence !== undefined) data.budgetPence = num(body.budget);
       if (body.budget !== undefined) data.budgetPence = num(body.budget);
       if (body.spend !== undefined) data.spendPence = num(body.spend) ?? 0;
       if (body.targetRevenue !== undefined) data.targetRevenuePence = num(body.targetRevenue);
