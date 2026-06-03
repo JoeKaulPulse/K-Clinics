@@ -32,6 +32,14 @@ export async function POST(req: Request) {
             data: { chargePaymentIntentId: pi.id, chargedPence: pi.amount_received, chargedAt: new Date() },
           });
         }
+        // Finalise retail orders + gift vouchers server-side, so they complete
+        // even if the customer closes the tab before the confirm call.
+        if (pi.metadata?.kind === 'shop_order' && pi.metadata?.orderId) {
+          try { const { finalizeOrder } = await import('@/lib/shop'); await finalizeOrder(pi.metadata.orderId); } catch (e) { console.error('[webhook] order finalize failed:', (e as Error)?.message); }
+        }
+        if (pi.metadata?.kind === 'gift_voucher' && pi.metadata?.voucherId) {
+          try { const { confirmVoucher } = await import('@/lib/gift-vouchers'); await confirmVoucher(pi.metadata.voucherId); } catch (e) { console.error('[webhook] voucher confirm failed:', (e as Error)?.message); }
+        }
         break;
       }
       case 'setup_intent.succeeded': {
