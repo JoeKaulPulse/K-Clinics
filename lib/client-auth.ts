@@ -211,6 +211,14 @@ export async function loginClient(email: string, password: string): Promise<{ ok
 
 const sha256 = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
 
+// Constant-time comparison of two hex digests, so a token can't be recovered by
+// measuring how long the early-return mismatch takes.
+const hashesEqual = (a: string, b: string) => {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ab.length === bb.length && crypto.timingSafeEqual(ab, bb);
+};
+
 /** Begin a password reset. Always resolves the same way (no account enumeration);
  *  emails a one-hour reset link only if the account exists. */
 export async function requestPasswordReset(email: string): Promise<{ ok: true }> {
@@ -241,7 +249,7 @@ export async function performPasswordReset(clientId: string, token: string, newP
   if (!client?.resetTokenHash || !client.resetTokenExp || client.resetTokenExp < new Date()) {
     return { ok: false, error: 'This reset link has expired. Please request a new one.' };
   }
-  if (sha256(token) !== client.resetTokenHash) return { ok: false, error: 'Invalid reset link.' };
+  if (!hashesEqual(sha256(token), client.resetTokenHash)) return { ok: false, error: 'Invalid reset link.' };
   const { isBreachedPassword } = await import('@/lib/security/breached-password');
   if (await isBreachedPassword(newPassword)) return { ok: false, error: 'That password has appeared in a known data breach. Please choose a different one.' };
   await db.client.update({
