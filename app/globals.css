@@ -211,7 +211,9 @@
     font-weight: 560;
     letter-spacing: 0.28em;
     text-transform: uppercase;
-    color: var(--color-gold);
+    /* Deeper gold so small uppercase eyebrows clear WCAG AA (≈4.7:1) on our
+       light surfaces. Dark-surface eyebrows override to --color-gold-soft. */
+    color: var(--color-gold-deep);
   }
 
   /* Hairline divider */

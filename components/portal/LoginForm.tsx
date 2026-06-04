@@ -76,7 +76,7 @@ function Inner() {
       <div>
         <div className="flex items-baseline justify-between">
           <label className={authLabel} htmlFor="password">{t('login.password')}</label>
-          <Link href="/account/forgot-password" className="text-xs font-medium text-[var(--color-gold)]">{t('login.forgot')}</Link>
+          <Link href="/account/forgot-password" className="text-xs font-medium text-[var(--color-gold-deep)]">{t('login.forgot')}</Link>
         </div>
         <input id="password" type="password" autoComplete="current-password" required className={authField} value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
@@ -91,7 +91,7 @@ function Inner() {
       </button>
       <p className="text-center text-sm text-[var(--color-stone)]">
         {t('login.newHere')}{' '}
-        <Link href="/account/signup" className="font-medium text-[var(--color-gold)]">
+        <Link href="/account/signup" className="font-medium text-[var(--color-gold-deep)]">
           {t('login.createCta')}
         </Link>
       </p>

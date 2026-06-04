@@ -54,12 +54,12 @@ export function SignupForm() {
         {done.granted ? (
           <p className="mx-auto mt-3 max-w-sm text-[var(--color-stone)]">
             Your <strong>{done.percent}% welcome discount</strong> is ready — code{' '}
-            <span className="font-mono font-semibold text-[var(--color-gold)]">{done.code}</span>. It’s saved to your account.
+            <span className="font-mono font-semibold text-[var(--color-gold-deep)]">{done.code}</span>. It’s saved to your account.
           </p>
         ) : (
           <p className="mx-auto mt-3 max-w-sm text-[var(--color-stone)]">{done.reason}</p>
         )}
-        <button onClick={() => { router.push('/account'); router.refresh(); }} className="mt-6 rounded-full bg-[var(--color-gold)] px-6 py-3 font-medium text-white hover:bg-[var(--color-ink)]">
+        <button onClick={() => { router.push('/account'); router.refresh(); }} className="mt-6 rounded-full bg-[var(--color-gold-deep)] px-6 py-3 font-medium text-white hover:bg-[var(--color-ink)]">
           Go to my portal
         </button>
       </motion.div>
@@ -90,12 +90,12 @@ export function SignupForm() {
         <Link href="/info/privacy-policy" className="underline">Privacy Policy</Link>.
       </label>
       {error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
-      <button type="submit" disabled={loading} className="w-full rounded-full bg-[var(--color-gold)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60">
+      <button type="submit" disabled={loading} className="w-full rounded-full bg-[var(--color-gold-deep)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60">
         {loading ? 'Creating your account…' : 'Create account & claim 15% off'}
       </button>
       <p className="text-center text-sm text-[var(--color-stone)]">
         Already have an account?{' '}
-        <Link href="/account/login" className="font-medium text-[var(--color-gold)]">Sign in</Link>
+        <Link href="/account/login" className="font-medium text-[var(--color-gold-deep)]">Sign in</Link>
       </p>
     </form>
   );

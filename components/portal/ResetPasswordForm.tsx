@@ -56,7 +56,7 @@ function Inner() {
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6">
         <p className="font-medium">Invalid reset link</p>
         <p className="mt-2 text-sm text-[var(--color-stone)]">This link is incomplete or has expired.</p>
-        <Link href="/account/forgot-password" className="mt-4 inline-block text-sm font-medium text-[var(--color-gold)]">Request a new link</Link>
+        <Link href="/account/forgot-password" className="mt-4 inline-block text-sm font-medium text-[var(--color-gold-deep)]">Request a new link</Link>
       </div>
     );
   }
@@ -72,7 +72,7 @@ function Inner() {
         <input id="cf" type="password" autoComplete="new-password" required className={authField} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
       </div>
       {error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
-      <button type="submit" disabled={loading} className="w-full rounded-full bg-[var(--color-gold)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60">
+      <button type="submit" disabled={loading} className="w-full rounded-full bg-[var(--color-gold-deep)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60">
         {loading ? 'Saving…' : 'Set new password'}
       </button>
     </form>
