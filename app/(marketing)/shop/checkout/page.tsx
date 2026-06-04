@@ -1,6 +1,8 @@
+import type { Metadata } from 'next';
 import { CheckoutForm } from '@/components/shop/CheckoutForm';
 
 export const dynamic = 'force-dynamic';
+export const metadata: Metadata = { title: 'Checkout — KClinics', robots: { index: false, follow: false } };
 
 export default function CheckoutPage() {
   return (

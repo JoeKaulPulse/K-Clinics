@@ -17,35 +17,37 @@ export const dynamic = 'force-dynamic';
 
 export default async function BookPage({ searchParams }: { searchParams: Promise<{ treatment?: string }> }) {
   const { treatment } = await searchParams;
-  const { bookingCatalogue, liveOffers } = await import('@/lib/services');
-  const { getCurrentClient } = await import('@/lib/client-auth');
-  const { db } = await import('@/lib/db');
 
-  const [catalogueAll, promoted, client] = await Promise.all([
-    bookingCatalogue(),
-    liveOffers(true),
-    getCurrentClient(),
-  ]);
+  // Load everything defensively — if the database is briefly unreachable the
+  // primary booking page should degrade to a "call us" view, not 500.
+  type CatItem = Awaited<ReturnType<(typeof import('@/lib/services'))['bookingCatalogue']>>[number];
+  let catalogue: CatItem[] = [];
+  let promoted: Awaited<ReturnType<(typeof import('@/lib/services'))['liveOffers']>> = [];
+  let clientInfo = { signedIn: false, firstName: '', email: '', gender: null as string | null, smsReminders: false, hasPhone: false, welcomeEligible: true };
+  let degraded = false;
+  try {
+    const { bookingCatalogue, liveOffers } = await import('@/lib/services');
+    const { getCurrentClient } = await import('@/lib/client-auth');
+    const { db } = await import('@/lib/db');
 
-  // Dentistry isn't bookable until a GDC-registered dentist is in post.
-  const catalogue = site.dentistryLive
-    ? catalogueAll
-    : await (async () => {
-        const { dentistry } = await import('@/lib/treatments');
-        const dentistrySlugs = new Set(dentistry.map((t) => t.slug));
-        return catalogueAll.filter((s) => !dentistrySlugs.has(s.treatmentSlug));
-      })();
+    const [catalogueAll, promotedLive, client] = await Promise.all([bookingCatalogue(), liveOffers(true), getCurrentClient()]);
+    promoted = promotedLive;
 
-  // Welcome offer is available to a signed-in client with an unused claim.
-  let welcomeEligible = !client; // not signed in → they’ll get it on signup
-  if (client) {
-    const active = await db.discountClaim.findFirst({ where: { clientId: client.id, status: 'ACTIVE' } });
-    welcomeEligible = !!active;
+    // Dentistry isn't bookable until a GDC-registered dentist is in post.
+    catalogue = site.dentistryLive ? catalogueAll : await (async () => {
+      const { dentistry } = await import('@/lib/treatments');
+      const dentistrySlugs = new Set(dentistry.map((t) => t.slug));
+      return catalogueAll.filter((s) => !dentistrySlugs.has(s.treatmentSlug));
+    })();
+
+    if (client) {
+      const active = await db.discountClaim.findFirst({ where: { clientId: client.id, status: 'ACTIVE' } });
+      clientInfo = { signedIn: true, firstName: client.firstName, email: client.email, gender: client.gender ?? null, smsReminders: client.smsReminders, hasPhone: !!client.phone, welcomeEligible: !!active };
+    }
+  } catch (e) {
+    console.error('[book] load failed — showing call-us fallback:', (e as Error)?.message);
+    degraded = true;
   }
-
-  const clientInfo = client
-    ? { signedIn: true, firstName: client.firstName, email: client.email, gender: client.gender ?? null, smsReminders: client.smsReminders, hasPhone: !!client.phone, welcomeEligible }
-    : { signedIn: false, firstName: '', email: '', gender: null as string | null, smsReminders: false, hasPhone: false, welcomeEligible: true };
 
   const points = [
     'Create your free account for 15% off your first visit',
@@ -95,7 +97,15 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
           </div>
         </Reveal>
         <Reveal delay={0.1}>
-          <BookingFlow catalogue={catalogue} client={clientInfo} preselect={treatment ? (catalogue.find((s) => s.treatmentSlug === treatment)?.id ?? null) : null} />
+          {degraded || catalogue.length === 0 ? (
+            <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-8 text-center">
+              <h2 className="text-title">Booking is briefly unavailable</h2>
+              <p className="mt-3 text-[var(--color-ink-soft)]">We’re sorry — online booking is temporarily down. Please call us and we’ll book you straight in.</p>
+              <a href={site.phoneHref} className="mt-5 inline-block rounded-full bg-[var(--color-ink)] px-6 py-3 text-sm font-medium text-[var(--color-porcelain)]">Call {site.phone}</a>
+            </div>
+          ) : (
+            <BookingFlow catalogue={catalogue} client={clientInfo} preselect={treatment ? (catalogue.find((s) => s.treatmentSlug === treatment)?.id ?? null) : null} />
+          )}
         </Reveal>
       </section>
     </>

@@ -44,9 +44,12 @@ export function RedeemPoints({
 
   if (appliedPence > 0 && !open) {
     return (
-      <span className="inline-flex items-center gap-2 rounded-full bg-[var(--color-jade)]/12 px-3 py-1.5 text-sm font-medium text-[var(--color-jade)]">
-        {labels.applied.replace('{amount}', currency(appliedPence))}
-        <button onClick={() => send(0)} disabled={busy} className="text-xs underline opacity-80 hover:opacity-100">{labels.remove}</button>
+      <span className="inline-flex items-center gap-2">
+        <span className="inline-flex items-center gap-2 rounded-full bg-[var(--color-jade)]/12 px-3 py-1.5 text-sm font-medium text-[var(--color-jade)]">
+          {labels.applied.replace('{amount}', currency(appliedPence))}
+          <button onClick={() => send(0)} disabled={busy} className="text-xs underline opacity-80 hover:opacity-100">{labels.remove}</button>
+        </span>
+        {err && <span className="text-xs text-[var(--color-blush)]">{err}</span>}
       </span>
     );
   }
