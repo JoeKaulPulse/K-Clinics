@@ -212,6 +212,61 @@ export async function freeSlots(dateISO: string, durationMin: number, treatmentS
   return slots;
 }
 
+// How close (minutes) a free slot must sit to an existing booking — beyond the
+// cleanup buffer — to count as "preferred". Encourages clustering a clinician's
+// day into a contiguous block instead of leaving idle gaps (e.g. one at 9am and
+// one at 5pm).
+const CLUSTER_GAP_MIN = 30;
+
+/**
+ * Free slots for a date, with a "preferred" subset highlighted. A slot is
+ * preferred when it can be served by a clinician who already has a booking that
+ * day and sits adjacent to it (within the cleanup buffer + a small tolerance) —
+ * so bookings cluster together and staff aren't left idle between appointments.
+ * When staff enforcement is off, adjacency is measured against the day's
+ * bookings clinic-wide.
+ */
+export async function recommendedSlots(dateISO: string, durationMin: number, treatmentSlug?: string, locationId?: string | null): Promise<{ slots: string[]; preferred: string[] }> {
+  const slots = await freeSlots(dateISO, durationMin, treatmentSlug, locationId);
+  if (slots.length === 0) return { slots, preferred: [] };
+
+  const date = new Date(dateISO + 'T00:00:00');
+  const dow = date.getDay();
+  const dayStart = new Date(date); dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(date); dayEnd.setHours(23, 59, 59, 999);
+  const bufferMin = treatmentSlug ? (bookingFor(treatmentSlug).bufferMin ?? 0) : 0;
+  const tolMs = (bufferMin + CLUSTER_GAP_MIN) * 60_000;
+
+  // Non-overlapping gap (ms) between a slot [s,e] and a booking [bs,be]; -1 if overlapping.
+  const gap = (s: number, e: number, bs: number, be: number) => (s >= be ? s - be : bs >= e ? bs - e : -1);
+  const adjacent = (s: number, e: number, bs: number, be: number) => { const g = gap(s, e, bs, be); return g >= 0 && g <= tolMs; };
+
+  const enforce = treatmentSlug ? await getSetting('enforce_staff_availability') : false;
+  const preferred: string[] = [];
+
+  if (enforce && treatmentSlug) {
+    const clinicians = await cliniciansForDay(treatmentSlug, dayStart, dayEnd);
+    for (const iso of slots) {
+      const s = new Date(iso); const e = new Date(s.getTime() + durationMin * 60_000);
+      const ok = clinicians.some((c) =>
+        c.bookings.length > 0 &&
+        clinicianFree(c, s, e, dow, bufferMin, locationId) &&
+        c.bookings.some((b) => adjacent(s.getTime(), e.getTime(), b.startAt.getTime(), b.endAt.getTime())));
+      if (ok) preferred.push(iso);
+    }
+  } else {
+    const bookings = await db.booking.findMany({
+      where: { status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { gte: dayStart, lte: dayEnd }, ...(locationId ? { locationId } : {}) },
+      select: { startAt: true, endAt: true },
+    });
+    for (const iso of slots) {
+      const s = new Date(iso); const e = new Date(s.getTime() + durationMin * 60_000);
+      if (bookings.some((b) => adjacent(s.getTime(), e.getTime(), b.startAt.getTime(), b.endAt.getTime()))) preferred.push(iso);
+    }
+  }
+  return { slots, preferred };
+}
+
 /** Pick a competent, free clinician for a slot (auto-assign), optionally at a location. */
 export async function pickPractitioner(startISO: string, durationMin: number, treatmentSlug: string, locationId?: string | null): Promise<string | null> {
   const start = new Date(startISO);

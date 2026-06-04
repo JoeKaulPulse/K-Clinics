@@ -47,6 +47,7 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
   const [sessions, setSessions] = useState(1);
   const [date, setDate] = useState('');
   const [slots, setSlots] = useState<string[]>([]);
+  const [preferred, setPreferred] = useState<string[]>([]);
   const [slot, setSlot] = useState('');
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [addOns, setAddOns] = useState<Set<string>>(new Set());
@@ -101,10 +102,10 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
   useEffect(() => {
     if (stage !== 'time' || !service || !variant || !date) return;
     setSlot(''); setSlots([]);
-    if (isDemo) { setSlots(demoSlots(date, totalDuration, [])); return; }
+    if (isDemo) { setSlots(demoSlots(date, totalDuration, [])); setPreferred([]); return; }
     setLoadingSlots(true);
     fetch('/api/booking/availability', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: service.treatmentSlug, date, durationMin: totalDuration }) })
-      .then((r) => r.json()).then((j) => setSlots(j.slots || [])).catch(() => setSlots([]))
+      .then((r) => r.json()).then((j) => { setSlots(j.slots || []); setPreferred(j.preferred || []); }).catch(() => { setSlots([]); setPreferred([]); })
       .finally(() => setLoadingSlots(false));
   }, [stage, service, variant, date, totalDuration]);
 
@@ -251,13 +252,21 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
                   {loadingSlots ? <p className="text-sm text-[var(--color-stone)]">Finding available times…</p>
                     : slots.length === 0 ? <p className="text-sm text-[var(--color-stone)]">No availability that day — please try another date.</p>
                     : (
-                      <div className="flex flex-wrap gap-2">
-                        {slots.map((s) => (
-                          <button key={s} type="button" onClick={() => setSlot(s)} className={`rounded-full border px-4 py-2 text-sm transition-all ${slot === s ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
-                            {new Date(s).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                          </button>
-                        ))}
-                      </div>
+                      <>
+                        <div className="flex flex-wrap gap-2">
+                          {slots.map((s) => {
+                            const isPref = preferred.includes(s);
+                            const selected = slot === s;
+                            return (
+                              <button key={s} type="button" onClick={() => setSlot(s)} title={isPref ? 'Sooner-seen slot — fits neatly with the day’s other appointments' : undefined} className={`relative rounded-full border px-4 py-2 text-sm transition-all ${selected ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : isPref ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
+                                {!selected && isPref && <span aria-hidden className="mr-1 text-[var(--color-gold)]">★</span>}
+                                {new Date(s).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {preferred.length > 0 && <p className="mt-2 text-xs text-[var(--color-stone-soft)]"><span className="text-[var(--color-gold)]">★</span> Recommended — these times fit neatly around the day’s other appointments, so you’re often seen more promptly.</p>}
+                      </>
                     )}
                 </div>
               )}
