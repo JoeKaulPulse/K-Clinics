@@ -20,7 +20,7 @@ const CHANNELS: { key: string; label: string }[] = [
   { key: 'tiktok', label: 'TikTok' }, { key: 'seo', label: 'SEO' }, { key: 'landing', label: 'Landing page' },
 ];
 
-export function CampaignEditor({ data, stats, baseUrl, canManage }: { data: CampaignData; stats: Stats; baseUrl: string; canManage: boolean }) {
+export function CampaignEditor({ data, stats, baseUrl, canManage, spendSyncedAt }: { data: CampaignData; stats: Stats; baseUrl: string; canManage: boolean; spendSyncedAt?: string | null }) {
   const router = useRouter();
   const [f, setF] = useState<CampaignData>(data);
   const [landing, setLanding] = useState('/');
@@ -96,7 +96,7 @@ export function CampaignEditor({ data, stats, baseUrl, canManage }: { data: Camp
           </div>
           <div className="grid gap-4 sm:grid-cols-4">
             <label className="text-xs text-[var(--color-stone)]">Budget £<input value={f.budget} onChange={(e) => set('budget', e.target.value)} className={field} /></label>
-            <label className="text-xs text-[var(--color-stone)]">Spend £<input value={f.spend} onChange={(e) => set('spend', e.target.value)} className={field} /></label>
+            <label className="text-xs text-[var(--color-stone)]">Spend £{spendSyncedAt && <span className="ml-1 text-[var(--color-stone-soft)]">· synced {new Date(spendSyncedAt).toLocaleDateString('en-GB')}</span>}<input value={f.spend} onChange={(e) => set('spend', e.target.value)} className={field} /></label>
             <label className="text-xs text-[var(--color-stone)]">Target £<input value={f.targetRevenue} onChange={(e) => set('targetRevenue', e.target.value)} className={field} /></label>
             <label className="text-xs text-[var(--color-stone)]">Target bookings<input value={f.targetBookings} onChange={(e) => set('targetBookings', e.target.value)} className={field} /></label>
           </div>

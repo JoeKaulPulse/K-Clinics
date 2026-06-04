@@ -4,6 +4,7 @@ import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { ConnectionsManager } from '@/components/admin/ConnectionsManager';
+import { AdSpendSync } from '@/components/admin/AdSpendSync';
 import { connectionStatuses } from '@/lib/marketing-connections';
 import { getLocale } from '@/lib/locale';
 
@@ -16,6 +17,7 @@ export default async function ConnectionsPage({ searchParams }: { searchParams: 
   const sp = await searchParams;
 
   const providers = await connectionStatuses();
+  const adPlatformConnected = providers.some((p) => ['google', 'meta', 'tiktok'].includes(p.id) && p.state === 'connected');
   const can = await sessionPermissions();
   const locale = await getLocale();
   return (
@@ -25,6 +27,7 @@ export default async function ConnectionsPage({ searchParams }: { searchParams: 
         Connect your ad, analytics and email platforms. Once a platform’s app credentials are in place, connecting is a
         single click — authorise and you’re done. Each card has a guided setup if it isn’t ready yet.
       </p>
+      {adPlatformConnected && <div className="mt-8"><AdSpendSync /></div>}
       <div className="mt-8">
         <ConnectionsManager providers={providers} flash={{ connected: sp.connected, error: sp.error }} />
       </div>
