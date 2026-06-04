@@ -33,10 +33,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   ]);
 
   // Realised value of a completed treatment: the amount actually charged when
-  // we took payment, otherwise the net list price after any loyalty-points
-  // redemption (which is real money off — counting gross would overstate revenue).
-  const rev = (b: { chargedPence: number | null; pricePence: number; pointsRedeemedPence?: number | null }) =>
-    b.chargedPence ?? Math.max(0, (b.pricePence ?? 0) - (b.pointsRedeemedPence ?? 0));
+  // Realised revenue only — the amount actually charged. We never count a
+  // completed-but-uncharged treatment as revenue (those surface separately via
+  // the dashboard's "completed, not charged" prompt), so nothing shows as a
+  // sale before payment is taken.
+  const rev = (b: { chargedPence: number | null }) => b.chargedPence ?? 0;
 
   // Staff performance.
   const staffMap = new Map<string, { name: string; count: number; actualMin: number; bookedMin: number; revenue: number }>();
@@ -87,7 +88,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       {/* KPIs */}
       <div className="mt-6 grid gap-3 sm:grid-cols-4">
         {[
-          { label: L('Treatment value (completed)', 'Вартість процедур (завершені)'), value: gbp(totalRevenue) },
+          { label: L('Revenue (charged)', 'Дохід (стягнено)'), value: gbp(totalRevenue) },
           { label: L('Appointments', 'Записи'), value: String(completed.length) },
           { label: L('Clinical hours', 'Клінічні години'), value: hrs(totalActualMin) },
           { label: L('Consumables used', 'Витратні'), value: gbp(consumablesUsed) },
