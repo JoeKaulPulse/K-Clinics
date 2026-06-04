@@ -18,7 +18,8 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:seed": "node prisma/seed.mjs"
+    "db:seed": "node prisma/seed.mjs",
+    "db:restore": "node scripts/restore.mjs"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.1.1",
