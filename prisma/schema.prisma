@@ -274,6 +274,11 @@ model Client {
   lastVisitAt     DateTime?
   stripeCustomerId String?       @unique
 
+  // ── Membership (K Circle) — cached from rolling 12-month spend ──
+  membershipTier      String?    // current tier key (e.g. silver/gold/platinum); null = base member
+  membership12moPence Int        @default(0) // realised spend over the trailing 12 months
+  membershipUpdatedAt DateTime?
+
   // ── Client portal account ────────────────────────────────────────────────
   passwordHash    String?        // set when the client creates a portal account
   emailVerified   DateTime?
@@ -1253,6 +1258,27 @@ model ClientPoints {
   @@index([clientId, category])
   @@index([expiresAt])
   @@index([bookingId])
+}
+
+// ── Membership tiers (K Circle) ───────────────────────────────────────────────
+// Status-based tiers earned from rolling 12-month spend. Higher tiers earn
+// loyalty points faster (pointsMultiplierBps) and unlock perks/early access.
+// Editable by the owner; seeded with sensible defaults on first use.
+model MembershipTier {
+  id                  String   @id @default(cuid())
+  key                 String   @unique // stable: member | silver | gold | platinum
+  name                String
+  minSpendPence       Int      @default(0)   // rolling 12-month spend to reach this tier
+  pointsMultiplierBps Int      @default(100) // 100 = 1.0×, 150 = 1.5×, 200 = 2.0×
+  birthdayBonusPoints Int      @default(0)
+  earlyAccessHours    Int      @default(0)   // priority booking window (future use)
+  retailDiscountPct   Int      @default(0)   // optional member retail discount (kept 0 by default)
+  perks               String[] @default([])  // marketing bullet points
+  color               String?  // hex for the tier badge
+  sortOrder           Int      @default(0)
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @default(now()) @updatedAt
 }
 
 // ── Referrals ─────────────────────────────────────────────────────────────

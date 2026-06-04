@@ -39,6 +39,16 @@ export async function GET(req: Request) {
     console.error('[cron] loyalty maintenance failed (continuing):', (e as Error)?.message);
   }
 
+  // Membership: recompute tiers from rolling 12-month spend so members move up
+  // (and lapse down) as their spend changes.
+  let membership = { recomputed: 0 };
+  try {
+    const { recomputeActiveTiers } = await import('@/lib/membership');
+    membership = { recomputed: await recomputeActiveTiers() };
+  } catch (e) {
+    console.error('[cron] membership recompute failed (continuing):', (e as Error)?.message);
+  }
+
   // Pull ad spend from any connected platforms into campaign ROI (no-op if
   // nothing is connected). Fully fault-tolerant.
   let adSpend = { updated: 0, totalPence: 0 };
@@ -81,5 +91,5 @@ export async function GET(req: Request) {
     console.error('[cron] analytics retention failed (continuing):', (e as Error)?.message);
   }
 
-  return NextResponse.json({ ok: true, ...result, loyalty, gcal, retention, scheduledEmail, adSpend });
+  return NextResponse.json({ ok: true, ...result, loyalty, membership, gcal, retention, scheduledEmail, adSpend });
 }

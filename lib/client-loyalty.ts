@@ -155,13 +155,27 @@ export async function awardClientSpend(bookingId: string): Promise<void> {
   // Idempotent: one SPEND row per booking.
   const existing = await db.clientPoints.findFirst({ where: { bookingId, category: 'SPEND' } });
   if (!existing) {
-    const pts = Math.floor((spend / 100) * LOYALTY.pointsPerPound);
+    const base = Math.floor((spend / 100) * LOYALTY.pointsPerPound);
+    // Accelerated earn for members — multiply by the client's current tier rate.
+    let pts = base;
+    try {
+      const { earnMultiplierBps } = await import('@/lib/membership');
+      pts = Math.floor((base * (await earnMultiplierBps(b.clientId))) / 100);
+    } catch { /* tiers unavailable → base rate */ }
     if (pts > 0) {
       await awardClientPoints({
         clientId: b.clientId, points: pts, category: 'SPEND',
         reason: `Earned on ${b.treatmentTitle}`, bookingId,
       });
     }
+  }
+
+  // Refresh the client's membership tier now this spend is realised.
+  try {
+    const { recomputeClientTier } = await import('@/lib/membership');
+    await recomputeClientTier(b.clientId);
+  } catch (e) {
+    console.error('[membership] recompute failed (continuing):', (e as Error)?.message);
   }
 
   // Referral qualification runs off the same trigger.
