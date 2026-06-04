@@ -7,26 +7,31 @@ export const dynamic = 'force-dynamic';
 // /api/health to confirm the server can reach the database and the schema is
 // present. Never exposes secrets — only booleans/counts.
 export async function GET(req: Request) {
+  // Detailed diagnostics (schema probes, secret presence, error messages) are
+  // reconnaissance — only expose them to a caller holding the CRON_SECRET.
+  const reqUrl = new URL(req.url);
+  const provided = reqUrl.searchParams.get('secret') || (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+  const authed = Boolean(process.env.CRON_SECRET) && provided === process.env.CRON_SECRET;
+
   const report: Record<string, unknown> = {
     ok: false,
-    crmEnabled:
-      process.env.NEXT_PUBLIC_CRM_ENABLED === 'true' ||
-      process.env.CRM_ENABLED === 'true' ||
-      Boolean(process.env.DATABASE_URL),
-    hasDatabaseUrl: Boolean(process.env.DATABASE_URL),
-    hasPostgresUrl: Boolean(process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL),
     env: process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown',
-    // Identifies exactly which build is live, so we can confirm a deploy landed.
     commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'local',
-    deployedAt: process.env.VERCEL_DEPLOYMENT_ID ? new Date().toISOString() : 'local',
-    buildMarker: 'dashboard-redesign-v2',
   };
+  if (authed) {
+    report.crmEnabled = process.env.NEXT_PUBLIC_CRM_ENABLED === 'true' || process.env.CRM_ENABLED === 'true' || Boolean(process.env.DATABASE_URL);
+    report.hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
+    report.hasPostgresUrl = Boolean(process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL);
+    report.deployedAt = process.env.VERCEL_DEPLOYMENT_ID ? new Date().toISOString() : 'local';
+  }
 
   try {
     const { db } = await import('@/lib/db');
     // Cheap query that proves connectivity + that the Client table exists.
     const clients = await db.client.count();
     report.database = 'connected';
+    // Everything below is sensitive detail — authed callers only.
+    if (!authed) { report.ok = true; return NextResponse.json(report, { status: 200 }); }
     report.clientTable = 'present';
     report.clientCount = clients;
 
@@ -84,28 +89,22 @@ export async function GET(req: Request) {
     }
     report.secrets = secrets;
 
-    // Gated integration report (config booleans only — never secrets). Pass the
-    // CRON_SECRET via ?secret= or an Authorization: Bearer header to unlock.
-    const reqUrl = new URL(req.url);
-    const provided = reqUrl.searchParams.get('secret') || (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
-    if (process.env.CRON_SECRET && provided === process.env.CRON_SECRET) {
-      try {
-        const { getIntegrations } = await import('@/lib/integrations');
-        report.integrations = (await getIntegrations()).map((i) => ({
-          id: i.id,
-          name: i.name,
-          status: i.status,
-          missing: i.envVars.filter((v) => !v.set && !v.optional).map((v) => v.name),
-        }));
-      } catch (e) {
-        report.integrations = `error: ${(e as Error)?.message?.slice(0, 120)}`;
-      }
+    // Integration report (config booleans only — never secrets).
+    try {
+      const { getIntegrations } = await import('@/lib/integrations');
+      report.integrations = (await getIntegrations()).map((i) => ({
+        id: i.id, name: i.name, status: i.status,
+        missing: i.envVars.filter((v) => !v.set && !v.optional).map((v) => v.name),
+      }));
+    } catch (e) {
+      report.integrations = `error: ${(e as Error)?.message?.slice(0, 120)}`;
     }
 
     report.ok = true;
   } catch (err) {
     report.database = 'error';
-    report.error = (err as Error)?.message?.slice(0, 200) || 'unknown';
+    // Only reveal the underlying error to an authed caller.
+    if (authed) report.error = (err as Error)?.message?.slice(0, 200) || 'unknown';
   }
 
   return NextResponse.json(report, { status: report.ok ? 200 : 503 });

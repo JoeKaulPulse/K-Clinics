@@ -72,7 +72,14 @@ export async function POST(req: Request) {
   if (body.op === 'delete') {
     const { id } = body as { id?: string };
     if (!id) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
-    await db.task.delete({ where: { id } });
+    // Only the creator, the assignee, or a manager may delete a task — stops a
+    // low-privilege account hard-deleting colleagues' (client-linked) tasks.
+    const { sessionCan } = await import('@/lib/auth');
+    const task = await db.task.findUnique({ where: { id }, select: { createdBy: true, assigneeId: true } });
+    if (!task) return NextResponse.json({ ok: true });
+    const mayDelete = task.createdBy === session.email || task.assigneeId === session.sub || sessionCan(session, 'settings.manage') || sessionCan(session, 'staff.view');
+    if (!mayDelete) return NextResponse.json({ ok: false, error: 'You can only delete tasks you created or were assigned.' }, { status: 403 });
+    await db.task.deleteMany({ where: { id } });
     return NextResponse.json({ ok: true });
   }
 

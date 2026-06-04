@@ -40,6 +40,10 @@ export async function POST(req: Request) {
   // to set it up again on next login if their role requires it.
   if (body.op === 'reset2fa') {
     if (!id) return NextResponse.json({ ok: false, error: 'Missing id.' }, { status: 400 });
+    // Only an OWNER may strip an OWNER's second factor (this runs before the
+    // generic owner-protection guard below, so check it here too).
+    const t = await db.adminUser.findUnique({ where: { id }, select: { role: true } });
+    if (t?.role === 'OWNER' && actor.role !== 'OWNER') return NextResponse.json({ ok: false, error: 'Only an owner can reset an owner’s 2FA.' }, { status: 403 });
     await db.adminUser.update({ where: { id }, data: { totpSecret: null, totpEnabledAt: null, recoveryCodes: [] } });
     const { logAudit } = await import('@/lib/audit');
     await logAudit({ action: 'NOTE_ADDED', actor: actor.email, actorRole: actor.role, summary: `Reset 2FA for staff ${id}` });

@@ -34,7 +34,9 @@ export async function POST(req: Request) {
     actor: session!.email,
     actorRole: session!.role,
     clientId,
-    summary: value ? `Medical flag set: ${value.slice(0, 80)}` : 'Medical flag cleared',
+    // Never copy the flag's clinical free-text into the audit summary (audit
+    // logs are broadly readable + long-retained) — record only the action.
+    summary: value ? 'Medical flag set' : 'Medical flag cleared',
   });
   return NextResponse.json({ ok: true });
 }
