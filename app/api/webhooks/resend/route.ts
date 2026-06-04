@@ -21,7 +21,13 @@ export async function POST(req: Request) {
   if (!crmEnabled) return new Response('ok');
   const body = await req.text();
   const secret = process.env.RESEND_WEBHOOK_SECRET;
-  if (secret && !verify(secret, req.headers, body)) return new Response('bad signature', { status: 401 });
+  // Fail closed in production: an unsigned webhook could otherwise mark clients
+  // bounced/complained (→ unsubscribed) or skew metrics.
+  if (!secret) {
+    if (process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production') return new Response('webhook secret not configured', { status: 503 });
+  } else if (!verify(secret, req.headers, body)) {
+    return new Response('bad signature', { status: 401 });
+  }
 
   let evt: { type?: string; data?: { email_id?: string; click?: { link?: string } } };
   try { evt = JSON.parse(body); } catch { return new Response('bad json', { status: 400 }); }

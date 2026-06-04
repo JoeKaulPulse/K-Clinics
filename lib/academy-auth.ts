@@ -38,5 +38,8 @@ export async function loginStudent(email: string, password: string): Promise<{ o
 export async function getCurrentStudent() {
   const session = await getAcademySession();
   if (!session) return null;
-  return db.academyStudent.findUnique({ where: { id: session.sub } });
+  const student = await db.academyStudent.findUnique({ where: { id: session.sub } });
+  // A deactivated trainee loses access immediately (don't wait for token expiry).
+  if (student && student.portalActive === false) return null;
+  return student;
 }
