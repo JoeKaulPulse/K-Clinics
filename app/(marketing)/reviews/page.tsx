@@ -66,9 +66,9 @@ export default async function ReviewsPage() {
         {cards.length === 0 ? (
           <Reveal>
             <div className="mx-auto max-w-xl rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-10 text-center">
-              <h2 className="font-[family-name:var(--font-display)] text-2xl">Our first reviews are on their way.</h2>
+              <h2 className="font-[family-name:var(--font-display)] text-2xl">Our reviews, the honest way.</h2>
               <p className="mt-3 text-[var(--color-stone)]">
-                As a new clinic, we’re building our reviews the honest way — one genuine client at a time. After your visit we’ll invite you to share your experience, and with your permission we’ll feature it here.
+                We feature only genuine, verified reviews — from our own clients and from Google. As a brand-new clinic these are just beginning to come in: after your visit we’ll invite you to share your experience, and with your permission we’ll feature it here.
               </p>
               <p className="mt-3 text-sm text-[var(--color-stone)]">
                 Prefer to chat first? Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>.
