@@ -38,7 +38,10 @@ function Inner() {
       });
       const json = await res.json();
       if (json.ok) {
-        router.push(json.setup ? '/admin/profile?setup2fa=1' : params.get('from') || '/admin');
+        // Only honour same-origin relative paths to avoid an open redirect.
+        const from = params.get('from');
+        const dest = from && from.startsWith('/') && !from.startsWith('//') ? from : '/admin';
+        router.push(json.setup ? '/admin/profile?setup2fa=1' : dest);
         router.refresh();
         return;
       }

@@ -52,7 +52,9 @@ function Inner() {
       }
       const json = await res.json().catch(() => ({ ok: false, error: 'Unexpected response.' }));
       if (json.ok) {
-        router.push(params.get('from') || '/account');
+        // Only honour same-origin relative paths to avoid an open redirect.
+        const from = params.get('from');
+        router.push(from && from.startsWith('/') && !from.startsWith('//') ? from : '/account');
         router.refresh();
       } else {
         if (json.requireCaptcha && json.captchaSiteKey) setCaptchaSiteKey(json.captchaSiteKey);

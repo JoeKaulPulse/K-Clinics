@@ -33,6 +33,8 @@ type Props = {
   external?: boolean;
   ariaLabel?: string;
   magnetic?: boolean;
+  type?: 'button' | 'submit';
+  disabled?: boolean;
 };
 
 /** A refined, optionally magnetic button with a sliding sheen on hover. */
@@ -46,6 +48,8 @@ export function Button({
   external,
   ariaLabel,
   magnetic = true,
+  type = 'button',
+  disabled = false,
 }: Props) {
   const reduce = useReducedMotion();
   const ref = useRef<HTMLSpanElement>(null);
@@ -99,7 +103,7 @@ export function Button({
   }
 
   return (
-    <motion.button type="button" onClick={onClick} aria-label={ariaLabel} className={cls}>
+    <motion.button type={type} onClick={onClick} disabled={disabled} aria-label={ariaLabel} className={`${cls}${disabled ? ' cursor-not-allowed opacity-60' : ''}`}>
       {content}
     </motion.button>
   );

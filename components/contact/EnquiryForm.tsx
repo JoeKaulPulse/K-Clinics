@@ -10,29 +10,44 @@ import { Button, ArrowIcon } from '@/components/ui/Button';
  *  pre-filled email to the clinic via mailto: — reliable, zero-infra, and easy
  *  to swap for an API/Formspree endpoint later (see handleSubmit). */
 export function EnquiryForm() {
-  const [sent, setSent] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'sent' | 'mailto'>('idle');
+  const [busy, setBusy] = useState(false);
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const name = String(f.get('name') || '');
+    const name = String(f.get('name') || '').trim();
     const email = String(f.get('email') || '');
     const phone = String(f.get('phone') || '');
     const interest = String(f.get('interest') || '');
     const message = String(f.get('message') || '');
 
-    const subject = `Enquiry from ${name || 'website'} — ${interest || 'General'}`;
-    const body = [
-      `Name: ${name}`,
-      `Email: ${email}`,
-      `Phone: ${phone}`,
-      `Interest: ${interest}`,
-      '',
-      message,
-    ].join('\n');
+    const mailtoFallback = () => {
+      const subject = `Enquiry from ${name || 'website'} — ${interest || 'General'}`;
+      const body = [`Name: ${name}`, `Email: ${email}`, `Phone: ${phone}`, `Interest: ${interest}`, '', message].join('\n');
+      window.location.href = `${site.emailHref}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      setStatus('mailto');
+    };
 
-    window.location.href = `${site.emailHref}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    setSent(true);
+    // Record the enquiry server-side (creates the lead + notifies the clinic),
+    // falling back to a mailto: handoff only if that isn't available.
+    setBusy(true);
+    try {
+      const [firstName, ...rest] = (name || 'Website enquiry').split(/\s+/);
+      const res = await fetch('/api/consult', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: firstName || 'Website', lastName: rest.join(' ') || undefined, email, phone: phone || undefined,
+          category: 'general', message: interest ? `Interested in: ${interest}\n\n${message}` : message, consent: true,
+        }),
+      });
+      const j = await res.json().catch(() => ({ ok: false }));
+      if (j.ok) setStatus('sent'); else mailtoFallback();
+    } catch {
+      mailtoFallback();
+    } finally {
+      setBusy(false);
+    }
   }
 
   const field =
@@ -79,21 +94,22 @@ export function EnquiryForm() {
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
-        <Button size="lg">Send enquiry <ArrowIcon /></Button>
+        <Button size="lg" type="submit" disabled={busy}>{busy ? 'Sending…' : <>Send enquiry <ArrowIcon /></>}</Button>
         <p className="text-sm text-[var(--color-stone)]">
           Or call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>
         </p>
       </div>
 
       <AnimatePresence>
-        {sent && (
+        {status !== 'idle' && (
           <motion.p
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-jade)]/12 px-4 py-3 text-sm text-[var(--color-jade)]"
           >
-            Your email app should now open with your enquiry ready to send. If not, email us directly at{' '}
-            <a href={site.emailHref} className="link-underline font-medium">{site.email}</a>.
+            {status === 'sent'
+              ? <>Thank you — we’ve received your enquiry and will be in touch shortly.</>
+              : <>Your email app should now open with your enquiry ready to send. If not, email us directly at <a href={site.emailHref} className="link-underline font-medium">{site.email}</a>.</>}
           </motion.p>
         )}
       </AnimatePresence>

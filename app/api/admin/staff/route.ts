@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
-import { PERMISSION_KEYS } from '@/lib/permissions';
+import { PERMISSION_KEYS, effectivePermissions } from '@/lib/permissions';
 
 export const runtime = 'nodejs';
 
@@ -27,6 +27,12 @@ export async function POST(req: Request) {
 
   const validRole = ['OWNER', 'ADMIN', 'PRACTITIONER', 'FRONT_DESK', 'STAFF'];
   const clean = (arr?: string[]) => (arr ?? []).filter((k) => PERMISSION_KEYS.includes(k));
+  // Privilege-escalation clamp: a non-OWNER (e.g. a delegate granted
+  // staff.manage) may only grant permissions they themselves hold, and never
+  // the owner-only ones. OWNERs can grant anything.
+  const OWNER_ONLY = ['staff.manage', 'security.manage', 'settings.manage'];
+  const actorPerms = effectivePermissions({ role: actor.role, permGrant: actor.grant, permRevoke: actor.revoke });
+  const clampGrant = (arr?: string[]) => clean(arr).filter((k) => actor.role === 'OWNER' || (actorPerms.has(k) && !OWNER_ONLY.includes(k)));
 
   const { db } = await import('@/lib/db');
 
@@ -89,7 +95,7 @@ export async function POST(req: Request) {
     if (role && validRole.includes(role) && actor.role === 'OWNER') {
       data.role = role as 'OWNER' | 'ADMIN' | 'PRACTITIONER' | 'FRONT_DESK' | 'STAFF';
     }
-    if (grant) data.permGrant = clean(grant);
+    if (grant) data.permGrant = clampGrant(grant);
     if (revoke) data.permRevoke = clean(revoke);
     if (typeof active === 'boolean') data.active = active;
     if (password) data.passwordHash = await hashPassword(password);
@@ -115,7 +121,7 @@ export async function POST(req: Request) {
       name: name || null,
       role: role as 'OWNER' | 'ADMIN' | 'PRACTITIONER' | 'FRONT_DESK' | 'STAFF',
       passwordHash: await hashPassword(password),
-      permGrant: clean(grant),
+      permGrant: clampGrant(grant),
       permRevoke: clean(revoke),
       createdBy: actor.email,
     },
