@@ -43,29 +43,46 @@ export async function sendEmail(opts: {
 }
 
 // ── Branded HTML shell ───────────────────────────────────────────────────────
-export function emailShell(opts: { preheader?: string; body: string; unsubUrl?: string }): string {
+const EMAIL_BASE = (process.env.NEXT_PUBLIC_SITE_URL || site.url).replace(/\/$/, '');
+
+/** Premium, on-brand HTML shell for all emails. Uses the real brand K mark
+ *  (hosted PNG, since email clients don't render inline SVG). `logoUrl` lets a
+ *  caller override the header mark with a brand-kit logo. */
+export function emailShell(opts: { preheader?: string; body: string; unsubUrl?: string; logoUrl?: string }): string {
   const { preheader = '', body, unsubUrl } = opts;
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
-<body style="margin:0;background:#efe3d7;font-family:Georgia,'Times New Roman',serif;color:#2a2420;">
-  <span style="display:none;opacity:0;color:transparent;height:0;width:0;overflow:hidden">${preheader}</span>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#efe3d7;padding:32px 16px;">
+  const mark = opts.logoUrl || `${EMAIL_BASE}/brand/k-mark-light.png`;
+  const year = new Date().getFullYear();
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="x-apple-disable-message-reformatting"></head>
+<body style="margin:0;padding:0;background:#e8dccd;font-family:Georgia,'Times New Roman',serif;color:#2a2420;-webkit-font-smoothing:antialiased;">
+  <span style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden;mso-hide:all;">${preheader}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;</span>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#e8dccd;padding:36px 16px;">
     <tr><td align="center">
-      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#f6ece3;border-radius:18px;overflow:hidden;border:1px solid rgba(43,29,36,0.08);">
-        <tr><td style="background:#2a2420;padding:30px 40px;text-align:center;">
-          <div style="font-size:24px;letter-spacing:6px;color:#f6ece3;">K&nbsp;CLINICS</div>
-          <div style="font-size:10px;letter-spacing:4px;color:#c2a589;margin-top:6px;text-transform:uppercase;">United Kingdom</div>
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#f7eee4;border-radius:20px;overflow:hidden;border:1px solid rgba(42,36,32,0.07);box-shadow:0 18px 48px -28px rgba(42,36,32,0.45);">
+        <!-- Header -->
+        <tr><td style="background:#2a2420;padding:34px 40px 26px;text-align:center;">
+          <img src="${mark}" width="46" height="46" alt="KClinics" style="display:inline-block;width:46px;height:46px;border:0;outline:none;">
+          <div style="font-size:22px;letter-spacing:7px;color:#f6ece3;margin-top:14px;">K&nbsp;CLINICS</div>
+          <div style="font-size:9px;letter-spacing:3.5px;color:#c2a589;margin-top:8px;text-transform:uppercase;">Aesthetics &middot; Dentistry &middot; London</div>
         </td></tr>
-        <tr><td style="padding:40px;font-size:16px;line-height:1.7;color:#3d352f;">
+        <!-- Gold hairline accent -->
+        <tr><td style="height:3px;line-height:3px;font-size:0;background:linear-gradient(90deg,#a98a6d,#dcc4a8,#a98a6d);">&nbsp;</td></tr>
+        <!-- Body -->
+        <tr><td style="padding:42px 44px 38px;font-size:16px;line-height:1.75;color:#3d352f;">
           ${body}
         </td></tr>
-        <tr><td style="padding:24px 40px;background:#efe4db;font-family:Helvetica,Arial,sans-serif;font-size:12px;color:#91766e;text-align:center;line-height:1.6;">
-          ${site.address.street}, ${site.address.locality}, ${site.address.region} ${site.address.postalCode}<br>
-          <a href="${site.phoneHref}" style="color:#91766e;">${site.phone}</a> ·
-          <a href="mailto:${site.email}" style="color:#91766e;">${site.email}</a>
-          ${unsubUrl ? `<br><br><a href="${unsubUrl}" style="color:#91766e;text-decoration:underline;">Unsubscribe</a>` : ''}
+        <!-- Footer -->
+        <tr><td style="padding:26px 40px 30px;background:#efe4db;border-top:1px solid rgba(42,36,32,0.06);font-family:Helvetica,Arial,sans-serif;font-size:12px;color:#7d6259;text-align:center;line-height:1.7;">
+          <img src="${EMAIL_BASE}/brand/k-badge.png" width="34" height="34" alt="" style="display:inline-block;width:34px;height:34px;border:0;border-radius:8px;margin-bottom:10px;">
+          <div style="color:#5b4f47;">${site.address.street}, ${site.address.locality}, ${site.address.region} ${site.address.postalCode}</div>
+          <div style="margin-top:4px;">
+            <a href="${site.phoneHref}" style="color:#8a6e54;text-decoration:none;">${site.phone}</a>
+            &nbsp;&middot;&nbsp;
+            <a href="mailto:${site.email}" style="color:#8a6e54;text-decoration:none;">${site.email}</a>
+          </div>
+          ${unsubUrl ? `<div style="margin-top:14px;font-size:11px;color:#a3917f;">You're receiving this as a KClinics member. <a href="${unsubUrl}" style="color:#a3917f;text-decoration:underline;">Unsubscribe</a></div>` : ''}
         </td></tr>
       </table>
-      <div style="font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#91766e;margin-top:18px;">© ${new Date().getFullYear()} ${site.legalName}</div>
+      <div style="font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#9a8a7c;margin-top:18px;">&copy; ${year} ${site.legalName}</div>
     </td></tr>
   </table>
 </body></html>`;
