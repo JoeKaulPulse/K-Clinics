@@ -73,7 +73,10 @@ export async function confirmVoucher(voucherId: string): Promise<{ ok: boolean; 
 
   const expiresAt = new Date(); expiresAt.setFullYear(expiresAt.getFullYear() + 1);
   const immediate = !v.deliverAt || v.deliverAt <= new Date();
-  await db.giftVoucher.update({ where: { id: v.id }, data: { status: 'ACTIVE', expiresAt, delivered: immediate } });
+  // Activate atomically — only the call that flips PENDING→ACTIVE sends the
+  // emails, so a concurrent webhook + client-confirm don't double-send.
+  const claimed = await db.giftVoucher.updateMany({ where: { id: v.id, status: 'PENDING' }, data: { status: 'ACTIVE', expiresAt, delivered: immediate } });
+  if (claimed.count === 0) return { ok: true, code: v.code };
 
   await sendVoucherEmails(v.id, immediate).catch((e) => console.error('[gift-voucher] email failed:', (e as Error)?.message));
   return { ok: true, code: v.code };
@@ -112,9 +115,17 @@ export async function redeemVoucher(id: string, amountPence: number): Promise<{ 
   if (v.expiresAt && v.expiresAt < new Date()) return { ok: false, error: 'This voucher has expired.' };
   if (v.balancePence <= 0) return { ok: false, error: 'This voucher has no balance left.' };
   const take = Math.min(Math.max(0, Math.round(amountPence)), v.balancePence);
-  const balancePence = v.balancePence - take;
-  await db.giftVoucher.update({ where: { id }, data: { balancePence, status: balancePence === 0 ? 'REDEEMED' : 'ACTIVE' } });
-  return { ok: true, balancePence };
+  if (take <= 0) return { ok: false, error: 'Enter an amount to redeem.' };
+  // Atomic decrement: the `balancePence >= take` guard means two concurrent
+  // redemptions can't both succeed and overspend the card.
+  const res = await db.giftVoucher.updateMany({
+    where: { id, status: 'ACTIVE', balancePence: { gte: take } },
+    data: { balancePence: { decrement: take } },
+  });
+  if (res.count === 0) return { ok: false, error: 'This voucher no longer has enough balance.' };
+  const after = await db.giftVoucher.findUnique({ where: { id }, select: { balancePence: true } });
+  if (after?.balancePence === 0) await db.giftVoucher.updateMany({ where: { id, balancePence: 0 }, data: { status: 'REDEEMED' } });
+  return { ok: true, balancePence: after?.balancePence ?? 0 };
 }
 
 /** Recipient claims/validates a voucher onto their account. The recipient must
@@ -125,9 +136,14 @@ export async function claimVoucher(clientId: string, code: string): Promise<{ ok
   if (!v) return { ok: false, error: 'We couldn’t find that gift card code.' };
   if (v.status === 'PENDING') return { ok: false, error: 'This gift card isn’t active yet.' };
   if (v.status === 'CANCELLED') return { ok: false, error: 'This gift card is no longer valid.' };
-  if (v.claimedByClientId && v.claimedByClientId !== clientId) return { ok: false, error: 'This gift card has already been claimed by another account.' };
+  if (v.expiresAt && v.expiresAt < new Date()) return { ok: false, error: 'This gift card has expired.' };
+  if (v.claimedByClientId === clientId) return { ok: true, amountPence: v.balancePence }; // already on this account
+  if (v.claimedByClientId) return { ok: false, error: 'This gift card has already been claimed by another account.' };
   const { db: dbi } = await import('@/lib/db');
   const client = await dbi.client.findUnique({ where: { id: clientId }, select: { email: true } });
-  await db.giftVoucher.update({ where: { id: v.id }, data: { claimedByClientId: clientId, claimedAt: new Date(), recipientEmail: v.recipientEmail ?? client?.email ?? null } });
+  // Atomic claim: only the first unclaimed write wins, so two accounts can't
+  // race to claim the same card.
+  const res = await db.giftVoucher.updateMany({ where: { id: v.id, claimedByClientId: null }, data: { claimedByClientId: clientId, claimedAt: new Date(), recipientEmail: v.recipientEmail ?? client?.email ?? null } });
+  if (res.count === 0) return { ok: false, error: 'This gift card has just been claimed by another account.' };
   return { ok: true, amountPence: v.balancePence };
 }

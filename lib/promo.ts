@@ -49,15 +49,27 @@ export async function priceWithPromo(rawCode: string, ctx: PromoContext): Promis
   return { ok: true, promoId: promo.id, code: promo.code, label: promo.label, discountPence, finalPence: Math.max(0, ctx.pricePence - discountPence) };
 }
 
-/** Record a redemption (idempotent-ish; increments the counter). */
-export async function redeemPromo(promoId: string, opts: { clientId?: string | null; email?: string | null; bookingId?: string | null; amountOffPence: number }): Promise<void> {
+/** Record a redemption. Re-checks the max-redemptions cap and the
+ *  once-per-client rule inside a Serializable transaction, so concurrent
+ *  redemptions of a single-use/capped code can't both succeed. Returns whether
+ *  a redemption was recorded. */
+export async function redeemPromo(promoId: string, opts: { clientId?: string | null; email?: string | null; bookingId?: string | null; amountOffPence: number }): Promise<boolean> {
   try {
-    await db.$transaction([
-      db.promoRedemption.create({ data: { promoCodeId: promoId, clientId: opts.clientId ?? null, email: opts.email?.toLowerCase() ?? null, bookingId: opts.bookingId ?? null, amountOffPence: opts.amountOffPence } }),
-      db.promoCode.update({ where: { id: promoId }, data: { redeemedCount: { increment: 1 } } }),
-    ]);
+    return await db.$transaction(async (tx) => {
+      const promo = await tx.promoCode.findUnique({ where: { id: promoId }, select: { maxRedemptions: true, redeemedCount: true, oncePerClient: true } });
+      if (!promo) return false;
+      if (promo.maxRedemptions != null && promo.redeemedCount >= promo.maxRedemptions) return false;
+      if (promo.oncePerClient && opts.clientId) {
+        const used = await tx.promoRedemption.findFirst({ where: { promoCodeId: promoId, clientId: opts.clientId }, select: { id: true } });
+        if (used) return false;
+      }
+      await tx.promoRedemption.create({ data: { promoCodeId: promoId, clientId: opts.clientId ?? null, email: opts.email?.toLowerCase() ?? null, bookingId: opts.bookingId ?? null, amountOffPence: opts.amountOffPence } });
+      await tx.promoCode.update({ where: { id: promoId }, data: { redeemedCount: { increment: 1 } } });
+      return true;
+    }, { isolationLevel: 'Serializable' });
   } catch (e) {
     console.error('[promo] redeem failed (continuing):', (e as Error)?.message);
+    return false;
   }
 }
 
