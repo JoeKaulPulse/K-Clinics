@@ -7,7 +7,7 @@ export const consultSchema = z.object({
   phone: z.string().max(40).optional().or(z.literal('')),
   dob: z.string().optional().or(z.literal('')), // ISO date for birthday automations
   category: z.enum(['aesthetics', 'dentistry', 'both', 'general']).default('general'),
-  treatments: z.array(z.string()).default([]),
+  treatments: z.array(z.string().max(80)).max(20).default([]),
   concerns: z.string().max(2000).optional().or(z.literal('')),
   message: z.string().max(4000).optional().or(z.literal('')),
   preferredTime: z.string().max(120).optional().or(z.literal('')),

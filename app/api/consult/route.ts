@@ -25,6 +25,12 @@ export async function POST(req: Request) {
   // Honeypot — silently accept to fool bots.
   if (data.company) return NextResponse.json({ ok: true });
 
+  // Rate limit per IP (a spam enquiry already got through with no throttle).
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'consult', 5, 600))) {
+    return NextResponse.json({ ok: false, error: 'Too many enquiries just now — please try again shortly.' }, { status: 429 });
+  }
+
   // Without a DB/email backend (e.g. the static demo), report graceful fallback
   // so the form can switch to a mailto: handoff.
   if (!crmEnabled) {
