@@ -85,8 +85,17 @@ export default async function PricingPage() {
                                 <div className="min-w-0">
                                   <span className="font-[family-name:var(--font-display)] text-lg leading-tight">{v.name}</span>
                                   {!unavailable && v.courses.length > 0 && (
-                                    <span className="mt-0.5 block text-sm text-[var(--color-stone)]">
-                                      {v.courses.map((c) => `×${c.sessions} ${formatPence(c.totalPence)}`).join(' · ')}
+                                    <span className="mt-1 block space-y-0.5 text-sm text-[var(--color-stone)]">
+                                      {v.courses.map((c) => {
+                                        const per = Math.round(c.totalPence / c.sessions);
+                                        const save = v.pricePence > 0 ? Math.round((1 - per / v.pricePence) * 100) : 0;
+                                        return (
+                                          <span key={c.sessions} className="block">
+                                            Course of {c.sessions} — <span className="font-medium text-[var(--color-ink)]">{formatPence(c.totalPence)}</span>
+                                            <span className="text-[var(--color-stone-soft)]"> ({formatPence(per)}/session{save > 0 ? <>, <span className="text-[var(--color-gold-deep)]">save {save}%</span></> : ''})</span>
+                                          </span>
+                                        );
+                                      })}
                                     </span>
                                   )}
                                   {v.offerName && <span className="mt-0.5 block text-sm font-medium text-[var(--color-gold)]">{v.offerName}</span>}

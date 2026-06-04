@@ -13,11 +13,16 @@ import { BookingButtons } from '@/components/booking/BookingButtons';
 import { site } from '@/lib/site';
 import { pricingForTreatment, formatPence, statusLabel, type ServiceStatus } from '@/lib/services';
 
-/** Build the small print under a variant — duration + any course savings. */
-function variantNote(durationMin: number, courses: { sessions: number; totalPence: number }[]): string {
+/** Build the small print under a variant — duration + course price, per-session
+ *  cost and the saving vs a single session (so the value of a course is clear). */
+function variantNote(durationMin: number, courses: { sessions: number; totalPence: number }[], singlePence: number): string {
   const parts: string[] = [];
   if (durationMin) parts.push(`${durationMin} min`);
-  for (const c of courses) parts.push(`course of ${c.sessions} ${formatPence(c.totalPence)}`);
+  for (const c of courses) {
+    const per = Math.round(c.totalPence / c.sessions);
+    const save = singlePence > 0 ? Math.round((1 - per / singlePence) * 100) : 0;
+    parts.push(`course of ${c.sessions} ${formatPence(c.totalPence)} (${formatPence(per)}/session${save > 0 ? `, save ${save}%` : ''})`);
+  }
   return parts.join(' · ');
 }
 
@@ -235,7 +240,7 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
               {!enquiryOnly && variants.length ? (
                 <ul className="divide-y divide-[var(--color-line)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
                   {variants.map((v) => {
-                    const note = variantNote(v.durationMin, v.courses);
+                    const note = variantNote(v.durationMin, v.courses, v.pricePence);
                     const unavailable = v.status === 'COMING_SOON' || v.status === 'UNAVAILABLE';
                     return (
                       <li key={v.id} className="flex items-baseline justify-between gap-4 bg-[var(--color-porcelain)] px-6 py-5">
