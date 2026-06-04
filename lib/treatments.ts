@@ -333,8 +333,8 @@ export const treatments: Treatment[] = [
     tagline: 'Sculpted, smoothed, defined — your shape, refined.',
     metaTitle: 'Body Contouring & Cellulite Treatment London | KClinics',
     metaDescription:
-      'Non-invasive body contouring in Islington, London. Endosphere, anti-cellulite vacuum therapy and RF to firm, smooth and define at KClinics.',
-    keywords: ['body contouring London', 'cellulite treatment Islington', 'endosphere', 'body sculpting London'],
+      'Non-invasive body contouring in Islington, London. BodySphere, anti-cellulite vacuum therapy and RF to firm, smooth and define at KClinics.',
+    keywords: ['body contouring London', 'cellulite treatment Islington', 'bodysphere', 'body sculpting London'],
     eyebrow: 'Body & Injectables',
     intro:
       'Harmonious, refined body contours without surgery or downtime. By combining compressive micro-vibration, anti-cellulite vacuum therapy and radiofrequency, we boost microcirculation, drain retained fluid and stimulate collagen — firming skin, smoothing cellulite and sculpting more defined contours.',
@@ -350,7 +350,7 @@ export const treatments: Treatment[] = [
       { title: 'Progressive sculpting', text: 'Skin firms and contours refine across the course.' },
     ],
     faqs: [
-      { q: 'How many sessions deliver results?', a: 'A course of six to twelve, depending on the area and goal, gives the most defined and lasting result. Our BodyContour package pairs Endosphere with anti-cellulite therapy.' },
+      { q: 'How many sessions deliver results?', a: 'A course of six to twelve, depending on the area and goal, gives the most defined and lasting result. Our BodyContour package pairs BodySphere with anti-cellulite therapy.' },
       { q: 'Is it comfortable?', a: 'Very — most clients describe it as a vigorous, warming massage with no downtime.' },
       { q: 'Will results last?', a: 'With a healthy lifestyle and occasional maintenance, results are long-lasting.' },
     ],

@@ -50,7 +50,7 @@ export const packages: Pkg[] = [
     name: "BodyContour",
     subtitle: "Sculpted contours & smoother, firmer skin",
     description: "The BodyContour Package at KClinics offers advanced treatments to sculpt and tone your body, helping you achieve a slimmer, more contoured silhouette. Perfect for enhancing your natural shape with lasting results.",
-    includes: ["Endosphere body sculpting","Anti-cellulite vacuum therapy","RF body tightening","Lymphatic drainage focus","Progress tracking"],
+    includes: ["BodySphere body sculpting","Anti-cellulite vacuum therapy","RF body tightening","Lymphatic drainage focus","Progress tracking"],
     bestFor: "Improving body contours and reducing the appearance of cellulite.",
     priceFrom: "On consultation",
     gradient: ["#a98a6d","#4a3f37"],

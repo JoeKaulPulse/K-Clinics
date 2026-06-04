@@ -10,14 +10,14 @@ const SCHEDULES: Record<Family, number[]> = {
   lhr: [4, 4, 5, 6, 6, 8, 8, 10, 12], // laser hair removal — widening intervals
   laser: [6, 6, 7, 8, 8],             // tattoo / pigmentation / vascular / IPL / resurfacing
   facial: [2, 3, 4, 4],               // peels / HydraFacial / CACI courses
-  body: [1, 1, 2, 2],                 // Endosphere / body contouring (weekly-ish)
+  body: [1, 1, 2, 2],                 // BodySphere / body contouring (weekly-ish)
   hifu: [4, 4, 26],                   // HIFU / RF — course then ~6-month maintenance
 };
 
 function familyFor(slug: string): Family | null {
   if (/hair-removal/.test(slug)) return 'lhr';
   if (/hifu|rf-lifting/.test(slug)) return 'hifu';
-  if (/endosphere|body-contour/.test(slug)) return 'body';
+  if (/endosphere|bodysphere|body-contour/.test(slug)) return 'body';
   if (/facial|peel|caci|hydra|cosmetic/.test(slug)) return 'facial';
   if (/laser|tattoo|pigment|vascular|spider|ipl|resurfac|rejuven|fungal/.test(slug)) return 'laser';
   return null;
