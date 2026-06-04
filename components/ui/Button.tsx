@@ -16,7 +16,7 @@ const sizes: Record<Size, string> = {
 };
 
 const variants: Record<Variant, string> = {
-  gold: 'bg-[var(--color-gold)] text-white hover:bg-[var(--color-ink)] shadow-[var(--shadow-gold)]',
+  gold: 'bg-[var(--color-gold-deep)] text-white hover:bg-[var(--color-ink)] shadow-[var(--shadow-gold)]',
   ink: 'bg-[var(--color-ink)] text-[var(--color-porcelain)] hover:bg-[var(--color-espresso)]',
   ghost: 'bg-transparent text-current hover:bg-[color-mix(in_oklab,currentColor_8%,transparent)]',
   outline:

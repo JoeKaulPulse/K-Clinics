@@ -85,7 +85,7 @@ function Inner() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-full bg-[var(--color-gold)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60"
+        className="w-full rounded-full bg-[var(--color-gold-deep)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60"
       >
         {loading ? t('login.signingIn') : t('action.signin')}
       </button>

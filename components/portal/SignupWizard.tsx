@@ -81,7 +81,7 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
         ) : (
           <p className="mx-auto mt-3 max-w-sm text-[var(--color-stone)]">{done.reason}</p>
         )}
-        <button onClick={() => { router.push('/account'); router.refresh(); }} className="mt-6 rounded-full bg-[var(--color-gold)] px-6 py-3 font-medium text-white hover:bg-[var(--color-ink)]">
+        <button onClick={() => { router.push('/account'); router.refresh(); }} className="mt-6 rounded-full bg-[var(--color-gold-deep)] px-6 py-3 font-medium text-white hover:bg-[var(--color-ink)]">
           {t('signup.goPortal')}
         </button>
       </motion.div>
@@ -187,7 +187,7 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
       {step > 0 && (
         <div className="mt-6 flex items-center gap-3">
           <button onClick={() => go(step - 1)} className="rounded-full border border-[var(--color-line)] px-5 py-3 text-sm font-medium text-[var(--color-stone)] hover:bg-[var(--color-bone)]">{t('action.back')}</button>
-          <button onClick={next} disabled={loading} className="flex-1 rounded-full bg-[var(--color-gold)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60">
+          <button onClick={next} disabled={loading} className="flex-1 rounded-full bg-[var(--color-gold-deep)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60">
             {loading ? t('action.creating') : step === STEPS - 1 ? t('action.create') : t('action.continue')}
           </button>
         </div>
