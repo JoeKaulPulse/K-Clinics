@@ -1,10 +1,7 @@
-'use client';
-
-import { motion } from 'motion/react';
-
-/** Animates a heading word-by-word with a soft mask rise — for hero titles.
- *  Reduced-motion is handled globally by MotionConfig (transforms disabled),
- *  so the rendered structure stays identical on server and client. */
+/** Animates a heading word-by-word with a soft mask rise — for page titles.
+ *  CSS-only (no 'use client', no JS): the animation runs on first paint rather
+ *  than waiting for the motion bundle to hydrate, so the LCP heading isn't
+ *  blocked. Reduced-motion is handled by the .word-rise rule in globals.css. */
 export function WordReveal({
   text,
   className,
@@ -17,20 +14,13 @@ export function WordReveal({
   as?: 'h1' | 'h2' | 'p' | 'span';
 }) {
   const words = text.split(' ');
-
   return (
     <Tag className={className} aria-label={text}>
       {words.map((word, i) => (
         <span key={i} aria-hidden className="inline-block overflow-hidden align-bottom pb-[0.12em]">
-          <motion.span
-            className="inline-block"
-            initial={{ y: '110%', opacity: 0 }}
-            animate={{ y: '0%', opacity: 1 }}
-            transition={{ duration: 1, delay: delay + i * 0.08, ease: [0.16, 1, 0.3, 1] }}
-          >
-            {word}
-            {i < words.length - 1 ? ' ' : ''}
-          </motion.span>
+          <span className="word-rise inline-block" style={{ animationDelay: `${(delay + i * 0.08).toFixed(2)}s` }}>
+            {word}{i < words.length - 1 ? ' ' : ''}
+          </span>
         </span>
       ))}
     </Tag>
