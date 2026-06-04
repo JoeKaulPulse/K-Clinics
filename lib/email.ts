@@ -197,6 +197,20 @@ export function tmplManual(bodyHtml: string, unsubUrl?: string) {
   return emailShell({ body: bodyHtml, unsubUrl });
 }
 
+// Security notice sent whenever an account password changes — so the owner of
+// the inbox is alerted even if they didn't make the change.
+export function tmplPasswordChanged(firstName: string) {
+  return emailShell({
+    preheader: 'Your KClinics password was just changed',
+    body: `<h1 style="font-size:24px;margin:0 0 16px;color:#2a2420;">Your password was changed</h1>
+    <p>Hello ${escape(firstName)},</p>
+    <p>This is a confirmation that the password for your KClinics account was just changed.</p>
+    <p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">If this <strong>wasn’t you</strong>, please reset your password again right away and contact us at <a href="mailto:${site.email}" style="color:#8a6e54;">${site.email}</a> or <a href="${site.phoneHref}" style="color:#8a6e54;">${site.phone}</a> so we can secure your account.</p>
+    <p style="margin:24px 0;">${btn(site.url + '/account/login', 'Go to my account')}</p>
+    <p>With warmth,<br>The KClinics team</p>`,
+  });
+}
+
 // ── Gift voucher templates ───────────────────────────────────────────────────
 function voucherCard(amount: string, code: string) {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;"><tr><td style="background:#2a2420;border-radius:14px;padding:26px;text-align:center;color:#f6ece3;">

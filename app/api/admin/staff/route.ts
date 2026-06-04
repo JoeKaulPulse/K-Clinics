@@ -103,6 +103,11 @@ export async function POST(req: Request) {
     if (revoke) data.permRevoke = clean(revoke);
     if (typeof active === 'boolean') data.active = active;
     if (password) data.passwordHash = await hashPassword(password);
+    // Role/permission/password/active are baked into the target's session JWT.
+    // Bump their revocation epoch so the change takes effect immediately —
+    // otherwise a demoted user keeps elevated access until their token expires.
+    const securityRelevant = 'role' in data || 'permGrant' in data || 'permRevoke' in data || 'passwordHash' in data || data.active === false;
+    if (securityRelevant) data.sessionEpoch = { increment: 1 };
     const updated = await db.adminUser.update({ where: { id }, data });
     return NextResponse.json({ ok: true, id: updated.id });
   }

@@ -35,5 +35,7 @@ export async function POST(req: Request) {
     where: { id: client.id },
     data: { passwordHash: await hashPassword(password), portalActive: true },
   });
+  const { notifyPasswordChanged } = await import('@/lib/client-auth');
+  await notifyPasswordChanged(client.email, client.firstName);
   return NextResponse.json({ ok: true });
 }
