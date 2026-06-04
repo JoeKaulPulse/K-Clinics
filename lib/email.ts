@@ -218,6 +218,20 @@ export function tmplManual(bodyHtml: string, unsubUrl?: string) {
   return emailShell({ body: bodyHtml, unsubUrl });
 }
 
+// Single opt-in confirmation for newsletter sign-ups (incl. people without an
+// account). Confirms the subscription and makes unsubscribing one click.
+export function tmplNewsletterWelcome(unsubUrl: string) {
+  return emailShell({
+    preheader: 'You’re subscribed to KClinics — beauty notes, offers & news',
+    unsubUrl,
+    body: `<h1 style="font-size:24px;margin:0 0 16px;color:#2a2420;">You’re on the list</h1>
+    <p>Thank you for subscribing to KClinics. You’ll receive our occasional notes on treatments, skincare and member offers — never spam, and never shared.</p>
+    <p style="margin:24px 0;">${btn(site.url + '/treatments', 'Explore treatments')}</p>
+    <p style="font-size:14px;color:#91766e;">You can unsubscribe at any time using the link below — no hard feelings.</p>
+    <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
 // Secure card-on-file request for a booking taken offline (phone / walk-in), so
 // it gets the same no-show protection as an online booking. No charge is taken.
 export function tmplCardRequest(o: { firstName: string; treatment: string; start: Date; url: string }) {

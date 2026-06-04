@@ -4,13 +4,22 @@ import { crmEnabled } from '@/lib/crm';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/** Suppress a client from all marketing by their unsubscribe token. */
+/** Suppress all marketing by unsubscribe token — works for both a client
+ *  account and a newsletter-only subscriber (no account). */
 async function suppress(token: string): Promise<boolean> {
   const { db } = await import('@/lib/db');
   const client = await db.client.findUnique({ where: { unsubToken: token }, select: { id: true } });
-  if (!client) return false;
-  await db.client.update({ where: { id: client.id }, data: { unsubscribed: true, marketingOptIn: false } });
-  return true;
+  if (client) {
+    await db.client.update({ where: { id: client.id }, data: { unsubscribed: true, marketingOptIn: false } });
+    return true;
+  }
+  // Newsletter-only subscriber (footer sign-up, no account).
+  const sub = await db.newsletterSubscriber.findUnique({ where: { unsubToken: token }, select: { id: true } });
+  if (sub) {
+    await db.newsletterSubscriber.update({ where: { id: sub.id }, data: { active: false } });
+    return true;
+  }
+  return false;
 }
 
 // Browser unsubscribe (the link in the email footer).

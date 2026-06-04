@@ -88,8 +88,8 @@ export function EnquiryForm() {
           </select>
         </div>
         <div className="sm:col-span-2">
-          <label htmlFor="message" className={label}>Message</label>
-          <textarea id="message" name="message" rows={4} className={field} placeholder="Tell us a little about what you’re looking for…" />
+          <label htmlFor="message" className={label}>Message *</label>
+          <textarea id="message" name="message" rows={4} required minLength={2} className={field} placeholder="Tell us a little about what you’re looking for…" />
         </div>
       </div>
 
