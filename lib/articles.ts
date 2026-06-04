@@ -41,7 +41,7 @@ export const articles: Article[] = [
     blocks: [
       { type: 'p', text: 'Laser hair removal is one of the most requested treatments in aesthetics — and for good reason. Done well, it offers a long-term reduction in unwanted hair with minimal upkeep. Here’s exactly what to expect.' },
       { type: 'h2', text: 'How laser hair removal works' },
-      { type: 'p', text: 'A medical-grade laser targets the pigment (melanin) in the hair follicle. The light energy converts to heat, disabling the follicle’s ability to regrow hair — without damaging the surrounding skin. Because hair grows in cycles, only follicles in their active phase respond at each session, which is why a course is needed.' },
+      { type: 'p', text: 'A professional laser targets the pigment (melanin) in the hair follicle. The light energy converts to heat, disabling the follicle’s ability to regrow hair — without damaging the surrounding skin. Because hair grows in cycles, only follicles in their active phase respond at each session, which is why a course is needed.' },
       { type: 'h2', text: 'How many sessions will I need?' },
       { type: 'p', text: 'Most clients see meaningful results after 6–8 sessions, spaced four to six weeks apart. Coarser or hormonally-driven hair may need a few more. Maintenance is typically just one or two top-ups a year.' },
       { type: 'h2', text: 'Does it hurt?' },

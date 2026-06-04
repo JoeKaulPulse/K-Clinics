@@ -69,11 +69,11 @@ export const treatments: Treatment[] = [
     tagline: 'The end of the endless routine. Skin, simplified.',
     metaTitle: 'Laser Hair Removal in London (Islington) | KClinics',
     metaDescription:
-      'Medical-grade laser hair removal in Islington, London. Permanent hair reduction for face & body, all skin tones, with expert clinicians at KClinics. Free consultation.',
+      'Professional laser hair removal in Islington, London. Permanent hair reduction for face & body, all skin tones, with expert clinicians at KClinics. Free consultation.',
     keywords: ['laser hair removal London', 'laser hair removal Islington', 'permanent hair reduction', 'diode laser'],
     eyebrow: 'Laser & Skin',
     intro:
-      'Reclaim hours of your life and the quiet confidence of permanently smooth skin. Our medical-grade diode platform targets the follicle with pinpoint precision and a cooled, comfortable touch — delivering lasting hair reduction across face and body, calibrated to your individual skin tone and hair type.',
+      'Reclaim hours of your life and the quiet confidence of permanently smooth skin. Our professional diode platform targets the follicle with pinpoint precision and a cooled, comfortable touch — delivering lasting hair reduction across face and body, calibrated to your individual skin tone and hair type.',
     benefits: [
       { title: 'Permanent reduction', text: 'A structured course retires the follicle for good — not a temporary fix, but a lasting result.' },
       { title: 'Every skin tone', text: 'Advanced wavelength control makes treatment safe and effective across the full spectrum of skin types.' },
@@ -108,7 +108,7 @@ export const treatments: Treatment[] = [
     tagline: 'Groomed, effortless, permanent. Engineered for him.',
     metaTitle: "Men's Laser Hair Removal London | Back, Chest & Beard | KClinics",
     metaDescription:
-      "Men's laser hair removal in Islington, London. Back, chest, shoulders, beard-line shaping and more with medical-grade lasers at KClinics. Discreet, powerful, lasting.",
+      "Men's laser hair removal in Islington, London. Back, chest, shoulders, beard-line shaping and more with professional lasers at KClinics. Discreet, powerful, lasting.",
     keywords: ['mens laser hair removal London', 'back hair removal', 'beard line laser', 'male grooming London'],
     eyebrow: 'Laser & Skin',
     intro:
@@ -300,7 +300,7 @@ export const treatments: Treatment[] = [
     keywords: ['signature facial London', 'chemical peel London', 'microneedling London', 'PRP facial', 'skin resurfacing Islington'],
     eyebrow: 'Face & Lifting',
     intro:
-      'The Signature Facial is our bespoke, results-driven alternative to an ordinary facial — a clinical treatment built around your skin on the day. Rather than a single fixed routine, your clinician combines the right advanced steps (medical-grade chemical peels, collagen-inducing microneedling and regenerative PRP) to target what facials alone cannot: stubborn pigmentation, acne scarring, fine lines and uneven texture. Each protocol is prescribed to your skin and layered into a plan that delivers visible, lasting change.',
+      'The Signature Facial is our bespoke, results-driven alternative to an ordinary facial — a clinical treatment built around your skin on the day. Rather than a single fixed routine, your clinician combines the right advanced steps (professional chemical peels, collagen-inducing microneedling and regenerative PRP) to target what facials alone cannot: stubborn pigmentation, acne scarring, fine lines and uneven texture. Each protocol is prescribed to your skin and layered into a plan that delivers visible, lasting change.',
     benefits: [
       { title: 'Chemical peels', text: 'Resurface to soften pigmentation, scarring and dullness.' },
       { title: 'Microneedling', text: 'Stimulate collagen to refine texture, pores and fine lines.' },
