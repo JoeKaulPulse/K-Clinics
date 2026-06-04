@@ -41,6 +41,10 @@ export function EmailComposer({ segments, tags, initial, templates = [] }: { seg
   const [test, setTest] = useState('');
   const [scheduleAt, setScheduleAt] = useState('');
   const [showSchedule, setShowSchedule] = useState(false);
+  const [abOn, setAbOn] = useState(false);
+  const [subjectB, setSubjectB] = useState('');
+  const [abSamplePct, setAbSamplePct] = useState(15);
+  const [abWindowHours, setAbWindowHours] = useState(4);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const lastFocus = useRef<FocusTarget | null>(null);
@@ -106,6 +110,16 @@ export function EmailComposer({ segments, tags, initial, templates = [] }: { seg
     setMsg('Scheduled ✓');
     setTimeout(() => router.push('/admin/marketing/email'), 1200);
   }
+  async function startAbTest() {
+    if (!subjectB.trim()) return setMsg('Add a second subject line (B) to test.');
+    const j = await call({ op: 'abTest', subjectB, abSamplePct, abWindowHours });
+    if (!j.ok) return setMsg((j.error as string) || 'Could not start the A/B test.');
+    setMsg(j.testing
+      ? `A/B test started — ${j.tested} recipients sampled. The winning subject goes to everyone else in ~${abWindowHours}h.`
+      : 'Audience too small to test — sent normally.');
+    setTimeout(() => router.push('/admin/marketing/email'), 1600);
+  }
+
   function applyTemplate(id: string) {
     const t = templates.find((x) => x.id === id);
     if (!t) return;
@@ -164,14 +178,37 @@ export function EmailComposer({ segments, tags, initial, templates = [] }: { seg
             <label className="text-xs text-[var(--color-stone)]">From name <span className="text-[var(--color-stone-soft)]">(optional)</span><input value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="KClinics" className={`${field} mt-1 w-full`} /></label>
           </div>
           <div className="mt-3">
-            <label className="text-xs text-[var(--color-stone)]">Subject line
+            <label className="text-xs text-[var(--color-stone)]">{abOn ? 'Subject A' : 'Subject line'}
               <input value={subject} onFocus={onFocus('subject', -1)} onChange={(e) => setSubject(e.target.value)} placeholder="A little glow for February ✨" className={`${field} mt-1 w-full`} />
             </label>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               <span className="text-[0.65rem] uppercase tracking-wide text-[var(--color-stone-soft)]">Insert:</span>
               {MERGE_TAGS.map((m) => <button key={m.tag} type="button" onClick={() => insertTag(m.tag)} className="rounded-full border border-[var(--color-line)] px-2 py-0.5 text-[0.65rem] hover:border-[var(--color-gold)]">{m.label}</button>)}
-              <span className={`ml-auto text-[0.65rem] ${subject.length > 60 ? 'text-amber-700' : 'text-[var(--color-stone-soft)]'}`}>{subject.length} chars</span>
+              <label className="ml-auto flex items-center gap-1.5 text-[0.65rem] text-[var(--color-stone)]">
+                <input type="checkbox" checked={abOn} onChange={(e) => setAbOn(e.target.checked)} className="h-3.5 w-3.5 accent-[var(--color-gold)]" /> A/B test subject
+              </label>
+              <span className={`text-[0.65rem] ${subject.length > 60 ? 'text-amber-700' : 'text-[var(--color-stone-soft)]'}`}>{subject.length} chars</span>
             </div>
+            {abOn && (
+              <div className="mt-2 rounded-[var(--radius-md)] border border-dashed border-[var(--color-line)] bg-white/50 p-3">
+                <label className="text-xs text-[var(--color-stone)]">Subject B
+                  <input value={subjectB} onChange={(e) => setSubjectB(e.target.value)} placeholder="An alternative subject to test" className={`${field} mt-1 w-full`} />
+                </label>
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-[var(--color-stone)]">
+                  <label className="flex items-center gap-1.5">Sample
+                    <select value={abSamplePct} onChange={(e) => setAbSamplePct(Number(e.target.value))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1">
+                      {[10, 15, 20, 25].map((p) => <option key={p} value={p}>{p}% each</option>)}
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-1.5">Decide after
+                    <select value={abWindowHours} onChange={(e) => setAbWindowHours(Number(e.target.value))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1">
+                      {[2, 4, 8, 24].map((h) => <option key={h} value={h}>{h}h</option>)}
+                    </select>
+                  </label>
+                  <span className="text-[var(--color-stone-soft)]">Winner (by open rate) sends to the other {audCount != null ? Math.max(0, 100 - abSamplePct * 2) : ''}%.</span>
+                </div>
+              </div>
+            )}
             {spamHits.length > 0 && <p className="mt-1 text-[0.65rem] text-amber-700">Possible spam triggers: {spamHits.join(', ')}</p>}
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -246,8 +283,10 @@ export function EmailComposer({ segments, tags, initial, templates = [] }: { seg
             <button onClick={() => send(true)} disabled={busy || !test} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">Send test</button>
             <button onClick={saveTemplate} disabled={busy} className="ml-auto rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">Save as template</button>
             <button onClick={saveDraft} disabled={busy} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">Save draft</button>
-            <button onClick={() => setShowSchedule((s) => !s)} disabled={busy} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">Schedule…</button>
-            <button onClick={() => { if (confirm(`Send this email to ${audCount ?? 'the selected'} ${audCount === 1 ? 'person' : 'recipients'} now?`)) send(false); }} disabled={busy || !subject || !audCount} className="rounded-full bg-[var(--color-ink)] px-6 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Sending…' : 'Send now'}</button>
+            {!abOn && <button onClick={() => setShowSchedule((s) => !s)} disabled={busy} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">Schedule…</button>}
+            {abOn
+              ? <button onClick={() => { if (confirm(`Start an A/B test: ${abSamplePct}% get subject A, ${abSamplePct}% get subject B, and the winner goes to the rest after ${abWindowHours}h?`)) startAbTest(); }} disabled={busy || !subject || !subjectB || !audCount} className="rounded-full bg-[var(--color-ink)] px-6 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Starting…' : 'Start A/B test'}</button>
+              : <button onClick={() => { if (confirm(`Send this email to ${audCount ?? 'the selected'} ${audCount === 1 ? 'person' : 'recipients'} now?`)) send(false); }} disabled={busy || !subject || !audCount} className="rounded-full bg-[var(--color-ink)] px-6 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Sending…' : 'Send now'}</button>}
           </div>
           {showSchedule && (
             <div className="mt-3 flex flex-wrap items-end gap-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3">

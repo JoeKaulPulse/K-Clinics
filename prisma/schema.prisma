@@ -749,6 +749,12 @@ model Campaign {
   audienceType String?  // all | segment | tag
   audienceValue String?
   createdBy    String?
+  // A/B subject test: variant B subject, % of the audience used per variant in
+  // the test, when to pick a winner, and the winner ('A'|'B') once decided.
+  subjectB     String?
+  abSamplePct  Int?
+  abDecideAt   DateTime?
+  abWinner     String?
   sentAt      DateTime?
   recipients  Int      @default(0)
   createdAt   DateTime @default(now())
