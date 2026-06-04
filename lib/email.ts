@@ -257,7 +257,7 @@ export function tmplBookingConfirmation(o: { firstName: string; treatment: strin
       Cancellations are free up to <strong>24 hours</strong> before your appointment; within 24 hours the full fee applies.
     </p>
     ${o.arriveEarly ? `<p style="font-size:14px;">Please <strong>arrive 15 minutes early</strong> for your first appointment so your clinician can talk through your treatment with you.</p>` : ''}
-    ${o.nextNote ? `<p style="font-size:14px;">💡 ${escape(o.nextNote)}</p>` : ''}
+    ${o.nextNote ? `<p style="font-size:14px;color:#5b4f47;border-left:2px solid #c2a589;padding-left:14px;margin:18px 0;">${escape(o.nextNote)}</p>` : ''}
     ${o.formsUrl ? `<p style="font-size:14px;">Please complete your pre-treatment forms before your visit — it only takes a few minutes (you can also do them in clinic when you arrive).</p><p style="margin:16px 0;">${btn(o.formsUrl, 'Complete my forms')}</p>` : ''}
     <p style="margin:24px 0;">${btn(o.manageUrl, 'Manage or cancel booking')}</p>
     <p>${site.address.street}, ${site.address.locality}.<br>With warmth,<br>The KClinics team</p>`,

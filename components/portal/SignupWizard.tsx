@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { authField, authLabel } from '@/components/portal/AuthShell';
 import { portalTranslator, PORTAL_LOCALE_COOKIE, type Locale } from '@/lib/i18n-portal';
 import { LOCALE_LABELS } from '@/lib/i18n';
+import { Glyph } from '@/components/ui/Glyph';
 
 const STEPS = 4;
 
@@ -92,7 +93,7 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
     <div>
       {refCode && (
         <div className="mb-6 flex items-center gap-2.5 rounded-[var(--radius-md)] border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/5 px-4 py-3 text-sm text-[var(--color-ink)]">
-          <span aria-hidden className="text-base">🎁</span>
+          <Glyph name="gift" className="h-4 w-4 shrink-0 text-[var(--color-gold-deep)]" />
           <span>{t('signup.referred')}</span>
         </div>
       )}

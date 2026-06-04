@@ -1,11 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
+
+// Refined line-art sentiment marks in brand currentColor — no emoji, in keeping
+// with the clinic's house style. Eyes + a mouth whose curve carries the meaning.
+const face = (mouth: ReactNode) => (
+  <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" aria-hidden>
+    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.3" />
+    <circle cx="9" cy="10" r="0.9" fill="currentColor" />
+    <circle cx="15" cy="10" r="0.9" fill="currentColor" />
+    {mouth}
+  </svg>
+);
 
 const OPTIONS = [
-  { id: 'great', emoji: '😍', label: 'Great — loving the results' },
-  { id: 'ok', emoji: '🙂', label: 'OK — all as expected' },
-  { id: 'concerned', emoji: '😟', label: 'I have a concern' },
+  { id: 'great', icon: face(<path d="M8 14c1.2 1.8 2.5 2.6 4 2.6s2.8-.8 4-2.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />), label: 'Great — loving the results' },
+  { id: 'ok', icon: face(<path d="M8.5 14.5h7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />), label: 'OK — all as expected' },
+  { id: 'concerned', icon: face(<path d="M8 15.6c1.2-1.8 2.5-2.6 4-2.6s2.8.8 4 2.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />), label: 'I have a concern' },
 ] as const;
 
 export function FollowUpForm({ token, treatment }: { token: string; treatment: string }) {
@@ -49,8 +60,8 @@ export function FollowUpForm({ token, treatment }: { token: string; treatment: s
       <div className="mt-6 grid gap-2">
         {OPTIONS.map((o) => (
           <button key={o.id} type="button" onClick={() => setSentiment(o.id)}
-            className={`flex items-center gap-3 rounded-[var(--radius-md)] border p-4 text-left transition-all ${sentiment === o.id ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
-            <span className="text-2xl">{o.emoji}</span><span className="text-sm font-medium">{o.label}</span>
+            className={`flex items-center gap-3 rounded-[var(--radius-md)] border p-4 text-left transition-all ${sentiment === o.id ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)] text-[var(--color-gold-deep)]' : 'border-[var(--color-line)] text-[var(--color-stone)] hover:border-[var(--color-stone-soft)]'}`}>
+            <span aria-hidden>{o.icon}</span><span className="text-sm font-medium text-[var(--color-ink)]">{o.label}</span>
           </button>
         ))}
       </div>

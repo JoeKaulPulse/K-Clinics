@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Markdown } from '@/components/academy/Markdown';
+import { Glyph } from '@/components/ui/Glyph';
 import type { CourseLearning, ModuleView, LessonView, QuizView } from '@/lib/lms';
 
 function ytId(url: string): string | null {
@@ -65,7 +66,7 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
         </div>
 
         {totals.allDone && (
-          <Link href={`/academy/learn/${slug}/certificate`} className="mt-4 block rounded-[var(--radius-sm)] bg-[var(--color-ink)] px-4 py-2.5 text-center text-sm font-medium text-[var(--color-porcelain)]">🎓 View your certificate</Link>
+          <Link href={`/academy/learn/${slug}/certificate`} className="mt-4 flex items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-[var(--color-ink)] px-4 py-2.5 text-center text-sm font-medium text-[var(--color-porcelain)]"><Glyph name="cap" className="h-4 w-4" /> View your certificate</Link>
         )}
 
         <nav className="mt-6 space-y-4">
@@ -210,7 +211,7 @@ function QuizPanel({ quiz, state, onGraded }: { quiz: QuizView; state?: { passed
 
       {result && (
         <div className={`mt-5 rounded-[var(--radius-lg)] border p-5 ${result.passed ? 'border-[var(--color-gold)]/40 bg-[var(--color-gold)]/8' : 'border-[var(--color-blush)]/40 bg-[var(--color-blush)]/8'}`}>
-          <p className="font-[family-name:var(--font-display)] text-2xl">{result.passed ? 'Passed 🎉' : 'Not quite yet'}</p>
+          <p className="flex items-center gap-2 font-[family-name:var(--font-display)] text-2xl">{result.passed && <Glyph name="sparkle" className="h-5 w-5 text-[var(--color-gold)]" />}{result.passed ? 'Passed' : 'Not quite yet'}</p>
           <p className="mt-1 text-sm text-[var(--color-ink-soft)]">You scored <strong>{result.scorePct}%</strong> ({result.passMark}% needed). {result.passed ? 'Well done — the module is complete.' : 'Review the feedback below and try again.'}</p>
         </div>
       )}
