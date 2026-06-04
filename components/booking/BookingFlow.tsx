@@ -48,6 +48,7 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
   const [date, setDate] = useState('');
   const [slots, setSlots] = useState<string[]>([]);
   const [preferred, setPreferred] = useState<string[]>([]);
+  const [popularDays, setPopularDays] = useState<string[]>([]);
   const [slot, setSlot] = useState('');
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [addOns, setAddOns] = useState<Set<string>>(new Set());
@@ -108,6 +109,14 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
       .then((r) => r.json()).then((j) => { setSlots(j.slots || []); setPreferred(j.preferred || []); }).catch(() => { setSlots([]); setPreferred([]); })
       .finally(() => setLoadingSlots(false));
   }, [stage, service, variant, date, totalDuration]);
+
+  // Popular upcoming days (already have bookings + still available) to nudge
+  // clustering. Fetched once when entering the time step.
+  useEffect(() => {
+    if (stage !== 'time' || !service || !variant || isDemo) { setPopularDays([]); return; }
+    fetch('/api/booking/popular-days', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: service.treatmentSlug, durationMin: totalDuration }) })
+      .then((r) => r.json()).then((j) => setPopularDays(j.days || [])).catch(() => setPopularDays([]));
+  }, [stage, service, variant, totalDuration]);
 
   const minDate = useMemo(() => new Date(Date.now() + 864e5).toISOString().slice(0, 10), []);
 
@@ -244,6 +253,18 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
               <p className="mt-1 text-sm text-[var(--color-stone)]">{totalDuration} min · {money(orderTotal)}{sessions > 1 ? ` · course of ${sessions}` : ''}</p>
               <div className="mt-6">
                 <label className={label} htmlFor="bdate">Select a date</label>
+                {popularDays.length > 0 && (
+                  <div className="mb-3">
+                    <p className="mb-1.5 text-xs text-[var(--color-stone-soft)]"><span className="text-[var(--color-gold)]">★</span> Popular days — you’ll likely be seen sooner</p>
+                    <div className="flex flex-wrap gap-2">
+                      {popularDays.map((d) => (
+                        <button key={d} type="button" onClick={() => setDate(d)} className={`rounded-full border px-3 py-1.5 text-xs transition-all ${date === d ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20'}`}>
+                          {new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <input id="bdate" type="date" min={minDate} value={date} onChange={(e) => setDate(e.target.value)} className={field} />
               </div>
               {date && (

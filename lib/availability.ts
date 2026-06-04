@@ -267,6 +267,28 @@ export async function recommendedSlots(dateISO: string, durationMin: number, tre
   return { slots, preferred };
 }
 
+const toDateISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/** Upcoming dates that already have bookings AND still have availability — used
+ *  to nudge new bookings onto days the clinic is already open/staffed for, so
+ *  appointments cluster onto fewer days. Returns up to `limit` soonest dates. */
+export async function popularDays(durationMin: number, treatmentSlug?: string, locationId?: string | null, withinDays = 21, limit = 6): Promise<string[]> {
+  const from = new Date(); from.setHours(0, 0, 0, 0);
+  const to = new Date(from); to.setDate(to.getDate() + withinDays);
+  const bookings = await db.booking.findMany({
+    where: { status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { gte: from, lt: to }, ...(locationId ? { locationId } : {}) },
+    select: { startAt: true },
+  });
+  const days = [...new Set(bookings.map((b) => toDateISO(b.startAt)))].sort();
+  const out: string[] = [];
+  // Bound the availability checks for cost; days are already sorted soonest-first.
+  for (const d of days.slice(0, 12)) {
+    if (out.length >= limit) break;
+    if ((await freeSlots(d, durationMin, treatmentSlug, locationId)).length) out.push(d);
+  }
+  return out;
+}
+
 /** Pick a competent, free clinician for a slot (auto-assign), optionally at a location. */
 export async function pickPractitioner(startISO: string, durationMin: number, treatmentSlug: string, locationId?: string | null): Promise<string | null> {
   const start = new Date(startISO);
