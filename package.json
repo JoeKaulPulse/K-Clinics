@@ -2,6 +2,7 @@
   "name": "k-clinics",
   "version": "1.0.0",
   "private": true,
+  "engines": { "node": ">=20.0.0 <23.0.0" },
   "description": "K Clinics — premium aesthetics & aesthetic dentistry, Islington London.",
   "scripts": {
     "dev": "node scripts/gen-image-manifest.mjs && next dev",
