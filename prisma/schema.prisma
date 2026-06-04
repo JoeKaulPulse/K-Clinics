@@ -154,6 +154,7 @@ enum AuditAction {
   CONSENT_DECLINED
   BEFORE_PHOTO_CAPTURED
   CLIENT_DELETED
+  DATA_EXPORTED
 }
 
 enum ReviewStatus {
