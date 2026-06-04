@@ -21,7 +21,7 @@ export const packages: Pkg[] = [
     bestFor: "Achieving radiant, deeply hydrated and rejuvenated skin throughout the year.",
     priceFrom: "On consultation",
     gradient: ["#a98a6d","#7b6a5d"],
-    related: ["hydraglow-facial","ipl-phototherapy","face-treatments"],
+    related: ["hydraglow-facial","face-treatments"],
   },
   {
     slug: "smoothskin",
@@ -65,7 +65,7 @@ export const packages: Pkg[] = [
     bestFor: "A long-term, comprehensive solution to remove unwanted hair.",
     priceFrom: "On consultation",
     gradient: ["#dcc4a8","#a98a6d"],
-    related: ["laser-hair-removal","ipl-phototherapy","hydraglow-facial"],
+    related: ["laser-hair-removal","hydraglow-facial"],
   },
   {
     slug: "luxelift",
@@ -120,7 +120,7 @@ export const packages: Pkg[] = [
     bestFor: "Clients who want maximum flexibility in choosing your treatments throughout the year.",
     priceFrom: "On consultation",
     gradient: ["#a98a6d","#2a2420"],
-    related: ["hydraglow-facial","smas-hifu-lifting","ipl-phototherapy"],
+    related: ["hydraglow-facial","smas-hifu-lifting"],
   },
 ];
 

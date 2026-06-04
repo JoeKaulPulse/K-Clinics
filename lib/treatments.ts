@@ -95,7 +95,7 @@ export const treatments: Treatment[] = [
       { label: 'Interval', value: '4–6 weeks' },
       { label: 'Downtime', value: 'None' },
     ],
-    related: ['laser-hair-removal-for-men', 'ipl-phototherapy', 'hydraglow-facial'],
+    related: ['laser-hair-removal-for-men', 'hydraglow-facial'],
     gradient: ['#c2a589', '#7b6a5d'],
   },
   {
@@ -134,7 +134,7 @@ export const treatments: Treatment[] = [
       { label: 'Popular areas', value: 'Back · Chest · Neckline' },
       { label: 'Downtime', value: 'None' },
     ],
-    related: ['laser-hair-removal', 'ipl-phototherapy', 'rf-lifting'],
+    related: ['laser-hair-removal', 'rf-lifting'],
     gradient: ['#7b6a5d', '#2a2420'],
   },
   {
@@ -172,7 +172,7 @@ export const treatments: Treatment[] = [
       { label: 'Approach', value: 'Fade or full removal' },
       { label: 'Consult', value: 'Complimentary' },
     ],
-    related: ['ipl-phototherapy', 'face-treatments', 'laser-hair-removal'],
+    related: ['face-treatments', 'laser-hair-removal'],
     gradient: ['#2a2420', '#7b6a5d'],
   },
   {
@@ -284,7 +284,7 @@ export const treatments: Treatment[] = [
       { label: 'Downtime', value: 'None' },
       { label: 'Glow', value: 'Immediate' },
     ],
-    related: ['ipl-phototherapy', 'face-treatments', 'cosmetic-injections'],
+    related: ['face-treatments', 'cosmetic-injections'],
     gradient: ['#cdb4a3', '#c2a589'],
   },
   {
@@ -322,7 +322,7 @@ export const treatments: Treatment[] = [
       { label: 'Format', value: 'Prescriptive course' },
       { label: 'Consult', value: 'Complimentary' },
     ],
-    related: ['hydraglow-facial', 'ipl-phototherapy', 'smas-hifu-lifting'],
+    related: ['hydraglow-facial', 'smas-hifu-lifting'],
     gradient: ['#7b6a5d', '#c2a589'],
   },
   {
@@ -774,7 +774,6 @@ export const bookingConfig: Record<string, BookingCfg> = {
   'scar-stretch-mark-reduction': { durationMin: 45, bufferMin: 10 },
   'spider-veins-removal':        { durationMin: 25, bufferMin: 10, requiresResource: 'laser' },
   'laser-skin-resurfacing':      { durationMin: 45, bufferMin: 10, requiresResource: 'laser' },
-  'ipl-phototherapy':            { durationMin: 45, bufferMin: 10, requiresResource: 'laser' },
   'fungal-nail-infection-treatment': { durationMin: 30 },
   'permanent-makeup-removal':    { durationMin: 30 },
   'microneedling':               { durationMin: 60 },
