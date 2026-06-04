@@ -4,7 +4,7 @@ import { listServices } from '@/lib/services';
 
 // Personalised offers derived from a client's treatment history. Examples:
 //  • "You've completed 4 Laser Hair Removal sessions — add Underarms for £14."
-//  • "You've had Endosphere 6 times — save with a course of 6."
+//  • "You've had BodySphere 6 times — save with a course of 6."
 
 export type PersonalOffer = { id: string; kind: 'course' | 'addon'; title: string; detail: string; href: string; pricePence?: number };
 

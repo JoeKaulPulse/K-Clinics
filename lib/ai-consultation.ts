@@ -32,7 +32,7 @@ export type AnalyzeResult =
 function areaForSlug(slug: string, category: string): string {
   if (category === 'dentistry' || /teeth|veneer|whiten|bonding|dental|smile|braces|denture/.test(slug)) return 'teeth';
   if (/hair-removal|scalp/.test(slug)) return 'hair';
-  if (/body-contour|endosphere|hifu|fat-dissolv|cellulite/.test(slug)) return 'body';
+  if (/body-contour|endosphere|bodysphere|hifu|fat-dissolv|cellulite/.test(slug)) return 'body';
   return 'skin';
 }
 
