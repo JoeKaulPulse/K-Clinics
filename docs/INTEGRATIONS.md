@@ -111,19 +111,21 @@ only the in-app rota.
 
 ---
 
-## 7. Google Business (review → Google integration) — **Optional**
+## 7. Google reviews & Business Profile — **Optional**
 
-First-party reviews are nudged to Google for happy (4★+) clients.
+First-party reviews are nudged to Google for happy clients, and your real Google
+rating + reviews can be shown on the site, blended with in-house reviews.
 
 | Variable | Purpose |
 |---|---|
-| `GOOGLE_PLACE_ID` | Your Google Place ID — powers the public "Share it on Google" link. From the [Place ID finder](https://developers.google.com/maps/documentation/places/web-service/place-id). |
-| `GOOGLE_BUSINESS_ACCOUNT_ID` | *Optional.* For pulling Google reviews back in (Business Profile API). |
-| `GOOGLE_BUSINESS_LOCATION_ID` | *Optional.* Location for the Business Profile API. |
+| `GOOGLE_PLACE_ID` | Your Google Place ID — powers the public "Share it on Google" deep link and identifies the business for the Places lookup. From the [Place ID finder](https://developers.google.com/maps/documentation/places/web-service/place-id). |
+| `GOOGLE_PLACES_API_KEY` | **Required to display your Google star-rating + reviews** on the homepage, `/reviews` and the blended aggregate (`lib/reviews-aggregate.ts`). Google Cloud Console → enable **Places API** → create an API key (restrict to Places API). |
+| `GOOGLE_BUSINESS_ACCOUNT_ID` / `GOOGLE_BUSINESS_LOCATION_ID` | Reserved for the Business Profile **management** API (read all reviews into the admin + reply in-app). That in-app sync is **not yet wired** — `syncGoogleReviews()` is a guarded stub. |
 
 **Without `GOOGLE_PLACE_ID`:** review submission still works and is stored;
-clients just aren't offered the Google hand-off. The leave-a-review and
-moderation flow is fully functional regardless.
+clients just aren't offered the Google hand-off. **Without `GOOGLE_PLACES_API_KEY`:**
+only in-house reviews feed the public rating (no Google reviews shown). The
+leave-a-review and moderation flow is fully functional regardless.
 
 ---
 
