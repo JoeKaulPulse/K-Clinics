@@ -30,7 +30,7 @@ export default async function TreatmentsPage() {
       <PageHero
         eyebrow="Aesthetics · Laser · Skin · Body"
         title="The art and science of looking remarkable."
-        lede="From medical-grade laser to non-surgical lifting and refined injectables — every treatment is calibrated to you, and delivered with the precision a premium result demands."
+        lede="From professional laser to non-surgical lifting and refined injectables — every treatment is calibrated to you, and delivered with the precision a premium result demands."
         gradient={['#a98a6d', '#7b6a5d']}
       >
         <BookingButtons />

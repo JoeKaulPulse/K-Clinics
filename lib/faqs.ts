@@ -21,7 +21,7 @@ export const generalFaqs: { heading: string; items: Faq[] }[] = [
   {
     heading: 'Treatments & safety',
     items: [
-      { q: 'Are your treatments safe?', a: 'Absolutely. We use medical-grade technology, follow rigorous protocols and our treatments are delivered by trained, experienced clinicians who put your safety first.' },
+      { q: 'Are your treatments safe?', a: 'Absolutely. We use professional technology, follow rigorous protocols and our treatments are delivered by trained, experienced clinicians who put your safety first.' },
       { q: 'Will my results look natural?', a: 'Natural-looking enhancement is our signature. We treat conservatively and artistically, so you look like a refreshed, confident version of yourself.' },
       { q: 'How do I know which treatment is right for me?', a: 'That is exactly what your consultation is for. We assess your goals and recommend a clear, honest, personalised plan — no pressure, ever.' },
     ],

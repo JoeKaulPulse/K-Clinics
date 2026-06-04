@@ -102,7 +102,7 @@ export default async function HomePage() {
               tag: 'Aesthetics',
               href: '/treatments',
               title: 'Laser, Skin & Body',
-              text: 'Medical-grade laser hair removal, non-surgical lifting, advanced facials, body contouring and refined injectables.',
+              text: 'Professional laser hair removal, non-surgical lifting, advanced facials, body contouring and refined injectables.',
               grad: ['#a98a6d', '#7b6a5d'] as [string, string],
               img: treatmentImage('laser-hair-removal'),
             },
