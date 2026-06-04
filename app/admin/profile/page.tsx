@@ -37,6 +37,7 @@ export default async function ProfilePage() {
     CONSUMABLES: uk ? 'Витратні' : 'Consumables', PUNCTUALITY: uk ? 'Пунктуальність' : 'Punctuality',
     PERFORMANCE: uk ? 'Результати' : 'Performance', FRIENDLINESS: uk ? 'Привітність' : 'Friendliness',
     TEAMWORK: uk ? 'Команда' : 'Teamwork', MANUAL: uk ? 'Коригування' : 'Adjustment', REDEMPTION: uk ? 'Витрачено' : 'Redeemed',
+    REVENUE: uk ? 'Дохід' : 'Revenue', UPSELL: uk ? 'Допродажі' : 'Add-ons', REBOOK: uk ? 'Повторні записи' : 'Rebookings',
   };
 
   return (
