@@ -55,6 +55,38 @@ export default async function EmailDashboard() {
     stat.set(e.campaignId, s);
   }
 
+  // Top clicked links (across recent campaigns).
+  const topLinks = await db.emailLinkClick.groupBy({
+    by: ['url'], _sum: { clicks: true }, orderBy: { _sum: { clicks: 'desc' } }, take: 8,
+  });
+
+  // Performance by audience — campaigns sent in the last 90 days, grouped by the
+  // audience they targeted.
+  const since90 = new Date(Date.now() - 90 * 86400000);
+  const sentCampaigns = await db.campaign.findMany({
+    where: { status: 'SENT', sentAt: { gte: since90 } },
+    select: { id: true, recipients: true, audienceType: true, audienceValue: true },
+  });
+  const byAud = new Map<string, { label: string; recipients: number; opened: number; clicked: number }>();
+  if (sentCampaigns.length) {
+    const evs = await db.emailEvent.findMany({ where: { campaignId: { in: sentCampaigns.map((c) => c.id) } }, select: { campaignId: true, openedAt: true, clickedAt: true } });
+    const evByCampaign = new Map<string, { opened: number; clicked: number }>();
+    for (const e of evs) {
+      if (!e.campaignId) continue;
+      const s = evByCampaign.get(e.campaignId) ?? { opened: 0, clicked: 0 };
+      if (e.openedAt) s.opened++; if (e.clickedAt) s.clicked++;
+      evByCampaign.set(e.campaignId, s);
+    }
+    for (const c of sentCampaigns) {
+      const label = audienceLabel(c.audienceType, c.audienceValue);
+      const cur = byAud.get(label) ?? { label, recipients: 0, opened: 0, clicked: 0 };
+      const ev = evByCampaign.get(c.id) ?? { opened: 0, clicked: 0 };
+      cur.recipients += c.recipients; cur.opened += ev.opened; cur.clicked += ev.clicked;
+      byAud.set(label, cur);
+    }
+  }
+  const audienceRows = [...byAud.values()].sort((a, b) => b.recipients - a.recipients);
+
   const can = await sessionPermissions();
   const locale = await getLocale();
   return (
@@ -106,6 +138,50 @@ export default async function EmailDashboard() {
           </tbody>
         </table>
       </section>
+
+      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        {/* Performance by audience */}
+        {audienceRows.length > 0 && (
+          <section>
+            <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">Performance by audience <span className="normal-case text-[var(--color-stone-soft)]">· 90 days</span></h2>
+            <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+              <table className="w-full text-sm">
+                <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th className="p-3">Audience</th><th className="p-3">Sent</th><th className="p-3">Opens</th><th className="p-3">Clicks</th></tr></thead>
+                <tbody>
+                  {audienceRows.map((a) => (
+                    <tr key={a.label} className="border-t border-[var(--color-line)]">
+                      <td className="p-3">{a.label}</td>
+                      <td className="p-3">{a.recipients}</td>
+                      <td className="p-3">{a.recipients ? `${pct(a.opened, a.recipients)}%` : '—'}</td>
+                      <td className="p-3">{a.recipients ? `${pct(a.clicked, a.recipients)}%` : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {/* Top clicked links */}
+        {topLinks.length > 0 && (
+          <section>
+            <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">Top clicked links</h2>
+            <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+              <table className="w-full text-sm">
+                <tbody>
+                  {topLinks.map((l) => (
+                    <tr key={l.url} className="border-b border-[var(--color-line)] last:border-0">
+                      <td className="max-w-0 truncate p-3"><a href={l.url} target="_blank" rel="noreferrer" className="text-[var(--color-gold)] hover:underline">{l.url}</a></td>
+                      <td className="whitespace-nowrap p-3 text-right font-medium">{l._sum.clicks ?? 0} clicks</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+      </div>
+
       <p className="mt-4 text-xs text-[var(--color-stone-soft)]">Opens &amp; clicks require the Resend webhook + tracking to be enabled (point it at <code>/api/webhooks/resend</code>).</p>
     </AdminShell>
   );

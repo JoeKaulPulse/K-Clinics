@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   const secret = process.env.RESEND_WEBHOOK_SECRET;
   if (secret && !verify(secret, req.headers, body)) return new Response('bad signature', { status: 401 });
 
-  let evt: { type?: string; data?: { email_id?: string } };
+  let evt: { type?: string; data?: { email_id?: string; click?: { link?: string } } };
   try { evt = JSON.parse(body); } catch { return new Response('bad json', { status: 400 }); }
   const providerId = evt.data?.email_id;
   if (!providerId || !evt.type) return new Response('ok');
@@ -39,6 +39,21 @@ export async function POST(req: Request) {
   };
   const data = map[evt.type];
   if (data) await db.emailEvent.updateMany({ where: { providerId }, data }).catch(() => {});
+
+  // Record which link was clicked (per-campaign), for the link breakdown.
+  if (evt.type === 'email.clicked' && evt.data?.click?.link) {
+    try {
+      const ev = await db.emailEvent.findFirst({ where: { providerId }, select: { campaignId: true } });
+      if (ev?.campaignId) {
+        const url = String(evt.data.click.link).slice(0, 500);
+        await db.emailLinkClick.upsert({
+          where: { campaignId_url: { campaignId: ev.campaignId, url } },
+          update: { clicks: { increment: 1 } },
+          create: { campaignId: ev.campaignId, url, clicks: 1 },
+        });
+      }
+    } catch { /* non-fatal */ }
+  }
 
   // List hygiene: a spam complaint or a hard bounce means we must stop emailing
   // this client — suppress them so they're excluded from every future send.
