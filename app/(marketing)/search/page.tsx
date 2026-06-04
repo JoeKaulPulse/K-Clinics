@@ -11,6 +11,7 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Search — KClinics',
   description: 'Search treatments, articles and pages across KClinics.',
   path: '/search',
+  noindex: true, // thin, query-driven results — keep out of the index
 });
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {

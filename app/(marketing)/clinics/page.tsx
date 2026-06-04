@@ -4,7 +4,7 @@ import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { AccessBadges } from '@/components/ui/AccessBadges';
 import { site } from '@/lib/site';
-import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
+import { pageMeta, JsonLd, breadcrumbLd, organizationLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Our Clinic — Find Us in Islington, London | KClinics',
@@ -26,11 +26,11 @@ export default async function ClinicsPage() {
   const cms = await getPublishedPage('/clinics');
   if (cms) {
     const { SectionRenderer } = await import('@/components/cms/SectionRenderer');
-    return (<><JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Our Clinics', path: '/clinics' }])} /><SectionRenderer sections={cms} /></>);
+    return (<><JsonLd data={[organizationLd(), breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Our Clinics', path: '/clinics' }])]} /><SectionRenderer sections={cms} /></>);
   }
   return (
     <>
-      <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Our Clinics', path: '/clinics' }])} />
+      <JsonLd data={[organizationLd(), breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Our Clinics', path: '/clinics' }])]} />
       <PageHero
         eyebrow="Our clinic"
         title="Find us in Clerkenwell."

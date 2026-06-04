@@ -16,11 +16,14 @@ export async function pageMeta({
   path = '/',
   keywords,
   ownOgImage = false,
+  noindex = false,
 }: {
   title: string;
   description: string;
   path?: string;
   keywords?: string[];
+  /** Keep this page out of the index (thin/transactional pages). */
+  noindex?: boolean;
   /** When true, defer to a route's own `opengraph-image.tsx` instead of the
    *  dynamic /og card — unless an admin override supplies a custom OG image. */
   ownOgImage?: boolean;
@@ -54,7 +57,7 @@ export async function pageMeta({
     description: desc,
     keywords: finalKeywords,
     alternates: { canonical },
-    ...(ov?.noindex ? { robots: { index: false, follow: false } } : {}),
+    ...((ov?.noindex || noindex) ? { robots: { index: false, follow: false } } : {}),
     openGraph: {
       type: 'website',
       url,
