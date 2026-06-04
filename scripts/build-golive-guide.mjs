@@ -401,7 +401,7 @@ render([
   { steps: [
     'In Stripe → “Developers” → “Webhooks” → “Add endpoint”.',
     'Endpoint URL: https://kclinics.co.uk/api/stripe/webhook',
-    'Click “Select events” and add: setup_intent.succeeded and payment_intent.succeeded (add payment_intent.payment_failed too if offered).',
+    'Click “Select events” and add exactly two: setup_intent.succeeded and payment_intent.succeeded. No others are needed — failures (including card authentication) are handled inside the app.',
     'Click “Add endpoint”. On the new endpoint’s page, find “Signing secret”, click “Reveal”, and copy it — it starts with whsec_.',
     'Paste that into Vercel as STRIPE_WEBHOOK_SECRET, then redeploy.',
   ] },
