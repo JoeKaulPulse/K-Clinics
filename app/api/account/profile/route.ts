@@ -8,7 +8,7 @@ const schema = z.object({
   firstName: z.string().min(1).max(80).optional(),
   lastName: z.string().max(80).optional().or(z.literal('')),
   phone: z.string().max(40).optional().or(z.literal('')),
-  dob: z.string().optional().or(z.literal('')),
+  dob: z.string().refine((s) => !s || (!isNaN(Date.parse(s)) && new Date(s) < new Date() && new Date(s) > new Date('1900-01-01')), 'Enter a valid date of birth').optional().or(z.literal('')),
   gender: z.enum(['FEMALE', 'MALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_SAY', '']).optional(),
   genderSelfDescribe: z.string().max(60).optional().or(z.literal('')),
   marketingOptIn: z.boolean().optional(),

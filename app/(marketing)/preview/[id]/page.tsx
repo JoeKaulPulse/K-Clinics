@@ -1,9 +1,11 @@
+import type { Metadata } from 'next';
 import { redirect, notFound } from 'next/navigation';
 import { getSession, sessionCan } from '@/lib/auth';
 import { getPageForEdit } from '@/lib/pages';
 import { SectionRenderer } from '@/components/cms/SectionRenderer';
 
 export const dynamic = 'force-dynamic';
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 // Admin-only draft preview, rendered with the live header/footer chrome so it
 // looks exactly like the published page will.

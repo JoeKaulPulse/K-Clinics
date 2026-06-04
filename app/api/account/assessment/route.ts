@@ -25,10 +25,17 @@ export async function POST(req: Request) {
   // Record the language the client filled the form in (their saved preference),
   // so staff get an accurate translation and the original is always preserved.
   let sourceLocale = 'en';
+  // Only attach a bookingId if it actually belongs to this client (don't let a
+  // crafted request link an assessment to someone else's booking).
+  let bookingId: string | null = null;
   try {
     const { db } = await import('@/lib/db');
     const c = await db.client.findUnique({ where: { id: session.sub }, select: { locale: true } });
     sourceLocale = c?.locale === 'uk' ? 'uk' : 'en';
+    if (parsed.data.bookingId) {
+      const owned = await db.booking.findFirst({ where: { id: parsed.data.bookingId, clientId: session.sub }, select: { id: true } });
+      bookingId = owned?.id ?? null;
+    }
   } catch { /* default en */ }
 
   const { saveAssessment } = await import('@/lib/health-assessments');
@@ -38,7 +45,7 @@ export async function POST(req: Request) {
       questionnaireKey: parsed.data.key,
       answers: parsed.data.answers,
       sourceLocale,
-      bookingId: parsed.data.bookingId ?? null,
+      bookingId,
       ip: clientIp(req),
     });
     return NextResponse.json({ ok: true, ...res });
