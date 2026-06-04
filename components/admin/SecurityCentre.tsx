@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { startAuthentication } from '@simplewebauthn/browser';
 
 type Severity = 'ok' | 'warn' | 'critical' | 'info';
 type Check = { label: string; severity: Severity; detail: string; group: string };
@@ -37,6 +38,26 @@ export function SecurityCentre({ score, checks, policy, threats }: { score: numb
 
   async function act(payload: object) { setBusy(true); const r = await post(payload); setBusy(false); if (r.ok) router.refresh(); else alert(r.error || 'Failed.'); return r; }
   async function genSecret() { setBusy(true); const r = await post({ op: 'generateSecret' }); setBusy(false); if (r.ok) setSecret(r.value); }
+
+  // Step up with a passkey (purpose-scoped), then run the manual key rotation.
+  async function runReencrypt() {
+    if (!confirm('Run a key re-encryption batch now? This re-encrypts stored personal data under the current key.')) return;
+    setBusy(true);
+    try {
+      const o = await fetch('/api/admin/security/passkey/auth-options', { method: 'POST' }).then((r) => r.json());
+      if (!o.ok) { alert(o.error || 'No passkey registered. Add one on the Data export page first.'); return; }
+      const resp = await startAuthentication({ optionsJSON: o.options });
+      const v = await fetch('/api/admin/security/passkey/auth-verify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ response: resp, purpose: 'rotate-keys' }),
+      }).then((r) => r.json());
+      if (!v.ok) { alert(v.error || 'Passkey verification failed.'); return; }
+      const r = await post({ op: 'reencrypt' });
+      if (r.ok) { alert(`Re-encrypted ${r.migrated ?? 0}; ${r.remaining ?? 0} remaining.`); router.refresh(); }
+      else alert(r.error || 'Re-encryption failed.');
+    } catch {
+      alert('Passkey verification was cancelled.');
+    } finally { setBusy(false); }
+  }
   function toggleRole(role: string) { setRoles((rs) => (rs.includes(role) ? rs.filter((x) => x !== role) : [...rs, role])); }
 
   const scoreColor = score >= 85 ? 'text-emerald-600' : score >= 60 ? 'text-amber-600' : 'text-[var(--color-blush)]';
@@ -140,7 +161,8 @@ export function SecurityCentre({ score, checks, policy, threats }: { score: numb
           <p className="text-sm text-[var(--color-stone)]">Generate a strong value to paste into the matching environment variable in Vercel (then redeploy). Rotating a session secret signs everyone out; rotating the health key requires the keyring runbook.</p>
           <button disabled={busy} onClick={genSecret} className="mt-3 rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs hover:border-[var(--color-gold)]">Generate a new secret</button>
           {secret && <code className="mt-2 block break-all rounded-[var(--radius-sm)] bg-[var(--color-bone)] px-3 py-2 text-xs">{secret}</code>}
-          <button disabled={busy} onClick={() => act({ op: 'reencrypt' }).then((r) => r.ok && alert(`Re-encrypted ${r.migrated ?? 0}; ${r.remaining ?? 0} remaining.`))} className="mt-3 block rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs hover:border-[var(--color-gold)]">Run key re-encryption batch</button>
+          <button disabled={busy} onClick={runReencrypt} className="mt-3 block rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs hover:border-[var(--color-gold)]">Run key re-encryption batch</button>
+          <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Re-encryption touches all stored personal data, so it asks for your passkey (Face ID / Touch ID) first.</p>
         </Panel>
       </div>
 

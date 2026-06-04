@@ -28,6 +28,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, value: crypto.randomBytes(48).toString('base64url') });
     }
     case 'reencrypt': {
+      // Manual key rotation decrypts and re-encrypts all PII, so it requires a
+      // fresh passkey step-up (the nightly cron handles the automatic batch).
+      const { cookies } = await import('next/headers');
+      const { verifyUnlock, unlockCookie } = await import('@/lib/webauthn');
+      const unlock = (await cookies()).get(unlockCookie('rotate-keys'))?.value;
+      if (!(await verifyUnlock(unlock, session.sub, 'rotate-keys'))) {
+        return NextResponse.json({ ok: false, error: 'Passkey verification required.', needPasskey: 'rotate-keys' }, { status: 401 });
+      }
       try {
         const { reencryptBatch } = await import('@/lib/key-rotation');
         const res = await reencryptBatch(500);

@@ -15,9 +15,10 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const { verifyAuthenticationResponse } = await import('@simplewebauthn/server');
-  const { rp, CHALLENGE_COOKIE, UNLOCK_COOKIE, signUnlock } = await import('@/lib/webauthn');
+  const { rp, CHALLENGE_COOKIE, unlockCookie, signUnlock, isStepUpPurpose } = await import('@/lib/webauthn');
   const { db } = await import('@/lib/db');
   const { rpID, origin, secure } = rp(req);
+  const purpose = isStepUpPurpose(body.purpose) ? body.purpose : 'export';
 
   const expectedChallenge = (await cookies()).get(CHALLENGE_COOKIE)?.value;
   if (!expectedChallenge || !body.response?.id) return NextResponse.json({ ok: false, error: 'Verification expired — please try again.' }, { status: 400 });
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
   await db.webAuthnCredential.update({ where: { id: cred.id }, data: { counter: verification.authenticationInfo.newCounter, lastUsedAt: new Date() } });
 
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(UNLOCK_COOKIE, await signUnlock(session.sub), { httpOnly: true, secure, sameSite: 'strict', path: '/', maxAge: 180 });
+  res.cookies.set(unlockCookie(purpose), await signUnlock(session.sub, purpose), { httpOnly: true, secure, sameSite: 'strict', path: '/', maxAge: 180 });
   res.cookies.set(CHALLENGE_COOKIE, '', { path: '/', maxAge: 0 });
   return res;
 }

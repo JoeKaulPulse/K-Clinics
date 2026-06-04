@@ -17,9 +17,9 @@ export async function GET(req: Request) {
   // export carries all PII/PHI, so an OWNER session alone isn't enough — a
   // stolen session or leaked key can't pull the data without the biometric.
   const { cookies } = await import('next/headers');
-  const { verifyUnlock, UNLOCK_COOKIE } = await import('@/lib/webauthn');
-  const unlock = (await cookies()).get(UNLOCK_COOKIE)?.value;
-  if (!(await verifyUnlock(unlock, session.sub))) {
+  const { verifyUnlock, unlockCookie } = await import('@/lib/webauthn');
+  const unlock = (await cookies()).get(unlockCookie('export'))?.value;
+  if (!(await verifyUnlock(unlock, session.sub, 'export'))) {
     return new Response('Passkey verification required.', { status: 401 });
   }
 
