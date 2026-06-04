@@ -116,7 +116,7 @@ async function sendTierUpgradeEmail(client: { email: string; firstName: string |
     <p style="margin:6px 0 18px;"><a href="${base}/book" style="display:inline-block;background:${accent};color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:14px;">Book your next visit</a></p>
     <p style="margin:0;font-size:13px;color:#8a7d72;">See your status any time in your <a href="${base}/account/rewards" style="color:${accent};">rewards</a>.</p>`;
   const res = await sendEmail({ to: client.email, subject: `You’ve reached ${tier.name} — welcome to the next level of K Circle`, html: emailShell({ body, preheader: `Your K Circle membership has been upgraded to ${tier.name}.` }) });
-  await db.emailEvent.create({ data: { clientId: client.clientId, kind: 'MEMBERSHIP', to: client.email, subject: `K Circle: upgraded to ${tier.name}`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error } }).catch(() => {});
+  await db.emailEvent.create({ data: { clientId: client.clientId, kind: 'MEMBERSHIP', to: client.email, subject: `K Circle: upgraded to ${tier.name}`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { type: 'upgrade' } } }).catch(() => {});
 }
 
 function buildStatus(tier: Tier, next: Tier | null, spend: number, tiers: Tier[]): MembershipStatus {

@@ -1,6 +1,6 @@
 import 'server-only';
 import { db } from './db';
-import { sendEmail, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder } from './email';
+import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder } from './email';
 import { site } from './site';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || site.url;
@@ -11,12 +11,72 @@ const FOLLOW_UP_DAYS = 3;
 const REVIEW_DAYS = 7;
 const WIN_BACK_MONTHS = 6;
 
-type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; reencrypted: number; errors: number };
+const TIER_NUDGE_PENCE = 20000;   // nudge clients within £200 of the next tier
+const ANNIVERSARY_POINTS = 1000;  // bonus points on a membership anniversary
+
+type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; reencrypted: number; errors: number };
 
 export async function runDailyAutomations(): Promise<Tally> {
-  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, reencrypted: 0, errors: 0 };
-  await Promise.all([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), keyReencryption(t)]);
+  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, reencrypted: 0, errors: 0 };
+  await Promise.all([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), keyReencryption(t)]);
   return t;
+}
+
+// ── Membership: "£X from the next tier" nudge ──
+async function tierNudges(t: Tally) {
+  try {
+    const { getTiers, nextTier } = await import('@/lib/membership');
+    const tiers = await getTiers();
+    const since = new Date(Date.now() - 30 * 864e5);
+    const base = (SITE_URL || '').replace(/\/$/, '');
+    const clients = await db.client.findMany({ where: { marketingOptIn: true, unsubscribed: false, membership12moPence: { gt: 0 } }, take: 3000 });
+    for (const c of clients) {
+      if (!canEmail(c)) continue;
+      const next = nextTier(tiers, c.membership12moPence);
+      if (!next) continue; // already top tier
+      const gap = next.minSpendPence - c.membership12moPence;
+      if (gap <= 0 || gap > TIER_NUDGE_PENCE) continue;
+      const dup = await db.emailEvent.findFirst({ where: { clientId: c.id, kind: 'MEMBERSHIP', status: 'SENT', createdAt: { gte: since }, meta: { path: ['type'], equals: 'nudge' } } });
+      if (dup) continue;
+      const gbp = `£${Math.ceil(gap / 100).toLocaleString('en-GB')}`;
+      const accent = next.color || '#a98a6d';
+      const body = `
+        <p style="font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:${accent};margin:0 0 8px;">K Circle</p>
+        <h1 style="margin:0 0 12px;font-size:25px;">You're ${gbp} from ${next.name}</h1>
+        <p style="margin:0 0 14px;">Hi ${c.firstName || 'there'}, you're closer than you think to <strong>${next.name}</strong> — and everything it unlocks: ${next.perks.slice(0, 2).join(', ')}.</p>
+        <p style="margin:6px 0 18px;"><a href="${base}/book" style="display:inline-block;background:${accent};color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:14px;">Book your next visit</a></p>`;
+      const res = await sendEmail({ to: c.email, subject: `You're ${gbp} from ${next.name} — K Circle`, html: emailShell({ body, preheader: `Just ${gbp} more to reach ${next.name}.`, unsubUrl: unsub(c.unsubToken) }) });
+      await db.emailEvent.create({ data: { clientId: c.id, kind: 'MEMBERSHIP', to: c.email, subject: `K Circle: ${gbp} from ${next.name}`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { type: 'nudge' } } }).catch(() => {});
+      res.ok ? t.tierNudges++ : t.errors++;
+    }
+  } catch (e) { t.errors++; console.error('[automations] tier nudges failed:', (e as Error)?.message); }
+}
+
+// ── Membership anniversary reward (account anniversary) ──
+async function anniversaries(t: Tally) {
+  try {
+    const today = new Date();
+    const since = new Date(Date.now() - 60 * 864e5);
+    const base = (SITE_URL || '').replace(/\/$/, '');
+    const clients = await db.client.findMany({ where: { marketingOptIn: true, unsubscribed: false }, take: 5000 });
+    for (const c of clients) {
+      if (!canEmail(c) || !c.createdAt) continue;
+      if (c.createdAt.getMonth() !== today.getMonth() || c.createdAt.getDate() !== today.getDate()) continue;
+      const years = today.getFullYear() - c.createdAt.getFullYear();
+      if (years < 1) continue;
+      const dup = await db.emailEvent.findFirst({ where: { clientId: c.id, kind: 'MEMBERSHIP', status: 'SENT', createdAt: { gte: since }, meta: { path: ['type'], equals: 'anniversary' } } });
+      if (dup) continue;
+      try { const { awardClientPoints } = await import('@/lib/client-loyalty'); await awardClientPoints({ clientId: c.id, points: ANNIVERSARY_POINTS, category: 'MANUAL', reason: `${years}-year membership anniversary gift` }); } catch { /* non-fatal */ }
+      const body = `
+        <p style="font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#a98a6d;margin:0 0 8px;">K Circle</p>
+        <h1 style="margin:0 0 12px;font-size:25px;">Thank you for ${years} ${years === 1 ? 'year' : 'years'}</h1>
+        <p style="margin:0 0 14px;">Hi ${c.firstName || 'there'}, it's been ${years} ${years === 1 ? 'year' : 'years'} since you joined us — thank you. As a small thank-you we've added <strong>${ANNIVERSARY_POINTS.toLocaleString('en-GB')} bonus points</strong> to your account.</p>
+        <p style="margin:6px 0 18px;"><a href="${base}/account/rewards" style="display:inline-block;background:#a98a6d;color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:14px;">See your rewards</a></p>`;
+      const res = await sendEmail({ to: c.email, subject: `A little thank-you for ${years} ${years === 1 ? 'year' : 'years'} with us`, html: emailShell({ body, preheader: `${ANNIVERSARY_POINTS} bonus points are waiting in your account.`, unsubUrl: unsub(c.unsubToken) }) });
+      await db.emailEvent.create({ data: { clientId: c.id, kind: 'MEMBERSHIP', to: c.email, subject: `K Circle anniversary (${years}y)`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { type: 'anniversary' } } }).catch(() => {});
+      res.ok ? t.anniversaries++ : t.errors++;
+    }
+  } catch (e) { t.errors++; console.error('[automations] anniversaries failed:', (e as Error)?.message); }
 }
 
 // Deliver any scheduled gift vouchers whose chosen delivery date has arrived.
