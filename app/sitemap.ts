@@ -3,10 +3,16 @@ import { site } from '@/lib/site';
 import { treatmentSlugs } from '@/lib/treatments';
 import { packages } from '@/lib/packages';
 import { infoSlugs } from '@/lib/info-pages';
-import { articleSlugs } from '@/lib/articles';
+import { articles } from '@/lib/articles';
 
 // ISR so newly-published academy courses (DB-backed) appear without a redeploy.
 export const revalidate = 3600;
+
+// Stable "content last reviewed" anchor for our largely-static marketing pages.
+// Using a fixed date (rather than `new Date()`) keeps <lastmod> honest — search
+// engines distrust sitemaps that claim every URL changed on every crawl. Bump
+// this when marketing copy is meaningfully refreshed.
+const CONTENT_REVIEWED = new Date('2026-06-01T00:00:00Z');
 
 // Fallback academy slugs if the DB can't be reached at build/revalidate time.
 const FALLBACK_COURSE_SLUGS = ['level-2-foundation-skin-laser', 'level-3-laser-aesthetic-therapies', 'level-4-certificate-aesthetic-practice', 'advanced-aesthetics-level-5-7'];
@@ -22,7 +28,7 @@ async function courseSlugs(): Promise<string[]> {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const now = new Date();
+  const reviewed = CONTENT_REVIEWED;
   const base = site.url;
 
   const staticPaths: { path: string; priority: number; freq: MetadataRoute.Sitemap[number]['changeFrequency'] }[] = [
@@ -55,37 +61,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...staticPaths.map((p) => ({
       url: `${base}${p.path}`,
-      lastModified: now,
+      lastModified: reviewed,
       changeFrequency: p.freq,
       priority: p.priority,
     })),
     ...treatmentSlugs.map((slug) => ({
       url: `${base}/${slug}`,
-      lastModified: now,
+      lastModified: reviewed,
       changeFrequency: 'monthly' as const,
       priority: 0.8,
     })),
     ...packages.map((p) => ({
       url: `${base}/packages/${p.slug}`,
-      lastModified: now,
+      lastModified: reviewed,
       changeFrequency: 'monthly' as const,
       priority: 0.7,
     })),
     ...infoSlugs.map((slug) => ({
       url: `${base}/info/${slug}`,
-      lastModified: now,
+      lastModified: reviewed,
       changeFrequency: 'yearly' as const,
       priority: 0.3,
     })),
-    ...articleSlugs.map((slug) => ({
-      url: `${base}/journal/${slug}`,
-      lastModified: now,
+    ...articles.map((a) => ({
+      url: `${base}/journal/${a.slug}`,
+      // Real per-article date so freshness signals are trustworthy.
+      lastModified: new Date(a.updated || a.published),
       changeFrequency: 'monthly' as const,
       priority: 0.55,
     })),
     ...(await courseSlugs()).map((slug) => ({
       url: `${base}/academy/${slug}`,
-      lastModified: now,
+      lastModified: reviewed,
       changeFrequency: 'monthly' as const,
       priority: 0.6,
     })),
