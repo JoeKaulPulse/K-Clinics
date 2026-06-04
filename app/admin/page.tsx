@@ -32,9 +32,10 @@ export default async function AdminOverview() {
   const canInventory = sessionCan(session, 'inventory.view');
   const canFinance = sessionCan(session, 'finance.view');
   const canBookings = sessionCan(session, 'bookings.view');
+  const canReviews = sessionCan(session, 'reviews.manage');
   const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(); dayEnd.setHours(23, 59, 59, 999);
-  const [o, a, pendingTimeOff, myTasks, stockItems, expiringSoon, ordersToFulfil, retailProducts, todaysBookings, reqConsent, reqPhoto] = await Promise.all([
+  const [o, a, pendingTimeOff, myTasks, stockItems, expiringSoon, ordersToFulfil, retailProducts, todaysBookings, reqConsent, reqPhoto, gReviewAgg, googleUnreplied] = await Promise.all([
     getOverview(),
     getAnalytics(),
     canApproveTimeOff ? db.staffTimeOff.count({ where: { status: 'PENDING' } }) : Promise.resolve(0),
@@ -46,7 +47,11 @@ export default async function AdminOverview() {
     canBookings ? db.booking.findMany({ where: { startAt: { gte: dayStart, lte: dayEnd }, status: { in: ['PENDING', 'CONFIRMED'] } }, select: { id: true, treatmentSlug: true } }) : Promise.resolve([]),
     import('@/lib/settings').then((m) => m.getSetting('require_consent')),
     import('@/lib/settings').then((m) => m.getSetting('require_before_photo')),
+    canReviews ? db.googleReview.aggregate({ _avg: { starRating: true }, _count: { _all: true } }) : Promise.resolve(null),
+    canReviews ? db.googleReview.count({ where: { replyComment: null } }) : Promise.resolve(0),
   ]);
+  const googleAvg = gReviewAgg?._avg.starRating ?? null;
+  const googleCount = gReviewAgg?._count._all ?? 0;
   const lowStock = stockItems.filter((i) => i.lowStockAt > 0 && i.currentQty <= i.lowStockAt).length;
   const productsLow = retailProducts.filter((p) => p.stockQty <= p.lowStockThreshold).length;
   // Completed treatments in the last 30 days that haven't been charged (revenue at risk).
@@ -76,6 +81,7 @@ export default async function AdminOverview() {
     { show: myTasks > 0, label: 'My open tasks', value: myTasks, href: '/admin/tasks', tone: 'ink' },
     { show: canInventory && lowStock > 0, label: 'Low-stock items', value: lowStock, href: '/admin/inventory', tone: 'blush' },
     { show: canInventory && expiringSoon > 0, label: 'Batches expiring ≤90d', value: expiringSoon, href: '/admin/inventory', tone: 'amber' },
+    { show: canReviews && googleUnreplied > 0, label: 'Google reviews to reply to', value: googleUnreplied, href: '/admin/reviews', tone: 'amber' },
   ].filter((x) => x.show);
 
   const toneCls: Record<string, string> = {
@@ -89,6 +95,9 @@ export default async function AdminOverview() {
     { label: 'Upcoming appointments', value: String(a.upcomingCount), href: '/admin/bookings' },
     { label: 'Consult → booking', value: `${a.conversion}%`, sub: 'last 30 days' },
     { label: 'New clients · 30 days', value: String(a.newClients30), href: '/admin/clients' },
+    ...(canReviews && googleCount > 0 && googleAvg != null
+      ? [{ label: 'Google rating', value: `${googleAvg.toFixed(1)}★`, sub: `${googleCount} review${googleCount === 1 ? '' : 's'}`, href: '/admin/reviews' }]
+      : []),
   ];
 
   const can = await sessionPermissions();
