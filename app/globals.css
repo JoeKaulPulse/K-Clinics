@@ -20,12 +20,13 @@
   --color-porcelain: #f6ece3;  /* primary light background — brand cream */
   --color-bone: #efe3d7;       /* secondary light surface */
   --color-sand: #e3d3c4;       /* muted warm border / divider */
-  --color-stone: #91766e;      /* muted body text — brand taupe */
-  --color-stone-soft: #b7a294;
+  --color-stone: #7d6259;      /* muted body text — brand taupe (AA on light) */
+  --color-stone-soft: #b7a294; /* decorative/borders only — NOT for text on light */
 
-  --color-gold: #a98a6d;       /* warm taupe-gold — primary accent */
-  --color-gold-soft: #c2a589;  /* lighter taupe */
+  --color-gold: #a98a6d;       /* warm taupe-gold — decorative/large-text accent */
+  --color-gold-soft: #c2a589;  /* lighter taupe (eyebrows on dark surfaces) */
   --color-gold-bright: #dcc4a8;/* soft champagne */
+  --color-gold-deep: #856a4a;  /* darker gold for interactive surfaces — white text clears AA */
   --color-jade: #7b6a5d;       /* deep taupe — secondary accent */
   --color-blush: #cdb4a3;      /* warm sand highlight */
 
@@ -124,7 +125,10 @@
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-gold);
+    /* High-contrast ink ring (gold ring was ~2.75:1 on light surfaces) with a
+       soft gold halo so it reads on both light and dark backgrounds. */
+    outline: 2px solid var(--color-ink);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-gold) 45%, transparent);
     outline-offset: 3px;
     border-radius: 2px;
   }
