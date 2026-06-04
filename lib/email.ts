@@ -1,6 +1,7 @@
 import 'server-only';
 import { Resend } from 'resend';
 import { site } from './site';
+import { K_MARK_LIGHT_B64, K_BADGE_B64 } from './brand-email-assets';
 
 const apiKey = process.env.RESEND_API_KEY;
 const resend = apiKey ? new Resend(apiKey) : null;
@@ -33,6 +34,7 @@ export async function sendEmail(opts: {
       subject: opts.subject,
       html: opts.html,
       replyTo: opts.replyTo || REPLY_TO,
+      ...brandAttachments(opts.html),
       ...(opts.headers ? { headers: opts.headers } : {}),
     });
     if (error) return { ok: false, error: String(error.message || error) };
@@ -42,44 +44,63 @@ export async function sendEmail(opts: {
   }
 }
 
-// ── Branded HTML shell ───────────────────────────────────────────────────────
-const EMAIL_BASE = (process.env.NEXT_PUBLIC_SITE_URL || site.url).replace(/\/$/, '');
+// The brand marks ride along as inline (cid:) attachments — embedded from
+// bundled base64 — so the logo always renders regardless of whether an external
+// URL is reachable from the recipient's mail client. Only attached when the HTML
+// actually references the cid, so unrelated mail stays lean.
+function brandAttachments(html: string) {
+  const attachments: { filename: string; content: Buffer; contentType: string; inlineContentId: string }[] = [];
+  if (html.includes('cid:kmark')) {
+    attachments.push({ filename: 'k-mark.png', content: Buffer.from(K_MARK_LIGHT_B64, 'base64'), contentType: 'image/png', inlineContentId: 'kmark' });
+  }
+  if (html.includes('cid:kbadge')) {
+    attachments.push({ filename: 'k-badge.png', content: Buffer.from(K_BADGE_B64, 'base64'), contentType: 'image/png', inlineContentId: 'kbadge' });
+  }
+  return attachments.length ? { attachments } : {};
+}
 
-/** Premium, on-brand HTML shell for all emails. Uses the real brand K mark
- *  (hosted PNG, since email clients don't render inline SVG). `logoUrl` lets a
- *  caller override the header mark with a brand-kit logo. */
+// ── Branded HTML shell ───────────────────────────────────────────────────────
+
+/** Premium, on-brand HTML shell for all emails. The header K mark rides along
+ *  as an inline (cid:) attachment — email clients don't render inline SVG, and a
+ *  cid image always shows regardless of whether a hosted URL is reachable.
+ *  `logoUrl` lets a caller override the header mark with a brand-kit logo URL. */
 export function emailShell(opts: { preheader?: string; body: string; unsubUrl?: string; logoUrl?: string }): string {
   const { preheader = '', body, unsubUrl } = opts;
-  const mark = opts.logoUrl || `${EMAIL_BASE}/brand/k-mark-light.png`;
+  // Default to the bundled inline mark (cid:kmark); a brand-kit override uses its URL.
+  const markSrc = opts.logoUrl || 'cid:kmark';
   const year = new Date().getFullYear();
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="x-apple-disable-message-reformatting"></head>
 <body style="margin:0;padding:0;background:#e8dccd;font-family:Georgia,'Times New Roman',serif;color:#2a2420;-webkit-font-smoothing:antialiased;">
   <span style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden;mso-hide:all;">${preheader}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;</span>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#e8dccd;padding:36px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#e8dccd;padding:40px 16px;">
     <tr><td align="center">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#f7eee4;border-radius:20px;overflow:hidden;border:1px solid rgba(42,36,32,0.07);box-shadow:0 18px 48px -28px rgba(42,36,32,0.45);">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#f7eee4;border-radius:18px;overflow:hidden;border:1px solid rgba(42,36,32,0.08);box-shadow:0 20px 52px -30px rgba(42,36,32,0.5);">
         <!-- Header -->
-        <tr><td style="background:#2a2420;padding:34px 40px 26px;text-align:center;">
-          <img src="${mark}" width="46" height="46" alt="KClinics" style="display:inline-block;width:46px;height:46px;border:0;outline:none;">
-          <div style="font-size:22px;letter-spacing:7px;color:#f6ece3;margin-top:14px;">K&nbsp;CLINICS</div>
-          <div style="font-size:9px;letter-spacing:3.5px;color:#c2a589;margin-top:8px;text-transform:uppercase;">Aesthetics &middot; Dentistry &middot; London</div>
+        <tr><td style="background:#2a2420;padding:38px 40px 30px;text-align:center;">
+          <img src="${markSrc}" width="52" height="52" alt="KClinics" style="display:inline-block;width:52px;height:52px;border:0;outline:none;">
+          <div style="font-family:Georgia,'Times New Roman',serif;font-size:23px;letter-spacing:8px;color:#f6ece3;margin-top:16px;padding-left:8px;">K&nbsp;CLINICS</div>
+          <div style="font-family:Helvetica,Arial,sans-serif;font-size:9px;letter-spacing:3.5px;color:#c2a589;margin-top:9px;text-transform:uppercase;">Aesthetics &middot; Dentistry &middot; London</div>
         </td></tr>
         <!-- Gold hairline accent -->
         <tr><td style="height:3px;line-height:3px;font-size:0;background:linear-gradient(90deg,#a98a6d,#dcc4a8,#a98a6d);">&nbsp;</td></tr>
         <!-- Body -->
-        <tr><td style="padding:42px 44px 38px;font-size:16px;line-height:1.75;color:#3d352f;">
+        <tr><td style="padding:44px 44px 38px;font-size:16px;line-height:1.75;color:#3d352f;">
           ${body}
         </td></tr>
         <!-- Footer -->
-        <tr><td style="padding:26px 40px 30px;background:#efe4db;border-top:1px solid rgba(42,36,32,0.06);font-family:Helvetica,Arial,sans-serif;font-size:12px;color:#7d6259;text-align:center;line-height:1.7;">
-          <img src="${EMAIL_BASE}/brand/k-badge.png" width="34" height="34" alt="" style="display:inline-block;width:34px;height:34px;border:0;border-radius:8px;margin-bottom:10px;">
+        <tr><td style="padding:30px 40px 34px;background:#efe4db;border-top:1px solid rgba(42,36,32,0.06);font-family:Helvetica,Arial,sans-serif;font-size:12px;color:#7d6259;text-align:center;line-height:1.7;">
+          <!-- Image-free monogram so the footer never shows a broken image -->
+          <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 14px;"><tr>
+            <td width="38" height="38" align="center" valign="middle" style="width:38px;height:38px;border:1px solid #c2a589;border-radius:50%;font-family:Georgia,'Times New Roman',serif;font-size:19px;color:#a98a6d;line-height:38px;mso-line-height-rule:exactly;">K</td>
+          </tr></table>
           <div style="color:#5b4f47;">${site.address.street}, ${site.address.locality}, ${site.address.region} ${site.address.postalCode}</div>
-          <div style="margin-top:4px;">
+          <div style="margin-top:5px;">
             <a href="${site.phoneHref}" style="color:#8a6e54;text-decoration:none;">${site.phone}</a>
             &nbsp;&middot;&nbsp;
             <a href="mailto:${site.email}" style="color:#8a6e54;text-decoration:none;">${site.email}</a>
           </div>
-          ${unsubUrl ? `<div style="margin-top:14px;font-size:11px;color:#a3917f;">You're receiving this as a KClinics member. <a href="${unsubUrl}" style="color:#a3917f;text-decoration:underline;">Unsubscribe</a></div>` : ''}
+          ${unsubUrl ? `<div style="margin-top:16px;font-size:11px;color:#a3917f;">You're receiving this as a KClinics member. <a href="${unsubUrl}" style="color:#a3917f;text-decoration:underline;">Unsubscribe</a></div>` : ''}
         </td></tr>
       </table>
       <div style="font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#9a8a7c;margin-top:18px;">&copy; ${year} ${site.legalName}</div>
