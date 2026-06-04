@@ -44,6 +44,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
         stats={stats}
         baseUrl={site.url.replace(/\/$/, '')}
         canManage={sessionCan(session, 'campaigns.send') || sessionCan(session, 'settings.manage')}
+        spendSyncedAt={c.spendSyncedAt?.toISOString() ?? null}
       />
       <div className="mt-6">
         <CampaignAiPanel campaignId={c.id} enabled={aiAvailable()} initial={(c.aiDraft as CampaignPack | null) ?? null} />

@@ -39,6 +39,17 @@ export async function GET(req: Request) {
     console.error('[cron] loyalty maintenance failed (continuing):', (e as Error)?.message);
   }
 
+  // Pull ad spend from any connected platforms into campaign ROI (no-op if
+  // nothing is connected). Fully fault-tolerant.
+  let adSpend = { updated: 0, totalPence: 0 };
+  try {
+    const { syncAdSpend } = await import('@/lib/ad-spend');
+    const r = await syncAdSpend(30);
+    adSpend = { updated: r.updated, totalPence: r.totalPence };
+  } catch (e) {
+    console.error('[cron] ad-spend sync failed (continuing):', (e as Error)?.message);
+  }
+
   // Refresh Google Calendar busy-times for connected clinicians (no-op if Google
   // isn't configured / nobody connected).
   let gcal = { ok: false, staff: 0, imported: 0 };
@@ -70,5 +81,5 @@ export async function GET(req: Request) {
     console.error('[cron] analytics retention failed (continuing):', (e as Error)?.message);
   }
 
-  return NextResponse.json({ ok: true, ...result, loyalty, gcal, retention, scheduledEmail });
+  return NextResponse.json({ ok: true, ...result, loyalty, gcal, retention, scheduledEmail, adSpend });
 }

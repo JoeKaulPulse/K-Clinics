@@ -580,6 +580,7 @@ model MarketingCampaign {
   endAt              DateTime?
   budgetPence        Int?           // planned spend (for ROI)
   spendPence         Int            @default(0) // recorded/synced ad spend
+  spendSyncedAt      DateTime?      // last time ad spend was pulled from a platform
   targetRevenuePence Int?
   targetBookings     Int?
   utmCampaign        String?        // utm_campaign value used across channels
