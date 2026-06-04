@@ -135,6 +135,7 @@ export const footerNav = [
     links: [
       { label: 'Contact Us', href: '/contact' },
       { label: 'Gift Vouchers', href: '/gift-vouchers' },
+      { label: 'Group & Party Bookings', href: '/group-bookings' },
       { label: 'Cosmetology Consultations', href: '/consultation' },
       { label: 'Dental Consultations', href: '/consultation#dental' },
       { label: 'Refer a Friend', href: '/refer-a-friend' },
