@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { getInfoPage, infoSlugs } from '@/lib/info-pages';
+import { FranchiseEnquiryForm } from '@/components/franchise/FranchiseEnquiryForm';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const dynamicParams = false;
@@ -49,6 +50,11 @@ export default async function InfoPage({ params }: { params: Promise<{ slug: str
               </div>
             </Reveal>
           ))}
+          {slug === 'franchise-opportunities' && (
+            <Reveal>
+              <div className="pt-4"><FranchiseEnquiryForm /></div>
+            </Reveal>
+          )}
         </div>
       </section>
     </>
