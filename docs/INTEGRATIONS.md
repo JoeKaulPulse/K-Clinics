@@ -120,7 +120,7 @@ rating + reviews can be shown on the site, blended with in-house reviews.
 |---|---|
 | `GOOGLE_PLACE_ID` | Your Google Place ID — powers the public "Share it on Google" deep link and identifies the business for the Places lookup. From the [Place ID finder](https://developers.google.com/maps/documentation/places/web-service/place-id). |
 | `GOOGLE_PLACES_API_KEY` | **Required to display your Google star-rating + reviews** on the homepage, `/reviews` and the blended aggregate (`lib/reviews-aggregate.ts`). Google Cloud Console → enable **Places API** → create an API key (restrict to Places API). |
-| `GOOGLE_BUSINESS_ACCOUNT_ID` / `GOOGLE_BUSINESS_LOCATION_ID` | Reserved for the Business Profile **management** API (read all reviews into the admin + reply in-app). That in-app sync is **not yet wired** — `syncGoogleReviews()` is a guarded stub. |
+| `GOOGLE_BUSINESS_ACCOUNT_ID` / `GOOGLE_BUSINESS_LOCATION_ID` | Business Profile **management** API: import every Google review into the admin Reviews page + **reply** in-app (`lib/google-business.ts`). Also register the redirect URI `…/api/admin/integrations/google-business/callback` in the OAuth client, have Google grant your project [Business Profile API access](https://developers.google.com/my-business/content/prereqs), then click **Connect Google Business** on the admin Reviews page. Syncs nightly. |
 
 **Without `GOOGLE_PLACE_ID`:** review submission still works and is stored;
 clients just aren't offered the Google hand-off. **Without `GOOGLE_PLACES_API_KEY`:**

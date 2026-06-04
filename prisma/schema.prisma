@@ -1371,6 +1371,29 @@ model Review {
   @@index([rating])
 }
 
+// Google Business Profile reviews imported via the My Business API. Stored
+// separately from Review (which requires a Client) because the reviewer is an
+// external Google user. Powers the in-admin Google review list + replies.
+model GoogleReview {
+  id              String    @id @default(cuid())
+  // Full review resource name: accounts/{a}/locations/{l}/reviews/{r} (unique).
+  googleName      String    @unique
+  reviewerName    String?
+  reviewerPhoto   String?
+  starRating      Int       // 1–5 (mapped from Google's ONE..FIVE enum)
+  comment         String?
+  createTime      DateTime?
+  updateTime      DateTime?
+  // Our reply (mirrored from Google so the admin shows the live state).
+  replyComment    String?
+  replyUpdateTime DateTime?
+  importedAt      DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([starRating])
+  @@index([createTime])
+}
+
 // ── SEO command centre ──────────────────────────────────────────────────────
 // Per-path SEO overrides, editable in the admin and merged over code defaults.
 model PageSeo {

@@ -70,6 +70,14 @@ export async function GET(req: Request) {
   } catch {
     /* never fail the cron on a calendar sync issue */
   }
+  // Import the latest Google Business reviews (no-op until connected).
+  let gbiz = { ok: false, imported: 0 };
+  try {
+    const { googleBusinessConnected, syncGoogleReviews } = await import('@/lib/google-business');
+    if (await googleBusinessConnected()) gbiz = await syncGoogleReviews();
+  } catch {
+    /* never fail the cron on a review sync issue */
+  }
   // Behaviour-analytics retention: prune old session replays (90d) and heatmap
   // points (180d) so storage stays bounded and we hold data no longer than needed.
   let retention = { replays: 0, heatmap: 0 };
@@ -92,5 +100,5 @@ export async function GET(req: Request) {
     console.error('[cron] analytics retention failed (continuing):', (e as Error)?.message);
   }
 
-  return NextResponse.json({ ok: true, ...result, loyalty, membership, gcal, retention, scheduledEmail, adSpend });
+  return NextResponse.json({ ok: true, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend });
 }
