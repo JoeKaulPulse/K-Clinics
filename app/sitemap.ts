@@ -53,6 +53,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: '/reviews', priority: 0.6, freq: 'weekly' },
     { path: '/refer-a-friend', priority: 0.5, freq: 'monthly' },
     { path: '/gift-vouchers', priority: 0.6, freq: 'monthly' },
+    { path: '/group-bookings', priority: 0.6, freq: 'monthly' },
     { path: '/careers', priority: 0.4, freq: 'weekly' },
     { path: '/faq', priority: 0.5, freq: 'monthly' },
     { path: '/contact', priority: 0.7, freq: 'monthly' },
