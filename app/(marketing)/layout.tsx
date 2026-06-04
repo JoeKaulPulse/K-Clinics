@@ -7,7 +7,7 @@ import { ScrollProgress } from '@/components/motion/ScrollProgress';
 import { Cursor } from '@/components/motion/Cursor';
 import { Intro } from '@/components/motion/Intro';
 import { WhatsAppButton } from '@/components/layout/WhatsAppButton';
-import { LiveChat } from '@/components/chat/LiveChat';
+import { DeferredLiveChat } from '@/components/chat/DeferredLiveChat';
 import { MotionProvider } from '@/components/motion/MotionProvider';
 import { CookieConsent } from '@/components/legal/CookieConsent';
 import { TrackingScripts } from '@/components/marketing/TrackingScripts';
@@ -39,7 +39,7 @@ export default async function MarketingLayout({ children }: { children: React.Re
       </main>
       <Footer config={config} />
       <WhatsAppButton config={config} />
-      <LiveChat />
+      <DeferredLiveChat />
       <EditBar />
       <CookieConsent />
       {hasAnyTracking(tracking) && <TrackingScripts {...tracking} />}

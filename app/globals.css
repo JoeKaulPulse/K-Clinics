@@ -318,6 +318,11 @@
   animation: line-rise 1.1s var(--ease-lux) both;
 }
 
+/* Per-word masked rise (WordReveal) — CSS-only so the LCP heading isn't
+   gated on the motion JS bundle. */
+.word-rise { transform: translateY(115%); animation: line-rise 1s var(--ease-lux) both; }
+@media (prefers-reduced-motion: reduce) { .word-rise { animation: none; transform: none; } }
+
 /* Hero photography: a curtain wipe in, then a slow perpetual ken-burns drift. */
 @keyframes curtain-up {
   from { clip-path: inset(0 0 100% 0); }
