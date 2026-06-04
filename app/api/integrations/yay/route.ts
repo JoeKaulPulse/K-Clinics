@@ -36,6 +36,10 @@ export async function POST(req: Request) {
     || (typeof b.auth_token === 'string' ? b.auth_token : '')
     || (typeof b.token === 'string' ? b.token : '');
   if (!token || !safeEqual(token, secret)) {
+    // Throttle unauthorised callers so the secret can't be hammered / the
+    // endpoint spammed. Legitimate (authorised) yay traffic never reaches this.
+    const { enforceRateLimit } = await import('@/lib/security/guard');
+    await enforceRateLimit(req, 'yay-auth-fail', 20, 300, 'client');
     return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
   }
 
