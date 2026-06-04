@@ -3,6 +3,7 @@ import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300; // the daily run does a lot (automations, loyalty, membership, ad-spend, gcal, retention)
 
 // Daily automations runner. Triggered by Vercel Cron (see vercel.json) with the
 // CRON_SECRET as a bearer token. Idempotent — every send is logged so nothing
