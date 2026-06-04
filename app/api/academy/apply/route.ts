@@ -22,6 +22,9 @@ export async function POST(req: Request) {
   const d = parsed.data;
   if (d.company) return NextResponse.json({ ok: true }); // honeypot
 
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'academy-apply', 5, 600, 'academy'))) return NextResponse.json({ ok: false, error: 'Too many submissions — please try again shortly.' }, { status: 429 });
+
   const { db } = await import('@/lib/db');
   const course = await db.course.findUnique({ where: { id: d.courseId }, select: { id: true, title: true, pricePence: true } });
   if (!course) return NextResponse.json({ ok: false, error: 'That course is unavailable.' }, { status: 404 });

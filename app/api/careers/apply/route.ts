@@ -22,6 +22,9 @@ export async function POST(req: Request) {
   const d = parsed.data;
   if (d.company) return NextResponse.json({ ok: true });
 
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'careers-apply', 5, 600))) return NextResponse.json({ ok: false, error: 'Too many submissions — please try again shortly.' }, { status: 429 });
+
   const { db } = await import('@/lib/db');
   const app = await db.jobApplication.create({
     data: { vacancyId: d.vacancyId || null, roleTitle: d.roleTitle, name: d.name, email: d.email.toLowerCase(), phone: d.phone || null, coverNote: d.coverNote || null, cvUrl: d.cvUrl || null },

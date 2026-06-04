@@ -16,6 +16,8 @@ export async function POST(req: Request) {
   const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ ok: false, error: 'Please enter a valid email address.' }, { status: 422 });
   if (parsed.data.company) return NextResponse.json({ ok: true }); // honeypot tripped
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'newsletter', 5, 600))) return NextResponse.json({ ok: false, error: 'Please try again shortly.' }, { status: 429 });
 
   const email = parsed.data.email.trim().toLowerCase();
   try {
