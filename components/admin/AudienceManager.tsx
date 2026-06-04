@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-type Rules = { gender?: string; source?: string; tag?: string; lapsedDays?: number; optInOnly?: boolean; visited?: string };
+type Rules = { gender?: string; source?: string; tag?: string; lapsedDays?: number; optInOnly?: boolean; visited?: string; tier?: string };
+export type TierOpt = { key: string; name: string };
 export type SegmentRow = { id: string; name: string; description: string; rules: Rules; summary: string; size: number };
 
 const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm';
@@ -13,10 +14,10 @@ async function post(payload: object) {
   return res.json().catch(() => ({ ok: res.ok }));
 }
 
-export function AudienceManager({ rows, sources, tags, canManage }: { rows: SegmentRow[]; sources: string[]; tags: string[]; canManage: boolean }) {
+export function AudienceManager({ rows, sources, tags, tiers = [], canManage }: { rows: SegmentRow[]; sources: string[]; tags: string[]; tiers?: TierOpt[]; canManage: boolean }) {
   return (
     <div className="space-y-6">
-      {canManage && <Builder sources={sources} tags={tags} />}
+      {canManage && <Builder sources={sources} tags={tags} tiers={tiers} />}
       {rows.length === 0 ? (
         <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 text-sm text-[var(--color-stone)]">No segments yet.</p>
       ) : (
@@ -28,10 +29,17 @@ export function AudienceManager({ rows, sources, tags, canManage }: { rows: Segm
   );
 }
 
-function RuleFields({ rules, setRules, sources, tags }: { rules: Rules; setRules: (r: Rules) => void; sources: string[]; tags: string[] }) {
+function RuleFields({ rules, setRules, sources, tags, tiers }: { rules: Rules; setRules: (r: Rules) => void; sources: string[]; tags: string[]; tiers: TierOpt[] }) {
   const set = (patch: Partial<Rules>) => setRules({ ...rules, ...patch });
   return (
     <div className="grid gap-2 sm:grid-cols-3">
+      {tiers.length > 0 && (
+        <label className="text-xs text-[var(--color-stone)]">Membership tier
+          <select value={rules.tier ?? ''} onChange={(e) => set({ tier: e.target.value || undefined })} className={`${field} w-full`}>
+            <option value="">Any</option>{tiers.map((t) => <option key={t.key} value={t.key}>{t.name}</option>)}
+          </select>
+        </label>
+      )}
       <label className="text-xs text-[var(--color-stone)]">Gender
         <select value={rules.gender ?? ''} onChange={(e) => set({ gender: e.target.value || undefined })} className={`${field} w-full`}>
           <option value="">Any</option><option value="FEMALE">Female</option><option value="MALE">Male</option><option value="NON_BINARY">Non-binary</option>
@@ -72,7 +80,7 @@ function useCount(rules: Rules) {
   return count;
 }
 
-function Builder({ sources, tags }: { sources: string[]; tags: string[] }) {
+function Builder({ sources, tags, tiers }: { sources: string[]; tags: string[]; tiers: TierOpt[] }) {
   const router = useRouter();
   const [name, setName] = useState('');
   const [rules, setRules] = useState<Rules>({});
@@ -84,7 +92,7 @@ function Builder({ sources, tags }: { sources: string[]; tags: string[] }) {
         <h2 className="font-[family-name:var(--font-display)] text-lg">New segment</h2>
         <span className="rounded-full bg-[var(--color-ink)] px-3 py-1 text-xs text-[var(--color-porcelain)]">{count == null ? '…' : `${count} clients`}</span>
       </div>
-      <RuleFields rules={rules} setRules={setRules} sources={sources} tags={tags} />
+      <RuleFields rules={rules} setRules={setRules} sources={sources} tags={tags} tiers={tiers} />
       <div className="mt-3 flex flex-wrap items-end gap-2">
         <label className="text-xs text-[var(--color-stone)]">Name<br /><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Lapsed female clients" className={`${field} w-64`} /></label>
         <button onClick={create} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)]">Save segment</button>

@@ -9,6 +9,7 @@ export type SegmentRules = {
   lapsedDays?: number;    // last visit older than N days
   optInOnly?: boolean;    // marketing-opted-in & not unsubscribed
   visited?: 'any' | 'visited' | 'never';
+  tier?: string;          // membership tier key (e.g. silver/gold/platinum; 'member' = base)
 };
 
 export function rulesToWhere(rules: SegmentRules): Prisma.ClientWhereInput {
@@ -16,6 +17,7 @@ export function rulesToWhere(rules: SegmentRules): Prisma.ClientWhereInput {
   if (rules.gender) where.gender = rules.gender as Prisma.ClientWhereInput['gender'];
   if (rules.source) where.source = rules.source;
   if (rules.tag) where.tags = { has: rules.tag };
+  if (rules.tier) where.membershipTier = rules.tier === 'member' ? null : rules.tier;
   if (rules.optInOnly) { where.marketingOptIn = true; where.unsubscribed = false; }
   if (rules.lapsedDays && rules.lapsedDays > 0) {
     where.lastVisitAt = { lt: new Date(Date.now() - rules.lapsedDays * 86400000) };
@@ -37,6 +39,7 @@ export function describeRules(r: SegmentRules): string {
   if (r.gender) parts.push(r.gender.toLowerCase());
   if (r.source) parts.push(`from ${r.source}`);
   if (r.tag) parts.push(`tagged “${r.tag}”`);
+  if (r.tier) parts.push(`${r.tier} members`);
   if (r.optInOnly) parts.push('marketing opted-in');
   if (r.lapsedDays) parts.push(`not seen in ${r.lapsedDays}d`);
   else if (r.visited === 'visited') parts.push('have visited');
