@@ -15,6 +15,10 @@ export const POINTS = {
   overrunPenaltyPerMin: -1, // per minute over (capped)
   overrunCapMin: 15,
   lowWasteBonus: 5,         // a session with no wasted consumables
+  // ── Commercial / profitability signals ──
+  revenuePencePerPoint: 500,  // 1 pt per £5 of charged treatment revenue
+  upsellPencePerPoint: 250,   // add-ons earn faster (1 pt per £2.50 — higher margin)
+  rebookBonus: 20,            // securing a repeat booking from your client
 };
 
 /** Append a points entry. Never throws to the caller's critical path. */
@@ -87,6 +91,43 @@ export async function awardForReview(reviewId: string) {
   let pts = r.rating * POINTS.reviewPerStar;
   if (r.rating === 5) pts += POINTS.fiveStarBonus;
   await awardPoints({ staffId: r.clinicianId, points: pts, category: 'REVIEW', reason: `${r.rating}★ client review`, reviewId });
+}
+
+/** Profitability points when a booking is charged: revenue delivered, plus an
+ *  accelerated bonus for add-ons/enhancements sold. Idempotent per booking. */
+export async function awardForCharge(bookingId: string) {
+  const b = await db.booking.findUnique({
+    where: { id: bookingId },
+    select: { id: true, practitionerId: true, chargedPence: true, treatmentTitle: true, items: { select: { isAddon: true, pricePence: true, discountPence: true } } },
+  });
+  if (!b?.practitionerId || !b.chargedPence || b.chargedPence <= 0) return;
+  const already = await db.staffPoints.findFirst({ where: { bookingId, category: 'REVENUE' } });
+  if (already) return;
+
+  const revenuePts = Math.floor(b.chargedPence / POINTS.revenuePencePerPoint);
+  if (revenuePts > 0) await awardPoints({ staffId: b.practitionerId, points: revenuePts, category: 'REVENUE', reason: `Revenue: ${b.treatmentTitle}`, bookingId });
+
+  const addonPence = b.items.filter((i) => i.isAddon).reduce((s, i) => s + Math.max(0, i.pricePence - i.discountPence), 0);
+  const upsellPts = Math.floor(addonPence / POINTS.upsellPencePerPoint);
+  if (upsellPts > 0) await awardPoints({ staffId: b.practitionerId, points: upsellPts, category: 'UPSELL', reason: `Add-on sale: ${b.treatmentTitle}`, bookingId });
+}
+
+/** Reward the practitioner of a client's previous completed treatment when that
+ *  client books again — the experience that earned the repeat. Idempotent per
+ *  new booking. */
+export async function awardForRebooking(newBookingId: string) {
+  const nb = await db.booking.findUnique({ where: { id: newBookingId }, select: { id: true, clientId: true, createdAt: true } });
+  if (!nb?.clientId) return;
+  const already = await db.staffPoints.findFirst({ where: { bookingId: newBookingId, category: 'REBOOK' } });
+  if (already) return;
+  // The most recent completed booking the client had before this one.
+  const prev = await db.booking.findFirst({
+    where: { clientId: nb.clientId, status: 'COMPLETED', practitionerId: { not: null }, id: { not: newBookingId } },
+    orderBy: { startAt: 'desc' },
+    select: { practitionerId: true, treatmentTitle: true },
+  });
+  if (!prev?.practitionerId) return;
+  await awardPoints({ staffId: prev.practitionerId, points: POINTS.rebookBonus, category: 'REBOOK', reason: `Repeat booking secured (after ${prev.treatmentTitle})`, bookingId: newBookingId });
 }
 
 export type LeaderRow = {

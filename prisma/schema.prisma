@@ -868,6 +868,9 @@ enum PointsCategory {
   TEAMWORK
   MANUAL          // ad-hoc manager adjustment
   REDEMPTION      // points spent on a reward
+  REVENUE         // revenue delivered (charged treatments)
+  UPSELL          // add-ons / enhancements sold
+  REBOOK          // secured a repeat booking
 }
 
 model StaffPoints {

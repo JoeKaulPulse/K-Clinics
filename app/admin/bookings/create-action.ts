@@ -78,6 +78,9 @@ export async function createManualBooking(input: {
     data: { clientId: client.id, type: 'APPOINTMENT', summary: `Booking created by staff: ${treatment.title}`, author: session.email },
   });
 
+  // Staff incentive: reward the prior practitioner for a secured repeat booking.
+  try { const { awardForRebooking } = await import('@/lib/gamification'); await awardForRebooking(booking.id); } catch { /* non-fatal */ }
+
   revalidatePath('/admin/bookings');
   return { ok: true, bookingId: booking.id };
 }

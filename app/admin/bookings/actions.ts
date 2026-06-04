@@ -49,6 +49,13 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
     } catch (e) {
       console.error('[bookings] loyalty on charge failed:', (e as Error)?.message);
     }
+    // Staff profitability points: revenue delivered + add-on upsells (best-effort).
+    try {
+      const { awardForCharge } = await import('@/lib/gamification');
+      await awardForCharge(bookingId);
+    } catch (e) {
+      console.error('[bookings] staff revenue points failed:', (e as Error)?.message);
+    }
     // Report the sale to GA4 + Meta server-side (best-effort; hashed email only).
     try {
       const { sendPurchase } = await import('@/lib/conversions');
