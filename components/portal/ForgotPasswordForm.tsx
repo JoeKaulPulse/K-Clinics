@@ -42,7 +42,7 @@ export function ForgotPasswordForm() {
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6">
         <p className="font-medium">{t('forgot.title')}</p>
         <p className="mt-2 text-sm text-[var(--color-stone)]">{t('forgot.sent')}</p>
-        <Link href="/account/login" className="mt-4 inline-block text-sm font-medium text-[var(--color-gold)]">← {t('forgot.back')}</Link>
+        <Link href="/account/login" className="mt-4 inline-block text-sm font-medium text-[var(--color-gold-deep)]">← {t('forgot.back')}</Link>
       </div>
     );
   }
@@ -53,11 +53,11 @@ export function ForgotPasswordForm() {
         <label className={authLabel} htmlFor="email">{t('field.email')}</label>
         <input id="email" type="email" autoComplete="email" required className={authField} value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
-      <button type="submit" disabled={loading} className="w-full rounded-full bg-[var(--color-gold)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60">
+      <button type="submit" disabled={loading} className="w-full rounded-full bg-[var(--color-gold-deep)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60">
         {loading ? t('forgot.sending') : t('forgot.send')}
       </button>
       <p className="text-center text-sm text-[var(--color-stone)]">
-        {t('login.newHere')} <Link href="/account/login" className="font-medium text-[var(--color-gold)]">{t('action.signin')}</Link>
+        {t('login.newHere')} <Link href="/account/login" className="font-medium text-[var(--color-gold-deep)]">{t('action.signin')}</Link>
       </p>
     </form>
   );

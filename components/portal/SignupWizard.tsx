@@ -78,7 +78,7 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
         </motion.div>
         <h2 className="font-[family-name:var(--font-display)] text-2xl">{t('signup.doneTitle', { name: d.firstName })}</h2>
         {done.granted ? (
-          <p className="mx-auto mt-3 max-w-sm text-[var(--color-stone)]" dangerouslySetInnerHTML={{ __html: t('signup.discountReady', { percent: done.percent, code: `<span class="font-mono font-semibold text-[var(--color-gold)]">${done.code}</span>` }) }} />
+          <p className="mx-auto mt-3 max-w-sm text-[var(--color-stone)]" dangerouslySetInnerHTML={{ __html: t('signup.discountReady', { percent: done.percent, code: `<span class="font-mono font-semibold text-[var(--color-gold-deep)]">${done.code}</span>` }) }} />
         ) : (
           <p className="mx-auto mt-3 max-w-sm text-[var(--color-stone)]">{done.reason}</p>
         )}
@@ -196,7 +196,7 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
 
       <p className="mt-6 text-center text-sm text-[var(--color-stone)]">
         {t('signup.haveAccount')}{' '}
-        <Link href="/account/login" className="font-medium text-[var(--color-gold)]">{t('action.signin')}</Link>
+        <Link href="/account/login" className="font-medium text-[var(--color-gold-deep)]">{t('action.signin')}</Link>
       </p>
     </div>
   );
