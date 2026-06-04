@@ -1,8 +1,17 @@
 import 'server-only';
 import { SignJWT, jwtVerify } from 'jose';
 
-// WebAuthn (passkey) step-up for the full data export. Platform authenticators
+// WebAuthn (passkey) step-up for high-risk actions. Platform authenticators
 // only (Face ID / Touch ID / Windows Hello), user-verification required.
+// The same flow gates several operations, distinguished by `purpose` so an
+// unlock minted for one action can't be replayed to authorise another.
+
+export const STEP_UP_PURPOSES = ['export', 'rotate-keys'] as const;
+export type StepUpPurpose = (typeof STEP_UP_PURPOSES)[number];
+
+export function isStepUpPurpose(v: unknown): v is StepUpPurpose {
+  return typeof v === 'string' && (STEP_UP_PURPOSES as readonly string[]).includes(v);
+}
 
 export function rp(req: Request): { rpID: string; origin: string; rpName: string; secure: boolean } {
   const url = new URL(req.url);
@@ -16,11 +25,15 @@ function secret(): Uint8Array {
 }
 
 export const CHALLENGE_COOKIE = 'kc_wa_chal';
-export const UNLOCK_COOKIE = 'kc_export_unlock';
 
-/** Short-lived token proving a fresh passkey step-up for `sub`. */
-export async function signUnlock(sub: string): Promise<string> {
-  return new SignJWT({ purpose: 'export' })
+/** Per-purpose unlock cookie so each step-up token is isolated. */
+export function unlockCookie(purpose: StepUpPurpose): string {
+  return `kc_su_${purpose}`;
+}
+
+/** Short-lived token proving a fresh passkey step-up for `sub` + `purpose`. */
+export async function signUnlock(sub: string, purpose: StepUpPurpose = 'export'): Promise<string> {
+  return new SignJWT({ purpose })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(sub)
     .setIssuedAt()
@@ -28,11 +41,11 @@ export async function signUnlock(sub: string): Promise<string> {
     .sign(secret());
 }
 
-export async function verifyUnlock(token: string | undefined, sub: string): Promise<boolean> {
+export async function verifyUnlock(token: string | undefined, sub: string, purpose: StepUpPurpose = 'export'): Promise<boolean> {
   if (!token) return false;
   try {
     const { payload } = await jwtVerify(token, secret());
-    return payload.purpose === 'export' && payload.sub === sub;
+    return payload.purpose === purpose && payload.sub === sub;
   } catch {
     return false;
   }
