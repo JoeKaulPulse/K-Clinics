@@ -75,6 +75,19 @@ type Lot = { remaining: number; expiresAt: Date | null };
  *  soonest-to-expire earned points first, so the live balance is correct
  *  regardless of whether the daily expiry sweep has written EXPIRY rows yet.
  *  Returns the spendable balance and the amount currently sitting past expiry. */
+/** Spendable balance from raw ledger rows (FIFO expiry consumed soonest-first).
+ *  Pure — reused inside the redemption transaction for a consistent read. */
+export function computeBalance(rows: { points: number; expiresAt: Date | null }[]): number {
+  const lots = rows.filter((r) => r.points > 0).map((r) => ({ remaining: r.points, expiresAt: r.expiresAt }));
+  lots.sort((a, b) => { if (!a.expiresAt) return 1; if (!b.expiresAt) return -1; return +a.expiresAt - +b.expiresAt; });
+  let consume = rows.filter((r) => r.points < 0).reduce((s, r) => s - r.points, 0);
+  for (const lot of lots) { if (consume <= 0) break; const take = Math.min(lot.remaining, consume); lot.remaining -= take; consume -= take; }
+  const now = Date.now();
+  let balance = 0;
+  for (const lot of lots) { if (lot.remaining <= 0) continue; if (lot.expiresAt && +lot.expiresAt <= now) continue; balance += lot.remaining; }
+  return balance;
+}
+
 async function reconcile(clientId: string): Promise<{ balance: number; expiredUnswept: number; expiringSoon: number }> {
   const rows = await db.clientPoints.findMany({
     where: { clientId },
@@ -243,32 +256,36 @@ async function maybeQualifyReferral(clientId: string, bookingId: string, spendPe
  *  pence discounted. Replaces any prior redemption on the same booking. */
 export async function redeemPointsOnBooking(clientId: string, bookingId: string, points: number): Promise<{ ok: boolean; error?: string; discountPence?: number }> {
   try {
-    const b = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, status: true, pricePence: true, pointsRedeemed: true, treatmentTitle: true } });
+    const b = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, status: true, pricePence: true, treatmentTitle: true } });
     if (!b || b.clientId !== clientId) return { ok: false, error: 'Booking not found.' };
     if (b.status === 'COMPLETED' || b.status === 'CANCELLED' || b.status === 'NO_SHOW') return { ok: false, error: 'This booking can no longer be changed.' };
     if (b.pricePence <= 0) return { ok: false, error: 'Points can’t be applied to this booking.' };
 
     const want = Math.max(0, Math.floor(points / 100) * 100); // whole pounds only
-    const capPence = Math.floor(b.pricePence * LOYALTY.maxRedeemFraction);
-    const capPoints = Math.floor(capPence / LOYALTY.pointValuePence);
+    const capPoints = Math.floor(Math.floor(b.pricePence * LOYALTY.maxRedeemFraction) / LOYALTY.pointValuePence);
 
-    // Refund any existing redemption first so this is a clean re-apply.
-    if (b.pointsRedeemed > 0) {
-      await awardClientPoints({ clientId, points: b.pointsRedeemed, category: 'REDEMPTION', reason: `Points returned (re-applied): ${b.treatmentTitle}`, bookingId });
-      await db.booking.update({ where: { id: bookingId }, data: { pointsRedeemed: 0, pointsRedeemedPence: 0 } });
-    }
+    // Read balance and write the ledger + booking atomically (Serializable) so
+    // concurrent redemptions can't both pass the balance check and overspend.
+    return await db.$transaction(async (tx) => {
+      const cur = await tx.booking.findUnique({ where: { id: bookingId }, select: { pointsRedeemed: true } });
+      // Refund any existing redemption first so this is a clean re-apply.
+      if (cur && cur.pointsRedeemed > 0) {
+        await tx.clientPoints.create({ data: { clientId, points: cur.pointsRedeemed, category: 'REDEMPTION', reason: `Points returned (re-applied): ${b.treatmentTitle}`.slice(0, 200), bookingId, awardedBy: 'system', expiresAt: null } });
+        await tx.booking.update({ where: { id: bookingId }, data: { pointsRedeemed: 0, pointsRedeemedPence: 0 } });
+      }
+      if (want === 0) return { ok: true, discountPence: 0 }; // cleared the redemption
 
-    if (want === 0) return { ok: true, discountPence: 0 }; // cleared the redemption
+      const rows = await tx.clientPoints.findMany({ where: { clientId }, select: { points: true, expiresAt: true } });
+      const balance = computeBalance(rows);
+      const spend = Math.min(want, capPoints, balance);
+      if (spend <= 0) return { ok: false, error: balance < 100 ? 'You need at least 100 points to redeem.' : 'Nothing to redeem here.' };
+      if (spend < want && want > balance) return { ok: false, error: `You only have ${balance} points.` };
 
-    const balance = await clientBalance(clientId);
-    const spend = Math.min(want, capPoints, balance);
-    if (spend <= 0) return { ok: false, error: balance < 100 ? 'You need at least 100 points to redeem.' : 'Nothing to redeem here.' };
-    if (spend < want && want > balance) return { ok: false, error: `You only have ${balance} points.` };
-
-    const discountPence = spend * LOYALTY.pointValuePence;
-    await awardClientPoints({ clientId, points: -spend, category: 'REDEMPTION', reason: `Applied to ${b.treatmentTitle}`, bookingId });
-    await db.booking.update({ where: { id: bookingId }, data: { pointsRedeemed: spend, pointsRedeemedPence: discountPence } });
-    return { ok: true, discountPence };
+      const discountPence = spend * LOYALTY.pointValuePence;
+      await tx.clientPoints.create({ data: { clientId, points: -spend, category: 'REDEMPTION', reason: `Applied to ${b.treatmentTitle}`.slice(0, 200), bookingId, awardedBy: 'system', expiresAt: null } });
+      await tx.booking.update({ where: { id: bookingId }, data: { pointsRedeemed: spend, pointsRedeemedPence: discountPence } });
+      return { ok: true, discountPence };
+    }, { isolationLevel: 'Serializable' });
   } catch (e) {
     console.error('[loyalty] redeemPointsOnBooking failed:', (e as Error)?.message);
     return { ok: false, error: 'Could not apply points — please try again.' };

@@ -56,7 +56,11 @@ export async function finalizeOrder(orderId: string): Promise<{ ok: boolean; num
   if (!order) return { ok: false };
   if (order.status === 'PAID' || order.status === 'FULFILLED') return { ok: true, number: order.number };
 
-  await db.order.update({ where: { id: orderId }, data: { status: 'PAID' } });
+  // Claim the order atomically — only the caller that actually flips it to PAID
+  // proceeds to decrement stock / redeem the gift card / email. A concurrent
+  // webhook + /confirm therefore can't double-decrement stock or double-redeem.
+  const claim = await db.order.updateMany({ where: { id: orderId, status: { notIn: ['PAID', 'FULFILLED'] } }, data: { status: 'PAID' } });
+  if (claim.count === 0) return { ok: true, number: order.number };
 
   // Decrement stock for tracked products.
   for (const it of order.items) {
