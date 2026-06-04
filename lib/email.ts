@@ -218,6 +218,22 @@ export function tmplManual(bodyHtml: string, unsubUrl?: string) {
   return emailShell({ body: bodyHtml, unsubUrl });
 }
 
+// Secure card-on-file request for a booking taken offline (phone / walk-in), so
+// it gets the same no-show protection as an online booking. No charge is taken.
+export function tmplCardRequest(o: { firstName: string; treatment: string; start: Date; url: string }) {
+  return emailShell({
+    preheader: 'Securely save a card to confirm your appointment — no payment is taken now',
+    body: `<h1 style="font-size:24px;margin:0 0 16px;">One quick step, ${escape(o.firstName)}.</h1>
+    <p>To confirm your <strong>${escape(o.treatment)}</strong> on ${fmtWhen(o.start)}, please securely save a card to your booking. It takes less than a minute.</p>
+    <p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">
+      <strong>No payment is taken now.</strong> Your card is stored securely with our payment provider (Stripe) and is only charged when your treatment is delivered, or for a late cancellation within 24 hours — exactly the same as booking online.
+    </p>
+    <p style="margin:28px 0;">${btn(o.url, 'Save my card securely')}</p>
+    <p style="font-size:14px;color:#91766e;">This is a private link just for your appointment — please don't share it.</p>
+    <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
 // Security notice sent whenever an account password changes — so the owner of
 // the inbox is alerted even if they didn't make the change.
 export function tmplPasswordChanged(firstName: string) {

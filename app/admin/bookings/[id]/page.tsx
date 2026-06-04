@@ -5,6 +5,7 @@ import { getSession, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { BookingActions } from '@/components/admin/BookingActions';
+import { RequestCardButton } from '@/components/admin/RequestCardButton';
 import { ClinicalWorkflow } from '@/components/admin/ClinicalWorkflow';
 import { ConsumablesPanel } from '@/components/admin/ConsumablesPanel';
 import { ClinicalNote } from '@/components/admin/ClinicalNote';
@@ -144,6 +145,9 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             <p className="mt-3 text-xs text-[var(--color-stone-soft)]">
               Card {b.stripePaymentMethodId ? 'saved ✓' : 'not saved'} · booked {new Date(b.createdAt).toLocaleDateString('en-GB')}
             </p>
+            {!b.stripePaymentMethodId && !['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(b.status) && sessionCan(session, 'bookings.charge') && (
+              <RequestCardButton bookingId={b.id} hasEmail={Boolean(b.client.email)} hasPhone={Boolean(b.client.phone)} />
+            )}
           </div>
 
           {/* Health & consent — clinical safety at a glance */}
