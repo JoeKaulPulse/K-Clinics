@@ -22,6 +22,13 @@ export async function POST(req: Request) {
   const client = await getCurrentClient().catch(() => null);
   if (!client) return NextResponse.json({ ok: false, reason: 'auth', message: 'Please sign in or create an account to use the AI consultation.' }, { status: 401 });
 
+  // Each analysis is an expensive vision-model call, so cap by IP as a cost
+  // safeguard on top of the per-client limit inside analyze().
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'ai-consult', 20, 3600, 'client'))) {
+    return NextResponse.json({ ok: false, reason: 'limit', message: 'You’ve reached the limit for now — please try again later.' }, { status: 429 });
+  }
+
   const { getSetting } = await import('@/lib/settings');
   if (!(await getSetting('ai_consultation_enabled'))) {
     return NextResponse.json({ ok: false, reason: 'unavailable', message: 'The AI consultation is currently switched off.' }, { status: 503 });

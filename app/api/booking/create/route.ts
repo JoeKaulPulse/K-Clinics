@@ -13,6 +13,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Online booking is not available right now. Please call us.' }, { status: 503 });
   }
 
+  // This endpoint is public and holds a real slot + creates a Stripe customer
+  // and SetupIntent, so rate-limit by IP to prevent slot-holding spam / abuse.
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'booking-create', 12, 600, 'client'))) {
+    return NextResponse.json({ ok: false, error: 'Too many booking attempts. Please wait a moment and try again, or call us.' }, { status: 429 });
+  }
+
   const parsed = bookingCreateSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {
     return NextResponse.json({ ok: false, error: parsed.error.errors[0]?.message || 'Invalid request' }, { status: 422 });
