@@ -425,14 +425,17 @@ function courseAsVariant(v: Variant, sessions: number): Variant {
 // ── Account step (signup / login) ───────────────────────────────────────────
 function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string; gender: string | null; welcome: boolean; sms: boolean }) => void; setError: (e: string) => void }) {
   const [mode, setMode] = useState<'signup' | 'login'>('signup');
-  const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', gender: '', marketingOptIn: true, sms: false, consent: false, company: '' });
+  const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', password: '', gender: '', marketingOptIn: true, sms: false, consent: false, company: '' });
   const [busy, setBusy] = useState(false);
 
   async function signup() {
-    if (!f.firstName || !/\S+@\S+\.\S+/.test(f.email) || f.password.length < 8 || !f.consent) { setError('Please complete the required fields (password 8+ characters) and accept the terms.'); return; }
+    const digits = (f.phone.match(/\d/g) || []).length;
+    if (!f.firstName || !f.lastName.trim() || !/\S+@\S+\.\S+/.test(f.email) || digits < 7 || !f.dob || f.password.length < 8 || !f.consent) {
+      setError('Please complete all required fields (surname, a valid mobile, date of birth, password 8+) and accept the terms.'); return;
+    }
     setBusy(true); setError('');
     try {
-      const res = await fetch('/api/account/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firstName: f.firstName, lastName: f.lastName, email: f.email, phone: f.phone, password: f.password, gender: f.gender || undefined, marketingOptIn: f.marketingOptIn, locale: 'en', company: f.company }) });
+      const res = await fetch('/api/account/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firstName: f.firstName, lastName: f.lastName, email: f.email, phone: f.phone, dob: f.dob, password: f.password, gender: f.gender || undefined, marketingOptIn: f.marketingOptIn, consent: f.consent, locale: 'en', company: f.company }) });
       const j = await res.json();
       if (!j.ok) { setError(j.error || 'Could not create your account.'); setBusy(false); return; }
       if (f.sms && f.phone) { fetch('/api/account/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ smsReminders: true }) }).catch(() => {}); }
@@ -462,10 +465,11 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
       {mode === 'signup' ? (
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div><label className={label}>First name *</label><input autoComplete="given-name" className={field} value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} /></div>
-          <div><label className={label}>Last name</label><input autoComplete="family-name" className={field} value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} /></div>
+          <div><label className={label}>Last name *</label><input autoComplete="family-name" className={field} value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} /></div>
           <div className="sm:col-span-2"><label className={label}>Email *</label><input type="email" autoComplete="email" className={field} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
-          <div><label className={label}>Mobile</label><input type="tel" autoComplete="tel" className={field} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
-          <div><label className={label}>Password * (8+)</label><input type="password" autoComplete="new-password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
+          <div><label className={label}>Mobile *</label><input type="tel" autoComplete="tel" className={field} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
+          <div><label className={label}>Date of birth *</label><input type="date" autoComplete="bday" className={field} value={f.dob} onChange={(e) => setF({ ...f, dob: e.target.value })} /></div>
+          <div className="sm:col-span-2"><label className={label}>Password * (8+)</label><input type="password" autoComplete="new-password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
           <div className="sm:col-span-2"><label className={label}>Gender (optional — tailors recommendations)</label>
             <select className={field} value={f.gender} onChange={(e) => setF({ ...f, gender: e.target.value })}>
               <option value="">Prefer not to say</option>
