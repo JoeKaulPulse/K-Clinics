@@ -27,9 +27,9 @@ export default async function EmailDashboard() {
     db.campaign.findMany({ where: { status: 'SENT' }, orderBy: { sentAt: 'desc' }, take: 12 }),
   ]);
 
-  // Drafts & scheduled sends, newest first (scheduled shown by due time).
+  // Drafts, scheduled sends and running A/B tests, newest first.
   const pending = await db.campaign.findMany({
-    where: { status: { in: ['DRAFT', 'SCHEDULED'] } },
+    where: { status: { in: ['DRAFT', 'SCHEDULED', 'AB_TESTING'] } },
     orderBy: [{ status: 'asc' }, { scheduledAt: 'asc' }, { updatedAt: 'desc' }],
     take: 30,
   });
@@ -38,7 +38,8 @@ export default async function EmailDashboard() {
     t === 'segment' ? (segNames.get(v || '') || 'Segment') : t === 'tag' ? `Tag: ${v}` : 'All subscribers';
   const pendingRows: DraftRow[] = pending.map((c) => ({
     id: c.id, name: c.name, subject: c.subject, status: c.status,
-    scheduledAt: c.scheduledAt?.toISOString() ?? null, audience: audienceLabel(c.audienceType, c.audienceValue),
+    scheduledAt: (c.status === 'AB_TESTING' ? c.abDecideAt : c.scheduledAt)?.toISOString() ?? null,
+    audience: audienceLabel(c.audienceType, c.audienceValue),
   }));
   const canSend = sessionCan(session, 'campaigns.send');
 

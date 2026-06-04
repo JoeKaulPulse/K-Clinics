@@ -43,16 +43,22 @@ export function EmailCampaignRows({ rows }: { rows: DraftRow[] }) {
                 <span className="block text-xs text-[var(--color-stone-soft)]">{r.subject || 'No subject yet'} · {r.audience}</span>
               </td>
               <td className="p-3 text-xs text-[var(--color-stone)]">
-                {r.status === 'SCHEDULED'
-                  ? <span className="rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-800">Scheduled {r.scheduledAt ? fmt(r.scheduledAt) : ''}</span>
-                  : <span className="rounded-full bg-[var(--color-bone)] px-2 py-0.5 font-medium text-[var(--color-stone)]">Draft</span>}
+                {r.status === 'AB_TESTING'
+                  ? <span className="rounded-full bg-violet-100 px-2 py-0.5 font-medium text-violet-800">A/B testing{r.scheduledAt ? ` · winner ${fmt(r.scheduledAt)}` : ''}</span>
+                  : r.status === 'SCHEDULED'
+                    ? <span className="rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-800">Scheduled {r.scheduledAt ? fmt(r.scheduledAt) : ''}</span>
+                    : <span className="rounded-full bg-[var(--color-bone)] px-2 py-0.5 font-medium text-[var(--color-stone)]">Draft</span>}
               </td>
               <td className="p-3 text-right">
-                <div className="flex flex-wrap justify-end gap-3 text-xs">
-                  <Link href={`/admin/marketing/email/new?id=${r.id}`} className="text-[var(--color-gold)] hover:underline">Edit</Link>
-                  <button disabled={busy === r.id} onClick={() => sendNow(r)} className="text-[var(--color-ink)] hover:underline disabled:opacity-50">{busy === r.id ? '…' : 'Send now'}</button>
-                  <button disabled={busy === r.id} onClick={() => remove(r)} className="text-[var(--color-blush)] hover:underline disabled:opacity-50">{r.status === 'SCHEDULED' ? 'Cancel' : 'Delete'}</button>
-                </div>
+                {r.status === 'AB_TESTING' ? (
+                  <span className="text-xs text-[var(--color-stone-soft)]">Testing in progress…</span>
+                ) : (
+                  <div className="flex flex-wrap justify-end gap-3 text-xs">
+                    <Link href={`/admin/marketing/email/new?id=${r.id}`} className="text-[var(--color-gold)] hover:underline">Edit</Link>
+                    <button disabled={busy === r.id} onClick={() => sendNow(r)} className="text-[var(--color-ink)] hover:underline disabled:opacity-50">{busy === r.id ? '…' : 'Send now'}</button>
+                    <button disabled={busy === r.id} onClick={() => remove(r)} className="text-[var(--color-blush)] hover:underline disabled:opacity-50">{r.status === 'SCHEDULED' ? 'Cancel' : 'Delete'}</button>
+                  </div>
+                )}
               </td>
             </tr>
           ))}

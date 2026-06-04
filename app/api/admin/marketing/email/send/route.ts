@@ -102,6 +102,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, id: c.id, scheduledAt: when.toISOString() });
   }
 
+  // ── Start an A/B subject test: two subjects to samples, winner to the rest. ──
+  if (body.op === 'abTest') {
+    if (!subject || blocks.length === 0) return NextResponse.json({ ok: false, error: 'Add a subject and some content.' }, { status: 400 });
+    const subjectB = String(body.subjectB || '').trim().slice(0, 200);
+    if (!subjectB) return NextResponse.json({ ok: false, error: 'Add a second subject line (B) to test.' }, { status: 400 });
+    if ((await countAudience(aud)) < 3) return NextResponse.json({ ok: false, error: 'Need at least a few opted-in recipients to run a test.' }, { status: 400 });
+    const samplePct = Math.min(45, Math.max(5, Math.round(Number(body.abSamplePct) || 15)));
+    const hours = Math.min(72, Math.max(1, Math.round(Number(body.abWindowHours) || 4)));
+    const decideAt = new Date(Date.now() + hours * 3600_000);
+    const c = await upsert('DRAFT', { subjectB, abSamplePct: samplePct, abDecideAt: decideAt });
+    const { startAbTest } = await import('@/lib/email-campaigns');
+    const r = await startAbTest(c.id);
+    if (!r.ok) return NextResponse.json(r, { status: 400 });
+    const { logAudit } = await import('@/lib/audit');
+    await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: `Started A/B email “${name}” (${r.tested} tested)` });
+    return NextResponse.json({ id: c.id, ...r, decideAt: decideAt.toISOString() });
+  }
+
   // ── Send immediately. ──
   if (!subject || blocks.length === 0) return NextResponse.json({ ok: false, error: 'Add a subject and some content.' }, { status: 400 });
   if ((await countAudience(aud)) === 0) return NextResponse.json({ ok: false, error: 'No opted-in recipients match that audience.' }, { status: 400 });
