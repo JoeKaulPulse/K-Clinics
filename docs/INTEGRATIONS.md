@@ -101,9 +101,10 @@ Two-way busy-time sync + event push per clinician (OAuth per user).
 |---|---|
 | `GOOGLE_CLIENT_ID` | OAuth client ID — Google Cloud Console → APIs & Services → Credentials. |
 | `GOOGLE_CLIENT_SECRET` | OAuth client secret. |
-| `GOOGLE_REDIRECT_URI` | `https://kclinics.co.uk/api/admin/integrations/google/callback` |
+| `GOOGLE_REDIRECT_URI` | `https://kclinics.co.uk/api/admin/gcal/callback` — **must match exactly** or Google returns `redirect_uri_mismatch`. |
+| `GOOGLE_INTEGRATION_ENABLED` | `true` switches the sync on (parked otherwise). Read-only `calendar.readonly` scope. |
 
-Enable the **Google Calendar API** on the project. Guard: `googleConfigured()`.
+Enable the **Google Calendar API** on the project. Guards: `googleConfigured()` + `googleEnabled()`.
 
 **Without these:** the "Connect Google Calendar" button is inert; scheduling uses
 only the in-app rota.

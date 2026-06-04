@@ -434,6 +434,21 @@ render([
     ['EMAIL_REPLY_TO', 'hello@kclinics.co.uk'],
     ['CLINIC_NOTIFY_EMAIL', 'frontdesk@kclinics.co.uk'],
   ], [40, 60]] },
+  { tip: 'There must be only ONE SPF record on a domain. If you also set up Google Workspace email (Step 4), don’t add two — merge them into a single line: v=spf1 include:_spf.google.com include:amazonses.com ~all. DKIM and the “send” subdomain don’t clash, so those sit happily alongside Google.', label: 'Important' },
+  { h2: 'Switch on delivery tracking & list hygiene (the webhook)' },
+  { p: 'A webhook lets Resend tell the platform when an email is delivered, opened, clicked, bounced or marked as spam — which powers the open/click rates in your dashboard and, crucially, automatically stops emailing anyone who bounces or complains (protecting your sender reputation). In production this is required: without it the dashboard shows no stats.' },
+  { steps: [
+    'In Resend → “Webhooks” → “Add Endpoint”.',
+    'Endpoint URL: https://kclinics.co.uk/api/webhooks/resend',
+    'Select these events: email.delivered, email.opened, email.clicked, email.bounced, email.complained.',
+    'Click “Add”, then on the endpoint’s page copy the “Signing Secret” (it starts with whsec_).',
+    'Paste it into Vercel as RESEND_WEBHOOK_SECRET, then redeploy.',
+    'Finally, in Resend → Domains → kclinics.co.uk → Settings, turn ON “Open Tracking” and “Click Tracking” (so opens/clicks are recorded).',
+  ] },
+  { link: ['Resend — webhooks', 'https://resend.com/docs/dashboard/webhooks/introduction'] },
+  { table: [['Paste into Vercel as', 'Value'], [
+    ['RESEND_WEBHOOK_SECRET', 'whsec_… (the signing secret)'],
+  ], [44, 56]] },
   { tip: 'Until the domain is verified, emails simply don’t send (nothing breaks — bookings still work). Once verified, send yourself a test from Admin → Marketing to confirm the logo and styling look right.', label: 'Tip' },
 ]);
 
@@ -518,21 +533,25 @@ render([
 // ══════════════════════════════════════════════════════════════════════════════
 section('Google extras — calendar sync, reviews, search', 'Optional polish that builds on your Google Workspace account. Add these after launch if you prefer.');
 render([
-  { h2: 'Clinician calendar two-way sync' },
-  { p: 'Lets each clinician connect their own Google Calendar so personal busy-time blocks the booking grid, and bookings appear on their calendar.' },
+  { h2: 'Clinician availability sync (read-only)' },
+  { p: 'Each clinician connects their own Google Calendar so their personal busy-time blocks their booking slots. It’s strictly read-only — the platform only reads when they’re busy and can never see event details, edit or add anything to their calendar. Their appointments already live in the admin Calendar (one column per clinician), which is your holistic, all-staff overview — so nothing is pushed into Google.' },
   { steps: [
     'In the Google Cloud Console (console.cloud.google.com), create a project and enable the “Google Calendar API”.',
     'Under “Credentials”, create an “OAuth client ID” (type: Web application).',
-    'Add the redirect URL: https://kclinics.co.uk/api/admin/integrations/google/callback',
+    'Add this exact redirect URL: https://kclinics.co.uk/api/admin/gcal/callback',
     'Copy the Client ID and Client Secret.',
+    'Paste the three values below into Vercel, set GOOGLE_INTEGRATION_ENABLED to true, and redeploy.',
+    'In Admin → Schedule, each clinician clicks “Connect Google Calendar” and signs in to their own Google account once.',
   ] },
   { link: ['Google — create OAuth credentials', 'https://developers.google.com/workspace/guides/create-credentials'] },
   { link: ['Google — enable an API', 'https://support.google.com/googleapi/answer/6158841'] },
   { table: [['Paste into Vercel as', 'Value'], [
     ['GOOGLE_CLIENT_ID', 'the OAuth Client ID'],
     ['GOOGLE_CLIENT_SECRET', 'the OAuth Client Secret'],
-    ['GOOGLE_REDIRECT_URI', 'https://kclinics.co.uk/api/admin/integrations/google/callback'],
+    ['GOOGLE_REDIRECT_URI', 'https://kclinics.co.uk/api/admin/gcal/callback'],
+    ['GOOGLE_INTEGRATION_ENABLED', 'true'],
   ], [40, 60]] },
+  { tip: 'The redirect URL must match character-for-character between Google Cloud and the GOOGLE_REDIRECT_URI setting — note it is /api/admin/gcal/callback. If they differ, Google shows a “redirect_uri_mismatch” error.', label: 'Important' },
   { h2: 'Send happy clients to Google reviews' },
   { steps: [
     'Find your clinic’s “Place ID” using Google’s Place ID finder.',
@@ -619,12 +638,14 @@ render([
     ['RESEND_API_KEY', 'Sends email', '9'],
     ['EMAIL_FROM / EMAIL_REPLY_TO', 'From / reply address', '9'],
     ['CLINIC_NOTIFY_EMAIL', 'Internal alerts inbox', '9'],
+    ['RESEND_WEBHOOK_SECRET', 'Email stats + list hygiene', '9'],
     ['TURNSTILE_SECRET_KEY', 'Spam protection', '10'],
     ['NEXT_PUBLIC_TURNSTILE_SITE_KEY', 'Spam protection', '10'],
     ['XERO_CLIENT_ID / _SECRET', 'Accounting', '11'],
     ['TRUELAYER_CLIENT_ID / _SECRET', 'Bank feed', '12'],
     ['YAY_WEBHOOK_SECRET', 'Call logging', '13'],
-    ['GOOGLE_CLIENT_ID / _SECRET / _REDIRECT_URI', 'Calendar sync', '14'],
+    ['GOOGLE_CLIENT_ID / _SECRET / _REDIRECT_URI', 'Calendar availability', '14'],
+    ['GOOGLE_INTEGRATION_ENABLED = true', 'Switches calendar sync on', '14'],
     ['GOOGLE_PLACE_ID', 'Google reviews', '14'],
     ['GOOGLE_SITE_VERIFICATION', 'Search Console', '14'],
     ['TWILIO_ACCOUNT_SID / _AUTH_TOKEN / _FROM', 'SMS (optional)', '15'],
