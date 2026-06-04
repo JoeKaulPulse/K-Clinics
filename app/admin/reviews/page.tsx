@@ -5,6 +5,7 @@ import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { ReviewActions } from '@/components/admin/ReviewActions';
+import { GoogleReviewsPanel } from '@/components/admin/GoogleReviewsPanel';
 import { getLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
@@ -38,6 +39,18 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
   ]);
 
   const countOf = (s: string) => counts.find((c) => c.status === s)?._count ?? 0;
+
+  // Google Business Profile reviews (imported via the My Business API).
+  const { googleBusinessConfigured, googleBusinessConnected } = await import('@/lib/google-business');
+  const [gReviews, gConnected] = await Promise.all([
+    db.googleReview.findMany({ orderBy: [{ createTime: 'desc' }], take: 200 }),
+    googleBusinessConnected(),
+  ]);
+  const googleReviews = gReviews.map((r) => ({
+    id: r.id, googleName: r.googleName, reviewerName: r.reviewerName, starRating: r.starRating,
+    comment: r.comment, createTime: r.createTime?.toISOString() ?? null, replyComment: r.replyComment,
+  }));
+
   const can = await sessionPermissions();
   const locale = await getLocale();
   const uk = locale === 'uk';
@@ -103,6 +116,8 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
           );
         })}
       </div>
+
+      <GoogleReviewsPanel connected={gConnected} configured={googleBusinessConfigured()} reviews={googleReviews} />
     </AdminShell>
   );
 }
