@@ -12,7 +12,6 @@ export const primaryNav: NavGroup[] = [
         links: [
           { label: 'Laser Hair Removal', href: '/laser-hair-removal', description: 'Smooth, lasting freedom' },
           { label: 'Laser Hair Removal for Men', href: '/laser-hair-removal-for-men', description: 'Tailored for him' },
-          { label: 'IPL Phototherapy', href: '/ipl-phototherapy', description: 'Pigmentation & redness' },
           { label: 'Laser Tattoo Removal', href: '/laser-tattoo-removal', description: 'Clean-slate clarity' },
         ],
       },

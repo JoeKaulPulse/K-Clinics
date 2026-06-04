@@ -48,6 +48,8 @@ const redirects = async () => [
   { source: '/kclinics-beauty-points', destination: '/membership', permanent: true },
   { source: '/personalized-high-end-treatments', destination: '/about', permanent: true },
   { source: '/individualised-treatment-plans', destination: '/about', permanent: true },
+  // IPL Phototherapy retired from the menu — send old links to the treatments hub.
+  { source: '/ipl-phototherapy', destination: '/treatments', permanent: true },
 ];
 
 const nextConfig = {

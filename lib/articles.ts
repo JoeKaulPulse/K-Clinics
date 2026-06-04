@@ -117,7 +117,7 @@ export const articles: Article[] = [
     published: '2026-03-20',
     keywords: ['laser treatment aftercare', 'skincare after laser', 'laser facial recovery London'],
     image: 'Carbon-Laser-Peel.png',
-    related: ['ipl-phototherapy', 'hydraglow-facial', 'laser-skin-rejuvenation'],
+    related: ['hydraglow-facial', 'laser-skin-rejuvenation'],
     blocks: [
       { type: 'p', text: 'Laser skin treatments work by stimulating your skin’s natural renewal. What you do in the days afterwards has a real impact on both comfort and results.' },
       { type: 'h2', text: 'The first 48 hours' },
