@@ -26,6 +26,8 @@ export default async function AudiencesPage() {
   const clients = await db.client.findMany({ select: { source: true, tags: true }, take: 2000 });
   const sources = [...new Set(clients.map((c) => c.source).filter(Boolean) as string[])].sort().slice(0, 30);
   const tags = [...new Set(clients.flatMap((c) => c.tags))].sort().slice(0, 50);
+  const { getTiers } = await import('@/lib/membership');
+  const tiers = (await getTiers()).map((t) => ({ key: t.key, name: t.name }));
 
   const can = await sessionPermissions();
   const locale = await getLocale();
@@ -37,7 +39,7 @@ export default async function AudiencesPage() {
         estimate. Use them to target campaigns and email.
       </p>
       <div className="mt-8">
-        <AudienceManager rows={rows} sources={sources} tags={tags} canManage={sessionCan(session, 'campaigns.send') || sessionCan(session, 'settings.manage')} />
+        <AudienceManager rows={rows} sources={sources} tags={tags} tiers={tiers} canManage={sessionCan(session, 'campaigns.send') || sessionCan(session, 'settings.manage')} />
       </div>
     </AdminShell>
   );

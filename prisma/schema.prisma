@@ -42,6 +42,7 @@ enum EmailKind {
   PASSWORD_RESET
   CAMPAIGN
   MANUAL
+  MEMBERSHIP
 }
 
 enum EmailStatus {

@@ -78,17 +78,45 @@ export type MembershipStatus = {
   progressPct: number; multiplierBps: number;
 };
 
-/** Compute (and cache on the Client) a client's current tier from rolling spend. */
+/** Compute (and cache on the Client) a client's current tier from rolling spend.
+ *  Sends a one-off congratulations email when the client moves UP a tier. */
 export async function recomputeClientTier(clientId: string): Promise<MembershipStatus | null> {
   const tiers = await getTiers();
   const spend = await rolling12moSpendPence(clientId);
   const tier = tierForSpend(tiers, spend);
   const next = nextTier(tiers, spend);
+
+  const prev = await db.client.findUnique({ where: { id: clientId }, select: { membershipTier: true, email: true, firstName: true } });
+  const rank = (key: string | null | undefined) => Math.max(0, tiers.findIndex((t) => t.key === (key ?? 'member')));
+
   await db.client.update({
     where: { id: clientId },
     data: { membershipTier: tier.key === 'member' ? null : tier.key, membership12moPence: spend, membershipUpdatedAt: new Date() },
   }).catch(() => {});
+
+  // Upgrade celebration (compared against the previously-cached tier → idempotent).
+  if (prev && tier.key !== 'member' && rank(tier.key) > rank(prev.membershipTier)) {
+    try { await sendTierUpgradeEmail({ email: prev.email, firstName: prev.firstName, clientId }, tier); } catch (e) { console.error('[membership] upgrade email failed:', (e as Error)?.message); }
+  }
   return buildStatus(tier, next, spend, tiers);
+}
+
+async function sendTierUpgradeEmail(client: { email: string; firstName: string | null; clientId: string }, tier: Tier) {
+  if (!client.email) return;
+  const { sendEmail, emailShell } = await import('@/lib/email');
+  const { site } = await import('@/lib/site');
+  const base = (process.env.NEXT_PUBLIC_SITE_URL || site.url).replace(/\/$/, '');
+  const accent = tier.color || '#a98a6d';
+  const perks = tier.perks.map((p) => `<li style="margin:0 0 6px;">${p}</li>`).join('');
+  const body = `
+    <p style="font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:${accent};margin:0 0 8px;">K Circle membership</p>
+    <h1 style="margin:0 0 12px;font-size:26px;">Congratulations, you’ve reached ${tier.name}</h1>
+    <p style="margin:0 0 14px;">Hi ${client.firstName || 'there'}, thank you for being one of our valued clients — you’ve been upgraded to <strong>${tier.name}</strong>. Here’s what you now enjoy:</p>
+    <ul style="margin:0 0 18px;padding-left:20px;font-size:15px;line-height:1.6;">${perks}</ul>
+    <p style="margin:6px 0 18px;"><a href="${base}/book" style="display:inline-block;background:${accent};color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:14px;">Book your next visit</a></p>
+    <p style="margin:0;font-size:13px;color:#8a7d72;">See your status any time in your <a href="${base}/account/rewards" style="color:${accent};">rewards</a>.</p>`;
+  const res = await sendEmail({ to: client.email, subject: `You’ve reached ${tier.name} — welcome to the next level of K Circle`, html: emailShell({ body, preheader: `Your K Circle membership has been upgraded to ${tier.name}.` }) });
+  await db.emailEvent.create({ data: { clientId: client.clientId, kind: 'MEMBERSHIP', to: client.email, subject: `K Circle: upgraded to ${tier.name}`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error } }).catch(() => {});
 }
 
 function buildStatus(tier: Tier, next: Tier | null, spend: number, tiers: Tier[]): MembershipStatus {
