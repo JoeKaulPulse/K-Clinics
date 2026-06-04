@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { PortalShell } from '@/components/portal/PortalShell';
 import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
 import { ReferralCard } from '@/components/portal/ReferralCard';
+import { MembershipCard } from '@/components/portal/MembershipCard';
 import { Reveal } from '@/components/motion/Reveal';
 import { KMark } from '@/components/brand/marks';
 import { crmEnabled } from '@/lib/crm';
@@ -30,10 +31,12 @@ export default async function RewardsPage() {
   if (!client) redirect('/account/login');
 
   const { clientLoyaltySummary, clientLedger, getOrCreateReferralCode } = await import('@/lib/client-loyalty');
-  const [summary, ledger, code] = await Promise.all([
+  const { clientMembership } = await import('@/lib/membership');
+  const [summary, ledger, code, membership] = await Promise.all([
     clientLoyaltySummary(client.id),
     clientLedger(client.id, 25),
     getOrCreateReferralCode(client.id),
+    clientMembership(client.id),
   ]);
 
   const locale: Locale = client.locale === 'uk' ? 'uk' : 'en';
@@ -47,6 +50,11 @@ export default async function RewardsPage() {
   return (
     <PortalShell firstName={client.firstName} locale={locale}>
       <PortalPageHeader eyebrow={t('nav.rewards')} title={t('rw.title')} subtitle={t('rw.sub')} />
+
+      {/* K Circle membership status */}
+      <Reveal>
+        <div className="mb-5"><MembershipCard status={membership} locale={locale} /></div>
+      </Reveal>
 
       {/* Balance — premium membership card */}
       <Reveal>
