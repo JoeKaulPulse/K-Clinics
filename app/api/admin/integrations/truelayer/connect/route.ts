@@ -10,8 +10,10 @@ export async function GET() {
   const session = await getSession();
   if (!sessionCan(session, 'settings.manage')) return NextResponse.json({ ok: false, error: 'Not permitted' }, { status: 403 });
 
+  const { newOAuthState, attachOAuthState } = await import('@/lib/oauth-state');
+  const state = newOAuthState('truelayer');
   const { trueLayerAuthUrl } = await import('@/lib/truelayer');
-  const url = trueLayerAuthUrl('truelayer');
+  const url = trueLayerAuthUrl(state);
   if (!url) return NextResponse.json({ ok: false, error: 'Bank feed is not configured.' }, { status: 503 });
-  return NextResponse.redirect(url);
+  return attachOAuthState(NextResponse.redirect(url), 'truelayer', state);
 }

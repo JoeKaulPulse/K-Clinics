@@ -10,8 +10,10 @@ export async function GET() {
   const session = await getSession();
   if (!sessionCan(session, 'settings.manage')) return NextResponse.json({ ok: false, error: 'Not permitted' }, { status: 403 });
 
+  const { newOAuthState, attachOAuthState } = await import('@/lib/oauth-state');
+  const state = newOAuthState('xero');
   const { xeroAuthUrl } = await import('@/lib/xero');
-  const url = xeroAuthUrl('xero');
+  const url = xeroAuthUrl(state);
   if (!url) return NextResponse.json({ ok: false, error: 'Xero is not configured.' }, { status: 503 });
-  return NextResponse.redirect(url);
+  return attachOAuthState(NextResponse.redirect(url), 'xero', state);
 }
