@@ -22,11 +22,24 @@ export async function POST(req: Request) {
   const email = parsed.data.email.trim().toLowerCase();
   try {
     const { db } = await import('@/lib/db');
-    await db.newsletterSubscriber.upsert({
+    const sub = await db.newsletterSubscriber.upsert({
       where: { email },
       update: { active: true, consentedAt: new Date() },
       create: { email, source: 'footer' },
     });
+    // Single opt-in confirmation with one-click unsubscribe (fire-and-forget;
+    // a mail hiccup never fails the subscribe).
+    try {
+      const base = (process.env.NEXT_PUBLIC_SITE_URL || (await import('@/lib/site')).site.url).replace(/\/$/, '');
+      const unsubUrl = `${base}/api/unsubscribe?t=${sub.unsubToken}`;
+      const { sendEmail, tmplNewsletterWelcome } = await import('@/lib/email');
+      await sendEmail({
+        to: email,
+        subject: 'You’re subscribed — KClinics',
+        html: tmplNewsletterWelcome(unsubUrl),
+        headers: { 'List-Unsubscribe': `<${unsubUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' },
+      });
+    } catch { /* best-effort */ }
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ ok: false, error: 'Something went wrong. Please try again.' }, { status: 500 });
