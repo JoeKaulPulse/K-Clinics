@@ -88,7 +88,7 @@ export function LiveChat() {
             </div>
 
             <div ref={scroller} className="flex-1 space-y-2 overflow-y-auto p-4">
-              {msgs.length === 0 && <p className="text-sm text-[var(--color-stone)]">Hi 👋 I’m K, the KClinics assistant. Ask me about treatments, pricing, opening hours or booking — and I’ll bring in our team whenever you need a person.</p>}
+              {msgs.length === 0 && <p className="text-sm text-[var(--color-stone)]">Hello — I’m K, the KClinics assistant. Ask me about treatments, pricing, opening hours or booking, and I’ll bring in our team whenever you need a person.</p>}
               {msgs.map((m) => (
                 <div key={m.id} className={`max-w-[80%] rounded-[var(--radius-md)] px-3 py-2 text-sm ${m.sender === 'VISITOR' ? 'ml-auto bg-[var(--color-gold)] text-white' : 'bg-[var(--color-bone)] text-[var(--color-ink)]'}`}>{m.body}</div>
               ))}

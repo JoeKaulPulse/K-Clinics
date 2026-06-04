@@ -3,6 +3,7 @@ import { PageHero } from '@/components/ui/PageHero';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { Button, ArrowIcon } from '@/components/ui/Button';
+import { Glyph } from '@/components/ui/Glyph';
 import { LOYALTY } from '@/lib/client-loyalty';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
@@ -20,7 +21,7 @@ const pounds = (pence: number) => `£${(pence / 100).toLocaleString('en-GB', { m
 const EARN = [
   { icon: '✦', t: 'Every treatment', v: `${LOYALTY.pointsPerPound} pt / £1`, d: 'Earn a point for every pound you spend on treatments and packages — added automatically once your visit is complete.' },
   { icon: '★', t: 'Leave a review', v: `+${LOYALTY.reviewBonus} pts`, d: `Share your experience after a visit and we’ll thank you with ${pounds(LOYALTY.reviewBonus)} in points.` },
-  { icon: '🎂', t: 'Your birthday', v: `+${LOYALTY.birthdayBonus} pts`, d: `A little gift each year — ${pounds(LOYALTY.birthdayBonus)} in points lands on your birthday to spend on yourself.` },
+  { icon: <Glyph name="cake" className="mx-auto h-6 w-6" />, t: 'Your birthday', v: `+${LOYALTY.birthdayBonus} pts`, d: `A little gift each year — ${pounds(LOYALTY.birthdayBonus)} in points lands on your birthday to spend on yourself.` },
   { icon: '♥', t: 'Refer a friend', v: `+${pounds(LOYALTY.referralReward)}`, d: `Give £25, get £25. When a friend you refer completes their first treatment of ${pounds(LOYALTY.referralThresholdPence)}+, you both earn ${pounds(LOYALTY.referralReward)}.` },
 ];
 

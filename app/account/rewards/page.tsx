@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PortalShell } from '@/components/portal/PortalShell';
+import { Glyph } from '@/components/ui/Glyph';
 import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
 import { ReferralCard } from '@/components/portal/ReferralCard';
 import { MembershipCard } from '@/components/portal/MembershipCard';
@@ -81,8 +82,8 @@ export default async function RewardsPage() {
             {[
               { icon: '£', text: t('rw.howSpend') },
               { icon: '★', text: t('rw.howReview') },
-              { icon: '🎂', text: t('rw.howBirthday') },
-              { icon: '🎁', text: t('rw.howReferral') },
+              { icon: <Glyph name="cake" className="h-3.5 w-3.5" />, text: t('rw.howBirthday') },
+              { icon: <Glyph name="gift" className="h-3.5 w-3.5" />, text: t('rw.howReferral') },
             ].map((row) => (
               <li key={row.text} className="flex items-start gap-2.5 text-sm text-[var(--color-stone)]">
                 <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--color-gold)]/12 text-xs text-[var(--color-gold)]">{row.icon}</span>
