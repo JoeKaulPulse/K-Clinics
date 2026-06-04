@@ -839,6 +839,7 @@ model AdminUser {
   totpEnabledAt DateTime?  // set once enrolment is confirmed with a valid code
   recoveryCodes String[]  @default([]) // bcrypt-hashed single-use recovery codes
   sessionEpoch  Int       @default(0)  // bump to revoke all existing sessions
+  passkeys      WebAuthnCredential[]
 
   lastLoginAt  DateTime?
   createdBy    String?
@@ -853,6 +854,23 @@ model AdminUser {
   reviews      Review[]        @relation("ClinicianReviews")
   points       StaffPoints[]
   redemptions  RewardRedemption[]
+}
+
+// WebAuthn passkeys (platform authenticators — Face ID / Touch ID / Windows
+// Hello). Used as a strong step-up before the full data export.
+model WebAuthnCredential {
+  id           String    @id @default(cuid())
+  adminUser    AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  adminUserId  String
+  credentialId String    @unique          // base64url
+  publicKey    Bytes                       // COSE public key
+  counter      Int       @default(0)
+  transports   String[]  @default([])
+  deviceName   String?
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+
+  @@index([adminUserId])
 }
 
 // ── Staff gamification: append-only points ledger ────────────────────────────
