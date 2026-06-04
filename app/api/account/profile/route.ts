@@ -43,6 +43,11 @@ export async function POST(req: Request) {
   if (typeof d.smsReminders === 'boolean') data.smsReminders = d.smsReminders;
   if (d.newPassword) data.passwordHash = await hashPassword(d.newPassword);
 
-  await db.client.update({ where: { id: session.sub }, data });
+  const updated = await db.client.update({ where: { id: session.sub }, data });
+  // Alert the account holder whenever the password changes (security notice).
+  if (d.newPassword) {
+    const { notifyPasswordChanged } = await import('@/lib/client-auth');
+    await notifyPasswordChanged(updated.email, updated.firstName);
+  }
   return NextResponse.json({ ok: true });
 }

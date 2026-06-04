@@ -256,9 +256,22 @@ export async function performPasswordReset(clientId: string, token: string, newP
     where: { id: client.id },
     data: { passwordHash: await hashPassword(newPassword), resetTokenHash: null, resetTokenExp: null, portalActive: true },
   });
+  await notifyPasswordChanged(client.email, client.firstName);
   await createClientSession({ sub: client.id, email: client.email, firstName: client.firstName });
   return { ok: true };
 }
+
+/** Fire-and-forget security email confirming a password change. Never blocks
+ *  the request or throws — notification failure must not fail the reset. */
+async function notifyPasswordChanged(email: string, firstName: string): Promise<void> {
+  try {
+    const { sendEmail, tmplPasswordChanged } = await import('@/lib/email');
+    await sendEmail({ to: email, subject: 'Your KClinics password was changed', html: tmplPasswordChanged(firstName || 'there') });
+  } catch {
+    // Best-effort only.
+  }
+}
+export { notifyPasswordChanged };
 
 /** Resolve the signed-in client (server components / route handlers). */
 export async function getCurrentClient() {
