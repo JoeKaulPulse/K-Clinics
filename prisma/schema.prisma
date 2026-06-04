@@ -763,6 +763,19 @@ model Campaign {
   @@index([status, scheduledAt])
 }
 
+// Per-link click counts for a campaign, accrued from Resend click webhooks, so
+// the dashboard can show which links people actually clicked.
+model EmailLinkClick {
+  id         String   @id @default(cuid())
+  campaignId String?
+  url        String
+  clicks     Int      @default(0)
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@unique([campaignId, url])
+  @@index([campaignId])
+}
+
 // A reusable marketing-email design (subject + sender + content blocks) a user
 // can start a new campaign from. Distinct from the static transactional-email
 // previews shown on /admin/marketing/templates.
