@@ -25,6 +25,7 @@ function secret(): Uint8Array {
 }
 
 export const CHALLENGE_COOKIE = 'kc_wa_chal';
+export const LOGIN_CHALLENGE_COOKIE = 'kc_wa_login';
 
 /** Per-purpose unlock cookie so each step-up token is isolated. */
 export function unlockCookie(purpose: StepUpPurpose): string {

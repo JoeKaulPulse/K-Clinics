@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
   const { getSession } = await import('@/lib/auth');
   const session = await getSession();
-  if (!session || session.role !== 'OWNER') return NextResponse.json({ ok: false, error: 'Owner access required.' }, { status: 403 });
+  if (!session) return NextResponse.json({ ok: false, error: 'Sign in first.' }, { status: 403 });
 
   const { generateRegistrationOptions } = await import('@simplewebauthn/server');
   const { rp, CHALLENGE_COOKIE } = await import('@/lib/webauthn');
