@@ -18,6 +18,17 @@ export async function POST(req: Request) {
   const num = (v: unknown) => (v == null || v === '' ? null : Math.round(Number(v)));
   const STATUSES = ['NORMAL', 'CONSULTATION', 'COMING_SOON', 'UNAVAILABLE'];
   const asStatus = (v: unknown) => (typeof v === 'string' && STATUSES.includes(v) ? v : null);
+  // Course/package tiers: [{ sessions, totalPence }] — multi-session packages
+  // priced below sessions × single price. Sanitised, de-duped by session count,
+  // and sorted; an empty array clears all packages.
+  const asCourses = (arr: unknown): { sessions: number; totalPence: number }[] => {
+    const rows = (Array.isArray(arr) ? arr : [])
+      .map((c) => ({ sessions: Math.round(Number((c as { sessions?: unknown })?.sessions)), totalPence: Math.max(0, Math.round(Number((c as { totalPence?: unknown })?.totalPence))) }))
+      .filter((c) => Number.isFinite(c.sessions) && c.sessions >= 1 && Number.isFinite(c.totalPence) && c.totalPence > 0);
+    const bySessions = new Map<number, { sessions: number; totalPence: number }>();
+    for (const c of rows) bySessions.set(c.sessions, c); // last write wins per session count
+    return [...bySessions.values()].sort((a, b) => a.sessions - b.sessions).slice(0, 12);
+  };
 
   switch (body.op) {
     // ── Variants ──
@@ -30,6 +41,7 @@ export async function POST(req: Request) {
           ...(body.pricePence != null ? { pricePence: Math.max(0, num(body.pricePence) ?? 0) } : {}),
           ...(body.costPence !== undefined ? { costPence: body.costPence === null || body.costPence === '' ? null : Math.max(0, num(body.costPence) ?? 0) } : {}),
           ...(body.durationMin != null ? { durationMin: Math.max(5, num(body.durationMin) ?? 30) } : {}),
+          ...('courses' in body ? { courses: asCourses(body.courses) } : {}),
           ...(typeof body.active === 'boolean' ? { active: body.active } : {}),
           // status: a valid value, or null to clear the per-option override (inherit).
           ...('status' in body ? { status: asStatus(body.status) as never } : {}),
