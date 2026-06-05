@@ -6,6 +6,7 @@ import { getLocale } from '@/lib/locale';
 import { t } from '@/lib/i18n';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { SettingsToggles } from '@/components/admin/SettingsToggles';
+import { CacheCard } from '@/components/admin/CacheCard';
 import { DataExportCard } from '@/components/admin/DataExportCard';
 import { SETTING_META, SETTING_DEFAULTS, type SettingKey } from '@/lib/settings';
 
@@ -39,6 +40,7 @@ export default async function SettingsPage() {
         Changes apply immediately. “Let clients choose their clinician” is off by default — when enabled, available
         clinicians are shown at booking.
       </p>
+      {sessionCan(session, 'settings.manage') && <div className="mt-10"><CacheCard /></div>}
       {session?.role === 'OWNER' && <div className="mt-10"><DataExportCard /></div>}
     </AdminShell>
   );
