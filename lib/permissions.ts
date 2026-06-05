@@ -92,6 +92,9 @@ export const PERMISSIONS: Permission[] = [
   // Suppliers
   { key: 'suppliers.view', group: 'Suppliers', label: 'View suppliers', description: 'See supplier contacts, account details and their Xero bills.' },
   { key: 'suppliers.manage', group: 'Suppliers', label: 'Manage suppliers', description: 'Add, edit and link suppliers (incl. Xero contacts).' },
+
+  // Point of sale
+  { key: 'pos.use', group: 'Point of sale', label: 'Use the till (POS)', description: 'Take in-store product payments and record over-the-counter sales.' },
 ];
 
 export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
@@ -136,6 +139,7 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     'calls.manage',
     'suppliers.view',
     'suppliers.manage',
+    'pos.use',
   ],
   STAFF: ['dashboard.view', 'bookings.view', 'consultations.view', 'clients.view', 'calendar.view', 'inventory.view'],
 };
