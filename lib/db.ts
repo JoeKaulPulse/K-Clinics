@@ -26,3 +26,21 @@ export const db =
   });
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
+
+/** Run a DB read with a couple of quick retries, to ride out transient blips —
+ *  a serverless cold start, a momentary connection spike, or the managed
+ *  Postgres briefly resuming from idle. Keeps user-facing pages (e.g. booking)
+ *  from degrading to a "call us" fallback over a single hiccup. Only meant for
+ *  idempotent reads; do NOT wrap writes (a retry could double-apply). */
+export async function withDbRetry<T>(fn: () => Promise<T>, attempts = 3, baseDelayMs = 150): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, baseDelayMs * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
