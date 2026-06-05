@@ -33,27 +33,45 @@ if (isPages || !dbUrl) {
 const env = { ...process.env, DATABASE_URL: dbUrl };
 const sleep = (s) => { try { execSync(`sleep ${s}`); } catch { /* non-posix shell */ } };
 
-// Fast path: if the database schema already matches the code, do NOTHING. This
-// is the common case for code-only deploys, and it avoids opening a migration
-// connection at all — which matters on Prisma Postgres, where the limited
-// `prisma_migration` role can run out of connections when several deploys fire
-// close together (a no-op push would otherwise fail the build for nothing).
-try {
-  execSync(`npx prisma migrate diff --from-url "${dbUrl}" --to-schema-datamodel prisma/schema.prisma --exit-code`, {
-    stdio: 'pipe', env,
-  });
-  // Exit 0 → no difference → already in sync.
-  console.log('[db-sync] schema already in sync — skipping push.');
-  process.exit(0);
-} catch (err) {
-  if (err?.status === 2) {
-    console.log('[db-sync] schema drift detected — pushing.');
-  } else {
-    // Couldn't determine (e.g. transient connection issue) — fall through and
-    // let the push (with retries) be the source of truth.
-    console.log('[db-sync] could not pre-check schema; will attempt push.');
+// Fast path: confirm whether the live schema already matches the code. This is
+// the common case for code-only deploys and lets us skip the migration push
+// entirely — important on Prisma Postgres, where the `prisma_migration` role has
+// a small connection cap that several near-simultaneous deploys can exhaust.
+//
+// The pre-check itself needs a migration connection, so under that exact
+// pressure it can fail too — we RETRY it with backoff. As soon as one attempt
+// gets through and reports "in sync", we're done without ever opening the
+// heavier push. We only fall through to a push if we positively detect drift
+// (exit code 2) or never get a definitive answer.
+const DIFF_ATTEMPTS = 6;
+const DIFF_BACKOFF = [5, 10, 20, 30, 45]; // seconds between pre-check attempts
+const diffCmd = `npx prisma migrate diff --from-url "${dbUrl}" --to-schema-datamodel prisma/schema.prisma --exit-code`;
+
+let drift = false;
+for (let attempt = 1; attempt <= DIFF_ATTEMPTS; attempt++) {
+  try {
+    execSync(diffCmd, { stdio: 'pipe', env });
+    // Exit 0 → no difference → already in sync; nothing to do.
+    console.log('[db-sync] schema already in sync — skipping push.');
+    process.exit(0);
+  } catch (err) {
+    if (err?.status === 2) {
+      // Exit 2 → a real schema difference; push is needed.
+      console.log('[db-sync] schema drift detected — will push.');
+      drift = true;
+      break;
+    }
+    // Any other failure (typically exit 1) → couldn't reach the database, most
+    // likely the migration role is momentarily out of connections. Retry; the
+    // pressure usually clears within a few seconds once other deploys finish.
+    console.log(`[db-sync] pre-check could not reach the database (attempt ${attempt}/${DIFF_ATTEMPTS})${attempt < DIFF_ATTEMPTS ? ' — retrying…' : ''}`);
+    if (attempt < DIFF_ATTEMPTS) sleep(DIFF_BACKOFF[attempt - 1] || 45);
   }
 }
+
+// We only reach here to push — either drift was detected, or the pre-check could
+// never connect (in which case a push is the source of truth before we give up).
+if (!drift) console.log('[db-sync] pre-check inconclusive after retries — attempting a push to confirm.');
 
 // Sync the schema, retrying with generous backoff to ride out the migration
 // role's connection limit. If it STILL can't sync, FAIL the build — better to
