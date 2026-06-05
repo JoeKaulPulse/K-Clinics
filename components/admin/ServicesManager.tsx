@@ -210,42 +210,102 @@ function ServiceCard({ service }: { service: Service }) {
   );
 }
 
+type CourseDraft = { sessions: string; price: string };
+const courseKey = (cs: { sessions: number; totalPence: number }[]) =>
+  JSON.stringify([...cs].sort((a, b) => a.sessions - b.sessions).map((c) => [c.sessions, c.totalPence]));
+
 function VariantRow({ v }: { v: Variant }) {
   const router = useRouter();
   const [price, setPrice] = useState(pounds(v.pricePence));
   const [cost, setCost] = useState(pounds(v.costPence));
   const [dur, setDur] = useState(String(v.durationMin));
+  const [courses, setCourses] = useState<CourseDraft[]>(v.courses.map((c) => ({ sessions: String(c.sessions), price: pounds(c.totalPence) })));
+  const [showCourses, setShowCourses] = useState(false);
   const [saved, setSaved] = useState(false);
-  const dirty = price !== pounds(v.pricePence) || cost !== pounds(v.costPence) || dur !== String(v.durationMin);
 
   const margin = v.costPence != null && v.pricePence > 0 ? Math.round(((v.pricePence - v.costPence) / v.pricePence) * 100) : null;
 
+  // Normalised, valid course tiers from the draft rows.
+  const cleanCourses = courses
+    .map((c) => ({ sessions: Math.round(Number(c.sessions)), totalPence: Math.round(Number(c.price) * 100) }))
+    .filter((c) => Number.isFinite(c.sessions) && c.sessions >= 1 && Number.isFinite(c.totalPence) && c.totalPence > 0);
+
+  const coursesDirty = courseKey(cleanCourses) !== courseKey(v.courses);
+  const dirty = price !== pounds(v.pricePence) || cost !== pounds(v.costPence) || dur !== String(v.durationMin) || coursesDirty;
+
   async function save() {
-    await post({ op: 'updateVariant', id: v.id, pricePence: Math.round(Number(price || 0) * 100), costPence: cost === '' ? null : Math.round(Number(cost) * 100), durationMin: Number(dur) });
+    await post({ op: 'updateVariant', id: v.id, pricePence: Math.round(Number(price || 0) * 100), costPence: cost === '' ? null : Math.round(Number(cost) * 100), durationMin: Number(dur), courses: cleanCourses });
     setSaved(true); setTimeout(() => setSaved(false), 1500); router.refresh();
   }
   async function remove() { if (confirm(`Remove “${v.name}”?`)) { await post({ op: 'removeVariant', id: v.id }); router.refresh(); } }
   async function setStatus(status: string) { await post({ op: 'updateVariant', id: v.id, status: status || null }); router.refresh(); }
 
+  const setCourse = (i: number, patch: Partial<CourseDraft>) => setCourses((cs) => cs.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+  const addCourse = () => { setCourses((cs) => [...cs, { sessions: '', price: '' }]); setShowCourses(true); };
+  const removeCourse = (i: number) => setCourses((cs) => cs.filter((_, j) => j !== i));
+  const single = Math.round(Number(price || 0) * 100); // current single-session price, in pence
+
   return (
-    <tr className="border-t border-[var(--color-line)]">
-      <td className="py-1.5 pr-2">{v.name}{v.courses.length > 0 && <span className="ml-1 text-[0.65rem] text-[var(--color-stone-soft)]">+{v.courses.length} course{v.courses.length > 1 ? 's' : ''}</span>}</td>
-      <td className="px-2"><input value={dur} onChange={(e) => setDur(e.target.value)} className={`${field} w-14`} /></td>
-      <td className="px-2"><input value={price} onChange={(e) => setPrice(e.target.value)} className={`${field} w-20`} /></td>
-      <td className="px-2"><input value={cost} onChange={(e) => setCost(e.target.value)} placeholder="—" className={`${field} w-20`} /></td>
-      <td className="px-2 text-[var(--color-stone)]">{margin == null ? '—' : `${margin}%`}</td>
-      <td className="px-2">
-        <select value={v.status ?? ''} onChange={(e) => setStatus(e.target.value)} className={`${field} max-w-[8.5rem]`} title="Override the service status for this option">
-          <option value="">Inherit</option>
-          {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label.split(' (')[0].split(' — ')[0]}</option>)}
-        </select>
-      </td>
-      <td className="px-2 text-right">
-        {dirty ? <button onClick={save} className="rounded-full bg-[var(--color-gold)] px-3 py-1 text-xs text-white">Save</button>
-          : saved ? <span className="text-xs text-green-700">Saved ✓</span>
-          : <button onClick={remove} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>}
-      </td>
-    </tr>
+    <>
+      <tr className="border-t border-[var(--color-line)]">
+        <td className="py-1.5 pr-2">
+          {v.name}
+          <button onClick={() => setShowCourses((s) => !s)} className="ml-1 text-[0.65rem] text-[var(--color-gold)] hover:underline" title="Edit course / package pricing">
+            {courses.length > 0 ? `${courses.length} package${courses.length > 1 ? 's' : ''}` : '+ packages'}
+          </button>
+        </td>
+        <td className="px-2"><input value={dur} onChange={(e) => setDur(e.target.value)} className={`${field} w-14`} /></td>
+        <td className="px-2"><input value={price} onChange={(e) => setPrice(e.target.value)} className={`${field} w-20`} /></td>
+        <td className="px-2"><input value={cost} onChange={(e) => setCost(e.target.value)} placeholder="—" className={`${field} w-20`} /></td>
+        <td className="px-2 text-[var(--color-stone)]">{margin == null ? '—' : `${margin}%`}</td>
+        <td className="px-2">
+          <select value={v.status ?? ''} onChange={(e) => setStatus(e.target.value)} className={`${field} max-w-[8.5rem]`} title="Override the service status for this option">
+            <option value="">Inherit</option>
+            {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label.split(' (')[0].split(' — ')[0]}</option>)}
+          </select>
+        </td>
+        <td className="px-2 text-right">
+          {dirty ? <button onClick={save} className="rounded-full bg-[var(--color-gold)] px-3 py-1 text-xs text-white">Save</button>
+            : saved ? <span className="text-xs text-green-700">Saved ✓</span>
+            : <button onClick={remove} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>}
+        </td>
+      </tr>
+      {showCourses && (
+        <tr className="border-t border-[var(--color-line)] bg-[var(--color-bone)]/50">
+          <td colSpan={7} className="px-2 py-3">
+            <div className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-3">
+              <p className="mb-2 text-xs text-[var(--color-stone)]">
+                Course / package prices for <span className="font-medium">{v.name}</span> — set the number of sessions and the total package price. The single-session price above ({money(single)}) is used when no package is chosen.
+              </p>
+              {courses.length === 0 && <p className="mb-2 text-xs text-[var(--color-stone-soft)]">No packages yet — add one below.</p>}
+              <div className="space-y-1.5">
+                {courses.map((c, i) => {
+                  const sess = Math.round(Number(c.sessions));
+                  const total = Math.round(Number(c.price) * 100);
+                  const perSession = sess >= 1 && Number.isFinite(total) && c.price !== '' ? Math.round(total / sess) : null;
+                  const savePct = perSession != null && single > 0 ? Math.round((1 - perSession / single) * 100) : null;
+                  return (
+                    <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
+                      <input value={c.sessions} onChange={(e) => setCourse(i, { sessions: e.target.value })} inputMode="numeric" placeholder="e.g. 6" className={`${field} w-16`} aria-label="Sessions" />
+                      <span className="text-xs text-[var(--color-stone)]">sessions for £</span>
+                      <input value={c.price} onChange={(e) => setCourse(i, { price: e.target.value })} inputMode="decimal" placeholder="total" className={`${field} w-24`} aria-label="Package price" />
+                      <span className="text-xs text-[var(--color-stone-soft)]">
+                        {perSession != null ? `= ${money(perSession)}/session${savePct != null && savePct > 0 ? ` · save ${savePct}%` : ''}` : ''}
+                      </span>
+                      <button onClick={() => removeCourse(i)} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-2 flex items-center gap-3">
+                <button onClick={addCourse} className="rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:border-[var(--color-gold)]">+ Add package</button>
+                {coursesDirty && <span className="text-xs text-[var(--color-gold)]">Unsaved — use “Save” on the row to apply.</span>}
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
