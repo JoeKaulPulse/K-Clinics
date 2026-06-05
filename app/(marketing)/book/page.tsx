@@ -27,10 +27,16 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
   let degraded = false;
   try {
     const { bookingCatalogue, liveOffers } = await import('@/lib/services');
-    const { getCurrentClient } = await import('@/lib/client-auth');
-    const { db } = await import('@/lib/db');
+    const { withDbRetry } = await import('@/lib/db');
 
-    const [catalogueAll, promotedLive, client] = await Promise.all([bookingCatalogue(), liveOffers(true), getCurrentClient()]);
+    // The catalogue is the one thing the page can't render without — load it with
+    // a couple of quick retries so a transient DB blip (cold start / connection
+    // spike) doesn't drop the whole widget to the "call us" fallback. Offers are
+    // best-effort: if they fail we simply don't show the promo strip.
+    const [catalogueAll, promotedLive] = await Promise.all([
+      withDbRetry(() => bookingCatalogue()),
+      withDbRetry(() => liveOffers(true)).catch(() => [] as typeof promoted),
+    ]);
     promoted = promotedLive;
 
     // Dentistry isn't bookable until a GDC-registered dentist is in post —
@@ -42,14 +48,26 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
       const dentistrySlugs = new Set(dentistry.map((t) => t.slug));
       return catalogueAll.filter((s) => s.category !== 'dentistry' && !dentistrySlugs.has(s.treatmentSlug));
     })();
-
-    if (client) {
-      const active = await db.discountClaim.findFirst({ where: { clientId: client.id, status: 'ACTIVE' } });
-      clientInfo = { signedIn: true, firstName: client.firstName, email: client.email, gender: client.gender ?? null, smsReminders: client.smsReminders, hasPhone: !!client.phone, welcomeEligible: !!active };
-    }
   } catch (e) {
-    console.error('[book] load failed — showing call-us fallback:', (e as Error)?.message);
+    console.error('[book] catalogue load failed — showing call-us fallback:', (e as Error)?.message);
     degraded = true;
+  }
+
+  // Signed-in personalisation is best-effort and must never break the page or
+  // trigger the fallback — if the client lookup blips, we just render the
+  // signed-out flow (they can still book).
+  if (!degraded) {
+    try {
+      const { getCurrentClient } = await import('@/lib/client-auth');
+      const { db } = await import('@/lib/db');
+      const client = await getCurrentClient();
+      if (client) {
+        const active = await db.discountClaim.findFirst({ where: { clientId: client.id, status: 'ACTIVE' } });
+        clientInfo = { signedIn: true, firstName: client.firstName, email: client.email, gender: client.gender ?? null, smsReminders: client.smsReminders, hasPhone: !!client.phone, welcomeEligible: !!active };
+      }
+    } catch (e) {
+      console.error('[book] client personalisation skipped (non-fatal):', (e as Error)?.message);
+    }
   }
 
   const points = [
