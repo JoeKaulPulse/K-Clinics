@@ -16,7 +16,7 @@ export default async function AdminOverview() {
   if (!crmEnabled) return <CrmDisabled />;
   const { getOverview, getAnalytics } = await import('@/lib/crm-data');
   const session = await getSession();
-  const { db } = await import('@/lib/db');
+  const { db, withDbRetry } = await import('@/lib/db');
 
   const meProf = session ? await db.adminUser.findUnique({ where: { id: session.sub }, select: { onboardedAt: true, name: true, title: true, credentials: true, photoUrl: true, publicPhone: true } }) : null;
   const staffOnb = meProf ? { pending: !meProf.onboardedAt, initial: { name: meProf.name ?? '', title: meProf.title ?? '', credentials: meProf.credentials ?? '', photoUrl: meProf.photoUrl ?? '', publicPhone: meProf.publicPhone ?? '' } } : null;
@@ -35,7 +35,10 @@ export default async function AdminOverview() {
   const canReviews = sessionCan(session, 'reviews.manage');
   const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(); dayEnd.setHours(23, 59, 59, 999);
-  const [o, a, pendingTimeOff, myTasks, stockItems, expiringSoon, ordersToFulfil, retailProducts, todaysBookings, reqConsent, reqPhoto, gReviewAgg, googleUnreplied] = await Promise.all([
+  // Load the whole dashboard through a couple of quick retries, so a single
+  // transient DB blip doesn't 500 the overview (it recomposes the queries each
+  // attempt — safe, as these are all reads).
+  const [o, a, pendingTimeOff, myTasks, stockItems, expiringSoon, ordersToFulfil, retailProducts, todaysBookings, reqConsent, reqPhoto, gReviewAgg, googleUnreplied] = await withDbRetry(() => Promise.all([
     getOverview(),
     getAnalytics(),
     canApproveTimeOff ? db.staffTimeOff.count({ where: { status: 'PENDING' } }) : Promise.resolve(0),
@@ -49,7 +52,7 @@ export default async function AdminOverview() {
     import('@/lib/settings').then((m) => m.getSetting('require_before_photo')),
     canReviews ? db.googleReview.aggregate({ _avg: { starRating: true }, _count: { _all: true } }) : Promise.resolve(null),
     canReviews ? db.googleReview.count({ where: { replyComment: null } }) : Promise.resolve(0),
-  ]);
+  ]));
   const googleAvg = gReviewAgg?._avg.starRating ?? null;
   const googleCount = gReviewAgg?._count._all ?? 0;
   const lowStock = stockItems.filter((i) => i.lowStockAt > 0 && i.currentQty <= i.lowStockAt).length;
