@@ -1,15 +1,18 @@
 import 'server-only';
 import * as E from '@/lib/email';
-import { K_MARK_LIGHT_B64 } from '@/lib/brand-email-assets';
+import { K_MARK_LIGHT_B64, K_LOCKUP_B64 } from '@/lib/brand-email-assets';
 
 // Renders every transactional/marketing email with realistic sample data so the
 // whole email system is visible and on-brand in the dashboard.
 export type EmailPreview = { key: string; name: string; group: string; description: string; html: string };
 
-// A sent email carries the header mark as an inline cid: attachment, which a
-// browser can't resolve — so for the dashboard preview we swap cid:kmark for an
-// equivalent data: URI (the same bundled bytes) so the real mark shows here too.
-const forPreview = (html: string) => html.replace(/cid:kmark/g, `data:image/png;base64,${K_MARK_LIGHT_B64}`);
+// A sent email carries the header brand lockup as an inline cid: attachment, which
+// a browser can't resolve — so for the dashboard preview we swap the cid refs for
+// equivalent data: URIs (the same bundled bytes) so the real marks show here too.
+const forPreview = (html: string) =>
+  html
+    .replace(/cid:klockup/g, `data:image/png;base64,${K_LOCKUP_B64}`)
+    .replace(/cid:kmark/g, `data:image/png;base64,${K_MARK_LIGHT_B64}`);
 
 export function emailPreviews(): EmailPreview[] {
   const inDays = (n: number) => new Date(Date.now() + n * 86400000);

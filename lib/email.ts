@@ -1,7 +1,7 @@
 import 'server-only';
 import { Resend } from 'resend';
 import { site } from './site';
-import { K_MARK_LIGHT_B64, K_BADGE_B64 } from './brand-email-assets';
+import { K_MARK_LIGHT_B64, K_BADGE_B64, K_LOCKUP_B64 } from './brand-email-assets';
 
 const apiKey = process.env.RESEND_API_KEY;
 const resend = apiKey ? new Resend(apiKey) : null;
@@ -56,6 +56,9 @@ function brandAttachments(html: string) {
   if (html.includes('cid:kbadge')) {
     attachments.push({ filename: 'k-badge.png', content: Buffer.from(K_BADGE_B64, 'base64'), contentType: 'image/png', inlineContentId: 'kbadge' });
   }
+  if (html.includes('cid:klockup')) {
+    attachments.push({ filename: 'k-clinics.png', content: Buffer.from(K_LOCKUP_B64, 'base64'), contentType: 'image/png', inlineContentId: 'klockup' });
+  }
   return attachments.length ? { attachments } : {};
 }
 
@@ -67,8 +70,9 @@ function brandAttachments(html: string) {
  *  `logoUrl` lets a caller override the header mark with a brand-kit logo URL. */
 export function emailShell(opts: { preheader?: string; body: string; unsubUrl?: string; logoUrl?: string }): string {
   const { preheader = '', body, unsubUrl } = opts;
-  // Default to the bundled inline mark (cid:kmark); a brand-kit override uses its URL.
-  const markSrc = opts.logoUrl || 'cid:kmark';
+  // Default to the bundled inline brand lockup (cid:klockup) — the real K monogram
+  // + CLINICS wordmark vector, rasterised. A brand-kit override may supply its own URL.
+  const markSrc = opts.logoUrl || 'cid:klockup';
   const year = new Date().getFullYear();
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="x-apple-disable-message-reformatting"></head>
 <body style="margin:0;padding:0;background:#e8dccd;font-family:Georgia,'Times New Roman',serif;color:#2a2420;-webkit-font-smoothing:antialiased;">
@@ -77,10 +81,8 @@ export function emailShell(opts: { preheader?: string; body: string; unsubUrl?: 
     <tr><td align="center">
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#f7eee4;border-radius:18px;overflow:hidden;border:1px solid rgba(42,36,32,0.08);box-shadow:0 20px 52px -30px rgba(42,36,32,0.5);">
         <!-- Header -->
-        <tr><td style="background:#2a2420;padding:38px 40px 30px;text-align:center;">
-          <img src="${markSrc}" width="52" height="52" alt="KClinics" style="display:inline-block;width:52px;height:52px;border:0;outline:none;">
-          <div style="font-family:Georgia,'Times New Roman',serif;font-size:23px;letter-spacing:8px;color:#f6ece3;margin-top:16px;padding-left:8px;">K&nbsp;CLINICS</div>
-          <div style="font-family:Helvetica,Arial,sans-serif;font-size:9px;letter-spacing:3.5px;color:#c2a589;margin-top:9px;text-transform:uppercase;">Aesthetics &middot; Dentistry &middot; London</div>
+        <tr><td style="background:#2a2420;padding:40px 40px 36px;text-align:center;">
+          <img src="${markSrc}" width="172" alt="KClinics" style="display:inline-block;width:172px;height:auto;border:0;outline:none;">
         </td></tr>
         <!-- Gold hairline accent -->
         <tr><td style="height:3px;line-height:3px;font-size:0;background:linear-gradient(90deg,#a98a6d,#dcc4a8,#a98a6d);">&nbsp;</td></tr>
