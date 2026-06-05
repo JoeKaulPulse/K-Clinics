@@ -5,6 +5,7 @@ import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { ProfileEditor } from '@/components/admin/ProfileEditor';
 import { TwoFactorSetup } from '@/components/admin/TwoFactorSetup';
+import { PasskeyManager } from '@/components/admin/PasskeyManager';
 import { SignOutEverywhere } from '@/components/admin/SignOutEverywhere';
 import { ROLES } from '@/lib/permissions';
 import { getLocale } from '@/lib/locale';
@@ -59,6 +60,10 @@ export default async function ProfilePage() {
 
       <div className="mt-8 max-w-xl">
         <TwoFactorSetup enabled={Boolean(me.totpEnabledAt)} />
+      </div>
+
+      <div className="mt-6 max-w-xl">
+        <PasskeyManager />
       </div>
 
       <div className="mt-6 max-w-xl rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
