@@ -16,14 +16,14 @@ export async function POST(req: Request) {
   const { verifyRegistrationResponse } = await import('@simplewebauthn/server');
   const { rp, CHALLENGE_COOKIE } = await import('@/lib/webauthn');
   const { db } = await import('@/lib/db');
-  const { rpID, origin } = rp(req);
+  const { rpID, origins } = rp(req);
   const expectedChallenge = (await cookies()).get(CHALLENGE_COOKIE)?.value;
   if (!expectedChallenge) return NextResponse.json({ ok: false, error: 'Registration expired — please try again.' }, { status: 400 });
 
   let verification;
   try {
     verification = await verifyRegistrationResponse({
-      response: body.response, expectedChallenge, expectedOrigin: origin, expectedRPID: rpID, requireUserVerification: true,
+      response: body.response, expectedChallenge, expectedOrigin: origins, expectedRPID: rpID, requireUserVerification: true,
     });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error)?.message || 'Could not verify passkey.' }, { status: 400 });

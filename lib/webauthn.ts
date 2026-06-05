@@ -13,9 +13,17 @@ export function isStepUpPurpose(v: unknown): v is StepUpPurpose {
   return typeof v === 'string' && (STEP_UP_PURPOSES as readonly string[]).includes(v);
 }
 
-export function rp(req: Request): { rpID: string; origin: string; rpName: string; secure: boolean } {
+export function rp(req: Request): { rpID: string; origin: string; origins: string[]; rpName: string; secure: boolean } {
   const url = new URL(req.url);
-  return { rpID: url.hostname, origin: `${url.protocol}//${url.host}`, rpName: 'K Clinics', secure: url.protocol === 'https:' };
+  // Use the registrable domain (strip a leading `www.`) as the rpID so a passkey
+  // created on the apex works on `www` and vice-versa — otherwise iOS can't find
+  // the local passkey for the current host and falls back to the cross-device
+  // "use a passkey" sheet instead of Face ID. Assertions are accepted from either
+  // origin.
+  const rpID = url.hostname.replace(/^www\./, '');
+  const origin = `${url.protocol}//${url.host}`;
+  const origins = Array.from(new Set([origin, `${url.protocol}//${rpID}`, `${url.protocol}//www.${rpID}`]));
+  return { rpID, origin, origins, rpName: 'K Clinics', secure: url.protocol === 'https:' };
 }
 
 function secret(): Uint8Array {

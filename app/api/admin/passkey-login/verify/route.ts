@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   const { verifyAuthenticationResponse } = await import('@simplewebauthn/server');
   const { rp } = await import('@/lib/webauthn');
   const { db } = await import('@/lib/db');
-  const { rpID, origin } = rp(req);
+  const { rpID, origins } = rp(req);
 
   const expectedChallenge = (await cookies()).get(LOGIN_CHALLENGE_COOKIE)?.value;
   if (!expectedChallenge || !body.response?.id) {
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
   let verification;
   try {
     verification = await verifyAuthenticationResponse({
-      response: body.response, expectedChallenge, expectedOrigin: origin, expectedRPID: rpID, requireUserVerification: true,
+      response: body.response, expectedChallenge, expectedOrigin: origins, expectedRPID: rpID, requireUserVerification: true,
       credential: { id: cred.credentialId, publicKey: new Uint8Array(cred.publicKey), counter: cred.counter, transports: cred.transports as AuthenticatorTransport[] },
     });
   } catch (e) {

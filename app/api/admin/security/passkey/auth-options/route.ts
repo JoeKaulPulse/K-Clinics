@@ -24,6 +24,9 @@ export async function POST(req: Request) {
     rpID, userVerification: 'required',
     allowCredentials: creds.map((c) => ({ id: c.credentialId, transports: c.transports as AuthenticatorTransport[] })),
   });
+  // Prefer the local built-in authenticator (Face ID / Touch ID) over the
+  // cross-device "use a passkey from another device" flow.
+  options.hints = ['client-device'];
 
   const res = NextResponse.json({ ok: true, options });
   res.cookies.set(CHALLENGE_COOKIE, options.challenge, { httpOnly: true, secure, sameSite: 'strict', path: '/', maxAge: 300 });
