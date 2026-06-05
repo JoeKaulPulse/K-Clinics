@@ -14,6 +14,9 @@ export async function POST(req: Request) {
   const { rpID, secure } = rp(req);
 
   const options = await generateAuthenticationOptions({ rpID, userVerification: 'required' });
+  // Prefer the local built-in authenticator (Face ID / Touch ID) over the
+  // cross-device "use a passkey from another device" flow.
+  options.hints = ['client-device'];
   const res = NextResponse.json({ ok: true, options });
   res.cookies.set(LOGIN_CHALLENGE_COOKIE, options.challenge, { httpOnly: true, secure, sameSite: 'strict', path: '/', maxAge: 300 });
   return res;

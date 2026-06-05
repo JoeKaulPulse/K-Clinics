@@ -25,7 +25,13 @@ export async function POST(req: Request) {
     userDisplayName: session.name || session.email,
     attestationType: 'none',
     excludeCredentials: existing.map((c) => ({ id: c.credentialId, transports: c.transports as AuthenticatorTransport[] })),
-    authenticatorSelection: { residentKey: 'preferred', userVerification: 'required', authenticatorAttachment: 'platform' },
+    // Steer the browser straight to the built-in authenticator (Face ID / Touch
+    // ID / Windows Hello) rather than the cross-device "use a passkey" sheet:
+    // 'localDevice' sets both the platform attachment and the WebAuthn
+    // `client-device` hint. A required resident key makes the passkey
+    // discoverable, so passwordless sign-in can find it locally too.
+    preferredAuthenticatorType: 'localDevice',
+    authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
   });
 
   const res = NextResponse.json({ ok: true, options });
