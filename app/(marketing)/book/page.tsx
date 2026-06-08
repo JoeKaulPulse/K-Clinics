@@ -23,7 +23,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
   type CatItem = Awaited<ReturnType<(typeof import('@/lib/services'))['bookingCatalogue']>>[number];
   let catalogue: CatItem[] = [];
   let promoted: Awaited<ReturnType<(typeof import('@/lib/services'))['liveOffers']>> = [];
-  let clientInfo = { signedIn: false, firstName: '', email: '', gender: null as string | null, smsReminders: false, hasPhone: false, welcomeEligible: true };
+  let clientInfo = { signedIn: false, firstName: '', email: '', gender: null as string | null, smsReminders: false, hasPhone: false, welcomeEligible: true, allergies: '', isAdult: false };
   let degraded = false;
   try {
     const { bookingCatalogue, liveOffers } = await import('@/lib/services');
@@ -63,7 +63,10 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
       const client = await getCurrentClient();
       if (client) {
         const active = await db.discountClaim.findFirst({ where: { clientId: client.id, status: 'ACTIVE' } });
-        clientInfo = { signedIn: true, firstName: client.firstName, email: client.email, gender: client.gender ?? null, smsReminders: client.smsReminders, hasPhone: !!client.phone, welcomeEligible: !!active };
+        // Already-on-file details so we don't re-ask for them in the wizard.
+        let isAdult = false;
+        if (client.dob) { const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 18); isAdult = new Date(client.dob) <= cutoff; }
+        clientInfo = { signedIn: true, firstName: client.firstName, email: client.email, gender: client.gender ?? null, smsReminders: client.smsReminders, hasPhone: !!client.phone, welcomeEligible: !!active, allergies: client.allergies ?? '', isAdult };
       }
     } catch (e) {
       console.error('[book] client personalisation skipped (non-fatal):', (e as Error)?.message);

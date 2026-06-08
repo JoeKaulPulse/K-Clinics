@@ -14,7 +14,7 @@ import { REFRESHMENTS } from '@/lib/hospitality';
 type Course = { sessions: number; totalPence: number };
 type Variant = { id: string; name: string; durationMin: number; pricePence: number; offerPence: number | null; offerName: string | null; courses: Course[] };
 type Service = { id: string; slug: string; treatmentSlug: string; name: string; category: string; audience: string; variants: Variant[] };
-type ClientInfo = { signedIn: boolean; firstName: string; email: string; gender: string | null; smsReminders: boolean; hasPhone: boolean; welcomeEligible: boolean };
+type ClientInfo = { signedIn: boolean; firstName: string; email: string; gender: string | null; smsReminders: boolean; hasPhone: boolean; welcomeEligible: boolean; allergies: string; isAdult: boolean };
 
 const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-stone-soft)] focus:border-[var(--color-gold)]';
 const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
@@ -54,9 +54,11 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [addOns, setAddOns] = useState<Set<string>>(new Set());
   const [refreshments, setRefreshments] = useState<Set<string>>(new Set());
-  const [allergyNote, setAllergyNote] = useState('');
+  const [allergyNote, setAllergyNote] = useState(client.allergies || '');
   const [aftercareAck, setAftercareAck] = useState(false);
-  const [ageDeclare, setAgeDeclare] = useState(false);
+  // If the client is signed in and we already know they're 18+ from their DOB,
+  // don't make them re-declare it.
+  const [ageDeclare, setAgeDeclare] = useState(client.isAdult);
   const [promoInput, setPromoInput] = useState('');
   const [promo, setPromo] = useState<{ ok: boolean; code?: string; label?: string | null; discountPence?: number; finalPence?: number; error?: string } | null>(null);
   const [promoBusy, setPromoBusy] = useState(false);
@@ -254,7 +256,7 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
               <h3 className="font-[family-name:var(--font-display)] text-2xl">{service.name} — {variant.name}</h3>
               <p className="mt-1 text-sm text-[var(--color-stone)]">{totalDuration} min · {money(orderTotal)}{sessions > 1 ? ` · course of ${sessions}` : ''}</p>
               <div className="mt-6">
-                <label className={label} htmlFor="bdate">Select a date</label>
+                <label className={label} htmlFor="bdate">Select a date *</label>
                 {popularDays.length > 0 && (
                   <div className="mb-3">
                     <p className="mb-1.5 text-xs text-[var(--color-stone-soft)]"><span className="text-[var(--color-gold)]">★</span> Popular days — you’ll likely be seen sooner</p>
@@ -271,7 +273,7 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
               </div>
               {date && (
                 <div className="mt-6">
-                  <p className={label}>Available times</p>
+                  <p className={label}>Available times *</p>
                   {loadingSlots ? <p className="text-sm text-[var(--color-stone)]">Finding available times…</p>
                     : slots.length === 0 ? <p className="text-sm text-[var(--color-stone)]">No availability that day — please try another date.</p>
                     : (
@@ -345,6 +347,7 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
                 <div className="mt-3">
                   <label className={label} htmlFor="ballergy">Any allergies or dietary notes?</label>
                   <input id="ballergy" value={allergyNote} onChange={(e) => setAllergyNote(e.target.value)} placeholder="e.g. nut allergy, no caffeine" className={field} />
+                  {client.allergies && <p className="mt-1 text-xs text-[var(--color-stone-soft)]">Pre-filled from your profile — edit if anything’s changed.</p>}
                 </div>
               </div>
 
@@ -372,11 +375,17 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
                 <input type="checkbox" checked={aftercareAck} onChange={(e) => setAftercareAck(e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />
                 I confirm I have read, understood and agree to follow the <a href="/account/aftercare" target="_blank" className="link-underline text-[var(--color-ink)]">aftercare instructions</a> for my treatment. *
               </label>
-              {/* Age declaration (cosmetic treatments are 18+) */}
-              <label className="mt-3 flex items-start gap-3 text-sm text-[var(--color-stone)]">
-                <input type="checkbox" checked={ageDeclare} onChange={(e) => setAgeDeclare(e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />
-                I confirm I am 18 years of age or over. *
-              </label>
+              {/* Age declaration (cosmetic treatments are 18+) — skipped if we
+                  already know the client's 18+ from their account DOB. */}
+              {client.isAdult ? (
+                <p className="mt-3 flex items-center gap-2 text-sm text-[var(--color-stone)]"><span className="text-[var(--color-jade,#3f7a5a)]">✓</span> Age confirmed (18+) from your account.</p>
+              ) : (
+                <label className="mt-3 flex items-start gap-3 text-sm text-[var(--color-stone)]">
+                  <input type="checkbox" checked={ageDeclare} onChange={(e) => setAgeDeclare(e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />
+                  I confirm I am 18 years of age or over. *
+                </label>
+              )}
+              <p className="mt-3 text-xs text-[var(--color-stone-soft)]">* Required</p>
             </div>
           )}
 
@@ -481,6 +490,7 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
           <label className="flex items-start gap-3 text-sm text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={f.sms} onChange={(e) => setF({ ...f, sms: e.target.checked })} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />Text me appointment confirmations &amp; reminders.</label>
           <label className="flex items-start gap-3 text-sm text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={f.marketingOptIn} onChange={(e) => setF({ ...f, marketingOptIn: e.target.checked })} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />Keep me updated with offers and skincare tips.</label>
           <label className="flex items-start gap-3 text-sm text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={f.consent} onChange={(e) => setF({ ...f, consent: e.target.checked })} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />I agree to the booking terms: my card is saved but not charged now; I’ll be charged when the service is delivered; cancellations within 24 hours are charged in full. *</label>
+          <p className="text-xs text-[var(--color-stone-soft)] sm:col-span-2">* Required</p>
         </div>
       ) : (
         <div className="mt-6 grid gap-4">
