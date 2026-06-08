@@ -510,6 +510,19 @@ export function tmplPaymentActionRequired(o: { firstName: string; treatment: str
   });
 }
 
+export function tmplAbandonedBooking(o: { firstName: string; treatment: string; resumeUrl: string }) {
+  return emailShell({
+    preheader: `Your ${o.treatment} booking is still waiting`,
+    body: `${heroBand('reminder')}
+    <h1 style="font-size:25px;margin:0 0 14px;">Pick up where you left off, ${escape(o.firstName)}.</h1>
+    <p>You started booking a <strong>${escape(o.treatment)}</strong> with us but didn't quite finish. Your spot isn't held yet — but it only takes a moment to secure it.</p>
+    <p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">No payment is taken now — your card is simply saved to hold the appointment, and you're only charged when your treatment is delivered.</p>
+    <p style="margin:26px 0;">${btn(o.resumeUrl, 'Finish my booking')}</p>
+    <p style="font-size:14px;color:#91766e;">If you'd rather talk it through first, just reply to this email or call us — we're happy to help.</p>
+    <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
 export function tmplChatReply(o: { visitorName?: string | null; who: string; body: string }) {
   return emailShell({
     preheader: o.body.slice(0, 120),

@@ -16,7 +16,8 @@ export type SettingKey =
   | 'ai_consultation_enabled'    // K Vision AI photo consultation is live
   | 'review_requests_enabled'    // auto-send a review request after a treatment
   | 'require_consent'            // signed treatment consent required before starting
-  | 'require_before_photo';      // laser: before-photo (or signed opt-out) required before starting
+  | 'require_before_photo'       // laser: before-photo (or signed opt-out) required before starting
+  | 'abandoned_booking_recovery'; // email a nudge to finish an unpaid/incomplete booking
 
 export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   allow_clinician_choice: false,
@@ -31,6 +32,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   review_requests_enabled: true,
   require_consent: false,
   require_before_photo: true,
+  abandoned_booking_recovery: false,
 };
 
 export const SETTING_META: Record<SettingKey, { label: string; description: string }> = {
@@ -81,6 +83,10 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   require_before_photo: {
     label: 'Require before-photo for laser',
     description: 'Laser appointments can’t be started until a before-photo is captured in-app, or the client has signed a photo opt-out. Strongly recommended for insurance.',
+  },
+  abandoned_booking_recovery: {
+    label: 'Abandoned-booking recovery emails',
+    description: 'Email a gentle, one-time nudge to clients who started a booking but didn’t save a card to finish it (sent 2–72h later). Off by default — turn on to recover incomplete bookings.',
   },
 };
 
