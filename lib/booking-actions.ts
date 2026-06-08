@@ -78,6 +78,55 @@ export async function chargeBooking(
 }
 
 /**
+ * Idempotently record a SUCCESSFUL booking charge: mark the booking charged,
+ * email a receipt, credit loyalty and report the sale. Safe to call more than
+ * once (and from more than one place — the Stripe webhook and the SCA recovery
+ * flow both call it) because the `chargedAt: null` guard means only the first
+ * call does anything. Returns true if THIS call finalised it.
+ */
+export async function finalizeBookingCharge(
+  bookingId: string,
+  piId: string,
+  amountReceivedPence: number,
+  opts: { late?: boolean } = {},
+): Promise<boolean> {
+  const updated = await db.booking.updateMany({
+    where: { id: bookingId, chargedAt: null },
+    data: { chargePaymentIntentId: piId, chargedPence: amountReceivedPence, chargedAt: new Date() },
+  });
+  if (updated.count === 0) return false; // already finalised elsewhere — no-op
+
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
+  if (!booking) return true;
+
+  try {
+    await sendEmail({
+      to: booking.client.email,
+      subject: opts.late ? 'Late-cancellation fee — KClinics' : `Receipt — ${booking.treatmentTitle}`,
+      html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountReceivedPence, late: opts.late }),
+    });
+    await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment receipt', status: 'SENT' } });
+  } catch (e) { console.error('[charge] receipt failed:', (e as Error)?.message); }
+  try { const { awardClientSpend } = await import('./client-loyalty'); await awardClientSpend(bookingId); } catch (e) { console.error('[charge] loyalty failed:', (e as Error)?.message); }
+  try { const { sendPurchase } = await import('./conversions'); await sendPurchase({ bookingId, valuePence: amountReceivedPence, clientId: booking.clientId, email: booking.client.email, campaign: booking.attribCampaign }); } catch (e) { console.error('[charge] conversion failed:', (e as Error)?.message); }
+  try { await logAudit({ action: 'PAYMENT_CHARGED', actor: 'system', summary: `Charge completed (£${(amountReceivedPence / 100).toFixed(2)})`, bookingId, clientId: booking.clientId }); } catch { /* non-fatal */ }
+  return true;
+}
+
+/**
+ * Record an ASYNCHRONOUS charge failure (reported by Stripe via webhook), so a
+ * decline/expiry that happens after the synchronous attempt is visible to staff
+ * rather than silently lost. Leaves a follow-up note on the client + audit log.
+ */
+export async function recordChargeFailure(bookingId: string, reason: string): Promise<void> {
+  const booking = await db.booking.findUnique({ where: { id: bookingId } });
+  if (!booking) return;
+  const msg = `Card charge failed — follow up: ${reason}`.slice(0, 200);
+  try { await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: msg, author: 'system' } }); } catch { /* non-fatal */ }
+  try { await logAudit({ action: 'PAYMENT_FAILED', actor: 'system', summary: msg, bookingId, clientId: booking.clientId }); } catch { /* non-fatal */ }
+}
+
+/**
  * Cancel a booking, applying the 24-hour policy.
  * - >24h before: free.
  * - <24h before: charge 100% (the late fee), unless `waiveFee` is set.

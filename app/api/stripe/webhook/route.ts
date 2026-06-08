@@ -27,10 +27,11 @@ export async function POST(req: Request) {
         const pi = event.data.object;
         const bookingId = pi.metadata?.bookingId;
         if (bookingId) {
-          await db.booking.updateMany({
-            where: { id: bookingId, chargedAt: null },
-            data: { chargePaymentIntentId: pi.id, chargedPence: pi.amount_received, chargedAt: new Date() },
-          });
+          // Idempotent: records the charge, emails the receipt and credits loyalty
+          // if it hasn't already been finalised synchronously. This is the backstop
+          // that completes an SCA charge once the client authenticates via /booking/pay.
+          const { finalizeBookingCharge } = await import('@/lib/booking-actions');
+          await finalizeBookingCharge(bookingId, pi.id, pi.amount_received ?? pi.amount, { late: pi.metadata?.late === 'true' });
         }
         // Finalise retail orders + gift vouchers server-side, so they complete
         // even if the customer closes the tab before the confirm call.
@@ -39,6 +40,17 @@ export async function POST(req: Request) {
         }
         if (pi.metadata?.kind === 'gift_voucher' && pi.metadata?.voucherId) {
           try { const { confirmVoucher } = await import('@/lib/gift-vouchers'); await confirmVoucher(pi.metadata.voucherId); } catch (e) { console.error('[webhook] voucher confirm failed:', (e as Error)?.message); }
+        }
+        break;
+      }
+      case 'payment_intent.payment_failed': {
+        // An off-session charge that failed asynchronously (decline/expiry).
+        // Make it visible to staff instead of letting it vanish.
+        const pi = event.data.object;
+        const bookingId = pi.metadata?.bookingId;
+        if (bookingId) {
+          const { recordChargeFailure } = await import('@/lib/booking-actions');
+          await recordChargeFailure(bookingId, pi.last_payment_error?.message || 'The card was declined.');
         }
         break;
       }
