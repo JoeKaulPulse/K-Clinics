@@ -45,7 +45,7 @@ export function BuildBoard({ canManage, github, staff }: { canManage: boolean; g
     setGhForm((f) => ({ ...f, busy: true, error: '' }));
     const r = await post({ op: 'github-connect', repo: ghForm.repo.trim(), token: ghForm.token.trim() });
     setGhForm((f) => ({ ...f, busy: false, error: r.ok ? '' : (r.error || 'Could not connect.'), token: r.ok ? '' : f.token }));
-    if (r.ok) load(true);
+    if (r.ok) { if (r.warning) alert(r.warning); load(true); }
   }
   async function disconnectGh() {
     if (!window.confirm('Disconnect GitHub? Logged items will stop creating issues.')) return;
@@ -79,7 +79,7 @@ export function BuildBoard({ canManage, github, staff }: { canManage: boolean; g
           <div className="mt-3 flex flex-wrap items-end gap-2">
             <label className="text-xs text-[var(--color-stone)]">Repository<br /><input value={ghForm.repo} onChange={(e) => setGhForm((f) => ({ ...f, repo: e.target.value }))} placeholder="owner/name" className="mt-1 w-56 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" /></label>
             <label className="text-xs text-[var(--color-stone)]">Access token<br /><input type="password" value={ghForm.token} onChange={(e) => setGhForm((f) => ({ ...f, token: e.target.value }))} placeholder="github_pat_… / ghp_…" className="mt-1 w-64 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" /></label>
-            <button onClick={connectGh} disabled={ghForm.busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{ghForm.busy ? 'Connecting…' : 'Connect &amp; test'}</button>
+            <button onClick={connectGh} disabled={ghForm.busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{ghForm.busy ? 'Connecting…' : 'Connect & test'}</button>
           </div>
           {ghForm.error && <p className="mt-2 text-sm text-[var(--color-blush)]">{ghForm.error}</p>}
           <p className="mt-2 text-xs text-[var(--color-stone-soft)]">The token is validated against the repo before saving. You can also set GITHUB_TOKEN + GITHUB_REPO in the environment instead.</p>
