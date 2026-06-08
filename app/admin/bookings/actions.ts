@@ -157,6 +157,19 @@ export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 
       } catch (e) {
         console.error('[bookings] review request on complete failed:', (e as Error)?.message);
       }
+      // NPS satisfaction survey (opt-in), at most once per client / ~90 days.
+      try {
+        const { getSetting } = await import('@/lib/settings');
+        if (await getSetting('nps_survey')) {
+          const { npsSentRecently, sendNps } = await import('@/lib/nps');
+          const client = await db.client.findUnique({ where: { id: b.clientId }, select: { email: true, firstName: true, unsubscribed: true } });
+          if (client?.email && !client.unsubscribed && !(await npsSentRecently(b.clientId, 90))) {
+            await sendNps({ clientId: b.clientId, email: client.email, firstName: client.firstName, bookingId: b.id, treatment: b.treatmentTitle });
+          }
+        }
+      } catch (e) {
+        console.error('[bookings] NPS on complete failed:', (e as Error)?.message);
+      }
     }
   }
   revalidatePath(`/admin/bookings/${bookingId}`);
