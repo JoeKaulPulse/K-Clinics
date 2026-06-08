@@ -1,6 +1,6 @@
 # K Clinics → ClinicOS — Platform Decomposition & Multi‑Tenant SaaS Plan
 
-> **Status:** DRAFT for review · **Mode:** planning only — *nothing in this document is to be executed without explicit sign‑off* · **Version:** 0.1 · **Owner:** Joe Kaul / engineering leadership
+> **Status:** DRAFT for review · **Mode:** planning only — *nothing in this document is to be executed without explicit sign‑off* · **Version:** 0.2 (leadership decisions logged in §17, 2026‑06‑08) · **Owner:** Joe Kaul / engineering leadership
 >
 > This is the canonical reference for evolving the K Clinics monolith into a containerised, independently‑deployable, **multi‑tenant platform that K Clinics will operate for itself and licence to other clinics.** It is deliberately conservative: the live booking environment and its revenue must never be put at risk by this programme.
 
@@ -289,12 +289,18 @@ No phase advances without its gate. Validation is layered:
 > Each ADR: decision · rationale · alternatives considered · status.
 
 - **ADR‑001 — Strangler‑fig, not rewrite.** Extract incrementally behind contracts. *Alt:* big‑bang microservices rewrite (rejected: highest risk to live & runway). **Accepted.**
-- **ADR‑002 — Managed Kubernetes as the platform target.** Namespaced isolation + portability for enterprise/silo tenants. *Alt:* stay on Vercel serverless (rejected for multi‑tenant isolation/portability needs); Nomad/ECS (viable, less ecosystem). **Accepted, provisional** pending platform‑team capability confirmation.
+- **ADR‑002 — Managed Kubernetes on GCP (`europe‑west2`/London) as the platform target.** GKE for namespaced isolation + portability; Cloud SQL/AlloyDB for Postgres; Google KMS for keys; UK data residency. *Alt:* AWS/EKS (widest ecosystem), Azure/AKS (NHS alignment), stay on Vercel serverless (rejected for multi‑tenant isolation/portability). **Accepted** (cloud + in‑house team now confirmed — decisions #1, #2).
 - **ADR‑003 — Pooled multi‑tenancy + RLS by default; silo on demand.** Best COGS with a hard security backstop; enterprise path preserved. *Alt:* silo‑only (too costly), pool‑only (blocks enterprise). **Accepted.**
 - **ADR‑004 — Versioned, reviewed migrations + expand/contract; ban data‑loss flags on prod.** Replaces `prisma db push --accept-data-loss` in any prod path. *Alt:* keep `db push` (rejected: unsafe for shared prod DB & many tenants). **Accepted.**
 - **ADR‑005 — New platform is read‑only on prod until a gated cutover.** Eliminates the dual‑write corruption risk during the build. *Alt:* dual‑write from the start (rejected: R2). **Accepted.**
 - **ADR‑006 — Unified frontend/BFF first; micro‑frontends only if justified.** Preserve single‑product UX cheaply. *Alt:* micro‑frontends now (deferred: complexity). **Accepted.**
 - **ADR‑007 — Monorepo + shared domain packages power both tracks.** A fix is written once and deploys two ways. *Alt:* two divergent repos (rejected: R11). **Accepted.**
+- **ADR‑008 — Build platform/SRE capability in‑house.** A licensed, certified product needs durable platform ownership. *Alt:* outsource/managed‑platform vendor (faster start, less control), hybrid (rejected for the product ambition). **Accepted** (decision #2).
+- **ADR‑009 — Dual go‑to‑market: named product brand + white‑label tier.** Lead with a brand; offer white‑label as a premium tier. Public site & theming must support full per‑tenant white‑label from the tenancy layer. *Alt:* brand‑only or white‑label‑only (both narrower). **Accepted** (decision #3).
+- **ADR‑010 — Conservative cutover: ~4‑week bake, hot old environment, instant DNS rollback.** Lowest risk to live revenue. *Alt:* moderate/aggressive bake (rejected given revenue sensitivity). **Accepted** (decision #4).
+- **ADR‑011 — Phased certifications: Cyber Essentials → NHS DSPT → ISO 27001 → SOC 2.** Cost‑spread, UK‑health‑first. *Alt:* fast‑track ISO 27001 (higher upfront), minimum‑only (limits sales). **Accepted** (decision #6).
+- **ADR‑012 — Tier‑agnostic entitlement/metering; pricing deferred to COGS.** Build flags/metering so tiers are pure configuration; set tiers/prices after modelling COGS at 10/100/500 tenants. *Alt:* lock tiers now (rejected: pricing unfounded without unit economics). **Accepted** (decision #5).
+- **ADR‑013 — Bootstrapped pace, funded from clinic revenue; Phase 0 value first.** Protect cash; deliberate, incremental delivery; revisit external investment once a pilot tenant is live. *Alt:* funded programme / raise‑first (deferred). **Accepted** (decision #7).
 
 ---
 
@@ -306,21 +312,27 @@ No phase advances without its gate. Validation is layered:
 
 ---
 
-## 17. Open questions / decisions needed from leadership
+## 17. Leadership decisions (logged)
 
-1. **Cloud & region** for the cluster and prod DB primary (UK residency assumed) — and managed‑K8s provider.
-2. **Platform capability:** hire/partner for DevOps/SRE, or use a managed platform vendor?
-3. **Tenancy tiers & pricing** to lock the entitlement model (drives flags/metering scope).
-4. **Brand:** is "ClinicOS" the product name, or white‑label only? Affects public‑site architecture.
-5. **Certification priority/order** (Cyber Essentials → DSPT → ISO 27001 → SOC 2) and budget.
-6. **Cutover risk appetite:** desired bake period and rollback window.
-7. **Funding/timeline:** is this a funded product programme or bootstrapped alongside the clinic?
+Captured 2026‑06‑08 (J. Kaul). These are now baseline; downstream sections/ADRs updated accordingly.
+
+| # | Question | **Decision** | Implication |
+|---|---|---|---|
+| 1 | Cloud & region for cluster + prod DB primary | **GCP — London (`europe‑west2`)**, GKE | UK data residency met; standardise on GKE + Cloud SQL/AlloyDB for Postgres + Google KMS. → ADR‑002 |
+| 2 | DevOps/SRE capability | **Hire in‑house** | Build lasting platform/SRE capability (suits a product to be licensed & certified); budget a permanent role. → ADR‑008; strengthens R6/R7 mitigation |
+| 3 | Product branding | **Both — named brand + white‑label tier** | Lead with a product brand; white‑label as a premium tier. Public‑site/theming must support full white‑label from the tenancy layer. → ADR‑009; expands §2, §7.3, §8.5 |
+| 4 | Cutover risk appetite | **Conservative — long (~4‑wk) bake + instant rollback** | Keep old env hot ~4 wks; shadow at load; instant DNS rollback. Matches §5.2. → ADR‑010 |
+| 5 | Tenancy tiers & pricing | **Defer — decide after the COGS model** | Design entitlement/metering to be tier‑agnostic and configurable; lock tiers/prices once COGS at 10/100/500 tenants is modelled (§14). → ADR‑012 |
+| 6 | Certification priority/order | **Phased: Cyber Essentials → NHS DSPT → ISO 27001 → SOC 2** | Cost‑spread; matches §10. CE first (quick win), DSPT for UK health, ISO 27001 as we scale, SOC 2 for larger buyers. → ADR‑011 |
+| 7 | Funding & pace | **Bootstrapped alongside the clinic** | Fund from clinic revenue; incremental, **Phase 0 value first**; protect cash. Pace is deliberate, not aggressive. → ADR‑013; reinforces R8/R10 |
+
+**Still to finalise (deliberately deferred):** pricing tiers & amounts (after COGS, decision #5); whether to raise investment later (revisit once a pilot tenant is live).
 
 ---
 
 ## 18. Proposed immediate next steps (low‑risk, still planning/prep — execute only on sign‑off)
 
-1. **Approve this document** (or annotate §17) as the programme's baseline.
+1. **Approve this document** as the programme's baseline (§17 decisions now logged; only final sign‑off remains).
 2. **Phase 0 spike (no infra, no live impact):** stand up a Turborepo skeleton in a branch, move *one* domain (e.g. Learning) into a shared package behind a clean boundary, and demonstrate **affected‑only builds** — proving the build‑cost win and the dual‑track shared‑core model. Live remains on the current build.
 3. **Draft the bounded‑context & event catalogue** (the contracts) so the seams are agreed before any infra spend.
 4. **Commission the commercial model** (COGS at 10/100/500 tenants; tier pricing vs named incumbents).
@@ -330,4 +342,4 @@ No phase advances without its gate. Validation is layered:
 
 ---
 
-*End of plan v0.1 — a living document. All subsequent decisions append to §15 (ADRs) and update §13 (risks).*
+*End of plan v0.2 — a living document. All subsequent decisions append to §15 (ADRs) and update §13 (risks).*
