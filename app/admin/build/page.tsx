@@ -4,7 +4,7 @@ import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { BuildBoard } from '@/components/admin/BuildBoard';
-import { githubConfigured } from '@/lib/build-board';
+import { githubConfigured, ensureBacklogSeeded } from '@/lib/build-board';
 import { getLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
@@ -17,6 +17,10 @@ export default async function BuildPage() {
   const can = await sessionPermissions();
   const locale = await getLocale();
   const canManage = sessionCan(session, 'build.manage');
+
+  // First board view after a deploy auto-imports the backlog (version-gated,
+  // idempotent) — no manual "Import" click needed, and no build-time DB writes.
+  await ensureBacklogSeeded();
 
   let staff: { email: string; name: string | null }[] = [];
   try {
