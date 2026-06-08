@@ -7,6 +7,7 @@ import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 import { site } from '@/lib/site';
 import { GlobalSearch } from '@/components/admin/GlobalSearch';
 import { GuideHost } from '@/components/guide/GuideHost';
+import { CloseDownReminder } from '@/components/admin/CloseDownReminder';
 import { I18nProvider } from '@/components/i18n/I18nProvider';
 import { translator, isLocale, LOCALES, LOCALE_LABELS, DEFAULT_LOCALE, type Locale } from '@/lib/i18n';
 
@@ -50,6 +51,7 @@ const navGroups: { heading?: string; items: NavItem[] }[] = [
     { href: '/admin/suppliers', key: 'nav.suppliers', perm: 'suppliers.view' },
     { href: '/admin/sops', key: 'nav.sops', perm: 'sop.manage' },
     { href: '/admin/consent', key: 'nav.consent', perm: 'settings.manage' },
+    { href: '/admin/day-close', key: 'nav.dayclose', perm: 'dayclose.run' },
   ] },
   { heading: 'nav.group.marketing', items: [
     { href: '/admin/marketing', key: 'nav.marketing', exact: true, perm: 'campaigns.view' },
@@ -257,7 +259,10 @@ export function AdminShell({
             </div>
           </div>
         </aside>
-        <main className="flex-1 p-5 md:p-8 lg:p-10">{children}</main>
+        <main className="flex-1 p-5 md:p-8 lg:p-10">
+          {allowed.has('dayclose.run') && <CloseDownReminder />}
+          {children}
+        </main>
       </div>
       <GuideHost />
     </I18nProvider>

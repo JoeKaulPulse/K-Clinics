@@ -81,6 +81,10 @@ export const PERMISSIONS: Permission[] = [
   { key: 'inventory.view', group: 'Inventory', label: 'View inventory', description: 'See stock levels, batches and expiry dates.' },
   { key: 'inventory.manage', group: 'Inventory', label: 'Manage inventory', description: 'Add items, receive stock and record usage/wastage.' },
 
+  // Day close
+  { key: 'dayclose.run', group: 'Day close', label: 'Run day-close', description: 'Complete the end-of-day shutdown: cash-up, stock take and closedown checklist.' },
+  { key: 'dayclose.manage', group: 'Day close', label: 'Configure & report on day-close', description: 'Edit closedown tasks & reminders and view close-out reports.', sensitive: true },
+
   // Finance
   { key: 'finance.view', group: 'Finance', label: 'View finances', description: 'See cashflow forecasts and cash reserves.', sensitive: true },
   { key: 'finance.manage', group: 'Finance', label: 'Manage finances', description: 'Edit forecast lines, reserves and ring-fenced funds.', sensitive: true },
@@ -118,6 +122,7 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     'inventory.manage',
     'rewards.view',
     'calls.view',
+    'dayclose.run',
   ],
   FRONT_DESK: [
     'dashboard.view',
@@ -140,8 +145,9 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     'suppliers.view',
     'suppliers.manage',
     'pos.use',
+    'dayclose.run',
   ],
-  STAFF: ['dashboard.view', 'bookings.view', 'consultations.view', 'clients.view', 'calendar.view', 'inventory.view'],
+  STAFF: ['dashboard.view', 'bookings.view', 'consultations.view', 'clients.view', 'calendar.view', 'inventory.view', 'dayclose.run'],
 };
 
 export function roleDefaults(role: string): string[] {
