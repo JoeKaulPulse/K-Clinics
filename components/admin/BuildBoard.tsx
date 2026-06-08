@@ -30,13 +30,28 @@ export function BuildBoard({ canManage, github, staff }: { canManage: boolean; g
   const [items, setItems] = useState<Item[]>([]);
   const [active, setActive] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
+  const [gh, setGh] = useState<{ connected: boolean; repo: string | null }>({ connected: github, repo: null });
+  const [ghForm, setGhForm] = useState({ repo: '', token: '', busy: false, error: '' });
 
   const load = useCallback(async (force = false) => {
     if (!force && typeof document !== 'undefined' && document.hidden) return; // pause when backgrounded
     const res = await fetch('/api/admin/build').then((x) => x.json()).catch(() => ({ ok: false }));
-    if (res.ok) setItems(res.items);
+    if (res.ok) { setItems(res.items); setGh({ connected: !!res.github, repo: res.githubRepo || null }); }
     setLoading(false);
   }, []);
+
+  async function connectGh() {
+    if (!ghForm.repo.trim() || !ghForm.token.trim()) { setGhForm((f) => ({ ...f, error: 'Enter the repo and a token.' })); return; }
+    setGhForm((f) => ({ ...f, busy: true, error: '' }));
+    const r = await post({ op: 'github-connect', repo: ghForm.repo.trim(), token: ghForm.token.trim() });
+    setGhForm((f) => ({ ...f, busy: false, error: r.ok ? '' : (r.error || 'Could not connect.'), token: r.ok ? '' : f.token }));
+    if (r.ok) load(true);
+  }
+  async function disconnectGh() {
+    if (!window.confirm('Disconnect GitHub? Logged items will stop creating issues.')) return;
+    const r = await post({ op: 'github-disconnect' });
+    if (r.ok) load(true);
+  }
   useEffect(() => { load(true); const t = setInterval(() => load(), 30000); return () => clearInterval(t); }, [load]);
   useEffect(() => { if (active) setActive(items.find((i) => i.id === active.id) || null); }, [items]); // keep modal fresh
 
@@ -52,8 +67,24 @@ export function BuildBoard({ canManage, github, staff }: { canManage: boolean; g
         <span><strong className="text-[var(--color-ink)]">{open}</strong> open</span>
         <span><strong className="text-[var(--color-ink)]">{blocked}</strong> blocked</span>
         <span><strong className="text-[var(--color-ink)]">{items.filter((i) => i.assignee === 'claude' && !['SHIPPED', 'CANCELLED'].includes(i.status)).length}</strong> with Claude</span>
-        {github ? <span className="text-[var(--color-jade)]">GitHub connected ✓</span> : <span className="text-[var(--color-stone-soft)]">GitHub not connected</span>}
+        {gh.connected ? <span className="text-[var(--color-jade)]">GitHub connected ✓{gh.repo ? ` · ${gh.repo}` : ''}</span> : <span className="text-[var(--color-stone-soft)]">GitHub not connected</span>}
+        {canManage && gh.connected && <button onClick={disconnectGh} className="text-xs text-[var(--color-blush)] hover:underline">Disconnect</button>}
       </div>
+
+      {/* Connect GitHub (self-serve; no env vars needed) */}
+      {canManage && !gh.connected && (
+        <div className="mb-5 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
+          <h2 className="font-[family-name:var(--font-display)] text-lg">Connect GitHub</h2>
+          <p className="mt-1 text-sm text-[var(--color-stone)]">Link a repo so items can be pushed to GitHub issues (and P0/P1 auto-create one). Create a fine-grained token with <strong>Issues: read &amp; write</strong> on the repo, then paste it below — it’s stored encrypted.</p>
+          <div className="mt-3 flex flex-wrap items-end gap-2">
+            <label className="text-xs text-[var(--color-stone)]">Repository<br /><input value={ghForm.repo} onChange={(e) => setGhForm((f) => ({ ...f, repo: e.target.value }))} placeholder="owner/name" className="mt-1 w-56 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" /></label>
+            <label className="text-xs text-[var(--color-stone)]">Access token<br /><input type="password" value={ghForm.token} onChange={(e) => setGhForm((f) => ({ ...f, token: e.target.value }))} placeholder="github_pat_… / ghp_…" className="mt-1 w-64 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" /></label>
+            <button onClick={connectGh} disabled={ghForm.busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{ghForm.busy ? 'Connecting…' : 'Connect &amp; test'}</button>
+          </div>
+          {ghForm.error && <p className="mt-2 text-sm text-[var(--color-blush)]">{ghForm.error}</p>}
+          <p className="mt-2 text-xs text-[var(--color-stone-soft)]">The token is validated against the repo before saving. You can also set GITHUB_TOKEN + GITHUB_REPO in the environment instead.</p>
+        </div>
+      )}
 
       {loading && items.length === 0 ? <p className="text-sm text-[var(--color-stone-soft)]">Loading…</p> : (
         <div className="grid gap-4 lg:grid-cols-5">
@@ -108,7 +139,7 @@ export function BuildBoard({ canManage, github, staff }: { canManage: boolean; g
                 <label>Status<br /><select value={active.status} onChange={(e) => patch(active.id, { status: e.target.value })} className="mt-1 rounded border border-[var(--color-line)] bg-white px-2 py-1">{[...COLUMNS.map((c) => c.key), 'CANCELLED'].map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
                 <label>Urgency<br /><select value={active.urgency} onChange={(e) => patch(active.id, { urgency: e.target.value })} className="mt-1 rounded border border-[var(--color-line)] bg-white px-2 py-1">{Object.keys(URGENCY).map((u) => <option key={u} value={u}>{u}</option>)}</select></label>
                 <label>Assignee<br /><select value={active.assignee} onChange={(e) => patch(active.id, { assignee: e.target.value })} className="mt-1 rounded border border-[var(--color-line)] bg-white px-2 py-1"><option value="claude">Claude</option>{staff.map((s) => <option key={s.email} value={s.email}>{s.name || s.email}</option>)}</select></label>
-                {github && !active.githubUrl && <button onClick={async () => { const r = await post({ op: 'github', id: active.id }); if (r.ok) load(); else alert(r.error); }} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 hover:bg-white">Push to GitHub</button>}
+                {gh.connected && !active.githubUrl && <button onClick={async () => { const r = await post({ op: 'github', id: active.id }); if (r.ok) load(); else alert(r.error); }} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 hover:bg-white">Push to GitHub</button>}
                 {active.githubUrl && <a href={active.githubUrl} target="_blank" rel="noreferrer" className="text-[var(--color-gold-deep)] underline">View GitHub issue ↗</a>}
               </div>
             )}
