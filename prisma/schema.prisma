@@ -323,6 +323,7 @@ model Client {
   discountClaims  DiscountClaim[]
   tasks           Task[]
   reviews         Review[]
+  npsResponses    NpsResponse[]
   points          ClientPoints[]
   referralsMade   Referral[]     @relation("ReferralsMade")
   referredVia     Referral?      @relation("ReferralReceived")
@@ -2497,4 +2498,23 @@ model BuildEvent {
   createdAt DateTime  @default(now())
 
   @@index([itemId, createdAt])
+}
+
+// Net Promoter Score — one per send; score is null until the client responds via
+// the one-click email link (/nps/<token>). See lib/nps.ts.
+model NpsResponse {
+  id          String    @id @default(cuid())
+  token       String    @unique @default(cuid())
+  client      Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId    String?
+  bookingId   String?
+  treatment   String?
+  score       Int?      // 0–10
+  comment     String?   @db.Text
+  sentAt      DateTime  @default(now())
+  respondedAt DateTime?
+
+  @@index([clientId])
+  @@index([respondedAt])
+  @@index([sentAt])
 }

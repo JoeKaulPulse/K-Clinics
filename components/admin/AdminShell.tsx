@@ -28,6 +28,7 @@ const navGroups: { heading?: string; items: NavItem[] }[] = [
     { href: '/admin/calls', key: 'nav.calls', perm: 'calls.view' },
     { href: '/admin/clients', key: 'nav.clients', perm: 'clients.view' },
     { href: '/admin/reviews', key: 'nav.reviews', perm: 'reviews.manage' },
+    { href: '/admin/nps', key: 'nav.nps', perm: 'reviews.manage' },
     { href: '/admin/discounts', key: 'nav.discounts', perm: 'discounts.manage' },
     { href: '/admin/promotions', key: 'nav.promotions', perm: 'discounts.manage' },
     { href: '/admin/rewards', key: 'nav.rewards', perm: 'rewards.view' },

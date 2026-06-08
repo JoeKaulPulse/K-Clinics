@@ -538,6 +538,21 @@ export function tmplAbandonedBooking(o: { firstName: string; treatment: string; 
   });
 }
 
+export function tmplNps(o: { firstName: string; treatment?: string; baseUrl: string; token: string }) {
+  const scale = Array.from({ length: 11 }, (_, n) =>
+    `<td style="padding:2px;"><a href="${o.baseUrl}/nps/${o.token}?s=${n}" style="display:block;width:32px;line-height:34px;text-align:center;border:1px solid #c2a589;border-radius:8px;color:#856a4a;text-decoration:none;font-family:Helvetica,Arial,sans-serif;font-size:14px;">${n}</a></td>`).join('');
+  return emailShell({
+    preheader: 'One quick tap — how likely are you to recommend us?',
+    body: `${heroBand('review')}
+    <h1 style="font-size:24px;margin:0 0 14px;">How are we doing, ${escape(o.firstName)}?</h1>
+    <p>Thank you for visiting KClinics${o.treatment ? ` for your ${escape(o.treatment)}` : ''}. How likely are you to recommend us to a friend or family member?</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:18px auto;"><tr>${scale}</tr></table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:420px;margin:0 auto;font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#91766e;"><tr><td style="text-align:left;">Not likely</td><td style="text-align:right;">Very likely</td></tr></table>
+    <p style="font-size:14px;color:#91766e;margin-top:18px;">One tap is all it takes — you can add a comment afterwards if you'd like.</p>
+    <p style="margin-top:18px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
 export function tmplChatReply(o: { visitorName?: string | null; who: string; body: string }) {
   return emailShell({
     preheader: o.body.slice(0, 120),
