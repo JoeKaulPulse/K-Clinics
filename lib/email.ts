@@ -1,7 +1,8 @@
 import 'server-only';
 import { Resend } from 'resend';
 import { site } from './site';
-import { K_MARK_LIGHT_B64, K_BADGE_B64, K_WORDMARK_LIGHT_B64, EMAIL_HERO_GIF_B64 } from './brand-email-assets';
+import { K_MARK_LIGHT_B64, K_BADGE_B64, K_WORDMARK_LIGHT_B64 } from './brand-email-assets';
+import { EMAIL_HEROES } from './email-heroes';
 
 const apiKey = process.env.RESEND_API_KEY;
 const resend = apiKey ? new Resend(apiKey) : null;
@@ -53,8 +54,10 @@ export async function sendEmail(opts: {
 // actually references the cid, so unrelated mail stays lean.
 function brandAttachments(html: string) {
   const attachments: { filename: string; content: Buffer; contentType: string; inlineContentId: string }[] = [];
-  if (html.includes('cid:hero')) {
-    attachments.push({ filename: 'kclinics-hero.gif', content: Buffer.from(EMAIL_HERO_GIF_B64, 'base64'), contentType: 'image/gif', inlineContentId: 'hero' });
+  for (const [motif, b64] of Object.entries(EMAIL_HEROES)) {
+    if (html.includes(`cid:hero-${motif}`)) {
+      attachments.push({ filename: `kclinics-${motif}.gif`, content: Buffer.from(b64, 'base64'), contentType: 'image/gif', inlineContentId: `hero-${motif}` });
+    }
   }
   if (html.includes('cid:kmark')) {
     attachments.push({ filename: 'k-mark.png', content: Buffer.from(K_MARK_LIGHT_B64, 'base64'), contentType: 'image/png', inlineContentId: 'kmark' });
@@ -149,9 +152,9 @@ const btn = (href: string, label: string) =>
 const btnOutline = (href: string, label: string) =>
   `<a href="${href}" style="display:inline-block;border:1px solid #a98a6d;color:#856a4a;text-decoration:none;padding:12px 24px;border-radius:999px;font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:0.4px;">${label}</a>`;
 
-/** The animated brand hero band (cid GIF; first frame is a clean static fallback). */
-const heroBand = () =>
-  `<img src="cid:hero" alt="" width="600" style="display:block;width:100%;max-width:600px;height:auto;border-radius:14px;margin:0 0 28px;border:0;outline:none;">`;
+/** Per-type animated brand hero band (cid GIF; first frame is a clean static fallback). */
+const heroBand = (motif: keyof typeof EMAIL_HEROES = 'confirmed') =>
+  `<img src="cid:hero-${motif}" alt="" width="600" style="display:block;width:100%;max-width:600px;height:auto;border-radius:14px;margin:0 0 28px;border:0;outline:none;">`;
 
 /** A pill checklist item with a gold tick. */
 const checkItem = (text: string) =>
@@ -168,7 +171,8 @@ function gcalUrl(o: { title: string; start: Date; end: Date; details?: string; l
 export function tmplConsultReply(firstName: string) {
   return emailShell({
     preheader: 'Thank you for your enquiry — we will be in touch shortly.',
-    body: `<h1 style="font-size:26px;margin:0 0 16px;color:#2a2420;">Thank you, ${escape(firstName)}.</h1>
+    body: `${heroBand('welcome')}
+    <h1 style="font-size:26px;margin:0 0 16px;color:#2a2420;">Thank you, ${escape(firstName)}.</h1>
     <p>We have received your consultation request and a member of our team will be in touch very shortly to arrange your complimentary consultation.</p>
     <p>In the meantime, you are warmly invited to explore our treatments, or simply reply to this email with any questions.</p>
     <p style="margin:28px 0;">${btn(site.url + '/treatments', 'Explore treatments')}</p>
@@ -180,7 +184,8 @@ export function tmplConsultReply(firstName: string) {
 export function tmplPasswordReset(firstName: string, resetUrl: string) {
   return emailShell({
     preheader: 'Reset your KClinics password',
-    body: `<h1 style="font-size:24px;margin:0 0 16px;color:#2a2420;">Reset your password</h1>
+    body: `${heroBand('secure')}
+    <h1 style="font-size:24px;margin:0 0 16px;color:#2a2420;">Reset your password</h1>
     <p>Hello ${escape(firstName)},</p>
     <p>We received a request to reset the password for your KClinics account. Click below to choose a new one — the link is valid for 60 minutes.</p>
     <p style="margin:28px 0;">${btn(resetUrl, 'Reset my password')}</p>
@@ -211,7 +216,8 @@ export function tmplBirthday(firstName: string, unsubUrl: string) {
   return emailShell({
     preheader: 'A little something for your birthday',
     unsubUrl,
-    body: `<h1 style="font-size:26px;margin:0 0 16px;">Happy birthday, ${escape(firstName)}.</h1>
+    body: `${heroBand('birthday')}
+    <h1 style="font-size:26px;margin:0 0 16px;">Happy birthday, ${escape(firstName)}.</h1>
     <p>From all of us at KClinics — we hope your day is wonderful.</p>
     <p>To celebrate, we would love to treat you to a <strong>complimentary upgrade</strong> on your next visit this month. Simply mention this email when you book.</p>
     <p style="margin:28px 0;">${btn(site.url + site.booking.path, 'Book your visit')}</p>
@@ -223,7 +229,8 @@ export function tmplFollowUp(firstName: string, treatment: string, unsubUrl: str
   return emailShell({
     preheader: 'How are you feeling after your visit?',
     unsubUrl,
-    body: `<h1 style="font-size:24px;margin:0 0 16px;">How are you, ${escape(firstName)}?</h1>
+    body: `${heroBand('followup')}
+    <h1 style="font-size:24px;margin:0 0 16px;">How are you, ${escape(firstName)}?</h1>
     <p>It was a pleasure to welcome you for your ${escape(treatment)}. We wanted to check in and make sure you are delighted with your results.</p>
     <p>If you have any questions about aftercare, just reply — we are always here. When you are ready, we would love to see you again.</p>
     <p style="margin:28px 0;">${btn(site.url + site.booking.path, 'Book your next visit')}</p>
@@ -234,7 +241,8 @@ export function tmplFollowUp(firstName: string, treatment: string, unsubUrl: str
 export function tmplFollowUpQuestionnaire(o: { firstName: string; treatment: string; url: string }) {
   return emailShell({
     preheader: `How is your skin a week after your ${o.treatment}?`,
-    body: `<h1 style="font-size:24px;margin:0 0 16px;">How are you getting on, ${escape(o.firstName)}?</h1>
+    body: `${heroBand('followup')}
+    <h1 style="font-size:24px;margin:0 0 16px;">How are you getting on, ${escape(o.firstName)}?</h1>
     <p>It's been about a week since your <strong>${escape(o.treatment)}</strong>. We'd love a quick update on how you're feeling — it takes less than a minute, and lets us step in early if anything needs attention.</p>
     <p style="margin:28px 0;">${btn(o.url, 'Share how you’re doing')}</p>
     <p>If you have any concerns at all, this goes straight to our clinical team.</p>
@@ -246,7 +254,8 @@ export function tmplWinBack(firstName: string, unsubUrl: string) {
   return emailShell({
     preheader: 'We would love to see you again',
     unsubUrl,
-    body: `<h1 style="font-size:24px;margin:0 0 16px;">We have missed you, ${escape(firstName)}.</h1>
+    body: `${heroBand('winback')}
+    <h1 style="font-size:24px;margin:0 0 16px;">We have missed you, ${escape(firstName)}.</h1>
     <p>It has been a little while since your last visit, and we would love to welcome you back.</p>
     <p>As a thank you for your loyalty, enjoy a special privilege on your next treatment — reply and we will arrange it.</p>
     <p style="margin:28px 0;">${btn(site.url + site.booking.path, 'Rediscover KClinics')}</p>
@@ -257,7 +266,8 @@ export function tmplWinBack(firstName: string, unsubUrl: string) {
 export function tmplReviewRequest(firstName: string, link: string, treatment?: string) {
   return emailShell({
     preheader: 'We would love your feedback',
-    body: `<h1 style="font-size:26px;margin:0 0 16px;">How did we do, ${escape(firstName)}?</h1>
+    body: `${heroBand('review')}
+    <h1 style="font-size:26px;margin:0 0 16px;">How did we do, ${escape(firstName)}?</h1>
     <p>We hope you are loving the results of your recent visit to KClinics${treatment ? ` for your ${escape(treatment)}` : ''}.</p>
     <p>If you have a moment, we would be so grateful if you could share your experience — it helps us, and helps others discover the clinic.</p>
     <p style="margin:28px 0;">${btn(link, 'Leave a review')}</p>
@@ -327,7 +337,8 @@ function voucherCard(amount: string, code: string) {
 export function tmplGiftVoucher(o: { recipientName: string; fromName: string; amount: string; code: string; message?: string | null; bookUrl: string }) {
   return emailShell({
     preheader: `${o.fromName} sent you a ${o.amount} KClinics gift voucher`,
-    body: `<h1 style="font-size:26px;margin:0 0 12px;">A gift for you, ${escape(o.recipientName)}.</h1>
+    body: `${heroBand('voucher')}
+    <h1 style="font-size:26px;margin:0 0 12px;">A gift for you, ${escape(o.recipientName)}.</h1>
     <p><strong>${escape(o.fromName)}</strong> has sent you a KClinics gift voucher to spend on any of our treatments.</p>
     ${o.message ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-style:italic;">“${escape(o.message)}”</p>` : ''}
     ${voucherCard(o.amount, o.code)}
@@ -341,7 +352,8 @@ export function tmplGiftVoucherReceipt(o: { purchaserName: string; amount: strin
   const when = o.deliverAt ? o.deliverAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
   return emailShell({
     preheader: `Your ${o.amount} KClinics gift voucher`,
-    body: `<h1 style="font-size:24px;margin:0 0 12px;">Thank you, ${escape(o.purchaserName)}.</h1>
+    body: `${heroBand('voucher')}
+    <h1 style="font-size:24px;margin:0 0 12px;">Thank you, ${escape(o.purchaserName)}.</h1>
     <p>Your ${o.amount} gift voucher is ready${o.recipientName ? ` for <strong>${escape(o.recipientName)}</strong>` : ''}.</p>
     ${o.scheduled ? `<p>We’ll deliver it to them on <strong>${when}</strong>.</p>` : `<p>${o.recipientName ? 'We’ve sent it to them too.' : 'Here it is to share however you like.'}</p>`}
     ${voucherCard(o.amount, o.code)}
@@ -370,10 +382,17 @@ export function tmplBookingConfirmation(o: {
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`KClinics ${addr}`)}`;
   const gcal = gcalUrl({ title: `${o.treatment} · KClinics`, start: o.start, end, details: `Your ${o.treatment} at KClinics. Manage or cancel: ${o.manageUrl}`, location: addr });
 
-  const row = (label: string, value: string) => `<tr><td style="color:#91766e;padding:3px 18px 3px 0;white-space:nowrap;vertical-align:top;">${label}</td><td style="padding:3px 0;">${value}</td></tr>`;
+  // Full-width line row: label takes the slack (wraps cleanly), price hugs the
+  // right and never wraps — so nothing gets squeezed to one-word-per-line on mobile.
+  const lineRow = (label: string, value: string, strong = false) =>
+    `<tr><td style="padding:5px 0;vertical-align:top;">${label}</td><td style="padding:5px 0 5px 12px;text-align:right;white-space:nowrap;vertical-align:top;${strong ? 'font-weight:bold;' : ''}">${value}</td></tr>`;
   const itemsRows = o.lines && o.lines.length > 0
-    ? o.lines.map((l) => row(escape(l.label), escape(l.price))).join('')
-    : row('Treatment', `<strong>${escape(o.treatment)}</strong>`);
+    ? o.lines.map((l) => lineRow(escape(l.label), escape(l.price))).join('')
+    : lineRow(escape(o.treatment), price);
+  // Stacked block (small uppercase label above a full-width value) — reflows
+  // perfectly on narrow screens, used for the longer address / clinician fields.
+  const block = (label: string, value: string) =>
+    `<p style="margin:13px 0 0;font-family:Helvetica,Arial,sans-serif;"><span style="display:block;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#a98a6d;">${label}</span><span style="font-size:14px;line-height:1.5;color:#3d352f;">${value}</span></p>`;
 
   return emailShell({
     preheader: `You're booked in for ${dateStr} at ${timeStr}`,
@@ -385,12 +404,13 @@ export function tmplBookingConfirmation(o: {
       <p style="margin:0 0 6px;font-family:Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#a98a6d;">Your appointment</p>
       <p class="kc-display" style="margin:0;font-size:25px;line-height:1.15;color:#2a2420;">${dateStr}</p>
       <p class="kc-display" style="margin:1px 0 16px;font-size:19px;color:#856a4a;">${timeStr}</p>
-      <table style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#3d352f;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#3d352f;">
         ${itemsRows}
-        ${o.clinicianName ? row('With', `<strong>${escape(o.clinicianName)}</strong>`) : ''}
-        ${row('Where', `${escape(place)} · <a href="${mapsUrl}" style="color:#856a4a;">map</a>`)}
-        ${row('Total', price)}
+        <tr><td colspan="2" style="border-top:1px solid rgba(42,36,32,0.08);padding-top:6px;"></td></tr>
+        ${lineRow('<span style="color:#91766e;">Total</span>', price, true)}
       </table>
+      ${o.clinicianName ? block('With', `<strong>${escape(o.clinicianName)}</strong>`) : ''}
+      ${block('Where', `${escape(place)} · <a href="${mapsUrl}" style="color:#856a4a;">map</a>`)}
     </td></tr></table>
 
     <p style="margin:0 0 22px;">${btnOutline(gcal, 'Add to Google Calendar')} <span style="font-size:12px;color:#91766e;">· an invite is attached for Apple&nbsp;Mail &amp; Outlook</span></p>
@@ -466,7 +486,8 @@ export function tmplBookingCancelled(o: { firstName: string; treatment: string; 
 export function tmplChargeReceipt(o: { firstName: string; treatment: string; pricePence: number; late?: boolean }) {
   return emailShell({
     preheader: `Receipt — ${o.treatment}`,
-    body: `<h1 style="font-size:24px;margin:0 0 16px;">Thank you, ${escape(o.firstName)}.</h1>
+    body: `${heroBand('receipt')}
+    <h1 style="font-size:24px;margin:0 0 16px;">Thank you, ${escape(o.firstName)}.</h1>
     <p>${o.late ? 'A late-cancellation fee has been processed' : 'Your payment has been processed'} for your <strong>${escape(o.treatment)}</strong>.</p>
     <table style="font-family:Helvetica,Arial,sans-serif;font-size:16px;color:#3d352f;line-height:2;">
       <tr><td style="color:#91766e;padding-right:20px;">Amount</td><td><strong>${fmtMoney(o.pricePence)}</strong></td></tr>
@@ -479,7 +500,8 @@ export function tmplChargeReceipt(o: { firstName: string; treatment: string; pri
 export function tmplPaymentActionRequired(o: { firstName: string; treatment: string; payUrl: string; pricePence: number }) {
   return emailShell({
     preheader: 'Action needed to complete your payment',
-    body: `<h1 style="font-size:24px;margin:0 0 16px;">One quick step, ${escape(o.firstName)}.</h1>
+    body: `${heroBand('secure')}
+    <h1 style="font-size:24px;margin:0 0 16px;">One quick step, ${escape(o.firstName)}.</h1>
     <p>Your bank needs you to confirm the payment of <strong>${fmtMoney(o.pricePence)}</strong> for your ${escape(o.treatment)}. It only takes a moment.</p>
     <p style="margin:24px 0;">${btn(o.payUrl, 'Confirm payment')}</p>
     <p>With warmth,<br>The KClinics team</p>`,
@@ -494,7 +516,8 @@ function escape(s: string) {
 export function tmplAppointmentReminder(o: { firstName: string; treatment: string; start: Date; manageUrl: string }) {
   return emailShell({
     preheader: `Reminder: your ${o.treatment} is tomorrow`,
-    body: `<h1 style="font-size:24px;margin:0 0 16px;">See you soon, ${escape(o.firstName)}.</h1>
+    body: `${heroBand('reminder')}
+    <h1 style="font-size:24px;margin:0 0 16px;">See you soon, ${escape(o.firstName)}.</h1>
     <p>This is a gentle reminder of your upcoming appointment at KClinics:</p>
     <table style="font-family:Helvetica,Arial,sans-serif;font-size:16px;color:#3d352f;line-height:2;">
       <tr><td style="color:#91766e;padding-right:20px;">Treatment</td><td><strong>${escape(o.treatment)}</strong></td></tr>
@@ -510,7 +533,8 @@ export function tmplAppointmentReminder(o: { firstName: string; treatment: strin
 export function tmplFormReminder(o: { firstName: string; treatment: string; start: Date; formsUrl: string }) {
   return emailShell({
     preheader: 'Please complete your pre-treatment forms',
-    body: `<h1 style="font-size:24px;margin:0 0 16px;">A quick step before your visit, ${escape(o.firstName)}.</h1>
+    body: `${heroBand('forms')}
+    <h1 style="font-size:24px;margin:0 0 16px;">A quick step before your visit, ${escape(o.firstName)}.</h1>
     <p>To make your <strong>${escape(o.treatment)}</strong> on ${fmtWhen(o.start)} as smooth and safe as possible, please complete your confidential health forms beforehand — it only takes a few minutes.</p>
     <p style="margin:24px 0;">${btn(o.formsUrl, 'Complete my forms')}</p>
     <p style="font-size:14px;color:#91766e;">Your answers are encrypted and seen only by your clinical team. Completing them in advance saves time at the clinic and helps us tailor your care.</p>
