@@ -14,11 +14,11 @@ const WIN_BACK_MONTHS = 6;
 const TIER_NUDGE_PENCE = 20000;   // nudge clients within £200 of the next tier
 const ANNIVERSARY_POINTS = 1000;  // bonus points on a membership anniversary
 
-type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; reencrypted: number; errors: number };
+type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; membershipRenewals: number; reencrypted: number; errors: number };
 
 export async function runDailyAutomations(): Promise<Tally> {
-  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, reencrypted: 0, errors: 0 };
-  await Promise.all([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), keyReencryption(t)]);
+  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, membershipRenewals: 0, reencrypted: 0, errors: 0 };
+  await Promise.all([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), membershipRenewal(t), keyReencryption(t)]);
   return t;
 }
 
@@ -50,6 +50,48 @@ async function tierNudges(t: Tally) {
       res.ok ? t.tierNudges++ : t.errors++;
     }
   } catch (e) { t.errors++; console.error('[automations] tier nudges failed:', (e as Error)?.message); }
+}
+
+// ── Membership "keep your tier" renewal nudge (opt-in) ──
+// Members in a paid tier (Silver+) who are lapsing (last visit ~4–5.5 months
+// ago) get a gentle nudge to rebook before their rolling-12-month spend rolls
+// off and drops them a tier. Timed before the 6-month win-back so they don't
+// overlap. Gated behind membership_renewal_nudge; deduped ~120 days.
+async function membershipRenewal(t: Tally) {
+  try {
+    const { getSetting } = await import('@/lib/settings');
+    if (!(await getSetting('membership_renewal_nudge'))) return;
+    const { getTiers, tierForSpend } = await import('@/lib/membership');
+    const tiers = await getTiers();
+    const paidFloor = tiers.find((x) => x.minSpendPence > 0)?.minSpendPence ?? 50000;
+    const base = (SITE_URL || '').replace(/\/$/, '');
+    const now = Date.now();
+    const lo = new Date(now - 165 * 864e5); // ~5.5 months ago
+    const hi = new Date(now - 120 * 864e5); // ~4 months ago
+    const since = new Date(now - 120 * 864e5);
+    const clients = await db.client.findMany({
+      where: { marketingOptIn: true, unsubscribed: false, membership12moPence: { gte: paidFloor }, lastVisitAt: { gte: lo, lte: hi } },
+      take: 3000,
+    });
+    for (const c of clients) {
+      if (!canEmail(c)) continue;
+      const tier = tierForSpend(tiers, c.membership12moPence);
+      if (!tier || tier.minSpendPence <= 0) continue; // paid/earned tiers only
+      const dup = await db.emailEvent.findFirst({ where: { clientId: c.id, kind: 'MEMBERSHIP', status: 'SENT', createdAt: { gte: since }, meta: { path: ['type'], equals: 'renewal' } } });
+      if (dup) continue;
+      const accent = tier.color || '#a98a6d';
+      const perks = (tier.perks || []).slice(0, 2).join(', ');
+      const body = `
+        <p style="font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:${accent};margin:0 0 8px;">K Circle · ${tier.name}</p>
+        <h1 style="margin:0 0 12px;font-size:25px;">Keep your ${tier.name} benefits, ${c.firstName || 'there'}</h1>
+        <p style="margin:0 0 14px;">It's been a little while since your last visit. K Circle tiers are based on your spend over the last 12 months, so a visit soon keeps you in <strong>${tier.name}</strong>${perks ? ` — and everything it unlocks: ${perks}.` : '.'}</p>
+        <p style="margin:6px 0 18px;"><a href="${base}/book" style="display:inline-block;background:${accent};color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:14px;">Book your next visit</a></p>
+        <p style="font-size:14px;color:#91766e;">We'd love to see you again soon.</p>`;
+      const res = await sendEmail({ to: c.email, subject: `Keep your K Circle ${tier.name} benefits`, html: emailShell({ body, preheader: `A little nudge to keep your ${tier.name} status.`, unsubUrl: unsub(c.unsubToken) }) });
+      await db.emailEvent.create({ data: { clientId: c.id, kind: 'MEMBERSHIP', to: c.email, subject: `K Circle renewal nudge (${tier.name})`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { type: 'renewal' } } }).catch(() => {});
+      res.ok ? t.membershipRenewals++ : t.errors++;
+    }
+  } catch (e) { t.errors++; console.error('[automations] membership renewal failed:', (e as Error)?.message); }
 }
 
 // ── Membership anniversary reward (account anniversary) ──
