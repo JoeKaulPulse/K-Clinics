@@ -18,7 +18,8 @@ export type SettingKey =
   | 'require_consent'            // signed treatment consent required before starting
   | 'require_before_photo'       // laser: before-photo (or signed opt-out) required before starting
   | 'abandoned_booking_recovery' // email a nudge to finish an unpaid/incomplete booking
-  | 'no_show_notice';            // email a warm rebooking note when an appointment is marked no-show
+  | 'no_show_notice'             // email a warm rebooking note when an appointment is marked no-show
+  | 'membership_renewal_nudge';  // email lapsing K Circle members to keep their tier
 
 export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   allow_clinician_choice: false,
@@ -35,6 +36,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   require_before_photo: true,
   abandoned_booking_recovery: false,
   no_show_notice: false,
+  membership_renewal_nudge: false,
 };
 
 export const SETTING_META: Record<SettingKey, { label: string; description: string }> = {
@@ -93,6 +95,10 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   no_show_notice: {
     label: 'No-show rebooking email',
     description: 'When an appointment is marked as a no-show, email the client a warm “sorry we missed you — shall we rebook?” note (any fee charged is noted). Off by default.',
+  },
+  membership_renewal_nudge: {
+    label: 'K Circle renewal nudge',
+    description: 'Email lapsing members in a paid tier (Silver+) a gentle “keep your benefits” nudge to rebook before their 12-month spend rolls off and they drop a tier. Off by default.',
   },
 };
 
