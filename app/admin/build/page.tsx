@@ -32,7 +32,7 @@ export default async function BuildPage() {
         Claude or staff. Use <strong>Report a problem</strong> (bottom-right, on any page) to log something with a screenshot.
       </p>
       <div className="mt-6">
-        <BuildBoard canManage={canManage} github={await githubConfigured()} staff={staff} />
+        <BuildBoard canManage={canManage} github={await githubConfigured()} staff={staff} me={session?.email || ''} />
       </div>
     </AdminShell>
   );

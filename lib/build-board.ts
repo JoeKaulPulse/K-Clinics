@@ -13,6 +13,30 @@ export type NewBuildItem = {
   assignee?: string; reportedBy?: string; pageUrl?: string; screenshots?: string[];
 };
 
+/** Idempotently import Claude's working backlog (deduped by title) so the board
+ *  is the auditable record of work + decisions. Safe to run repeatedly. */
+export async function seedBacklog(): Promise<{ created: number; skipped: number }> {
+  const { BUILD_BACKLOG } = await import('@/lib/build-backlog');
+  let created = 0, skipped = 0;
+  for (const it of BUILD_BACKLOG) {
+    const exists = await db.buildItem.findFirst({ where: { title: it.title }, select: { id: true } });
+    if (exists) { skipped += 1; continue; }
+    await db.buildItem.create({
+      data: {
+        title: it.title, type: it.type, urgency: it.urgency, status: it.status,
+        assignee: it.assignee || 'claude', reportedBy: 'claude', detail: it.detail,
+        githubUrl: it.pr || null, shippedAt: it.status === 'SHIPPED' ? new Date() : null,
+        events: { create: [
+          { kind: 'created', actor: 'claude', body: `Imported — ${it.type} · ${it.urgency} · ${it.status}${it.pr ? ` · ${it.pr}` : ''}` },
+          ...(it.notes || []).map((n) => ({ kind: 'comment', actor: 'claude', body: n })),
+        ] },
+      },
+    });
+    created += 1;
+  }
+  return { created, skipped };
+}
+
 export async function listBuildItems() {
   return db.buildItem.findMany({
     orderBy: [{ status: 'asc' }, { urgency: 'asc' }, { createdAt: 'desc' }],

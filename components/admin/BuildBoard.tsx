@@ -26,7 +26,7 @@ const TYPES = ['ERROR', 'TASK', 'IDEA', 'REVIEW', 'AUDIT'];
 const post = (p: object) => fetch('/api/admin/build', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) }).then((r) => r.json()).catch(() => ({ ok: false }));
 const fmt = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
-export function BuildBoard({ canManage, github, staff }: { canManage: boolean; github: boolean; staff: { email: string; name: string | null }[] }) {
+export function BuildBoard({ canManage, github, staff, me }: { canManage: boolean; github: boolean; staff: { email: string; name: string | null }[]; me: string }) {
   const [items, setItems] = useState<Item[]>([]);
   const [active, setActive] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,7 +57,17 @@ export function BuildBoard({ canManage, github, staff }: { canManage: boolean; g
 
   async function patch(id: string, body: object) { const r = await post({ op: 'update', id, ...body }); if (r.ok) load(); else alert(r.error || 'Failed'); }
 
-  const counts = (k: string) => items.filter((i) => i.status === k).length;
+  const [mine, setMine] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+  async function importBacklog() {
+    setSeeding(true);
+    const r = await post({ op: 'seed-backlog' });
+    setSeeding(false);
+    if (r.ok) { alert(`Imported ${r.created} item(s)${r.skipped ? `, ${r.skipped} already present` : ''}.`); load(true); }
+    else alert(r.error || 'Import failed.');
+  }
+  const view = mine ? items.filter((i) => i.assignee === me) : items;
+  const counts = (k: string) => view.filter((i) => i.status === k).length;
   const open = items.filter((i) => !['SHIPPED', 'CANCELLED'].includes(i.status)).length;
   const blocked = items.filter((i) => i.status === 'BLOCKED').length;
 
@@ -69,6 +79,10 @@ export function BuildBoard({ canManage, github, staff }: { canManage: boolean; g
         <span><strong className="text-[var(--color-ink)]">{items.filter((i) => i.assignee === 'claude' && !['SHIPPED', 'CANCELLED'].includes(i.status)).length}</strong> with Claude</span>
         {gh.connected ? <span className="text-[var(--color-jade)]">GitHub connected ✓{gh.repo ? ` · ${gh.repo}` : ''}</span> : <span className="text-[var(--color-stone-soft)]">GitHub not connected</span>}
         {canManage && gh.connected && <button onClick={disconnectGh} className="text-xs text-[var(--color-blush)] hover:underline">Disconnect</button>}
+        <span className="ml-auto flex items-center gap-3">
+          <label className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} className="h-3.5 w-3.5 accent-[var(--color-gold)]" /> Assigned to me</label>
+          {canManage && <button onClick={importBacklog} disabled={seeding} className="rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:bg-[var(--color-bone)] disabled:opacity-50">{seeding ? 'Importing…' : 'Import Claude’s backlog'}</button>}
+        </span>
       </div>
 
       {/* Connect GitHub (self-serve; no env vars needed) */}
@@ -92,7 +106,7 @@ export function BuildBoard({ canManage, github, staff }: { canManage: boolean; g
             <div key={col.key} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
               <p className="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">{col.label}<span className="text-[var(--color-stone-soft)]">{counts(col.key)}</span></p>
               <div className="space-y-2">
-                {items.filter((i) => i.status === col.key).map((i) => (
+                {view.filter((i) => i.status === col.key).map((i) => (
                   <button key={i.id} onClick={() => setActive(i)} className="block w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3 text-left hover:border-[var(--color-gold)]">
                     <div className="mb-1 flex items-center gap-1.5">
                       <span className={`rounded-full px-1.5 py-0.5 text-[0.6rem] font-semibold ${URGENCY[i.urgency]?.cls}`}>{i.urgency}</span>

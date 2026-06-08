@@ -71,6 +71,11 @@ export async function POST(req: Request) {
         await board.disconnectGithub();
         return NextResponse.json({ ok: true });
       }
+      case 'seed-backlog': {
+        if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
+        const r = await board.seedBacklog();
+        return NextResponse.json({ ok: true, ...r });
+      }
     }
     return NextResponse.json({ ok: false, error: 'Unknown op' }, { status: 400 });
   } catch (e) {
