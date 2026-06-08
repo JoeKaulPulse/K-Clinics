@@ -15,7 +15,7 @@ const money = (p: number) => (p > 0 ? `£${(p / 100).toLocaleString('en-GB', { m
 export async function notifyBookingConfirmed(bookingId: string): Promise<void> {
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
-    include: { client: true, items: { orderBy: { createdAt: 'asc' } } },
+    include: { client: true, items: { orderBy: { createdAt: 'asc' } }, practitioner: { select: { name: true } }, location: true },
   });
   if (!booking || !booking.client) return;
   const c = booking.client;
@@ -47,13 +47,21 @@ export async function notifyBookingConfirmed(bookingId: string): Promise<void> {
     if (rec) nextNote = `For best results, we recommend your next ${booking.treatmentTitle} session ${formatInterval(rec.weeks)} after this one — around ${rec.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}.`;
   } catch { /* recommendation is best-effort */ }
 
-  const { sendEmail, tmplBookingConfirmation, tmplBookingNotify } = await import('@/lib/email');
+  const { sendEmail, tmplBookingConfirmation, tmplBookingNotify, bookingIcs } = await import('@/lib/email');
+
+  const clinicianName = booking.practitioner?.name || undefined;
+  const locationName = booking.location?.name || undefined;
+  const locationAddress = booking.location
+    ? [booking.location.addressLine, booking.location.city, booking.location.postcode].filter(Boolean).join(', ') || undefined
+    : undefined;
+  const ics = bookingIcs({ id: booking.id, treatment: booking.treatmentTitle, start: booking.startAt, end: booking.endAt, manageUrl, locationAddress });
 
   // Send the client's confirmation first so we can record the true outcome.
   const clientRes = await sendEmail({
     to: c.email,
     subject: `Your booking is confirmed — ${booking.treatmentTitle}`,
-    html: tmplBookingConfirmation({ firstName, treatment: booking.treatmentTitle, start: booking.startAt, pricePence: booking.pricePence, manageUrl, formsUrl, arriveEarly: firstVisit, lines, nextNote }),
+    html: tmplBookingConfirmation({ firstName, treatment: booking.treatmentTitle, start: booking.startAt, end: booking.endAt, pricePence: booking.pricePence, manageUrl, formsUrl, arriveEarly: firstVisit, lines, nextNote, clinicianName, locationName, locationAddress }),
+    attachments: [{ filename: 'appointment.ics', content: ics, contentType: 'text/calendar' }],
   });
   if (!clientRes.ok) console.error('[booking-notify] confirmation email failed:', clientRes.error);
 

@@ -1,6 +1,6 @@
 import 'server-only';
 import * as E from '@/lib/email';
-import { K_MARK_LIGHT_B64, K_WORDMARK_LIGHT_B64, K_BADGE_B64 } from '@/lib/brand-email-assets';
+import { K_MARK_LIGHT_B64, K_WORDMARK_LIGHT_B64, K_BADGE_B64, EMAIL_HERO_GIF_B64 } from '@/lib/brand-email-assets';
 
 // Renders every transactional/marketing email with realistic sample data so the
 // whole email system is visible and on-brand in the dashboard.
@@ -11,6 +11,7 @@ export type EmailPreview = { key: string; name: string; group: string; descripti
 // equivalent data: URI (the same bundled bytes) so the marks show here too.
 const forPreview = (html: string) =>
   html
+    .replace(/cid:hero/g, `data:image/gif;base64,${EMAIL_HERO_GIF_B64}`)
     .replace(/cid:kwordmark/g, `data:image/png;base64,${K_WORDMARK_LIGHT_B64}`)
     .replace(/cid:kbadge/g, `data:image/png;base64,${K_BADGE_B64}`)
     .replace(/cid:kmark/g, `data:image/png;base64,${K_MARK_LIGHT_B64}`);
