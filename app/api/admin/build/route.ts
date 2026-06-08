@@ -11,9 +11,9 @@ export async function GET() {
   const session = await requirePermission('build.view');
   if (!session) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
   try {
-    const { listBuildItems, githubConfigured } = await import('@/lib/build-board');
-    const items = await listBuildItems();
-    return NextResponse.json({ ok: true, items, github: githubConfigured() });
+    const { listBuildItems, githubConfigured, githubRepo } = await import('@/lib/build-board');
+    const [items, github, repo] = await Promise.all([listBuildItems(), githubConfigured(), githubRepo()]);
+    return NextResponse.json({ ok: true, items, github, githubRepo: repo });
   } catch (e) {
     console.error('[build] list failed', e);
     return NextResponse.json({ ok: false, error: 'Could not load the board.' }, { status: 500 });
@@ -54,9 +54,22 @@ export async function POST(req: Request) {
       }
       case 'github': {
         if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
-        if (!board.githubConfigured()) return NextResponse.json({ ok: false, error: 'GitHub isn’t connected (set GITHUB_TOKEN + GITHUB_REPO).' }, { status: 400 });
+        if (!(await board.githubConfigured())) return NextResponse.json({ ok: false, error: 'GitHub isn’t connected yet.' }, { status: 400 });
         const item = await board.pushToGithub(String(b.id), session.email);
         return NextResponse.json({ ok: true, item });
+      }
+      case 'github-connect': {
+        if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
+        const repo = String(b.repo || '').trim();
+        const token = String(b.token || '').trim();
+        if (!repo || !token) return NextResponse.json({ ok: false, error: 'Enter the repo (owner/name) and a token.' }, { status: 400 });
+        const r = await board.connectGithub(token, repo);
+        return NextResponse.json(r, { status: r.ok ? 200 : 400 });
+      }
+      case 'github-disconnect': {
+        if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
+        await board.disconnectGithub();
+        return NextResponse.json({ ok: true });
       }
     }
     return NextResponse.json({ ok: false, error: 'Unknown op' }, { status: 400 });

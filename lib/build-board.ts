@@ -37,7 +37,7 @@ export async function createBuildItem(input: NewBuildItem, actor: string) {
     include: { events: true },
   });
   // Auto-bridge to GitHub when configured (so urgent items become actionable issues).
-  if (githubConfigured() && (item.urgency === 'P0' || item.urgency === 'P1')) {
+  if ((item.urgency === 'P0' || item.urgency === 'P1') && (await githubConfigured())) {
     await pushToGithub(item.id, 'system').catch(() => {});
   }
   return item;
@@ -68,13 +68,47 @@ export async function addBuildComment(id: string, body: string, actor: string) {
 }
 
 // ── GitHub bridge ────────────────────────────────────────────────────────────
-export const githubConfigured = () => Boolean(process.env.GITHUB_TOKEN && process.env.GITHUB_REPO);
+// Config comes from env (GITHUB_TOKEN + GITHUB_REPO) or, for self-serve setup,
+// from an encrypted connection saved in admin (provider 'github'; the PAT lives
+// in tokens.access, the "owner/repo" in accountRef).
+export async function getGithubConfig(): Promise<{ token: string; repo: string } | null> {
+  const envToken = process.env.GITHUB_TOKEN, envRepo = process.env.GITHUB_REPO;
+  if (envToken && envRepo) return { token: envToken, repo: envRepo };
+  try {
+    const { getConnection } = await import('@/lib/oauth-connections');
+    const conn = await getConnection('github');
+    if (conn?.tokens.access && conn.accountRef) return { token: conn.tokens.access, repo: conn.accountRef };
+  } catch { /* not connected */ }
+  return null;
+}
+export async function githubConfigured(): Promise<boolean> { return !!(await getGithubConfig()); }
+export async function githubRepo(): Promise<string | null> { return (await getGithubConfig())?.repo ?? null; }
+
+/** Validate a token+repo against the GitHub API, then save it (encrypted). */
+export async function connectGithub(token: string, repo: string): Promise<{ ok: boolean; error?: string }> {
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return { ok: false, error: 'Repo must be in the form owner/name.' };
+  let res: Response;
+  try {
+    res = await fetch(`https://api.github.com/repos/${repo}`, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'User-Agent': 'kclinics-build-board' } });
+  } catch { return { ok: false, error: 'Could not reach GitHub.' }; }
+  if (res.status === 404) return { ok: false, error: 'Repo not found — check owner/name and that the token can access it.' };
+  if (res.status === 401 || res.status === 403) return { ok: false, error: 'Token rejected — it needs access to issues on that repo.' };
+  if (!res.ok) return { ok: false, error: `GitHub returned ${res.status}.` };
+  const { saveConnection } = await import('@/lib/oauth-connections');
+  await saveConnection('github', { access: token, expiresAt: null }, repo, repo);
+  return { ok: true };
+}
+export async function disconnectGithub() {
+  const { disconnect } = await import('@/lib/oauth-connections');
+  await disconnect('github');
+}
 
 export async function pushToGithub(id: string, actor: string) {
   const item = await db.buildItem.findUnique({ where: { id } });
   if (!item || item.githubUrl) return item; // already linked
-  const token = process.env.GITHUB_TOKEN, repo = process.env.GITHUB_REPO;
-  if (!token || !repo) return item;
+  const cfg = await getGithubConfig();
+  if (!cfg) return item;
+  const { token, repo } = cfg;
   const body = [
     item.detail || '',
     '', `**Type:** ${item.type} · **Urgency:** ${item.urgency}`,
