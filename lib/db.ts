@@ -39,6 +39,29 @@ function resolveDirectUrl(): string | undefined {
   return candidates.find((u) => /^postgres(ql)?:\/\//.test(u)) ?? undefined;
 }
 
+/**
+ * Cap how many connections each serverless instance opens on a *direct*
+ * postgres:// connection. Vercel scales horizontally, so without this every
+ * concurrent function instance opens Prisma's default pool (num_cpus*2+1),
+ * which exhausts the database's connection limit and 500s pages/deploys. On
+ * serverless we force a tiny per-instance pool + short timeouts; locally we keep
+ * Prisma's defaults. Only applied to raw postgres:// URLs — the Accelerate
+ * `prisma+postgres://` pooler manages connections itself and is left untouched.
+ */
+function withServerlessParams(url: string): string {
+  const onServerless = Boolean(process.env.VERCEL) || process.env.NODE_ENV === 'production';
+  if (!onServerless) return url;
+  try {
+    const u = new URL(url);
+    if (!u.searchParams.has('connection_limit')) u.searchParams.set('connection_limit', '1');
+    if (!u.searchParams.has('pool_timeout')) u.searchParams.set('pool_timeout', '15');
+    if (!u.searchParams.has('connect_timeout')) u.searchParams.set('connect_timeout', '10');
+    return u.toString();
+  } catch {
+    return url; // unparseable (shouldn't happen) — use as-is rather than break boot
+  }
+}
+
 const log = process.env.NODE_ENV === 'development' ? (['warn', 'error'] as const) : (['error'] as const);
 
 function makeClient() {
@@ -48,7 +71,8 @@ function makeClient() {
     return new PrismaClient({ datasources: { db: { url: pooled } }, log: [...log] }).$extends(withAccelerate());
   }
   const direct = resolveDirectUrl();
-  return new PrismaClient({ ...(direct ? { datasources: { db: { url: direct } } } : {}), log: [...log] });
+  const url = direct ? withServerlessParams(direct) : undefined;
+  return new PrismaClient({ ...(url ? { datasources: { db: { url } } } : {}), log: [...log] });
 }
 
 // The Accelerate-extended client is a structural superset of PrismaClient for

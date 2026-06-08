@@ -131,13 +131,19 @@ export function AdminShell({
   const canApproveTimeOff = allowed.has('schedule.manage');
   useEffect(() => {
     let on = true;
-    const load = () => fetch('/api/admin/badges')
-      .then((r) => r.json())
-      .then((j) => { if (on && j?.ok) { setPendingTimeOff(j.pendingTimeOff || 0); setOpenTasks(j.openTasks || 0); setChatUnread(j.chatUnread || 0); } })
-      .catch(() => {});
+    const load = () => {
+      // Don't poll the DB when the tab is in the background (idle admin tabs).
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetch('/api/admin/badges')
+        .then((r) => r.json())
+        .then((j) => { if (on && j?.ok) { setPendingTimeOff(j.pendingTimeOff || 0); setOpenTasks(j.openTasks || 0); setChatUnread(j.chatUnread || 0); } })
+        .catch(() => {});
+    };
     load();
-    const t = setInterval(load, 30000); // keep the live-chat badge fresh
-    return () => { on = false; clearInterval(t); };
+    const t = setInterval(load, 45000); // refresh badges (paused when tab hidden)
+    const onVis = () => { if (!document.hidden) load(); }; // catch up on return
+    document.addEventListener('visibilitychange', onVis);
+    return () => { on = false; clearInterval(t); document.removeEventListener('visibilitychange', onVis); };
   }, []);
 
   const badgeCount = (badge?: string) =>
