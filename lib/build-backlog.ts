@@ -15,14 +15,36 @@ export type BacklogItem = {
   detail: string;
   pr?: string; // GitHub PR/issue URL
   notes?: string[]; // decision log → comment events by 'claude'
+  // Prioritisation: value (business worth, 1–10) ÷ effort (build cost, 1–10).
+  // Open work is tackled highest value-to-effort first. Recorded on the board so
+  // the ordering is auditable.
+  value?: number;
+  effort?: number;
 };
+
+/** Value-to-effort ratio — higher is done sooner. */
+export const vToE = (it: { value?: number; effort?: number }): number | null =>
+  it.value && it.effort ? Math.round((it.value / it.effort) * 100) / 100 : null;
 
 const PR = (n: number) => `https://github.com/JoeKaulPulse/K-Clinics/pull/${n}`;
 
 export const BUILD_BACKLOG: BacklogItem[] = [
   // ── Shipped this session ──────────────────────────────────────────────────
   {
+    title: 'Enhance search (admin + public) — powerful & access-gated', type: 'TASK', urgency: 'P1', status: 'SHIPPED', pr: PR(331),
+    value: 8, effort: 5,
+    detail: 'Make search powerful everywhere it appears — admin global search and the public website — gated by user type and access, except public marketing-page search which stays open to anyone (incl. non-users).',
+    notes: [
+      'Top of the open backlog by value-to-effort (V:E 1.6): search is used constantly and touches both admin and the public site, for moderate build cost.',
+      'Added a shared relevance ranker (lib/search-rank.ts): exact > prefix > word-boundary > substring, with a specificity/brevity bonus — replaces "most recent first".',
+      'Admin global search: ranked within and across groups (best-matching category leads); broadened to Products, Suppliers, Journal, Pages, Build & issues and the user’s own Tasks — every group still permission-gated via sessionCan, and Tasks scoped to the signed-in user so no one’s task list leaks.',
+      'Public search: relevance-ranked with a gentle navigational prior (treatments/pages over articles); stays fully public per the brief.',
+      'UI: match highlighting (you can see why a result matched) and per-user recent searches in the admin bar.',
+    ],
+  },
+  {
     title: 'Board ↔ GitHub: one-click sync + dashboard summary', type: 'TASK', urgency: 'P1', status: 'SHIPPED', pr: PR(322),
+    value: 7, effort: 4,
     detail: 'Make the Build board and GitHub harmoniously synced with a single labelled button, and surface the tracker on the admin overview.',
     notes: [
       'Added syncAllToGithub(): pushes every unsynced item to GitHub in throttled batches (max 8/click, 700ms apart) so the secondary rate limit isn’t tripped.',
@@ -31,6 +53,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Tidy admin navigation: clearer groups + section icons', type: 'TASK', urgency: 'P2', status: 'SHIPPED', pr: PR(323),
+    value: 5, effort: 3,
     detail: 'Split overloaded sidebar sections, disambiguate duplicate tabs, add restrained per-section icons.',
     notes: [
       'Split Clients & bookings (loyalty/offers → own group) and Catalogue (website content → Website group); moved Build & issues to Administration.',
@@ -39,6 +62,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Auto-import the backlog on deploy', type: 'TASK', urgency: 'P2', status: 'SHIPPED', pr: PR(324),
+    value: 4, effort: 2,
     detail: 'Seed the Build board from Claude’s backlog automatically after a deploy, without build-time DB writes.',
     notes: [
       'Version-gated lazy seed: runs the first time the board is opened after a deploy (stored marker = backlog version), so it adds no connection pressure during the deploy window.',
@@ -136,25 +160,30 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Self-serve reschedule flow + confirmation email', type: 'TASK', urgency: 'P3', status: 'BLOCKED', assignee: 'claude',
+    value: 6, effort: 5,
     detail: 'There is no self-serve reschedule today (clients are pointed to call). Building the reschedule action is a prerequisite for a reschedule-confirmation email.',
     notes: ['Question for the owner: do you want clients to self-reschedule online, or keep it staff-handled? Blocked pending that decision.'],
   },
   {
     title: 'Build board phase 2: public roadmap + release announcements', type: 'IDEA', urgency: 'P3', status: 'TRIAGE', assignee: 'claude',
+    value: 4, effort: 6,
     detail: 'Public "coming soon"/changelog fed by items flagged public, and auto-drafted on-brand release announcements when a feature ships.',
   },
   {
     title: 'Verify mail.kclinics.co.uk in Resend (sending + inbound)', type: 'TASK', urgency: 'P1', status: 'BLOCKED',
+    value: 7, effort: 1,
     detail: 'Chat email sends from chat@mail.kclinics.co.uk and replies route via Resend Inbound — both need mail.kclinics.co.uk verified (DKIM/SPF for sending; CNAME+CAA+MX for inbound).',
     notes: ['Owner action with the new DNS access — tracked on the Go-live page (with-owner filter). Blocked until DNS verified.'],
   },
   {
     title: 'IPL service catalogue + which treatments/prices', type: 'TASK', urgency: 'P3', status: 'BLOCKED',
+    value: 4, effort: 2,
     detail: 'The IPL page is live but the catalogue shows all services until curated.',
     notes: ['Needs owner input: the exact IPL treatments + prices, then I’ll wire the service so only those show.'],
   },
   {
     title: 'S7 — migrate client data from the old system', type: 'TASK', urgency: 'P2', status: 'BLOCKED',
+    value: 6, effort: 6,
     detail: 'Bring across existing client records.',
     notes: ['Needs owner input: where the old records live (system/CSV/paper), rough volume, and what to bring across. Then I can write an importer.'],
   },
