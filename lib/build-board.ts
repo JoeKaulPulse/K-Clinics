@@ -84,19 +84,38 @@ export async function getGithubConfig(): Promise<{ token: string; repo: string }
 export async function githubConfigured(): Promise<boolean> { return !!(await getGithubConfig()); }
 export async function githubRepo(): Promise<string | null> { return (await getGithubConfig())?.repo ?? null; }
 
+/** Tidy whatever the user pasted into a clean "owner/name". Accepts a full
+ *  GitHub URL, an SSH remote, a trailing .git, leading @, or extra whitespace. */
+export function normalizeRepo(input: string): string {
+  let s = (input || '').trim();
+  s = s.replace(/^https?:\/\/(www\.)?github\.com\//i, '').replace(/^git@github\.com:/i, '');
+  s = s.replace(/\.git$/i, '').replace(/^@/, '').replace(/\/+$/, '').trim();
+  return s;
+}
+/** Strip common paste artefacts from a token (quotes, a leading "Bearer ", whitespace). */
+function cleanToken(input: string): string {
+  return (input || '').trim().replace(/^bearer\s+/i, '').replace(/^["']|["']$/g, '').trim();
+}
+
 /** Validate a token+repo against the GitHub API, then save it (encrypted). */
-export async function connectGithub(token: string, repo: string): Promise<{ ok: boolean; error?: string }> {
-  if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return { ok: false, error: 'Repo must be in the form owner/name.' };
+export async function connectGithub(tokenRaw: string, repoRaw: string): Promise<{ ok: boolean; error?: string; repo?: string }> {
+  const repo = normalizeRepo(repoRaw);
+  const token = cleanToken(tokenRaw);
+  if (!token) return { ok: false, error: 'Paste your GitHub token.' };
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return { ok: false, error: `“${repo || repoRaw}” isn’t a valid repo — use owner/name, e.g. JoeKaulPulse/K-Clinics.` };
   let res: Response;
   try {
-    res = await fetch(`https://api.github.com/repos/${repo}`, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'User-Agent': 'kclinics-build-board' } });
-  } catch { return { ok: false, error: 'Could not reach GitHub.' }; }
-  if (res.status === 404) return { ok: false, error: 'Repo not found — check owner/name and that the token can access it.' };
-  if (res.status === 401 || res.status === 403) return { ok: false, error: 'Token rejected — it needs access to issues on that repo.' };
-  if (!res.ok) return { ok: false, error: `GitHub returned ${res.status}.` };
+    res = await fetch(`https://api.github.com/repos/${repo}`, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'User-Agent': 'kclinics-build-board', 'X-GitHub-Api-Version': '2022-11-28' } });
+  } catch { return { ok: false, error: 'Could not reach GitHub — please try again.' }; }
+  const data = (await res.json().catch(() => ({}))) as { message?: string };
+  const detail = data?.message ? ` (GitHub: ${data.message})` : '';
+  if (res.status === 404) return { ok: false, error: `Couldn’t find ${repo}${detail}. Check the exact owner/name, and that a fine-grained token has this repo selected.` };
+  if (res.status === 401) return { ok: false, error: `GitHub rejected the token${detail}. Re-copy it (no spaces/quotes) and try again.` };
+  if (res.status === 403) return { ok: false, error: `Token lacks access${detail}. A fine-grained token needs Metadata: Read + Issues: Read & write on ${repo}.` };
+  if (!res.ok) return { ok: false, error: `GitHub returned ${res.status}${detail}.` };
   const { saveConnection } = await import('@/lib/oauth-connections');
   await saveConnection('github', { access: token, expiresAt: null }, repo, repo);
-  return { ok: true };
+  return { ok: true, repo };
 }
 export async function disconnectGithub() {
   const { disconnect } = await import('@/lib/oauth-connections');
