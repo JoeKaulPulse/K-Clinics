@@ -1,6 +1,7 @@
 import 'server-only';
 import * as E from '@/lib/email';
-import { K_MARK_LIGHT_B64, K_WORDMARK_LIGHT_B64, K_BADGE_B64, EMAIL_HERO_GIF_B64 } from '@/lib/brand-email-assets';
+import { K_MARK_LIGHT_B64, K_WORDMARK_LIGHT_B64, K_BADGE_B64 } from '@/lib/brand-email-assets';
+import { EMAIL_HEROES } from '@/lib/email-heroes';
 
 // Renders every transactional/marketing email with realistic sample data so the
 // whole email system is visible and on-brand in the dashboard.
@@ -9,12 +10,14 @@ export type EmailPreview = { key: string; name: string; group: string; descripti
 // A sent email carries the brand marks as inline cid: attachments, which a
 // browser can't resolve — so for the dashboard preview we swap every cid for an
 // equivalent data: URI (the same bundled bytes) so the marks show here too.
-const forPreview = (html: string) =>
-  html
-    .replace(/cid:hero/g, `data:image/gif;base64,${EMAIL_HERO_GIF_B64}`)
+const forPreview = (html: string) => {
+  let out = html;
+  for (const [motif, b64] of Object.entries(EMAIL_HEROES)) out = out.replace(new RegExp(`cid:hero-${motif}`, 'g'), `data:image/gif;base64,${b64}`);
+  return out
     .replace(/cid:kwordmark/g, `data:image/png;base64,${K_WORDMARK_LIGHT_B64}`)
     .replace(/cid:kbadge/g, `data:image/png;base64,${K_BADGE_B64}`)
     .replace(/cid:kmark/g, `data:image/png;base64,${K_MARK_LIGHT_B64}`);
+};
 
 export function emailPreviews(): EmailPreview[] {
   const inDays = (n: number) => new Date(Date.now() + n * 86400000);
