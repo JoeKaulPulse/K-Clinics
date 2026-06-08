@@ -97,7 +97,7 @@ function Stars({ rating, count }: { rating: number; count: number }) {
 function Card({ m }: { m: TeamMember }) {
   const initials = m.name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
   return (
-    <div className="flex h-full flex-col rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6">
+    <div id={`m-${m.id}`} className="flex h-full scroll-mt-28 flex-col rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6">
       <div className="flex items-center gap-4">
         {m.photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

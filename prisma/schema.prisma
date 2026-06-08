@@ -1885,6 +1885,9 @@ model ChatConversation {
   staffUnread   Int      @default(0)   // messages awaiting staff
   page          String?               // path the chat was opened from
   lastMessageAt DateTime @default(now())
+  // Presence: when the visitor was last active (each poll/send refreshes it).
+  // Drives the "email the reply only once they've left" follow-up logic.
+  lastVisitorSeenAt DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -1897,12 +1900,27 @@ model ChatMessage {
   id             String   @id @default(cuid())
   conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   conversationId String
-  sender         String   // VISITOR | STAFF
-  author         String?  // staff email, when sender = STAFF
+  sender         String   // VISITOR | STAFF | AI
+  author         String?  // staff email, when sender = STAFF (internal)
+  // Visitor-facing identity for a staff reply, sourced from the responder's own
+  // logged-in account (AdminUser). Null name = show as "KClinics" (OWNER/ADMIN,
+  // who are presented as the clinic, not by name).
+  authorName     String?  // first name from their account
+  authorTitle    String?  // their account title, e.g. "Aesthetic Doctor"
+  authorId       String?  // their AdminUser id — deep-links to /team#m-<id>
+  // Whether they've opted into a public team profile (so we link the name).
+  authorPublic   Boolean  @default(false)
   body           String   @db.Text
+  // 'chat' (web widget) or 'email' (sent to / received from the visitor by email).
+  via            String   @default("chat")
+  // When a staff/AI reply was emailed to the visitor (null = not emailed).
+  emailedAt      DateTime?
+  // Inbound email Message-ID, to thread replies & de-duplicate webhook deliveries.
+  externalId     String?
   createdAt      DateTime @default(now())
 
   @@index([conversationId, createdAt])
+  @@index([externalId])
 }
 
 // ── Blog / Journal posts (DB-backed CMS) ────────────────────────────────────

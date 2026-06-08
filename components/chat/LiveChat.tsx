@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 
-type Msg = { id: string; sender: string; body: string; createdAt: string };
+type Msg = { id: string; sender: string; body: string; createdAt: string; from?: string; link?: string };
 const TOKEN_KEY = 'kc_chat_token';
 
 export function LiveChat() {
@@ -89,9 +89,19 @@ export function LiveChat() {
 
             <div ref={scroller} className="flex-1 space-y-2 overflow-y-auto p-4">
               {msgs.length === 0 && <p className="text-sm text-[var(--color-stone)]">Hello — I’m K, the KClinics assistant. Ask me about treatments, pricing, opening hours or booking, and I’ll bring in our team whenever you need a person.</p>}
-              {msgs.map((m) => (
-                <div key={m.id} className={`max-w-[80%] rounded-[var(--radius-md)] px-3 py-2 text-sm ${m.sender === 'VISITOR' ? 'ml-auto bg-[var(--color-gold)] text-white' : 'bg-[var(--color-bone)] text-[var(--color-ink)]'}`}>{m.body}</div>
-              ))}
+              {msgs.map((m) => {
+                const mine = m.sender === 'VISITOR';
+                return (
+                  <div key={m.id} className={mine ? 'ml-auto max-w-[80%]' : 'max-w-[80%]'}>
+                    {!mine && m.from && (
+                      <p className="mb-0.5 px-1 text-[0.6rem] font-medium uppercase tracking-wide text-[var(--color-stone)]">
+                        {m.link ? <a href={m.link} target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--color-ink)]">{m.from}</a> : m.from}
+                      </p>
+                    )}
+                    <div className={`rounded-[var(--radius-md)] px-3 py-2 text-sm ${mine ? 'bg-[var(--color-gold)] text-white' : 'bg-[var(--color-bone)] text-[var(--color-ink)]'}`}>{m.body}</div>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="border-t border-[var(--color-line)] p-3">

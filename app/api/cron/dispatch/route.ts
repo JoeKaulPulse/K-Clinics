@@ -18,5 +18,8 @@ export async function GET(req: Request) {
 
   const { dispatchDueCampaigns } = await import('@/lib/email-campaigns');
   const result = await dispatchDueCampaigns();
-  return NextResponse.json({ ok: true, ...result });
+  // Email any unseen live-chat reply once the visitor has clearly left.
+  let chat = { emailed: 0 };
+  try { const { sweepChatEmailFollowups } = await import('@/lib/chat-email'); chat = await sweepChatEmailFollowups(); } catch { /* non-fatal */ }
+  return NextResponse.json({ ok: true, ...result, chatFollowups: chat.emailed });
 }

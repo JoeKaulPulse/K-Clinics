@@ -151,10 +151,10 @@ async function handOver(conversationId: string, visitorEmail: string | null, ope
   const note = open
     ? `${opening} Let me bring in a member of our team — they'll reply right here in just a moment.`
     : `${opening} Our team isn't online at the moment (hours: ${hoursText()}). I've passed this to them and they'll follow up${visitorEmail ? ' by email' : ' here'} as soon as we reopen. In the meantime you can call ${site.phone} or book online at ${site.booking.path}.`;
-  await db.$transaction([
-    db.chatMessage.create({ data: { conversationId, sender: 'AI', author: 'K (assistant)', body: note } }),
-    db.chatConversation.update({ where: { id: conversationId }, data: { mode: 'STAFF', status: 'OPEN', lastMessageAt: new Date(), staffUnread: { increment: 1 } } }),
-  ]);
+  const handoverMsg = await db.chatMessage.create({ data: { conversationId, sender: 'AI', author: 'K (assistant)', body: note } });
+  await db.chatConversation.update({ where: { id: conversationId }, data: { mode: 'STAFF', status: 'OPEN', lastMessageAt: new Date(), staffUnread: { increment: 1 } } });
+  // If the visitor left their email and has stepped away, email them this note too.
+  try { const { emailChatMessage } = await import('@/lib/chat-email'); await emailChatMessage(handoverMsg.id); } catch { /* non-fatal */ }
   try {
     const { sendEmail } = await import('@/lib/email');
     await sendEmail({
@@ -201,10 +201,10 @@ export async function maybeAutoReply(conversationId: string): Promise<void> {
     // Re-check mode in case staff jumped in while the model was thinking.
     const fresh = await db.chatConversation.findUnique({ where: { id: conversationId }, select: { mode: true } });
     if (fresh?.mode !== 'AI') return;
-    await db.$transaction([
-      db.chatMessage.create({ data: { conversationId, sender: 'AI', author: 'K (assistant)', body: result.reply } }),
-      db.chatConversation.update({ where: { id: conversationId }, data: { lastMessageAt: new Date() } }),
-    ]);
+    const aiMsg = await db.chatMessage.create({ data: { conversationId, sender: 'AI', author: 'K (assistant)', body: result.reply } });
+    await db.chatConversation.update({ where: { id: conversationId }, data: { lastMessageAt: new Date() } });
+    // Email the reply if the visitor left their email and has stepped away.
+    try { const { emailChatMessage } = await import('@/lib/chat-email'); await emailChatMessage(aiMsg.id); } catch { /* non-fatal */ }
   } catch (e) {
     console.error('[chat-ai] maybeAutoReply failed:', (e as Error)?.message);
     try { await handOver(conversationId, null, 'Thanks for your message!', 'assistant exception'); } catch { /* give up */ }
