@@ -77,12 +77,22 @@ export function emailShell(opts: { preheader?: string; body: string; unsubUrl?: 
   // appears once a GDC-registered dentist is in post (site.dentistryLive).
   const descriptor = site.dentistryLive ? 'Aesthetics &middot; Dentistry &middot; London' : 'Aesthetics &middot; Laser &middot; London';
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="x-apple-disable-message-reformatting">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,400&display=swap" rel="stylesheet">
   <style>
-    /* Progressive enhancement — clients that strip this fall back to the inline styles. */
+    /* Progressive enhancement — clients that strip this fall back to the inline
+       styles (Georgia headings, no motion). Fraunces is the brand display face;
+       it loads in Apple Mail / iOS / web preview and degrades to Georgia elsewhere. */
     a{color:#8a6e54;}
-    .kc-btn:hover{background:#8a6e54 !important;box-shadow:0 10px 26px -10px rgba(42,36,32,0.5) !important;}
+    h1,.kc-display{font-family:'Fraunces',Georgia,'Times New Roman',serif !important;font-weight:600;letter-spacing:-0.4px;line-height:1.14;}
+    .kc-btn:hover{background:#8a6e54 !important;box-shadow:0 12px 30px -10px rgba(42,36,32,0.55) !important;}
     @media (prefers-reduced-motion: no-preference){
+      .kc-card{animation:kcRise .9s cubic-bezier(.16,1,.3,1) both;}
+      .kc-fade{animation:kcFade 1.1s ease both;animation-delay:.18s;}
+      .kc-btn{transition:background .25s ease,box-shadow .25s ease;}
       .kc-sheen{background-size:220% 100% !important;animation:kcSheen 5s ease-in-out infinite;}
+      @keyframes kcRise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes kcFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
       @keyframes kcSheen{0%{background-position:0% 0}50%{background-position:100% 0}100%{background-position:0% 0}}
     }
     @media (max-width:600px){ .kc-pad{padding:32px 26px 30px !important;} }
@@ -91,19 +101,19 @@ export function emailShell(opts: { preheader?: string; body: string; unsubUrl?: 
   <span style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden;mso-hide:all;">${preheader}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;</span>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#e8dccd;padding:40px 16px;">
     <tr><td align="center">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#f7eee4;border-radius:18px;overflow:hidden;border:1px solid rgba(42,36,32,0.08);box-shadow:0 20px 52px -30px rgba(42,36,32,0.5);">
+      <table role="presentation" class="kc-card" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#f7eee4;border-radius:18px;overflow:hidden;border:1px solid rgba(42,36,32,0.08);box-shadow:0 20px 52px -30px rgba(42,36,32,0.5);">
         <!-- Header -->
-        <tr><td style="background:#2a2420;padding:42px 40px 34px;text-align:center;">
-          <img src="${markSrc}" width="44" height="44" alt="" style="display:inline-block;width:44px;height:44px;border:0;outline:none;">
-          <div style="margin-top:18px;line-height:0;">
-            <img src="cid:kwordmark" width="200" alt="K Clinics" style="display:inline-block;width:200px;max-width:62%;height:auto;border:0;outline:none;">
+        <tr><td style="background:#2a2420;padding:44px 40px 34px;text-align:center;">
+          <img src="${markSrc}" width="54" height="54" alt="" style="display:inline-block;width:54px;height:54px;border:0;outline:none;">
+          <div style="margin-top:8px;line-height:0;">
+            <img src="cid:kwordmark" width="188" alt="K Clinics" style="display:inline-block;width:188px;max-width:58%;height:auto;border:0;outline:none;">
           </div>
-          <div style="font-family:Helvetica,Arial,sans-serif;font-size:9px;letter-spacing:3.5px;color:#c2a589;margin-top:16px;text-transform:uppercase;">${descriptor}</div>
+          <div style="font-family:Helvetica,Arial,sans-serif;font-size:9px;letter-spacing:3.5px;color:#c2a589;margin-top:18px;text-transform:uppercase;">${descriptor}</div>
         </td></tr>
         <!-- Gold hairline accent (animated sheen where supported) -->
         <tr><td class="kc-sheen" style="height:3px;line-height:3px;font-size:0;background:linear-gradient(90deg,#856a4a,#dcc4a8,#a98a6d,#dcc4a8,#856a4a);">&nbsp;</td></tr>
         <!-- Body -->
-        <tr><td class="kc-pad" style="padding:46px 46px 40px;font-size:16px;line-height:1.75;color:#3d352f;">
+        <tr><td class="kc-pad kc-fade" style="padding:46px 46px 40px;font-size:16px;line-height:1.75;color:#3d352f;">
           ${body}
         </td></tr>
         <!-- Footer -->
