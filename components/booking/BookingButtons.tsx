@@ -6,14 +6,18 @@ export function BookingButtons({
   align = 'start',
   variant = 'gold',
   consult = false,
+  treatmentSlug,
 }: {
   align?: 'start' | 'center';
   variant?: 'gold' | 'ink';
   consult?: boolean;
+  /** Pre-select this treatment in the booking flow (skips the search step). */
+  treatmentSlug?: string;
 }) {
+  const bookHref = treatmentSlug ? `${site.booking.path}?treatment=${encodeURIComponent(treatmentSlug)}` : site.booking.path;
   return (
     <div className={`flex flex-wrap items-center gap-3 ${align === 'center' ? 'justify-center' : ''}`}>
-      <Button href={site.booking.path} variant={variant} size="lg">
+      <Button href={bookHref} variant={variant} size="lg">
         Book online <ArrowIcon />
       </Button>
       {consult ? (
