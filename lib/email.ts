@@ -1,7 +1,7 @@
 import 'server-only';
 import { Resend } from 'resend';
 import { site } from './site';
-import { K_MARK_LIGHT_B64, K_BADGE_B64 } from './brand-email-assets';
+import { K_MARK_LIGHT_B64, K_BADGE_B64, K_WORDMARK_LIGHT_B64 } from './brand-email-assets';
 
 const apiKey = process.env.RESEND_API_KEY;
 const resend = apiKey ? new Resend(apiKey) : null;
@@ -56,6 +56,9 @@ function brandAttachments(html: string) {
   if (html.includes('cid:kbadge')) {
     attachments.push({ filename: 'k-badge.png', content: Buffer.from(K_BADGE_B64, 'base64'), contentType: 'image/png', inlineContentId: 'kbadge' });
   }
+  if (html.includes('cid:kwordmark')) {
+    attachments.push({ filename: 'k-clinics.png', content: Buffer.from(K_WORDMARK_LIGHT_B64, 'base64'), contentType: 'image/png', inlineContentId: 'kwordmark' });
+  }
   return attachments.length ? { attachments } : {};
 }
 
@@ -70,22 +73,37 @@ export function emailShell(opts: { preheader?: string; body: string; unsubUrl?: 
   // Default to the bundled inline mark (cid:kmark); a brand-kit override uses its URL.
   const markSrc = opts.logoUrl || 'cid:kmark';
   const year = new Date().getFullYear();
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="x-apple-disable-message-reformatting"></head>
+  // Descriptor stays accurate to what we can lawfully advertise: dentistry only
+  // appears once a GDC-registered dentist is in post (site.dentistryLive).
+  const descriptor = site.dentistryLive ? 'Aesthetics &middot; Dentistry &middot; London' : 'Aesthetics &middot; Laser &middot; London';
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="x-apple-disable-message-reformatting">
+  <style>
+    /* Progressive enhancement — clients that strip this fall back to the inline styles. */
+    a{color:#8a6e54;}
+    .kc-btn:hover{background:#8a6e54 !important;box-shadow:0 10px 26px -10px rgba(42,36,32,0.5) !important;}
+    @media (prefers-reduced-motion: no-preference){
+      .kc-sheen{background-size:220% 100% !important;animation:kcSheen 5s ease-in-out infinite;}
+      @keyframes kcSheen{0%{background-position:0% 0}50%{background-position:100% 0}100%{background-position:0% 0}}
+    }
+    @media (max-width:600px){ .kc-pad{padding:32px 26px 30px !important;} }
+  </style></head>
 <body style="margin:0;padding:0;background:#e8dccd;font-family:Georgia,'Times New Roman',serif;color:#2a2420;-webkit-font-smoothing:antialiased;">
   <span style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden;mso-hide:all;">${preheader}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;</span>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#e8dccd;padding:40px 16px;">
     <tr><td align="center">
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#f7eee4;border-radius:18px;overflow:hidden;border:1px solid rgba(42,36,32,0.08);box-shadow:0 20px 52px -30px rgba(42,36,32,0.5);">
         <!-- Header -->
-        <tr><td style="background:#2a2420;padding:38px 40px 30px;text-align:center;">
-          <img src="${markSrc}" width="52" height="52" alt="KClinics" style="display:inline-block;width:52px;height:52px;border:0;outline:none;">
-          <div style="font-family:Georgia,'Times New Roman',serif;font-size:23px;letter-spacing:8px;color:#f6ece3;margin-top:16px;padding-left:8px;">K&nbsp;CLINICS</div>
-          <div style="font-family:Helvetica,Arial,sans-serif;font-size:9px;letter-spacing:3.5px;color:#c2a589;margin-top:9px;text-transform:uppercase;">Aesthetics &middot; Dentistry &middot; London</div>
+        <tr><td style="background:#2a2420;padding:42px 40px 34px;text-align:center;">
+          <img src="${markSrc}" width="44" height="44" alt="" style="display:inline-block;width:44px;height:44px;border:0;outline:none;">
+          <div style="margin-top:18px;line-height:0;">
+            <img src="cid:kwordmark" width="200" alt="K Clinics" style="display:inline-block;width:200px;max-width:62%;height:auto;border:0;outline:none;">
+          </div>
+          <div style="font-family:Helvetica,Arial,sans-serif;font-size:9px;letter-spacing:3.5px;color:#c2a589;margin-top:16px;text-transform:uppercase;">${descriptor}</div>
         </td></tr>
-        <!-- Gold hairline accent -->
-        <tr><td style="height:3px;line-height:3px;font-size:0;background:linear-gradient(90deg,#a98a6d,#dcc4a8,#a98a6d);">&nbsp;</td></tr>
+        <!-- Gold hairline accent (animated sheen where supported) -->
+        <tr><td class="kc-sheen" style="height:3px;line-height:3px;font-size:0;background:linear-gradient(90deg,#856a4a,#dcc4a8,#a98a6d,#dcc4a8,#856a4a);">&nbsp;</td></tr>
         <!-- Body -->
-        <tr><td style="padding:44px 44px 38px;font-size:16px;line-height:1.75;color:#3d352f;">
+        <tr><td class="kc-pad" style="padding:46px 46px 40px;font-size:16px;line-height:1.75;color:#3d352f;">
           ${body}
         </td></tr>
         <!-- Footer -->
@@ -110,7 +128,7 @@ export function emailShell(opts: { preheader?: string; body: string; unsubUrl?: 
 }
 
 const btn = (href: string, label: string) =>
-  `<a href="${href}" style="display:inline-block;background:#a98a6d;color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-family:Helvetica,Arial,sans-serif;font-size:14px;">${label}</a>`;
+  `<a href="${href}" class="kc-btn" style="display:inline-block;background:#a98a6d;color:#fff;text-decoration:none;padding:14px 30px;border-radius:999px;font-family:Helvetica,Arial,sans-serif;font-size:14px;letter-spacing:0.4px;box-shadow:0 8px 22px -12px rgba(42,36,32,0.55);">${label}</a>`;
 
 // ── Templates ────────────────────────────────────────────────────────────────
 export function tmplConsultReply(firstName: string) {
