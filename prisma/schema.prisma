@@ -977,6 +977,7 @@ model Location {
   bookings    Booking[]
   closures    ClinicClosure[]
   resources   Resource[]
+  dayCloses   DayClose[]
 
   @@index([active])
 }
@@ -2364,4 +2365,49 @@ model OrderItem {
   unitPence     Int
   qty           Int
   ageRestricted Boolean @default(false)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Day-close — the end-of-day clinic shutdown record. One per location per
+// business day. Captures the financial reconciliation (expected vs counted
+// card & cash, with variance), the stock take, and the full closedown
+// checklist (cleaning, equipment/fire safety, security & lock-up, maintenance).
+// The free-form `payload` holds the complete snapshot of every step's answers
+// so the close-out report is fully reconstructable. The configurable task
+// template + reminder schedule live in the Setting key-value store, not here.
+// ─────────────────────────────────────────────────────────────────────────────
+model DayClose {
+  id            String         @id @default(cuid())
+  location      Location?      @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  locationId    String?
+  businessDate  DateTime       // the day being closed (local midnight)
+  status        DayCloseStatus @default(IN_PROGRESS)
+
+  // Financial reconciliation — all amounts in pence.
+  expectedCardPence Int        @default(0) // card takings computed from charges & paid orders
+  countedCardPence  Int?                   // operator-confirmed card total (terminal Z-report)
+  floatOpenPence    Int        @default(0) // opening cash float
+  cashCountedPence  Int?                   // cash counted in the drawer at close
+  cashTakingsPence  Int?                   // cash takings recorded for the day
+  variancePence     Int?                   // (counted card + cash takings) − expected
+
+  // Completeness of the closedown checklist (0–100) and full answer snapshot.
+  checklistDone Int            @default(0) // items completed
+  checklistTotal Int           @default(0) // items required
+  payload       Json?
+
+  notes         String?
+  startedBy     String         // staff email
+  startedAt     DateTime       @default(now())
+  completedBy   String?
+  completedAt   DateTime?
+
+  @@index([businessDate])
+  @@index([locationId, businessDate])
+  @@index([status])
+}
+
+enum DayCloseStatus {
+  IN_PROGRESS
+  COMPLETED
 }
