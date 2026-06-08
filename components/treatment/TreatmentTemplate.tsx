@@ -159,7 +159,7 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
                     </div>
                   </div>
                 ) : (
-                  <BookingButtons consult={onConsultation} />
+                  <BookingButtons consult={onConsultation} treatmentSlug={t.slug} />
                 )}
               </div>
             </Reveal>
@@ -285,7 +285,7 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
                 {enquiryOnly ? (
                   <Button href="/contact">Enquire <ArrowIcon /></Button>
                 ) : (
-                  <BookingButtons consult />
+                  <BookingButtons consult treatmentSlug={t.slug} />
                 )}
                 <Button href="/pricing" variant="outline">Full price list <ArrowIcon /></Button>
               </div>
