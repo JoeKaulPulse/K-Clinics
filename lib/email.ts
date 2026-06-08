@@ -1,7 +1,7 @@
 import 'server-only';
 import { Resend } from 'resend';
 import { site } from './site';
-import { K_MARK_LIGHT_B64, K_BADGE_B64, K_WORDMARK_LIGHT_B64 } from './brand-email-assets';
+import { K_MARK_LIGHT_B64, K_BADGE_B64, K_WORDMARK_LIGHT_B64, EMAIL_HERO_GIF_B64 } from './brand-email-assets';
 
 const apiKey = process.env.RESEND_API_KEY;
 const resend = apiKey ? new Resend(apiKey) : null;
@@ -24,17 +24,20 @@ export async function sendEmail(opts: {
   fromName?: string;
   /** Extra MIME headers, e.g. List-Unsubscribe for bulk marketing. */
   headers?: Record<string, string>;
+  /** Extra file attachments (e.g. an .ics calendar invite). */
+  attachments?: { filename: string; content: Buffer | string; contentType?: string }[];
 }): Promise<SendResult> {
   if (!resend) return { ok: false, error: 'RESEND_API_KEY not configured' };
   try {
     const from = opts.fromName?.trim() ? `${opts.fromName.trim()} <${FROM_ADDRESS}>` : FROM;
+    const attachments = [...(brandAttachments(opts.html).attachments || []), ...(opts.attachments || [])];
     const { data, error } = await resend.emails.send({
       from,
       to: opts.to,
       subject: opts.subject,
       html: opts.html,
       replyTo: opts.replyTo || REPLY_TO,
-      ...brandAttachments(opts.html),
+      ...(attachments.length ? { attachments } : {}),
       ...(opts.headers ? { headers: opts.headers } : {}),
     });
     if (error) return { ok: false, error: String(error.message || error) };
@@ -50,6 +53,9 @@ export async function sendEmail(opts: {
 // actually references the cid, so unrelated mail stays lean.
 function brandAttachments(html: string) {
   const attachments: { filename: string; content: Buffer; contentType: string; inlineContentId: string }[] = [];
+  if (html.includes('cid:hero')) {
+    attachments.push({ filename: 'kclinics-hero.gif', content: Buffer.from(EMAIL_HERO_GIF_B64, 'base64'), contentType: 'image/gif', inlineContentId: 'hero' });
+  }
   if (html.includes('cid:kmark')) {
     attachments.push({ filename: 'k-mark.png', content: Buffer.from(K_MARK_LIGHT_B64, 'base64'), contentType: 'image/png', inlineContentId: 'kmark' });
   }
@@ -139,6 +145,24 @@ export function emailShell(opts: { preheader?: string; body: string; unsubUrl?: 
 
 const btn = (href: string, label: string) =>
   `<a href="${href}" class="kc-btn" style="display:inline-block;background:#a98a6d;color:#fff;text-decoration:none;padding:14px 30px;border-radius:999px;font-family:Helvetica,Arial,sans-serif;font-size:14px;letter-spacing:0.4px;box-shadow:0 8px 22px -12px rgba(42,36,32,0.55);">${label}</a>`;
+
+const btnOutline = (href: string, label: string) =>
+  `<a href="${href}" style="display:inline-block;border:1px solid #a98a6d;color:#856a4a;text-decoration:none;padding:12px 24px;border-radius:999px;font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:0.4px;">${label}</a>`;
+
+/** The animated brand hero band (cid GIF; first frame is a clean static fallback). */
+const heroBand = () =>
+  `<img src="cid:hero" alt="" width="600" style="display:block;width:100%;max-width:600px;height:auto;border-radius:14px;margin:0 0 28px;border:0;outline:none;">`;
+
+/** A pill checklist item with a gold tick. */
+const checkItem = (text: string) =>
+  `<tr><td valign="top" style="padding:5px 10px 5px 0;color:#a98a6d;font-size:15px;">✓</td><td style="padding:5px 0;font-size:14px;color:#3d352f;">${text}</td></tr>`;
+
+/** Google-Calendar "add event" link, built from the appointment details. */
+function gcalUrl(o: { title: string; start: Date; end: Date; details?: string; location?: string }): string {
+  const f = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const p = new URLSearchParams({ action: 'TEMPLATE', text: o.title, dates: `${f(o.start)}/${f(o.end)}`, details: o.details || '', location: o.location || '' });
+  return `https://calendar.google.com/calendar/render?${p.toString()}`;
+}
 
 // ── Templates ────────────────────────────────────────────────────────────────
 export function tmplConsultReply(firstName: string) {
@@ -331,30 +355,82 @@ const fmtWhen = (d: Date) =>
   d.toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
 const fmtMoney = (pence: number) => `£${(pence / 100).toLocaleString('en-GB', { minimumFractionDigits: pence % 100 ? 2 : 0 })}`;
 
-export function tmplBookingConfirmation(o: { firstName: string; treatment: string; start: Date; pricePence: number; manageUrl: string; formsUrl?: string; arriveEarly?: boolean; lines?: { label: string; price: string }[]; nextNote?: string }) {
+export function tmplBookingConfirmation(o: {
+  firstName: string; treatment: string; start: Date; pricePence: number; manageUrl: string;
+  formsUrl?: string; arriveEarly?: boolean; lines?: { label: string; price: string }[]; nextNote?: string;
+  end?: Date; clinicianName?: string; locationName?: string; locationAddress?: string;
+}) {
+  const tz = { timeZone: 'Europe/London' } as const;
+  const dateStr = o.start.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', ...tz });
+  const timeStr = o.start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', ...tz });
+  const end = o.end || new Date(o.start.getTime() + 60 * 60000);
   const price = o.pricePence > 0 ? fmtMoney(o.pricePence) : 'Assessed at your visit';
+  const addr = o.locationAddress || `${site.address.street}, ${site.address.locality}, ${site.address.postalCode}`;
+  const place = o.locationName ? `${o.locationName} — ${addr}` : addr;
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`KClinics ${addr}`)}`;
+  const gcal = gcalUrl({ title: `${o.treatment} · KClinics`, start: o.start, end, details: `Your ${o.treatment} at KClinics. Manage or cancel: ${o.manageUrl}`, location: addr });
+
+  const row = (label: string, value: string) => `<tr><td style="color:#91766e;padding:3px 18px 3px 0;white-space:nowrap;vertical-align:top;">${label}</td><td style="padding:3px 0;">${value}</td></tr>`;
   const itemsRows = o.lines && o.lines.length > 0
-    ? o.lines.map((l) => `<tr><td style="color:#91766e;padding-right:20px;">${escape(l.label)}</td><td>${escape(l.price)}</td></tr>`).join('')
-    : `<tr><td style="color:#91766e;padding-right:20px;">Treatment</td><td><strong>${escape(o.treatment)}</strong></td></tr>`;
+    ? o.lines.map((l) => row(escape(l.label), escape(l.price))).join('')
+    : row('Treatment', `<strong>${escape(o.treatment)}</strong>`);
+
   return emailShell({
-    preheader: `Your ${o.treatment} is booked for ${fmtWhen(o.start)}`,
-    body: `<h1 style="font-size:26px;margin:0 0 16px;">You're booked in, ${escape(o.firstName)}.</h1>
-    <p>We look forward to welcoming you to KClinics.</p>
-    <table style="font-family:Helvetica,Arial,sans-serif;font-size:15px;color:#3d352f;line-height:2;margin:8px 0;">
-      ${itemsRows}
-      <tr><td style="color:#91766e;padding-right:20px;">When</td><td><strong>${fmtWhen(o.start)}</strong></td></tr>
-      <tr><td style="color:#91766e;padding-right:20px;">Total</td><td>${price}</td></tr>
-    </table>
+    preheader: `You're booked in for ${dateStr} at ${timeStr}`,
+    body: `${heroBand()}
+    <h1 style="font-size:27px;margin:0 0 14px;">You're booked in, ${escape(o.firstName)}.</h1>
+    <p>We can't wait to welcome you to KClinics. Here are your appointment details:</p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0 22px;"><tr><td style="background:#ffffff;border:1px solid rgba(42,36,32,0.10);border-radius:14px;padding:22px 24px;box-shadow:0 8px 24px -18px rgba(42,36,32,0.4);">
+      <p style="margin:0 0 6px;font-family:Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#a98a6d;">Your appointment</p>
+      <p class="kc-display" style="margin:0;font-size:25px;line-height:1.15;color:#2a2420;">${dateStr}</p>
+      <p class="kc-display" style="margin:1px 0 16px;font-size:19px;color:#856a4a;">${timeStr}</p>
+      <table style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#3d352f;">
+        ${itemsRows}
+        ${o.clinicianName ? row('With', `<strong>${escape(o.clinicianName)}</strong>`) : ''}
+        ${row('Where', `${escape(place)} · <a href="${mapsUrl}" style="color:#856a4a;">map</a>`)}
+        ${row('Total', price)}
+      </table>
+    </td></tr></table>
+
+    <p style="margin:0 0 22px;">${btnOutline(gcal, 'Add to Google Calendar')} <span style="font-size:12px;color:#91766e;">· an invite is attached for Apple&nbsp;Mail &amp; Outlook</span></p>
+
     <p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">
-      Your card is securely saved — <strong>no payment is taken now</strong>. You will only be charged when your treatment is delivered.
-      Cancellations are free up to <strong>24 hours</strong> before your appointment; within 24 hours the full fee applies.
+      Your card is securely saved — <strong>no payment is taken now</strong>. You're only charged when your treatment is delivered.
+      Cancellations are free up to <strong>24 hours</strong> before; within 24 hours the full fee applies.
     </p>
-    ${o.arriveEarly ? `<p style="font-size:14px;">Please <strong>arrive 15 minutes early</strong> for your first appointment so your clinician can talk through your treatment with you.</p>` : ''}
-    ${o.nextNote ? `<p style="font-size:14px;color:#5b4f47;border-left:2px solid #c2a589;padding-left:14px;margin:18px 0;">${escape(o.nextNote)}</p>` : ''}
-    ${o.formsUrl ? `<p style="font-size:14px;">Please complete your pre-treatment forms before your visit — it only takes a few minutes (you can also do them in clinic when you arrive).</p><p style="margin:16px 0;">${btn(o.formsUrl, 'Complete my forms')}</p>` : ''}
-    <p style="margin:24px 0;">${btn(o.manageUrl, 'Manage or cancel booking')}</p>
-    <p>${site.address.street}, ${site.address.locality}.<br>With warmth,<br>The KClinics team</p>`,
+
+    <h2 class="kc-display" style="font-size:18px;margin:26px 0 10px;">Before your visit</h2>
+    <table style="font-family:Helvetica,Arial,sans-serif;">
+      ${o.arriveEarly ? checkItem('<strong>Arrive 15 minutes early</strong> so your clinician can talk through everything with you.') : checkItem('Pop in a couple of minutes before your time.')}
+      ${o.formsUrl ? checkItem('Complete your quick pre-treatment forms (or in clinic on arrival).') : ''}
+      ${checkItem('Come with clean skin where possible, and a list of any medications or recent treatments.')}
+      ${checkItem('Need to change it? Manage your booking any time using the button below.')}
+    </table>
+    ${o.formsUrl ? `<p style="margin:16px 0;">${btn(o.formsUrl, 'Complete my forms')}</p>` : ''}
+
+    ${o.nextNote ? `<p style="font-size:14px;color:#5b4f47;border-left:2px solid #c2a589;padding-left:14px;margin:20px 0;">${escape(o.nextNote)}</p>` : ''}
+    <p style="margin:22px 0;">${btn(o.manageUrl, 'Manage or cancel booking')}</p>
+    <p>With warmth,<br>The KClinics team</p>`,
   });
+}
+
+/** Build an .ics calendar invite for a booking (attach to the confirmation email). */
+export function bookingIcs(o: { id: string; treatment: string; start: Date; end?: Date; manageUrl: string; locationAddress?: string }): string {
+  const end = o.end || new Date(o.start.getTime() + 60 * 60000);
+  const f = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const fold = (s: string) => s.replace(/([,;\\])/g, '\\$1').replace(/\n/g, '\\n');
+  const loc = o.locationAddress || `${site.address.street}, ${site.address.locality}, ${site.address.postalCode}`;
+  return [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//KClinics//Booking//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+    'BEGIN:VEVENT', `UID:booking-${o.id}@kclinics.co.uk`, `DTSTAMP:${f(new Date())}`,
+    `DTSTART:${f(o.start)}`, `DTEND:${f(end)}`,
+    `SUMMARY:${fold(`${o.treatment} · KClinics`)}`,
+    `LOCATION:${fold(loc)}`,
+    `DESCRIPTION:${fold(`Your ${o.treatment} at KClinics. Manage or cancel: ${o.manageUrl}`)}`,
+    'BEGIN:VALARM', 'TRIGGER:-PT2H', 'ACTION:DISPLAY', 'DESCRIPTION:KClinics appointment reminder', 'END:VALARM',
+    'END:VEVENT', 'END:VCALENDAR',
+  ].join('\r\n');
 }
 
 export function tmplBookingNotify(o: { name: string; email: string; phone?: string; treatment: string; start: Date; pricePence: number }) {
