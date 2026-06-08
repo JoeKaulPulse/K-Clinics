@@ -22,8 +22,11 @@ export function AssessmentRunner({ q, locale = 'en' }: { q: Questionnaire; local
   // Visible questions given current answers (conditional branches).
   const visible = useMemo(() => q.questions.filter((qq) => isVisible(qq, answers)), [q.questions, answers]);
   const total = visible.length;
-  const current = i >= 0 ? visible[Math.min(i, total - 1)] : null;
-  const progress = i < 0 ? 0 : Math.round(((i + 1) / total) * 100);
+  // `i === total` is the review/submit screen — `current` must be null there so
+  // the submit screen renders (a Math.min clamp here previously re-showed the last
+  // question, hiding the submit button and showing "total+1/total", e.g. "6/5").
+  const current = i >= 0 && i < total ? visible[i] : null;
+  const progress = i < 0 ? 0 : Math.min(100, Math.round(((i + 1) / total) * 100));
 
   const set = (id: string, v: unknown) => setAnswers((p) => ({ ...p, [id]: v }));
 
@@ -96,7 +99,7 @@ export function AssessmentRunner({ q, locale = 'en' }: { q: Questionnaire; local
           <div className="h-1 flex-1 overflow-hidden rounded-full bg-[var(--color-sand)]">
             <motion.div className="h-full bg-[var(--color-gold)]" initial={false} animate={{ width: `${progress}%` }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} />
           </div>
-          <span className="w-10 text-right text-xs tabular-nums text-[var(--color-stone)]">{i < 0 ? '' : `${i + 1}/${total}`}</span>
+          <span className="w-10 text-right text-xs tabular-nums text-[var(--color-stone)]">{i < 0 || i >= total ? '' : `${i + 1}/${total}`}</span>
         </div>
       </div>
 
