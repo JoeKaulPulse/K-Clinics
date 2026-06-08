@@ -31,12 +31,13 @@ export function BuildBoard({ canManage, github, staff }: { canManage: boolean; g
   const [active, setActive] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (force = false) => {
+    if (!force && typeof document !== 'undefined' && document.hidden) return; // pause when backgrounded
     const res = await fetch('/api/admin/build').then((x) => x.json()).catch(() => ({ ok: false }));
     if (res.ok) setItems(res.items);
     setLoading(false);
   }, []);
-  useEffect(() => { load(); const t = setInterval(load, 15000); return () => clearInterval(t); }, [load]);
+  useEffect(() => { load(true); const t = setInterval(() => load(), 30000); return () => clearInterval(t); }, [load]);
   useEffect(() => { if (active) setActive(items.find((i) => i.id === active.id) || null); }, [items]); // keep modal fresh
 
   async function patch(id: string, body: object) { const r = await post({ op: 'update', id, ...body }); if (r.ok) load(); else alert(r.error || 'Failed'); }

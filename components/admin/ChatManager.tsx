@@ -23,11 +23,13 @@ export function ChatManager() {
   const [threadError, setThreadError] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
 
-  const loadList = useCallback(async () => { try { const r = await post({ op: 'list' }); if (r.ok) setConvos(r.conversations); } catch { /* transient */ } }, []);
+  const loadList = useCallback(async () => { if (typeof document !== 'undefined' && document.hidden) return; try { const r = await post({ op: 'list' }); if (r.ok) setConvos(r.conversations); } catch { /* transient */ } }, []);
   // `initial` marks a fresh open: show a loading state and surface any error
   // instead of silently leaving an empty panel (the old bug). Polling refreshes
   // pass initial=false so a transient blip never blanks a loaded thread.
   const loadThread = useCallback(async (id: string, initial = false) => {
+    // Pause the 5s refresh when the tab is hidden; a fresh open always loads.
+    if (!initial && typeof document !== 'undefined' && document.hidden) return;
     if (initial) { setLoading(true); setThreadError(null); }
     try {
       const r = await post({ op: 'messages', conversationId: id });
