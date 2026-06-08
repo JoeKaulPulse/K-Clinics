@@ -165,6 +165,10 @@ export function AdminShell({
     return () => window.removeEventListener('kc-tour', onTour);
   }, []);
 
+  // Mobile menu drawer (the desktop sidebar is hidden on small screens).
+  const [mobileOpen, setMobileOpen] = useState(false);
+  useEffect(() => { setMobileOpen(false); }, [pathname]); // close on navigation
+
   const renderLink = (n: NavItem) => (
     <Link
       key={n.href}
@@ -210,10 +214,42 @@ export function AdminShell({
           </div>
           <div data-tour="admin-search"><GlobalSearch placeholder={t('shell.search')} /></div>
 
-          {/* Mobile: flat horizontal bar (all items) */}
-          <nav data-tour="admin-nav" className="flex gap-1 overflow-x-auto lg:hidden">
-            {groups.flatMap((g) => g.items).map(renderLink)}
-          </nav>
+          {/* Mobile: a menu button opening a full grouped drawer (incl. account). */}
+          <div className="lg:hidden">
+            <button
+              onClick={() => setMobileOpen((o) => !o)}
+              aria-expanded={mobileOpen}
+              className="mt-2 flex w-full items-center justify-between rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-medium text-[var(--color-ink)]"
+            >
+              <span>{t('shell.menu')}</span>
+              <span aria-hidden className="text-lg leading-none">{mobileOpen ? '✕' : '☰'}</span>
+            </button>
+            {mobileOpen && (
+              <div className="mt-2 max-h-[72vh] overflow-y-auto rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-2">
+                {groups.map((g, gi) => (
+                  <div key={groupKey(g, gi)} className="mb-2">
+                    {g.heading && <p className="px-3 pb-1 pt-2 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)]">{t(g.heading)}</p>}
+                    <div className="flex flex-col gap-0.5">{g.items.map(renderLink)}</div>
+                  </div>
+                ))}
+                {/* Account: language · profile · sign out */}
+                <div className="mt-2 border-t border-[var(--color-line)] px-2 pt-3">
+                  <label className="mb-3 block">
+                    <span className="mb-1 block text-[0.65rem] uppercase tracking-[0.14em] text-[var(--color-stone)]">{t('shell.language')}</span>
+                    <select value={locale} onChange={(e) => changeLanguage(e.target.value as Locale)} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]">
+                      {LOCALES.map((l) => <option key={l} value={l}>{LOCALE_LABELS[l]}</option>)}
+                    </select>
+                  </label>
+                  {user && <p className="text-xs text-[var(--color-stone)]">{user}</p>}
+                  <div className="mt-2 flex items-center gap-3">
+                    <Link href="/admin/profile" className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">{t('shell.profile')}</Link>
+                    <span className="text-[var(--color-line)]">·</span>
+                    <button onClick={signOut} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">{t('shell.signOut')}</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Desktop: collapsible sections (collapsed by default) */}
           <nav data-tour="admin-nav" className="hidden flex-col gap-0.5 lg:flex">

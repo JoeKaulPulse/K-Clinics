@@ -13,6 +13,7 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
   const [stage, setStage] = useState<'idle' | 'enrol' | 'codes'>('idle');
   const [secret, setSecret] = useState('');
   const [uri, setUri] = useState('');
+  const [qr, setQr] = useState('');
   const [code, setCode] = useState('');
   const [codes, setCodes] = useState<string[]>([]);
   const [err, setErr] = useState('');
@@ -22,7 +23,7 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
     setBusy(true); setErr('');
     const r = await post({ op: 'begin' });
     setBusy(false);
-    if (r.ok) { setSecret(r.secret); setUri(r.uri); setStage('enrol'); } else setErr(r.error || 'Could not start setup.');
+    if (r.ok) { setSecret(r.secret); setUri(r.uri); setQr(r.qr || ''); setStage('enrol'); } else setErr(r.error || 'Could not start setup.');
   }
   async function confirm() {
     setBusy(true); setErr('');
@@ -61,7 +62,11 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
 
       {stage === 'enrol' && (
         <div className="mt-3 space-y-3">
-          <p className="text-sm text-[var(--color-stone)]">1. In your authenticator app, add an account and scan the QR — or enter this setup key manually:</p>
+          <p className="text-sm text-[var(--color-stone)]">1. In your authenticator app, add an account and scan this QR code:</p>
+          {qr
+            ? <img src={qr} alt="2FA QR code" width={196} height={196} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-2" />
+            : <p className="text-xs text-[var(--color-stone-soft)]">(QR unavailable — use the setup key below.)</p>}
+          <p className="text-sm text-[var(--color-stone)]">…or enter this setup key manually:</p>
           <code className="block break-all rounded-[var(--radius-sm)] bg-[var(--color-bone)] px-3 py-2 text-sm tracking-wider">{secret}</code>
           <p className="text-xs text-[var(--color-stone-soft)]">On a phone you can also tap <a href={uri} className="link-underline">this link</a> to add it automatically.</p>
           <label className="block text-sm text-[var(--color-stone)]">2. Enter the 6-digit code it shows:

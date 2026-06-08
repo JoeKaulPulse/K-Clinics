@@ -18,7 +18,14 @@ export async function POST(req: Request) {
   switch (body.op) {
     case 'begin': {
       const secret = await beginEnrolment(session.sub);
-      return NextResponse.json({ ok: true, secret, uri: totpUri(secret, session.email) });
+      const uri = totpUri(secret, session.email);
+      // Render a scannable QR for the otpauth URI (not just the manual key).
+      let qr: string | null = null;
+      try {
+        const QR = await import('qrcode');
+        qr = await QR.toDataURL(uri, { margin: 1, width: 220, color: { dark: '#2a2420', light: '#ffffffff' } });
+      } catch { /* fall back to the manual key + link */ }
+      return NextResponse.json({ ok: true, secret, uri, qr });
     }
     case 'confirm': {
       const res = await confirmEnrolment(session.sub, String(body.code || ''));
