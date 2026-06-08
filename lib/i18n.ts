@@ -87,6 +87,7 @@ export const DICT: Record<string, Entry> = {
   'shell.crm': { en: 'KClinics CRM', uk: 'KClinics CRM' },
   'shell.signOut': { en: 'Sign out', uk: 'Вийти' },
   'shell.profile': { en: 'My profile', uk: 'Мій профіль' },
+  'shell.menu': { en: 'Menu', uk: 'Меню' },
   'shell.language': { en: 'Language', uk: 'Мова' },
   'shell.searchClients': { en: 'Search clients…', uk: 'Пошук клієнтів…' },
   'shell.search': { en: 'Search everything…', uk: 'Пошук усюди…' },
