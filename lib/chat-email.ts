@@ -22,9 +22,11 @@ import { sendEmail, emailShell } from '@/lib/email';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const hostname = (() => { try { return new URL(site.url).hostname.replace(/^www\./, ''); } catch { return 'kclinics.co.uk'; } })();
-// Inbound domain for chat replies (Resend Inbound). A subdomain keeps inbound
-// MX separate from the clinic's normal mailboxes.
-const INBOUND_DOMAIN = process.env.CHAT_INBOUND_DOMAIN || `reply.${hostname}`;
+// Inbound domain for chat replies (Resend Inbound). Defaults to the clinic's
+// dedicated inbound subdomain (mail.kclinics.co.uk) so inbound stays separate
+// from normal mailboxes; override with CHAT_INBOUND_DOMAIN (e.g. the Resend
+// sandbox domain like …​.resend.app while the custom domain verifies).
+const INBOUND_DOMAIN = process.env.CHAT_INBOUND_DOMAIN || `mail.${hostname}`;
 const LEFT_MS = 90_000; // visitor considered "gone" after 90s of no activity
 
 const esc = (s: string) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] || c));
