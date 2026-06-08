@@ -19,11 +19,12 @@ export async function POST(req: Request) {
   }
   const { db } = await import('@/lib/db');
 
+  try {
   switch (b.op) {
     case 'list': {
       const rows = await db.chatConversation.findMany({
         orderBy: [{ status: 'asc' }, { lastMessageAt: 'desc' }],
-        take: 100,
+        take: 200,
         include: { messages: { orderBy: { createdAt: 'desc' }, take: 1, select: { body: true, sender: true } } },
       });
       return NextResponse.json({ ok: true, conversations: rows.map((c) => ({
@@ -82,4 +83,8 @@ export async function POST(req: Request) {
     }
   }
   return NextResponse.json({ ok: false, error: 'Unknown op' }, { status: 400 });
+  } catch (e) {
+    console.error('[admin/chat] op failed:', e);
+    return NextResponse.json({ ok: false, error: 'Something went wrong — please retry.' }, { status: 500 });
+  }
 }
