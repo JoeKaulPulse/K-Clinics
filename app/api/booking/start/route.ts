@@ -15,6 +15,12 @@ export async function POST(req: Request) {
   if (!crmEnabled || !stripeEnabled) {
     return NextResponse.json({ ok: false, error: 'Online booking is not available right now. Please call us.' }, { status: 503 });
   }
+  // This endpoint holds real slots and creates Stripe customers/SetupIntents, so
+  // throttle it (the live booking path was previously unthrottled).
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'booking-start', 12, 600, 'client'))) {
+    return NextResponse.json({ ok: false, error: 'Too many booking attempts. Please wait a moment and try again.' }, { status: 429 });
+  }
   const parsed = bookingStartSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ ok: false, error: parsed.error.errors[0]?.message || 'Invalid request' }, { status: 422 });
   const d = parsed.data;
