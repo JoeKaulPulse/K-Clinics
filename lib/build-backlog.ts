@@ -20,7 +20,17 @@ export type BacklogItem = {
   // the ordering is auditable.
   value?: number;
   effort?: number;
+  // When a task is blocked on a human, `needs` says who is best placed to help
+  // (resolved to a real, active user at runtime by role/clinical status), and
+  // `ask` is the precise instruction posted to them on the board.
+  needs?: OwnerInputRole;
+  ask?: string;
 };
+
+// Who can unblock an input-required task. Resolved to an actual user from the
+// live roster: OWNER → the account owner (business/admin/DNS decisions);
+// CLINICAL → the most senior practising clinician (treatment/pricing calls).
+export type OwnerInputRole = 'OWNER' | 'CLINICAL';
 
 /** Value-to-effort ratio — higher is done sooner. */
 export const vToE = (it: { value?: number; effort?: number }): number | null =>
@@ -160,7 +170,8 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Self-serve reschedule flow + confirmation email', type: 'TASK', urgency: 'P3', status: 'BLOCKED', assignee: 'claude',
-    value: 6, effort: 5,
+    value: 6, effort: 5, needs: 'OWNER',
+    ask: 'Decide whether clients can reschedule their own appointments online, or whether it stays staff-handled by phone. If self-serve, tell me your rules — e.g. minimum notice (24/48h), how many times a booking may be moved, and whether a deposit transfers. Reply with your choice and rules and I’ll build it, including the reschedule-confirmation email.',
     detail: 'There is no self-serve reschedule today (clients are pointed to call). Building the reschedule action is a prerequisite for a reschedule-confirmation email.',
     notes: ['Question for the owner: do you want clients to self-reschedule online, or keep it staff-handled? Blocked pending that decision.'],
   },
@@ -171,19 +182,22 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Verify mail.kclinics.co.uk in Resend (sending + inbound)', type: 'TASK', urgency: 'P1', status: 'BLOCKED',
-    value: 7, effort: 1,
+    value: 7, effort: 1, needs: 'OWNER',
+    ask: 'In Resend → Domains, add the domain mail.kclinics.co.uk and copy the DNS records it generates. In your DNS host, add the DKIM TXT record(s) + the SPF record (sending), and the MX + CNAME + CAA records (Resend Inbound, for replies). Then press Verify in Resend. Reply here when every row shows ✓ (propagation can take a few hours) and I’ll switch chat email fully live — both sending and threaded inbound replies.',
     detail: 'Chat email sends from chat@mail.kclinics.co.uk and replies route via Resend Inbound — both need mail.kclinics.co.uk verified (DKIM/SPF for sending; CNAME+CAA+MX for inbound).',
     notes: ['Owner action with the new DNS access — tracked on the Go-live page (with-owner filter). Blocked until DNS verified.'],
   },
   {
     title: 'IPL service catalogue + which treatments/prices', type: 'TASK', urgency: 'P3', status: 'BLOCKED',
-    value: 4, effort: 2,
+    value: 4, effort: 2, needs: 'CLINICAL',
+    ask: 'List the exact IPL treatments you offer with prices — single-session and any course pricing, e.g. “IPL Photofacial (face) £150 · course of 3 £400”, “IPL for rosacea/redness £180”. Reply with the full list and I’ll curate the IPL page so only those treatments show, at your prices.',
     detail: 'The IPL page is live but the catalogue shows all services until curated.',
-    notes: ['Needs owner input: the exact IPL treatments + prices, then I’ll wire the service so only those show.'],
+    notes: ['Needs clinical input: the exact IPL treatments + prices, then I’ll wire the service so only those show.'],
   },
   {
     title: 'S7 — migrate client data from the old system', type: 'TASK', urgency: 'P2', status: 'BLOCKED',
-    value: 6, effort: 6,
+    value: 6, effort: 6, needs: 'OWNER',
+    ask: 'Tell me where your existing client records live (which booking/CRM system, a CSV/Excel export, or paper), roughly how many clients, and which fields to bring across (name, email, phone, DOB, marketing opt-in, notes, treatment history?). If you can attach a sample export (even 5–10 rows, anonymised), I’ll write a tested importer and run it on a copy first.',
     detail: 'Bring across existing client records.',
     notes: ['Needs owner input: where the old records live (system/CSV/paper), rough volume, and what to bring across. Then I can write an importer.'],
   },
