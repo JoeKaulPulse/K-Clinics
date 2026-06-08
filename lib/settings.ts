@@ -17,7 +17,8 @@ export type SettingKey =
   | 'review_requests_enabled'    // auto-send a review request after a treatment
   | 'require_consent'            // signed treatment consent required before starting
   | 'require_before_photo'       // laser: before-photo (or signed opt-out) required before starting
-  | 'abandoned_booking_recovery'; // email a nudge to finish an unpaid/incomplete booking
+  | 'abandoned_booking_recovery' // email a nudge to finish an unpaid/incomplete booking
+  | 'no_show_notice';            // email a warm rebooking note when an appointment is marked no-show
 
 export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   allow_clinician_choice: false,
@@ -33,6 +34,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   require_consent: false,
   require_before_photo: true,
   abandoned_booking_recovery: false,
+  no_show_notice: false,
 };
 
 export const SETTING_META: Record<SettingKey, { label: string; description: string }> = {
@@ -87,6 +89,10 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   abandoned_booking_recovery: {
     label: 'Abandoned-booking recovery emails',
     description: 'Email a gentle, one-time nudge to clients who started a booking but didn’t save a card to finish it (sent 2–72h later). Off by default — turn on to recover incomplete bookings.',
+  },
+  no_show_notice: {
+    label: 'No-show rebooking email',
+    description: 'When an appointment is marked as a no-show, email the client a warm “sorry we missed you — shall we rebook?” note (any fee charged is noted). Off by default.',
   },
 };
 

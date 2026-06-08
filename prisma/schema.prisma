@@ -45,6 +45,7 @@ enum EmailKind {
   MEMBERSHIP
   CHAT
   ABANDONED_BOOKING
+  NO_SHOW
 }
 
 enum EmailStatus {

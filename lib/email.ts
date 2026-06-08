@@ -510,6 +510,21 @@ export function tmplPaymentActionRequired(o: { firstName: string; treatment: str
   });
 }
 
+export function tmplNoShow(o: { firstName: string; treatment: string; start: Date; rebookUrl: string; feePence?: number | null }) {
+  const when = o.start.toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+  return emailShell({
+    preheader: `Sorry we missed you — shall we rebook your ${o.treatment}?`,
+    body: `${heroBand('reminder')}
+    <h1 style="font-size:25px;margin:0 0 14px;">Sorry we missed you, ${escape(o.firstName)}.</h1>
+    <p>We had you down for your <strong>${escape(o.treatment)}</strong> on ${when}, but it looks like we didn't see you — we hope everything's okay.</p>
+    ${o.feePence ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">As the appointment was missed within our 24-hour window, a fee of <strong>${fmtMoney(o.feePence)}</strong> was applied to your card on file, in line with our cancellation policy.</p>` : ''}
+    <p>We'd love to get you booked back in whenever suits — it only takes a moment.</p>
+    <p style="margin:26px 0;">${btn(o.rebookUrl, 'Rebook my appointment')}</p>
+    <p style="font-size:14px;color:#91766e;">If something came up, just reply to this email or call us — we're always happy to help.</p>
+    <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
 export function tmplAbandonedBooking(o: { firstName: string; treatment: string; resumeUrl: string }) {
   return emailShell({
     preheader: `Your ${o.treatment} booking is still waiting`,

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan } from '@/lib/auth';
+import { site } from '@/lib/site';
 
 // Set which location an appointment takes place at (multi-location).
 export async function setBookingLocation(bookingId: string, locationId: string | null) {
@@ -105,6 +106,24 @@ export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 
   const b = await db.booking.findUnique({ where: { id: bookingId } });
   if (b) {
     await db.interaction.create({ data: { clientId: b.clientId, type: 'APPOINTMENT', summary: `Booking marked ${status.toLowerCase().replace('_', ' ')}`, author: session.email } });
+    if (status === 'NO_SHOW') {
+      // Warm rebooking note (opt-in). Care-class, deduped once per booking.
+      try {
+        const { getSetting } = await import('@/lib/settings');
+        if (await getSetting('no_show_notice')) {
+          const client = await db.client.findUnique({ where: { id: b.clientId }, select: { email: true, firstName: true, unsubscribed: true } });
+          const already = await db.emailEvent.findFirst({ where: { kind: 'NO_SHOW', status: 'SENT', meta: { path: ['bookingId'], equals: b.id } } });
+          if (client?.email && !client.unsubscribed && !already) {
+            const base = (process.env.NEXT_PUBLIC_SITE_URL || site.url).replace(/\/$/, '');
+            const { sendEmail, tmplNoShow } = await import('@/lib/email');
+            const res = await sendEmail({ to: client.email, subject: `Sorry we missed you — rebook your ${b.treatmentTitle}`, html: tmplNoShow({ firstName: client.firstName, treatment: b.treatmentTitle, start: b.startAt, rebookUrl: `${base}/book?treatment=${encodeURIComponent(b.treatmentSlug)}`, feePence: b.chargedPence }) });
+            await db.emailEvent.create({ data: { clientId: b.clientId, kind: 'NO_SHOW', to: client.email, subject: `No-show rebooking — ${b.treatmentTitle}`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { bookingId: b.id } } }).catch(() => {});
+          }
+        }
+      } catch (e) {
+        console.error('[bookings] no-show notice failed:', (e as Error)?.message);
+      }
+    }
     if (status === 'COMPLETED') {
       await db.client.update({ where: { id: b.clientId }, data: { lastVisitAt: new Date() } });
 
