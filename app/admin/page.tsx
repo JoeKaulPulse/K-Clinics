@@ -33,12 +33,13 @@ export default async function AdminOverview() {
   const canFinance = sessionCan(session, 'finance.view');
   const canBookings = sessionCan(session, 'bookings.view');
   const canReviews = sessionCan(session, 'reviews.manage');
+  const canBuild = sessionCan(session, 'build.view');
   const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(); dayEnd.setHours(23, 59, 59, 999);
   // Load the whole dashboard through a couple of quick retries, so a single
   // transient DB blip doesn't 500 the overview (it recomposes the queries each
   // attempt — safe, as these are all reads).
-  const [o, a, pendingTimeOff, myTasks, stockItems, expiringSoon, ordersToFulfil, retailProducts, todaysBookings, reqConsent, reqPhoto, gReviewAgg, googleUnreplied] = await withDbRetry(() => Promise.all([
+  const [o, a, pendingTimeOff, myTasks, stockItems, expiringSoon, ordersToFulfil, retailProducts, todaysBookings, reqConsent, reqPhoto, gReviewAgg, googleUnreplied, buildOpen, buildBlocked, buildUnsynced] = await withDbRetry(() => Promise.all([
     getOverview(),
     getAnalytics(),
     canApproveTimeOff ? db.staffTimeOff.count({ where: { status: 'PENDING' } }) : Promise.resolve(0),
@@ -52,6 +53,9 @@ export default async function AdminOverview() {
     import('@/lib/settings').then((m) => m.getSetting('require_before_photo')),
     canReviews ? db.googleReview.aggregate({ _avg: { starRating: true }, _count: { _all: true } }) : Promise.resolve(null),
     canReviews ? db.googleReview.count({ where: { replyComment: null } }) : Promise.resolve(0),
+    canBuild ? db.buildItem.count({ where: { status: { not: 'SHIPPED' } } }) : Promise.resolve(0),
+    canBuild ? db.buildItem.count({ where: { status: 'BLOCKED' } }) : Promise.resolve(0),
+    canBuild ? db.buildItem.count({ where: { githubUrl: null } }) : Promise.resolve(0),
   ]));
   const googleAvg = gReviewAgg?._avg.starRating ?? null;
   const googleCount = gReviewAgg?._count._all ?? 0;
@@ -85,6 +89,7 @@ export default async function AdminOverview() {
     { show: canInventory && lowStock > 0, label: 'Low-stock items', value: lowStock, href: '/admin/inventory', tone: 'blush' },
     { show: canInventory && expiringSoon > 0, label: 'Batches expiring ≤90d', value: expiringSoon, href: '/admin/inventory', tone: 'amber' },
     { show: canReviews && googleUnreplied > 0, label: 'Google reviews to reply to', value: googleUnreplied, href: '/admin/reviews', tone: 'amber' },
+    { show: canBuild && buildBlocked > 0, label: 'Blocked build items', value: buildBlocked, href: '/admin/build', tone: 'amber' },
   ].filter((x) => x.show);
 
   const toneCls: Record<string, string> = {
@@ -148,6 +153,34 @@ export default async function AdminOverview() {
         <RevenueChart series={a.series} />
         <TopTreatments items={a.topTreatments} />
       </div>
+
+      {/* Build & issues — live status of the work board */}
+      {canBuild && (
+        <Link
+          href="/admin/build"
+          className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 transition-shadow hover:shadow-[var(--shadow-soft)]"
+        >
+          <div className="flex-1 min-w-[12rem]">
+            <p className="font-[family-name:var(--font-display)] text-xl">Build &amp; issues</p>
+            <p className="mt-1 text-sm text-[var(--color-stone)]">The live work board — report a bug, track tasks, and sync to GitHub.</p>
+          </div>
+          <div className="flex items-center gap-6">
+            <div>
+              <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">{buildOpen}</p>
+              <p className="text-xs text-[var(--color-stone)]">Open</p>
+            </div>
+            <div>
+              <p className={`font-[family-name:var(--font-display)] text-2xl ${buildBlocked > 0 ? 'text-amber-700' : 'text-[var(--color-ink)]'}`}>{buildBlocked}</p>
+              <p className="text-xs text-[var(--color-stone)]">Blocked</p>
+            </div>
+            <div>
+              <p className={`font-[family-name:var(--font-display)] text-2xl ${buildUnsynced > 0 ? 'text-[var(--color-gold)]' : 'text-[var(--color-ink)]'}`}>{buildUnsynced}</p>
+              <p className="text-xs text-[var(--color-stone)]">Not on GitHub</p>
+            </div>
+          </div>
+          <span className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-ink)]">Open board →</span>
+        </Link>
+      )}
 
       <div className="mt-10 grid gap-8 lg:grid-cols-[1.4fr_1fr]">
         {/* Today's schedule */}
