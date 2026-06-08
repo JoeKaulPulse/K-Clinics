@@ -85,6 +85,10 @@ export const PERMISSIONS: Permission[] = [
   { key: 'dayclose.run', group: 'Day close', label: 'Run day-close', description: 'Complete the end-of-day shutdown: cash-up, stock take and closedown checklist.' },
   { key: 'dayclose.manage', group: 'Day close', label: 'Configure & report on day-close', description: 'Edit closedown tasks & reminders and view close-out reports.', sensitive: true },
 
+  // Build & issues
+  { key: 'build.view', group: 'Build & issues', label: 'Use the build board', description: 'Report problems with screenshots and see the build & issues board.' },
+  { key: 'build.manage', group: 'Build & issues', label: 'Manage the build board', description: 'Triage, set status & urgency, assign, and push items to GitHub.', sensitive: true },
+
   // Finance
   { key: 'finance.view', group: 'Finance', label: 'View finances', description: 'See cashflow forecasts and cash reserves.', sensitive: true },
   { key: 'finance.manage', group: 'Finance', label: 'Manage finances', description: 'Edit forecast lines, reserves and ring-fenced funds.', sensitive: true },
@@ -123,6 +127,7 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     'rewards.view',
     'calls.view',
     'dayclose.run',
+    'build.view',
   ],
   FRONT_DESK: [
     'dashboard.view',
@@ -146,8 +151,9 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     'suppliers.manage',
     'pos.use',
     'dayclose.run',
+    'build.view',
   ],
-  STAFF: ['dashboard.view', 'bookings.view', 'consultations.view', 'clients.view', 'calendar.view', 'inventory.view', 'dayclose.run'],
+  STAFF: ['dashboard.view', 'bookings.view', 'consultations.view', 'clients.view', 'calendar.view', 'inventory.view', 'dayclose.run', 'build.view'],
 };
 
 export function roleDefaults(role: string): string[] {

@@ -57,6 +57,7 @@ export const DICT: Record<string, Entry> = {
   'nav.sops': { en: 'SOPs', uk: 'Стандарти (SOP)' },
   'nav.consent': { en: 'Consent forms', uk: 'Форми згоди' },
   'nav.dayclose': { en: 'Day close', uk: 'Закриття дня' },
+  'nav.build': { en: 'Build & issues', uk: 'Розробка та задачі' },
   'nav.marketing': { en: 'Marketing hub', uk: 'Маркетинг' },
   'nav.brand': { en: 'Brand kit', uk: 'Бренд-кіт' },
   'nav.audiences': { en: 'Audiences', uk: 'Аудиторії' },

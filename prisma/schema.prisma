@@ -2429,3 +2429,69 @@ enum DayCloseStatus {
   IN_PROGRESS
   COMPLETED
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Build & Issues board — a live work tracker separate from staff to-dos (Task).
+// Staff report problems (with screenshots + urgency); items are triaged on a
+// kanban, allocated to Claude or staff, optionally bridged to GitHub issues, and
+// every change is recorded as a BuildEvent (the live audit trail).
+// ─────────────────────────────────────────────────────────────────────────────
+enum BuildType {
+  ERROR
+  TASK
+  IDEA
+  REVIEW
+  AUDIT
+}
+enum BuildStatus {
+  TRIAGE
+  IN_PROGRESS
+  IN_REVIEW
+  BLOCKED
+  SHIPPED
+  CANCELLED
+}
+enum BuildUrgency {
+  P0
+  P1
+  P2
+  P3
+}
+
+model BuildItem {
+  id           String       @id @default(cuid())
+  type         BuildType    @default(TASK)
+  title        String
+  detail       String?      @db.Text
+  status       BuildStatus  @default(TRIAGE)
+  urgency      BuildUrgency @default(P2)
+  assignee     String       @default("claude") // 'claude' or a staff email
+  reportedBy   String?      // staff email who logged it
+  pageUrl      String?      // where the problem was found
+  screenshots  String[]     @default([])
+  blocker      String?      // current blocker note (when status = BLOCKED)
+  githubUrl    String?
+  githubNumber Int?
+  isPublic     Boolean      @default(false) // surfaces on a future public roadmap
+  shippedAt    DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  events       BuildEvent[]
+
+  @@index([status])
+  @@index([assignee, status])
+  @@index([urgency])
+  @@index([createdAt])
+}
+
+model BuildEvent {
+  id        String    @id @default(cuid())
+  item      BuildItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId    String
+  kind      String    // created | status | urgency | assign | comment | blocker | github | shipped
+  body      String?   @db.Text
+  actor     String    // staff email or 'claude'
+  createdAt DateTime  @default(now())
+
+  @@index([itemId, createdAt])
+}
