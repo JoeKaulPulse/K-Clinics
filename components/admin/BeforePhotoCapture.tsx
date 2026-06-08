@@ -8,8 +8,8 @@ type Photo = { id: string; area: string | null; capturedBy: string; createdAt: s
 // Live in-app camera capture for laser before-photos. The image is downscaled
 // and uploaded straight to the encrypted store — it is never saved to this
 // device. Intimate areas are prohibited and require a clinician attestation.
-export function BeforePhotoCapture({ bookingId, clientId, photos, optOutSigned, baseUrl, canManage }: {
-  bookingId: string; clientId: string; photos: Photo[]; optOutSigned: boolean; baseUrl: string; canManage: boolean;
+export function BeforePhotoCapture({ bookingId, clientId, photos, optOutSigned, baseUrl, canManage, required = false }: {
+  bookingId: string; clientId: string; photos: Photo[]; optOutSigned: boolean; baseUrl: string; canManage: boolean; required?: boolean;
 }) {
   const router = useRouter();
   const video = useRef<HTMLVideoElement>(null);
@@ -77,7 +77,7 @@ export function BeforePhotoCapture({ bookingId, clientId, photos, optOutSigned, 
 
   return (
     <div>
-      <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Before photo <span className="text-xs font-normal text-[var(--color-blush)]">· required for laser</span></h2>
+      <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Before &amp; after photo <span className={`text-xs font-normal ${required ? 'text-[var(--color-blush)]' : 'text-[var(--color-stone-soft)]'}`}>· {required ? 'required for laser' : 'optional'}</span></h2>
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
         <div className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/15 px-3 py-2 text-xs text-[var(--color-ink)]">
           ⚠ Capture stays in this secure system — it is <strong>never saved to this device</strong>. <strong>No intimate areas</strong> may be photographed.
@@ -138,15 +138,17 @@ export function BeforePhotoCapture({ bookingId, clientId, photos, optOutSigned, 
             )}
             {err && <p className="mt-2 text-sm text-[var(--color-blush)]">{err}</p>}
 
-            {/* Opt-out path */}
-            <div className="mt-3 border-t border-[var(--color-line)] pt-3 text-xs text-[var(--color-stone)]">
-              Client wants to decline the photo?
-              {optLink ? (
-                <a href={optLink} target="_blank" rel="noopener noreferrer" className="ml-1 text-[var(--color-gold)] hover:underline">Open opt-out form to sign →</a>
-              ) : (
-                <button onClick={genOptOut} className="ml-1 text-[var(--color-gold)] hover:underline">Generate opt-out form</button>
-              )}
-            </div>
+            {/* Opt-out path — only when a photo is actually required (laser). */}
+            {required && (
+              <div className="mt-3 border-t border-[var(--color-line)] pt-3 text-xs text-[var(--color-stone)]">
+                Client wants to decline the photo?
+                {optLink ? (
+                  <a href={optLink} target="_blank" rel="noopener noreferrer" className="ml-1 text-[var(--color-gold)] hover:underline">Open opt-out form to sign →</a>
+                ) : (
+                  <button onClick={genOptOut} className="ml-1 text-[var(--color-gold)] hover:underline">Generate opt-out form</button>
+                )}
+              </div>
+            )}
           </div>
         )}
 
