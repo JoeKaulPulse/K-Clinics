@@ -37,6 +37,29 @@ export async function seedBacklog(): Promise<{ created: number; skipped: number 
   return { created, skipped };
 }
 
+let backlogSeedChecked = false;
+/** Auto-import the backlog once per deploy, idempotently. Runs the first time the
+ *  board is opened after a deploy (version-gated by a stored marker), so it adds
+ *  no DB writes during the fragile deploy window. Safe to call on every load. */
+export async function ensureBacklogSeeded(): Promise<void> {
+  if (backlogSeedChecked) return; // already handled in this warm process
+  backlogSeedChecked = true;
+  try {
+    const { BACKLOG_VERSION } = await import('@/lib/build-backlog');
+    const row = await db.setting.findUnique({ where: { key: 'backlog_seeded_version' } });
+    if (row?.value === BACKLOG_VERSION) return; // up to date — nothing to do
+    await seedBacklog();
+    await db.setting.upsert({
+      where: { key: 'backlog_seeded_version' },
+      update: { value: BACKLOG_VERSION, updatedBy: 'system' },
+      create: { key: 'backlog_seeded_version', value: BACKLOG_VERSION, updatedBy: 'system' },
+    });
+  } catch (e) {
+    backlogSeedChecked = false; // transient failure — let a later request retry
+    console.error('[build] auto-seed backlog failed', e);
+  }
+}
+
 export async function listBuildItems() {
   return db.buildItem.findMany({
     orderBy: [{ status: 'asc' }, { urgency: 'asc' }, { createdAt: 'desc' }],

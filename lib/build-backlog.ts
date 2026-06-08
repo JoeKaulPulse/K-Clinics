@@ -22,6 +22,30 @@ const PR = (n: number) => `https://github.com/JoeKaulPulse/K-Clinics/pull/${n}`;
 export const BUILD_BACKLOG: BacklogItem[] = [
   // ── Shipped this session ──────────────────────────────────────────────────
   {
+    title: 'Board ↔ GitHub: one-click sync + dashboard summary', type: 'TASK', urgency: 'P1', status: 'SHIPPED', pr: PR(322),
+    detail: 'Make the Build board and GitHub harmoniously synced with a single labelled button, and surface the tracker on the admin overview.',
+    notes: [
+      'Added syncAllToGithub(): pushes every unsynced item to GitHub in throttled batches (max 8/click, 700ms apart) so the secondary rate limit isn’t tripped.',
+      'Admin overview now shows a Build & issues card (Open / Blocked / Not on GitHub) + a “Blocked build items” attention chip.',
+    ],
+  },
+  {
+    title: 'Tidy admin navigation: clearer groups + section icons', type: 'TASK', urgency: 'P2', status: 'SHIPPED', pr: PR(323),
+    detail: 'Split overloaded sidebar sections, disambiguate duplicate tabs, add restrained per-section icons.',
+    notes: [
+      'Split Clients & bookings (loyalty/offers → own group) and Catalogue (website content → Website group); moved Build & issues to Administration.',
+      'Renamed marketing “Connections” → “Channel connections” to distinguish it from Administration → Integrations. One line glyph per group header; no per-item icon sweep.',
+    ],
+  },
+  {
+    title: 'Auto-import the backlog on deploy', type: 'TASK', urgency: 'P2', status: 'SHIPPED', pr: PR(324),
+    detail: 'Seed the Build board from Claude’s backlog automatically after a deploy, without build-time DB writes.',
+    notes: [
+      'Version-gated lazy seed: runs the first time the board is opened after a deploy (stored marker = backlog version), so it adds no connection pressure during the deploy window.',
+      'GitHub mirroring stays the explicit one-click “Sync all” button (auto-firing ~20 issue creations on a page render would risk GitHub rate limits).',
+    ],
+  },
+  {
     title: 'Database connection crashes on deploy', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', pr: PR(306),
     detail: 'Product kept falling over under load/deploys due to Postgres connection exhaustion.',
     notes: [
@@ -135,3 +159,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Needs owner input: where the old records live (system/CSV/paper), rough volume, and what to bring across. Then I can write an importer.'],
   },
 ];
+
+// Bumps whenever the backlog set changes, so the lazy auto-seed re-runs after a
+// deploy and picks up newly-added items (the seed itself is deduped by title).
+export const BACKLOG_VERSION = `v1:${BUILD_BACKLOG.length}`;
