@@ -159,6 +159,25 @@ export async function disconnectGithub() {
   await disconnect('github');
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Push every board item not yet linked to a GitHub issue, in small throttled
+ *  batches so GitHub's secondary rate limit isn't tripped. Returns how many were
+ *  synced this run and how many remain (click again for the rest). */
+export async function syncAllToGithub(actor: string, max = 8): Promise<{ synced: number; remaining: number; stopped: boolean }> {
+  if (!(await getGithubConfig())) return { synced: 0, remaining: 0, stopped: true };
+  const items = await db.buildItem.findMany({ where: { githubUrl: null }, orderBy: [{ urgency: 'asc' }, { createdAt: 'asc' }], select: { id: true } });
+  let synced = 0, stopped = false;
+  for (const it of items) {
+    if (synced >= max) break;
+    const updated = await pushToGithub(it.id, actor);
+    if (updated?.githubUrl) { synced += 1; await sleep(700); }
+    else { stopped = true; break; } // push failed (likely rate-limited) — stop cleanly
+  }
+  const remaining = await db.buildItem.count({ where: { githubUrl: null } });
+  return { synced, remaining, stopped };
+}
+
 export async function pushToGithub(id: string, actor: string) {
   const item = await db.buildItem.findUnique({ where: { id } });
   if (!item || item.githubUrl) return item; // already linked

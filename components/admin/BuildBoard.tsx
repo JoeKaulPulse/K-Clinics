@@ -52,6 +52,14 @@ export function BuildBoard({ canManage, github, staff, me }: { canManage: boolea
     const r = await post({ op: 'github-disconnect' });
     if (r.ok) load(true);
   }
+  const [syncing, setSyncing] = useState(false);
+  async function syncAll() {
+    setSyncing(true);
+    const r = await post({ op: 'github-sync-all' });
+    setSyncing(false);
+    if (r.ok) { alert(r.remaining > 0 ? `Synced ${r.synced} to GitHub · ${r.remaining} remaining — click again in a moment (GitHub limits rapid issue creation).` : `All synced to GitHub ✓ (${r.synced} this round).`); load(true); }
+    else alert(r.error || 'Sync failed.');
+  }
   useEffect(() => { load(true); const t = setInterval(() => load(), 30000); return () => clearInterval(t); }, [load]);
   useEffect(() => { if (active) setActive(items.find((i) => i.id === active.id) || null); }, [items]); // keep modal fresh
 
@@ -78,6 +86,7 @@ export function BuildBoard({ canManage, github, staff, me }: { canManage: boolea
         <span><strong className="text-[var(--color-ink)]">{blocked}</strong> blocked</span>
         <span><strong className="text-[var(--color-ink)]">{items.filter((i) => i.assignee === 'claude' && !['SHIPPED', 'CANCELLED'].includes(i.status)).length}</strong> with Claude</span>
         {gh.connected ? <span className="text-[var(--color-jade)]">GitHub connected ✓{gh.repo ? ` · ${gh.repo}` : ''}</span> : <span className="text-[var(--color-stone-soft)]">GitHub not connected</span>}
+        {canManage && gh.connected && items.some((i) => !i.githubUrl) && <button onClick={syncAll} disabled={syncing} className="rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:bg-[var(--color-bone)] disabled:opacity-50">{syncing ? 'Syncing…' : `⤴ Sync all to GitHub (${items.filter((i) => !i.githubUrl).length})`}</button>}
         {canManage && gh.connected && <button onClick={disconnectGh} className="text-xs text-[var(--color-blush)] hover:underline">Disconnect</button>}
         <span className="ml-auto flex items-center gap-3">
           <label className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} className="h-3.5 w-3.5 accent-[var(--color-gold)]" /> Assigned to me</label>

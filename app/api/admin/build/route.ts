@@ -76,6 +76,12 @@ export async function POST(req: Request) {
         const r = await board.seedBacklog();
         return NextResponse.json({ ok: true, ...r });
       }
+      case 'github-sync-all': {
+        if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
+        if (!(await board.githubConfigured())) return NextResponse.json({ ok: false, error: 'Connect GitHub first.' }, { status: 400 });
+        const r = await board.syncAllToGithub(session.email);
+        return NextResponse.json({ ok: true, ...r });
+      }
     }
     return NextResponse.json({ ok: false, error: 'Unknown op' }, { status: 400 });
   } catch (e) {
