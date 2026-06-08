@@ -19,6 +19,7 @@ export async function GET(req: Request) {
   if (q.length < 2) return NextResponse.json({ ok: true, groups: [] });
 
   const { db } = await import('@/lib/db');
+  const { rankHits, bestScore } = await import('@/lib/search-rank');
   const ci = { contains: q, mode: 'insensitive' as const };
   const nameOr = { OR: [{ firstName: ci }, { lastName: ci }] };
   const can = (p: string) => sessionCan(session, p);
@@ -26,12 +27,12 @@ export async function GET(req: Request) {
   const fullName = (a?: string | null, b?: string | null, fallback = '') => [a, b].filter(Boolean).join(' ') || fallback;
   const snip = (s?: string | null, n = 60) => (s ? (s.length > n ? `${s.slice(0, n)}…` : s) : undefined);
 
-  const [clients, bookings, consultations, reviews, vouchers, discounts, staff, students, courses, services, stock, vacancies, applications] = await Promise.all([
+  const [clients, bookings, consultations, reviews, vouchers, discounts, staff, students, courses, services, stock, vacancies, applications, products, suppliers, posts, tasks, buildItems, pages] = await Promise.all([
     safe(can('clients.view'), async () =>
-      (await db.client.findMany({ where: { OR: [{ firstName: ci }, { lastName: ci }, { email: ci }, { phone: { contains: q } }] }, orderBy: { updatedAt: 'desc' }, take: 6, select: { id: true, firstName: true, lastName: true, email: true, medicalFlag: true } }))
+      (await db.client.findMany({ where: { OR: [{ firstName: ci }, { lastName: ci }, { email: ci }, { phone: { contains: q } }] }, orderBy: { updatedAt: 'desc' }, take: 12, select: { id: true, firstName: true, lastName: true, email: true, medicalFlag: true } }))
         .map((c) => ({ id: c.id, title: fullName(c.firstName, c.lastName, c.email) + (c.medicalFlag ? ' ⚠' : ''), sub: c.email, href: `/admin/clients/${c.id}` }))),
     safe(can('bookings.view'), async () =>
-      (await db.booking.findMany({ where: { OR: [{ treatmentTitle: ci }, { client: nameOr }, { client: { email: ci } }] }, orderBy: { startAt: 'desc' }, take: 6, select: { id: true, treatmentTitle: true, startAt: true, status: true, client: { select: { firstName: true, lastName: true } } } }))
+      (await db.booking.findMany({ where: { OR: [{ treatmentTitle: ci }, { client: nameOr }, { client: { email: ci } }] }, orderBy: { startAt: 'desc' }, take: 12, select: { id: true, treatmentTitle: true, startAt: true, status: true, client: { select: { firstName: true, lastName: true } } } }))
         .map((b) => ({ id: b.id, title: b.treatmentTitle, sub: `${fullName(b.client.firstName, b.client.lastName)} · ${b.startAt.toLocaleDateString('en-GB')} · ${b.status.toLowerCase()}`, href: `/admin/bookings/${b.id}` }))),
     safe(can('consultations.view'), async () =>
       (await db.consultation.findMany({ where: { OR: [{ client: nameOr }, { concerns: ci }, { message: ci }] }, orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, concerns: true, client: { select: { firstName: true, lastName: true } } } }))
@@ -66,9 +67,29 @@ export async function GET(req: Request) {
     safe(can('settings.manage'), async () =>
       (await db.jobApplication.findMany({ where: { OR: [{ name: ci }, { email: ci }] }, orderBy: { createdAt: 'desc' }, take: 4, select: { id: true, name: true, email: true } }))
         .map((a) => ({ id: a.id, title: a.name, sub: a.email, href: `/admin/careers` }))),
+    safe(can('settings.manage'), async () =>
+      (await db.product.findMany({ where: { OR: [{ name: ci }, { brand: ci }, { sku: ci }, { category: ci }] }, orderBy: { updatedAt: 'desc' }, take: 6, select: { id: true, name: true, brand: true, sku: true } }))
+        .map((p) => ({ id: p.id, title: p.name, sub: [p.brand, p.sku].filter(Boolean).join(' · ') || undefined, href: `/admin/products` }))),
+    safe(can('suppliers.view'), async () =>
+      (await db.supplier.findMany({ where: { OR: [{ name: ci }, { category: ci }, { contactName: ci }, { email: ci }] }, orderBy: { name: 'asc' }, take: 5, select: { id: true, name: true, category: true, contactName: true } }))
+        .map((s) => ({ id: s.id, title: s.name, sub: [s.category, s.contactName].filter(Boolean).join(' · ') || undefined, href: `/admin/suppliers` }))),
+    safe(can('settings.manage'), async () =>
+      (await db.post.findMany({ where: { OR: [{ title: ci }, { category: ci }, { excerpt: ci }] }, orderBy: { updatedAt: 'desc' }, take: 5, select: { id: true, title: true, category: true } }))
+        .map((p) => ({ id: p.id, title: p.title, sub: p.category || 'Journal', href: `/admin/journal` }))),
+    // Tasks: scoped to the signed-in user's own tasks (always safe to surface),
+    // so search never leaks another person's task list.
+    safe(!!session.sub, async () =>
+      (await db.task.findMany({ where: { assigneeId: session.sub, OR: [{ title: ci }, { detail: ci }] }, orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, title: true, status: true } }))
+        .map((tk) => ({ id: tk.id, title: tk.title, sub: tk.status.toLowerCase(), href: `/admin/tasks` }))),
+    safe(can('build.view'), async () =>
+      (await db.buildItem.findMany({ where: { OR: [{ title: ci }, { detail: ci }] }, orderBy: { updatedAt: 'desc' }, take: 5, select: { id: true, title: true, status: true, urgency: true } }))
+        .map((bi) => ({ id: bi.id, title: bi.title, sub: `${bi.urgency} · ${bi.status.toLowerCase().replace('_', ' ')}`, href: `/admin/build` }))),
+    safe(can('settings.manage'), async () =>
+      (await db.page.findMany({ where: { OR: [{ title: ci }, { path: ci }] }, orderBy: { updatedAt: 'desc' }, take: 5, select: { id: true, title: true, path: true } }))
+        .map((pg) => ({ id: pg.id, title: pg.title || pg.path, sub: pg.path, href: `/admin/pages` }))),
   ]);
 
-  const groups: Group[] = [
+  const raw: Group[] = [
     { type: 'clients', label: 'Clients', results: clients },
     { type: 'bookings', label: 'Bookings', results: bookings },
     { type: 'consultations', label: 'Consultations', results: consultations },
@@ -79,10 +100,23 @@ export async function GET(req: Request) {
     { type: 'students', label: 'Academy students', results: students },
     { type: 'courses', label: 'Courses', results: courses },
     { type: 'services', label: 'Services', results: services },
+    { type: 'products', label: 'Products', results: products },
     { type: 'stock', label: 'Inventory', results: stock },
+    { type: 'suppliers', label: 'Suppliers', results: suppliers },
+    { type: 'posts', label: 'Journal', results: posts },
+    { type: 'pages', label: 'Pages', results: pages },
+    { type: 'tasks', label: 'My tasks', results: tasks },
+    { type: 'build', label: 'Build & issues', results: buildItems },
     { type: 'vacancies', label: 'Vacancies', results: vacancies },
     { type: 'applications', label: 'Applications', results: applications },
   ].filter((g) => g.results.length > 0);
+
+  // Rank each group's hits by relevance (trim to the strongest 6), then order
+  // the groups so the category with the best match leads the dropdown.
+  const groups: Group[] = raw
+    .map((g) => ({ ...g, results: rankHits(g.results, q).slice(0, 6), _s: bestScore(g.results, q) }))
+    .sort((a, b) => b._s - a._s)
+    .map(({ _s, ...g }) => { void _s; return g; });
 
   return NextResponse.json({ ok: true, groups });
 }
