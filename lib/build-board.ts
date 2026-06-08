@@ -97,25 +97,38 @@ function cleanToken(input: string): string {
   return (input || '').trim().replace(/^bearer\s+/i, '').replace(/^["']|["']$/g, '').trim();
 }
 
+async function ghProbe(url: string, token: string): Promise<{ status: number; ok: boolean; message?: string } | null> {
+  try {
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'User-Agent': 'kclinics-build-board', 'X-GitHub-Api-Version': '2022-11-28' }, redirect: 'follow' });
+    const body = (await r.json().catch(() => ({}))) as { message?: string };
+    return { status: r.status, ok: r.ok, message: body?.message };
+  } catch { return null; }
+}
+
 /** Validate a token+repo against the GitHub API, then save it (encrypted). */
-export async function connectGithub(tokenRaw: string, repoRaw: string): Promise<{ ok: boolean; error?: string; repo?: string }> {
+export async function connectGithub(tokenRaw: string, repoRaw: string): Promise<{ ok: boolean; error?: string; repo?: string; warning?: string }> {
   const repo = normalizeRepo(repoRaw);
   const token = cleanToken(tokenRaw);
   if (!token) return { ok: false, error: 'Paste your GitHub token.' };
   if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return { ok: false, error: `“${repo || repoRaw}” isn’t a valid repo — use owner/name, e.g. JoeKaulPulse/K-Clinics.` };
-  let res: Response;
-  try {
-    res = await fetch(`https://api.github.com/repos/${repo}`, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'User-Agent': 'kclinics-build-board', 'X-GitHub-Api-Version': '2022-11-28' } });
-  } catch { return { ok: false, error: 'Could not reach GitHub — please try again.' }; }
-  const data = (await res.json().catch(() => ({}))) as { message?: string };
-  const detail = data?.message ? ` (GitHub: ${data.message})` : '';
-  if (res.status === 404) return { ok: false, error: `Couldn’t find ${repo}${detail}. Check the exact owner/name, and that a fine-grained token has this repo selected.` };
-  if (res.status === 401) return { ok: false, error: `GitHub rejected the token${detail}. Re-copy it (no spaces/quotes) and try again.` };
-  if (res.status === 403) return { ok: false, error: `Token lacks access${detail}. A fine-grained token needs Metadata: Read + Issues: Read & write on ${repo}.` };
-  if (!res.ok) return { ok: false, error: `GitHub returned ${res.status}${detail}.` };
+
+  // One probe only (the issues endpoint — the permission we use) to avoid adding
+  // to any rate limit. If it returns 200 the token works → save.
+  const probe = await ghProbe(`https://api.github.com/repos/${repo}/issues?per_page=1`, token);
+  if (probe === null) return { ok: false, error: 'Could not reach GitHub — please try again.' };
   const { saveConnection } = await import('@/lib/oauth-connections');
-  await saveConnection('github', { access: token, expiresAt: null }, repo, repo);
-  return { ok: true, repo };
+  const rateLimited = probe.status === 403 && /rate limit/i.test(probe.message || '');
+  if (probe.ok || rateLimited) {
+    // A rate-limit 403 still proves the token authenticated (limits are per-user),
+    // so the token is valid — save it; GitHub is just briefly throttling.
+    await saveConnection('github', { access: token, expiresAt: null }, repo, repo);
+    return { ok: true, repo, warning: rateLimited ? 'Connected — GitHub was briefly rate-limiting checks, but your token is valid. Pushing issues will work once the limit resets (a few minutes).' : undefined };
+  }
+  const detail = probe.message ? ` — GitHub: “${probe.message}”` : '';
+  if (probe.status === 401) return { ok: false, error: `GitHub rejected the token (401)${detail}. Re-copy it exactly (no spaces or quotes) and check it hasn’t expired.` };
+  if (probe.status === 403) return { ok: false, error: `Forbidden (403)${detail}. The token needs Issues: Read & write + Metadata: Read on ${repo}.` };
+  if (probe.status === 404) return { ok: false, error: `Not found (404)${detail}. Confirm the repo is ${repo} and that the token has it selected.` };
+  return { ok: false, error: `GitHub returned ${probe.status}${detail}.` };
 }
 export async function disconnectGithub() {
   const { disconnect } = await import('@/lib/oauth-connections');
