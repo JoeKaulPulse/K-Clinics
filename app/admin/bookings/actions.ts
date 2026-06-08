@@ -170,6 +170,33 @@ export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 
       } catch (e) {
         console.error('[bookings] NPS on complete failed:', (e as Error)?.message);
       }
+      // Post-course check-in (opt-in): once a client completes a full course of a
+      // course-based treatment, congratulate + suggest maintenance. Once per course.
+      try {
+        const { getSetting } = await import('@/lib/settings');
+        if (await getSetting('post_course_checkin')) {
+          const { courseLength, recommendedNext, formatInterval } = await import('@/lib/treatment-intervals');
+          const len = courseLength(b.treatmentSlug);
+          if (len) {
+            const completed = await db.booking.count({ where: { clientId: b.clientId, treatmentSlug: b.treatmentSlug, status: 'COMPLETED' } });
+            if (completed >= len) {
+              const dup = await db.emailEvent.findFirst({ where: { clientId: b.clientId, kind: 'FOLLOW_UP', status: 'SENT', meta: { path: ['postCourseSlug'], equals: b.treatmentSlug } } });
+              if (!dup) {
+                const client = await db.client.findUnique({ where: { id: b.clientId }, select: { email: true, firstName: true, unsubscribed: true } });
+                if (client?.email && !client.unsubscribed) {
+                  const rec = recommendedNext(b.treatmentSlug, completed);
+                  const base = (process.env.NEXT_PUBLIC_SITE_URL || site.url).replace(/\/$/, '');
+                  const { sendEmail, tmplPostCourse } = await import('@/lib/email');
+                  const res = await sendEmail({ to: client.email, subject: `Your ${b.treatmentTitle} course is complete`, html: tmplPostCourse({ firstName: client.firstName, treatment: b.treatmentTitle, rebookUrl: `${base}/book?treatment=${encodeURIComponent(b.treatmentSlug)}`, maintenance: rec ? formatInterval(rec.weeks) : null }) });
+                  await db.emailEvent.create({ data: { clientId: b.clientId, kind: 'FOLLOW_UP', to: client.email, subject: `Course complete — ${b.treatmentTitle}`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { postCourseSlug: b.treatmentSlug } } }).catch(() => {});
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error('[bookings] post-course check-in failed:', (e as Error)?.message);
+      }
     }
   }
   revalidatePath(`/admin/bookings/${bookingId}`);

@@ -538,6 +538,19 @@ export function tmplAbandonedBooking(o: { firstName: string; treatment: string; 
   });
 }
 
+export function tmplPostCourse(o: { firstName: string; treatment: string; rebookUrl: string; maintenance?: string | null }) {
+  return emailShell({
+    preheader: `You've completed your ${o.treatment} course`,
+    body: `${heroBand('confirmed')}
+    <h1 style="font-size:25px;margin:0 0 14px;">Course complete, ${escape(o.firstName)} 🎉</h1>
+    <p>Congratulations — you've finished your full course of <strong>${escape(o.treatment)}</strong>. We hope you're delighted with your results, and it's been a pleasure looking after you.</p>
+    ${o.maintenance ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">To keep your results looking their best, we'd suggest a maintenance session in <strong>${escape(o.maintenance)}</strong>. We’ll be ready when you are.</p>` : ''}
+    <p style="margin:26px 0;">${btn(o.rebookUrl, 'Book a maintenance visit')}</p>
+    <p style="font-size:14px;color:#91766e;">Questions about aftercare or what's next? Just reply — we're always here.</p>
+    <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
 export function tmplNps(o: { firstName: string; treatment?: string; baseUrl: string; token: string }) {
   const scale = Array.from({ length: 11 }, (_, n) =>
     `<td style="padding:2px;"><a href="${o.baseUrl}/nps/${o.token}?s=${n}" style="display:block;width:32px;line-height:34px;text-align:center;border:1px solid #c2a589;border-radius:8px;color:#856a4a;text-decoration:none;font-family:Helvetica,Arial,sans-serif;font-size:14px;">${n}</a></td>`).join('');
