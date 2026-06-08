@@ -31,6 +31,7 @@ export async function POST(req: Request) {
         // mode defaults to AI — the assistant answers first and notifies/hands
         // over to staff only when it needs a human, so staffUnread starts at 0.
         staffUnread: 0,
+        lastVisitorSeenAt: new Date(),
         messages: { create: { sender: 'VISITOR', body } },
       },
       select: { id: true, token: true },
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
       db.chatMessage.create({ data: { conversationId: convo.id, sender: 'VISITOR', body } }),
       // Only flag staff as unread when a human is the one answering; in AI mode
       // the assistant replies and escalates (bumping unread) only if needed.
-      db.chatConversation.update({ where: { id: convo.id }, data: { status: 'OPEN', lastMessageAt: new Date(), ...(convo.mode === 'STAFF' ? { staffUnread: { increment: 1 } } : {}) } }),
+      db.chatConversation.update({ where: { id: convo.id }, data: { status: 'OPEN', lastMessageAt: new Date(), lastVisitorSeenAt: new Date(), ...(convo.mode === 'STAFF' ? { staffUnread: { increment: 1 } } : {}) } }),
     ]);
     if (convo.mode === 'AI') {
       const { maybeAutoReply } = await import('@/lib/chat-ai');
@@ -74,10 +75,28 @@ export async function GET(req: Request) {
   const { db } = await import('@/lib/db');
   const convo = await db.chatConversation.findUnique({ where: { token }, select: { id: true, status: true } });
   if (!convo) return NextResponse.json({ ok: false, messages: [] }, { status: 404 });
+  // Presence: each poll refreshes "last seen" so we only email replies once the
+  // visitor has actually left (see lib/chat-email visitorLeft).
+  db.chatConversation.update({ where: { id: convo.id }, data: { lastVisitorSeenAt: new Date() } }).catch(() => {});
   const messages = await db.chatMessage.findMany({
     where: { conversationId: convo.id, ...(after ? { createdAt: { gt: new Date(after) } } : {}) },
     orderBy: { createdAt: 'asc' }, take: 100,
-    select: { id: true, sender: true, body: true, createdAt: true },
+    select: { id: true, sender: true, body: true, createdAt: true, authorName: true, authorTitle: true, authorId: true, authorPublic: true },
   });
-  return NextResponse.json({ ok: true, status: convo.status, messages: messages.map((m) => ({ ...m, createdAt: m.createdAt.toISOString() })) });
+  return NextResponse.json({
+    ok: true,
+    status: convo.status,
+    messages: messages.map((m) => ({
+      id: m.id,
+      sender: m.sender,
+      body: m.body,
+      createdAt: m.createdAt.toISOString(),
+      // Who the visitor is speaking with — sourced from the responder's own
+      // account. Staff show their first name (+ title); OWNER/ADMIN show as
+      // "KClinics". The assistant shows as "K". When they've a public profile,
+      // the name deep-links to their card on the team page.
+      from: m.sender === 'AI' ? 'K · Assistant' : m.sender === 'STAFF' ? (m.authorName ? (m.authorTitle ? `${m.authorName} · ${m.authorTitle}` : m.authorName) : 'KClinics') : undefined,
+      link: m.sender === 'STAFF' && m.authorPublic && m.authorId ? `/team#m-${m.authorId}` : undefined,
+    })),
+  });
 }

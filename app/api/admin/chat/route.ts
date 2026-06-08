@@ -48,11 +48,25 @@ export async function POST(req: Request) {
       if (!id || !body) return NextResponse.json({ ok: false, error: 'Empty reply.' }, { status: 400 });
       // A human replying takes the conversation off the AI (mode → STAFF) so the
       // assistant stops auto-answering until staff hand it back.
-      await db.$transaction([
-        db.chatMessage.create({ data: { conversationId: id, sender: 'STAFF', author: session.email, body } }),
-        db.chatConversation.update({ where: { id }, data: { lastMessageAt: new Date(), status: 'OPEN', mode: 'STAFF', staffUnread: 0 } }),
-      ]);
-      return NextResponse.json({ ok: true });
+      // Who the visitor sees: a first name for regular staff (linked to their
+      // public team profile when they've opted in); OWNER/ADMIN are presented as
+      // "KClinics" with no name, per brand preference.
+      const isAnon = ['OWNER', 'ADMIN'].includes(session.role);
+      const firstName = isAnon ? null : ((session.name || '').trim().split(/\s+/)[0] || null);
+      let authorPublic = false;
+      let authorTitle: string | null = null;
+      if (firstName) {
+        const u = await db.adminUser.findUnique({ where: { id: session.sub }, select: { publicProfile: true, title: true } }).catch(() => null);
+        authorPublic = !!u?.publicProfile;
+        authorTitle = u?.title || null;
+      }
+      const staffMsg = await db.chatMessage.create({ data: { conversationId: id, sender: 'STAFF', author: session.email, authorName: firstName, authorTitle, authorId: isAnon ? null : session.sub, authorPublic, body } });
+      await db.chatConversation.update({ where: { id }, data: { lastMessageAt: new Date(), status: 'OPEN', mode: 'STAFF', staffUnread: 0 } });
+      // Email the visitor: forced when staff hit "Send & email"; otherwise only
+      // if they've left their email and stepped away from the chat.
+      let emailed = false;
+      try { const { emailChatMessage } = await import('@/lib/chat-email'); emailed = await emailChatMessage(staffMsg.id, { force: b.email === true }); } catch { /* non-fatal */ }
+      return NextResponse.json({ ok: true, emailed });
     }
     case 'setMode': {
       const id = String(b.conversationId || '');
