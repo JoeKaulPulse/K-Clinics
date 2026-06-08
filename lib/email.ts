@@ -370,10 +370,17 @@ export function tmplBookingConfirmation(o: {
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`KClinics ${addr}`)}`;
   const gcal = gcalUrl({ title: `${o.treatment} · KClinics`, start: o.start, end, details: `Your ${o.treatment} at KClinics. Manage or cancel: ${o.manageUrl}`, location: addr });
 
-  const row = (label: string, value: string) => `<tr><td style="color:#91766e;padding:3px 18px 3px 0;white-space:nowrap;vertical-align:top;">${label}</td><td style="padding:3px 0;">${value}</td></tr>`;
+  // Full-width line row: label takes the slack (wraps cleanly), price hugs the
+  // right and never wraps — so nothing gets squeezed to one-word-per-line on mobile.
+  const lineRow = (label: string, value: string, strong = false) =>
+    `<tr><td style="padding:5px 0;vertical-align:top;">${label}</td><td style="padding:5px 0 5px 12px;text-align:right;white-space:nowrap;vertical-align:top;${strong ? 'font-weight:bold;' : ''}">${value}</td></tr>`;
   const itemsRows = o.lines && o.lines.length > 0
-    ? o.lines.map((l) => row(escape(l.label), escape(l.price))).join('')
-    : row('Treatment', `<strong>${escape(o.treatment)}</strong>`);
+    ? o.lines.map((l) => lineRow(escape(l.label), escape(l.price))).join('')
+    : lineRow(escape(o.treatment), price);
+  // Stacked block (small uppercase label above a full-width value) — reflows
+  // perfectly on narrow screens, used for the longer address / clinician fields.
+  const block = (label: string, value: string) =>
+    `<p style="margin:13px 0 0;font-family:Helvetica,Arial,sans-serif;"><span style="display:block;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#a98a6d;">${label}</span><span style="font-size:14px;line-height:1.5;color:#3d352f;">${value}</span></p>`;
 
   return emailShell({
     preheader: `You're booked in for ${dateStr} at ${timeStr}`,
@@ -385,12 +392,13 @@ export function tmplBookingConfirmation(o: {
       <p style="margin:0 0 6px;font-family:Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#a98a6d;">Your appointment</p>
       <p class="kc-display" style="margin:0;font-size:25px;line-height:1.15;color:#2a2420;">${dateStr}</p>
       <p class="kc-display" style="margin:1px 0 16px;font-size:19px;color:#856a4a;">${timeStr}</p>
-      <table style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#3d352f;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#3d352f;">
         ${itemsRows}
-        ${o.clinicianName ? row('With', `<strong>${escape(o.clinicianName)}</strong>`) : ''}
-        ${row('Where', `${escape(place)} · <a href="${mapsUrl}" style="color:#856a4a;">map</a>`)}
-        ${row('Total', price)}
+        <tr><td colspan="2" style="border-top:1px solid rgba(42,36,32,0.08);padding-top:6px;"></td></tr>
+        ${lineRow('<span style="color:#91766e;">Total</span>', price, true)}
       </table>
+      ${o.clinicianName ? block('With', `<strong>${escape(o.clinicianName)}</strong>`) : ''}
+      ${block('Where', `${escape(place)} · <a href="${mapsUrl}" style="color:#856a4a;">map</a>`)}
     </td></tr></table>
 
     <p style="margin:0 0 22px;">${btnOutline(gcal, 'Add to Google Calendar')} <span style="font-size:12px;color:#91766e;">· an invite is attached for Apple&nbsp;Mail &amp; Outlook</span></p>
