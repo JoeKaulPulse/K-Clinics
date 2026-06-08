@@ -20,7 +20,8 @@ export type SettingKey =
   | 'abandoned_booking_recovery' // email a nudge to finish an unpaid/incomplete booking
   | 'no_show_notice'             // email a warm rebooking note when an appointment is marked no-show
   | 'membership_renewal_nudge'   // email lapsing K Circle members to keep their tier
-  | 'nps_survey';                // send an NPS (0–10 recommend) survey after a completed visit
+  | 'nps_survey'                 // send an NPS (0–10 recommend) survey after a completed visit
+  | 'post_course_checkin';       // email when a client completes a full treatment course
 
 export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   allow_clinician_choice: false,
@@ -39,6 +40,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   no_show_notice: false,
   membership_renewal_nudge: false,
   nps_survey: false,
+  post_course_checkin: false,
 };
 
 export const SETTING_META: Record<SettingKey, { label: string; description: string }> = {
@@ -105,6 +107,10 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   nps_survey: {
     label: 'NPS satisfaction survey',
     description: 'After a completed visit, email a one-tap 0–10 “how likely to recommend us?” survey (at most once per client every ~90 days). Results show under Admin → NPS. Off by default.',
+  },
+  post_course_checkin: {
+    label: 'Post-course check-in',
+    description: 'When a client completes a full course of a course-based treatment (e.g. laser hair removal), email a “course complete — here’s how to maintain your results” note with a maintenance-booking link. Sent once per course. Off by default.',
   },
 };
 

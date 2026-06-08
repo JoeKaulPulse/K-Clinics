@@ -37,5 +37,12 @@ export function recommendedNext(slug: string, completedSessions: number, from: D
   return { weeks, date, maintenance: weeks >= 16 };
 }
 
+/** Recommended course length (number of sessions) for a course-based treatment,
+ *  or null if the treatment isn't course-based. */
+export function courseLength(slug: string): number | null {
+  const fam = familyFor(slug);
+  return fam ? SCHEDULES[fam].length : null;
+}
+
 export const formatInterval = (weeks: number) =>
   weeks >= 16 ? `about ${Math.round(weeks / 4.345)} months` : `about ${weeks} week${weeks === 1 ? '' : 's'}`;

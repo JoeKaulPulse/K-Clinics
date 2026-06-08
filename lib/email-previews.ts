@@ -40,6 +40,7 @@ export function emailPreviews(): EmailPreview[] {
     { key: 'followUpQ', name: 'Aftercare check-in', group: 'Lifecycle', description: 'One-week post-visit questionnaire.', html: E.tmplFollowUpQuestionnaire({ firstName: name, treatment, url: '#' }) },
     { key: 'reviewRequest', name: 'Review request', group: 'Lifecycle', description: 'Asks a happy client for a review.', html: E.tmplReviewRequest(name, '#', treatment) },
     { key: 'nps', name: 'NPS survey', group: 'Lifecycle', description: 'One-tap 0–10 “recommend us?” survey (opt-in).', html: E.tmplNps({ firstName: name, treatment, baseUrl: 'https://kclinics.co.uk', token: 'preview' }) },
+    { key: 'postCourse', name: 'Post-course check-in', group: 'Lifecycle', description: 'Sent when a client completes a full treatment course (opt-in).', html: E.tmplPostCourse({ firstName: name, treatment: 'Laser Hair Removal', rebookUrl: '#', maintenance: 'about 3 months' }) },
     { key: 'birthday', name: 'Birthday offer', group: 'Marketing', description: 'A birthday treat to re-engage.', html: E.tmplBirthday(name, '#') },
     { key: 'winBack', name: 'Win-back', group: 'Marketing', description: 'Re-engages a lapsed client.', html: E.tmplWinBack(name, '#') },
     { key: 'passwordReset', name: 'Password reset', group: 'Account', description: 'Secure reset link for the portal.', html: E.tmplPasswordReset(name, '#') },
