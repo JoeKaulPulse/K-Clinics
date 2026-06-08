@@ -51,6 +51,16 @@ export function BookingActions({
         </div>
       )}
 
+      {/* Undo a mis-clicked status — reset a no-show (or a not-yet-charged
+          completion) back to confirmed. Hidden once a charge has been taken. */}
+      {canManage && (status === 'NO_SHOW' || (completed && charged == null)) && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button disabled={pending} onClick={() => start(async () => { const r = await setBookingStatus(bookingId, 'CONFIRMED'); setMsg(r.ok ? 'Reset to confirmed.' : r.error || 'Could not update.'); })}
+            className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:bg-[var(--color-bone)] disabled:opacity-60">↩ Reset to confirmed</button>
+          <span className="text-xs text-[var(--color-stone)]">{status === 'NO_SHOW' ? 'Marked no-show by mistake? Put it back to confirmed.' : 'Re-open this appointment — it hasn’t been charged.'}</span>
+        </div>
+      )}
+
       {/* Charge — gated behind completion so a client is never charged before
           their treatment is delivered. */}
       {canCharge && active && !charged && (
