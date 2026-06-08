@@ -42,23 +42,78 @@ export async function seedBacklog(): Promise<{ created: number; skipped: number 
 let backlogSeedChecked = false;
 /** Auto-import the backlog once per deploy, idempotently. Runs the first time the
  *  board is opened after a deploy (version-gated by a stored marker), so it adds
- *  no DB writes during the fragile deploy window. Safe to call on every load. */
+ *  no DB writes during the fragile deploy window. Also (re)assigns any
+ *  input-required task to the best-placed real user. Safe to call on every load. */
 export async function ensureBacklogSeeded(): Promise<void> {
   if (backlogSeedChecked) return; // already handled in this warm process
   backlogSeedChecked = true;
   try {
     const { BACKLOG_VERSION } = await import('@/lib/build-backlog');
     const row = await db.setting.findUnique({ where: { key: 'backlog_seeded_version' } });
-    if (row?.value === BACKLOG_VERSION) return; // up to date — nothing to do
-    await seedBacklog();
-    await db.setting.upsert({
-      where: { key: 'backlog_seeded_version' },
-      update: { value: BACKLOG_VERSION, updatedBy: 'system' },
-      create: { key: 'backlog_seeded_version', value: BACKLOG_VERSION, updatedBy: 'system' },
-    });
+    if (row?.value !== BACKLOG_VERSION) {
+      await seedBacklog();
+      await db.setting.upsert({
+        where: { key: 'backlog_seeded_version' },
+        update: { value: BACKLOG_VERSION, updatedBy: 'system' },
+        create: { key: 'backlog_seeded_version', value: BACKLOG_VERSION, updatedBy: 'system' },
+      });
+    }
+    await assignOwnerInputTasks(); // idempotent; ensures blocked tasks have an owner + instructions
   } catch (e) {
     backlogSeedChecked = false; // transient failure — let a later request retry
     console.error('[build] auto-seed backlog failed', e);
+  }
+}
+
+/** Pick the active user best placed to action an input-required task, from the
+ *  live roster — by role for OWNER decisions, or the most senior practising
+ *  clinician for treatment/pricing calls. Falls back sensibly if the ideal
+ *  match isn't present. */
+async function pickBestUser(needs: 'OWNER' | 'CLINICAL') {
+  const users = await db.adminUser.findMany({
+    where: { active: true },
+    select: { email: true, name: true, role: true, isClinician: true, title: true },
+  });
+  if (!users.length) return null;
+  const rank = (r: string) => ({ OWNER: 0, ADMIN: 1, PRACTITIONER: 2, FRONT_DESK: 3, STAFF: 4 } as Record<string, number>)[r] ?? 5;
+  let pool = users;
+  if (needs === 'CLINICAL') {
+    const clinicians = users.filter((u) => u.isClinician);
+    pool = clinicians.length ? clinicians : users; // no clinician on file → fall back to senior staff
+  } else {
+    const owners = users.filter((u) => u.role === 'OWNER');
+    pool = owners.length ? owners : users;
+  }
+  return [...pool].sort((a, b) => rank(a.role) - rank(b.role))[0];
+}
+
+/** For every input-required backlog task, assign it to the best-placed real user
+ *  and post the precise instruction of what's needed. Idempotent: skips items
+ *  already assigned to a person, and never duplicates the instruction comment. */
+export async function assignOwnerInputTasks(): Promise<void> {
+  const { BUILD_BACKLOG } = await import('@/lib/build-backlog');
+  const MARK = '📋 Action needed';
+  for (const it of BUILD_BACKLOG) {
+    if (!it.needs || !it.ask) continue;
+    const item = await db.buildItem.findFirst({ where: { title: it.title }, include: { events: true } });
+    if (!item) continue;
+
+    // Assign to the best-placed user if it's still unassigned / on Claude.
+    if (!item.assignee || item.assignee === 'claude') {
+      const user = await pickBestUser(it.needs);
+      if (user) {
+        const who = user.name ? `${user.name}${user.title ? ` (${user.title})` : ''}` : user.email;
+        await db.buildItem.update({
+          where: { id: item.id },
+          data: { assignee: user.email, events: { create: { kind: 'assign', actor: 'claude', body: `Assigned to ${who} — best placed to action this (${it.needs.toLowerCase()} input).` } } },
+        });
+      }
+    }
+
+    // Post the clear instruction once.
+    if (!item.events.some((e) => e.kind === 'comment' && (e.body || '').startsWith(MARK))) {
+      await db.buildEvent.create({ data: { itemId: item.id, kind: 'comment', actor: 'claude', body: `${MARK} — ${it.ask}` } });
+    }
   }
 }
 
