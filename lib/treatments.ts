@@ -99,6 +99,44 @@ export const treatments: Treatment[] = [
     gradient: ['#c2a589', '#7b6a5d'],
   },
   {
+    slug: 'ipl-photorejuvenation',
+    category: 'aesthetics',
+    group: 'Laser & Skin',
+    title: 'IPL Photorejuvenation',
+    menuTitle: 'IPL Rejuvenation',
+    tagline: 'Light that lifts away the years — clearer, brighter, even.',
+    metaTitle: 'IPL Photorejuvenation in London (Islington) | KClinics',
+    metaDescription:
+      'IPL photorejuvenation in Islington, London — clears sun damage and pigmentation, calms redness and rosacea, and brightens dull skin. Expert clinicians at KClinics. Free consultation.',
+    keywords: ['IPL London', 'photorejuvenation London', 'IPL rosacea treatment', 'pigmentation removal Islington', 'sun damage treatment London'],
+    eyebrow: 'Laser & Skin',
+    intro:
+      'Intense Pulsed Light (IPL) floods the skin with gentle, broad-spectrum light that the body absorbs exactly where it’s needed — breaking up sun spots and uneven pigmentation, calming the diffuse redness of rosacea and broken capillaries, and coaxing the complexion into a brighter, more even, more luminous version of itself. A true photo-facial, with little to no downtime.',
+    benefits: [
+      { title: 'Fades sun damage', text: 'Lightens age spots, freckling and the uneven pigment left by years of sun.' },
+      { title: 'Calms redness', text: 'Targets rosacea, flushing and broken capillaries for a more even tone.' },
+      { title: 'Brightens & evens', text: 'A clearer, more radiant complexion with refined texture over a course.' },
+      { title: 'Little downtime', text: 'A warm, quick treatment — most clients return to their day straight after.' },
+    ],
+    process: [
+      { title: 'Consultation & patch test', text: 'We assess your skin type and concern, and confirm IPL is right for you.' },
+      { title: 'Your sessions', text: 'A short course, spaced a few weeks apart, builds a clear, even result.' },
+      { title: 'Radiant maintenance', text: 'Occasional top-ups keep pigmentation and redness at bay.' },
+    ],
+    faqs: [
+      { q: 'What does IPL treat?', a: 'IPL is ideal for sun damage and pigmentation, facial redness and rosacea, and overall photo-rejuvenation — brightening and evening the skin. We confirm suitability at your complimentary consultation.' },
+      { q: 'How many sessions will I need?', a: 'Most concerns respond well over three to six sessions, spaced around three weeks apart, with a plan agreed at your consultation.' },
+      { q: 'Is there any downtime?', a: 'Very little. Pigmented spots may darken briefly before flaking away over a few days; any warmth or pinkness usually settles within hours.' },
+    ],
+    facts: [
+      { label: 'Course', value: '3–6 sessions' },
+      { label: 'Interval', value: '~3 weeks' },
+      { label: 'Downtime', value: 'Minimal' },
+    ],
+    related: ['laser-skin-rejuvenation', 'hydraglow-facial'],
+    gradient: ['#d9b08c', '#8a6f59'],
+  },
+  {
     slug: 'laser-hair-removal-for-men',
     category: 'aesthetics',
     group: 'Laser & Skin',
@@ -769,6 +807,7 @@ export const bookingConfig: Record<string, BookingCfg> = {
   'dental-consultations':        { durationMin: 30 },
   // Imported treatments.
   'laser-skin-rejuvenation':     { durationMin: 25, bufferMin: 10, requiresResource: 'laser' },
+  'ipl-photorejuvenation':       { durationMin: 30, bufferMin: 10, requiresResource: 'laser' },
   'pigmentation-correction':     { durationMin: 20, bufferMin: 10, requiresResource: 'laser' },
   'vascular-lesions-treatment':  { durationMin: 20, bufferMin: 10, requiresResource: 'laser' },
   'scar-stretch-mark-reduction': { durationMin: 45, bufferMin: 10 },

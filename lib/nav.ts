@@ -24,6 +24,7 @@ export const primaryNav: NavGroup[] = [
           { label: 'RF Skin Tightening', href: '/rf-lifting', description: 'Firm, sculpt, renew' },
           { label: 'HydraGlow Facial', href: '/hydraglow-facial', description: 'Instant luminosity' },
           { label: 'Laser Skin Rejuvenation', href: '/laser-skin-rejuvenation', description: 'Even, radiant tone' },
+          { label: 'IPL Rejuvenation', href: '/ipl-photorejuvenation', description: 'Sun damage, redness & glow' },
           { label: 'Microcurrent Facial', href: '/microcurrent', description: 'Non-surgical lift & tone' },
           { label: 'LED Light Therapy', href: '/led-therapy', description: 'Calm, clear, renew' },
           { label: 'BB Glow', href: '/bb-glow', description: 'Luminous, even glow' },
