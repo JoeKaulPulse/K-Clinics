@@ -24,13 +24,24 @@ export function BeforePhotoCapture({ bookingId, clientId, photos, optOutSigned, 
 
   useEffect(() => () => stopCam(), []);
 
+  // Attach the stream AFTER the <video> has mounted. The element is only rendered
+  // once `on` is true, so assigning srcObject inside startCam (which runs before
+  // that render) hit a null ref and left the preview black.
+  useEffect(() => {
+    const v = video.current;
+    if (on && v && stream.current && v.srcObject !== stream.current) {
+      v.srcObject = stream.current;
+      v.play().catch(() => {});
+    }
+  }, [on]);
+
   async function startCam() {
     setErr('');
     try {
       const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } }, audio: false });
-      stream.current = s; if (video.current) { video.current.srcObject = s; await video.current.play(); }
-      setOn(true);
-    } catch { setErr('Could not access the camera. Check permissions.'); }
+      stream.current = s;
+      setOn(true); // the effect above attaches the stream once the <video> mounts
+    } catch { setErr('Could not access the camera — check the browser’s camera permission (Safari/Chrome over https).'); }
   }
   function stopCam() { stream.current?.getTracks().forEach((t) => t.stop()); stream.current = null; setOn(false); }
 
@@ -59,6 +70,11 @@ export function BeforePhotoCapture({ bookingId, clientId, photos, optOutSigned, 
     if (j.ok) setOptLink(j.url);
   }
 
+  const guide = guideFor(area);
+  const guideHint = area.trim()
+    ? `Frame the ${area.trim()} within the outline and keep it centred.`
+    : 'Tip: type the area above and a framing guide will appear.';
+
   return (
     <div>
       <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Before photo <span className="text-xs font-normal text-[var(--color-blush)]">· required for laser</span></h2>
@@ -85,7 +101,18 @@ export function BeforePhotoCapture({ bookingId, clientId, photos, optOutSigned, 
           <div className="mt-3">
             {!shot ? (
               <>
-                {on && <video ref={video} playsInline muted className="mb-2 w-full max-w-sm rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-black" />}
+                {on && (
+                  <>
+                    <div className="relative mb-1 w-full max-w-sm">
+                      <video ref={video} playsInline muted autoPlay className="block w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-black" />
+                      <GuideOverlay guide={guide} />
+                      {guide.side && (
+                        <span className="absolute left-1/2 top-2 -translate-x-1/2 rounded-full bg-black/65 px-2.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-white">{guide.side} side</span>
+                      )}
+                    </div>
+                    <p className="mb-2 text-xs text-[var(--color-stone)]">{guideHint}</p>
+                  </>
+                )}
                 <label className="mb-2 flex items-start gap-2 text-xs text-[var(--color-stone)]">
                   <input type="checkbox" checked={attest} onChange={(e) => setAttest(e.target.checked)} className="mt-0.5 accent-[var(--color-gold)]" />
                   I confirm this is a <strong>non-intimate</strong> treatment area and the client has consented to the photo.
@@ -127,5 +154,38 @@ export function BeforePhotoCapture({ bookingId, clientId, photos, optOutSigned, 
         {photos.length > 0 && <p className="mt-3 text-sm text-[var(--color-jade)]">✓ Before photo on file.</p>}
       </div>
     </div>
+  );
+}
+
+type Guide = { kind: 'face' | 'leg' | 'arm' | 'frame'; side?: 'left' | 'right' };
+
+// Pick a framing outline from the typed area, so the clinician lines the shot up
+// consistently (the same area/angle every visit makes before/after comparable).
+function guideFor(area: string): Guide {
+  const a = area.toLowerCase();
+  const side = /\bleft\b|\bl\.?\b|\(l\)/.test(a) ? 'left' : /\bright\b|\br\.?\b|\(r\)/.test(a) ? 'right' : undefined;
+  if (/face|cheek|chin|jaw|forehead|lip|nose|brow|temple|neck/.test(a)) return { kind: 'face' };
+  if (/leg|thigh|calf|shin|knee|ankle|foot/.test(a)) return { kind: 'leg', side };
+  if (/arm|underarm|armpit|forearm|hand|elbow|wrist|shoulder/.test(a)) return { kind: 'arm', side };
+  return { kind: 'frame' };
+}
+
+// A translucent dashed outline laid over the live preview. Purely a visual aid —
+// it is NOT part of the captured image (capture draws from the <video> only).
+function GuideOverlay({ guide }: { guide: Guide }) {
+  return (
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden className="pointer-events-none absolute inset-0 h-full w-full">
+      <g fill="none" stroke="#ffffff" strokeOpacity="0.9" strokeWidth="0.8" strokeDasharray="2.5 2" strokeLinecap="round" strokeLinejoin="round">
+        {guide.kind === 'face' && (
+          <>
+            <ellipse cx="50" cy="46" rx="23" ry="31" />
+            <line x1="50" y1="20" x2="50" y2="72" strokeOpacity="0.3" strokeDasharray="1 3" />
+          </>
+        )}
+        {guide.kind === 'leg' && <path d="M41 5 H59 C62 34 60 64 55 95 H45 C40 64 38 34 41 5 Z" />}
+        {guide.kind === 'arm' && <path d="M45 5 H55 C57 34 56 64 53 95 H47 C44 64 43 34 45 5 Z" />}
+        {guide.kind === 'frame' && <rect x="12" y="14" width="76" height="72" rx="6" />}
+      </g>
+    </svg>
   );
 }
