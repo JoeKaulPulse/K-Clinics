@@ -43,6 +43,23 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
   if (amountPence > ceilingPence) {
     return { ok: false, error: `That amount looks too high for this booking (max £${Math.round(ceilingPence / 100)}). Please double-check the figure.` };
   }
+  // Compliance gate: never take payment unless the client-facing clinical
+  // requirements are on file. This also closes the "Mark completed → charge"
+  // shortcut, which sets COMPLETED without the Start workflow's gates — so a
+  // client could otherwise be charged with no consent / before-photo recorded.
+  const { getSetting } = await import('@/lib/settings');
+  if (await getSetting('require_consent')) {
+    const consent = await db.signedConsent.findFirst({ where: { bookingId, kind: 'treatment' } });
+    if (!consent) return { ok: false, error: 'Capture the signed treatment consent before taking payment.' };
+  }
+  const { isLaserTreatment } = await import('@/lib/consent');
+  if (isLaserTreatment(booking.treatmentSlug) && (await getSetting('require_before_photo'))) {
+    const [photoCount, optOut] = await Promise.all([
+      db.beforePhoto.count({ where: { bookingId } }),
+      db.signedConsent.findFirst({ where: { bookingId, kind: 'photo_opt_out' } }),
+    ]);
+    if (photoCount === 0 && !optOut) return { ok: false, error: 'Capture a before photo (or take a signed opt-out) before taking payment.' };
+  }
 
   const res = await chargeBooking(booking, Math.round(amountPence), { late: false });
   const { logAudit } = await import('@/lib/audit');
