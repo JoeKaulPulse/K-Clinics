@@ -8,6 +8,7 @@ import { site } from '@/lib/site';
 import { GlobalSearch } from '@/components/admin/GlobalSearch';
 import { GuideHost } from '@/components/guide/GuideHost';
 import { CloseDownReminder } from '@/components/admin/CloseDownReminder';
+import { ReportProblem } from '@/components/admin/ReportProblem';
 import { I18nProvider } from '@/components/i18n/I18nProvider';
 import { translator, isLocale, LOCALES, LOCALE_LABELS, DEFAULT_LOCALE, type Locale } from '@/lib/i18n';
 
@@ -52,6 +53,7 @@ const navGroups: { heading?: string; items: NavItem[] }[] = [
     { href: '/admin/sops', key: 'nav.sops', perm: 'sop.manage' },
     { href: '/admin/consent', key: 'nav.consent', perm: 'settings.manage' },
     { href: '/admin/day-close', key: 'nav.dayclose', perm: 'dayclose.run' },
+    { href: '/admin/build', key: 'nav.build', perm: 'build.view' },
   ] },
   { heading: 'nav.group.marketing', items: [
     { href: '/admin/marketing', key: 'nav.marketing', exact: true, perm: 'campaigns.view' },
@@ -263,6 +265,7 @@ export function AdminShell({
           {allowed.has('dayclose.run') && <CloseDownReminder />}
           {children}
         </main>
+        {allowed.has('build.view') && <ReportProblem />}
       </div>
       <GuideHost />
     </I18nProvider>
