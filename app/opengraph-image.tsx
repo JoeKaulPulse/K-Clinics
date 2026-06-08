@@ -1,69 +1,18 @@
-import { ImageResponse } from 'next/og';
 import { site } from '@/lib/site';
+import { renderOg, ogSize, ogContentType } from '@/lib/og';
+import { pageImage } from '@/lib/treatment-images';
 
 // Generated at build time (Node) so it works in a static export for GitHub Pages.
 export const dynamic = 'force-static';
 export const alt = `${site.name} — ${site.tagline}`;
-export const size = { width: 1200, height: 630 };
-export const contentType = 'image/png';
+export const size = ogSize;
+export const contentType = ogContentType;
 
 export default function OG() {
-  return new ImageResponse(
-    (
-      <div
-        style={{
-          position: 'relative',
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          padding: 80,
-          backgroundColor: '#2a2420',
-          backgroundImage:
-            'radial-gradient(120% 120% at 80% -10%, rgba(169,138,109,0.35), rgba(42,36,32,0) 55%)',
-          color: '#f6ece3',
-          fontFamily: 'serif',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <div
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: 999,
-              border: '2px solid #a98a6d',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 34,
-            }}
-          >
-            K
-          </div>
-          <div style={{ fontSize: 30, letterSpacing: 1 }}>KClinics · London</div>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ fontSize: 76, lineHeight: 1.05, letterSpacing: -1 }}>
-            Aesthetics & dentistry,
-          </div>
-          <div style={{ fontSize: 76, lineHeight: 1.05, color: '#dcc4a8', letterSpacing: -1 }}>
-            perfected.
-          </div>
-          <div
-            style={{
-              marginTop: 28,
-              fontSize: 26,
-              fontFamily: 'sans-serif',
-              color: 'rgba(248,241,236,0.72)',
-            }}
-          >
-            Laser & skin · Non-surgical lifting · Aesthetic dentistry — Islington, London
-          </div>
-        </div>
-      </div>
-    ),
-    { ...size },
-  );
+  return renderOg({
+    eyebrow: `${site.name} · London`,
+    title: site.tagline,
+    accent: 'beautifully personal',
+    image: pageImage('home'),
+  });
 }
