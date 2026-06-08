@@ -31,7 +31,7 @@ const PR = (n: number) => `https://github.com/JoeKaulPulse/K-Clinics/pull/${n}`;
 export const BUILD_BACKLOG: BacklogItem[] = [
   // ── Shipped this session ──────────────────────────────────────────────────
   {
-    title: 'Enhance search (admin + public) — powerful & access-gated', type: 'TASK', urgency: 'P1', status: 'SHIPPED', pr: PR(325),
+    title: 'Enhance search (admin + public) — powerful & access-gated', type: 'TASK', urgency: 'P1', status: 'SHIPPED', pr: PR(331),
     value: 8, effort: 5,
     detail: 'Make search powerful everywhere it appears — admin global search and the public website — gated by user type and access, except public marketing-page search which stays open to anyone (incl. non-users).',
     notes: [
