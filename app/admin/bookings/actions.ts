@@ -35,6 +35,14 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
   if (booking.status !== 'COMPLETED') {
     return { ok: false, error: 'Mark the appointment as completed before taking payment.' };
   }
+  // Fat-finger guard: an off-session charge goes straight through with no client
+  // approval, so cap the amount well above any realistic add-on/discount but far
+  // below a missing-decimal typo. 4× the booked price, or £5,000 for
+  // on-consultation (£0) bookings where the assessed amount is set here.
+  const ceilingPence = booking.pricePence > 0 ? booking.pricePence * 4 : 500_000;
+  if (amountPence > ceilingPence) {
+    return { ok: false, error: `That amount looks too high for this booking (max £${Math.round(ceilingPence / 100)}). Please double-check the figure.` };
+  }
 
   const res = await chargeBooking(booking, Math.round(amountPence), { late: false });
   const { logAudit } = await import('@/lib/audit');
