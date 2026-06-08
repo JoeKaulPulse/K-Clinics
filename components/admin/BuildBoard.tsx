@@ -31,7 +31,7 @@ export function BuildBoard({ canManage, github, staff }: { canManage: boolean; g
   const [active, setActive] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
   const [gh, setGh] = useState<{ connected: boolean; repo: string | null }>({ connected: github, repo: null });
-  const [ghForm, setGhForm] = useState({ repo: '', token: '', busy: false, error: '' });
+  const [ghForm, setGhForm] = useState({ repo: 'JoeKaulPulse/K-Clinics', token: '', busy: false, error: '' });
 
   const load = useCallback(async (force = false) => {
     if (!force && typeof document !== 'undefined' && document.hidden) return; // pause when backgrounded
@@ -75,7 +75,7 @@ export function BuildBoard({ canManage, github, staff }: { canManage: boolean; g
       {canManage && !gh.connected && (
         <div className="mb-5 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
           <h2 className="font-[family-name:var(--font-display)] text-lg">Connect GitHub</h2>
-          <p className="mt-1 text-sm text-[var(--color-stone)]">Link a repo so items can be pushed to GitHub issues (and P0/P1 auto-create one). Create a fine-grained token with <strong>Issues: read &amp; write</strong> on the repo, then paste it below — it’s stored encrypted.</p>
+          <p className="mt-1 text-sm text-[var(--color-stone)]">Link a repo so items can be pushed to GitHub issues (and P0/P1 auto-create one). Create a fine-grained token scoped to this repo with <strong>Metadata: Read</strong> + <strong>Issues: Read &amp; write</strong>, then paste it below — it’s stored encrypted. (Pasting a full GitHub URL works too.)</p>
           <div className="mt-3 flex flex-wrap items-end gap-2">
             <label className="text-xs text-[var(--color-stone)]">Repository<br /><input value={ghForm.repo} onChange={(e) => setGhForm((f) => ({ ...f, repo: e.target.value }))} placeholder="owner/name" className="mt-1 w-56 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" /></label>
             <label className="text-xs text-[var(--color-stone)]">Access token<br /><input type="password" value={ghForm.token} onChange={(e) => setGhForm((f) => ({ ...f, token: e.target.value }))} placeholder="github_pat_… / ghp_…" className="mt-1 w-64 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" /></label>
