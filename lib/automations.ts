@@ -1,6 +1,6 @@
 import 'server-only';
 import { db } from './db';
-import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder } from './email';
+import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking } from './email';
 import { site } from './site';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || site.url;
@@ -14,11 +14,11 @@ const WIN_BACK_MONTHS = 6;
 const TIER_NUDGE_PENCE = 20000;   // nudge clients within £200 of the next tier
 const ANNIVERSARY_POINTS = 1000;  // bonus points on a membership anniversary
 
-type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; reencrypted: number; errors: number };
+type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; reencrypted: number; errors: number };
 
 export async function runDailyAutomations(): Promise<Tally> {
-  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, reencrypted: 0, errors: 0 };
-  await Promise.all([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), keyReencryption(t)]);
+  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, reencrypted: 0, errors: 0 };
+  await Promise.all([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), keyReencryption(t)]);
   return t;
 }
 
@@ -77,6 +77,39 @@ async function anniversaries(t: Tally) {
       res.ok ? t.anniversaries++ : t.errors++;
     }
   } catch (e) { t.errors++; console.error('[automations] anniversaries failed:', (e as Error)?.message); }
+}
+
+// ── Abandoned-booking recovery (opt-in) ──
+// A one-time nudge to clients who began a booking but never saved a card, so the
+// slot was never held. Gated behind the abandoned_booking_recovery setting.
+async function abandonedBookings(t: Tally) {
+  try {
+    const { getSetting } = await import('@/lib/settings');
+    if (!(await getSetting('abandoned_booking_recovery'))) return;
+    const base = (SITE_URL || '').replace(/\/$/, '');
+    const now = Date.now();
+    const rows = await db.booking.findMany({
+      where: {
+        status: 'PENDING',
+        stripePaymentMethodId: null,
+        createdAt: { gte: new Date(now - 72 * 3600e3), lte: new Date(now - 2 * 3600e3) },
+        startAt: { gt: new Date() },
+      },
+      include: { client: true },
+      take: 500,
+    });
+    for (const b of rows) {
+      const c = b.client;
+      if (!c || !canEmailCare(c)) continue;
+      // Once per booking only.
+      const dup = await db.emailEvent.findFirst({ where: { clientId: c.id, kind: 'ABANDONED_BOOKING', status: 'SENT', meta: { path: ['bookingId'], equals: b.id } } });
+      if (dup) continue;
+      const resumeUrl = `${base}/book?treatment=${encodeURIComponent(b.treatmentSlug)}`;
+      const res = await sendEmail({ to: c.email, subject: `Finish booking your ${b.treatmentTitle}`, html: tmplAbandonedBooking({ firstName: c.firstName, treatment: b.treatmentTitle, resumeUrl }) });
+      await db.emailEvent.create({ data: { clientId: c.id, kind: 'ABANDONED_BOOKING', to: c.email, subject: `Finish your ${b.treatmentTitle} booking`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { bookingId: b.id } } }).catch(() => {});
+      res.ok ? t.abandonedBookings++ : t.errors++;
+    }
+  } catch (e) { t.errors++; console.error('[automations] abandoned bookings failed:', (e as Error)?.message); }
 }
 
 // Deliver any scheduled gift vouchers whose chosen delivery date has arrived.
