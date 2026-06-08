@@ -26,6 +26,34 @@ function variantNote(durationMin: number, courses: { sessions: number; totalPenc
   return parts.join(' · ');
 }
 
+// Area grouping for treatments whose variants are body areas (laser/IPL): turns a
+// long flat list (e.g. 39 areas) into scannable, head-to-toe sections. Combination
+// packages are grouped together; anything unmatched falls into "Other areas".
+const AREA_GROUPS: { heading: string; re: RegExp }[] = [
+  { heading: 'Face', re: /face|lip|chin|cheek|jaw|sideburn|forehead|eyebrow|brow|nose|nasal/i },
+  { heading: 'Neck', re: /neck/i },
+  { heading: 'Underarms', re: /underarm|armpit/i },
+  { heading: 'Arms & hands', re: /\barms?\b|forearm|hand|knuckle|elbow/i },
+  { heading: 'Body & torso', re: /chest|back|abdomen|stomach|tummy|shoulder|nipple|navel|areola|breast|full body/i },
+  { heading: 'Bikini & intimate', re: /bikini|brazilian|hollywood|peri-?anal|\bbehind\b|intimate|buttock/i },
+  { heading: 'Legs & feet', re: /\blegs?\b|thigh|calf|shin|knee|ankle|feet|foot|toe/i },
+];
+function groupAreas<T extends { name: string }>(items: T[]): { heading: string; items: T[] }[] | null {
+  // Treat anything joining areas (&, /, ", ", "and") as a combination package —
+  // ignoring parenthetical notes like "Eyebrows (above bridge of nose)".
+  const isCombo = (n: string) => /[&/]|,|\band\b/i.test(n.replace(/\([^)]*\)/g, ''));
+  const headingFor = (n: string) => (isCombo(n) ? 'Combinations & packages' : AREA_GROUPS.find((g) => g.re.test(n))?.heading ?? 'Other areas');
+  const order = [...AREA_GROUPS.map((g) => g.heading), 'Combinations & packages', 'Other areas'];
+  const byHeading = new Map<string, T[]>();
+  for (const it of items) {
+    const h = headingFor(it.name);
+    const arr = byHeading.get(h);
+    if (arr) arr.push(it); else byHeading.set(h, [it]);
+  }
+  if (byHeading.size <= 1) return null; // nothing gained by grouping
+  return order.filter((h) => byHeading.has(h)).map((h) => ({ heading: h, items: byHeading.get(h)! }));
+}
+
 export async function TreatmentTemplate({ t }: { t: Treatment }) {
   const categoryHref = t.category === 'aesthetics' ? '/treatments' : '/dentistry';
   const categoryLabel = t.category === 'aesthetics' ? 'Aesthetics' : 'Dentistry';
@@ -39,6 +67,32 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
   const offerName = pricing?.offerName ?? null;
   const variants = pricing?.variants ?? [];
   const hasPrice = fromPence != null;
+  // Group laser/IPL areas by body part (falls back to a flat list otherwise).
+  const groupedAreas = /laser|ipl/i.test(t.slug) ? groupAreas(variants) : null;
+  const variantRow = (v: (typeof variants)[number]) => {
+    const note = variantNote(v.durationMin, v.courses, v.pricePence);
+    const unavailable = v.status === 'COMING_SOON' || v.status === 'UNAVAILABLE';
+    return (
+      <li key={v.id} className="flex items-baseline justify-between gap-4 bg-[var(--color-porcelain)] px-6 py-5">
+        <div>
+          <p className="font-[family-name:var(--font-display)] text-lg text-[var(--color-ink)]">{v.name}</p>
+          {!unavailable && note && <p className="mt-0.5 text-sm text-[var(--color-stone)]">{note}</p>}
+          {v.offerPence != null && v.offerName && <p className="mt-0.5 text-sm font-medium text-[var(--color-gold)]">{v.offerName}</p>}
+        </div>
+        <p className="shrink-0 font-[family-name:var(--font-display)] text-xl text-[var(--color-ink)]">
+          {unavailable ? (
+            <span className="text-sm font-medium uppercase tracking-wide text-[var(--color-stone)]">{statusLabel(v.status)}</span>
+          ) : v.status === 'CONSULTATION' ? (
+            <span className="text-base text-[var(--color-stone)]">On consultation</span>
+          ) : v.offerPence != null ? (
+            <span><span className="mr-2 text-base text-[var(--color-stone-soft)] line-through">{formatPence(v.pricePence)}</span>{formatPence(v.offerPence)}</span>
+          ) : (
+            formatPence(v.pricePence)
+          )}
+        </p>
+      </li>
+    );
+  };
 
   // Effective service status: admin status wins; code-level onRequest forces
   // "coming soon" (machine not in yet) when admin hasn't set a non-normal status.
@@ -238,32 +292,22 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
             </Reveal>
             <Reveal delay={0.1}>
               {!enquiryOnly && variants.length ? (
-                <ul className="divide-y divide-[var(--color-line)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
-                  {variants.map((v) => {
-                    const note = variantNote(v.durationMin, v.courses, v.pricePence);
-                    const unavailable = v.status === 'COMING_SOON' || v.status === 'UNAVAILABLE';
-                    return (
-                      <li key={v.id} className="flex items-baseline justify-between gap-4 bg-[var(--color-porcelain)] px-6 py-5">
-                        <div>
-                          <p className="font-[family-name:var(--font-display)] text-lg text-[var(--color-ink)]">{v.name}</p>
-                          {!unavailable && note && <p className="mt-0.5 text-sm text-[var(--color-stone)]">{note}</p>}
-                          {v.offerPence != null && v.offerName && <p className="mt-0.5 text-sm font-medium text-[var(--color-gold)]">{v.offerName}</p>}
-                        </div>
-                        <p className="shrink-0 font-[family-name:var(--font-display)] text-xl text-[var(--color-ink)]">
-                          {unavailable ? (
-                            <span className="text-sm font-medium uppercase tracking-wide text-[var(--color-stone)]">{statusLabel(v.status)}</span>
-                          ) : v.status === 'CONSULTATION' ? (
-                            <span className="text-base text-[var(--color-stone)]">On consultation</span>
-                          ) : v.offerPence != null ? (
-                            <span><span className="mr-2 text-base text-[var(--color-stone-soft)] line-through">{formatPence(v.pricePence)}</span>{formatPence(v.offerPence)}</span>
-                          ) : (
-                            formatPence(v.pricePence)
-                          )}
-                        </p>
-                      </li>
-                    );
-                  })}
-                </ul>
+                groupedAreas ? (
+                  <div className="space-y-6">
+                    {groupedAreas.map((g) => (
+                      <div key={g.heading}>
+                        <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-[var(--color-stone)]">{g.heading}</p>
+                        <ul className="divide-y divide-[var(--color-line)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+                          {g.items.map(variantRow)}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-[var(--color-line)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+                    {variants.map(variantRow)}
+                  </ul>
+                )
               ) : (
                 <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-8 py-10 text-center">
                   <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">{enquiryOnly ? 'Status' : 'Pricing'}</p>
