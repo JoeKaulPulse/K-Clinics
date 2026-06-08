@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   // Replying as the clinic, taking a chat off the AI, or closing it are write
   // actions — read-only staff (clients.view) shouldn't be able to message
   // visitors. Gate the mutating ops behind consultations.manage.
-  if (['reply', 'setMode', 'close'].includes(b.op)) {
+  if (['reply', 'setMode', 'close', 'emailTranscript'].includes(b.op)) {
     const writer = await requirePermission('consultations.manage');
     if (!writer) return NextResponse.json({ ok: false, error: 'You don’t have permission to respond to chats.' }, { status: 403 });
   }
@@ -41,7 +41,16 @@ export async function POST(req: Request) {
       ]);
       if (!convo) return NextResponse.json({ ok: false }, { status: 404 });
       await db.chatConversation.update({ where: { id }, data: { staffUnread: 0 } }).catch(() => {});
-      return NextResponse.json({ ok: true, conversation: convo, messages: messages.map((m) => ({ ...m, createdAt: m.createdAt.toISOString() })) });
+      const { listChatEmails } = await import('@/lib/chat-email');
+      const emails = await listChatEmails(id);
+      return NextResponse.json({ ok: true, conversation: convo, messages: messages.map((m) => ({ ...m, createdAt: m.createdAt.toISOString() })), emails: emails.map((e) => ({ id: e.id, to: e.to, subject: e.subject, status: e.status, openedAt: e.openedAt?.toISOString() || null, createdAt: e.createdAt.toISOString(), chatKind: (e.meta as { chatKind?: string } | null)?.chatKind || 'reply' })) });
+    }
+    case 'emailTranscript': {
+      const id = String(b.conversationId || '');
+      if (!id) return NextResponse.json({ ok: false, error: 'Missing conversation.' }, { status: 400 });
+      const { emailChatTranscript } = await import('@/lib/chat-email');
+      const r = await emailChatTranscript(id, { actor: session.email });
+      return NextResponse.json(r, { status: r.ok ? 200 : 400 });
     }
     case 'reply': {
       const id = String(b.conversationId || '');

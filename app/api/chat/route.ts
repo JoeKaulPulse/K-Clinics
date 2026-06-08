@@ -61,6 +61,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // Visitor asks us to email them the chat ("email me this chat"). They can
+  // supply an email if they didn't leave one earlier.
+  if (b.op === 'emailTranscript') {
+    const token = clean(b.token, 60);
+    if (!token) return NextResponse.json({ ok: false, error: 'Bad request.' }, { status: 400 });
+    const convo = await db.chatConversation.findUnique({ where: { token }, select: { id: true, visitorEmail: true } });
+    if (!convo) return NextResponse.json({ ok: false, error: 'Conversation not found.' }, { status: 404 });
+    const email = clean(b.email, 160).toLowerCase();
+    if (!convo.visitorEmail && !email) return NextResponse.json({ ok: false, error: 'Enter your email so we can send it.' }, { status: 400 });
+    const { emailChatTranscript } = await import('@/lib/chat-email');
+    const r = await emailChatTranscript(convo.id, { actor: 'visitor', toOverride: convo.visitorEmail ? undefined : email });
+    return NextResponse.json(r, { status: r.ok ? 200 : 400 });
+  }
+
   return NextResponse.json({ ok: false, error: 'Unknown op' }, { status: 400 });
 }
 

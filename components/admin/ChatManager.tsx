@@ -16,6 +16,7 @@ export function ChatManager() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [meta, setMeta] = useState<{ visitorName: string | null; visitorEmail: string | null; status: string; mode: string; page?: string | null } | null>(null);
   const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [emails, setEmails] = useState<{ id: string; to: string; subject: string; status: string; openedAt: string | null; createdAt: string; chatKind: string }[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -30,7 +31,7 @@ export function ChatManager() {
     if (initial) { setLoading(true); setThreadError(null); }
     try {
       const r = await post({ op: 'messages', conversationId: id });
-      if (r.ok && r.conversation) { setMeta(r.conversation); setMsgs(r.messages || []); setThreadError(null); }
+      if (r.ok && r.conversation) { setMeta(r.conversation); setMsgs(r.messages || []); setEmails(r.emails || []); setThreadError(null); }
       else if (initial) setThreadError(r.error || 'This conversation could not be loaded.');
     } catch {
       if (initial) setThreadError('Network error — please retry.');
@@ -67,6 +68,13 @@ export function ChatManager() {
     }
   }
   async function close() { if (!activeId) return; await post({ op: 'close', conversationId: activeId }); loadThread(activeId); loadList(); }
+  async function emailTranscript() {
+    if (!activeId) return;
+    setBusy(true);
+    const r = await post({ op: 'emailTranscript', conversationId: activeId });
+    setBusy(false);
+    if (r.ok) loadThread(activeId); else alert(r.error || 'Could not email the transcript.');
+  }
   async function setMode(mode: 'AI' | 'STAFF') {
     if (!activeId) return;
     setMeta((m) => (m ? { ...m, mode } : m));
@@ -115,12 +123,21 @@ export function ChatManager() {
                 </p>
               </div>
               <div className="flex items-center gap-3 text-xs">
+                {headerEmail && <button onClick={emailTranscript} disabled={busy} title={`Email the chat to ${headerEmail}`} className="font-medium text-[var(--color-gold-deep)] hover:underline disabled:opacity-50">✉ Email chat</button>}
                 {meta?.mode === 'AI'
                   ? <button onClick={() => setMode('STAFF')} className="font-medium text-[var(--color-gold)] hover:underline">Take over</button>
                   : <button onClick={() => setMode('AI')} className="font-medium text-[var(--color-gold)] hover:underline">Resume AI</button>}
                 <button onClick={close} className="text-[var(--color-stone)] hover:text-[var(--color-blush)]">Close chat</button>
               </div>
             </div>
+            {emails.length > 0 && (
+              <div className="border-b border-[var(--color-line)] bg-[var(--color-bone)]/40 px-4 py-1.5 text-[0.65rem] text-[var(--color-stone)]">
+                <span className="font-medium text-[var(--color-stone)]">Emails sent:</span>{' '}
+                {emails.slice(0, 4).map((e) => (
+                  <span key={e.id} className="mr-2 whitespace-nowrap">{e.chatKind === 'transcript' ? 'transcript' : 'reply'} · {e.status.toLowerCase()}{e.openedAt ? ' · opened' : ''} · {fmt(e.createdAt)}</span>
+                ))}
+              </div>
+            )}
             <div ref={scroller} className="flex-1 space-y-2 overflow-y-auto p-4">
               {msgs.length === 0 && loading && <p className="grid h-full place-items-center text-sm text-[var(--color-stone-soft)]">Loading conversation…</p>}
               {msgs.length === 0 && !loading && threadError && (

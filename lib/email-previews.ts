@@ -40,5 +40,11 @@ export function emailPreviews(): EmailPreview[] {
     { key: 'birthday', name: 'Birthday offer', group: 'Marketing', description: 'A birthday treat to re-engage.', html: E.tmplBirthday(name, '#') },
     { key: 'winBack', name: 'Win-back', group: 'Marketing', description: 'Re-engages a lapsed client.', html: E.tmplWinBack(name, '#') },
     { key: 'passwordReset', name: 'Password reset', group: 'Account', description: 'Secure reset link for the portal.', html: E.tmplPasswordReset(name, '#') },
+    { key: 'chatReply', name: 'Live-chat reply', group: 'Live chat', description: 'Emailed when staff/AI reply after a visitor leaves.', html: E.tmplChatReply({ visitorName: name, who: 'Sarah, Aesthetic Doctor, at KClinics', body: 'Hi Olivia — great question! A HydraFacial is perfect before an event; I’d leave 2–3 days for that glow to settle. Shall I find you a slot?' }) },
+    { key: 'chatTranscript', name: 'Live-chat transcript', group: 'Live chat', description: 'A copy of the conversation, sent to the visitor.', html: E.tmplChatTranscript({ visitorName: name, messages: [
+      { sender: 'VISITOR', authorName: null, body: 'Hi, how soon before a wedding should I have a HydraFacial?', createdAt: inDays(0) },
+      { sender: 'AI', authorName: null, body: 'Great question! Most clients have it 2–3 days before. Let me bring in our team for a tailored plan.', createdAt: inDays(0) },
+      { sender: 'STAFF', authorName: 'Sarah', body: 'Hi Olivia — 2–3 days is ideal. I could pencil you in next Tuesday at 2pm if that helps?', createdAt: inDays(0) },
+    ] }) },
   ] as EmailPreview[]).map((p) => ({ ...p, html: forPreview(p.html) }));
 }

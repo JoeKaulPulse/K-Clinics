@@ -43,6 +43,7 @@ enum EmailKind {
   CAMPAIGN
   MANUAL
   MEMBERSHIP
+  CHAT
 }
 
 enum EmailStatus {

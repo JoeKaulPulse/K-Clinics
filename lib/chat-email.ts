@@ -1,7 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db';
 import { site } from '@/lib/site';
-import { sendEmail, emailShell } from '@/lib/email';
+import { sendEmail, tmplChatReply, tmplChatTranscript } from '@/lib/email';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Live-chat ↔ email bridge.
@@ -29,7 +29,29 @@ const hostname = (() => { try { return new URL(site.url).hostname.replace(/^www\
 const INBOUND_DOMAIN = process.env.CHAT_INBOUND_DOMAIN || `mail.${hostname}`;
 const LEFT_MS = 90_000; // visitor considered "gone" after 90s of no activity
 
-const esc = (s: string) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] || c));
+// Chat email sends from the dedicated mail subdomain so in + out are unified on
+// one domain (replies route to the chat-<token>@ address on the same domain).
+export function chatFrom(): string { return `KClinics <chat@${INBOUND_DOMAIN}>`; }
+
+/** Log a chat email so it shows on the conversation audit + gets Resend status. */
+async function logChatEmail(o: { conversationId: string; clientId: string | null; to: string; subject: string; chatKind: 'reply' | 'transcript'; res: { ok: boolean; id?: string; error?: string } }) {
+  await db.emailEvent.create({
+    data: {
+      clientId: o.clientId, kind: 'CHAT', to: o.to, subject: o.subject,
+      status: o.res.ok ? 'SENT' : 'FAILED', providerId: o.res.id, error: o.res.error,
+      meta: { conversationId: o.conversationId, chatKind: o.chatKind },
+    },
+  }).catch(() => {});
+}
+
+/** Chat emails recorded for a conversation, newest first (for the audit panel). */
+export async function listChatEmails(conversationId: string) {
+  return db.emailEvent.findMany({
+    where: { kind: 'CHAT', meta: { path: ['conversationId'], equals: conversationId } },
+    orderBy: { createdAt: 'desc' }, take: 50,
+    select: { id: true, to: true, subject: true, status: true, openedAt: true, createdAt: true, meta: true },
+  }).catch(() => []);
+}
 
 /** The per-conversation reply address (Resend Inbound routes this to the webhook). */
 export function chatReplyAddress(token: string): string {
@@ -61,29 +83,57 @@ export async function emailChatMessage(messageId: string, opts: { force?: boolea
   const who = msg.sender === 'AI'
     ? 'K, our virtual assistant'
     : msg.authorName
-      ? `${esc(msg.authorName)}${msg.authorTitle ? `, ${esc(msg.authorTitle)},` : ''} at KClinics`
+      ? `${msg.authorName}${msg.authorTitle ? `, ${msg.authorTitle},` : ''} at KClinics`
       : 'the KClinics team';
   const tid = threadId(c.id);
-  const html = emailShell({
-    preheader: msg.body.slice(0, 120),
-    body: `<h1 style="font-size:24px;margin:0 0 16px;">A reply from KClinics</h1>
-      <p>Hi${c.visitorName ? ` ${esc(c.visitorName)}` : ''} — you were chatting with us and stepped away, so here's the reply from ${who}:</p>
-      <div style="margin:18px 0;padding:16px 18px;background:#efe3d7;border-radius:12px;white-space:pre-wrap;color:#2a2420;">${esc(msg.body)}</div>
-      <p style="color:#7d6259;font-size:14px;"><strong>Just reply to this email</strong> — your message goes straight back to the same conversation and we'll pick it up from there.</p>
-      <p style="margin-top:22px;">With warmth,<br>The KClinics team</p>`,
-  });
+  const html = tmplChatReply({ visitorName: c.visitorName, who, body: msg.body });
 
+  const subject = 'Re: your conversation with KClinics';
   const res = await sendEmail({
     to: c.visitorEmail,
-    subject: 'Re: your conversation with KClinics',
+    subject,
     html,
+    from: chatFrom(),
     replyTo: chatReplyAddress(c.token),
     headers: { 'In-Reply-To': tid, References: tid },
   });
   if (!res.ok) return false;
   await db.chatMessage.update({ where: { id: msg.id }, data: { emailedAt: new Date() } });
   await db.chatConversation.update({ where: { id: c.id }, data: { updatedAt: new Date() } }).catch(() => {});
+  await logChatEmail({ conversationId: c.id, clientId: c.clientId, to: c.visitorEmail, subject, chatKind: 'reply', res });
   return true;
+}
+
+/**
+ * Email the full conversation transcript to the visitor — on chat end, or when
+ * staff / the visitor request it. Records it on the audit and posts a system note.
+ */
+export async function emailChatTranscript(conversationId: string, opts: { actor: string; toOverride?: string } = { actor: 'system' }): Promise<{ ok: boolean; error?: string }> {
+  const c = await db.chatConversation.findUnique({
+    where: { id: conversationId },
+    include: { messages: { orderBy: { createdAt: 'asc' }, take: 500 } },
+  });
+  if (!c) return { ok: false, error: 'Conversation not found.' };
+  const to = (opts.toOverride || c.visitorEmail || '').trim();
+  if (!to) return { ok: false, error: 'No email address on this conversation.' };
+
+  const tid = threadId(c.id);
+  const subject = 'Your conversation with KClinics';
+  const res = await sendEmail({
+    to,
+    subject,
+    html: tmplChatTranscript({ visitorName: c.visitorName, messages: c.messages.map((m) => ({ sender: m.sender, authorName: m.authorName, body: m.body, createdAt: m.createdAt })) }),
+    from: chatFrom(),
+    replyTo: chatReplyAddress(c.token),
+    headers: { 'In-Reply-To': tid, References: tid },
+  });
+  if (!res.ok) return { ok: false, error: res.error || 'Could not send.' };
+  // If the visitor gave a new email here, remember it for future replies.
+  if (!c.visitorEmail && opts.toOverride) await db.chatConversation.update({ where: { id: c.id }, data: { visitorEmail: to.toLowerCase() } }).catch(() => {});
+  await db.chatMessage.create({ data: { conversationId: c.id, sender: 'AI', author: 'system', body: `📧 Transcript emailed to ${to}.`, via: 'email' } }).catch(() => {});
+  await db.chatConversation.update({ where: { id: c.id }, data: { lastMessageAt: new Date() } }).catch(() => {});
+  await logChatEmail({ conversationId: c.id, clientId: c.clientId, to, subject, chatKind: 'transcript', res });
+  return { ok: true };
 }
 
 /**

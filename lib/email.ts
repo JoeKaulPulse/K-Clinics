@@ -23,6 +23,8 @@ export async function sendEmail(opts: {
   replyTo?: string;
   /** Override the From *display name* only (address stays our verified sender). */
   fromName?: string;
+  /** Full From override ("Name <addr@domain>") — e.g. chat from mail.kclinics.co.uk. */
+  from?: string;
   /** Extra MIME headers, e.g. List-Unsubscribe for bulk marketing. */
   headers?: Record<string, string>;
   /** Extra file attachments (e.g. an .ics calendar invite). */
@@ -30,7 +32,7 @@ export async function sendEmail(opts: {
 }): Promise<SendResult> {
   if (!resend) return { ok: false, error: 'RESEND_API_KEY not configured' };
   try {
-    const from = opts.fromName?.trim() ? `${opts.fromName.trim()} <${FROM_ADDRESS}>` : FROM;
+    const from = opts.from?.trim() ? opts.from.trim() : opts.fromName?.trim() ? `${opts.fromName.trim()} <${FROM_ADDRESS}>` : FROM;
     const attachments = [...(brandAttachments(opts.html).attachments || []), ...(opts.attachments || [])];
     const { data, error } = await resend.emails.send({
       from,
@@ -505,6 +507,37 @@ export function tmplPaymentActionRequired(o: { firstName: string; treatment: str
     <p>Your bank needs you to confirm the payment of <strong>${fmtMoney(o.pricePence)}</strong> for your ${escape(o.treatment)}. It only takes a moment.</p>
     <p style="margin:24px 0;">${btn(o.payUrl, 'Confirm payment')}</p>
     <p>With warmth,<br>The KClinics team</p>`,
+  });
+}
+
+export function tmplChatReply(o: { visitorName?: string | null; who: string; body: string }) {
+  return emailShell({
+    preheader: o.body.slice(0, 120),
+    body: `${heroBand('chat')}
+    <h1 style="font-size:24px;margin:0 0 16px;">A reply from KClinics</h1>
+    <p>Hi${o.visitorName ? ` ${escape(o.visitorName)}` : ''} — you were chatting with us and stepped away, so here's the reply from ${escape(o.who)}:</p>
+    <div style="margin:18px 0;padding:16px 18px;background:#efe3d7;border-radius:12px;white-space:pre-wrap;color:#2a2420;">${escape(o.body)}</div>
+    <p style="color:#7d6259;font-size:14px;"><strong>Just reply to this email</strong> — your message goes straight back to the same conversation and we'll pick it up from there.</p>
+    <p style="margin-top:22px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
+export function tmplChatTranscript(o: { visitorName: string | null; messages: { sender: string; authorName: string | null; body: string; createdAt: Date }[] }) {
+  const row = (m: { sender: string; authorName: string | null; body: string; createdAt: Date }) => {
+    const t = m.createdAt.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+    const who = m.sender === 'VISITOR' ? (o.visitorName || 'You') : m.sender === 'AI' ? 'K · Assistant' : (m.authorName || 'KClinics');
+    const bg = m.sender === 'VISITOR' ? '#efe3d7' : '#ffffff';
+    return `<div style="margin:0 0 10px;"><p style="margin:0 0 3px;font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#a98a6d;">${escape(who)} · ${t}</p><div style="padding:10px 14px;background:${bg};border:1px solid rgba(42,36,32,0.08);border-radius:10px;white-space:pre-wrap;font-size:14px;color:#3d352f;">${escape(m.body)}</div></div>`;
+  };
+  const rows = o.messages.filter((m) => m.body.trim() && !m.body.startsWith('📧')).map(row).join('');
+  return emailShell({
+    preheader: 'A copy of your conversation with KClinics',
+    body: `${heroBand('chat')}
+    <h1 style="font-size:24px;margin:0 0 14px;">Your conversation${o.visitorName ? `, ${escape(o.visitorName)}` : ''}</h1>
+    <p>Here's a copy of your chat with KClinics, for your records.</p>
+    <div style="margin:18px 0;">${rows || '<p style="color:#91766e;">No messages yet.</p>'}</div>
+    <p style="color:#7d6259;font-size:14px;"><strong>Reply to this email</strong> any time to pick the conversation back up with our team.</p>
+    <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
   });
 }
 

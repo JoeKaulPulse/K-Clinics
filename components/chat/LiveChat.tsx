@@ -70,6 +70,19 @@ export function LiveChat() {
     finally { setBusy(false); }
   }
 
+  // Visitor asks us to email them the conversation. Uses the email they left, or
+  // prompts for one.
+  async function emailMe() {
+    if (!token) return;
+    let addr = email.trim();
+    if (!addr) { addr = (window.prompt('What email should we send the chat to?') || '').trim(); if (!addr) return; }
+    try {
+      const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'emailTranscript', token, email: addr }) });
+      const j = await res.json();
+      alert(j.ok ? 'Sent — check your inbox (and spam, just in case).' : (j.error || 'Sorry, that didn’t send.'));
+    } catch { alert('Sorry, that didn’t send.'); }
+  }
+
   return (
     <div className="fixed bottom-5 right-5 z-40 hidden md:block print:hidden">
       <AnimatePresence>
@@ -107,6 +120,9 @@ export function LiveChat() {
             <div className="border-t border-[var(--color-line)] p-3">
               {!token && (
                 <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email (optional — so we can reply if you leave)" className="mb-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-xs outline-none focus:border-[var(--color-gold)]" />
+              )}
+              {token && msgs.length > 0 && (
+                <button onClick={emailMe} className="mb-2 text-[0.7rem] text-[var(--color-stone)] underline hover:text-[var(--color-ink)]">Email me this chat</button>
               )}
               <div className="flex gap-2">
                 <input
