@@ -102,18 +102,19 @@ export function renderOg({
           }}
         />
 
-        {/* Brand lockup */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20, position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 66, height: 66, borderRadius: 999, border: '2px solid rgba(220,196,168,0.7)' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={MARK} width={30} height={30} alt="" />
-          </div>
-          <div style={{ display: 'flex', fontFamily: 'Geist', fontSize: 27, letterSpacing: 1, color: 'rgba(248,241,236,0.9)' }}>{eyebrow}</div>
+        {/* Brand lockup — the K monogram sits directly atop the CLINICS wordmark
+            (kept together per brand guidelines; no enclosing circle). */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 300, position: 'relative' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={MARK} height={96} alt="" style={{ height: 96 }} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={WORDMARK} width={300} alt="K Clinics" style={{ width: 300, marginTop: 6 }} />
         </div>
 
         {/* Headline block */}
         <div style={{ display: 'flex', flexDirection: 'column', position: 'relative' }}>
-          <div style={{ display: 'flex', fontFamily: 'Fraunces', fontSize: titleSize, lineHeight: 1.05, letterSpacing: -1, color: '#f8f1ec', maxWidth: 920 }}>
+          <div style={{ display: 'flex', fontFamily: 'Geist', fontSize: 22, letterSpacing: 5, textTransform: 'uppercase', color: '#dcc4a8' }}>{eyebrow}</div>
+          <div style={{ display: 'flex', marginTop: 18, fontFamily: 'Fraunces', fontSize: titleSize, lineHeight: 1.05, letterSpacing: -1, color: '#f8f1ec', maxWidth: 920 }}>
             {title}
           </div>
           {accent && (
@@ -122,11 +123,7 @@ export function renderOg({
           {!accent && tag && (
             <div style={{ display: 'flex', marginTop: 24, fontFamily: 'Geist', fontSize: 24, color: 'rgba(248,241,236,0.74)', maxWidth: 860 }}>{tag}</div>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 22, marginTop: 30 }}>
-            <div style={{ display: 'flex', height: 6, width: 132, backgroundImage: 'linear-gradient(90deg,#a98a6d,#dcc4a8)', borderRadius: 999 }} />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={WORDMARK} height={26} alt="K Clinics" style={{ height: 26, opacity: 0.92 }} />
-          </div>
+          <div style={{ display: 'flex', height: 6, width: 160, backgroundImage: 'linear-gradient(90deg,#a98a6d,#dcc4a8)', borderRadius: 999, marginTop: 30 }} />
           <div style={{ display: 'flex', marginTop: 18, fontFamily: 'Geist', fontSize: 19, letterSpacing: 1, color: 'rgba(248,241,236,0.6)' }}>{DESCRIPTOR}</div>
         </div>
       </div>
