@@ -13,15 +13,18 @@ import { I18nProvider } from '@/components/i18n/I18nProvider';
 import { translator, isLocale, LOCALES, LOCALE_LABELS, DEFAULT_LOCALE, type Locale } from '@/lib/i18n';
 
 type NavItem = { href: string; key: string; exact?: boolean; perm?: string; badge?: 'tasks' | 'timeoff' | 'chat' };
-const navGroups: { heading?: string; items: NavItem[] }[] = [
-  { heading: 'nav.group.today', items: [
+type GroupIconKey = 'today' | 'clients' | 'loyalty' | 'catalogue' | 'website' | 'operations' | 'marketing' | 'finance' | 'admin';
+const navGroups: { heading?: string; icon?: GroupIconKey; items: NavItem[] }[] = [
+  { heading: 'nav.group.today', icon: 'today', items: [
     { href: '/admin', key: 'nav.overview', exact: true, perm: 'dashboard.view' },
     { href: '/admin/my-day', key: 'nav.myday' },
     { href: '/admin/calendar', key: 'nav.calendar', perm: 'calendar.view' },
     { href: '/admin/tasks', key: 'nav.tasks', badge: 'tasks' },
     { href: '/admin/time-off', key: 'nav.timeoff', badge: 'timeoff' },
   ] },
-  { heading: 'nav.group.clients', items: [
+  // Clients & bookings: the people and conversations. Loyalty/offers split out
+  // below so this group stays focused on records and front-desk work.
+  { heading: 'nav.group.clients', icon: 'clients', items: [
     { href: '/admin/bookings', key: 'nav.bookings', perm: 'bookings.view' },
     { href: '/admin/consultations', key: 'nav.consultations', perm: 'consultations.view' },
     { href: '/admin/chat', key: 'nav.chat', perm: 'clients.view', badge: 'chat' },
@@ -29,14 +32,22 @@ const navGroups: { heading?: string; items: NavItem[] }[] = [
     { href: '/admin/clients', key: 'nav.clients', perm: 'clients.view' },
     { href: '/admin/reviews', key: 'nav.reviews', perm: 'reviews.manage' },
     { href: '/admin/nps', key: 'nav.nps', perm: 'reviews.manage' },
+  ] },
+  // Loyalty & offers: everything that gives a client a price break or a perk.
+  { heading: 'nav.group.loyalty', icon: 'loyalty', items: [
     { href: '/admin/discounts', key: 'nav.discounts', perm: 'discounts.manage' },
     { href: '/admin/promotions', key: 'nav.promotions', perm: 'discounts.manage' },
     { href: '/admin/rewards', key: 'nav.rewards', perm: 'rewards.view' },
     { href: '/admin/membership', key: 'nav.membership', perm: 'discounts.manage' },
+    { href: '/admin/gift-vouchers', key: 'nav.gift', perm: 'finance.view' },
   ] },
-  { heading: 'nav.group.catalogue', items: [
+  // Catalogue: what you sell — services and retail products.
+  { heading: 'nav.group.catalogue', icon: 'catalogue', items: [
     { href: '/admin/services', key: 'nav.services', perm: 'settings.manage' },
     { href: '/admin/products', key: 'nav.products', perm: 'settings.manage' },
+  ] },
+  // Website: the public-facing content and pages.
+  { heading: 'nav.group.website', icon: 'website', items: [
     { href: '/admin/pages', key: 'nav.pages', perm: 'settings.manage' },
     { href: '/admin/blocks', key: 'nav.blocks', perm: 'settings.manage' },
     { href: '/admin/journal', key: 'nav.journal', perm: 'settings.manage' },
@@ -44,9 +55,8 @@ const navGroups: { heading?: string; items: NavItem[] }[] = [
     { href: '/admin/academy', key: 'nav.academy', perm: 'settings.manage' },
     { href: '/admin/gallery', key: 'nav.gallery', perm: 'settings.manage' },
     { href: '/admin/careers', key: 'nav.careers', perm: 'settings.manage' },
-    { href: '/admin/gift-vouchers', key: 'nav.gift', perm: 'finance.view' },
   ] },
-  { heading: 'nav.group.operations', items: [
+  { heading: 'nav.group.operations', icon: 'operations', items: [
     { href: '/admin/schedule', key: 'nav.schedule', perm: 'schedule.manage' },
     { href: '/admin/inventory', key: 'nav.inventory', perm: 'inventory.view' },
     { href: '/admin/reorder', key: 'nav.reorder', perm: 'inventory.view' },
@@ -54,32 +64,32 @@ const navGroups: { heading?: string; items: NavItem[] }[] = [
     { href: '/admin/sops', key: 'nav.sops', perm: 'sop.manage' },
     { href: '/admin/consent', key: 'nav.consent', perm: 'settings.manage' },
     { href: '/admin/day-close', key: 'nav.dayclose', perm: 'dayclose.run' },
-    { href: '/admin/build', key: 'nav.build', perm: 'build.view' },
   ] },
-  { heading: 'nav.group.marketing', items: [
+  { heading: 'nav.group.marketing', icon: 'marketing', items: [
     { href: '/admin/marketing', key: 'nav.marketing', exact: true, perm: 'campaigns.view' },
     { href: '/admin/marketing/performance', key: 'nav.performance', perm: 'campaigns.view' },
     { href: '/admin/marketing/campaigns', key: 'nav.campaigns', perm: 'campaigns.view' },
     { href: '/admin/marketing/audiences', key: 'nav.audiences', perm: 'campaigns.view' },
-    { href: '/admin/brand', key: 'nav.brand', perm: 'settings.manage' },
-    { href: '/admin/marketing/ab', key: 'nav.ab', perm: 'campaigns.view' },
-    { href: '/admin/marketing/insights', key: 'nav.insights', perm: 'campaigns.view' },
-    { href: '/admin/marketing/connections', key: 'nav.connections', perm: 'settings.manage' },
     { href: '/admin/marketing/email', key: 'nav.email', perm: 'campaigns.view' },
     { href: '/admin/marketing/templates', key: 'nav.templates', perm: 'campaigns.view' },
     { href: '/admin/automations', key: 'nav.automations', perm: 'automations.view' },
+    { href: '/admin/marketing/ab', key: 'nav.ab', perm: 'campaigns.view' },
+    { href: '/admin/marketing/insights', key: 'nav.insights', perm: 'campaigns.view' },
+    { href: '/admin/brand', key: 'nav.brand', perm: 'settings.manage' },
+    { href: '/admin/marketing/connections', key: 'nav.connections', perm: 'settings.manage' },
     { href: '/admin/qr', key: 'nav.qr', perm: 'settings.manage' },
   ] },
-  { heading: 'nav.group.finance', items: [
+  { heading: 'nav.group.finance', icon: 'finance', items: [
     { href: '/admin/pos', key: 'nav.pos', perm: 'pos.use' },
     { href: '/admin/orders', key: 'nav.orders', perm: 'finance.view' },
     { href: '/admin/cashflow', key: 'nav.cashflow', perm: 'finance.view' },
     { href: '/admin/reports', key: 'nav.reports', perm: 'finance.view' },
   ] },
-  { heading: 'nav.group.admin', items: [
+  { heading: 'nav.group.admin', icon: 'admin', items: [
     { href: '/admin/go-live', key: 'nav.golive', perm: 'settings.manage' },
-    { href: '/admin/security', key: 'nav.security', perm: 'security.manage' },
+    { href: '/admin/build', key: 'nav.build', perm: 'build.view' },
     { href: '/admin/staff', key: 'nav.staff', perm: 'staff.view' },
+    { href: '/admin/security', key: 'nav.security', perm: 'security.manage' },
     { href: '/admin/activity', key: 'nav.activity', perm: 'staff.view' },
     { href: '/admin/site', key: 'nav.site', perm: 'settings.manage' },
     { href: '/admin/locations', key: 'nav.locations', perm: 'settings.manage' },
@@ -89,6 +99,29 @@ const navGroups: { heading?: string; items: NavItem[] }[] = [
     { href: '/admin/settings', key: 'nav.settings', perm: 'settings.manage' },
   ] },
 ];
+
+// Restrained group-level iconography: a single line glyph per section so the
+// collapsed sidebar is scannable at a glance. Inherits currentColor; no per-item
+// icons (kept deliberately light, per the brief).
+function GroupIcon({ name }: { name?: GroupIconKey }) {
+  if (!name) return null;
+  const p: Record<GroupIconKey, React.ReactNode> = {
+    today: <><circle cx="8" cy="8" r="6" /><path d="M8 4.5V8l2.5 1.5" /></>,
+    clients: <><circle cx="8" cy="5.5" r="2.5" /><path d="M3.5 13c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" /></>,
+    loyalty: <><path d="M8.5 2.5H13V7l-6 6-4.5-4.5 6-6Z" /><circle cx="10.5" cy="5" r="0.9" /></>,
+    catalogue: <><rect x="2.5" y="2.5" width="4.5" height="4.5" rx="0.8" /><rect x="9" y="2.5" width="4.5" height="4.5" rx="0.8" /><rect x="2.5" y="9" width="4.5" height="4.5" rx="0.8" /><rect x="9" y="9" width="4.5" height="4.5" rx="0.8" /></>,
+    website: <><rect x="2.5" y="3" width="11" height="10" rx="1.2" /><path d="M2.5 6h11" /><circle cx="4.5" cy="4.5" r="0.4" /></>,
+    operations: <><circle cx="8" cy="8" r="2.2" /><path d="M8 1.8v1.8M8 12.4v1.8M1.8 8h1.8M12.4 8h1.8M3.6 3.6l1.3 1.3M11.1 11.1l1.3 1.3M12.4 3.6l-1.3 1.3M4.9 11.1l-1.3 1.3" /></>,
+    marketing: <><path d="M3 6.5 11 3v10L3 9.5V6.5Z" /><path d="M3 6.5H2v3h1M5 10v2.5" /></>,
+    finance: <><circle cx="8" cy="8" r="6" /><path d="M9.5 6c-.4-.6-1.1-1-2-1-1.2 0-2 .7-2 1.6 0 2 4 1 4 3 0 .9-.9 1.6-2 1.6-.9 0-1.7-.4-2.1-1" /></>,
+    admin: <><path d="M8 1.8 13 4v3.5c0 3-2 5-5 6.7-3-1.7-5-3.7-5-6.7V4l5-2.2Z" /></>,
+  };
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+      {p[name]}
+    </svg>
+  );
+}
 
 function readCookieLocale(): Locale {
   if (typeof document === 'undefined') return DEFAULT_LOCALE;
@@ -114,7 +147,7 @@ export function AdminShell({
   const allowed = new Set(can);
   const permitted = (n: NavItem) => !n.perm || allowed.has(n.perm);
   const groups = navGroups
-    .map((g) => ({ heading: g.heading, items: g.items.filter(permitted) }))
+    .map((g) => ({ heading: g.heading, icon: g.icon, items: g.items.filter(permitted) }))
     .filter((g) => g.items.length > 0);
   // Which clinic the user is viewing. Defaults to the primary site (derived from
   // the clinic locality); pass `location` to override per page in multi-site use.
@@ -235,7 +268,7 @@ export function AdminShell({
               <div className="mt-2 max-h-[72vh] overflow-y-auto rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-2">
                 {groups.map((g, gi) => (
                   <div key={groupKey(g, gi)} className="mb-2">
-                    {g.heading && <p className="px-3 pb-1 pt-2 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)]">{t(g.heading)}</p>}
+                    {g.heading && <p className="flex items-center gap-1.5 px-3 pb-1 pt-2 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)]"><GroupIcon name={g.icon} />{t(g.heading)}</p>}
                     <div className="flex flex-col gap-0.5">{g.items.map(renderLink)}</div>
                   </div>
                 ))}
@@ -272,6 +305,7 @@ export function AdminShell({
                     className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-4 pb-1 pt-4 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)] transition-colors hover:text-[var(--color-stone)]"
                   >
                     <span className="text-[0.7rem] leading-none text-[var(--color-stone)]">{open ? '▾' : '▸'}</span>
+                    <GroupIcon name={g.icon} />
                     <span className="flex-1 text-left">{g.heading ? t(g.heading) : ''}</span>
                     {!open && pending > 0 && (
                       <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[0.6rem] font-semibold text-amber-950">{pending}</span>
