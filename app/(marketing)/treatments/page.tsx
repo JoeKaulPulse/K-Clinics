@@ -6,6 +6,7 @@ import { BookingButtons } from '@/components/booking/BookingButtons';
 import { aesthetics, groupByGroup } from '@/lib/treatments';
 import { withCardOverrides } from '@/lib/treatment-content';
 import { pageMeta, JsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
+import { pageImage } from '@/lib/treatment-images';
 
 export const revalidate = 3600;
 
@@ -15,6 +16,7 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({
     'Explore KClinics’ full menu of aesthetic treatments in Islington, London — laser hair removal, HIFU lifting, advanced facials, body contouring and injectables.',
   path: '/treatments',
   keywords: ['aesthetic clinic London', 'laser clinic Islington', 'skin treatments London', 'non-surgical treatments'],
+  image: pageImage('home'),
 });
 
 export default async function TreatmentsPage() {

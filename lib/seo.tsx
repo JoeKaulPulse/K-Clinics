@@ -17,6 +17,7 @@ export async function pageMeta({
   keywords,
   ownOgImage = false,
   noindex = false,
+  image,
 }: {
   title: string;
   description: string;
@@ -27,6 +28,9 @@ export async function pageMeta({
   /** When true, defer to a route's own `opengraph-image.tsx` instead of the
    *  dynamic /og card — unless an admin override supplies a custom OG image. */
   ownOgImage?: boolean;
+  /** Public-relative photo (e.g. "/treatments/x.jpg") used as the social-card
+   *  background. Falls back to the brand-art card when omitted. */
+  image?: string | null;
 }): Promise<Metadata> {
   // Best-effort admin override (no-op without a DB / in the client bundle).
   let ov: { title?: string | null; description?: string | null; canonical?: string | null; focusKeyword?: string | null; ogImage?: string | null; noindex?: boolean } | null = null;
@@ -45,7 +49,8 @@ export async function pageMeta({
   // dynamic /og generator so every shared link previews uniquely & on-brand.
   const customOg = ov?.ogImage ? (/^https?:\/\//.test(ov.ogImage) ? ov.ogImage : `${base}${ov.ogImage}`) : null;
   const ogHeading = fullTitle.split(' | ')[0];
-  const ogUrl = customOg || `${base}/og?title=${encodeURIComponent(ogHeading)}&tag=${encodeURIComponent(desc)}`;
+  const imgParam = image ? `&img=${encodeURIComponent(image)}` : '';
+  const ogUrl = customOg || `${base}/og?title=${encodeURIComponent(ogHeading)}&tag=${encodeURIComponent(desc)}${imgParam}`;
   // Use the dynamic/custom card unless the route owns a bespoke opengraph-image
   // (and no custom override is set).
   const useImage = !!customOg || !ownOgImage;
