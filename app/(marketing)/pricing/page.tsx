@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
@@ -8,7 +9,7 @@ import { getTreatment } from '@/lib/treatments';
 import { crmEnabled } from '@/lib/crm';
 
 type PricedRow = { id: string; name: string; courses: { sessions: number; totalPence: number }[]; status: ServiceStatus; pricePence: number; offerPence: number | null; offerName: string | null };
-type PricedService = { id: string; name: string; rows: PricedRow[] };
+type PricedService = { id: string; name: string; treatmentSlug: string; rows: PricedRow[] };
 import { OffersStrip } from '@/components/marketing/OffersStrip';
 import { pageMeta, JsonLd, breadcrumbLd, offerCatalogLd } from '@/lib/seo';
 
@@ -39,7 +40,7 @@ export default async function PricingPage() {
         });
         const group = getTreatment(s.treatmentSlug)?.group || 'Treatments';
         const arr = groups.get(group) ?? [];
-        arr.push({ id: s.id, name: s.name, rows });
+        arr.push({ id: s.id, name: s.name, treatmentSlug: s.treatmentSlug, rows });
         groups.set(group, arr);
         // Priced OfferCatalog from bookable single-session prices, for rich SEO snippets.
         offerItems = offerItems.concat(rows.filter((r) => r.status === 'NORMAL' && r.pricePence > 0).map((r) => ({ name: `${s.name} — ${r.name}`, price: (r.offerPence ?? r.pricePence) / 100 })));
@@ -80,8 +81,10 @@ export default async function PricingPage() {
                         <ul className="divide-y divide-[var(--color-line)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
                           {s.rows.map((v) => {
                             const unavailable = v.status === 'COMING_SOON' || v.status === 'UNAVAILABLE';
-                            return (
-                              <li key={v.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 py-4 transition-colors hover:bg-[var(--color-bone)]">
+                            // Bookable rows (incl. on-consultation) link straight into the
+                            // booking flow pre-set to this treatment.
+                            const body = (
+                              <>
                                 <div className="min-w-0">
                                   <span className="font-[family-name:var(--font-display)] text-lg leading-tight">{v.name}</span>
                                   {!unavailable && v.courses.length > 0 && (
@@ -100,7 +103,7 @@ export default async function PricingPage() {
                                   )}
                                   {v.offerName && <span className="mt-0.5 block text-sm font-medium text-[var(--color-gold)]">{v.offerName}</span>}
                                 </div>
-                                <span className="shrink-0 font-[family-name:var(--font-display)] text-lg text-[var(--color-ink)]">
+                                <span className="flex shrink-0 items-center gap-2 font-[family-name:var(--font-display)] text-lg text-[var(--color-ink)]">
                                   {unavailable ? (
                                     <span className="text-sm font-medium uppercase tracking-wide text-[var(--color-stone)]">{statusLabel(v.status)}</span>
                                   ) : v.status === 'CONSULTATION' ? (
@@ -110,7 +113,18 @@ export default async function PricingPage() {
                                   ) : (
                                     formatPence(v.pricePence)
                                   )}
+                                  {!unavailable && (
+                                    <svg viewBox="0 0 24 24" aria-hidden className="h-4 w-4 shrink-0 text-[var(--color-gold)] opacity-50 transition-opacity group-hover:opacity-100" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                  )}
                                 </span>
+                              </>
+                            );
+                            const rowCls = 'flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 py-4 transition-colors hover:bg-[var(--color-bone)]';
+                            return unavailable ? (
+                              <li key={v.id} className={rowCls}>{body}</li>
+                            ) : (
+                              <li key={v.id}>
+                                <Link href={`/book?treatment=${s.treatmentSlug}`} aria-label={`Book ${s.name} — ${v.name}`} className={`group ${rowCls}`}>{body}</Link>
                               </li>
                             );
                           })}
