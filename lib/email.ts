@@ -545,14 +545,19 @@ export function tmplBookingCancelled(o: { firstName: string; treatment: string; 
   });
 }
 
-export function tmplChargeReceipt(o: { firstName: string; treatment: string; pricePence: number; late?: boolean }) {
+export function tmplChargeReceipt(o: { firstName: string; treatment: string; pricePence: number; late?: boolean; vat?: { netPence: number; vatPence: number; ratePct: number } | null }) {
+  const vatRows = o.vat
+    ? `<tr><td style="color:#91766e;padding-right:20px;">Net</td><td>${fmtMoney(o.vat.netPence)}</td></tr>
+       <tr><td style="color:#91766e;padding-right:20px;">VAT (${o.vat.ratePct}%)</td><td>${fmtMoney(o.vat.vatPence)}</td></tr>`
+    : '';
   return emailShell({
     preheader: `Receipt — ${o.treatment}`,
     body: `${heroBand('receipt')}
     <h1 style="font-size:24px;margin:0 0 16px;">Thank you, ${escape(o.firstName)}.</h1>
     <p>${o.late ? 'A late-cancellation fee has been processed' : 'Your payment has been processed'} for your <strong>${escape(o.treatment)}</strong>.</p>
     <table style="font-family:Helvetica,Arial,sans-serif;font-size:16px;color:#3d352f;line-height:2;">
-      <tr><td style="color:#91766e;padding-right:20px;">Amount</td><td><strong>${fmtMoney(o.pricePence)}</strong></td></tr>
+      ${vatRows}
+      <tr><td style="color:#91766e;padding-right:20px;">${o.vat ? 'Total paid' : 'Amount'}</td><td><strong>${fmtMoney(o.pricePence)}</strong></td></tr>
     </table>
     <p style="margin-top:20px;">This is your receipt. ${o.late ? '' : 'We hope you love your results.'}</p>
     <p>With warmth,<br>The KClinics team</p>`,

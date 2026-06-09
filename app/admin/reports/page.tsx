@@ -28,7 +28,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       // Filter on the appointment date (startAt) so imported/historical completed
       // bookings — which have no finishedAt — are counted too.
       where: { status: 'COMPLETED', startAt: { gte: since } },
-      select: { practitionerId: true, actualMinutes: true, durationMin: true, pricePence: true, chargedPence: true, refundedPence: true, pointsRedeemedPence: true, treatmentTitle: true, practitioner: { select: { name: true, email: true } } },
+      select: { practitionerId: true, actualMinutes: true, durationMin: true, pricePence: true, chargedPence: true, refundedPence: true, pointsRedeemedPence: true, treatmentTitle: true, treatmentSlug: true, practitioner: { select: { name: true, email: true } } },
     }),
     db.stockItem.findMany({ where: { active: true }, select: { currentQty: true, costPence: true } }),
     db.stockMovement.findMany({ where: { reason: { in: ['USED', 'WASTED'] }, createdAt: { gte: since } }, select: { delta: true, item: { select: { costPence: true } } } }),
@@ -62,6 +62,21 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const treatments = [...txMap.entries()].map(([title, v]) => ({ title, ...v })).sort((a, b) => b.revenue - a.revenue).slice(0, 12);
 
   const totalRevenue = completed.reduce((s, b) => s + rev(b), 0);
+  // VAT collected over the period (only when the clinic is VAT-registered).
+  let totalVat = 0; let vatRegistered = false;
+  try {
+    const { getVatConfig, effectiveVatClass, vatBreakdown } = await import('@/lib/vat');
+    const vatCfg = await getVatConfig();
+    vatRegistered = vatCfg.registered;
+    if (vatCfg.registered) {
+      const svcRows = await db.service.findMany({ select: { treatmentSlug: true, vatClass: true, category: true } });
+      const byTreatment = new Map(svcRows.map((s) => [s.treatmentSlug, s]));
+      for (const b of completed) {
+        const svc = byTreatment.get(b.treatmentSlug);
+        totalVat += vatBreakdown(rev(b), vatCfg, effectiveVatClass({ vatClass: svc?.vatClass, category: svc?.category })).vatPence;
+      }
+    }
+  } catch { /* VAT figure is best-effort */ }
   const totalActualMin = completed.reduce((s, b) => s + (b.actualMinutes ?? 0), 0);
   const inventoryValue = items.reduce((s, i) => s + i.currentQty * (i.costPence ?? 0), 0);
   const consumablesUsed = consumables.reduce((s, m) => s + Math.abs(m.delta) * (m.item.costPence ?? 0), 0);
@@ -91,6 +106,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       <div className="mt-6 grid gap-3 sm:grid-cols-4">
         {[
           { label: L('Revenue (charged)', 'Дохід (стягнено)'), value: gbp(totalRevenue) },
+          ...(vatRegistered ? [{ label: L('of which VAT', 'у т.ч. ПДВ'), value: gbp(totalVat) }] : []),
           { label: L('Appointments', 'Записи'), value: String(completed.length) },
           { label: L('Clinical hours', 'Клінічні години'), value: hrs(totalActualMin) },
           { label: L('Consumables used', 'Витратні'), value: gbp(consumablesUsed) },
