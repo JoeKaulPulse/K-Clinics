@@ -129,14 +129,44 @@ async function pickBestUser(needs: 'OWNER' | 'CLINICAL') {
 
 /** For every input-required backlog task, assign it to the best-placed real user
  *  and post the precise instruction of what's needed. Idempotent: skips items
- *  already assigned to a person, and never duplicates the instruction comment. */
+ *  already assigned to a person, and never duplicates the instruction comment.
+ *
+ *  Crucially, it never *re-bounces* a task back to a human once they've responded:
+ *  if the person has commented / changed status / handed it back to Claude since
+ *  we last asked them, the input is treated as provided — Claude keeps it and (if
+ *  it was BLOCKED) it's pulled into Claude's queue to action. This fixes the loop
+ *  where a completed owner task, reassigned to Claude, was reassigned straight
+ *  back to the owner on the next board load. */
 export async function assignOwnerInputTasks(): Promise<void> {
   const { BUILD_BACKLOG } = await import('@/lib/build-backlog');
   const MARK = '📋 Action needed';
+  const isHuman = (actor: string) => actor.includes('@'); // staff emails; 'claude'/'system' aren't
   for (const it of BUILD_BACKLOG) {
     if (!it.needs || !it.ask) continue;
     const item = await db.buildItem.findFirst({ where: { title: it.title }, include: { events: true } });
     if (!item) continue;
+
+    // Has the human responded since we last asked them? Compare the newest human
+    // touch (comment/status/assign/blocker) against the newest time Claude asked
+    // (a claude-authored 'assign' to a person). If the human is newer — or they've
+    // already engaged and Claude never asked — the input is in; don't bounce back.
+    const ts = (e: { createdAt: Date }) => +new Date(e.createdAt);
+    const lastClaudeAsk = Math.max(0, ...item.events.filter((e) => e.actor === 'claude' && e.kind === 'assign').map(ts));
+    const lastHumanTouch = Math.max(0, ...item.events.filter((e) => isHuman(e.actor) && ['comment', 'status', 'assign', 'blocker'].includes(e.kind)).map(ts));
+    const humanResponded = lastHumanTouch > 0 && lastHumanTouch >= lastClaudeAsk;
+
+    if (humanResponded) {
+      // The owner has acted. Keep it with whoever they handed it to; if it came
+      // back to Claude and is still parked as BLOCKED, queue it for Claude to pick
+      // up — Claude infers "I've got the answer, action it" rather than re-asking.
+      if (item.assignee === 'claude' && item.status === 'BLOCKED') {
+        await db.buildItem.update({
+          where: { id: item.id },
+          data: { status: 'TRIAGE', events: { create: { kind: 'status', actor: 'claude', body: 'BLOCKED → TRIAGE — owner responded; back with Claude to action.' } } },
+        });
+      }
+      continue;
+    }
 
     // Assign to the best-placed user if it's still unassigned / on Claude.
     if (!item.assignee || item.assignee === 'claude') {
