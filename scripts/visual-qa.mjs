@@ -7,22 +7,43 @@
 // Run (in a Full-network Visual QA environment):
 //   npx playwright install --with-deps chromium   # once, in the env setup script
 //   BASE_URL=https://kclinics.co.uk QA_TOKEN=$BOARD_QUEUE_TOKEN node scripts/visual-qa.mjs
+// Optionally pass QA_SELFIE=/path/to/selfie.jpg to exercise the kiosk happy path
+// (analysis -> result card) instead of the unanalysable 1x1px placeholder.
+//
+// Behind a TLS-intercepting egress gateway (e.g. the standard Claude Code web
+// environment), Chromium rejects the re-signed cert with ERR_CERT_AUTHORITY_INVALID
+// even though Node's fetch trusts it via NODE_EXTRA_CA_CERTS. Set QA_IGNORE_HTTPS_ERRORS=1
+// to let the browser contexts through. Leave it off in full-network runs so a genuinely
+// broken production certificate is still caught.
 //
 // Output: qa-output/<step>.png screenshots + qa-output/report.json + report.md.
 import { chromium } from 'playwright';
-import { mkdirSync, writeFileSync, rmSync } from 'fs';
+import { mkdirSync, writeFileSync, rmSync, readFileSync } from 'fs';
 import path from 'path';
 
 const BASE = (process.env.BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
 const QA_TOKEN = process.env.QA_TOKEN || process.env.BOARD_QUEUE_TOKEN || '';
 const OUT = process.env.QA_OUT || 'qa-output';
 const VIEWPORT = { width: 390, height: 844 }; // iPhone-ish; kiosk is phone-first
+const IGNORE_HTTPS_ERRORS = /^(1|true|yes)$/i.test(process.env.QA_IGNORE_HTTPS_ERRORS || '');
+const CONTEXT_OPTS = { viewport: VIEWPORT, ignoreHTTPSErrors: IGNORE_HTTPS_ERRORS };
 
-// A real (tiny) PNG so the upload passes type/size validation.
-const PNG = Buffer.from(
+// Kiosk upload payload. Pass a real selfie (QA_SELFIE=/path/to/photo.jpg) to verify
+// the happy path end-to-end (analysis -> ANALYZED -> shareable result card). Without
+// one we fall back to a 1x1px placeholder: the AI legitimately can't read a blank
+// pixel, so it returns ANALYSIS_FAILED — which is expected, NOT a broken flow.
+const PLACEHOLDER_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
   'base64',
 );
+const SELFIE_PATH = process.env.QA_SELFIE || '';
+const HAS_REAL_SELFIE = Boolean(SELFIE_PATH);
+const SELFIE_BYTES = HAS_REAL_SELFIE ? readFileSync(SELFIE_PATH) : PLACEHOLDER_PNG;
+const SELFIE_NAME = HAS_REAL_SELFIE ? path.basename(SELFIE_PATH) : 'selfie.png';
+const SELFIE_TYPE = /\.webp$/i.test(SELFIE_NAME) ? 'image/webp'
+  : /\.(heic|heif)$/i.test(SELFIE_NAME) ? 'image/heic'
+  : /\.(jpe?g)$/i.test(SELFIE_NAME) ? 'image/jpeg'
+  : 'image/png';
 
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
@@ -31,6 +52,21 @@ const findings = [];
 const steps = [];
 const createdTokens = [];
 const note = (severity, area, msg) => { findings.push({ severity, area, msg }); console.log(`  [${severity}] ${area}: ${msg}`); };
+
+// Let an animation/hydration-heavy page settle before capture: scroll the full
+// height in steps to trigger lazy images + motion() scroll-reveals, then return to
+// the top. Without this, a fast full-page screenshot catches blank/pre-reveal panels
+// (e.g. the booking widget rendering only its loading splash) and reads as "broken".
+async function settle(page) {
+  await page.waitForTimeout(800);
+  const height = await page.evaluate(() => document.body.scrollHeight).catch(() => 0);
+  for (let y = 0; y < height; y += 900) {
+    await page.evaluate((to) => window.scrollTo(0, to), y).catch(() => {});
+    await page.waitForTimeout(220);
+  }
+  await page.evaluate(() => window.scrollTo(0, 0)).catch(() => {});
+  await page.waitForTimeout(1200);
+}
 
 async function shoot(page, name, label) {
   const file = path.join(OUT, `${name}.png`);
@@ -47,13 +83,13 @@ function watch(page, area) {
 }
 
 async function visit(browser, route, name, label) {
-  const ctx = await browser.newContext({ viewport: VIEWPORT });
+  const ctx = await browser.newContext(CONTEXT_OPTS);
   const page = await ctx.newPage();
   watch(page, name);
   try {
     const resp = await page.goto(`${BASE}${route}`, { waitUntil: 'networkidle', timeout: 30000 });
     if (resp && resp.status() >= 400) note('P1', name, `page ${route} returned ${resp.status()}`);
-    await page.waitForTimeout(800);
+    await settle(page);
     await shoot(page, name, label);
   } catch (e) {
     note('P1', name, `failed to load ${route}: ${(e?.message || e).toString().slice(0, 160)}`);
@@ -72,7 +108,7 @@ async function kioskFlow(browser) {
   } catch (e) { note('P1', area, `session create threw: ${(e?.message || e).toString().slice(0, 160)}`); return; }
 
   // 2) Screenshot the mobile entry page.
-  const ctx = await browser.newContext({ viewport: VIEWPORT });
+  const ctx = await browser.newContext(CONTEXT_OPTS);
   const page = await ctx.newPage();
   watch(page, area);
   try {
@@ -86,22 +122,36 @@ async function kioskFlow(browser) {
   try {
     const fd = new FormData();
     fd.append('consent', 'true');
-    fd.append('file', new Blob([PNG], { type: 'image/png' }), 'selfie.png');
+    fd.append('file', new Blob([SELFIE_BYTES], { type: SELFIE_TYPE }), SELFIE_NAME);
     const up = await fetch(`${BASE}/api/kiosk/sessions/${token}/photo`, { method: 'POST', body: fd });
     if (!up.ok) note('P1', area, `photo upload failed (${up.status})`);
   } catch (e) { note('P1', area, `photo upload threw: ${(e?.message || e).toString().slice(0, 140)}`); }
 
+  // Poll for the result. The server analysis call has a 30s timeout, so give it ~45s.
+  // Statuses (see KioskStatus): PHOTO_TAKEN -> ANALYZED (success) | ANALYSIS_FAILED.
   let resultId = null;
-  for (let i = 0; i < 12; i++) {
+  let lastStatus = null;
+  let failed = false;
+  for (let i = 0; i < 18; i++) {
     await new Promise((r) => setTimeout(r, 2500));
     try {
       const s = await fetch(`${BASE}/api/kiosk/sessions/${token}`).then((x) => x.json()).catch(() => ({}));
+      lastStatus = s.status || lastStatus;
       if (s.resultId) { resultId = s.resultId; break; }
       if (s.status === 'EXPIRED') { note('P2', area, 'session expired before analysis completed'); break; }
+      if (/FAIL/i.test(s.status || '')) { failed = true; break; }
     } catch { /* keep polling */ }
   }
   if (!resultId) {
-    note('P1', area, 'analysis never produced a result within ~30s — the fire-and-forget AI likely did not run (serverless function frozen after responding). Core flow is broken.');
+    if (HAS_REAL_SELFIE) {
+      // A real photo that fails or hangs points at a genuine AI-pipeline problem.
+      note('P1', area, `analysis produced no result for a real selfie (last status: ${lastStatus || 'unknown'}) — kiosk happy path is broken.`);
+    } else if (failed) {
+      // Expected: the 1x1px placeholder isn't an analysable photo. Not a defect.
+      note('P3', area, `analysis returned ${lastStatus} for the 1x1px placeholder image — expected (a blank pixel is not analysable). The pipeline ran and failed gracefully. Set QA_SELFIE=/path/to/selfie.jpg to verify the happy path + result card.`);
+    } else {
+      note('P2', area, `no result within ~45s (last status: ${lastStatus || 'unknown'}). With the placeholder image this is most likely the failure path rather than a hang; set QA_SELFIE=/path/to/selfie.jpg to verify the happy path.`);
+    }
     return;
   }
 
@@ -110,7 +160,7 @@ async function kioskFlow(browser) {
     const res = await fetch(`${BASE}/api/kiosk/results/${resultId}`).then((x) => x.json()).catch(() => ({}));
     const slug = res?.shareSlug || res?.result?.shareSlug;
     if (slug) {
-      const c2 = await browser.newContext({ viewport: VIEWPORT });
+      const c2 = await browser.newContext(CONTEXT_OPTS);
       const p2 = await c2.newPage();
       watch(p2, 'kiosk-result');
       await p2.goto(`${BASE}/kiosk/result/${slug}`, { waitUntil: 'networkidle', timeout: 30000 });

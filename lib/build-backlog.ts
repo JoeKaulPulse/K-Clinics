@@ -356,15 +356,11 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: 'Kiosk: account creation + share-to-claim discount', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
+    title: 'Kiosk: account creation + share-to-claim discount', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', project: 'skin-smile-kiosk', pr: PR(449),
     value: 9, effort: 5,
-    detail: 'After sharing, prompt account creation and issue a single-use, campaign-tied discount as the share reward. Owner decision: this is a CAMPAIGN-SPECIFIC discount for the OOH interactive campaign — implement as a PromoCode with campaignId, seeded under a new “Storefront Skin & Smile (OOH)” MarketingCampaign so spend/conversions track against it. Verify the share where feasible; cap one reward per person.',
+    detail: 'After sharing, the visitor creates an account and is issued a single-use, campaign-tied discount as the share reward, tracked under the OOH MarketingCampaign.',
     dependsOn: ['Kiosk: shareable result card + social sharing'],
-    subtasks: [
-      { title: 'Confirm discount amount + validity (single-use; % or £)', ownerInput: true },
-      { title: 'Seed the “Storefront Skin & Smile (OOH)” campaign + campaign-tied PromoCode', assignee: 'claude' },
-    ],
-    notes: ['Technical foundation built. The result screen already routes to /account/register?ref=kiosk&slug={shareSlug} and a `claimed` funnel event fires on click. Awaiting owner confirmation of discount amount + validity before wiring the single-use campaign-tied PromoCode + “Storefront Skin & Smile (OOH)” MarketingCampaign.'],
+    notes: ['Shipped (#449). Owner chose 15% off first treatment, single-use, 60 days (configurable in Finance → Financial controls → Storefront kiosk share reward; can be paused). Flow: ClaimReward form on the result step → POST /api/kiosk/results/[id]/claim → share-gated (session must be SHARED) → upserts a marketing-opted-in Client → createPersonalCode (PERSONAL, single-use, assignedEmail, expiry) under the seeded “Storefront Skin & Smile (OOH)” MarketingCampaign (getOohCampaignId) → emails the code (tmplKioskReward) → records claimCode on the result (idempotent) + logs the claimed funnel event. Config: kiosk_discount_pct/days + kiosk_discount_enabled.'],
   },
   {
     title: 'Kiosk: Novastar storefront screen — live QR + session display', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
@@ -402,9 +398,9 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Shipped (#438): per-IP rate limit (max 20 shares/hour over the salted IP hash) on the share route.'],
   },
   {
-    title: 'Kiosk: flow dead-ends before the account + discount payoff (not launch-ready)', type: 'TASK', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
+    title: 'Kiosk: flow dead-ends before the account + discount payoff (not launch-ready)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', project: 'skin-smile-kiosk', pr: PR(449),
     value: 8, effort: 5,
-    detail: 'Code audit: the live result page (app/kiosk/result/[slug]) ends at the shareable card + a “Get your score” link — there is no account-creation or share-to-claim discount step. The campaign’s conversion + ROI tracking aren’t live until the “account creation + share-to-claim discount” task ships, so the kiosk is not launch-ready yet. Flagging so it isn’t promoted prematurely.',
+    detail: 'The live flow ended at the shareable card with no account/discount step. Resolved by shipping the share-to-claim reward (#449): the result step now has a Create-account-and-claim form issuing a single-use 15% code, so the conversion + ROI loop is live.',
     dependsOn: ['Kiosk: shareable result card + social sharing'],
   },
   {
