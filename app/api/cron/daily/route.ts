@@ -100,5 +100,17 @@ export async function GET(req: Request) {
     console.error('[cron] analytics retention failed (continuing):', (e as Error)?.message);
   }
 
-  return NextResponse.json({ ok: true, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend });
+  // Build board: keep it populated from Claude's backlog server-side, and assign
+  // input-required tasks to the best-placed user — so the audit board is reliable
+  // even if nobody opens it after a deploy (it used to seed only on first view).
+  let board = { created: 0, skipped: 0 };
+  try {
+    const { seedBacklog, assignOwnerInputTasks } = await import('@/lib/build-board');
+    board = await seedBacklog();
+    await assignOwnerInputTasks();
+  } catch (e) {
+    console.error('[cron] build-board seed failed (continuing):', (e as Error)?.message);
+  }
+
+  return NextResponse.json({ ok: true, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend, board });
 }
