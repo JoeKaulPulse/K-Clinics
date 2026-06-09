@@ -237,7 +237,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     title: 'Dependency upgrades: Next 16, Prisma 7, Stripe SDKs, zod 4, jose 6 (incremental + tested)', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
     value: 6, effort: 7,
     detail: 'Dependabot proposed sweeping MAJOR bumps in two PRs (#84 production, #307 dev): Next 15→16, Prisma 6→7, @stripe/* 3→6/5→9/17→22, zod 3→4, jose 5→6, bcryptjs 2→3, resend 4→6, TypeScript 5→6, @types/node 22→25. These cannot be blanket-merged — verified locally that the bundle breaks immediately (Prisma 7 `prisma generate` fails on install). Do them deliberately and per-family, each with its own migration + tsc/build verification, on their own PRs.',
-    notes: ['Blanket bump verified to break (Prisma 7 generate). #84/#307 left open for reference but must NOT be merged as-is. Sequence suggestion: TypeScript/types first, then Prisma 6→7 (client + schema), then Next 15→16, then Stripe SDKs (API-version sensitive), then zod 3→4 (schema API changes), jose 6, resend 6.'],
+    notes: ['Blanket bump verified to break (Prisma 7 generate). #84/#307 left open for reference but must NOT be merged as-is. Sequence suggestion: TypeScript/types first, then Prisma 6→7 (client + schema), then Next 15→16, then Stripe SDKs (API-version sensitive), then zod 3→4 (schema API changes), jose 6, resend 6.', 'Partial: the 4 moderate npm-audit vulns flagged by the audit (postcss <8.5.10 XSS, bundled inside next + reached via @vercel/speed-insights/geist) are now RESOLVED via a package.json overrides forcing postcss ^8.5.15 — `npm audit` reports 0 vulnerabilities and `next build` compiles cleanly, WITHOUT the risky Next 16 major bump. The major-version upgrades above remain.'],
   },
   {
     title: 'EOD Audit enablers: routine task-create/continue API + daily run cap', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(423),
@@ -683,7 +683,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   // 'audit-remediation' project; the epic gates on all of them. Statuses flip to
   // SHIPPED as each fix lands. Canonical detail: audit/SUMMARY.md + per-area NN-*.md.
   {
-    title: 'Security & Compliance Audit Remediation — epic', type: 'TASK', urgency: 'P0', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    title: 'Security & Compliance Audit Remediation — epic', type: 'TASK', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', project: 'audit-remediation',
     value: 10, effort: 9,
     detail: 'Umbrella for the audit fix-up: remediate every Critical + High finding from the 10-area codebase audit. Gates on the 17 component items below. See audit/SUMMARY.md for the consolidated rollup, remediation order and systemic root causes.',
     notes: [
