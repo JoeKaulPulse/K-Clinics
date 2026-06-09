@@ -17,6 +17,40 @@ type Item = {
   events: Ev[]; subtasks: Subtask[]; dependencies: Dependency[]; dependents: Dependent[];
 };
 const isVideo = (url: string) => /\.(mp4|mov|webm|m4v|3gp)(\?|$)/i.test(url);
+
+// ── Attachment upload helpers ────────────────────────────────────────────────
+// Small images go through the proven server endpoint; big files / video use a
+// client-direct Blob upload. Every path is bounded by a timeout so the UI can
+// never get stuck on "Uploading…", and images gracefully fall back to the
+// server route if the client-direct path fails.
+const SERVER_MAX = 4 * 1024 * 1024;       // stay under the serverless body limit
+const UPLOAD_TIMEOUT_MS = 90_000;
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('timed out — check your connection and retry')), ms))]);
+}
+async function serverUpload(file: File): Promise<string> {
+  const fd = new FormData(); fd.append('file', file);
+  const r = await fetch('/api/admin/build/upload', { method: 'POST', body: fd }).then((x) => x.json()).catch(() => ({ ok: false, error: 'network error' }));
+  if (!r.ok) throw new Error(r.error || 'upload failed');
+  return r.url as string;
+}
+async function clientUpload(file: File): Promise<string> {
+  const { upload } = await import('@vercel/blob/client');
+  const blob = await upload(file.name || `file-${Date.now()}`, file, { access: 'public', handleUploadUrl: '/api/admin/build/blob-token', contentType: file.type || undefined });
+  return blob.url;
+}
+async function uploadOne(file: File): Promise<string> {
+  const isVid = /^video\//.test(file.type);
+  const big = file.size > SERVER_MAX;
+  if (!isVid && !big) return withTimeout(serverUpload(file), UPLOAD_TIMEOUT_MS);
+  try {
+    return await withTimeout(clientUpload(file), UPLOAD_TIMEOUT_MS);
+  } catch (e) {
+    // Graceful fallback: an image small enough for the server route can still go that way.
+    if (!isVid && file.size <= 12 * 1024 * 1024) return withTimeout(serverUpload(file), UPLOAD_TIMEOUT_MS);
+    throw e;
+  }
+}
 type Activity = { events: { id: string; kind: string; body: string | null; title: string; itemId: string; createdAt: string }[]; inProgress: { id: string; title: string }[]; continueRequestedAt: string | null };
 
 const COLUMNS: { key: string; label: string }[] = [
@@ -360,28 +394,32 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
   const depIds = new Set([item.id, ...item.dependencies.map((d) => d.dependsOn.id)]);
   const depDone = (s: string) => ['SHIPPED', 'CLOSED'].includes(s);
 
-  // Attachments — client-direct upload to Blob (handles iPhone photos + videos).
+  // Attachments — photos via the proven server route, big files/video client-direct;
+  // bounded by a timeout with graceful fallback + per-file error reporting.
   const [upBusy, setUpBusy] = useState(false);
   const [upErr, setUpErr] = useState('');
   const [upProg, setUpProg] = useState('');
   async function uploadFiles(files: FileList | null) {
     if (!files?.length) return;
     setUpBusy(true); setUpErr('');
+    const list = Array.from(files).slice(0, 10);
+    const urls: string[] = [];
+    const errs: string[] = [];
     try {
-      const { upload } = await import('@vercel/blob/client');
-      const urls: string[] = [];
-      const list = Array.from(files).slice(0, 10);
       for (let i = 0; i < list.length; i++) {
         const f = list[i];
         setUpProg(`Uploading ${i + 1} of ${list.length}…`);
-        const blob = await upload(f.name || `file-${Date.now()}`, f, { access: 'public', handleUploadUrl: '/api/admin/build/blob-token', contentType: f.type || undefined });
-        urls.push(blob.url);
+        try { urls.push(await uploadOne(f)); }
+        catch (e) { errs.push(`${f.name || 'file'}: ${(e as Error)?.message || 'failed'}`); }
       }
-      const r = await post({ op: 'attach', id: item.id, urls });
-      if (r.ok) onChange(); else setUpErr(r.error || 'Could not save attachments.');
-    } catch (e) {
-      setUpErr((e as Error)?.message || 'Upload failed. Large videos can take a moment — please retry.');
-    } finally { setUpBusy(false); setUpProg(''); }
+      if (urls.length) {
+        const r = await post({ op: 'attach', id: item.id, urls });
+        if (r.ok) onChange(); else errs.push(r.error || 'could not save attachments');
+      }
+    } finally {
+      setUpBusy(false); setUpProg('');
+    }
+    if (errs.length) setUpErr(`${urls.length} uploaded, ${errs.length} failed — ${errs[0]}${errs.length > 1 ? ` (+${errs.length - 1} more)` : ''}`);
   }
   async function removeAttachment(url: string) { const r = await post({ op: 'attach-remove', id: item.id, url }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
 
