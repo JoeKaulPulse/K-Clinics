@@ -207,8 +207,13 @@ export async function createBuildItem(input: NewBuildItem, actor: string) {
     },
     include: { events: true },
   });
-  // Auto-bridge to GitHub when configured (so urgent items become actionable issues).
-  if ((item.urgency === 'P0' || item.urgency === 'P1') && (await githubConfigured())) {
+  // Auto-bridge to GitHub the moment it's logged — so it's tracked and can
+  // trigger Claude — for anything a person reports (a real reporter, not Claude/
+  // system), any ERROR/bug, or anything urgent (P0/P1). Quieter Claude-authored
+  // P2/P3 tasks still batch-sync via the cron to respect GitHub's rate limit.
+  const userReported = !!item.reportedBy && !['claude', 'system'].includes(item.reportedBy.toLowerCase());
+  const shouldSync = userReported || item.type === 'ERROR' || item.urgency === 'P0' || item.urgency === 'P1';
+  if (shouldSync && (await githubConfigured())) {
     await pushToGithub(item.id, 'system').catch(() => {});
   }
   // Tell the assignee they've got something (unless they assigned it to themselves).
