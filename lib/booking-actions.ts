@@ -139,6 +139,9 @@ export async function refundBooking(
     await sendEmail({ to: booking.client.email, subject: `Refund processed — ${booking.treatmentTitle}`, html: tmplRefund({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, amountPence: amount, fully }) });
   } catch { /* email best-effort */ }
 
+  // Net the refund out of ad/analytics ROAS (GA4 refund event), best-effort.
+  try { const { sendRefund } = await import('@/lib/conversions'); await sendRefund({ bookingId: booking.id, valuePence: amount, clientId: booking.clientId }); } catch { /* non-fatal */ }
+
   return { ok: true, refundedPence: totalRefunded };
 }
 
