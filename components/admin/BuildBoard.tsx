@@ -16,9 +16,13 @@ type Item = {
   estTokens: number | null; actualTokens: number | null; shippedAt: string | null; closedAt: string | null; closedBy: string | null;
   isPublic: boolean;
   attachments: string[];
+  project: { id: string; slug: string; name: string } | null;
   events: Ev[]; subtasks: Subtask[]; dependencies: Dependency[]; dependents: Dependent[];
 };
+type Project = { id: string; slug: string; name: string; summary: string | null; status: string; originIdeaTitle: string | null; total: number; done: number; open: number; openErrors: number; userGated: number; progress: number };
 const isVideo = (url: string) => /\.(mp4|mov|webm|m4v|3gp)(\?|$)/i.test(url);
+// Count of pending owner-input subtasks on an item → the red "user-gated" badge.
+const gatedCount = (i: Item) => i.subtasks.filter((s) => s.ownerInput && s.status !== 'DONE').length;
 
 // ── Attachment upload helpers ────────────────────────────────────────────────
 // Small images go through the proven server endpoint; big files / video use a
@@ -98,14 +102,16 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
   const [mirror, setMirror] = useState(false);
   const [backoffUntil, setBackoffUntil] = useState(0);
   const [q, setQ] = useState('');
-  const [view, setView] = useState<'kanban' | 'list' | 'timeline'>('kanban');
+  const [view, setView] = useState<'kanban' | 'list' | 'timeline' | 'projects'>('kanban');
   const [mine, setMine] = useState(false);
   const [ideaOpen, setIdeaOpen] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectFilter, setProjectFilter] = useState<string | null>(null); // project id
 
   const load = useCallback(async (force = false) => {
     if (!force && typeof document !== 'undefined' && document.hidden) return;
     const res = await fetch('/api/admin/build').then((x) => x.json()).catch(() => ({ ok: false }));
-    if (res.ok) { setItems(res.items); setGh({ connected: !!res.github, repo: res.githubRepo || null }); setSync(res.sync || null); setActivity(res.activity || null); setMirror(!!res.mirror); setBackoffUntil(res.backoffUntil || 0); }
+    if (res.ok) { setItems(res.items); setGh({ connected: !!res.github, repo: res.githubRepo || null }); setSync(res.sync || null); setActivity(res.activity || null); setMirror(!!res.mirror); setBackoffUntil(res.backoffUntil || 0); setProjects(res.projects || []); }
     setLoading(false);
   }, []);
 
@@ -161,7 +167,9 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
   const ql = q.trim().toLowerCase();
   const view2 = items
     .filter((i) => (mine ? i.assignee === me : true))
+    .filter((i) => (projectFilter ? i.project?.id === projectFilter : true))
     .filter((i) => (ql ? `${i.title} ${i.detail || ''} ${i.assignee} ${i.urgency} ${i.type}`.toLowerCase().includes(ql) : true));
+  const activeProject = projectFilter ? projects.find((p) => p.id === projectFilter) : null;
   const counts = (k: string) => view2.filter((i) => i.status === k).length;
   const open = items.filter((i) => !['SHIPPED', 'CLOSED', 'CANCELLED'].includes(i.status)).length;
   const blocked = items.filter((i) => i.status === 'BLOCKED').length;
@@ -195,8 +203,8 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search tasks (incl. shipped & closed)…" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
         <div className="flex rounded-full border border-[var(--color-line)] bg-white p-0.5 text-xs">
-          {(['kanban', 'list', 'timeline'] as const).map((v) => (
-            <button key={v} onClick={() => setView(v)} className={`rounded-full px-3 py-1 capitalize ${view === v ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)]'}`}>{v}</button>
+          {(['kanban', 'list', 'timeline', 'projects'] as const).map((v) => (
+            <button key={v} onClick={() => { setView(v); if (v === 'projects') setProjectFilter(null); }} className={`rounded-full px-3 py-1 capitalize ${view === v ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)]'}`}>{v}</button>
           ))}
         </div>
         {canManage && gh.connected && items.some((i) => !i.githubUrl) && <button onClick={syncAll} disabled={syncing} className="rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:bg-[var(--color-bone)] disabled:opacity-50">{syncing ? 'Syncing…' : `⤴ Sync ${items.filter((i) => !i.githubUrl).length} to GitHub`}</button>}
@@ -223,8 +231,20 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
         </div>
       )}
 
+      {/* Active project filter banner (when drilled in from the Projects view) */}
+      {activeProject && view !== 'projects' && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm">
+          <span className="font-medium">Project: {activeProject.name}</span>
+          <span className="text-[var(--color-stone)]">{activeProject.done}/{activeProject.total} done · {activeProject.progress}%</span>
+          {activeProject.openErrors > 0 && <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">{activeProject.openErrors} error{activeProject.openErrors === 1 ? '' : 's'}</span>}
+          {activeProject.userGated > 0 && <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white" title="Tasks waiting on you">⚑ {activeProject.userGated} need you</span>}
+          <button onClick={() => setProjectFilter(null)} className="ml-auto text-xs text-[var(--color-stone)] hover:underline">Clear ✕</button>
+        </div>
+      )}
+
       {loading && items.length === 0 ? <p className="text-sm text-[var(--color-stone-soft)]">Loading…</p> : (
         <>
+          {view === 'projects' && <ProjectsView projects={projects} onOpen={(id) => { setProjectFilter(id); setView('kanban'); }} />}
           {view === 'kanban' && <KanbanView columns={COLUMNS} items={view2} counts={counts} onOpen={setActive} />}
           {view === 'list' && <ListView items={view2} onOpen={setActive} />}
           {view === 'timeline' && <TimelineView items={view2} onOpen={setActive} />}
@@ -269,9 +289,11 @@ function Card({ i, onOpen }: { i: Item; onOpen: (i: Item) => void }) {
       <div className="mb-1 flex items-center gap-1.5">
         <span className={`rounded-full px-1.5 py-0.5 text-[0.6rem] font-semibold ${URGENCY[i.urgency]?.cls}`}>{i.urgency}</span>
         <span className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone-soft)]">{i.type}</span>
+        {gatedCount(i) > 0 && <span title={`${gatedCount(i)} item(s) need your input`} className="grid h-4 min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[0.6rem] font-bold text-white">{gatedCount(i)}</span>}
         {r != null && <span className="ml-auto text-[0.6rem] text-[var(--color-stone-soft)]">V:E {r}</span>}
       </div>
       <p className="break-words text-sm font-medium leading-snug">{i.title}</p>
+      {i.project && <p className="mt-0.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-gold-deep)]">▣ {i.project.name}</p>}
       <p className="mt-1 flex flex-wrap items-center gap-2 text-[0.65rem] text-[var(--color-stone)]">
         <span>{i.assignee === 'claude' ? '◆ Claude' : i.assignee.split('@')[0]}</span>
         {i.dependencies.some((d) => !['SHIPPED', 'CLOSED'].includes(d.dependsOn.status)) && <span title="Blocked by dependencies">· 🔒 {i.dependencies.filter((d) => !['SHIPPED', 'CLOSED'].includes(d.dependsOn.status)).length}</span>}
@@ -282,6 +304,33 @@ function Card({ i, onOpen }: { i: Item; onOpen: (i: Item) => void }) {
         {i.status === 'CLOSED' && <span className="text-[var(--color-jade)]">· ✓ closed</span>}
       </p>
     </button>
+  );
+}
+
+function ProjectsView({ projects, onOpen }: { projects: Project[]; onOpen: (id: string) => void }) {
+  if (!projects.length) return <p className="text-sm text-[var(--color-stone-soft)]">No projects yet. Projects group an epic + its sub-tasks (formed from an idea).</p>;
+  return (
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {projects.map((p) => (
+        <button key={p.id} onClick={() => onOpen(p.id)} className="flex flex-col rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 text-left hover:border-[var(--color-gold)]">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="font-[family-name:var(--font-display)] text-lg leading-tight">{p.name}</h3>
+            {p.userGated > 0 && <span title={`${p.userGated} task(s) need your input`} className="shrink-0 grid h-6 min-w-6 place-items-center rounded-full bg-red-600 px-1.5 text-xs font-bold text-white">{p.userGated}</span>}
+          </div>
+          {p.summary && <p className="mt-1.5 line-clamp-2 text-sm text-[var(--color-stone)]">{p.summary}</p>}
+          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-[var(--color-bone)]">
+            <div className="h-full rounded-full bg-[var(--color-jade)]" style={{ width: `${p.progress}%` }} />
+          </div>
+          <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--color-stone)]">
+            <span><strong className="text-[var(--color-ink)]">{p.progress}%</strong> · {p.done}/{p.total} done</span>
+            <span>{p.open} open</span>
+            {p.openErrors > 0 && <span className="rounded-full bg-red-100 px-2 py-0.5 font-medium text-red-800">{p.openErrors} error{p.openErrors === 1 ? '' : 's'}</span>}
+            {p.userGated > 0 && <span className="font-medium text-red-700">⚑ {p.userGated} need you</span>}
+            {p.originIdeaTitle && <span className="text-[var(--color-stone-soft)]">· from idea</span>}
+          </p>
+        </button>
+      ))}
+    </div>
   );
 }
 

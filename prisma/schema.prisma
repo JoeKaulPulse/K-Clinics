@@ -2530,6 +2530,9 @@ model BuildItem {
   closedBy     String?      // admin email who signed off
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+  // A Project groups an epic + its sub-tasks (e.g. the QR kiosk), formed from an idea.
+  project      BuildProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  projectId    String?
   events       BuildEvent[]
   subtasks     BuildSubtask[]
   dependencies BuildDependency[] @relation("dependent")  // edges: this item depends on others
@@ -2539,6 +2542,22 @@ model BuildItem {
   @@index([assignee, status])
   @@index([urgency])
   @@index([createdAt])
+  @@index([projectId])
+}
+
+// A Project groups related board items (an epic + its sub-tasks) under one
+// initiative — typically formed from an idea. Progress, errors and the count of
+// user-gated (owner-input) items are derived from its items (see listProjects).
+model BuildProject {
+  id              String      @id @default(cuid())
+  slug            String      @unique
+  name            String
+  summary         String?     @db.Text
+  status          String      @default("ACTIVE") // ACTIVE | PAUSED | DONE
+  originIdeaTitle String?     // the idea this project was formed from
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  items           BuildItem[]
 }
 
 // A directed dependency edge: `item` is blocked until `dependsOn` ships/closes.
