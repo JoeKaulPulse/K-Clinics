@@ -690,7 +690,10 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     title: 'Security & Compliance Audit Remediation — epic', type: 'TASK', urgency: 'P0', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
     value: 10, effort: 9,
     detail: 'Umbrella for the audit fix-up: remediate every Critical + High finding from the 10-area codebase audit. Gates on the 17 component items below. See audit/SUMMARY.md for the consolidated rollup, remediation order and systemic root causes.',
-    notes: ['Formed from the full-codebase audit. Risk concentrates in data-at-rest protection, GDPR data-subject handling, missing HTML sanitization and a few concurrency races — not the API/auth surface, which reviewed strongly.'],
+    notes: [
+      'Formed from the full-codebase audit. Risk concentrates in data-at-rest protection, GDPR data-subject handling, missing HTML sanitization and a few concurrency races — not the API/auth surface, which reviewed strongly.',
+      'Outcome: 16 of 17 component items SHIPPED (both XSS Highs + email injection, the 2 auth Highs, all 3 concurrency races incl. the booking-double-booking Critical, replay-ingest gating, build/db-sync, both OAuth Highs, GDPR erasure Critical + clinical-access audit + marketing-consent evidence + questionnaire consent). The remaining item — C3 encrypt-health-PII-at-rest — is IN_PROGRESS by design: a blind in-place encrypt of those safety-critical, searched, overloaded columns on the live medical DB risks patient-safety (ciphertext where allergy/medical alerts must read) and broken search, so it is staged as a per-field expand/contract migration for owner review (see C3 notes). Each shipped fix was type-checked and pushed; full detail in audit/SUMMARY.md.',
+    ],
     dependsOn: [
       'AUDIT C1: Booking slot allocation race — add transaction + uniqueness',
       'AUDIT C2: Right-to-erasure leaves health & personal data behind',
@@ -725,9 +728,10 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Shipped: eraseClientData now runs ONE $transaction that — beyond pseudonymising the Client row (now incl. allergies) — strips clinical/PII free-text from RETAINED financial records (Booking notes/allergyNote/cancelReason/clinicalNote*, Consultation concerns/message/medicalNotes) and HARD-DELETES the special-category/personal child records with no retention basis: HealthAssessment, BeforePhoto, AiAnalysis (+images cascade), SignedConsent, Review, NpsResponse, FollowUp, EmailEvent, Interaction. The person is no longer re-identifiable and their medical history is gone, while HMRC-relevant booking/charge rows are kept pseudonymised. (deleteClient remains the full hard-delete option.)'],
   },
   {
-    title: 'AUDIT C3: Encrypt special-category (health) + contact PII at rest', type: 'TASK', urgency: 'P0', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    title: 'AUDIT C3: Encrypt special-category (health) + contact PII at rest', type: 'TASK', urgency: 'P0', status: 'IN_PROGRESS', assignee: 'claude', project: 'audit-remediation',
     value: 9, effort: 7,
     detail: 'Client.allergies/medicalFlag, Consultation.medicalNotes/concerns/message, Booking.allergyNote (and contact PII: DOB/phone) are stored plaintext OUTSIDE the existing AES-256-GCM keyring, so a DB-read compromise exposes medical data directly (GDPR Art.9). Fix: route these through lib/crypto (encrypt-at-write, tolerant decrypt-at-read for legacy plaintext); owner runs a one-time backfill. (audit/06 + 04)',
+    notes: ['DELIBERATELY NOT done as a blind in-place encrypt — the read sites are mapped and each carries a hazard on the LIVE medical DB: (a) `medicalFlag`/`allergies`/`Booking.allergyNote` are at-a-glance SAFETY alerts rendered in admin search, my-day alerts and booking pages — ciphertext there is a patient-safety risk; (b) `Consultation.concerns` is full-text SEARCHED in admin global search (app/api/admin/search/route.ts) — encryption breaks matching; (c) the name `concerns` is overloaded (Consultation free-text vs Client.concerns String[]). Correct fix is a per-field expand/contract migration WITH the owner, like the "SaaS — DB safety" item: for each field — encryptJson on every write + tolerant decryptJson on every (enumerated) read, switch search to a separate non-clinical index or drop concerns from search, backfill existing rows behind a flag, verify display, then enforce. Other lib/crypto-backed stores (HealthAssessment, AiAnalysis, BeforePhoto, SignedConsent, Booking.clinicalNoteEnc) are already encrypted — this is coverage of the adjacent plaintext columns. Status IN_PROGRESS: plan + site map done; staged for owner-reviewed migration.'],
   },
   // ── High ──────────────────────────────────────────────────────────────────────
   {
@@ -779,9 +783,10 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Shipped: added Client.marketingConsentAt/Source/Version (additive, nullable) + a marketingConsentFields(source) helper carrying the versioned wording (MARKETING_CONSENT_VERSION). Set on every genuine opt-in path — admin toggle ("admin"), portal registration ("registration"), consult form ("consult-form") — and the timestamp is cleared on admin opt-out. Now evidences what/when/how per Art. 7 / PECR reg. 22 instead of a bare boolean. Historic boolean-only opt-ins can\'t be retro-evidenced — re-permissioning those is an owner decision (per the audit).'],
   },
   {
-    title: 'AUDIT H: Medical questionnaires capture no privacy-notice/granular consent', type: 'TASK', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    title: 'AUDIT H: Medical questionnaires capture no privacy-notice/granular consent', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', project: 'audit-remediation',
     value: 7, effort: 4,
     detail: 'Live medical/treatment questionnaires record no privacy-notice acknowledgement or granular consent for processing special-category data. Fix: capture an explicit privacy-notice acknowledgement (version + timestamp) and the processing consent alongside the questionnaire submission. (audit/06-pii-compliance.md)',
+    notes: ['Shipped: medicalHistory (v1→v2) now captures a required, durable privacy-notice acknowledgement (agreed_privacy) — stored with the questionnaire key+version so the exact wording is recoverable (Art. 13 / Art. 9(2) evidencing). treatmentConsent (v1→v2) splits the conflated photo question into clinical-record consent (photos) and an independently-revocable marketing-photo consent (photos_marketing, only asked once clinical photos are agreed) — purposes no longer bundled (Art. 7(2)). No code consumed the old marketing_ok value; UK-locale strings for the two new questions fall back to English for now.'],
   },
   {
     title: 'AUDIT H: Unauthenticated session-replay ingest endpoint', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', project: 'audit-remediation',
