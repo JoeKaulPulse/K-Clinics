@@ -3,6 +3,7 @@ import { Resend } from 'resend';
 import { site } from './site';
 import { K_MARK_LIGHT_B64, K_BADGE_B64, K_WORDMARK_LIGHT_B64 } from './brand-email-assets';
 import { EMAIL_HEROES } from './email-heroes';
+import { giftCardTheme } from './gift-card-themes';
 
 const apiKey = process.env.RESEND_API_KEY;
 const resend = apiKey ? new Resend(apiKey) : null;
@@ -327,13 +328,33 @@ export function tmplPasswordChanged(firstName: string) {
 }
 
 // ── Gift voucher templates ───────────────────────────────────────────────────
-function voucherCard(amount: string, code: string) {
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;"><tr><td style="background:#2a2420;border-radius:14px;padding:26px;text-align:center;color:#f6ece3;">
-    <div style="font-size:10px;letter-spacing:4px;text-transform:uppercase;color:#c2a589;">KClinics Gift Voucher</div>
-    <div style="font-family:Georgia,serif;font-size:40px;margin:10px 0;">${amount}</div>
-    <div style="font-size:12px;color:#c2a589;text-transform:uppercase;letter-spacing:2px;">Code</div>
+// The card renders the buyer's chosen design (lib/gift-card-themes). A solid
+// background colour is set first so Outlook (which drops linear-gradient) still
+// shows an on-brand card; modern clients layer the gradient on top.
+function voucherCard(amount: string, code: string, opts?: { designId?: string | null; recipientName?: string | null; message?: string | null }) {
+  const t = giftCardTheme(opts?.designId);
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;"><tr><td style="background:${t.to};background-image:linear-gradient(135deg,${t.from},${t.to});border-radius:14px;padding:26px;text-align:center;color:${t.ink};">
+    <div style="font-size:10px;letter-spacing:4px;text-transform:uppercase;color:${t.accent};">KClinics Gift</div>
+    ${opts?.recipientName ? `<div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;opacity:.7;margin-top:8px;">For ${escape(opts.recipientName)}</div>` : ''}
+    <div style="font-family:Georgia,serif;font-size:40px;margin:8px 0;">${amount}</div>
+    ${opts?.message ? `<div style="font-family:Georgia,serif;font-style:italic;font-size:14px;opacity:.85;margin:0 auto 10px;max-width:320px;">“${escape(opts.message)}”</div>` : ''}
+    <div style="font-size:11px;color:${t.accent};text-transform:uppercase;letter-spacing:2px;">Code</div>
     <div style="font-family:monospace;font-size:20px;letter-spacing:2px;margin-top:4px;">${escape(code)}</div>
   </td></tr></table>`;
+}
+
+export function tmplCustomGiftCard(o: { recipientName: string; fromName: string; amount: string; code: string; message?: string | null; designId?: string | null; viewUrl: string; claimUrl: string }) {
+  return emailShell({
+    preheader: `${o.fromName} sent you a ${o.amount} KClinics gift card`,
+    body: `${heroBand('voucher')}
+    <h1 style="font-size:26px;margin:0 0 12px;">A gift for you, ${escape(o.recipientName)}.</h1>
+    <p><strong>${escape(o.fromName)}</strong> has sent you a KClinics gift card to spend on any of our treatments.</p>
+    ${voucherCard(o.amount, o.code, { designId: o.designId, recipientName: o.recipientName, message: o.message })}
+    <p style="margin:22px 0 10px;">${btn(o.viewUrl, 'View &amp; share your card')}</p>
+    <p style="margin:0 0 22px;">${btnOutline(o.claimUrl, 'Add to your account &amp; claim')}</p>
+    <p style="font-size:14px;">Valid for 12 months; partial use is fine — any balance stays on your card. (Treatments are for ages 18+.)</p>
+    <p>With warmth,<br>The KClinics team</p>`,
+  });
 }
 
 export function tmplGiftVoucher(o: { recipientName: string; fromName: string; amount: string; code: string; message?: string | null; bookUrl: string }) {
@@ -350,15 +371,15 @@ export function tmplGiftVoucher(o: { recipientName: string; fromName: string; am
   });
 }
 
-export function tmplGiftVoucherReceipt(o: { purchaserName: string; amount: string; code: string; recipientName?: string | null; scheduled?: boolean; deliverAt?: Date | null }) {
+export function tmplGiftVoucherReceipt(o: { purchaserName: string; amount: string; code: string; recipientName?: string | null; scheduled?: boolean; deliverAt?: Date | null; designId?: string | null }) {
   const when = o.deliverAt ? o.deliverAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
   return emailShell({
-    preheader: `Your ${o.amount} KClinics gift voucher`,
+    preheader: `Your ${o.amount} KClinics gift card`,
     body: `${heroBand('voucher')}
     <h1 style="font-size:24px;margin:0 0 12px;">Thank you, ${escape(o.purchaserName)}.</h1>
-    <p>Your ${o.amount} gift voucher is ready${o.recipientName ? ` for <strong>${escape(o.recipientName)}</strong>` : ''}.</p>
+    <p>Your ${o.amount} gift card is ready${o.recipientName ? ` for <strong>${escape(o.recipientName)}</strong>` : ''}.</p>
     ${o.scheduled ? `<p>We’ll deliver it to them on <strong>${when}</strong>.</p>` : `<p>${o.recipientName ? 'We’ve sent it to them too.' : 'Here it is to share however you like.'}</p>`}
-    ${voucherCard(o.amount, o.code)}
+    ${voucherCard(o.amount, o.code, { designId: o.designId })}
     <p style="font-size:14px;">Valid for 12 months. Redeemable against any treatment; partial use keeps the balance on the code.</p>
     <p>With warmth,<br>The KClinics team</p>`,
   });
