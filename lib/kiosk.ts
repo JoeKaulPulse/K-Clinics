@@ -2,6 +2,8 @@ import 'server-only';
 import { createHash, randomBytes } from 'crypto';
 import { db } from '@/lib/db';
 import { analyzeKioskPhoto } from '@/lib/kiosk-ai';
+import { createPersonalCode } from '@/lib/promo';
+import { site } from '@/lib/site';
 
 // ── Shared kiosk helpers ─────────────────────────────────────────────────────
 // Token/slug generation, IP hashing (no raw IPs stored), funnel event logging,
@@ -82,4 +84,73 @@ export async function runKioskAnalysis(sessionId: string): Promise<void> {
   } catch (e) {
     console.error('[kiosk] analysis save failed:', (e as Error)?.message);
   }
+}
+
+// ── Share-to-claim reward ────────────────────────────────────────────────────
+const OOH_CAMPAIGN_SLUG = 'skin-smile-ooh';
+
+/** Idempotently ensure the "Storefront Skin & Smile (OOH)" marketing campaign
+ *  exists (so kiosk discount codes attribute against it). Returns its id. */
+export async function getOohCampaignId(): Promise<string> {
+  const c = await db.marketingCampaign.upsert({
+    where: { slug: OOH_CAMPAIGN_SLUG },
+    update: {},
+    create: { slug: OOH_CAMPAIGN_SLUG, name: 'Storefront Skin & Smile (OOH)', status: 'ACTIVE', goal: 'leads', description: 'In-store QR kiosk: AI skin & smile score → social share → account + share-to-claim discount.' },
+    select: { id: true },
+  });
+  return c.id;
+}
+
+export type ClaimResult = { ok: true; code: string; pct: number; days: number } | { ok: false; error: string };
+
+/** Issue the share-to-claim discount: requires the session to have been SHARED,
+ *  creates/links a marketing-opted-in client, mints a single-use campaign code,
+ *  emails it, and records it on the result. Idempotent per result. */
+export async function claimKioskDiscount(resultId: string, emailRaw: string, firstNameRaw: string): Promise<ClaimResult> {
+  const email = (emailRaw || '').trim().toLowerCase();
+  const firstName = (firstNameRaw || '').trim().slice(0, 60);
+  if (!/\S+@\S+\.\S+/.test(email)) return { ok: false, error: 'Enter a valid email.' };
+  if (!firstName) return { ok: false, error: 'Enter your first name.' };
+
+  const { getSetting, getConfigNumber } = await import('@/lib/settings');
+  if (!(await getSetting('kiosk_discount_enabled'))) return { ok: false, error: 'Rewards are paused right now — please ask in clinic.' };
+
+  const result = await db.kioskResult.findUnique({ where: { id: resultId }, include: { session: { select: { id: true, status: true, ipHash: true } } } });
+  if (!result) return { ok: false, error: 'Result not found.' };
+  // Idempotent: if already claimed, return the existing code.
+  if (result.claimCode) return { ok: true, code: result.claimCode, pct: await getConfigNumber('kiosk_discount_pct'), days: await getConfigNumber('kiosk_discount_days') };
+  // Share-gate.
+  if (result.session.status !== 'SHARED') return { ok: false, error: 'Share your score first to unlock your reward 🎁' };
+
+  const pct = Math.max(1, Math.min(100, await getConfigNumber('kiosk_discount_pct')));
+  const days = Math.max(1, await getConfigNumber('kiosk_discount_days'));
+  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
+  // Find or create a marketing-opted-in client (kiosk is an explicit opt-in).
+  try {
+    await db.client.upsert({
+      where: { email },
+      update: { marketingOptIn: true },
+      create: { email, firstName, marketingOptIn: true, source: 'kiosk' },
+    });
+  } catch (e) { console.error('[kiosk] client upsert failed (continuing):', (e as Error)?.message); }
+
+  let code: string;
+  try {
+    code = await createPersonalCode({ campaignId: await getOohCampaignId(), email, discountType: 'PERCENT', percent: pct, expiresAt, label: 'Storefront Skin & Smile (OOH)' });
+  } catch (e) {
+    return { ok: false, error: (e as Error)?.message || 'Could not issue your code — please try again.' };
+  }
+
+  await db.kioskResult.update({ where: { id: resultId }, data: { claimCode: code, claimEmail: email, claimedAt: new Date() } }).catch(() => {});
+  await logKioskEvent('claimed', result.session.id, result.session.ipHash);
+
+  // Email the code (best-effort).
+  try {
+    const { sendEmail, tmplKioskReward } = await import('@/lib/email');
+    const base = (process.env.NEXT_PUBLIC_SITE_URL || site.url).replace(/\/$/, '');
+    await sendEmail({ to: email, subject: `Your ${pct}% KClinics reward — code ${code}`, html: tmplKioskReward({ firstName, code, pct, days, bookUrl: `${base}/book` }) });
+  } catch (e) { console.error('[kiosk] reward email failed (continuing):', (e as Error)?.message); }
+
+  return { ok: true, code, pct, days };
 }

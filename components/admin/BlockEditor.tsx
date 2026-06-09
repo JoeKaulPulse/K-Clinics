@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { type Block, type BlockType, BLOCK_LABELS, emptyBlock, inlineToHtml } from '@/lib/blocks';
+import { sanitizeHtml } from '@/lib/sanitize';
 import { RichTextField } from '@/components/admin/RichTextField';
 
 // A block-based content editor for the Journal. Click-to-edit with a live
@@ -212,7 +213,7 @@ function BlockView({ block: b, active, setActive, update, convert, taRef }: {
   return (
     <button type="button" className="be-preview" onClick={setActive}>
       {b.html.trim()
-        ? <div className="be-p" dangerouslySetInnerHTML={{ __html: b.html }} />
+        ? <div className="be-p" dangerouslySetInnerHTML={{ __html: sanitizeHtml(b.html) }} />
         : <span className="be-placeholder">Empty HTML — click to edit</span>}
     </button>
   );

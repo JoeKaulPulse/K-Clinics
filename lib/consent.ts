@@ -8,6 +8,16 @@ import { encryptJson, integrityHash } from '@/lib/crypto';
 
 export type ConsentCategory = 'general' | 'laser' | 'injectables' | 'facials' | 'dental';
 
+// Demonstrable marketing consent (UK GDPR Art. 7 / PECR reg. 22): capture WHAT
+// wording (version), WHEN (timestamp) and HOW/WHERE (source) consent was given,
+// not just a boolean. Bump the version whenever the marketing consent wording
+// changes. Spread the fields into a Client create/update ONLY on a genuine
+// affirmative opt-in.
+export const MARKETING_CONSENT_VERSION = '2026-06-v1';
+export function marketingConsentFields(source: string) {
+  return { marketingConsentAt: new Date(), marketingConsentSource: source.slice(0, 60), marketingConsentVersion: MARKETING_CONSENT_VERSION };
+}
+
 // ── Audited consent wording ──────────────────────────────────────────────────
 // The statements below are the clinic's AUDITED consent language, carried over
 // verbatim from the approved Cosmetology Client Consultation Forms. Do not

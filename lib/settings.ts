@@ -26,7 +26,8 @@ export type SettingKey =
   | 'staff_weekly_digest'        // Monday email: each staff member's work + admin report links
   | 'staff_work_reengagement'    // email staff with pending assigned work if idle ≥8h
   | 'vat_registered'             // the clinic is VAT-registered (turns VAT on across pricing)
-  | 'prices_vat_inclusive';      // prices are entered/shown VAT-inclusive (vs exclusive)
+  | 'prices_vat_inclusive'       // prices are entered/shown VAT-inclusive (vs exclusive)
+  | 'kiosk_discount_enabled';    // the storefront kiosk issues a share-to-claim discount code
 
 export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   allow_clinician_choice: false,
@@ -51,6 +52,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   staff_work_reengagement: true,
   vat_registered: false,
   prices_vat_inclusive: true,
+  kiosk_discount_enabled: true,
 };
 
 export const SETTING_META: Record<SettingKey, { label: string; description: string }> = {
@@ -142,13 +144,17 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
     label: 'Prices include VAT',
     description: 'When VAT is on, treat the prices you enter as VAT-inclusive (the displayed price is what the client pays). Turn off to add VAT on top. On by default.',
   },
+  kiosk_discount_enabled: {
+    label: 'Storefront kiosk share reward',
+    description: 'When on, a storefront “Skin & Smile” kiosk visitor who shares their result can create an account and claim a single-use discount code (set the % under Finance → Financial controls). Turn off to pause the reward.',
+  },
 };
 
 // Numeric/string config values (not booleans) live in the same Setting table
 // under their own keys — e.g. the physical gift-card fee. Defaults applied when
 // absent; never throws.
-export type ConfigKey = 'gift_card_physical_fee_pence' | 'refund_window_days' | 'vat_default_rate_pct' | 'min_margin_pct';
-export const CONFIG_DEFAULTS: Record<ConfigKey, number> = { gift_card_physical_fee_pence: 495, refund_window_days: 180, vat_default_rate_pct: 20, min_margin_pct: 0 };
+export type ConfigKey = 'gift_card_physical_fee_pence' | 'refund_window_days' | 'vat_default_rate_pct' | 'min_margin_pct' | 'kiosk_discount_pct' | 'kiosk_discount_days';
+export const CONFIG_DEFAULTS: Record<ConfigKey, number> = { gift_card_physical_fee_pence: 495, refund_window_days: 180, vat_default_rate_pct: 20, min_margin_pct: 0, kiosk_discount_pct: 15, kiosk_discount_days: 60 };
 
 export async function getConfigNumber(key: ConfigKey): Promise<number> {
   try {

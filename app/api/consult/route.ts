@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { consultSchema } from '@/lib/validation';
 import { crmEnabled } from '@/lib/crm';
 import { site } from '@/lib/site';
+import { marketingConsentFields } from '@/lib/consent';
+import { encClinical } from '@/lib/clinical-crypto';
 
 export const runtime = 'nodejs';
 
@@ -53,6 +55,7 @@ export async function POST(req: Request) {
         phone: data.phone || undefined,
         dob: data.dob ? new Date(data.dob) : undefined,
         marketingOptIn: data.marketingOptIn || undefined,
+        ...(data.marketingOptIn ? marketingConsentFields('consult-form') : {}),
       },
       create: {
         firstName: data.firstName,
@@ -62,6 +65,7 @@ export async function POST(req: Request) {
         dob: data.dob ? new Date(data.dob) : null,
         source: 'website',
         marketingOptIn: data.marketingOptIn,
+        ...(data.marketingOptIn ? marketingConsentFields('consult-form') : {}),
       },
     });
 
@@ -70,8 +74,8 @@ export async function POST(req: Request) {
         clientId: client.id,
         category: data.category,
         treatments: data.treatments,
-        concerns: data.concerns || null,
-        message: data.message || null,
+        concerns: data.concerns ? encClinical(data.concerns) : null,
+        message: data.message ? encClinical(data.message) : null,
         preferredTime: data.preferredTime || null,
         preferredContact: data.preferredContact || null,
         status: 'NEW',

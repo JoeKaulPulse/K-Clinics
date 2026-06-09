@@ -51,6 +51,22 @@ function pickDirectUrl() {
 const dbUrl = pickDirectUrl();
 const useMigrations = process.env.USE_MIGRATIONS === 'true';
 
+// Defined up here (not lower down) so the USE_MIGRATIONS retry/backoff below can
+// call it — a `const` is in the temporal dead zone until its declaration, so the
+// previous definition further down threw a ReferenceError on the first retry.
+const sleep = (s) => { try { execSync(`sleep ${s}`); } catch { /* non-posix shell */ } };
+
+// Opt-in: decouple deploy success from DB liveness. When set, a schema sync that
+// can't reach the database warns and lets the build proceed (a code-only deploy
+// isn't blocked by a briefly-unreachable DB) instead of failing. Default stays
+// fail-fast so we never knowingly ship code ahead of the schema.
+const nonfatal = process.env.DB_SYNC_NONFATAL === 'true';
+function failBuild(msg) {
+  console.error(msg);
+  if (nonfatal) { console.warn('[db-sync] DB_SYNC_NONFATAL=true — proceeding without a confirmed schema sync.'); process.exit(0); }
+  process.exit(1);
+}
+
 if (isPages || !dbUrl) {
   console.log(`[db-sync] skipped (${isPages ? 'GitHub Pages static export' : 'no direct postgres:// URL found'})`);
   process.exit(0);
@@ -74,12 +90,10 @@ if (useMigrations) {
       if (attempt < ATTEMPTS) { const wait = BACKOFF[attempt - 1] || 60; console.error(`[db-sync] retrying in ${wait}s…`); sleep(wait); }
     }
   }
-  console.error('[db-sync] FATAL: could not apply migrations after retries. Failing the build.');
-  process.exit(1);
+  failBuild('[db-sync] FATAL: could not apply migrations after retries.');
 }
 
 const env = { ...process.env, DATABASE_URL: dbUrl };
-const sleep = (s) => { try { execSync(`sleep ${s}`); } catch { /* non-posix shell */ } };
 
 // Fast path: confirm whether the live schema already matches the code. This is
 // the common case for code-only deploys and lets us skip the migration push
@@ -148,8 +162,7 @@ for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
   }
 }
 
-console.error(
+failBuild(
   '[db-sync] FATAL: could not sync the schema after retries. Failing the build so we never deploy code ahead of the database. ' +
   'Check the database is reachable (e.g. not suspended) and redeploy.',
 );
-process.exit(1);
