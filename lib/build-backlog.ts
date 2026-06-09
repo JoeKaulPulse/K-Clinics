@@ -754,9 +754,10 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Shipped: the negative-stock guard is now an ATOMIC conditional update (updateMany where currentQty >= |delta|) wrapped with the movement insert in one interactive $transaction. Two concurrent USED movements can no longer both pass the check and drive on-hand negative; an insufficient-stock attempt returns the live on-hand count.'],
   },
   {
-    title: 'AUDIT H: Build-time prisma db push mutates production DB', type: 'TASK', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    title: 'AUDIT H: Build-time prisma db push mutates production DB', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', project: 'audit-remediation',
     value: 8, effort: 3,
     detail: 'package.json prebuild → scripts/db-sync.mjs runs `prisma db push` against prod on every deploy, mutating the schema and failing the deploy if the DB is unreachable. Fix: do not mutate prod schema from prebuild by default; prefer versioned `prisma migrate deploy` (USE_MIGRATIONS) and make build resilient to DB unavailability. Also fix the db-sync.mjs sleep() TDZ bug. (audit/10 + 04)',
+    notes: ['Shipped: (1) fixed the sleep() TDZ ReferenceError (const used before declaration) that crashed the retry/backoff in the USE_MIGRATIONS migrate-deploy path — the recommended decoupled path now actually works; (2) added opt-in DB_SYNC_NONFATAL=true so a code-only deploy proceeds when the DB is briefly unreachable instead of failing the build (decouples deploy from DB liveness), default stays fail-fast. Fully eliminating build-time db push is the USE_MIGRATIONS path — owner action to create + commit the baseline migration, tracked in the "SaaS — DB safety" item.'],
   },
   {
     title: 'AUDIT H: OAuth refresh token stored plaintext at rest', type: 'ERROR', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
@@ -779,9 +780,10 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Live medical/treatment questionnaires record no privacy-notice acknowledgement or granular consent for processing special-category data. Fix: capture an explicit privacy-notice acknowledgement (version + timestamp) and the processing consent alongside the questionnaire submission. (audit/06-pii-compliance.md)',
   },
   {
-    title: 'AUDIT H: Unauthenticated session-replay ingest endpoint', type: 'ERROR', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    title: 'AUDIT H: Unauthenticated session-replay ingest endpoint', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', project: 'audit-remediation',
     value: 8, effort: 3,
     detail: 'app/api/track/replay/route.ts accepts rrweb batches from anyone with no auth, consent check or rate-limit (masking is client-side only), so PII can be ingested without consent and the table can be flooded. Fix: gate on analytics consent + a session/token check + per-IP rate-limit, and cap payload size. (audit/06 + 03)',
+    notes: ['Shipped: the consent banner now mirrors the analytics choice into a readable first-party cookie (kc_analytics_consent) so the SERVER can verify it (localStorage isn\'t sent with requests). /api/track/replay now: requires consent (fail-closed 403), rate-limits per IP (240/600s → 429), caps a single batch body at 512KB (413), and refuses to store replay for sensitive paths (/admin,/account,/book,/booking,/sign). Already-consented visitors re-grant once via the banner.'],
   },
   {
     title: 'AUDIT H: Google Calendar OAuth callback missing CSRF state nonce', type: 'ERROR', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
