@@ -91,6 +91,9 @@ export async function POST(req: Request) {
         if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
         if (!(await board.githubConfigured())) return NextResponse.json({ ok: false, error: 'GitHub isn’t connected yet.' }, { status: 400 });
         const item = await board.pushToGithub(String(b.id), session.email);
+        // pushToGithub never throws; if it didn't link, GitHub declined it (usually
+        // a secondary rate-limit on the account) — say so instead of silently no-op'ing.
+        if (item && !item.githubUrl) return NextResponse.json({ ok: false, error: 'GitHub didn’t accept it just now — likely rate-limited after heavy activity. It’ll sync automatically shortly (or use “Sync to GitHub” in a few minutes).' }, { status: 503 });
         return NextResponse.json({ ok: true, item });
       }
       case 'github-connect': {

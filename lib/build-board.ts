@@ -579,34 +579,37 @@ export async function triggerClaude(message: string, itemId: string): Promise<bo
   return ghComment(item.githubNumber, `@claude ${message}\n\n_Triggered from the Build & Issues board._`);
 }
 
-/** The board's "▶ Continue working" button: records the request and wakes Claude
- *  via a singleton GitHub issue so it works through the prioritised backlog. */
-export async function requestClaudeContinue(actor: string): Promise<{ ok: boolean; githubUrl?: string; configured: boolean }> {
+/** The board's "▶ Continue working" button: always records the request, then
+ *  tries to wake Claude via a singleton GitHub issue. The request is never lost —
+ *  if GitHub is rate-limited/unreachable, `woke` is false and `warning` explains
+ *  it (the recorded request is picked up by the next session/sync). */
+export async function requestClaudeContinue(actor: string): Promise<{ ok: boolean; configured: boolean; woke: boolean; githubUrl?: string; warning?: string }> {
   const now = new Date().toISOString();
   await db.setting.upsert({ where: { key: 'build_continue_requested_at' }, update: { value: now, updatedBy: actor }, create: { key: 'build_continue_requested_at', value: now, updatedBy: actor } });
   const cfg = await getGithubConfig();
-  if (!cfg) return { ok: true, configured: false };
+  if (!cfg) return { ok: true, configured: false, woke: false };
 
   const TITLE = '▶ Continue working through the backlog';
   const numRow = await db.setting.findUnique({ where: { key: 'build_continue_issue_number' } });
   const existing = numRow?.value ? Number(numRow.value) : null;
   const msg = `@claude please continue working through the prioritised Build & Issues backlog (highest value-to-effort first, skipping owner-gated items). Requested by ${actor.split('@')[0]} at ${now}.`;
+  const RATE = 'GitHub is rate-limiting right now (a lot of activity on the account today) — your request is saved and Claude will pick it up shortly; you can also just tell Claude to continue.';
 
   if (existing) {
     // Reopen + comment the singleton issue so the mention re-triggers a session.
     await fetch(`https://api.github.com/repos/${cfg.repo}/issues/${existing}`, {
       method: 'PATCH', headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' }, body: JSON.stringify({ state: 'open' }),
     }).catch(() => {});
-    const ok = await ghComment(existing, msg);
-    return { ok, configured: true, githubUrl: `https://github.com/${cfg.repo}/issues/${existing}` };
+    const woke = await ghComment(existing, msg);
+    return { ok: true, configured: true, woke, githubUrl: `https://github.com/${cfg.repo}/issues/${existing}`, warning: woke ? undefined : RATE };
   }
 
   const res = await fetch(`https://api.github.com/repos/${cfg.repo}/issues`, {
     method: 'POST', headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
     body: JSON.stringify({ title: TITLE, body: msg, labels: ['claude', 'continue'] }),
   });
-  if (!res.ok) return { ok: false, configured: true };
+  if (!res.ok) return { ok: true, configured: true, woke: false, warning: RATE };
   const issue = (await res.json()) as { html_url?: string; number?: number };
   if (issue.number) await db.setting.upsert({ where: { key: 'build_continue_issue_number' }, update: { value: String(issue.number), updatedBy: actor }, create: { key: 'build_continue_issue_number', value: String(issue.number), updatedBy: actor } });
-  return { ok: true, configured: true, githubUrl: issue.html_url };
+  return { ok: true, configured: true, woke: true, githubUrl: issue.html_url };
 }
