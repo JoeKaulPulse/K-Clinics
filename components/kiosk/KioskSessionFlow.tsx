@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ResultCard, type KioskResultView } from './ResultCard';
+import { ClaimReward } from './ClaimReward';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -101,16 +102,6 @@ export function KioskSessionFlow({
     }, 2000);
   }
 
-  const claimHref = result ? `/account/register?ref=kiosk&slug=${result.shareSlug}` : '#';
-
-  function onClaimClick() {
-    if (result) fetch('/api/kiosk/events', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ event: 'claimed', sessionId }),
-    }).catch(() => {});
-  }
-
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-ink)] px-5 py-10 text-[var(--color-porcelain)]">
       {/* STEP 1 — Welcome */}
@@ -206,12 +197,11 @@ export function KioskSessionFlow({
         </div>
       )}
 
-      {/* STEP 5 — Result */}
+      {/* STEP 5 — Result + share-to-claim reward */}
       {step === 5 && result && (
-        <div className="w-full" onClickCapture={(e) => {
-          if ((e.target as HTMLElement).closest('a[href*="register"]')) onClaimClick();
-        }}>
-          <ResultCard result={result} claimHref={claimHref} />
+        <div className="w-full">
+          <ResultCard result={result} />
+          {result.id && <ClaimReward resultId={result.id} />}
         </div>
       )}
       {step === 5 && !result && (
