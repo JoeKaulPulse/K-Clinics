@@ -5,6 +5,8 @@ import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-
 import { getStripe } from '@/lib/stripe-client';
 import { isDemo } from '@/lib/booking-mode';
 import { Button, ArrowIcon } from '@/components/ui/Button';
+import { GiftCardPreview } from '@/components/gift/GiftCardPreview';
+import { GIFT_CARD_THEMES, DEFAULT_THEME_ID } from '@/lib/gift-card-themes';
 
 const PRESETS = [2500, 5000, 7500, 10000, 15000, 25000];
 const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none focus:border-[var(--color-gold)]';
@@ -12,7 +14,7 @@ const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--colo
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB')}`;
 
 export function GiftVoucherFlow() {
-  const [f, setF] = useState({ amount: 5000, custom: '', recipientName: '', recipientEmail: '', message: '', deliverAt: '', purchaserName: '', purchaserEmail: '', company: '' });
+  const [f, setF] = useState({ amount: 5000, custom: '', recipientName: '', recipientEmail: '', message: '', deliverAt: '', purchaserName: '', purchaserEmail: '', design: DEFAULT_THEME_ID, company: '' });
   const [stage, setStage] = useState<'form' | 'pay' | 'done'>('form');
   const [clientSecret, setClientSecret] = useState('');
   const [voucherId, setVoucherId] = useState('');
@@ -50,32 +52,52 @@ export function GiftVoucherFlow() {
     <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6 md:p-8">
       {stage === 'form' ? (
         <>
-          <h3 className="font-[family-name:var(--font-display)] text-2xl">Buy a gift voucher</h3>
-          <div className="mt-6">
-            <p className={label}>Amount</p>
-            <div className="flex flex-wrap gap-2">
-              {PRESETS.map((p) => (
-                <button key={p} onClick={() => { set('amount', p); set('custom', ''); }} className={`rounded-full border px-4 py-2 text-sm transition-all ${!f.custom && f.amount === p ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>{money(p)}</button>
-              ))}
-              <input value={f.custom} onChange={(e) => set('custom', e.target.value)} placeholder="Custom £" className={`${field} w-28`} />
+          <h3 className="font-[family-name:var(--font-display)] text-2xl">Design your gift card</h3>
+          <p className="mt-1 text-sm text-[var(--color-stone)]">Personalise it, preview it live, and we’ll email it to your recipient. No account needed.</p>
+
+          <div className="mt-6 grid gap-7 lg:grid-cols-[1fr_minmax(280px,360px)]">
+            {/* Left — the form */}
+            <div>
+              <div>
+                <p className={label}>Amount</p>
+                <div className="flex flex-wrap gap-2">
+                  {PRESETS.map((p) => (
+                    <button key={p} onClick={() => { set('amount', p); set('custom', ''); }} className={`rounded-full border px-4 py-2 text-sm transition-all ${!f.custom && f.amount === p ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>{money(p)}</button>
+                  ))}
+                  <input value={f.custom} onChange={(e) => set('custom', e.target.value)} placeholder="Custom £" className={`${field} w-28`} />
+                </div>
+              </div>
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <div><label className={label}>Recipient name</label><input className={field} value={f.recipientName} onChange={(e) => set('recipientName', e.target.value)} placeholder="Who’s it for?" /></div>
+                <div><label className={label}>Recipient email</label><input type="email" className={field} value={f.recipientEmail} onChange={(e) => set('recipientEmail', e.target.value)} placeholder="We’ll email it to them" /></div>
+                <div className="sm:col-span-2"><label className={label}>Message (optional)</label><textarea rows={2} maxLength={500} className={field} value={f.message} onChange={(e) => set('message', e.target.value)} placeholder="Happy birthday — enjoy! x" /></div>
+                <div><label className={label}>Deliver on (optional)</label><input type="date" className={field} value={f.deliverAt} min={new Date(Date.now() + 864e5).toISOString().slice(0, 10)} onChange={(e) => set('deliverAt', e.target.value)} /></div>
+                <div />
+                <div><label className={label}>Your name *</label><input className={field} value={f.purchaserName} onChange={(e) => set('purchaserName', e.target.value)} /></div>
+                <div><label className={label}>Your email *</label><input type="email" className={field} value={f.purchaserEmail} onChange={(e) => set('purchaserEmail', e.target.value)} placeholder="For your receipt" /></div>
+                <input type="text" tabIndex={-1} value={f.company} onChange={(e) => set('company', e.target.value)} className="absolute -left-[9999px]" aria-hidden />
+              </div>
+              {error && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
+                <span className="text-sm text-[var(--color-stone)]">Total <strong className="text-[var(--color-ink)]">{money(amountPence || 0)}</strong></span>
+                <Button onClick={() => !busy && start()} variant="gold" size="lg">{busy ? 'Please wait…' : 'Continue to payment'} <ArrowIcon /></Button>
+              </div>
+              {isDemo && <p className="mt-3 text-xs text-[var(--color-stone-soft)]">Payments are in demo mode until Stripe is connected.</p>}
+            </div>
+
+            {/* Right — live preview + design picker (sticky on desktop) */}
+            <div className="self-start lg:sticky lg:top-6">
+              <GiftCardPreview designId={f.design} amountPence={amountPence || 0} recipientName={f.recipientName} message={f.message} purchaserName={f.purchaserName} />
+              <p className={`${label} mt-4`}>Card design</p>
+              <div className="flex flex-wrap gap-2">
+                {GIFT_CARD_THEMES.map((thm) => (
+                  <button key={thm.id} type="button" onClick={() => set('design', thm.id)} title={thm.name} aria-label={thm.name} aria-pressed={f.design === thm.id}
+                    className={`h-9 w-9 rounded-full transition-transform hover:scale-105 ${f.design === thm.id ? 'ring-2 ring-[var(--color-gold)] ring-offset-2 ring-offset-[var(--color-bone)]' : 'ring-1 ring-[var(--color-line)]'}`}
+                    style={{ background: `linear-gradient(135deg, ${thm.from}, ${thm.to})` }} />
+                ))}
+              </div>
             </div>
           </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <div><label className={label}>Recipient name</label><input className={field} value={f.recipientName} onChange={(e) => set('recipientName', e.target.value)} /></div>
-            <div><label className={label}>Recipient email</label><input type="email" className={field} value={f.recipientEmail} onChange={(e) => set('recipientEmail', e.target.value)} placeholder="We’ll email it to them" /></div>
-            <div className="sm:col-span-2"><label className={label}>Message (optional)</label><textarea rows={2} className={field} value={f.message} onChange={(e) => set('message', e.target.value)} /></div>
-            <div><label className={label}>Deliver on (optional)</label><input type="date" className={field} value={f.deliverAt} min={new Date(Date.now() + 864e5).toISOString().slice(0, 10)} onChange={(e) => set('deliverAt', e.target.value)} /></div>
-            <div />
-            <div><label className={label}>Your name *</label><input className={field} value={f.purchaserName} onChange={(e) => set('purchaserName', e.target.value)} /></div>
-            <div><label className={label}>Your email *</label><input type="email" className={field} value={f.purchaserEmail} onChange={(e) => set('purchaserEmail', e.target.value)} /></div>
-            <input type="text" tabIndex={-1} value={f.company} onChange={(e) => set('company', e.target.value)} className="absolute -left-[9999px]" aria-hidden />
-          </div>
-          {error && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
-          <div className="mt-6 flex items-center justify-between gap-4">
-            <span className="text-sm text-[var(--color-stone)]">Total <strong className="text-[var(--color-ink)]">{money(amountPence || 0)}</strong></span>
-            <Button onClick={() => !busy && start()} variant="gold" size="lg">{busy ? 'Please wait…' : 'Continue to payment'} <ArrowIcon /></Button>
-          </div>
-          {isDemo && <p className="mt-3 text-xs text-[var(--color-stone-soft)]">Payments are in demo mode until Stripe is connected.</p>}
         </>
       ) : (
         <>

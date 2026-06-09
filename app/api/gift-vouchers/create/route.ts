@@ -12,6 +12,7 @@ const schema = z.object({
   recipientEmail: z.string().email().optional().or(z.literal('')),
   message: z.string().max(500).optional().or(z.literal('')),
   deliverAt: z.string().optional().or(z.literal('')),
+  design: z.string().max(40).optional().or(z.literal('')),
   company: z.string().max(0).optional().or(z.literal('')), // honeypot
 });
 
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
     recipientEmail: parsed.data.recipientEmail || undefined,
     message: parsed.data.message || undefined,
     deliverAt: parsed.data.deliverAt || null,
+    design: parsed.data.design || undefined,
   });
   return NextResponse.json(res, { status: res.ok ? 200 : 400 });
 }

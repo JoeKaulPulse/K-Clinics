@@ -23,6 +23,7 @@ export type VoucherInput = {
   recipientEmail?: string;
   message?: string;
   deliverAt?: string | null; // ISO date for scheduled delivery
+  design?: string;           // chosen card theme id (lib/gift-card-themes)
 };
 
 /** Create a PENDING voucher + a Stripe PaymentIntent (charged now). */
@@ -42,6 +43,7 @@ export async function createVoucherIntent(input: VoucherInput): Promise<{ ok: bo
       recipientName: input.recipientName?.trim() || null, recipientEmail: input.recipientEmail?.trim().toLowerCase() || null,
       message: input.message?.slice(0, 500) || null,
       deliverAt: deliverAt && !isNaN(+deliverAt) ? deliverAt : null,
+      design: input.design?.slice(0, 40) || null,
     },
   });
 

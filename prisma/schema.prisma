@@ -1757,6 +1757,7 @@ model GiftVoucher {
   recipientName  String?
   recipientEmail String?
   message        String?
+  design         String?             // chosen card theme id (lib/gift-card-themes)
   deliverAt      DateTime?            // scheduled delivery date (null = immediate)
   delivered      Boolean  @default(false)
   status         String   @default("PENDING") // PENDING | ACTIVE | REDEEMED | CANCELLED

@@ -49,23 +49,23 @@ export default function GiftVouchersPage() {
         </div>
       </section>
 
-      <section id="buy" className="container-lux section grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
+      <section id="buy" className="container-lux section">
         <Reveal>
-          <div className="lg:sticky lg:top-28">
+          <div className="mx-auto mb-9 max-w-2xl text-center">
             <p className="eyebrow mb-3">Redeemable on everything</p>
             <h2 className="text-title">One voucher, the whole menu.</h2>
             <p className="mt-4 text-[var(--color-ink-soft)]">Vouchers can be put towards any treatment, product or consultation at KClinics. They’re valid for 12 months, can be used across several visits, and the balance is tracked automatically.</p>
-            <ul className="mt-6 grid gap-2 sm:grid-cols-2">
+            <ul className="mx-auto mt-6 flex max-w-xl flex-wrap justify-center gap-x-5 gap-y-2">
               {USES.map((u) => (
-                <li key={u} className="flex items-start gap-2.5 text-sm text-[var(--color-ink-soft)]"><span className="mt-1 text-[var(--color-gold)]">✦</span> {u}</li>
+                <li key={u} className="flex items-center gap-2 text-sm text-[var(--color-ink-soft)]"><span className="text-[var(--color-gold)]">✦</span> {u}</li>
               ))}
             </ul>
-            <p className="mt-6 text-sm text-[var(--color-stone)]">Buying for a corporate gift or need a printed card? Call us on <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a> and we’ll arrange it.</p>
           </div>
         </Reveal>
         <Reveal delay={0.1}>
           <GiftVoucherFlow />
         </Reveal>
+        <p className="mt-6 text-center text-sm text-[var(--color-stone)]">Buying for a corporate gift? Call us on <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a> and we’ll arrange it.</p>
       </section>
     </>
   );
