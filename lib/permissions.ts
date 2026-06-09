@@ -103,6 +103,9 @@ export const PERMISSIONS: Permission[] = [
 
   // Point of sale
   { key: 'pos.use', group: 'Point of sale', label: 'Use the till (POS)', description: 'Take in-store product payments and record over-the-counter sales.' },
+
+  // Platform
+  { key: 'platform.status', group: 'Administration', label: 'View platform status', description: 'See the Owner/Admin status & health audit page and schedule maintenance windows.', sensitive: true },
 ];
 
 export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
