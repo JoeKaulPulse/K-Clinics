@@ -176,6 +176,13 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Question for the owner: do you want clients to self-reschedule online, or keep it staff-handled? Blocked pending that decision.'],
   },
   {
+    title: 'Resend domains: send via mail.kclinics.co.uk, reply via reply.mail.kclinics.co.uk', type: 'TASK', urgency: 'P1', status: 'IN_PROGRESS', assignee: 'claude', pr: PR(373),
+    value: 7, effort: 2, needs: 'OWNER',
+    ask: 'In Vercel set EMAIL_FROM=KClinics <hello@mail.kclinics.co.uk>, EMAIL_REPLY_TO=replies@reply.mail.kclinics.co.uk, and CHAT_INBOUND_DOMAIN=reply.mail.kclinics.co.uk, then redeploy. In Resend: verify mail.kclinics.co.uk for sending (DKIM/SPF) and add reply.mail.kclinics.co.uk as an Inbound domain (MX/CNAME/CAA), enable open & click tracking, and point the inbound webhook at /api/webhooks/chat-inbound. Reply here when the domains show verified.',
+    detail: 'New DNS: mail.kclinics.co.uk = sending; reply.mail.kclinics.co.uk = reply emails + open/click tracking. Must apply across all products (transactional, campaigns, gift cards, chat, staff emails).',
+    notes: ['Code reflected (#373): default From → hello@mail.<domain>; Reply-To → replies@reply.mail.<domain>; chat sends from mail.<domain> and routes replies to reply.mail.<domain>; go-live board updated with both domains + click-through links. Remaining is the owner’s Vercel env + Resend dashboard config (above).'],
+  },
+  {
     title: 'Build board phase 2: public roadmap + release announcements', type: 'IDEA', urgency: 'P3', status: 'TRIAGE', assignee: 'claude',
     value: 4, effort: 6,
     detail: 'Public "coming soon"/changelog fed by items flagged public, and auto-drafted on-brand release announcements when a feature ships.',
