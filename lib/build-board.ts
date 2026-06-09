@@ -267,6 +267,19 @@ export async function listBuildItems() {
   });
 }
 
+/** Items flagged isPublic=true — used by the public roadmap page. Excludes CANCELLED. */
+export async function listPublicItems() {
+  return db.buildItem.findMany({
+    where: { isPublic: true, status: { notIn: ['CANCELLED'] } },
+    orderBy: [{ shippedAt: 'desc' }, { createdAt: 'desc' }],
+    select: {
+      id: true, type: true, title: true, detail: true, status: true, urgency: true,
+      shippedAt: true, estCompleteAt: true, value: true, effort: true,
+    },
+    take: 100,
+  });
+}
+
 const DONE_STATES = ['SHIPPED', 'CLOSED'];
 
 /** Add a dependency edge (item depends on dependsOn). If the prerequisite isn't
@@ -373,7 +386,7 @@ export async function createBuildItem(input: NewBuildItem, actor: string) {
 type Patch = {
   status?: BuildStatus; urgency?: BuildUrgency; assignee?: string; blocker?: string | null;
   value?: number | null; effort?: number | null; estCompleteAt?: string | null;
-  estTokens?: number | null; actualTokens?: number | null;
+  estTokens?: number | null; actualTokens?: number | null; isPublic?: boolean;
 };
 const clampScore = (n: unknown) => (typeof n === 'number' && Number.isFinite(n) ? Math.max(1, Math.min(10, Math.round(n))) : null);
 export async function updateBuildItem(id: string, patch: Patch, actor: string) {
@@ -399,6 +412,18 @@ export async function updateBuildItem(id: string, patch: Patch, actor: string) {
   }
   if (patch.estTokens !== undefined) data.estTokens = patch.estTokens === null ? null : Math.max(0, Math.round(Number(patch.estTokens) || 0));
   if (patch.actualTokens !== undefined) { data.actualTokens = patch.actualTokens === null ? null : Math.max(0, Math.round(Number(patch.actualTokens) || 0)); if (data.actualTokens) events.push({ kind: 'tokens', actor, body: `Logged ~${Number(data.actualTokens).toLocaleString()} tokens` }); }
+  if (patch.isPublic !== undefined && patch.isPublic !== prev.isPublic) {
+    data.isPublic = patch.isPublic;
+    events.push({ kind: 'public', actor, body: patch.isPublic ? 'Added to public roadmap' : 'Removed from public roadmap' });
+    // Auto-draft a release announcement when a public item ships.
+    if (patch.isPublic && (patch.status === 'SHIPPED' || prev.status === 'SHIPPED')) {
+      events.push({ kind: 'release', actor: 'claude', body: `📣 Release note — ${prev.title}\n\n${prev.detail ? prev.detail.slice(0, 300) + (prev.detail.length > 300 ? '…' : '') : 'No detail provided. Edit this announcement before publishing.'}` });
+    }
+  }
+  // Also auto-draft when a public item reaches SHIPPED.
+  if (patch.status === 'SHIPPED' && prev.isPublic && !data.isPublic) {
+    events.push({ kind: 'release', actor: 'claude', body: `📣 Release note — ${prev.title}\n\n${prev.detail ? prev.detail.slice(0, 300) + (prev.detail.length > 300 ? '…' : '') : 'No detail provided. Edit this announcement before publishing.'}` });
+  }
   if (Object.keys(data).length === 0) return prev;
   const updated = await db.buildItem.update({ where: { id }, data: { ...data, events: { create: events } }, include: ITEM_INCLUDE });
   // Dependency auto-flow: when this item reaches a done state, free anything that was waiting on it.

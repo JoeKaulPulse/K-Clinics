@@ -14,6 +14,7 @@ type Item = {
   blocker: string | null; githubUrl: string | null; createdAt: string; updatedAt: string;
   value: number | null; effort: number | null; startedAt: string | null; estCompleteAt: string | null;
   estTokens: number | null; actualTokens: number | null; shippedAt: string | null; closedAt: string | null; closedBy: string | null;
+  isPublic: boolean;
   attachments: string[];
   events: Ev[]; subtasks: Subtask[]; dependencies: Dependency[]; dependents: Dependent[];
 };
@@ -496,6 +497,10 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
             <button onClick={saveTel} disabled={telBusy} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-[var(--color-porcelain)] disabled:opacity-50">{telBusy ? 'Saving…' : 'Save'}</button>
             {gh.connected && !item.githubUrl && <button onClick={async () => { const r = await post({ op: 'github', id: item.id }); if (r.ok) onChange(); else alert(r.error); }} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 hover:bg-white">Push to GitHub</button>}
             {item.githubUrl && <a href={item.githubUrl} target="_blank" rel="noreferrer" className="text-[var(--color-gold-deep)] underline">GitHub ↗</a>}
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input type="checkbox" checked={item.isPublic} onChange={async (e) => { await patch(item.id, { isPublic: e.target.checked }); }} className="h-3.5 w-3.5 accent-[var(--color-gold)]" />
+              <span>Public roadmap</span>
+            </label>
           </div>
         )}
 

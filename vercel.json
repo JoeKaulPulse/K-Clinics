@@ -9,11 +9,16 @@
     {
       "path": "/api/cron/dispatch",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/kiosk-cleanup",
+      "schedule": "30 3 * * *"
     }
   ],
   "functions": {
     "app/api/cron/daily/route.ts": { "maxDuration": 300 },
     "app/api/cron/dispatch/route.ts": { "maxDuration": 60 },
+    "app/api/cron/kiosk-cleanup/route.ts": { "maxDuration": 60 },
     "app/api/admin/export/route.ts": { "maxDuration": 300 }
   }
 }

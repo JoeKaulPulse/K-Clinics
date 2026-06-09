@@ -119,6 +119,16 @@ export async function listConsultations(status?: string) {
   });
 }
 
+export async function getConsultation(id: string) {
+  return db.consultation.findUnique({
+    where: { id },
+    include: {
+      client: { select: { id: true, firstName: true, lastName: true, email: true } },
+      notes: { orderBy: { createdAt: 'asc' } },
+    },
+  });
+}
+
 export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc' | 'desc'; flag?: string } = {}) {
   const { q, sort = 'created', dir = 'desc', flag } = opts;
   const and: Record<string, unknown>[] = [];

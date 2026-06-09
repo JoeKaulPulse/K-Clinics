@@ -55,6 +55,7 @@ export async function POST(req: Request) {
         const item = await board.updateBuildItem(String(b.id), {
           status: b.status, urgency: b.urgency, assignee: b.assignee, blocker: b.blocker,
           value: b.value, effort: b.effort, estCompleteAt: b.estCompleteAt, estTokens: b.estTokens, actualTokens: b.actualTokens,
+          isPublic: b.isPublic !== undefined ? !!b.isPublic : undefined,
         }, session.email);
         return NextResponse.json({ ok: true, item });
       }
