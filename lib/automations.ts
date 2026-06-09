@@ -14,11 +14,12 @@ const WIN_BACK_MONTHS = 6;
 const TIER_NUDGE_PENCE = 20000;   // nudge clients within £200 of the next tier
 const ANNIVERSARY_POINTS = 1000;  // bonus points on a membership anniversary
 
-type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; membershipRenewals: number; reencrypted: number; errors: number };
+type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; errors: number };
 
 export async function runDailyAutomations(): Promise<Tally> {
-  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, membershipRenewals: 0, reencrypted: 0, errors: 0 };
-  await Promise.all([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), membershipRenewal(t), keyReencryption(t)]);
+  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, errors: 0 };
+  const { staffWeeklyDigest, staffReengagement } = await import('@/lib/staff-emails');
+  await Promise.all([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t)]);
   return t;
 }
 

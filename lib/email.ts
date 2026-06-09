@@ -385,6 +385,42 @@ export function tmplGiftVoucherReceipt(o: { purchaserName: string; amount: strin
   });
 }
 
+// ── Staff (internal) templates ───────────────────────────────────────────────
+const liRow = (s: string) => `<li style="margin:4px 0;">${escape(s)}</li>`;
+
+export function tmplStaffDigest(o: {
+  name: string; baseUrl: string;
+  tasks: string[]; items: string[]; blockers: string[];
+  isAdmin?: boolean; reports?: { label: string; href: string }[];
+}) {
+  const section = (title: string, rows: string[], empty: string) =>
+    `<h2 style="font-size:15px;margin:22px 0 6px;">${title}</h2>` +
+    (rows.length ? `<ul style="margin:0;padding-left:18px;font-size:14px;color:#3d352f;">${rows.map(liRow).join('')}</ul>` : `<p style="margin:0;font-size:14px;color:#91766e;">${empty}</p>`);
+  return emailShell({
+    preheader: `Your week at KClinics — ${o.tasks.length + o.items.length} thing${o.tasks.length + o.items.length === 1 ? '' : 's'} on your plate`,
+    body: `<h1 style="font-size:24px;margin:0 0 6px;">Good morning, ${escape(o.name)}.</h1>
+    <p>Here’s your week at KClinics.</p>
+    ${section('Your open tasks', o.tasks, 'No open tasks — lovely.')}
+    ${section('Assigned to you on the board', o.items, 'Nothing assigned on the build &amp; issues board.')}
+    ${o.blockers.length ? section('⚠ Blocked — needs you', o.blockers, '') : ''}
+    ${o.isAdmin && o.reports?.length ? `<h2 style="font-size:15px;margin:22px 0 6px;">Secured reports</h2><p style="margin:0 0 10px;font-size:14px;color:#91766e;">Financial &amp; performance data — unlocked with your passkey / PIN.</p>${o.reports.map((r) => `<p style="margin:6px 0;">${btnOutline(o.baseUrl + r.href, r.label)}</p>`).join('')}` : ''}
+    <p style="margin:24px 0;">${btn(o.baseUrl + '/admin', 'Open the dashboard')}</p>
+    <p style="font-size:13px;color:#91766e;">You’re receiving this weekly summary as a KClinics team member. An admin can turn staff digests off in Settings.</p>`,
+  });
+}
+
+export function tmplStaffNudge(o: { name: string; baseUrl: string; tasks: string[]; items: string[] }) {
+  const rows = [...o.tasks, ...o.items];
+  return emailShell({
+    preheader: `You have work waiting at KClinics`,
+    body: `<h1 style="font-size:23px;margin:0 0 8px;">You have work waiting, ${escape(o.name)}.</h1>
+    <p>A few things are assigned to you and we haven’t seen you in a little while:</p>
+    <ul style="margin:8px 0;padding-left:18px;font-size:14px;color:#3d352f;">${rows.slice(0, 8).map(liRow).join('')}</ul>
+    <p style="margin:22px 0;">${btn(o.baseUrl + '/admin', 'Pick up where you left off')}</p>
+    <p style="font-size:13px;color:#91766e;">A gentle nudge — you won’t get these more than once every few days.</p>`,
+  });
+}
+
 // ── Booking templates ────────────────────────────────────────────────────────
 const fmtWhen = (d: Date) =>
   d.toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });

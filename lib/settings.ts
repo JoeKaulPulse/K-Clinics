@@ -22,7 +22,9 @@ export type SettingKey =
   | 'membership_renewal_nudge'   // email lapsing K Circle members to keep their tier
   | 'nps_survey'                 // send an NPS (0–10 recommend) survey after a completed visit
   | 'post_course_checkin'        // email when a client completes a full treatment course
-  | 'gift_card_physical_enabled'; // offer a paid physical gift-card posted to the recipient
+  | 'gift_card_physical_enabled' // offer a paid physical gift-card posted to the recipient
+  | 'staff_weekly_digest'        // Monday email: each staff member's work + admin report links
+  | 'staff_work_reengagement';   // email staff with pending assigned work if idle ≥8h
 
 export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   allow_clinician_choice: false,
@@ -43,6 +45,8 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   nps_survey: false,
   post_course_checkin: false,
   gift_card_physical_enabled: false,
+  staff_weekly_digest: true,
+  staff_work_reengagement: true,
 };
 
 export const SETTING_META: Record<SettingKey, { label: string; description: string }> = {
@@ -117,6 +121,14 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   gift_card_physical_enabled: {
     label: 'Offer a physical gift card (paid upgrade)',
     description: 'Let buyers pay a small extra fee to have a beautifully printed gift card posted to the recipient, in addition to the emailed card. Off by default — turn on only when you’re set up to print and post cards.',
+  },
+  staff_weekly_digest: {
+    label: 'Weekly staff work digest',
+    description: 'A Monday-morning email to each active staff member summarising their open tasks and assigned board items, and pointing admins to the secured reports & financial dashboards. On by default; staff inactive with nothing assigned get nothing.',
+  },
+  staff_work_reengagement: {
+    label: 'Staff re-engagement email',
+    description: 'If a staff member has work assigned to them but hasn’t signed in for 8+ hours, email them a gentle “you have work waiting” nudge (at most once every few days). On by default.',
   },
 };
 

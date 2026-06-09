@@ -46,6 +46,8 @@ enum EmailKind {
   CHAT
   ABANDONED_BOOKING
   NO_SHOW
+  STAFF_DIGEST
+  STAFF_NUDGE
 }
 
 enum EmailStatus {
