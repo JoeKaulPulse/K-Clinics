@@ -38,8 +38,8 @@ export default async function DashboardPage() {
   const loyalty = await clientLoyaltySummary(client.id);
 
   // Onboarding state (welcome flow for new — and existing — clients).
-  const { db: _db } = await import('@/lib/db');
-  const prof = await _db.client.findUnique({ where: { id: client.id }, select: { onboardedAt: true, phone: true, gender: true, concerns: true, smsReminders: true, marketingOptIn: true } });
+  const { db: _db, withDbRetry } = await import('@/lib/db');
+  const prof = await withDbRetry(() => _db.client.findUnique({ where: { id: client.id }, select: { onboardedAt: true, phone: true, gender: true, concerns: true, smsReminders: true, marketingOptIn: true } })).catch(() => null);
   const onb = prof ? { pending: !prof.onboardedAt, initial: { phone: prof.phone ?? '', gender: prof.gender ?? '', concerns: prof.concerns ?? [], smsReminders: prof.smsReminders, marketingOptIn: prof.marketingOptIn } } : null;
 
   const locale: Locale = client.locale === 'uk' ? 'uk' : 'en';

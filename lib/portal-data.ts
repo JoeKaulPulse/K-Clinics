@@ -1,16 +1,17 @@
 import 'server-only';
-import { db } from '@/lib/db';
+import { db, withDbRetry } from '@/lib/db';
 import { assessmentStatus } from '@/lib/health-assessments';
 
-/** Everything the client dashboard needs, in one query batch. */
+/** Everything the client dashboard needs, in one query batch. Retried so a
+ *  transient DB blip during a deploy doesn't 500 the portal. */
 export async function getDashboard(clientId: string) {
   const now = new Date();
-  const [client, bookings, statuses, discount] = await Promise.all([
+  const [client, bookings, statuses, discount] = await withDbRetry(() => Promise.all([
     db.client.findUnique({ where: { id: clientId } }),
     db.booking.findMany({ where: { clientId }, orderBy: { startAt: 'desc' } }),
     assessmentStatus(clientId),
     db.discountClaim.findFirst({ where: { clientId, status: 'ACTIVE' } }),
-  ]);
+  ]));
 
   const upcoming = bookings
     .filter((b) => b.startAt >= now && (b.status === 'CONFIRMED' || b.status === 'PENDING'))

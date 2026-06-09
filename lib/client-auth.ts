@@ -1,5 +1,6 @@
 import 'server-only';
-import { db } from '@/lib/db';
+import { cache } from 'react';
+import { db, withDbRetry } from '@/lib/db';
 import { hashPassword, verifyPassword, createClientSession, getClientSession } from '@/lib/auth';
 import { fingerprint } from '@/lib/crypto';
 import crypto from 'crypto';
@@ -273,9 +274,14 @@ async function notifyPasswordChanged(email: string, firstName: string): Promise<
 }
 export { notifyPasswordChanged };
 
-/** Resolve the signed-in client (server components / route handlers). */
-export async function getCurrentClient() {
+/** Resolve the signed-in client (server components / route handlers).
+ *  Wrapped in React `cache()` so the many callers within a single request
+ *  (page + nested server components + helpers) share ONE DB lookup instead of
+ *  each opening their own — this was the biggest source of connection pressure
+ *  on the portal. Also retried so a transient blip during a deploy doesn't 500
+ *  every authenticated page/endpoint at once. */
+export const getCurrentClient = cache(async () => {
   const session = await getClientSession();
   if (!session) return null;
-  return db.client.findUnique({ where: { id: session.sub } });
-}
+  return withDbRetry(() => db.client.findUnique({ where: { id: session.sub } }));
+});
