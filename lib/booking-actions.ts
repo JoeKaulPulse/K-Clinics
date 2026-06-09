@@ -102,8 +102,10 @@ export async function refundBooking(
   opts: { reason?: string; actor?: string } = {},
 ): Promise<{ ok: boolean; error?: string; refundedPence?: number }> {
   if (!booking.chargedAt || !booking.chargePaymentIntentId) return { ok: false, error: 'This booking hasn’t been charged, so there’s nothing to refund.' };
-  const until = refundableUntil(booking);
-  if (until && Date.now() > until.getTime()) return { ok: false, error: `The ${REFUND_WINDOW_DAYS}-day refund window for this payment has passed. Refund it directly in Stripe if still possible.` };
+  const { getConfigNumber } = await import('@/lib/settings');
+  const windowDays = await getConfigNumber('refund_window_days');
+  const until = new Date(booking.chargedAt.getTime() + windowDays * 24 * 60 * 60 * 1000);
+  if (Date.now() > until.getTime()) return { ok: false, error: `The ${windowDays}-day refund window for this payment has passed. Refund it directly in Stripe if still possible.` };
   const remaining = refundableRemaining(booking);
   const amount = Math.round(amountPence);
   if (!(amount > 0)) return { ok: false, error: 'Enter an amount to refund.' };

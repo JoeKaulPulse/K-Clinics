@@ -182,6 +182,30 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'New DNS: mail.kclinics.co.uk = sending; reply.mail.kclinics.co.uk = reply emails + open/click tracking. Must apply across all products (transactional, campaigns, gift cards, chat, staff emails).',
     notes: ['Code reflected (#373): default From → hello@mail.<domain>; Reply-To → replies@reply.mail.<domain>; chat sends from mail.<domain> and routes replies to reply.mail.<domain>; go-live board updated with both domains + click-through links. Remaining is the owner’s Vercel env + Resend dashboard config (above).'],
   },
+  // ── Finance & tax (owner-directed; some gated on the Xero integration) ──────
+  {
+    title: 'Financial controls panel (refund window, profit rules, profitability by service)', type: 'TASK', urgency: 'P2', status: 'IN_PROGRESS', assignee: 'claude',
+    value: 7, effort: 6,
+    detail: 'A Finance → Financial controls admin panel for select users: set the refund window, define profit/margin rules, and monitor profitability by service (revenue − cost of goods/consumables − time). Phase 1 (#382): the refund window becomes a configurable setting used by the refund flow.',
+  },
+  {
+    title: 'VAT / tax configuration — per-service rate, inclusive/exclusive', type: 'TASK', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', needs: 'OWNER',
+    value: 8, effort: 7,
+    ask: 'Confirm: (a) are prices shown VAT-inclusive or exclusive by default? (b) the company isn’t VAT-registered yet — should the VAT rate default to 0/None until you register? (c) which services are exempt/zero-rated (e.g. dentistry) vs standard 20%? I’ll build a per-service VAT rate (standard 20% / reduced / zero / exempt), an inclusive/exclusive toggle, and surface VAT on prices, receipts and reports — all editable from Finance by permitted users.',
+    detail: 'Add a configurable VAT component across pricing: per-service rate (standard 20% “S”, reduced, zero, exempt — e.g. dentistry exempt), inclusive/exclusive display, finance-gated config. Company not yet VAT-registered, so default off/0 but ready to switch on.',
+  },
+  {
+    title: 'In-dashboard bookkeeping + MTD (payroll, suppliers, bills, receipts) via Xero', type: 'TASK', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', needs: 'OWNER',
+    value: 9, effort: 10,
+    ask: 'For the Xero integration (landing tonight/tomorrow): confirm the Xero org + which revenue/VAT account codes to post to, and the bookkeeping scope priority (payroll, supplier bills, bill payments, receipt capture). Goal: run day-to-day bookkeeping from the admin dashboard and rarely open Xero.',
+    detail: 'Make the admin dashboard the bookkeeping cockpit: MTD-ready VAT returns, payroll, suppliers, paying bills, receipt capture/tracking — automated through the Xero integration so the owner rarely needs Xero directly. Builds on “Push sales + refunds to Xero”. Large, phased.',
+    notes: ['MTD VAT submission has compliance requirements (HMRC-recognised software / Xero as the bridge) — scope carefully with the owner once Xero is connected.'],
+  },
+  {
+    title: 'Phone booking flow — staff book for new/existing clients + card-link confirm', type: 'TASK', urgency: 'P1', status: 'IN_PROGRESS', assignee: 'claude',
+    value: 9, effort: 6,
+    detail: 'A guided, best-in-class admin flow for taking bookings over the phone: any staff user finds an existing client (or creates a new one with email + phone for reminders), picks treatment + time, holds the slot, and the client is emailed a secure link to save their card and confirm — never reading card details over the phone (PCI-safe). A read-out T&C/confirmation dialogue script for staff, and if a card is already on file, a confirm-on-the-call path. Consent forms continue to go via the existing secure links.',
+  },
   {
     title: 'Push sales + refunds to Xero (invoice on charge, credit note on refund)', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
     value: 6, effort: 6,
