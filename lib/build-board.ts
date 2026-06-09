@@ -741,6 +741,46 @@ export async function pendingWork() {
   };
 }
 
+/** Rich, self-contained work queue for an unattended routine session — includes
+ *  full detail, open subtasks, blocking dependencies and recent comments so a
+ *  session can act on DB-only items (e.g. reported bugs) without a login. */
+export async function routineQueue() {
+  const items = await db.buildItem.findMany({
+    where: { assignee: 'claude', status: { in: ['TRIAGE', 'IN_PROGRESS', 'IN_REVIEW'] } },
+    include: {
+      subtasks: { orderBy: { order: 'asc' } },
+      dependencies: { include: { dependsOn: { select: { title: true, status: true } } } },
+      events: { where: { kind: 'comment' }, orderBy: { createdAt: 'desc' }, take: 5 },
+    },
+  });
+  const byPriority = (a: typeof items[number], b: typeof items[number]) => a.urgency.localeCompare(b.urgency) || veRank(b) - veRank(a) || +new Date(a.createdAt) - +new Date(b.createdAt);
+  const serialize = (i: typeof items[number]) => {
+    const blockedBy = i.dependencies.filter((d) => !DONE_STATES.includes(d.dependsOn.status)).map((d) => d.dependsOn.title);
+    return {
+      id: i.id, title: i.title, type: i.type, urgency: i.urgency, status: i.status,
+      value: i.value, effort: i.effort, ve: veRank(i) || null,
+      detail: i.detail, pageUrl: i.pageUrl, screenshots: i.screenshots, attachments: i.attachments,
+      reportedBy: i.reportedBy, githubUrl: i.githubUrl, updatedAt: i.updatedAt,
+      blockedBy,
+      openSubtasks: i.subtasks.filter((s) => s.status !== 'DONE').map((s) => ({ title: s.title, status: s.status, assignee: s.assignee, ownerInput: s.ownerInput })),
+      recentComments: i.events.map((e) => ({ actor: e.actor, body: e.body, at: e.createdAt })),
+    };
+  };
+  const ranked = [...items].sort(byPriority);
+  const actionable = ranked.filter((i) => i.dependencies.every((d) => DONE_STATES.includes(d.dependsOn.status)));
+  const blocked = ranked.filter((i) => i.dependencies.some((d) => !DONE_STATES.includes(d.dependsOn.status)));
+  const [continueAt, lastWake] = await Promise.all([getRaw('build_continue_requested_at'), getRaw('build_continue_last_wake_at')]);
+  return {
+    generatedAt: new Date().toISOString(),
+    guidance: 'Work the highest item in `actionable` first (already ordered by urgency then value:effort). Skip owner-gated items (those waiting on an owner-input subtask you cannot do yourself). Build end-to-end, run `npx tsc --noEmit` and `npm run build`, open a PR on a claude/ branch (no "Closes"), and update lib/build-backlog.ts.',
+    continueRequestedAt: continueAt,
+    lastWakeAt: lastWake,
+    counts: { actionable: actionable.length, blocked: blocked.length, awaitingSignoff: await db.buildItem.count({ where: { status: 'SHIPPED' } }) },
+    actionable: actionable.slice(0, 15).map(serialize),
+    blocked: blocked.slice(0, 15).map(serialize),
+  };
+}
+
 // ── Optional, governed GitHub wake ───────────────────────────────────────────
 // A Claude session is started by GitHub activity, so an @claude issue comment can
 // wake one — but that's now a rare, debounced nudge (≤1 per cooldown, only when
@@ -773,6 +813,13 @@ async function canWakeViaGithub(): Promise<boolean> {
 // never committed). Bounded by a timeout so a board action can't hang on it.
 export function routineConfigured(): boolean {
   return !!(process.env.CLAUDE_ROUTINE_FIRE_URL && process.env.CLAUDE_ROUTINE_FIRE_TOKEN);
+}
+/** Tells the woken session where to read the live, DB-backed work queue (so it
+ *  sees reported bugs/ideas, not just the backlog in code). The token lives in
+ *  the routine environment as BOARD_QUEUE_TOKEN. */
+function queueHint(): string {
+  const base = (process.env.NEXT_PUBLIC_SITE_URL || 'https://kclinics.co.uk').replace(/\/$/, '');
+  return `Live work queue (incl. DB-only items like reported bugs): GET ${base}/api/build/queue with header "Authorization: Bearer $BOARD_QUEUE_TOKEN" (token is in your environment). Work the top item in "actionable" end-to-end.`;
 }
 async function fireRoutine(text: string): Promise<{ ok: boolean; sessionUrl?: string; error?: string }> {
   const url = process.env.CLAUDE_ROUTINE_FIRE_URL;
@@ -808,7 +855,7 @@ async function fireRoutine(text: string): Promise<{ ok: boolean; sessionUrl?: st
 export async function triggerClaude(message: string, itemId: string): Promise<boolean> {
   await setRaw('build_continue_requested_at', new Date().toISOString());
   const item = await db.buildItem.findUnique({ where: { id: itemId }, select: { title: true, githubNumber: true } });
-  const text = `${message}${item ? `\n\nWork item: “${item.title}”.` : ''}\nContinue per the prioritised K-Clinics Build & Issues backlog.`;
+  const text = `${message}${item ? `\n\nWork item: “${item.title}”.` : ''}\nContinue per the prioritised K-Clinics Build & Issues backlog.\n\n${queueHint()}`;
 
   if (routineConfigured()) {
     await setRaw('build_continue_last_wake_at', String(Date.now()));
@@ -842,7 +889,7 @@ export async function requestClaudeContinue(actor: string): Promise<{ ok: boolea
   // Preferred wake: fire the Claude Code Routine (GitHub-free, no rate limit).
   if (routineConfigured()) {
     await setRaw('build_continue_last_wake_at', String(Date.now()), actor);
-    const r = await fireRoutine(`Continue working through the prioritised K-Clinics Build & Issues backlog (highest value-to-effort first; skip owner-gated items). Requested by ${actor.split('@')[0]} at ${now}.`);
+    const r = await fireRoutine(`Continue working through the prioritised K-Clinics Build & Issues backlog (highest value-to-effort first; skip owner-gated items). Requested by ${actor.split('@')[0]} at ${now}.\n\n${queueHint()}`);
     if (r.ok) {
       if (r.sessionUrl) await setRaw('build_last_session_url', r.sessionUrl, actor);
       return { ok: true, queued: true, woke: true, via: 'routine', mirror, sessionUrl: r.sessionUrl, note: 'Claude session started — it’s working the backlog now.' };
