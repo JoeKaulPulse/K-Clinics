@@ -4,13 +4,19 @@ import { crmEnabled } from '@/lib/crm';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Begin a passkey step-up (OWNER only) — returns assertion options scoped to the
-// owner's registered passkeys.
+// Begin a passkey step-up — returns assertion options scoped to the caller's own
+// registered passkeys. Most purposes (export, key rotation) are OWNER-only; the
+// 'finance' purpose is open to anyone with finance.view so finance staff can use
+// a passkey instead of their PIN on the financial-data lock.
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
-  const { getSession } = await import('@/lib/auth');
+  const body = await req.json().catch(() => ({}));
+  const { getSession, sessionCan } = await import('@/lib/auth');
+  const { isStepUpPurpose } = await import('@/lib/webauthn');
+  const purpose = isStepUpPurpose(body.purpose) ? body.purpose : 'export';
   const session = await getSession();
-  if (!session || session.role !== 'OWNER') return NextResponse.json({ ok: false, error: 'Owner access required.' }, { status: 403 });
+  const permitted = !!session && (purpose === 'finance' ? sessionCan(session, 'finance.view') : session.role === 'OWNER');
+  if (!session || !permitted) return NextResponse.json({ ok: false, error: purpose === 'finance' ? 'Not permitted.' : 'Owner access required.' }, { status: 403 });
 
   const { generateAuthenticationOptions } = await import('@simplewebauthn/server');
   const { rp, CHALLENGE_COOKIE } = await import('@/lib/webauthn');

@@ -286,12 +286,13 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Decisions captured: re-engagement threshold 8h; weekly Monday digest, on by default (each staff can opt out).'],
   },
   {
-    title: 'Financial data unlock: passkey + 6-digit PIN', type: 'TASK', urgency: 'P2', status: 'IN_PROGRESS', assignee: 'claude',
+    title: 'Financial data unlock: passkey + 6-digit PIN', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
     value: 8, effort: 7,
     detail: 'Gate financial reports / cashflow / finance KPIs behind a second factor: a passkey (Face ID / Touch ID / Windows Hello via the existing WebAuthn) with a 6-digit PIN fallback. Add a "finance" step-up purpose + short-lived unlock.',
     notes: [
       'Decision captured: passkey + 6-digit PIN fallback (reuses existing WebAuthn/TOTP infra + step-up unlock pattern).',
-      'PIN fallback SHIPPED (#372): reports + cashflow now sit behind a 6-digit PIN (30-min finance step-up). Remaining: wire the passkey path onto the same "finance" purpose (the WebAuthn step-up routes already exist).',
+      'PIN fallback SHIPPED (#372): reports + cashflow sit behind a 6-digit PIN (30-min finance step-up).',
+      'Passkey path SHIPPED (#394): the shared WebAuthn step-up routes now accept the "finance" purpose (gated by finance.view, 30-min unlock) and the lock screen offers a Face ID / passkey button. Epic complete.',
     ],
   },
 

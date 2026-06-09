@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { startAuthentication } from '@simplewebauthn/browser';
 
 export function FinanceUnlock({ hasPin, next }: { hasPin: boolean; next: string }) {
   const router = useRouter();
@@ -10,6 +11,20 @@ export function FinanceUnlock({ hasPin, next }: { hasPin: boolean; next: string 
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+
+  async function passkeyUnlock() {
+    setErr(''); setBusy(true);
+    try {
+      const o = await fetch('/api/admin/security/passkey/auth-options', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ purpose: 'finance' }) }).then((r) => r.json());
+      if (!o.ok) { setErr(o.error || 'No passkey available — use your PIN.'); return; }
+      const resp = await startAuthentication({ optionsJSON: o.options });
+      const v = await fetch('/api/admin/security/passkey/auth-verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ purpose: 'finance', response: resp }) }).then((r) => r.json());
+      if (!v.ok) { setErr(v.error || 'Verification failed.'); return; }
+      router.replace(next || '/admin/reports'); router.refresh();
+    } catch {
+      setErr('Passkey verification was cancelled.');
+    } finally { setBusy(false); }
+  }
 
   async function submit() {
     setErr('');
@@ -50,7 +65,16 @@ export function FinanceUnlock({ hasPin, next }: { hasPin: boolean; next: string 
       <button onClick={submit} disabled={busy} className="mt-5 w-full rounded-full bg-[var(--color-ink)] px-6 py-3 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">
         {busy ? 'Please wait…' : mode === 'set' ? 'Set PIN & unlock' : 'Unlock'}
       </button>
-      <p className="mt-4 text-xs text-[var(--color-stone-soft)]">A passkey (Face ID / Touch ID) option is coming on this same lock. Keep your PIN private — it protects clinic financials.</p>
+      {mode === 'unlock' && (
+        <>
+          <div className="my-4 flex items-center gap-3 text-xs text-[var(--color-stone-soft)]"><span className="h-px flex-1 bg-[var(--color-line)]" />or<span className="h-px flex-1 bg-[var(--color-line)]" /></div>
+          <button onClick={passkeyUnlock} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-full border border-[var(--color-line)] bg-white px-6 py-3 text-sm font-medium text-[var(--color-ink)] disabled:opacity-50">
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="9" cy="8" r="3.5" /><path d="M2.5 19a6.5 6.5 0 0 1 11.2-4.5M16 14l4.5 4.5M20.5 14 16 18.5" /></svg>
+            Use Face ID / passkey
+          </button>
+        </>
+      )}
+      <p className="mt-4 text-xs text-[var(--color-stone-soft)]">Keep your PIN private — it protects clinic financials.</p>
     </div>
   );
 }
