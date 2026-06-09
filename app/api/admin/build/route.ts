@@ -11,9 +11,9 @@ export async function GET() {
   const session = await requirePermission('build.view');
   if (!session) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
   try {
-    const { listBuildItems, githubConfigured, githubRepo } = await import('@/lib/build-board');
-    const [items, github, repo] = await Promise.all([listBuildItems(), githubConfigured(), githubRepo()]);
-    return NextResponse.json({ ok: true, items, github, githubRepo: repo });
+    const { listBuildItems, githubConfigured, githubRepo, backlogSyncState } = await import('@/lib/build-board');
+    const [items, github, repo, sync] = await Promise.all([listBuildItems(), githubConfigured(), githubRepo(), backlogSyncState()]);
+    return NextResponse.json({ ok: true, items, github, githubRepo: repo, sync });
   } catch (e) {
     console.error('[build] list failed', e);
     return NextResponse.json({ ok: false, error: 'Could not load the board.' }, { status: 500 });
@@ -73,7 +73,7 @@ export async function POST(req: Request) {
       }
       case 'seed-backlog': {
         if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
-        const r = await board.seedBacklog();
+        const r = await board.rebuildBacklog(); // full sync: create missing + reconcile statuses + reassign
         return NextResponse.json({ ok: true, ...r });
       }
       case 'github-sync-all': {

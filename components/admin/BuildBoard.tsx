@@ -32,11 +32,13 @@ export function BuildBoard({ canManage, github, staff, me }: { canManage: boolea
   const [loading, setLoading] = useState(true);
   const [gh, setGh] = useState<{ connected: boolean; repo: string | null }>({ connected: github, repo: null });
   const [ghForm, setGhForm] = useState({ repo: 'JoeKaulPulse/K-Clinics', token: '', busy: false, error: '' });
+  const [sync, setSync] = useState<{ inSync: boolean; dbCount: number; backlogCount: number; lastSeededAt: string | null; commit: string } | null>(null);
+  const [q, setQ] = useState('');
 
   const load = useCallback(async (force = false) => {
     if (!force && typeof document !== 'undefined' && document.hidden) return; // pause when backgrounded
     const res = await fetch('/api/admin/build').then((x) => x.json()).catch(() => ({ ok: false }));
-    if (res.ok) { setItems(res.items); setGh({ connected: !!res.github, repo: res.githubRepo || null }); }
+    if (res.ok) { setItems(res.items); setGh({ connected: !!res.github, repo: res.githubRepo || null }); setSync(res.sync || null); }
     setLoading(false);
   }, []);
 
@@ -71,10 +73,13 @@ export function BuildBoard({ canManage, github, staff, me }: { canManage: boolea
     setSeeding(true);
     const r = await post({ op: 'seed-backlog' });
     setSeeding(false);
-    if (r.ok) { alert(`Imported ${r.created} item(s)${r.skipped ? `, ${r.skipped} already present` : ''}.`); load(true); }
-    else alert(r.error || 'Import failed.');
+    if (r.ok) { alert(`Rebuilt from backlog — ${r.created} added, ${r.reconciled || 0} status update(s)${r.skipped ? `, ${r.skipped} already present` : ''}.`); load(true); }
+    else alert(r.error || 'Rebuild failed.');
   }
-  const view = mine ? items.filter((i) => i.assignee === me) : items;
+  const ql = q.trim().toLowerCase();
+  const view = items
+    .filter((i) => (mine ? i.assignee === me : true))
+    .filter((i) => (ql ? `${i.title} ${i.detail || ''} ${i.assignee} ${i.urgency} ${i.type}`.toLowerCase().includes(ql) : true));
   const counts = (k: string) => view.filter((i) => i.status === k).length;
   const open = items.filter((i) => !['SHIPPED', 'CANCELLED'].includes(i.status)).length;
   const blocked = items.filter((i) => i.status === 'BLOCKED').length;
@@ -90,8 +95,21 @@ export function BuildBoard({ canManage, github, staff, me }: { canManage: boolea
         {canManage && gh.connected && <button onClick={disconnectGh} className="text-xs text-[var(--color-blush)] hover:underline">Disconnect</button>}
         <span className="ml-auto flex items-center gap-3">
           <label className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} className="h-3.5 w-3.5 accent-[var(--color-gold)]" /> Assigned to me</label>
-          {canManage && <button onClick={importBacklog} disabled={seeding} className="rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:bg-[var(--color-bone)] disabled:opacity-50">{seeding ? 'Importing…' : 'Import Claude’s backlog'}</button>}
+          {canManage && <button onClick={importBacklog} disabled={seeding} className="rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:bg-[var(--color-bone)] disabled:opacity-50">{seeding ? 'Rebuilding…' : '↻ Rebuild from backlog'}</button>}
         </span>
+      </div>
+
+      {/* Search across every column (incl. shipped) + sync state so you can see at
+          a glance whether the live board matches the canonical backlog. */}
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search tasks (incl. shipped) — e.g. “search”, “gift”, “SaaS”…" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+        {q && <span className="text-xs text-[var(--color-stone-soft)]">{view.length} match{view.length === 1 ? '' : 'es'}</span>}
+        {sync && (
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs ${sync.inSync ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : 'bg-amber-100 text-amber-800'}`} title={`Live build: ${sync.commit}`}>
+            <span className={`h-2 w-2 rounded-full ${sync.inSync ? 'bg-[var(--color-jade)]' : 'bg-amber-500'}`} />
+            {sync.inSync ? 'Board in sync' : 'Board behind backlog'} · {sync.dbCount}/{sync.backlogCount}{sync.lastSeededAt ? ` · synced ${fmt(sync.lastSeededAt)}` : ''} · build {sync.commit}
+          </span>
+        )}
       </div>
 
       {/* Connect GitHub (self-serve; no env vars needed) */}
