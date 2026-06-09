@@ -82,6 +82,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const profitability = [...profMap.values()]
     .map((p) => ({ ...p, margin: p.revenue - p.cost, marginPct: p.revenue > 0 ? Math.round(((p.revenue - p.cost) / p.revenue) * 100) : 0 }))
     .sort((a, b) => b.margin - a.margin).slice(0, 15);
+  const minMarginPct = await import('@/lib/settings').then((m) => m.getConfigNumber('min_margin_pct')).catch(() => 0);
 
   const totalRevenue = completed.reduce((s, b) => s + rev(b), 0);
   // VAT collected over the period (only when the clinic is VAT-registered).
@@ -195,11 +196,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                   {profitability.length === 0 && <tr><td colSpan={5} className="px-4 py-4 text-[var(--color-stone)]">{L('No data yet.', 'Немає даних.')}</td></tr>}
                   {profitability.map((p) => (
                     <tr key={p.title} className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)]">
-                      <td className="px-4 py-2.5 font-medium">{p.title} <span className="text-xs text-[var(--color-stone-soft)]">×{p.count}</span></td>
+                      <td className="px-4 py-2.5 font-medium">{p.title} <span className="text-xs text-[var(--color-stone-soft)]">×{p.count}</span>{minMarginPct > 0 && p.cost > 0 && p.marginPct < minMarginPct && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[0.6rem] font-medium text-amber-800">⚠ below {minMarginPct}%</span>}</td>
                       <td className="px-4 py-2.5 text-right text-[var(--color-jade)]">{gbp(p.revenue)}</td>
                       <td className="px-4 py-2.5 text-right text-[var(--color-stone)]">{p.cost > 0 ? gbp(p.cost) : '—'}</td>
                       <td className="px-4 py-2.5 text-right font-medium">{gbp(p.margin)}</td>
-                      <td className={`px-4 py-2.5 text-right ${p.marginPct >= 50 ? 'text-[var(--color-jade)]' : p.marginPct >= 0 ? 'text-[var(--color-ink)]' : 'text-[var(--color-blush)]'}`}>{p.marginPct}%</td>
+                      <td className={`px-4 py-2.5 text-right ${minMarginPct > 0 && p.cost > 0 && p.marginPct < minMarginPct ? 'text-amber-700' : p.marginPct >= 50 ? 'text-[var(--color-jade)]' : p.marginPct >= 0 ? 'text-[var(--color-ink)]' : 'text-[var(--color-blush)]'}`}>{p.marginPct}%</td>
                     </tr>
                   ))}
                 </tbody>

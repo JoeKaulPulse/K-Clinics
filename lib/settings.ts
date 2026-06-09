@@ -147,8 +147,8 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
 // Numeric/string config values (not booleans) live in the same Setting table
 // under their own keys — e.g. the physical gift-card fee. Defaults applied when
 // absent; never throws.
-export type ConfigKey = 'gift_card_physical_fee_pence' | 'refund_window_days' | 'vat_default_rate_pct';
-export const CONFIG_DEFAULTS: Record<ConfigKey, number> = { gift_card_physical_fee_pence: 495, refund_window_days: 180, vat_default_rate_pct: 20 };
+export type ConfigKey = 'gift_card_physical_fee_pence' | 'refund_window_days' | 'vat_default_rate_pct' | 'min_margin_pct';
+export const CONFIG_DEFAULTS: Record<ConfigKey, number> = { gift_card_physical_fee_pence: 495, refund_window_days: 180, vat_default_rate_pct: 20, min_margin_pct: 0 };
 
 export async function getConfigNumber(key: ConfigKey): Promise<number> {
   try {

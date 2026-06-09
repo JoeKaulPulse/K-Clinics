@@ -21,6 +21,13 @@ export async function POST(req: Request) {
     await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: `Refund window set to ${days} days` }).catch(() => {});
     return NextResponse.json({ ok: true });
   }
+  if (b.op === 'margin') {
+    const pct = Math.round(Number(b.minMarginPct));
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) return NextResponse.json({ ok: false, error: 'Minimum margin must be 0–100%.' }, { status: 400 });
+    await setConfigNumber('min_margin_pct', pct, session.email);
+    await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: `Minimum margin target set to ${pct}%` }).catch(() => {});
+    return NextResponse.json({ ok: true });
+  }
   if (b.op === 'vat') {
     const rate = Math.round(Number(b.defaultRatePct));
     if (!Number.isFinite(rate) || rate < 0 || rate > 100) return NextResponse.json({ ok: false, error: 'VAT rate must be between 0 and 100%.' }, { status: 400 });
