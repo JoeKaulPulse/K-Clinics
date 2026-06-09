@@ -169,6 +169,42 @@ export async function redeemVoucher(id: string, amountPence: number): Promise<{ 
   return { ok: true, balancePence: after?.balancePence ?? 0 };
 }
 
+/** Reserve up to `maxPence` from a live voucher by code, ATOMICALLY — the live
+ *  balance is decremented now so two concurrent checkouts can't each apply the
+ *  same balance and under-charge. Returns the amount actually reserved (0 if the
+ *  card is invalid/empty). Because reservation IS the decrement, order
+ *  finalisation must NOT redeem again; re-credit with creditVoucher on failure. */
+export async function reserveVoucher(code: string, maxPence: number): Promise<{ reservedPence: number }> {
+  const c = code.trim().toUpperCase();
+  const cap = Math.max(0, Math.round(maxPence));
+  if (!cap) return { reservedPence: 0 };
+  const v = await db.giftVoucher.findUnique({ where: { code: c } });
+  if (!v || v.status !== 'ACTIVE' || v.balancePence <= 0 || (v.expiresAt && v.expiresAt < new Date())) return { reservedPence: 0 };
+  let want = Math.min(v.balancePence, cap);
+  // Guarded decrement; if we lost a race, re-read and reserve whatever is left.
+  let res = await db.giftVoucher.updateMany({ where: { code: c, status: 'ACTIVE', balancePence: { gte: want } }, data: { balancePence: { decrement: want } } });
+  if (res.count === 0) {
+    const fresh = await db.giftVoucher.findUnique({ where: { code: c }, select: { balancePence: true } });
+    want = Math.min(fresh?.balancePence ?? 0, cap);
+    if (want <= 0) return { reservedPence: 0 };
+    res = await db.giftVoucher.updateMany({ where: { code: c, status: 'ACTIVE', balancePence: { gte: want } }, data: { balancePence: { decrement: want } } });
+    if (res.count === 0) return { reservedPence: 0 };
+  }
+  // A fully-drained card is marked REDEEMED (creditVoucher reactivates on re-credit).
+  await db.giftVoucher.updateMany({ where: { code: c, balancePence: 0 }, data: { status: 'REDEEMED' } });
+  return { reservedPence: want };
+}
+
+/** Re-credit a previously-reserved amount back to a voucher (order failed or was
+ *  cancelled before payment), reversing reserveVoucher. */
+export async function creditVoucher(code: string, amountPence: number): Promise<void> {
+  const c = code.trim().toUpperCase();
+  const add = Math.max(0, Math.round(amountPence));
+  if (!add) return;
+  await db.giftVoucher.updateMany({ where: { code: c }, data: { balancePence: { increment: add } } });
+  await db.giftVoucher.updateMany({ where: { code: c, status: 'REDEEMED' }, data: { status: 'ACTIVE' } });
+}
+
 /** Recipient claims/validates a voucher onto their account. The recipient must
  *  be 18+ (gift cards are for treatments). The API ensures the client is 18+
  *  before calling this. */

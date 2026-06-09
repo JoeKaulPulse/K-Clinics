@@ -2,6 +2,7 @@ import 'server-only';
 import { db } from './db';
 import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking } from './email';
 import { site } from './site';
+import { escapeHtml } from './sanitize';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || site.url;
 const unsub = (token: string) => `${SITE_URL}/api/unsubscribe?t=${token}`;
@@ -44,7 +45,7 @@ async function tierNudges(t: Tally) {
       const body = `
         <p style="font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:${accent};margin:0 0 8px;">K Circle</p>
         <h1 style="margin:0 0 12px;font-size:25px;">You're ${gbp} from ${next.name}</h1>
-        <p style="margin:0 0 14px;">Hi ${c.firstName || 'there'}, you're closer than you think to <strong>${next.name}</strong> — and everything it unlocks: ${next.perks.slice(0, 2).join(', ')}.</p>
+        <p style="margin:0 0 14px;">Hi ${escapeHtml(c.firstName || 'there')}, you're closer than you think to <strong>${next.name}</strong> — and everything it unlocks: ${next.perks.slice(0, 2).join(', ')}.</p>
         <p style="margin:6px 0 18px;"><a href="${base}/book" style="display:inline-block;background:${accent};color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:14px;">Book your next visit</a></p>`;
       const res = await sendEmail({ to: c.email, subject: `You're ${gbp} from ${next.name} — K Circle`, html: emailShell({ body, preheader: `Just ${gbp} more to reach ${next.name}.`, unsubUrl: unsub(c.unsubToken) }) });
       await db.emailEvent.create({ data: { clientId: c.id, kind: 'MEMBERSHIP', to: c.email, subject: `K Circle: ${gbp} from ${next.name}`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { type: 'nudge' } } }).catch(() => {});
@@ -84,7 +85,7 @@ async function membershipRenewal(t: Tally) {
       const perks = (tier.perks || []).slice(0, 2).join(', ');
       const body = `
         <p style="font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:${accent};margin:0 0 8px;">K Circle · ${tier.name}</p>
-        <h1 style="margin:0 0 12px;font-size:25px;">Keep your ${tier.name} benefits, ${c.firstName || 'there'}</h1>
+        <h1 style="margin:0 0 12px;font-size:25px;">Keep your ${tier.name} benefits, ${escapeHtml(c.firstName || 'there')}</h1>
         <p style="margin:0 0 14px;">It's been a little while since your last visit. K Circle tiers are based on your spend over the last 12 months, so a visit soon keeps you in <strong>${tier.name}</strong>${perks ? ` — and everything it unlocks: ${perks}.` : '.'}</p>
         <p style="margin:6px 0 18px;"><a href="${base}/book" style="display:inline-block;background:${accent};color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:14px;">Book your next visit</a></p>
         <p style="font-size:14px;color:#91766e;">We'd love to see you again soon.</p>`;
@@ -113,7 +114,7 @@ async function anniversaries(t: Tally) {
       const body = `
         <p style="font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#a98a6d;margin:0 0 8px;">K Circle</p>
         <h1 style="margin:0 0 12px;font-size:25px;">Thank you for ${years} ${years === 1 ? 'year' : 'years'}</h1>
-        <p style="margin:0 0 14px;">Hi ${c.firstName || 'there'}, it's been ${years} ${years === 1 ? 'year' : 'years'} since you joined us — thank you. As a small thank-you we've added <strong>${ANNIVERSARY_POINTS.toLocaleString('en-GB')} bonus points</strong> to your account.</p>
+        <p style="margin:0 0 14px;">Hi ${escapeHtml(c.firstName || 'there')}, it's been ${years} ${years === 1 ? 'year' : 'years'} since you joined us — thank you. As a small thank-you we've added <strong>${ANNIVERSARY_POINTS.toLocaleString('en-GB')} bonus points</strong> to your account.</p>
         <p style="margin:6px 0 18px;"><a href="${base}/account/rewards" style="display:inline-block;background:#a98a6d;color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:14px;">See your rewards</a></p>`;
       const res = await sendEmail({ to: c.email, subject: `A little thank-you for ${years} ${years === 1 ? 'year' : 'years'} with us`, html: emailShell({ body, preheader: `${ANNIVERSARY_POINTS} bonus points are waiting in your account.`, unsubUrl: unsub(c.unsubToken) }) });
       await db.emailEvent.create({ data: { clientId: c.id, kind: 'MEMBERSHIP', to: c.email, subject: `K Circle anniversary (${years}y)`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { type: 'anniversary' } } }).catch(() => {});

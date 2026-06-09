@@ -49,7 +49,7 @@ export async function deliverToRecipients(recipients: Recipient[], opts: Deliver
     const ctx = { first_name: c.firstName || '', last_name: c.lastName || '', email: c.email };
     const subjectR = applyMergeTags(subject, ctx);
     const unsubUrl = `${SITE}/api/unsubscribe?t=${c.unsubToken}`;
-    const html = emailShell({ body: applyMergeTags(bodyHtml, ctx), preheader: applyMergeTags(preheader, ctx), unsubUrl });
+    const html = emailShell({ body: applyMergeTags(bodyHtml, ctx, { html: true }), preheader: applyMergeTags(preheader, ctx, { html: true }), unsubUrl });
     // RFC 8058 one-click unsubscribe — now required by Gmail/Yahoo for bulk
     // senders and a strong deliverability signal.
     const headers = { 'List-Unsubscribe': `<${unsubUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' };

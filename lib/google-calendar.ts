@@ -1,5 +1,14 @@
 import 'server-only';
 import { db } from '@/lib/db';
+import { encryptJson, decryptJson } from '@/lib/crypto';
+
+// The staff Google refresh token is a long-lived credential, so it is encrypted
+// at rest via the keyring (mirrors AdminUser.totpSecret) rather than stored
+// plaintext. Reads tolerate any pre-existing plaintext value during migration.
+const encryptRefresh = (token: string): string => encryptJson(token);
+const decryptRefresh = (stored: string): string => {
+  try { return decryptJson<string>(stored); } catch { return stored; }
+};
 
 // Google Calendar integration (busy-time import). Activates when Google OAuth
 // credentials are configured; otherwise every function is a safe no-op.
@@ -27,8 +36,10 @@ export function googleEnabled(): boolean {
 
 const SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
 
-/** URL to start the OAuth consent flow for a given staff member. */
-export function googleAuthUrl(staffId: string): string | null {
+/** URL to start the OAuth consent flow. `state` is the CSRF nonce minted (and
+ *  cookie-bound) by the connect route — it carries the target staffId after the
+ *  nonce so the callback can attach the token only after validating the state. */
+export function googleAuthUrl(state: string): string | null {
   if (!googleConfigured()) return null;
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID!,
@@ -37,7 +48,7 @@ export function googleAuthUrl(staffId: string): string | null {
     access_type: 'offline',
     prompt: 'consent',
     scope: SCOPE,
-    state: staffId,
+    state,
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }
@@ -59,7 +70,7 @@ export async function exchangeCodeForStaff(code: string, staffId: string): Promi
   if (!res.ok) return false;
   const data = (await res.json()) as { refresh_token?: string };
   if (!data.refresh_token) return false; // already consented previously without prompt
-  await db.adminUser.update({ where: { id: staffId }, data: { googleRefreshToken: data.refresh_token, googleCalendarId: 'primary' } });
+  await db.adminUser.update({ where: { id: staffId }, data: { googleRefreshToken: encryptRefresh(data.refresh_token), googleCalendarId: 'primary' } });
   return true;
 }
 
@@ -86,7 +97,7 @@ export async function syncStaffCalendar(staffId: string, days = 60): Promise<{ o
   const staff = await db.adminUser.findUnique({ where: { id: staffId }, select: { googleRefreshToken: true, googleCalendarId: true } });
   if (!staff?.googleRefreshToken) return { ok: false, imported: 0, error: 'Not connected' };
 
-  const token = await accessToken(staff.googleRefreshToken);
+  const token = await accessToken(decryptRefresh(staff.googleRefreshToken));
   if (!token) return { ok: false, imported: 0, error: 'Token refresh failed' };
 
   const timeMin = new Date().toISOString();
