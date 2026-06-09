@@ -11,9 +11,9 @@ export async function GET() {
   const session = await requirePermission('build.view');
   if (!session) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
   try {
-    const { listBuildItems, githubConfigured, githubRepo, backlogSyncState } = await import('@/lib/build-board');
-    const [items, github, repo, sync] = await Promise.all([listBuildItems(), githubConfigured(), githubRepo(), backlogSyncState()]);
-    return NextResponse.json({ ok: true, items, github, githubRepo: repo, sync });
+    const { listBuildItems, githubConfigured, githubRepo, backlogSyncState, buildActivity } = await import('@/lib/build-board');
+    const [items, github, repo, sync, activity] = await Promise.all([listBuildItems(), githubConfigured(), githubRepo(), backlogSyncState(), buildActivity()]);
+    return NextResponse.json({ ok: true, items, github, githubRepo: repo, sync, activity });
   } catch (e) {
     console.error('[build] list failed', e);
     return NextResponse.json({ ok: false, error: 'Could not load the board.' }, { status: 500 });
@@ -22,7 +22,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
-  const { requirePermission } = await import('@/lib/auth');
+  const { requirePermission, sessionIsAdmin } = await import('@/lib/auth');
   const session = await requirePermission('build.view');
   if (!session) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
 
@@ -37,6 +37,7 @@ export async function POST(req: Request) {
         const item = await board.createBuildItem({
           type: b.type, title, detail: b.detail, urgency: b.urgency, assignee: b.assignee,
           reportedBy: session.email, pageUrl: b.pageUrl, screenshots: Array.isArray(b.screenshots) ? b.screenshots : [],
+          value: b.value, effort: b.effort,
         }, session.email);
         return NextResponse.json({ ok: true, item });
       }
@@ -49,8 +50,41 @@ export async function POST(req: Request) {
       case 'update': {
         if (!(await manage())) return NextResponse.json({ ok: false, error: 'Managing the board needs permission.' }, { status: 403 });
         if (!b.id) return NextResponse.json({ ok: false, error: 'Missing id.' }, { status: 400 });
-        const item = await board.updateBuildItem(String(b.id), { status: b.status, urgency: b.urgency, assignee: b.assignee, blocker: b.blocker }, session.email);
+        const item = await board.updateBuildItem(String(b.id), {
+          status: b.status, urgency: b.urgency, assignee: b.assignee, blocker: b.blocker,
+          value: b.value, effort: b.effort, estCompleteAt: b.estCompleteAt, estTokens: b.estTokens, actualTokens: b.actualTokens,
+        }, session.email);
         return NextResponse.json({ ok: true, item });
+      }
+      case 'subtask-add': {
+        if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
+        if (!b.id || !String(b.title || '').trim()) return NextResponse.json({ ok: false, error: 'A subtask title is required.' }, { status: 400 });
+        const item = await board.addSubtask(String(b.id), String(b.title), { assignee: b.assignee, ownerInput: !!b.ownerInput }, session.email);
+        return NextResponse.json({ ok: true, item });
+      }
+      case 'subtask-update': {
+        if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
+        if (!b.subtaskId) return NextResponse.json({ ok: false, error: 'Missing subtask id.' }, { status: 400 });
+        const item = await board.updateSubtask(String(b.subtaskId), { status: b.status, title: b.title, assignee: b.assignee }, session.email);
+        return NextResponse.json({ ok: true, item });
+      }
+      case 'signoff': {
+        // Final sign-off / close — admins (OWNER/ADMIN) only.
+        if (!sessionIsAdmin(session)) return NextResponse.json({ ok: false, error: 'Only an admin can sign off and close a task.' }, { status: 403 });
+        if (!b.id) return NextResponse.json({ ok: false, error: 'Missing id.' }, { status: 400 });
+        const item = await board.signoffItem(String(b.id), session.email);
+        return NextResponse.json({ ok: true, item });
+      }
+      case 'reopen': {
+        if (!sessionIsAdmin(session)) return NextResponse.json({ ok: false, error: 'Only an admin can reopen a task.' }, { status: 403 });
+        if (!b.id) return NextResponse.json({ ok: false, error: 'Missing id.' }, { status: 400 });
+        const item = await board.reopenItem(String(b.id), b.reason, session.email);
+        return NextResponse.json({ ok: true, item });
+      }
+      case 'continue': {
+        if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
+        const r = await board.requestClaudeContinue(session.email);
+        return NextResponse.json(r);
       }
       case 'github': {
         if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });

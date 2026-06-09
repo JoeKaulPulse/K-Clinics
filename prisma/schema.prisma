@@ -2476,6 +2476,7 @@ enum BuildStatus {
   IN_REVIEW
   BLOCKED
   SHIPPED
+  CLOSED
   CANCELLED
 }
 enum BuildUrgency {
@@ -2500,15 +2501,49 @@ model BuildItem {
   githubUrl    String?
   githubNumber Int?
   isPublic     Boolean      @default(false) // surfaces on a future public roadmap
+  // Prioritisation (persisted so ideas can be scored/triaged in-app, not just in code).
+  value        Int?         // business worth 1–10
+  effort       Int?         // build cost 1–10
+  // Effort/usage telemetry: time is auto-derived (startedAt → shippedAt); tokens
+  // are Claude's best-effort self-report. estCompleteAt is an ETA Claude/admin set.
+  startedAt    DateTime?    // first time it moved to IN_PROGRESS
+  estCompleteAt DateTime?
+  estTokens    Int?
+  actualTokens Int?
+  // Post-ship lifecycle: SHIPPED ≠ done. An admin reviews and signs off to CLOSE.
+  signoffRequired Boolean   @default(true)
   shippedAt    DateTime?
+  closedAt     DateTime?
+  closedBy     String?      // admin email who signed off
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   events       BuildEvent[]
+  subtasks     BuildSubtask[]
 
   @@index([status])
   @@index([assignee, status])
   @@index([urgency])
   @@index([createdAt])
+}
+
+// A checklist item under a BuildItem, with its own status + assignee. When an
+// owner-input subtask is completed by a person, it auto-triggers Claude to follow
+// up on the parent (see lib/build-board.ts completeSubtask).
+model BuildSubtask {
+  id          String    @id @default(cuid())
+  item        BuildItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId      String
+  title       String
+  status      String    @default("TODO") // TODO | DOING | DONE
+  assignee    String    @default("claude")
+  ownerInput  Boolean   @default(false)   // true → completing it pings Claude to action the parent
+  order       Int       @default(0)
+  completedAt DateTime?
+  completedBy String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([itemId, order])
 }
 
 model BuildEvent {
