@@ -23,6 +23,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   });
   if (!c) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
 
+  // Decrypt the at-rest clinical/contact free-text so the subject's export is
+  // readable (tolerant of legacy plaintext).
+  const { decClinical } = await import('@/lib/clinical-crypto');
+  c.medicalFlag = decClinical(c.medicalFlag);
+  c.allergies = decClinical(c.allergies);
+  for (const con of c.consultations) { con.concerns = decClinical(con.concerns); con.message = decClinical(con.message); con.medicalNotes = decClinical(con.medicalNotes); }
+  for (const bk of c.bookings) { bk.allergyNote = decClinical(bk.allergyNote); }
+
   // Strip secrets from the dump.
   const { passwordHash, resetTokenHash, resetTokenExp, ...client } = c as Record<string, unknown> & { passwordHash?: unknown; resetTokenHash?: unknown; resetTokenExp?: unknown };
   void passwordHash; void resetTokenHash; void resetTokenExp;

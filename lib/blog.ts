@@ -3,6 +3,7 @@ import { db } from './db';
 import { sortedArticles, getArticle, type Article, type ArticleBlock } from './articles';
 import { articleImage } from './treatment-images';
 import { asBlocks, htmlToBlocks, type Block } from './blocks';
+import { sanitizeHtml } from './sanitize';
 
 // DB-backed journal. Admin-managed Post rows are the source of truth; the native
 // curated articles (lib/articles.ts) still render for any slug NOT in the DB, so
@@ -53,7 +54,7 @@ export async function getBlogPost(slug: string): Promise<BlogPost | null> {
     if (r) return {
       slug: r.slug, title: r.title, excerpt: r.excerpt ?? '', metaDescription: r.metaDescription ?? r.excerpt ?? '',
       category: r.category ?? 'Wellbeing', readMinutes: r.readMinutes, published: (r.publishedAt ?? r.createdAt).toISOString(),
-      updated: r.updatedAt.toISOString(), html: r.content, keywords: r.keywords, related: r.related, image: r.coverImage ?? null,
+      updated: r.updatedAt.toISOString(), html: sanitizeHtml(r.content), keywords: r.keywords, related: r.related, image: r.coverImage ?? null,
     };
   } catch { /* fall through to native */ }
   const a = getArticle(slug);

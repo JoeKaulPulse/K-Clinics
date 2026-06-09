@@ -39,9 +39,15 @@ export async function POST(req: Request) {
   let giftCardPence = 0; let giftCardCode: string | null = null;
   const grossPence = cart.subtotalPence + shippingPence;
   if (body.giftCardCode) {
-    const v = await db.giftVoucher.findUnique({ where: { code: String(body.giftCardCode).trim().toUpperCase() } });
-    if (v && (v.status === 'ACTIVE') && v.balancePence > 0) { giftCardPence = Math.min(v.balancePence, grossPence); giftCardCode = v.code; }
-    else return NextResponse.json({ ok: false, error: 'That gift card code isn’t valid or has no balance.' }, { status: 400 });
+    const code = String(body.giftCardCode).trim().toUpperCase();
+    // Reserve the gift-card amount ATOMICALLY now (decrement the live balance),
+    // so two concurrent checkouts can't each apply the full balance and
+    // under-charge the clinic. Re-credited on the failure paths below; because
+    // this IS the redemption, finalizeOrder no longer redeems again.
+    const { reserveVoucher } = await import('@/lib/gift-vouchers');
+    const { reservedPence } = await reserveVoucher(code, grossPence);
+    if (reservedPence <= 0) return NextResponse.json({ ok: false, error: 'That gift card code isn’t valid or has no balance.' }, { status: 400 });
+    giftCardPence = reservedPence; giftCardCode = code;
   }
   const totalPence = Math.max(0, grossPence - giftCardPence);
 
@@ -63,8 +69,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, paid: true, number: r.number, issues: cart.issues });
   }
 
+  // Re-credit the reserved gift-card balance if the order can't proceed to payment.
+  const undoReservation = async () => {
+    if (giftCardCode && giftCardPence > 0) {
+      const { creditVoucher } = await import('@/lib/gift-vouchers');
+      await creditVoucher(giftCardCode, giftCardPence).catch(() => {});
+    }
+  };
+
   const { stripe, stripeEnabled } = await import('@/lib/stripe');
-  if (!stripeEnabled) { await db.order.delete({ where: { id: order.id } }).catch(() => {}); return NextResponse.json({ ok: false, error: 'Payments aren’t available right now.' }, { status: 503 }); }
+  if (!stripeEnabled) { await db.order.delete({ where: { id: order.id } }).catch(() => {}); await undoReservation(); return NextResponse.json({ ok: false, error: 'Payments aren’t available right now.' }, { status: 503 }); }
   try {
     const pi = await stripe().paymentIntents.create({
       amount: totalPence, currency: 'gbp', automatic_payment_methods: { enabled: true },
@@ -74,6 +88,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, clientSecret: pi.client_secret, orderId: order.id, totalPence, issues: cart.issues });
   } catch (e) {
     await db.order.delete({ where: { id: order.id } }).catch(() => {});
+    await undoReservation();
     return NextResponse.json({ ok: false, error: (e as Error).message || 'Could not start payment.' }, { status: 500 });
   }
 }

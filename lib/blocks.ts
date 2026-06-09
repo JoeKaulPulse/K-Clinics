@@ -7,6 +7,8 @@
 //
 // Inline text is lightweight markdown: **bold**  _italic_  `code`  [label](url).
 
+import { sanitizeHtml } from './sanitize';
+
 export type BlockType =
   | 'heading' | 'paragraph' | 'list' | 'quote' | 'image' | 'callout' | 'cta' | 'divider' | 'html';
 
@@ -104,7 +106,7 @@ export function blocksToHtml(blocks: Block[]): string {
       case 'cta': { const href = safeUrl(b.href); return href && b.label.trim()
         ? `<p class="journal-cta"><a href="${escAttr(href)}">${inlineToHtml(b.label)}</a></p>` : ''; }
       case 'divider': return '<hr />';
-      case 'html': return (b.html || '').trim();
+      case 'html': return sanitizeHtml((b.html || '').trim());
       default: return '';
     }
   }).filter(Boolean).join('\n');

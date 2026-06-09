@@ -10,14 +10,33 @@ const MAX_BATCH = 200;
 // side; stores no personal data (inputs are masked at capture).
 export async function POST(req: Request) {
   if (!crmEnabled) return Response.json({ ok: false }, { status: 503 });
+
+  // Require analytics consent. The consent banner mirrors the analytics choice
+  // into a readable first-party cookie (localStorage isn't sent with requests),
+  // so the server can refuse to ingest behavioural session-replay data for a
+  // visitor who hasn't consented. Fail-closed.
+  const cookie = req.headers.get('cookie') || '';
+  if (!/(?:^|;\s*)kc_analytics_consent=1(?:;|$)/.test(cookie)) return Response.json({ ok: false }, { status: 403 });
+
+  // Public, DB-writing endpoint → rate-limit per IP to bound flood/DoS of the
+  // replay tables.
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'replay-ingest', 240, 600, 'client'))) return Response.json({ ok: false }, { status: 429 });
+
   try {
-    const body = await req.json();
+    const raw = await req.text();
+    if (raw.length > 512 * 1024) return Response.json({ ok: false }, { status: 413 }); // cap a single batch
+    const body = JSON.parse(raw);
     const sessionKey = String(body.sessionKey || '').slice(0, 64);
     const events = Array.isArray(body.events) ? body.events.slice(0, MAX_BATCH) : [];
     if (!sessionKey || events.length === 0) return Response.json({ ok: false }, { status: 400 });
 
-    const { db } = await import('@/lib/db');
     const path = String(body.path || '/').slice(0, 200);
+    // Defence-in-depth: never store replay for sensitive areas, even if a client
+    // forges the path (the recorder already excludes these client-side).
+    if (/^\/(admin|account|book|booking|sign)(\/|$)/.test(path)) return Response.json({ ok: true });
+
+    const { db } = await import('@/lib/db');
     const device = body.device ? String(body.device).slice(0, 16) : null;
 
     const session = await db.replaySession.upsert({

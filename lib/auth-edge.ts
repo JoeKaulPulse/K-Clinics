@@ -8,6 +8,23 @@ export const SESSION_COOKIE = 'kc_admin';
 export const CLIENT_SESSION_COOKIE = 'kc_client';
 export const ACADEMY_SESSION_COOKIE = 'kc_academy';
 
+// Audience claim per portal. Set on sign (lib/auth.ts) and REQUIRED on verify
+// below, so a token minted for one portal can never authenticate on another —
+// even if CLIENT/ACADEMY/ADMIN JWT secrets are accidentally set to the same
+// value. This is the real isolation boundary; distinct secrets are belt-and-braces.
+export const ADMIN_AUDIENCE = 'kc-admin';
+export const CLIENT_AUDIENCE = 'kc-client';
+export const ACADEMY_AUDIENCE = 'kc-academy';
+
+// One-time operator nudge if a portal secret falls back to a shared value in prod.
+const _warnedSecrets = new Set<string>();
+function warnSharedSecret(name: string) {
+  if (process.env.NODE_ENV === 'production' && !_warnedSecrets.has(name)) {
+    _warnedSecrets.add(name);
+    console.warn(`[auth] ${name} is unset; falling back to a shared JWT secret. Set a distinct ${name}. (Portal audience binding still isolates tokens.)`);
+  }
+}
+
 export type Session = {
   sub: string;
   email: string;
@@ -52,13 +69,14 @@ export const clientSecret = (): Uint8Array => {
     if (process.env.NODE_ENV === 'production') throw new Error('CLIENT_JWT_SECRET is required in production.');
     return toKey('dev-insecure-client-secret-change-me');
   }
+  if (!process.env.CLIENT_JWT_SECRET) warnSharedSecret('CLIENT_JWT_SECRET');
   return toKey(s);
 };
 
 export async function verifyToken(token: string | undefined): Promise<Session | null> {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, adminSecret());
+    const { payload } = await jwtVerify(token, adminSecret(), { audience: ADMIN_AUDIENCE });
     return payload as unknown as Session;
   } catch {
     return null;
@@ -68,7 +86,7 @@ export async function verifyToken(token: string | undefined): Promise<Session | 
 export async function verifyClientToken(token: string | undefined): Promise<ClientSession | null> {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, clientSecret());
+    const { payload } = await jwtVerify(token, clientSecret(), { audience: CLIENT_AUDIENCE });
     return payload as unknown as ClientSession;
   } catch {
     return null;
@@ -82,13 +100,14 @@ export const academySecret = (): Uint8Array => {
     if (process.env.NODE_ENV === 'production') throw new Error('ACADEMY_JWT_SECRET is required in production.');
     return toKey('dev-insecure-academy-secret-change-me');
   }
+  if (!process.env.ACADEMY_JWT_SECRET) warnSharedSecret('ACADEMY_JWT_SECRET');
   return toKey(s);
 };
 
 export async function verifyAcademyToken(token: string | undefined): Promise<AcademySession | null> {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, academySecret());
+    const { payload } = await jwtVerify(token, academySecret(), { audience: ACADEMY_AUDIENCE });
     return payload as unknown as AcademySession;
   } catch {
     return null;

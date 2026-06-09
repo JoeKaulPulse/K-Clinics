@@ -1,5 +1,6 @@
 import 'server-only';
 import { db } from './db';
+import { decClinical } from './clinical-crypto';
 
 export async function getOverview() {
   const [clients, newConsults, weekConsults, marketingClients, recentConsults, upcomingBirthdays] = await Promise.all([
@@ -120,13 +121,15 @@ export async function listConsultations(status?: string) {
 }
 
 export async function getConsultation(id: string) {
-  return db.consultation.findUnique({
+  const c = await db.consultation.findUnique({
     where: { id },
     include: {
       client: { select: { id: true, firstName: true, lastName: true, email: true } },
       notes: { orderBy: { createdAt: 'asc' } },
     },
   });
+  if (c) { c.concerns = decClinical(c.concerns); c.message = decClinical(c.message); c.medicalNotes = decClinical(c.medicalNotes); }
+  return c;
 }
 
 export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc' | 'desc'; flag?: string } = {}) {
@@ -153,7 +156,7 @@ export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc'
 }
 
 export async function getClient(id: string) {
-  return db.client.findUnique({
+  const c = await db.client.findUnique({
     where: { id },
     include: {
       consultations: { orderBy: { createdAt: 'desc' } },
@@ -173,6 +176,14 @@ export async function getClient(id: string) {
       },
     },
   });
+  if (c) {
+    // Decrypt the at-rest clinical/contact free-text for display (tolerant of legacy plaintext).
+    c.medicalFlag = decClinical(c.medicalFlag);
+    c.allergies = decClinical(c.allergies);
+    for (const con of c.consultations) { con.concerns = decClinical(con.concerns); con.message = decClinical(con.message); con.medicalNotes = decClinical(con.medicalNotes); }
+    for (const b of c.bookings) { b.allergyNote = decClinical(b.allergyNote); }
+  }
+  return c;
 }
 
 export async function listBookings(opts: { filter?: string; q?: string; from?: string; to?: string } = {}) {
@@ -199,7 +210,7 @@ export async function listBookings(opts: { filter?: string; q?: string; from?: s
 }
 
 export async function getBooking(id: string) {
-  return db.booking.findUnique({
+  const b = await db.booking.findUnique({
     where: { id },
     include: {
       client: {
@@ -215,4 +226,9 @@ export async function getBooking(id: string) {
       auditEvents: { orderBy: { createdAt: 'asc' } },
     },
   });
+  if (b) {
+    b.allergyNote = decClinical(b.allergyNote);
+    if (b.client) { b.client.medicalFlag = decClinical(b.client.medicalFlag); b.client.allergies = decClinical(b.client.allergies); }
+  }
+  return b;
 }

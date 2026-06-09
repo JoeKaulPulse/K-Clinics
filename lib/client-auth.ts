@@ -2,6 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import { db, withDbRetry } from '@/lib/db';
 import { hashPassword, verifyPassword, createClientSession, getClientSession } from '@/lib/auth';
+import { marketingConsentFields } from '@/lib/consent';
 import { fingerprint } from '@/lib/crypto';
 import crypto from 'crypto';
 
@@ -90,6 +91,7 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
       portalActive: true,
       locale: input.locale === 'uk' ? 'uk' : 'en',
       marketingOptIn: input.marketingOptIn || undefined,
+      ...(input.marketingOptIn ? marketingConsentFields('registration') : {}),
       signupIp: input.ip || undefined,
       source: existing?.source ?? 'portal-signup',
     },
@@ -105,6 +107,7 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
       portalActive: true,
       locale: input.locale === 'uk' ? 'uk' : 'en',
       marketingOptIn: input.marketingOptIn ?? false,
+      ...(input.marketingOptIn ? marketingConsentFields('registration') : {}),
       signupIp: input.ip || undefined,
       source: 'portal-signup',
     },
@@ -283,5 +286,9 @@ export { notifyPasswordChanged };
 export const getCurrentClient = cache(async () => {
   const session = await getClientSession();
   if (!session) return null;
-  return withDbRetry(() => db.client.findUnique({ where: { id: session.sub } }));
+  const client = await withDbRetry(() => db.client.findUnique({ where: { id: session.sub } }));
+  // A deactivated client loses portal access immediately — don't wait for the
+  // 7-day token to expire (mirrors getCurrentStudent in lib/academy-auth.ts).
+  if (client && client.portalActive === false) return null;
+  return client;
 });

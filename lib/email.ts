@@ -389,6 +389,19 @@ export function tmplGiftVoucherReceipt(o: { purchaserName: string; amount: strin
   });
 }
 
+export function tmplKioskReward(o: { firstName: string; code: string; pct: number; days: number; bookUrl: string }) {
+  return emailShell({
+    preheader: `Your ${o.pct}% KClinics reward is inside — code ${o.code}`,
+    body: `${heroBand('voucher')}
+    <h1 style="font-size:26px;margin:0 0 12px;">Thanks for sharing, ${escape(o.firstName)}!</h1>
+    <p>Here’s your reward — <strong>${o.pct}% off your first treatment</strong> at KClinics. Quote this code when you book or in clinic:</p>
+    <p style="margin:22px 0;text-align:center;"><span style="display:inline-block;border:2px dashed #8a6e54;border-radius:12px;padding:14px 22px;font-family:monospace;font-size:22px;letter-spacing:2px;color:#2a2420;">${escape(o.code)}</span></p>
+    <p style="font-size:14px;">Single use, valid for ${o.days} days. Treatments are for ages 18+.</p>
+    <p style="margin:24px 0;">${btn(o.bookUrl, 'Book your treatment')}</p>
+    <p>See you soon,<br>The KClinics team</p>`,
+  });
+}
+
 // ── Staff (internal) templates ───────────────────────────────────────────────
 const liRow = (s: string) => `<li style="margin:4px 0;">${escape(s)}</li>`;
 

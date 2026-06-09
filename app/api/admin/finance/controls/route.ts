@@ -39,5 +39,15 @@ export async function POST(req: Request) {
     await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: `VAT: ${b.registered ? 'registered' : 'not registered'}, ${b.inclusive ? 'inclusive' : 'exclusive'}, ${rate}%` }).catch(() => {});
     return NextResponse.json({ ok: true });
   }
+  if (b.op === 'kiosk') {
+    const pct = Math.round(Number(b.discountPct));
+    if (!Number.isFinite(pct) || pct < 1 || pct > 100) return NextResponse.json({ ok: false, error: 'Discount must be between 1 and 100%.' }, { status: 400 });
+    await Promise.all([
+      setSetting('kiosk_discount_enabled', !!b.enabled, session.email),
+      setConfigNumber('kiosk_discount_pct', pct, session.email),
+    ]);
+    await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: `Kiosk share reward: ${b.enabled ? 'on' : 'off'}, ${pct}%` }).catch(() => {});
+    return NextResponse.json({ ok: true });
+  }
   return NextResponse.json({ ok: false, error: 'Unknown op' }, { status: 400 });
 }
