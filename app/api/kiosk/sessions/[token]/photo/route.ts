@@ -25,7 +25,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     }
     return NextResponse.json({ ok: false, error: 'expired' }, { status: 410 });
   }
-  if (session.photoUrl) return NextResponse.json({ ok: false, error: 'already_submitted' }, { status: 409 });
+  // Allow retry if the previous analysis failed; otherwise reject duplicate uploads.
+  if (session.photoUrl && session.status !== 'ANALYSIS_FAILED') {
+    return NextResponse.json({ ok: false, error: 'already_submitted' }, { status: 409 });
+  }
 
   const form = await req.formData().catch(() => null);
   const file = form?.get('file');
@@ -42,7 +45,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   let blobUrl: string;
   try {
     const { put } = await import('@vercel/blob');
-    const blob = await put(`kiosk/${token}-${Date.now()}.jpg`, file, {
+    const ext = file.type === 'image/png' ? 'png'
+      : (file.type === 'image/webp' ? 'webp'
+      : (file.type === 'image/heic' || file.type === 'image/heif' ? 'heic' : 'jpg'));
+    const blob = await put(`kiosk/${token}-${Date.now()}.${ext}`, file, {
       access: 'public',
       addRandomSuffix: false,
       contentType: file.type || 'image/jpeg',

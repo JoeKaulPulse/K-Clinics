@@ -372,14 +372,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Shipped (#427): replaced the fire-and-forget with `after(() => runKioskAnalysis(...))` from next/server, which keeps the serverless function alive until the analysis completes. Top actionable backlog item by V:E; the most likely cause of the live flow stalling at "analysing".'],
   },
   {
-    title: 'Kiosk BUG: HEIC selfies sent to Claude as image/jpeg', type: 'ERROR', urgency: 'P2', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
+    title: 'Kiosk BUG: HEIC selfies sent to Claude as image/jpeg', type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', project: 'skin-smile-kiosk',
     value: 6, effort: 2,
     detail: 'Photos are stored as kiosk/<token>.jpg regardless of real type; lib/kiosk-ai.mediaTypeFromUrl derives the media type from the .jpg URL, so an iPhone HEIC upload is sent to Claude as image/jpeg and analysis fails. Persist/carry the real content-type (store the actual extension, or pass file.type through runKioskAnalysis) so HEIC is labelled correctly.',
+    notes: ['Shipped: photo route now derives the correct extension from file.type (png/webp/heic → real ext, else jpg), so the Blob URL ends in the correct extension and mediaTypeFromUrl detects image/heic correctly. No change needed in kiosk-ai.ts — the URL-based detection was correct, it just never saw a .heic URL before.'],
   },
   {
-    title: 'Kiosk: share endpoint is unauthenticated + non-idempotent', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
+    title: 'Kiosk: share endpoint is unauthenticated + non-idempotent', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', project: 'skin-smile-kiosk',
     value: 6, effort: 3,
     detail: 'POST /api/kiosk/results/[id]/share increments shareCount and flips the session to SHARED with no rate-limit or verification — share counts can be inflated. This matters because the campaign reward is “share to claim a discount”; add light verification/rate-limiting before it gates a reward (ties into the account+discount task).',
+    notes: ['Shipped: IP-based rate limiting added (max 20 share events per IP per hour, tracked via hashed IP on KioskEvent). logKioskEvent now receives the ipHash so the shared event can be counted per-IP. Sufficient to prevent bots inflating share counts; the per-person discount cap is enforced by the account+discount task.'],
   },
   {
     title: 'Kiosk: flow dead-ends before the account + discount payoff (not launch-ready)', type: 'TASK', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
@@ -388,9 +390,10 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     dependsOn: ['Kiosk: shareable result card + social sharing'],
   },
   {
-    title: 'Kiosk: analysis timeout + stuck-state UX', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
+    title: ‘Kiosk: analysis timeout + stuck-state UX’, type: ‘TASK’, urgency: ‘P3’, status: ‘SHIPPED’, assignee: ‘claude’, project: ‘skin-smile-kiosk’,
     value: 4, effort: 2,
-    detail: 'analyzeKioskPhoto has no timeout on the Anthropic fetch, and on failure the session stays in PHOTO_TAKEN. Add a timeout + a friendly “couldn’t read that photo — try again” path on the mobile client so visitors aren’t stuck polling.',
+    detail: ‘analyzeKioskPhoto has no timeout on the Anthropic fetch, and on failure the session stays in PHOTO_TAKEN. Add a timeout + a friendly “couldn\’t read that photo — try again” path on the mobile client so visitors aren\’t stuck polling.’,
+    notes: [‘Shipped: 30s AbortController timeout on the Anthropic fetch in kiosk-ai.ts; new ANALYSIS_FAILED KioskStatus — runKioskAnalysis flips to it on any failure; photo route allows re-upload when status is ANALYSIS_FAILED; KioskSessionFlow polling handles ANALYSIS_FAILED — stops polling, clears photo, shows friendly retry message, returns to step 3. Polling timeout extended from 60s to 90s.’],
   },
   {
     title: 'Build board: decouple from GitHub (DB-native queue, opt-in mirror, rate-limit governor)', type: 'TASK', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(401),

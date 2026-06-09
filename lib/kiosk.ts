@@ -61,7 +61,7 @@ export async function runKioskAnalysis(sessionId: string): Promise<void> {
 
     const result = await analyzeKioskPhoto(session.photoUrl);
     if (!result) {
-      // Leave the session in PHOTO_TAKEN so the client can show a friendly error.
+      await db.kioskSession.update({ where: { id: session.id }, data: { status: 'ANALYSIS_FAILED' } }).catch(() => {});
       return;
     }
 
