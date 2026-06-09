@@ -5,20 +5,23 @@ import { crmEnabled } from '@/lib/crm';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Verify a passkey assertion; on success issue a short-lived export-unlock token
-// that the data-export endpoint requires (OWNER only).
+// Verify a passkey assertion; on success issue a short-lived step-up unlock token
+// for the requested purpose. Most purposes are OWNER-only; 'finance' is open to
+// anyone with finance.view (passkey alternative to the financial-data PIN) and
+// mints a 30-minute unlock to match the PIN path.
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
-  const { getSession } = await import('@/lib/auth');
-  const session = await getSession();
-  if (!session || session.role !== 'OWNER') return NextResponse.json({ ok: false, error: 'Owner access required.' }, { status: 403 });
-
   const body = await req.json().catch(() => ({}));
+  const { getSession, sessionCan } = await import('@/lib/auth');
   const { verifyAuthenticationResponse } = await import('@simplewebauthn/server');
   const { rp, CHALLENGE_COOKIE, unlockCookie, signUnlock, isStepUpPurpose } = await import('@/lib/webauthn');
   const { db } = await import('@/lib/db');
   const { rpID, origins, secure } = rp(req);
   const purpose = isStepUpPurpose(body.purpose) ? body.purpose : 'export';
+
+  const session = await getSession();
+  const permitted = !!session && (purpose === 'finance' ? sessionCan(session, 'finance.view') : session.role === 'OWNER');
+  if (!session || !permitted) return NextResponse.json({ ok: false, error: purpose === 'finance' ? 'Not permitted.' : 'Owner access required.' }, { status: 403 });
 
   const expectedChallenge = (await cookies()).get(CHALLENGE_COOKIE)?.value;
   if (!expectedChallenge || !body.response?.id) return NextResponse.json({ ok: false, error: 'Verification expired — please try again.' }, { status: 400 });
@@ -40,7 +43,9 @@ export async function POST(req: Request) {
   await db.webAuthnCredential.update({ where: { id: cred.id }, data: { counter: verification.authenticationInfo.newCounter, lastUsedAt: new Date() } });
 
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(unlockCookie(purpose), await signUnlock(session.sub, purpose), { httpOnly: true, secure, sameSite: 'strict', path: '/', maxAge: 180 });
+  // Financial viewing gets a 30-min window (matching the PIN unlock); tighter for the rest.
+  const maxAge = purpose === 'finance' ? 30 * 60 : 180;
+  res.cookies.set(unlockCookie(purpose), await signUnlock(session.sub, purpose), { httpOnly: true, secure, sameSite: 'strict', path: '/', maxAge });
   res.cookies.set(CHALLENGE_COOKIE, '', { path: '/', maxAge: 0 });
   return res;
 }
