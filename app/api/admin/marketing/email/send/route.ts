@@ -65,7 +65,7 @@ export async function POST(req: Request) {
     const res = await sendEmail({
       to,
       subject: `[Test] ${applyMergeTags(subject, sample)}`,
-      html: emailShell({ body: applyMergeTags(bodyHtml, sample), preheader: applyMergeTags(preheader || subject, sample) }),
+      html: emailShell({ body: applyMergeTags(bodyHtml, sample, { html: true }), preheader: applyMergeTags(preheader || subject, sample, { html: true }) }),
       fromName, replyTo,
     });
     return res.ok ? NextResponse.json({ ok: true, test: true }) : NextResponse.json({ ok: false, error: res.error }, { status: 502 });
