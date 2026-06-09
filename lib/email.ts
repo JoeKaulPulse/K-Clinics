@@ -559,6 +559,20 @@ export function tmplChargeReceipt(o: { firstName: string; treatment: string; pri
   });
 }
 
+export function tmplRefund(o: { firstName: string; treatment: string; amountPence: number; fully?: boolean }) {
+  return emailShell({
+    preheader: `Refund processed — ${o.treatment}`,
+    body: `${heroBand('receipt')}
+    <h1 style="font-size:24px;margin:0 0 16px;">Your refund is on its way, ${escape(o.firstName)}.</h1>
+    <p>We’ve processed a ${o.fully ? 'full' : 'partial'} refund for your <strong>${escape(o.treatment)}</strong>.</p>
+    <table style="font-family:Helvetica,Arial,sans-serif;font-size:16px;color:#3d352f;line-height:2;">
+      <tr><td style="color:#91766e;padding-right:20px;">Refunded</td><td><strong>${fmtMoney(o.amountPence)}</strong></td></tr>
+    </table>
+    <p style="margin-top:20px;">It’ll appear back on the card used, typically within 5–10 working days depending on your bank.</p>
+    <p>With warmth,<br>The KClinics team</p>`,
+  });
+}
+
 export function tmplPaymentActionRequired(o: { firstName: string; treatment: string; payUrl: string; pricePence: number }) {
   return emailShell({
     preheader: 'Action needed to complete your payment',

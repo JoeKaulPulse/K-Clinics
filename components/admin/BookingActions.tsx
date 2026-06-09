@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { chargeBookingAction, setBookingStatus, cancelBookingAction } from '@/app/admin/bookings/actions';
+import { chargeBookingAction, refundBookingAction, setBookingStatus, cancelBookingAction } from '@/app/admin/bookings/actions';
 
 const money = (p: number) => `£${(p / 100).toFixed(2)}`;
 
@@ -11,6 +11,8 @@ export function BookingActions({
   pricePence,
   within24h,
   charged,
+  refunded = null,
+  refundableUntil = null,
   canManage = true,
   canCharge = true,
 }: {
@@ -19,6 +21,8 @@ export function BookingActions({
   pricePence: number;
   within24h: boolean;
   charged: number | null;
+  refunded?: number | null;
+  refundableUntil?: string | null;
   canManage?: boolean;
   canCharge?: boolean;
 }) {
@@ -29,6 +33,13 @@ export function BookingActions({
   const [reason, setReason] = useState('');
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmCharge, setConfirmCharge] = useState(false);
+
+  const refundedPence = refunded ?? 0;
+  const remainingRefund = Math.max(0, (charged ?? 0) - refundedPence);
+  const windowOpen = refundableUntil ? Date.now() < new Date(refundableUntil).getTime() : false;
+  const [refundAmt, setRefundAmt] = useState('');
+  const [refundReason, setRefundReason] = useState('');
+  const [confirmRefund, setConfirmRefund] = useState(false);
 
   const active = status === 'CONFIRMED' || status === 'PENDING';
   const completed = status === 'COMPLETED';
@@ -98,7 +109,42 @@ export function BookingActions({
       )}
 
       {charged != null && (
-        <p className="rounded-[var(--radius-sm)] bg-[var(--color-jade)]/12 px-4 py-3 text-sm text-[var(--color-jade)]">Charged {money(charged)}.</p>
+        <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
+          <p className="text-sm">
+            <span className="text-[var(--color-jade)]">Charged {money(charged)}</span>
+            {refundedPence > 0 && <span className="text-[var(--color-stone)]"> · refunded {money(refundedPence)}{remainingRefund === 0 ? ' (full)' : ''}</span>}
+          </p>
+
+          {canCharge && remainingRefund > 0 && windowOpen && (
+            <div className="mt-3">
+              <p className="mb-2 text-sm font-medium">Refund the client</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-[var(--color-stone)]">£</span>
+                <input value={refundAmt} onChange={(e) => { setRefundAmt(e.target.value); setConfirmRefund(false); }} inputMode="decimal" placeholder={(remainingRefund / 100).toFixed(2)}
+                  className="w-28 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+                <input value={refundReason} onChange={(e) => setRefundReason(e.target.value)} placeholder="Reason (optional)"
+                  className="min-w-[8rem] flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+              </div>
+              {(() => { const pence = Math.round((parseFloat(refundAmt) || remainingRefund / 100) * 100); return (
+                !confirmRefund ? (
+                  <button disabled={pending} onClick={() => setConfirmRefund(true)} className="mt-2 rounded-full border border-[var(--color-line)] px-5 py-2 text-sm hover:bg-[var(--color-bone)]">Refund…</button>
+                ) : (
+                  <span className="mt-2 flex flex-wrap items-center gap-2">
+                    <button disabled={pending} onClick={() => start(async () => {
+                      const r = await refundBookingAction(bookingId, pence, refundReason);
+                      setMsg(r.ok ? `Refunded ${money(pence)} ✓` : r.error || 'Refund failed');
+                      setConfirmRefund(false); setRefundAmt('');
+                    })} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">
+                      {pending ? 'Refunding…' : `Confirm — refund ${money(pence)}`}
+                    </button>
+                    <button onClick={() => setConfirmRefund(false)} className="text-sm text-[var(--color-stone)]">Cancel</button>
+                  </span>
+                )); })()}
+              <p className="mt-2 text-xs text-[var(--color-stone)]">Up to {money(remainingRefund)} refundable · until {new Date(refundableUntil!).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}. Goes back to the card used.</p>
+            </div>
+          )}
+          {remainingRefund > 0 && !windowOpen && <p className="mt-2 text-xs text-[var(--color-stone-soft)]">The refund window for this payment has passed — refund in Stripe directly if still possible.</p>}
+        </div>
       )}
 
       {/* Cancel with override */}

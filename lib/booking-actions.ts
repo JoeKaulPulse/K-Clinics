@@ -77,6 +77,71 @@ export async function chargeBooking(
   }
 }
 
+// Refunds may be issued for up to 180 days after the charge (Stripe's limit, and
+// a sensible "standard timeframe after the appointment" for a clinic service).
+export const REFUND_WINDOW_DAYS = 180;
+export const REFUND_WINDOW_MS = REFUND_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+
+export function refundableUntil(b: Pick<Booking, 'chargedAt'>): Date | null {
+  return b.chargedAt ? new Date(b.chargedAt.getTime() + REFUND_WINDOW_MS) : null;
+}
+/** Remaining refundable amount on a booking (charged minus already refunded). */
+export function refundableRemaining(b: Pick<Booking, 'chargedPence' | 'refundedPence'>): number {
+  return Math.max(0, (b.chargedPence ?? 0) - (b.refundedPence ?? 0));
+}
+
+/**
+ * Refund a charged booking (full or partial) via Stripe, within the allowed
+ * window. Idempotency is provided by Stripe (refunding more than remaining
+ * fails); we then persist the cumulative refunded amount + reason and reverse
+ * loyalty points on a full refund.
+ */
+export async function refundBooking(
+  booking: BookingWithClient,
+  amountPence: number,
+  opts: { reason?: string; actor?: string } = {},
+): Promise<{ ok: boolean; error?: string; refundedPence?: number }> {
+  if (!booking.chargedAt || !booking.chargePaymentIntentId) return { ok: false, error: 'This booking hasn’t been charged, so there’s nothing to refund.' };
+  const until = refundableUntil(booking);
+  if (until && Date.now() > until.getTime()) return { ok: false, error: `The ${REFUND_WINDOW_DAYS}-day refund window for this payment has passed. Refund it directly in Stripe if still possible.` };
+  const remaining = refundableRemaining(booking);
+  const amount = Math.round(amountPence);
+  if (!(amount > 0)) return { ok: false, error: 'Enter an amount to refund.' };
+  if (amount > remaining) return { ok: false, error: `Only ${(remaining / 100).toFixed(2)} is left to refund on this booking.` };
+
+  try {
+    await stripe().refunds.create({
+      payment_intent: booking.chargePaymentIntentId,
+      amount,
+      metadata: { bookingId: booking.id, reason: (opts.reason || '').slice(0, 200) },
+    });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Refund failed at Stripe.' };
+  }
+
+  const totalRefunded = (booking.refundedPence ?? 0) + amount;
+  const fully = totalRefunded >= (booking.chargedPence ?? 0);
+  await db.booking.update({
+    where: { id: booking.id },
+    data: { refundedPence: totalRefunded, refundedAt: new Date(), refundReason: opts.reason?.slice(0, 500) || booking.refundReason || null },
+  });
+
+  // Reverse loyalty points once the booking is fully refunded (best-effort).
+  if (fully) {
+    try { const { refundBookingPoints } = await import('@/lib/client-loyalty'); await refundBookingPoints(booking.id); } catch { /* non-fatal */ }
+  }
+
+  await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Refunded £${(amount / 100).toFixed(2)} for ${booking.treatmentTitle}${opts.reason ? ` — ${opts.reason}` : ''}`, author: opts.actor || 'system' } }).catch(() => {});
+  await logAudit({ action: 'PAYMENT_REFUNDED', actor: opts.actor || 'system', bookingId: booking.id, clientId: booking.clientId, summary: `Refunded £${(amount / 100).toFixed(2)}${fully ? ' (full)' : ' (partial)'}`, meta: { amountPence: amount, fully } }).catch(() => {});
+
+  try {
+    const { tmplRefund } = await import('./email');
+    await sendEmail({ to: booking.client.email, subject: `Refund processed — ${booking.treatmentTitle}`, html: tmplRefund({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, amountPence: amount, fully }) });
+  } catch { /* email best-effort */ }
+
+  return { ok: true, refundedPence: totalRefunded };
+}
+
 /**
  * Idempotently record a SUCCESSFUL booking charge: mark the booking charged,
  * email a receipt, credit loyalty and report the sale. Safe to call more than
