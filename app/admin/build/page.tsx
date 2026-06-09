@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
-import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
+import { getSession, sessionCan, sessionPermissions, sessionIsAdmin } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { BuildBoard } from '@/components/admin/BuildBoard';
@@ -17,6 +17,7 @@ export default async function BuildPage() {
   const can = await sessionPermissions();
   const locale = await getLocale();
   const canManage = sessionCan(session, 'build.manage');
+  const isAdmin = sessionIsAdmin(session);
 
   // First board view after a deploy auto-imports the backlog (version-gated,
   // idempotent) — no manual "Import" click needed, and no build-time DB writes.
@@ -36,7 +37,7 @@ export default async function BuildPage() {
         Claude or staff. Use <strong>Report a problem</strong> (bottom-right, on any page) to log something with a screenshot.
       </p>
       <div className="mt-6">
-        <BuildBoard canManage={canManage} github={await githubConfigured()} staff={staff} me={session?.email || ''} />
+        <BuildBoard canManage={canManage} isAdmin={isAdmin} github={await githubConfigured()} staff={staff} me={session?.email || ''} />
       </div>
     </AdminShell>
   );
