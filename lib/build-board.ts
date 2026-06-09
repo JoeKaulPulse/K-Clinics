@@ -814,12 +814,16 @@ async function canWakeViaGithub(): Promise<boolean> {
 export function routineConfigured(): boolean {
   return !!(process.env.CLAUDE_ROUTINE_FIRE_URL && process.env.CLAUDE_ROUTINE_FIRE_TOKEN);
 }
-/** Tells the woken session where to read the live, DB-backed work queue (so it
- *  sees reported bugs/ideas, not just the backlog in code). The token lives in
- *  the routine environment as BOARD_QUEUE_TOKEN. */
+/** Tells the woken session how to read the live, DB-backed work queue (so it sees
+ *  reported bugs/ideas, not just the backlog in code). The board passes the token
+ *  inline at fire-time (it lives in the board's own Vercel env), so the routine
+ *  needs no environment variable of its own. Falls back to a $BOARD_QUEUE_TOKEN
+ *  reference if the board env isn't set. */
 function queueHint(): string {
   const base = (process.env.NEXT_PUBLIC_SITE_URL || 'https://kclinics.co.uk').replace(/\/$/, '');
-  return `Live work queue (incl. DB-only items like reported bugs): GET ${base}/api/build/queue with header "Authorization: Bearer $BOARD_QUEUE_TOKEN" (token is in your environment). Work the top item in "actionable" end-to-end.`;
+  const tok = process.env.BOARD_QUEUE_TOKEN;
+  const auth = tok ? `Bearer ${tok}` : 'Bearer $BOARD_QUEUE_TOKEN';
+  return `Live work queue (incl. DB-only items like reported bugs): run \`curl -s -H "Authorization: ${auth}" ${base}/api/build/queue\` to see prioritised actionable items, then build the top one end-to-end.`;
 }
 async function fireRoutine(text: string): Promise<{ ok: boolean; sessionUrl?: string; error?: string }> {
   const url = process.env.CLAUDE_ROUTINE_FIRE_URL;
