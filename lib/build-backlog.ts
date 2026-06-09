@@ -186,10 +186,10 @@ export const BUILD_BACKLOG: BacklogItem[] = [
 
   // ── Open / next ───────────────────────────────────────────────────────────
   {
-    title: 'Google Business: Connect button never appears even with OAuth creds set', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(450),
+    title: 'Google Business: Connect button never appears even with OAuth creds set', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(472),
     value: 7, effort: 1,
     detail: 'Admin → Reviews gated the “Connect Google Business” button on googleBusinessConfigured(), which also requires GOOGLE_BUSINESS_ACCOUNT_ID + GOOGLE_BUSINESS_LOCATION_ID — but the location is auto-detected on connect and the UI says only GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET are needed. So the owner set the OAuth creds but the button stayed hidden behind the “Waiting on…” notice.',
-    notes: ['Shipped (#450): the Reviews page now gates the Connect button on googleOAuthConfigured() (CLIENT_ID + SECRET only); the account/location are auto-detected on connect (only needed manually for multi-location pinning). After a redeploy the button appears on Admin → Reviews.'],
+    notes: ['Shipped (#472): the Reviews page now gates the Connect button on googleOAuthConfigured() (CLIENT_ID + SECRET only); the account/location are auto-detected on connect (only needed manually for multi-location pinning). After a redeploy the button appears on Admin → Reviews.'],
   },
   {
     title: 'Adopt the board as the work portal + migrate backlog', type: 'TASK', urgency: 'P2', status: 'SHIPPED',
