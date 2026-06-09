@@ -2704,6 +2704,10 @@ model KioskResult {
   photoUrl   String?
   shareSlug  String       @unique
   shareCount Int          @default(0)
+  // Share-to-claim reward: the single-use discount code issued to the visitor.
+  claimCode  String?
+  claimEmail String?
+  claimedAt  DateTime?
   createdAt  DateTime     @default(now())
 
   @@index([shareSlug])
