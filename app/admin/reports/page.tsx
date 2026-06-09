@@ -28,7 +28,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       // Filter on the appointment date (startAt) so imported/historical completed
       // bookings — which have no finishedAt — are counted too.
       where: { status: 'COMPLETED', startAt: { gte: since } },
-      select: { practitionerId: true, actualMinutes: true, durationMin: true, pricePence: true, chargedPence: true, refundedPence: true, pointsRedeemedPence: true, treatmentTitle: true, treatmentSlug: true, practitioner: { select: { name: true, email: true } } },
+      select: { id: true, practitionerId: true, actualMinutes: true, durationMin: true, pricePence: true, chargedPence: true, refundedPence: true, pointsRedeemedPence: true, treatmentTitle: true, treatmentSlug: true, practitioner: { select: { name: true, email: true } } },
     }),
     db.stockItem.findMany({ where: { active: true }, select: { currentQty: true, costPence: true } }),
     db.stockMovement.findMany({ where: { reason: { in: ['USED', 'WASTED'] }, createdAt: { gte: since } }, select: { delta: true, item: { select: { costPence: true } } } }),
@@ -60,6 +60,28 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
     txMap.set(b.treatmentTitle, t);
   }
   const treatments = [...txMap.entries()].map(([title, v]) => ({ title, ...v })).sort((a, b) => b.revenue - a.revenue).slice(0, 12);
+
+  // Profitability by service: revenue (charged − refunded) minus attributable
+  // cost — variant cost-of-goods (from booking items) + consumables used on that
+  // booking. Cost is conservative (0 where not recorded), so margin never overstates.
+  const bookingIds = completed.map((b) => b.id);
+  const [itemRows, moveRows] = await Promise.all([
+    bookingIds.length ? db.bookingItem.findMany({ where: { bookingId: { in: bookingIds } }, select: { bookingId: true, sessions: true, variant: { select: { costPence: true } } } }) : Promise.resolve([]),
+    bookingIds.length ? db.stockMovement.findMany({ where: { bookingId: { in: bookingIds }, reason: { in: ['USED', 'WASTED'] } }, select: { bookingId: true, delta: true, item: { select: { costPence: true } } } }) : Promise.resolve([]),
+  ]);
+  const costByBooking = new Map<string, number>();
+  const addCost = (id: string, c: number) => costByBooking.set(id, (costByBooking.get(id) ?? 0) + c);
+  for (const it of itemRows) if (it.variant?.costPence) addCost(it.bookingId, it.variant.costPence * (it.sessions || 1));
+  for (const m of moveRows) if (m.bookingId) addCost(m.bookingId, Math.abs(m.delta) * (m.item.costPence ?? 0));
+  const profMap = new Map<string, { title: string; count: number; revenue: number; cost: number }>();
+  for (const b of completed) {
+    const p = profMap.get(b.treatmentTitle) || { title: b.treatmentTitle, count: 0, revenue: 0, cost: 0 };
+    p.count++; p.revenue += rev(b); p.cost += costByBooking.get(b.id) ?? 0;
+    profMap.set(b.treatmentTitle, p);
+  }
+  const profitability = [...profMap.values()]
+    .map((p) => ({ ...p, margin: p.revenue - p.cost, marginPct: p.revenue > 0 ? Math.round(((p.revenue - p.cost) / p.revenue) * 100) : 0 }))
+    .sort((a, b) => b.margin - a.margin).slice(0, 15);
 
   const totalRevenue = completed.reduce((s, b) => s + rev(b), 0);
   // VAT collected over the period (only when the clinic is VAT-registered).
@@ -160,6 +182,30 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                 </div>
               ))}
             </div>
+          </div>
+          <div>
+            <div className="mb-3 flex items-baseline justify-between gap-2">
+              <h2 className="font-[family-name:var(--font-display)] text-xl">{L('Profitability by service', 'Прибутковість за послугою')}</h2>
+              <span className="text-xs text-[var(--color-stone-soft)]">{L('revenue − goods & consumables', 'дохід − товари та витратні')}</span>
+            </div>
+            <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+              <table className="w-full text-sm">
+                <thead><tr className="bg-[var(--color-bone)] text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">{[L('Service', 'Послуга'), L('Revenue', 'Дохід'), L('Cost', 'Собівартість'), L('Margin', 'Маржа'), '%'].map((h) => <th key={h} className="px-4 py-2.5 text-right first:text-left">{h}</th>)}</tr></thead>
+                <tbody>
+                  {profitability.length === 0 && <tr><td colSpan={5} className="px-4 py-4 text-[var(--color-stone)]">{L('No data yet.', 'Немає даних.')}</td></tr>}
+                  {profitability.map((p) => (
+                    <tr key={p.title} className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)]">
+                      <td className="px-4 py-2.5 font-medium">{p.title} <span className="text-xs text-[var(--color-stone-soft)]">×{p.count}</span></td>
+                      <td className="px-4 py-2.5 text-right text-[var(--color-jade)]">{gbp(p.revenue)}</td>
+                      <td className="px-4 py-2.5 text-right text-[var(--color-stone)]">{p.cost > 0 ? gbp(p.cost) : '—'}</td>
+                      <td className="px-4 py-2.5 text-right font-medium">{gbp(p.margin)}</td>
+                      <td className={`px-4 py-2.5 text-right ${p.marginPct >= 50 ? 'text-[var(--color-jade)]' : p.marginPct >= 0 ? 'text-[var(--color-ink)]' : 'text-[var(--color-blush)]'}`}>{p.marginPct}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-xs text-[var(--color-stone-soft)]">{L('Cost is conservative — only recorded goods (variant cost) and consumables linked to a booking are counted, so margin is never overstated.', 'Собівартість консервативна — лише зафіксовані товари та витратні, прив’язані до запису.')}</p>
           </div>
           <div>
             <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">{L('Inventory valuation', 'Вартість складу')}</h2>
