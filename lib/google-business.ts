@@ -82,11 +82,46 @@ async function tokenRequest(body: Record<string, string>): Promise<Tokens | null
   return { access: d.access_token, refresh: d.refresh_token, expiresAt: d.expires_in ? Date.now() + d.expires_in * 1000 : null };
 }
 
-/** Exchange the OAuth code and store the connection. */
+/** Auto-discover the first account + location after connecting, so the owner
+ *  doesn't have to find the numeric IDs by hand. Returns `accounts/{id}/locations/{id}`
+ *  or null (e.g. Business Profile API access not yet granted) — in which case we
+ *  fall back to the GOOGLE_BUSINESS_* env vars. Best-effort; never throws. */
+async function discoverLocation(access: string): Promise<string | null> {
+  try {
+    const h = { Authorization: `Bearer ${access}` };
+    const accRes = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', { headers: h });
+    if (!accRes.ok) return null;
+    const accounts = ((await accRes.json()) as { accounts?: { name?: string }[] }).accounts || [];
+    const account = accounts[0]?.name; // e.g. "accounts/123"
+    if (!account) return null;
+    const locRes = await fetch(`https://mybusinessbusinessinformation.googleapis.com/v1/${account}/locations?readMask=name&pageSize=1`, { headers: h });
+    if (!locRes.ok) return null;
+    const loc = ((await locRes.json()) as { locations?: { name?: string }[] }).locations?.[0]?.name; // "locations/456"
+    if (!loc) return null;
+    return `${account}/${loc}`; // accounts/123/locations/456
+  } catch { return null; }
+}
+
+/** The location to read reviews for: the GOOGLE_BUSINESS_* env vars if set
+ *  (pins a specific location), otherwise whatever was auto-discovered + stored
+ *  on the connection at connect time. */
+async function resolveLocation(): Promise<string | null> {
+  const fromEnv = locationName();
+  if (fromEnv) return fromEnv;
+  try {
+    const conn = await getConnection(PROVIDER);
+    const ref = conn?.accountRef || null;
+    return ref && /accounts\/.+\/locations\/.+/.test(ref) ? ref : null;
+  } catch { return null; }
+}
+
+/** Exchange the OAuth code and store the connection (auto-discovering the
+ *  account/location so reviews work without any manual ID setup). */
 export async function exchangeBusinessCode(code: string): Promise<boolean> {
   const tokens = await tokenRequest({ code, redirect_uri: businessRedirectUri(), grant_type: 'authorization_code' });
   if (!tokens?.refresh) return false; // need offline refresh token (first consent)
-  await saveConnection(PROVIDER, tokens, locationName(), 'Google Business Profile');
+  const discovered = locationName() || (await discoverLocation(tokens.access));
+  await saveConnection(PROVIDER, tokens, discovered, 'Google Business Profile');
   return true;
 }
 
@@ -116,8 +151,8 @@ type GBReview = {
 
 /** Import every Google review into the GoogleReview table (idempotent). */
 export async function syncGoogleReviews(): Promise<{ ok: boolean; imported: number; detail?: string }> {
-  const loc = locationName();
-  if (!loc) return { ok: false, imported: 0, detail: 'Set GOOGLE_BUSINESS_ACCOUNT_ID and GOOGLE_BUSINESS_LOCATION_ID.' };
+  const loc = await resolveLocation();
+  if (!loc) return { ok: false, imported: 0, detail: 'Connect Google Business (location not detected yet — grant Business Profile API access, or set GOOGLE_BUSINESS_ACCOUNT_ID + GOOGLE_BUSINESS_LOCATION_ID).' };
   const access = await token();
   if (!access) return { ok: false, imported: 0, detail: 'Not connected — connect Google Business first.' };
 
