@@ -1,5 +1,5 @@
 import 'server-only';
-import { db } from '@/lib/db';
+import { db, withDbRetry } from '@/lib/db';
 
 // Typed application settings, stored as key/value rows and editable in admin.
 // Defaults apply when a row is absent.
@@ -114,14 +114,27 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   },
 };
 
+// getSetting is on the hot path of the booking/availability engine, so it must
+// never throw on a transient DB blip (cold start / connection spike during a
+// deploy). It retries briefly and, failing that, falls back to the coded
+// default — so a hiccup can never 500 the booking flow.
 export async function getSetting(key: SettingKey): Promise<boolean> {
-  const row = await db.setting.findUnique({ where: { key } });
-  if (!row) return SETTING_DEFAULTS[key];
-  return row.value === 'true';
+  try {
+    const row = await withDbRetry(() => db.setting.findUnique({ where: { key } }), 2);
+    if (!row) return SETTING_DEFAULTS[key];
+    return row.value === 'true';
+  } catch {
+    return SETTING_DEFAULTS[key];
+  }
 }
 
 export async function getSettings(): Promise<Record<SettingKey, boolean>> {
-  const rows = await db.setting.findMany();
+  let rows: { key: string; value: string }[] = [];
+  try {
+    rows = await withDbRetry(() => db.setting.findMany({ select: { key: true, value: true } }), 2);
+  } catch {
+    rows = []; // fall back to defaults rather than throw
+  }
   const map = new Map(rows.map((r) => [r.key, r.value === 'true']));
   const out = {} as Record<SettingKey, boolean>;
   (Object.keys(SETTING_DEFAULTS) as SettingKey[]).forEach((k) => {

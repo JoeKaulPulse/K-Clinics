@@ -13,17 +13,23 @@ export default async function ManageBookingPage({ searchParams }: { searchParams
 
   let booking: { treatmentTitle: string; startISO: string; status: string; pricePence: number; within24h: boolean; cancelled: boolean } | null = null;
   if (crmEnabled && t) {
-    const { db } = await import('@/lib/db');
-    const b = await db.booking.findUnique({ where: { manageToken: t } });
-    if (b) {
-      booking = {
-        treatmentTitle: b.treatmentTitle,
-        startISO: b.startAt.toISOString(),
-        status: b.status,
-        pricePence: b.pricePence,
-        within24h: b.startAt.getTime() - Date.now() < 24 * 60 * 60 * 1000,
-        cancelled: b.status === 'CANCELLED',
-      };
+    try {
+      const { db, withDbRetry } = await import('@/lib/db');
+      const b = await withDbRetry(() => db.booking.findUnique({ where: { manageToken: t } }));
+      if (b) {
+        booking = {
+          treatmentTitle: b.treatmentTitle,
+          startISO: b.startAt.toISOString(),
+          status: b.status,
+          pricePence: b.pricePence,
+          within24h: b.startAt.getTime() - Date.now() < 24 * 60 * 60 * 1000,
+          cancelled: b.status === 'CANCELLED',
+        };
+      }
+    } catch (e) {
+      // A DB blip shouldn't 500 the page — fall through to the "not found / call
+      // us" card, which is a safe, helpful degraded state.
+      console.error('[manage-booking] lookup failed:', (e as Error)?.message);
     }
   }
 

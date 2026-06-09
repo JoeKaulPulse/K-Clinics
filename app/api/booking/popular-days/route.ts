@@ -13,6 +13,9 @@ export async function POST(req: Request) {
   if (!slug) return NextResponse.json({ ok: false, days: [] }, { status: 422 });
   const durationMin = Number(body.durationMin) > 0 ? Number(body.durationMin) : bookingFor(slug).durationMin;
   const { popularDays } = await import('@/lib/availability');
-  const days = await popularDays(durationMin, slug);
+  const { withDbRetry } = await import('@/lib/db');
+  // Quick-pick chips are a nicety — on a transient DB blip, degrade to none
+  // rather than failing the request (the page still loads and works).
+  const days = await withDbRetry(() => popularDays(durationMin, slug)).catch(() => [] as Awaited<ReturnType<typeof popularDays>>);
   return NextResponse.json({ ok: true, days });
 }
