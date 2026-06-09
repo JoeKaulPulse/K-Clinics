@@ -825,10 +825,26 @@ function queueHint(): string {
   const auth = tok ? `Bearer ${tok}` : 'Bearer $BOARD_QUEUE_TOKEN';
   return `Live work queue (incl. DB-only items like reported bugs): run \`curl -s -H "Authorization: ${auth}" ${base}/api/build/queue\` to see prioritised actionable items, then build the top one end-to-end.`;
 }
+// Routine runs are a scarce daily allowance shared across all projects on the
+// account. Hard-cap how many sessions THIS board may start per day so it can
+// never exhaust the limit. Default 8 (configurable via the `routine_fire_daily_cap`
+// setting), leaving headroom under the 15/day cap for manual/other-project runs.
+const ROUTINE_FIRE_CAP_DEFAULT = 8;
+function fireDayKey(): string { return `routine_fires:${new Date().toISOString().slice(0, 10)}`; }
+async function fireBudget(): Promise<{ cap: number; used: number; left: number }> {
+  const cap = Math.max(0, Number((await getRaw('routine_fire_daily_cap')) || ROUTINE_FIRE_CAP_DEFAULT));
+  const used = Number((await getRaw(fireDayKey())) || 0);
+  return { cap, used, left: Math.max(0, cap - used) };
+}
+export async function routineFireBudget() { return fireBudget(); }
+
 async function fireRoutine(text: string): Promise<{ ok: boolean; sessionUrl?: string; error?: string }> {
   const url = process.env.CLAUDE_ROUTINE_FIRE_URL;
   const token = process.env.CLAUDE_ROUTINE_FIRE_TOKEN;
   if (!url || !token) return { ok: false, error: 'not-configured' };
+  // Enforce the per-day budget before spending a run.
+  const budget = await fireBudget();
+  if (budget.left <= 0) return { ok: false, error: `daily routine-run budget reached (${budget.used}/${budget.cap}); protecting the shared limit` };
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 15000);
   try {
@@ -845,6 +861,7 @@ async function fireRoutine(text: string): Promise<{ ok: boolean; sessionUrl?: st
     });
     const j = (await res.json().catch(() => ({}))) as { claude_code_session_url?: string; error?: { message?: string } };
     if (!res.ok) return { ok: false, error: j?.error?.message || `routine returned ${res.status}` };
+    await setRaw(fireDayKey(), String(budget.used + 1)); // count this run against today's budget
     return { ok: true, sessionUrl: j?.claude_code_session_url };
   } catch (e) {
     return { ok: false, error: (e as Error)?.name === 'AbortError' ? 'timed out' : ((e as Error)?.message || 'failed') };
