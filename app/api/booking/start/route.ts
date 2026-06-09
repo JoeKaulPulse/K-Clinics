@@ -26,11 +26,12 @@ export async function POST(req: Request) {
   const d = parsed.data;
 
   const { getCurrentClient } = await import('@/lib/client-auth');
+  const { withDbRetry } = await import('@/lib/db');
   const client = await getCurrentClient();
   if (!client) return NextResponse.json({ ok: false, error: 'Please create an account or sign in to book.' }, { status: 401 });
 
   const { getVariant, liveOffers, bestOffer, effectiveStatus, isBookableStatus } = await import('@/lib/services');
-  const primary = await getVariant(d.variantId);
+  const primary = await withDbRetry(() => getVariant(d.variantId));
   if (!primary) return NextResponse.json({ ok: false, error: 'That service is unavailable. Please choose another.' }, { status: 404 });
   // Effective presentation status governs bookability. Admin status wins; the
   // code-level onRequest flag forces "coming soon" only when status is NORMAL
@@ -42,8 +43,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'This treatment isn’t available to book online right now — please enquire and we’ll be in touch.' }, { status: 409 });
   }
 
-  const addOns = (await Promise.all(d.addOnVariantIds.map((id) => getVariant(id)))).filter(Boolean) as NonNullable<Awaited<ReturnType<typeof getVariant>>>[];
-  const offers = await liveOffers(false);
+  const addOns = (await withDbRetry(() => Promise.all(d.addOnVariantIds.map((id) => getVariant(id))))).filter(Boolean) as NonNullable<Awaited<ReturnType<typeof getVariant>>>[];
+  const offers = await withDbRetry(() => liveOffers(false));
 
   const { db } = await import('@/lib/db');
 
@@ -102,13 +103,13 @@ export async function POST(req: Request) {
   // ── Validate the slot against the live availability engine ──
   const { isSlotFree, pickPractitioner, assignResources } = await import('@/lib/availability');
   const treatmentSlug = primary.service.treatmentSlug;
-  if (!(await isSlotFree(d.startISO, totalDuration, treatmentSlug))) {
+  if (!(await withDbRetry(() => isSlotFree(d.startISO, totalDuration, treatmentSlug)))) {
     return NextResponse.json({ ok: false, error: 'That time was just taken. Please choose another slot.' }, { status: 409 });
   }
   const { getSetting } = await import('@/lib/settings');
   const autoAssign = await getSetting('auto_assign_practitioner');
-  const practitionerId = autoAssign ? await pickPractitioner(d.startISO, totalDuration, treatmentSlug) : null;
-  const resourceIds = await assignResources(d.startISO, totalDuration, treatmentSlug);
+  const practitionerId = autoAssign ? await withDbRetry(() => pickPractitioner(d.startISO, totalDuration, treatmentSlug)) : null;
+  const resourceIds = await withDbRetry(() => assignResources(d.startISO, totalDuration, treatmentSlug));
 
   const { stripe, ensureCustomer } = await import('@/lib/stripe');
   const customerId = await ensureCustomer(client);

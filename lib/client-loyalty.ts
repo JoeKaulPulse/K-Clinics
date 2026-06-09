@@ -1,5 +1,5 @@
 import 'server-only';
-import { db } from '@/lib/db';
+import { db, withDbRetry } from '@/lib/db';
 import crypto from 'crypto';
 import type { ClientPointsCategory } from '@prisma/client';
 
@@ -368,18 +368,24 @@ export type LoyaltySummary = {
 /** Everything the portal rewards card needs. Does not mint a referral code
  *  (that happens when the client opens the referral panel). */
 export async function clientLoyaltySummary(clientId: string): Promise<LoyaltySummary> {
-  const [rec, client, refs] = await Promise.all([
-    reconcile(clientId),
-    db.client.findUnique({ where: { id: clientId }, select: { referralCode: true } }),
-    db.referral.groupBy({ by: ['status'], where: { referrerId: clientId }, _count: true }),
-  ]);
-  const byStatus = new Map(refs.map((r) => [r.status, r._count]));
-  return {
-    balance: rec.balance,
-    valuePence: pointsToPence(rec.balance),
-    expiringSoon: rec.expiringSoon,
-    referralCode: client?.referralCode ?? null,
-    referralsQualified: byStatus.get('QUALIFIED') ?? 0,
-    referralsPending: byStatus.get('JOINED') ?? 0,
-  };
+  // Retried, and degrades to an empty (zero-balance) summary rather than throwing
+  // — a loyalty card is non-essential and must never 500 the whole dashboard.
+  try {
+    const [rec, client, refs] = await withDbRetry(() => Promise.all([
+      reconcile(clientId),
+      db.client.findUnique({ where: { id: clientId }, select: { referralCode: true } }),
+      db.referral.groupBy({ by: ['status'], where: { referrerId: clientId }, _count: true }),
+    ]));
+    const byStatus = new Map(refs.map((r) => [r.status, r._count]));
+    return {
+      balance: rec.balance,
+      valuePence: pointsToPence(rec.balance),
+      expiringSoon: rec.expiringSoon,
+      referralCode: client?.referralCode ?? null,
+      referralsQualified: byStatus.get('QUALIFIED') ?? 0,
+      referralsPending: byStatus.get('JOINED') ?? 0,
+    };
+  } catch {
+    return { balance: 0, valuePence: 0, expiringSoon: 0, referralCode: null, referralsQualified: 0, referralsPending: 0 };
+  }
 }
