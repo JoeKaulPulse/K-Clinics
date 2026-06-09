@@ -13,7 +13,7 @@ const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line
 const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB')}`;
 
-export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0 }: { physicalEnabled?: boolean; physicalFeePence?: number } = {}) {
+export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0, pkg }: { physicalEnabled?: boolean; physicalFeePence?: number; pkg?: { slug: string; name: string; pricePence: number } } = {}) {
   const [f, setF] = useState({ amount: 5000, custom: '', recipientName: '', recipientEmail: '', message: '', deliverAt: '', purchaserName: '', purchaserEmail: '', design: DEFAULT_THEME_ID, physical: false, shipName: '', shipLine1: '', shipLine2: '', shipCity: '', shipPostcode: '', company: '' });
   const [stage, setStage] = useState<'form' | 'pay' | 'done'>('form');
   const [clientSecret, setClientSecret] = useState('');
@@ -22,18 +22,19 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
-  const giftPence = f.custom ? Math.round(Number(f.custom) * 100) : f.amount;
+  // A gift package fixes the value to its price; an open card uses the chosen amount.
+  const giftPence = pkg ? pkg.pricePence : (f.custom ? Math.round(Number(f.custom) * 100) : f.amount);
   const physical = physicalEnabled && f.physical;
   const amountPence = giftPence + (physical ? physicalFeePence : 0);
 
   async function start() {
-    if (!(giftPence >= 1000 && giftPence <= 50000)) { setError('Choose an amount between £10 and £500.'); return; }
+    if (!pkg && !(giftPence >= 1000 && giftPence <= 50000)) { setError('Choose an amount between £10 and £500.'); return; }
     if (!f.purchaserName.trim() || !/\S+@\S+\.\S+/.test(f.purchaserEmail)) { setError('Please enter your name and a valid email.'); return; }
     if (physical && (!f.shipName.trim() || !f.shipLine1.trim() || !f.shipPostcode.trim())) { setError('For a posted card we need the delivery name, address and postcode.'); return; }
     setBusy(true); setError('');
     try {
       const body = {
-        amountPence: giftPence, purchaserName: f.purchaserName, purchaserEmail: f.purchaserEmail,
+        amountPence: giftPence, packageSlug: pkg?.slug, purchaserName: f.purchaserName, purchaserEmail: f.purchaserEmail,
         recipientName: f.recipientName, recipientEmail: f.recipientEmail, message: f.message,
         deliverAt: f.deliverAt || undefined, design: f.design, company: f.company,
         physical, ship: physical ? { name: f.shipName, line1: f.shipLine1, line2: f.shipLine2, city: f.shipCity, postcode: f.shipPostcode } : undefined,
@@ -50,7 +51,7 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0 
     return (
       <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-8 text-center">
         <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-[var(--color-ink)] text-[var(--color-gold-soft)]"><svg viewBox="0 0 24 24" className="h-6 w-6" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg></div>
-        <h3 className="font-[family-name:var(--font-display)] text-2xl">Gift voucher purchased</h3>
+        <h3 className="font-[family-name:var(--font-display)] text-2xl">{pkg ? `${pkg.name} gifted` : 'Gift voucher purchased'}</h3>
         <p className="mx-auto mt-3 max-w-md text-[var(--color-stone)]">Thank you! We’ve emailed the voucher{f.recipientEmail ? ' to your recipient' : ''} and a receipt to you{f.deliverAt ? `. It will be delivered on ${new Date(f.deliverAt).toLocaleDateString('en-GB')}` : ''}.</p>
         {code && <p className="mt-4 font-[family-name:var(--font-mono,monospace)] text-lg tracking-wide text-[var(--color-ink)]">{code}</p>}
       </div>
@@ -61,12 +62,18 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0 
     <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6 md:p-8">
       {stage === 'form' ? (
         <>
-          <h3 className="font-[family-name:var(--font-display)] text-2xl">Design your gift card</h3>
+          <h3 className="font-[family-name:var(--font-display)] text-2xl">{pkg ? `Gift the ${pkg.name}` : 'Design your gift card'}</h3>
           <p className="mt-1 text-sm text-[var(--color-stone)]">Personalise it, preview it live, and we’ll email it to your recipient. No account needed.</p>
 
           <div className="mt-6 grid gap-7 lg:grid-cols-[1fr_minmax(280px,360px)]">
             {/* Left — the form */}
             <div>
+              {pkg ? (
+                <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3">
+                  <p className={label}>Your gift</p>
+                  <p className="text-[var(--color-ink)]"><strong>{pkg.name}</strong> · {money(pkg.pricePence)}</p>
+                </div>
+              ) : (
               <div>
                 <p className={label}>Amount</p>
                 <div className="flex flex-wrap gap-2">
@@ -76,6 +83,7 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0 
                   <input value={f.custom} onChange={(e) => set('custom', e.target.value)} placeholder="Custom £" className={`${field} w-28`} />
                 </div>
               </div>
+              )}
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 <div><label className={label}>Recipient name</label><input className={field} value={f.recipientName} onChange={(e) => set('recipientName', e.target.value)} placeholder="Who’s it for?" /></div>
                 <div><label className={label}>Recipient email</label><input type="email" className={field} value={f.recipientEmail} onChange={(e) => set('recipientEmail', e.target.value)} placeholder="We’ll email it to them" /></div>

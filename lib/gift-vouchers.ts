@@ -26,15 +26,30 @@ export type VoucherInput = {
   design?: string;           // chosen card theme id (lib/gift-card-themes)
   physical?: boolean;        // paid printed-card upgrade
   ship?: { name?: string; line1?: string; line2?: string; city?: string; postcode?: string };
+  packageSlug?: string;      // buy a specific giftable package as a gift (fixes the amount)
 };
 
 /** Create a PENDING voucher + a Stripe PaymentIntent (charged now). The card
  *  value is `amountPence`; an optional physical-card fee is added to the charge
  *  only — the recipient's balance is always the gift value. */
 export async function createVoucherIntent(input: VoucherInput): Promise<{ ok: boolean; error?: string; voucherId?: string; clientSecret?: string }> {
-  const amount = Math.round(input.amountPence);
-  if (!(amount >= VOUCHER_MIN && amount <= VOUCHER_MAX)) return { ok: false, error: `Choose an amount between ${money(VOUCHER_MIN)} and ${money(VOUCHER_MAX)}.` };
   if (!input.purchaserName?.trim() || !/\S+@\S+\.\S+/.test(input.purchaserEmail || '')) return { ok: false, error: 'Please enter your name and a valid email.' };
+
+  // A gift package fixes the amount to the published package price (server-side,
+  // never trusting the client's amount) and earmarks the card to that package.
+  let amount = Math.round(input.amountPence);
+  let packageSlug: string | null = null;
+  let packageName: string | null = null;
+  if (input.packageSlug) {
+    const { getPublishedGiftPackage } = await import('@/lib/gift-packages');
+    const pkg = await getPublishedGiftPackage(input.packageSlug);
+    if (!pkg) return { ok: false, error: 'That gift package isn’t available right now.' };
+    amount = pkg.pricePence;
+    packageSlug = pkg.slug;
+    packageName = pkg.name;
+  } else if (!(amount >= VOUCHER_MIN && amount <= VOUCHER_MAX)) {
+    return { ok: false, error: `Choose an amount between ${money(VOUCHER_MIN)} and ${money(VOUCHER_MAX)}.` };
+  }
 
   const { stripe, stripeEnabled } = await import('@/lib/stripe');
   if (!stripeEnabled) return { ok: false, error: 'Payments aren’t available right now. Please call us.' };
@@ -58,6 +73,7 @@ export async function createVoucherIntent(input: VoucherInput): Promise<{ ok: bo
       purchaserName: input.purchaserName.trim(), purchaserEmail: input.purchaserEmail.trim().toLowerCase(),
       recipientName: input.recipientName?.trim() || null, recipientEmail: input.recipientEmail?.trim().toLowerCase() || null,
       message: input.message?.slice(0, 500) || null,
+      packageSlug, packageName,
       deliverAt: deliverAt && !isNaN(+deliverAt) ? deliverAt : null,
       design: input.design?.slice(0, 40) || null,
       physical, physicalFeePence: feePence, fulfillment: physical ? 'unfulfilled' : 'none',
@@ -72,9 +88,9 @@ export async function createVoucherIntent(input: VoucherInput): Promise<{ ok: bo
   try {
     const pi = await stripe().paymentIntents.create({
       amount: charge, currency: 'gbp', automatic_payment_methods: { enabled: true },
-      description: `KClinics gift card ${money(amount)}${physical ? ` + printed card ${money(feePence)}` : ''}`,
+      description: `${packageName ? `KClinics gift — ${packageName}` : `KClinics gift card ${money(amount)}`}${physical ? ` + printed card ${money(feePence)}` : ''}`,
       receipt_email: input.purchaserEmail.trim().toLowerCase(),
-      metadata: { voucherId: voucher.id, kind: 'gift_voucher' },
+      metadata: { voucherId: voucher.id, kind: packageSlug ? 'gift_package' : 'gift_voucher', ...(packageSlug ? { packageSlug } : {}) },
     });
     await db.giftVoucher.update({ where: { id: voucher.id }, data: { stripePaymentIntentId: pi.id } });
     return { ok: true, voucherId: voucher.id, clientSecret: pi.client_secret || undefined };
@@ -110,11 +126,12 @@ async function sendVoucherEmails(voucherId: string, sendToRecipient: boolean) {
   const v = await db.giftVoucher.findUnique({ where: { id: voucherId } });
   if (!v) return;
   const { sendEmail, tmplCustomGiftCard, tmplGiftVoucherReceipt } = await import('@/lib/email');
+  const what = v.packageName || `gift card — ${money(v.amountPence)}`;
   const tasks: Promise<unknown>[] = [
-    sendEmail({ to: v.purchaserEmail, subject: `Your KClinics gift card — ${money(v.amountPence)}`, html: tmplGiftVoucherReceipt({ purchaserName: v.purchaserName, amount: money(v.amountPence), code: v.code, recipientName: v.recipientName, scheduled: !sendToRecipient && !!v.deliverAt, deliverAt: v.deliverAt, designId: v.design }) }),
+    sendEmail({ to: v.purchaserEmail, subject: `Your KClinics ${v.packageName ? 'gift' : 'gift card'} — ${v.packageName || money(v.amountPence)}`, html: tmplGiftVoucherReceipt({ purchaserName: v.purchaserName, amount: money(v.amountPence), code: v.code, recipientName: v.recipientName, scheduled: !sendToRecipient && !!v.deliverAt, deliverAt: v.deliverAt, designId: v.design, packageName: v.packageName }) }),
   ];
   if (sendToRecipient && v.recipientEmail) {
-    tasks.push(sendEmail({ to: v.recipientEmail, subject: `${v.purchaserName} sent you a KClinics gift card 🎁`, html: tmplCustomGiftCard({ recipientName: v.recipientName || 'there', fromName: v.purchaserName, amount: money(v.amountPence), code: v.code, message: v.message, designId: v.design, viewUrl: `${baseUrl()}/gift/${v.code}`, claimUrl: `${baseUrl()}/account/gift-cards?code=${v.code}` }) }));
+    tasks.push(sendEmail({ to: v.recipientEmail, subject: `${v.purchaserName} sent you a KClinics ${what} 🎁`, html: tmplCustomGiftCard({ recipientName: v.recipientName || 'there', fromName: v.purchaserName, amount: money(v.amountPence), code: v.code, message: v.message, designId: v.design, viewUrl: `${baseUrl()}/gift/${v.code}`, claimUrl: `${baseUrl()}/account/gift-cards?code=${v.code}`, packageName: v.packageName }) }));
   }
   await Promise.allSettled(tasks);
 }

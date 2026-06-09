@@ -10,6 +10,32 @@ export const GIFT_CATEGORIES = [GIFT_CARD_CATEGORY, GIFT_PACKAGE_CATEGORY];
 
 const giftSlug = (slug: string) => `gift-${slug}`;
 
+export type GiftablePackage = { slug: string; name: string; description: string | null; pricePence: number; images: string[] };
+
+/** Published, priced gift packages for the public Gifts section. Excludes drafts
+ *  and £0 (unpriced) packages so nothing half-set-up can be bought. Never throws. */
+export async function listPublishedGiftPackages(): Promise<GiftablePackage[]> {
+  try {
+    const rows = await db.product.findMany({
+      where: { category: GIFT_PACKAGE_CATEGORY, status: 'ACTIVE', pricePence: { gt: 0 } },
+      select: { slug: true, name: true, description: true, pricePence: true, images: true },
+      orderBy: { pricePence: 'asc' },
+    });
+    return rows;
+  } catch { return []; }
+}
+
+/** Resolve one buyable gift package by slug (published + priced), or null. */
+export async function getPublishedGiftPackage(slug: string): Promise<GiftablePackage | null> {
+  try {
+    const p = await db.product.findFirst({
+      where: { slug, category: GIFT_PACKAGE_CATEGORY, status: 'ACTIVE', pricePence: { gt: 0 } },
+      select: { slug: true, name: true, description: true, pricePence: true, images: true },
+    });
+    return p;
+  } catch { return null; }
+}
+
 /** Turn the clinic's curated treatment packages into DRAFT gift products for the
  *  owner to review, price and publish. Idempotent — skips ones already created
  *  (matched by slug). Nothing goes live: every draft stays DRAFT until published. */

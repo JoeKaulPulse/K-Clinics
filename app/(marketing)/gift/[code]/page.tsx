@@ -13,13 +13,13 @@ export default async function GiftCardViewPage({ params }: { params: Promise<{ c
   const { code } = await params;
   const clean = decodeURIComponent(code || '').trim().toUpperCase();
 
-  let v: { amountPence: number; balancePence: number; recipientName: string | null; message: string | null; purchaserName: string; design: string | null; status: string; expiresAt: Date | null } | null = null;
+  let v: { amountPence: number; balancePence: number; recipientName: string | null; message: string | null; purchaserName: string; design: string | null; status: string; expiresAt: Date | null; packageName: string | null } | null = null;
   if (crmEnabled && clean) {
     try {
       const { db, withDbRetry } = await import('@/lib/db');
       v = await withDbRetry(() => db.giftVoucher.findUnique({
         where: { code: clean },
-        select: { amountPence: true, balancePence: true, recipientName: true, message: true, purchaserName: true, design: true, status: true, expiresAt: true },
+        select: { amountPence: true, balancePence: true, recipientName: true, message: true, purchaserName: true, design: true, status: true, expiresAt: true, packageName: true },
       }));
     } catch { v = null; }
   }
@@ -43,6 +43,7 @@ export default async function GiftCardViewPage({ params }: { params: Promise<{ c
           <>
             <p className="eyebrow mb-3 text-center">{v!.recipientName ? `A gift for ${v!.recipientName}` : 'A gift for you'}</p>
             <h1 className="text-center font-[family-name:var(--font-display)] text-[clamp(1.8rem,1.3rem+2vw,2.6rem)] leading-tight">{v!.purchaserName} sent you a gift.</h1>
+            {v!.packageName && <p className="mt-2 text-center text-[var(--color-ink-soft)]">The <strong>{v!.packageName}</strong> — worth {money(v!.amountPence)}, towards this package in clinic.</p>}
 
             <div className="mx-auto mt-7 max-w-sm">
               <GiftCardPreview designId={v!.design || undefined} amountPence={v!.amountPence} recipientName={v!.recipientName || undefined} message={v!.message || undefined} purchaserName={v!.purchaserName} />
