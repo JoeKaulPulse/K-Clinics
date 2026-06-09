@@ -114,6 +114,21 @@ export function GoLiveChecklist({ groups: initial }: { groups: GoLiveGroup[] }) 
                       {it.how.map((h, j) => <li key={j}>{h}</li>)}
                     </ol>
                   )}
+                  {it.links && it.links.length > 0 && (
+                    <div className="mt-3 ml-8 flex flex-wrap gap-2">
+                      {it.links.map((l, j) => (
+                        <a
+                          key={j}
+                          href={l.href}
+                          {...(l.external ? { target: '_blank', rel: 'noreferrer noopener' } : {})}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-white px-3 py-1 text-xs font-medium text-[var(--color-ink)] transition-colors hover:border-[var(--color-gold)] hover:bg-[var(--color-bone)]"
+                        >
+                          {l.label}
+                          <span aria-hidden className="text-[var(--color-stone-soft)]">{l.external ? '↗' : '→'}</span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

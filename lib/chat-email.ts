@@ -26,12 +26,13 @@ const hostname = (() => { try { return new URL(site.url).hostname.replace(/^www\
 // dedicated inbound subdomain (mail.kclinics.co.uk) so inbound stays separate
 // from normal mailboxes; override with CHAT_INBOUND_DOMAIN (e.g. the Resend
 // sandbox domain like …​.resend.app while the custom domain verifies).
-const INBOUND_DOMAIN = process.env.CHAT_INBOUND_DOMAIN || `mail.${hostname}`;
+// Chat sends from the verified mail.<domain> subdomain; replies route to the
+// reply.mail.<domain> inbound subdomain (Resend Inbound → /api/webhooks/chat-inbound).
+const SEND_DOMAIN = process.env.EMAIL_SEND_DOMAIN || `mail.${hostname}`;
+const REPLY_DOMAIN = process.env.CHAT_INBOUND_DOMAIN || `reply.mail.${hostname}`;
 const LEFT_MS = 90_000; // visitor considered "gone" after 90s of no activity
 
-// Chat email sends from the dedicated mail subdomain so in + out are unified on
-// one domain (replies route to the chat-<token>@ address on the same domain).
-export function chatFrom(): string { return `KClinics <chat@${INBOUND_DOMAIN}>`; }
+export function chatFrom(): string { return `KClinics <chat@${SEND_DOMAIN}>`; }
 
 /** Log a chat email so it shows on the conversation audit + gets Resend status. */
 async function logChatEmail(o: { conversationId: string; clientId: string | null; to: string; subject: string; chatKind: 'reply' | 'transcript'; res: { ok: boolean; id?: string; error?: string } }) {
@@ -55,7 +56,7 @@ export async function listChatEmails(conversationId: string) {
 
 /** The per-conversation reply address (Resend Inbound routes this to the webhook). */
 export function chatReplyAddress(token: string): string {
-  return `chat-${token}@${INBOUND_DOMAIN}`;
+  return `chat-${token}@${REPLY_DOMAIN}`;
 }
 
 /** Stable thread id so the visitor's mail client groups our replies together. */
