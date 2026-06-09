@@ -372,9 +372,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Shipped (#427): replaced the fire-and-forget with `after(() => runKioskAnalysis(...))` from next/server, which keeps the serverless function alive until the analysis completes. Top actionable backlog item by V:E; the most likely cause of the live flow stalling at "analysing".'],
   },
   {
-    title: 'Kiosk BUG: HEIC selfies sent to Claude as image/jpeg', type: 'ERROR', urgency: 'P2', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
+    title: 'Kiosk BUG: HEIC selfies sent to Claude as image/jpeg', type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', project: 'skin-smile-kiosk', pr: PR(428),
     value: 6, effort: 2,
     detail: 'Photos are stored as kiosk/<token>.jpg regardless of real type; lib/kiosk-ai.mediaTypeFromUrl derives the media type from the .jpg URL, so an iPhone HEIC upload is sent to Claude as image/jpeg and analysis fails. Persist/carry the real content-type (store the actual extension, or pass file.type through runKioskAnalysis) so HEIC is labelled correctly.',
+    notes: [
+      'Shipped: two-part fix. (1) photo/route.ts now uses mimeToExt(file.type) to choose the real extension (.heic/.png/.webp/.jpg) when uploading to Vercel Blob, so the URL always reflects the actual format. (2) kiosk-ai.ts now calls resolveMediaType(fetchedContentType, url) — it reads the Content-Type header from the Blob fetch response (always correct, stored at upload time) and falls back to URL-based detection. HEIC files not supported by the Claude vision API are rejected early with a clear log rather than being sent as a corrupt JPEG. tsc + build green.',
+    ],
   },
   {
     title: 'Kiosk: share endpoint is unauthenticated + non-idempotent', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',

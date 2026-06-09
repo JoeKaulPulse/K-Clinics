@@ -43,6 +43,9 @@ export type KioskAiResult = {
   treatments: string[];
 };
 
+// Types accepted by the Anthropic vision API.
+const CLAUDE_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+
 function mediaTypeFromUrl(url: string): string {
   const u = url.toLowerCase().split('?')[0];
   if (u.endsWith('.png')) return 'image/png';
@@ -50,6 +53,16 @@ function mediaTypeFromUrl(url: string): string {
   if (u.endsWith('.gif')) return 'image/gif';
   if (u.endsWith('.heic') || u.endsWith('.heif')) return 'image/heic';
   return 'image/jpeg';
+}
+
+/** Derive the image media type, preferring the actual Content-Type served by
+ *  the Blob (which is exact) over the URL extension (which can be wrong if the
+ *  file was stored with a mismatched extension). Falls back to URL when the
+ *  header is absent or generic (e.g. application/octet-stream). */
+function resolveMediaType(fetchedContentType: string | null, url: string): string {
+  const ct = fetchedContentType?.split(';')[0].trim().toLowerCase() ?? '';
+  if (ct.startsWith('image/') && ct !== 'image/') return ct;
+  return mediaTypeFromUrl(url);
 }
 
 function clampScore(n: unknown): number {
@@ -79,7 +92,14 @@ export async function analyzeKioskPhoto(photoUrl: string): Promise<KioskAiResult
     }
     const ab = await imgRes.arrayBuffer();
     const b64 = Buffer.from(ab).toString('base64');
-    const media = mediaTypeFromUrl(photoUrl);
+    // Use the Content-Type served by Vercel Blob (authoritative, stored at upload
+    // time) rather than deriving it from the URL extension — the URL always ends
+    // in .jpg even for HEIC/WebP uploads, which would mislabel them.
+    const media = resolveMediaType(imgRes.headers.get('content-type'), photoUrl);
+    if (!CLAUDE_IMAGE_TYPES.has(media)) {
+      console.error('[kiosk-ai] unsupported image type for AI analysis:', media);
+      return null;
+    }
 
     // 2) Call Claude (same pattern as callClaude in lib/ai-consultation.ts).
     const res = await fetch('https://api.anthropic.com/v1/messages', {
