@@ -346,12 +346,13 @@ function voucherCard(amount: string, code: string, opts?: { designId?: string | 
   </td></tr></table>`;
 }
 
-export function tmplCustomGiftCard(o: { recipientName: string; fromName: string; amount: string; code: string; message?: string | null; designId?: string | null; viewUrl: string; claimUrl: string }) {
+export function tmplCustomGiftCard(o: { recipientName: string; fromName: string; amount: string; code: string; message?: string | null; designId?: string | null; viewUrl: string; claimUrl: string; packageName?: string | null }) {
   return emailShell({
-    preheader: `${o.fromName} sent you a ${o.amount} KClinics gift card`,
+    preheader: `${o.fromName} sent you a KClinics ${o.packageName || `${o.amount} gift card`}`,
     body: `${heroBand('voucher')}
     <h1 style="font-size:26px;margin:0 0 12px;">A gift for you, ${escape(o.recipientName)}.</h1>
-    <p><strong>${escape(o.fromName)}</strong> has sent you a KClinics gift card to spend on any of our treatments.</p>
+    <p><strong>${escape(o.fromName)}</strong> has sent you ${o.packageName ? `the <strong>${escape(o.packageName)}</strong> at KClinics` : 'a KClinics gift card to spend on any of our treatments'}.</p>
+    ${o.packageName ? `<p style="font-size:14px;color:#91766e;">Worth ${o.amount}, redeemable towards this package in clinic.</p>` : ''}
     ${voucherCard(o.amount, o.code, { designId: o.designId, recipientName: o.recipientName, message: o.message })}
     <p style="margin:22px 0 10px;">${btn(o.viewUrl, 'View &amp; share your card')}</p>
     <p style="margin:0 0 22px;">${btnOutline(o.claimUrl, 'Add to your account &amp; claim')}</p>
@@ -374,13 +375,13 @@ export function tmplGiftVoucher(o: { recipientName: string; fromName: string; am
   });
 }
 
-export function tmplGiftVoucherReceipt(o: { purchaserName: string; amount: string; code: string; recipientName?: string | null; scheduled?: boolean; deliverAt?: Date | null; designId?: string | null }) {
+export function tmplGiftVoucherReceipt(o: { purchaserName: string; amount: string; code: string; recipientName?: string | null; scheduled?: boolean; deliverAt?: Date | null; designId?: string | null; packageName?: string | null }) {
   const when = o.deliverAt ? o.deliverAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
   return emailShell({
-    preheader: `Your ${o.amount} KClinics gift card`,
+    preheader: o.packageName ? `Your KClinics gift — ${o.packageName}` : `Your ${o.amount} KClinics gift card`,
     body: `${heroBand('voucher')}
     <h1 style="font-size:24px;margin:0 0 12px;">Thank you, ${escape(o.purchaserName)}.</h1>
-    <p>Your ${o.amount} gift card is ready${o.recipientName ? ` for <strong>${escape(o.recipientName)}</strong>` : ''}.</p>
+    <p>Your ${o.packageName ? `<strong>${escape(o.packageName)}</strong> gift (worth ${o.amount})` : `${o.amount} gift card`} is ready${o.recipientName ? ` for <strong>${escape(o.recipientName)}</strong>` : ''}.</p>
     ${o.scheduled ? `<p>We’ll deliver it to them on <strong>${when}</strong>.</p>` : `<p>${o.recipientName ? 'We’ve sent it to them too.' : 'Here it is to share however you like.'}</p>`}
     ${voucherCard(o.amount, o.code, { designId: o.designId })}
     <p style="font-size:14px;">Valid for 12 months. Redeemable against any treatment; partial use keeps the balance on the code.</p>

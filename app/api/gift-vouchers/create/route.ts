@@ -13,6 +13,7 @@ const schema = z.object({
   message: z.string().max(500).optional().or(z.literal('')),
   deliverAt: z.string().optional().or(z.literal('')),
   design: z.string().max(40).optional().or(z.literal('')),
+  packageSlug: z.string().max(120).optional().or(z.literal('')),
   physical: z.boolean().optional(),
   ship: z.object({
     name: z.string().max(120).optional().or(z.literal('')),
@@ -40,6 +41,7 @@ export async function POST(req: Request) {
     message: parsed.data.message || undefined,
     deliverAt: parsed.data.deliverAt || null,
     design: parsed.data.design || undefined,
+    packageSlug: parsed.data.packageSlug || undefined,
     physical: parsed.data.physical || false,
     ship: parsed.data.ship,
   });

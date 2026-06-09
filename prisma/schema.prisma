@@ -1768,6 +1768,8 @@ model GiftVoucher {
   recipientEmail String?
   message        String?
   design         String?             // chosen card theme id (lib/gift-card-themes)
+  packageSlug    String?             // earmarked giftable package (Product slug); null = open-value card
+  packageName    String?             // package name snapshot for the card/receipt
   deliverAt      DateTime?            // scheduled delivery date (null = immediate)
   delivered      Boolean  @default(false)
   status         String   @default("PENDING") // PENDING | ACTIVE | REDEEMED | CANCELLED

@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { GiftVoucherFlow } from '@/components/gift/GiftVoucherFlow';
+import { GiftPackages } from '@/components/gift/GiftPackages';
+import { listPublishedGiftPackages } from '@/lib/gift-packages';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
@@ -31,7 +33,7 @@ const STEPS = [
 const USES = ['Skin & facial aesthetics', 'Injectable treatments', 'Aesthetic dentistry', 'Laser & body', 'A complimentary consultation', 'Anything across the menu'];
 
 export default async function GiftVouchersPage() {
-  const physical = await physicalConfig();
+  const [physical, giftPackages] = await Promise.all([physicalConfig(), listPublishedGiftPackages()]);
   return (
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Gift Vouchers', path: '/gift-vouchers' }])} />
@@ -76,6 +78,21 @@ export default async function GiftVouchersPage() {
         </Reveal>
         <p className="mt-6 text-center text-sm text-[var(--color-stone)]">Buying for a corporate gift? Call us on <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a> and we’ll arrange it.</p>
       </section>
+
+      {giftPackages.length > 0 && (
+        <section id="packages" className="container-lux section">
+          <Reveal>
+            <div className="mx-auto mb-9 max-w-2xl text-center">
+              <p className="eyebrow mb-3">Gift a treatment</p>
+              <h2 className="text-title">Or gift a curated package.</h2>
+              <p className="mt-4 text-[var(--color-ink-soft)]">Prefer to gift a specific experience? Choose one of our packages — they arrive as a personalised gift card, ready to redeem in clinic, with the same scheduled delivery and message.</p>
+            </div>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <GiftPackages packages={giftPackages} physicalEnabled={physical.enabled} physicalFeePence={physical.feePence} />
+          </Reveal>
+        </section>
+      )}
     </>
   );
 }
