@@ -112,5 +112,11 @@ export async function GET(req: Request) {
     console.error('[cron] build-board seed failed (continuing):', (e as Error)?.message);
   }
 
+  // Record the run so the status page can show job freshness.
+  try {
+    const { db } = await import('@/lib/db');
+    await db.setting.upsert({ where: { key: 'cron_daily_last' }, update: { value: new Date().toISOString() }, create: { key: 'cron_daily_last', value: new Date().toISOString() } });
+  } catch { /* non-fatal */ }
+
   return NextResponse.json({ ok: true, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend, board });
 }

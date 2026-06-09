@@ -87,6 +87,7 @@ const navGroups: { heading?: string; icon?: GroupIconKey; items: NavItem[] }[] =
   ] },
   { heading: 'nav.group.admin', icon: 'admin', items: [
     { href: '/admin/go-live', key: 'nav.golive', perm: 'settings.manage' },
+    { href: '/admin/status', key: 'nav.status', perm: 'platform.status' },
     { href: '/admin/build', key: 'nav.build', perm: 'build.view' },
     { href: '/admin/staff', key: 'nav.staff', perm: 'staff.view' },
     { href: '/admin/security', key: 'nav.security', perm: 'security.manage' },

@@ -27,5 +27,9 @@ export async function GET(req: Request) {
   // GitHub is connected.
   let ghSync = { synced: 0, remaining: 0 };
   try { const { syncAllToGithub } = await import('@/lib/build-board'); ghSync = await syncAllToGithub('system', 6); } catch { /* non-fatal */ }
+  try {
+    const { db } = await import('@/lib/db');
+    await db.setting.upsert({ where: { key: 'cron_dispatch_last' }, update: { value: new Date().toISOString() }, create: { key: 'cron_dispatch_last', value: new Date().toISOString() } });
+  } catch { /* non-fatal */ }
   return NextResponse.json({ ok: true, ...result, chatFollowups: chat.emailed, githubSynced: ghSync.synced, githubRemaining: ghSync.remaining });
 }

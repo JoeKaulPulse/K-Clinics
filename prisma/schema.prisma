@@ -2518,3 +2518,22 @@ model NpsResponse {
   @@index([respondedAt])
   @@index([sentAt])
 }
+
+// Planned-maintenance window, scheduled by Claude or an admin and shown on the
+// Owner/Admin status page (and surfaceable to staff/clients later). See
+// lib/maintenance.ts.
+model MaintenanceWindow {
+  id        String   @id @default(cuid())
+  title     String
+  detail    String?  @db.Text
+  startAt   DateTime
+  endAt     DateTime
+  services  String[] @default([]) // affected compartments/services (status-page ids)
+  impact    String?  // e.g. "No expected downtime", "Booking briefly read-only"
+  status    String   @default("SCHEDULED") // SCHEDULED | ACTIVE | DONE | CANCELLED
+  createdBy String?  // staff email or 'claude'
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, startAt])
+}
