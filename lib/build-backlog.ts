@@ -177,11 +177,10 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Question for the owner: do you want clients to self-reschedule online, or keep it staff-handled? Blocked pending that decision.'],
   },
   {
-    title: 'Resend domains: send via mail.kclinics.co.uk, reply via reply.mail.kclinics.co.uk', type: 'TASK', urgency: 'P1', status: 'IN_PROGRESS', assignee: 'claude', pr: PR(373),
-    value: 7, effort: 2, needs: 'OWNER',
-    ask: 'In Vercel set EMAIL_FROM=KClinics <hello@mail.kclinics.co.uk>, EMAIL_REPLY_TO=replies@reply.mail.kclinics.co.uk, and CHAT_INBOUND_DOMAIN=reply.mail.kclinics.co.uk, then redeploy. In Resend: verify mail.kclinics.co.uk for sending (DKIM/SPF) and add reply.mail.kclinics.co.uk as an Inbound domain (MX/CNAME/CAA), enable open & click tracking, and point the inbound webhook at /api/webhooks/chat-inbound. Reply here when the domains show verified.',
+    title: 'Resend domains: send via mail.kclinics.co.uk, reply via reply.mail.kclinics.co.uk', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(373),
+    value: 7, effort: 2,
     detail: 'New DNS: mail.kclinics.co.uk = sending; reply.mail.kclinics.co.uk = reply emails + open/click tracking. Must apply across all products (transactional, campaigns, gift cards, chat, staff emails).',
-    notes: ['Code reflected (#373): default From → hello@mail.<domain>; Reply-To → replies@reply.mail.<domain>; chat sends from mail.<domain> and routes replies to reply.mail.<domain>; go-live board updated with both domains + click-through links. Remaining is the owner’s Vercel env + Resend dashboard config (above).'],
+    notes: ['Code reflected (#373): default From → hello@mail.<domain>; Reply-To → replies@reply.mail.<domain>; chat sends from mail.<domain> and routes replies to reply.mail.<domain>; go-live board updated with both domains + click-through links.', 'Owner confirmed the Vercel env + Resend dashboard config is done — task handed back to Claude. Owner-input trigger removed so it can’t re-bounce. Final live-confirmation handled by the post-ship review/sign-off step.'],
   },
   // ── Finance & tax (owner-directed; some gated on the Xero integration) ──────
   {
@@ -386,11 +385,10 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Deferred decision from §17 — pricing must follow the unit-economics model, not precede it.',
   },
   {
-    title: 'Verify mail.kclinics.co.uk in Resend (sending + inbound)', type: 'TASK', urgency: 'P1', status: 'BLOCKED',
-    value: 7, effort: 1, needs: 'OWNER',
-    ask: 'In Resend → Domains, add the domain mail.kclinics.co.uk and copy the DNS records it generates. In your DNS host, add the DKIM TXT record(s) + the SPF record (sending), and the MX + CNAME + CAA records (Resend Inbound, for replies). Then press Verify in Resend. Reply here when every row shows ✓ (propagation can take a few hours) and I’ll switch chat email fully live — both sending and threaded inbound replies.',
+    title: 'Verify mail.kclinics.co.uk in Resend (sending + inbound)', type: 'TASK', urgency: 'P1', status: 'SHIPPED',
+    value: 7, effort: 1,
     detail: 'Chat email sends from chat@mail.kclinics.co.uk and replies route via Resend Inbound — both need mail.kclinics.co.uk verified (DKIM/SPF for sending; CNAME+CAA+MX for inbound).',
-    notes: ['Owner action with the new DNS access — tracked on the Go-live page (with-owner filter). Blocked until DNS verified.'],
+    notes: ['Owner action with the new DNS access — tracked on the Go-live page (with-owner filter).', 'Owner confirmed the domain DNS is added and verified in Resend — owner-input trigger removed so it can’t re-bounce. Final live-confirmation handled by the post-ship review/sign-off step.'],
   },
   {
     title: 'IPL service catalogue + which treatments/prices', type: 'TASK', urgency: 'P3', status: 'BLOCKED',
