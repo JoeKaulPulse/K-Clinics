@@ -41,7 +41,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
   const countOf = (s: string) => counts.find((c) => c.status === s)?._count ?? 0;
 
   // Google Business Profile reviews (imported via the My Business API).
-  const { googleBusinessConfigured, googleBusinessConnected, businessRedirectUri } = await import('@/lib/google-business');
+  const { googleOAuthConfigured, googleBusinessConnected, businessRedirectUri } = await import('@/lib/google-business');
   const [gReviews, gConnected] = await Promise.all([
     db.googleReview.findMany({ orderBy: [{ createTime: 'desc' }], take: 200 }),
     googleBusinessConnected(),
@@ -118,7 +118,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
         })}
       </div>
 
-      <GoogleReviewsPanel connected={gConnected} configured={googleBusinessConfigured()} reviews={googleReviews} redirectUri={gRedirectUri} />
+      <GoogleReviewsPanel connected={gConnected} configured={googleOAuthConfigured()} reviews={googleReviews} redirectUri={gRedirectUri} />
     </AdminShell>
   );
 }
