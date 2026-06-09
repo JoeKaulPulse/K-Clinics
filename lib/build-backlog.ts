@@ -197,7 +197,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   // and Product(DRAFT)/Order systems — a personalisation + physical-fulfilment +
   // IA layer, sequenced by value-to-effort.
   {
-    title: 'Gifts: section + giftable-package drafts (admin foundation)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(341),
+    title: 'Gifts: section + giftable-package drafts (admin foundation)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(365),
     value: 7, effort: 4,
     detail: 'A "Gifts" grouping under Products holding gift cards + giftable packages. Add the gift_card_physical_enabled setting (admin on/off). Generate curated giftable packages (from lib/packages.ts) as DRAFT products for the owner to review and publish.',
   },
