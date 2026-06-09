@@ -139,6 +139,7 @@ enum AuditAction {
   MEDICAL_FLAG_REVIEWED
   PAYMENT_CHARGED
   PAYMENT_FAILED
+  PAYMENT_REFUNDED
   ASSESSMENT_SUBMITTED
   ASSESSMENT_VIEWED
   NOTE_ADDED
@@ -533,6 +534,10 @@ model Booking {
   chargePaymentIntentId  String?
   chargedPence           Int?
   chargedAt              DateTime?
+  // Refund (full or partial) of a charge, within the allowed window.
+  refundedPence          Int?
+  refundedAt             DateTime?
+  refundReason           String?
 
   // Cancellation.
   cancelledAt   DateTime?

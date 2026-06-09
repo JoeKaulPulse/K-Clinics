@@ -97,6 +97,25 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
   return res.ok ? { ok: true } : { ok: false, error: res.requiresAction ? 'Card needs authentication — client emailed a confirm link.' : res.error };
 }
 
+// Staff: refund a charged booking (full or partial) within the allowed window.
+export async function refundBookingAction(bookingId: string, amountPence: number, reason?: string) {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session) return { ok: false, error: 'Unauthorised' };
+  if (!sessionCan(session, 'bookings.charge')) return { ok: false, error: 'You don’t have permission to issue refunds.' };
+  if (!Number.isFinite(amountPence) || amountPence <= 0) return { ok: false, error: 'Enter an amount to refund.' };
+
+  const { db } = await import('@/lib/db');
+  const { refundBooking } = await import('@/lib/booking-actions');
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
+  if (!booking) return { ok: false, error: 'Not found' };
+
+  const res = await refundBooking(booking, Math.round(amountPence), { reason: reason?.slice(0, 500), actor: session.email });
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath('/admin/bookings');
+  return res;
+}
+
 export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 'NO_SHOW' | 'CONFIRMED'): Promise<{ ok: boolean; error?: string }> {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
