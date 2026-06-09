@@ -22,7 +22,39 @@ async function post(payload: object) {
   return r.json().catch(() => ({ ok: false }));
 }
 
-export function GoogleReviewsPanel({ connected, configured, reviews }: { connected: boolean; configured: boolean; reviews: GReview[] }) {
+function CopyField({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div>
+      <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--color-stone-soft)]">{label}</p>
+      <div className="mt-1 flex items-center gap-2">
+        <code className="min-w-0 flex-1 truncate rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-xs text-[var(--color-ink)]">{value}</code>
+        <button
+          onClick={() => { navigator.clipboard?.writeText(value).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }).catch(() => {}); }}
+          className="shrink-0 rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs font-medium hover:bg-[var(--color-bone)]"
+        >{copied ? 'Copied ✓' : 'Copy'}</button>
+      </div>
+    </div>
+  );
+}
+
+function GoogleSetupGuide({ configured, redirectUri }: { configured: boolean; redirectUri: string }) {
+  return (
+    <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/50 p-4">
+      <p className="text-sm font-medium text-[var(--color-ink)]">Connect in 4 steps</p>
+      <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-sm text-[var(--color-stone)]">
+        <li>In <a href="https://console.cloud.google.com/apis/library" target="_blank" rel="noreferrer noopener" className="text-[var(--color-gold-deep)] underline">Google Cloud → APIs Library</a>, enable <strong>Business Profile API</strong> + <strong>My Business Account Management</strong> + <strong>Business Information</strong> APIs. (Google also needs to approve your project via their one-time <a href="https://developers.google.com/my-business/content/prereqs" target="_blank" rel="noreferrer noopener" className="text-[var(--color-gold-deep)] underline">access request</a>.)</li>
+        <li>In <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank" rel="noreferrer noopener" className="text-[var(--color-gold-deep)] underline">OAuth consent screen</a>: add scope <code className="text-xs">…/auth/business.manage</code> and add the owner under <strong>Test users</strong> (or Publish).</li>
+        <li>In <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer noopener" className="text-[var(--color-gold-deep)] underline">Credentials</a> → your <strong>Web application</strong> OAuth client, paste the redirect URI below exactly.</li>
+        <li>Click <strong>Connect Google Business</strong> — we auto-detect your location and import reviews. No numeric IDs needed.</li>
+      </ol>
+      <div className="mt-3"><CopyField label="Authorised redirect URI (paste into the OAuth client)" value={redirectUri} /></div>
+      {!configured && <p className="mt-3 rounded-[var(--radius-sm)] bg-amber-50 px-3 py-2 text-xs text-amber-800">Waiting on <code>GOOGLE_CLIENT_ID</code> + <code>GOOGLE_CLIENT_SECRET</code> in the environment (then redeploy) — the Connect button appears once they’re set.</p>}
+    </div>
+  );
+}
+
+export function GoogleReviewsPanel({ connected, configured, reviews, redirectUri }: { connected: boolean; configured: boolean; reviews: GReview[]; redirectUri: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState('');
@@ -54,13 +86,13 @@ export function GoogleReviewsPanel({ connected, configured, reviews }: { connect
             </>
           ) : configured ? (
             <a href="/api/admin/integrations/google-business/connect" className="rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white">Connect Google Business</a>
-          ) : (
-            <span className="rounded-full bg-[var(--color-bone)] px-4 py-2 text-xs text-[var(--color-stone)]">Set the Google Business env vars to enable</span>
-          )}
+          ) : null}
         </div>
       </div>
 
       {msg && <p className="mt-3 text-sm text-[var(--color-stone)]">{msg}</p>}
+
+      {!connected && <GoogleSetupGuide configured={configured} redirectUri={redirectUri} />}
 
       {connected && (
         <div className="mt-5 space-y-3">
