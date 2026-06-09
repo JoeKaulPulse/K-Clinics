@@ -104,7 +104,9 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
     setContinuing(true);
     const r = await post({ op: 'continue' });
     setContinuing(false);
-    if (r.ok) alert(r.configured ? 'Claude has been prompted to continue the backlog — a session will pick it up via GitHub shortly.' : 'Request recorded. Connect GitHub to auto-wake Claude; otherwise it’s picked up on the next session.');
+    if (r.ok && r.woke) alert('Claude has been prompted to continue the backlog — a session will pick it up via GitHub shortly.');
+    else if (r.ok && r.warning) alert(r.warning);
+    else if (r.ok) alert('Request recorded. Connect GitHub to auto-wake Claude; otherwise it’s picked up on the next session.');
     else alert(r.error || 'Could not request.');
     load(true);
   }
