@@ -132,6 +132,26 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   },
 };
 
+// Numeric/string config values (not booleans) live in the same Setting table
+// under their own keys — e.g. the physical gift-card fee. Defaults applied when
+// absent; never throws.
+export type ConfigKey = 'gift_card_physical_fee_pence';
+export const CONFIG_DEFAULTS: Record<ConfigKey, number> = { gift_card_physical_fee_pence: 495 };
+
+export async function getConfigNumber(key: ConfigKey): Promise<number> {
+  try {
+    const row = await withDbRetry(() => db.setting.findUnique({ where: { key } }), 2);
+    const n = row ? Number(row.value) : NaN;
+    return Number.isFinite(n) ? n : CONFIG_DEFAULTS[key];
+  } catch {
+    return CONFIG_DEFAULTS[key];
+  }
+}
+
+export async function setConfigNumber(key: ConfigKey, value: number, updatedBy?: string) {
+  await db.setting.upsert({ where: { key }, update: { value: String(Math.max(0, Math.round(value))), updatedBy }, create: { key, value: String(Math.max(0, Math.round(value))), updatedBy } });
+}
+
 // getSetting is on the hot path of the booking/availability engine, so it must
 // never throw on a transient DB blip (cold start / connection spike during a
 // deploy). It retries briefly and, failing that, falls back to the coded

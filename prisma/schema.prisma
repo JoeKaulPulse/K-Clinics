@@ -1764,6 +1764,16 @@ model GiftVoucher {
   deliverAt      DateTime?            // scheduled delivery date (null = immediate)
   delivered      Boolean  @default(false)
   status         String   @default("PENDING") // PENDING | ACTIVE | REDEEMED | CANCELLED
+  // Optional paid physical-card upgrade — a printed card posted to the recipient.
+  physical         Boolean   @default(false)
+  physicalFeePence Int       @default(0)       // extra charged for the printed card
+  fulfillment      String    @default("none")  // none | unfulfilled | posted
+  shipName         String?
+  shipLine1        String?
+  shipLine2        String?
+  shipCity         String?
+  shipPostcode     String?
+  postedAt         DateTime?
   stripePaymentIntentId String? @unique
   expiresAt      DateTime?
   claimedByClientId String?

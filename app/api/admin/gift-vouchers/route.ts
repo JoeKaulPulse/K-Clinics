@@ -29,6 +29,11 @@ export async function POST(req: Request) {
       await db.giftVoucher.update({ where: { id: String(body.id) }, data: { status: 'CANCELLED' } });
       return NextResponse.json({ ok: true });
     }
+    case 'markPosted': {
+      if (!body.id) return bad();
+      await db.giftVoucher.update({ where: { id: String(body.id) }, data: { fulfillment: 'posted', postedAt: new Date() } });
+      return NextResponse.json({ ok: true });
+    }
     case 'resend': {
       if (!body.id) return bad();
       const v = await db.giftVoucher.findUnique({ where: { id: String(body.id) } });

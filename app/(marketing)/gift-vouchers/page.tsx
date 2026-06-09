@@ -14,6 +14,14 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({
 
 export const dynamic = 'force-dynamic';
 
+async function physicalConfig() {
+  try {
+    const { getSetting, getConfigNumber } = await import('@/lib/settings');
+    const [enabled, feePence] = await Promise.all([getSetting('gift_card_physical_enabled'), getConfigNumber('gift_card_physical_fee_pence')]);
+    return { enabled, feePence };
+  } catch { return { enabled: false, feePence: 0 }; }
+}
+
 const STEPS = [
   { n: '01', t: 'Choose an amount', d: 'Pick a preset or set any value between £10 and £500 — they’ll spend it however they like.' },
   { n: '02', t: 'Add a personal touch', d: 'Write a short message and choose to send it now or schedule it for the perfect day.' },
@@ -22,7 +30,8 @@ const STEPS = [
 
 const USES = ['Skin & facial aesthetics', 'Injectable treatments', 'Aesthetic dentistry', 'Laser & body', 'A complimentary consultation', 'Anything across the menu'];
 
-export default function GiftVouchersPage() {
+export default async function GiftVouchersPage() {
+  const physical = await physicalConfig();
   return (
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Gift Vouchers', path: '/gift-vouchers' }])} />
@@ -63,7 +72,7 @@ export default function GiftVouchersPage() {
           </div>
         </Reveal>
         <Reveal delay={0.1}>
-          <GiftVoucherFlow />
+          <GiftVoucherFlow physicalEnabled={physical.enabled} physicalFeePence={physical.feePence} />
         </Reveal>
         <p className="mt-6 text-center text-sm text-[var(--color-stone)]">Buying for a corporate gift? Call us on <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a> and we’ll arrange it.</p>
       </section>

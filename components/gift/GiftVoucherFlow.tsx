@@ -13,8 +13,8 @@ const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line
 const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB')}`;
 
-export function GiftVoucherFlow() {
-  const [f, setF] = useState({ amount: 5000, custom: '', recipientName: '', recipientEmail: '', message: '', deliverAt: '', purchaserName: '', purchaserEmail: '', design: DEFAULT_THEME_ID, company: '' });
+export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0 }: { physicalEnabled?: boolean; physicalFeePence?: number } = {}) {
+  const [f, setF] = useState({ amount: 5000, custom: '', recipientName: '', recipientEmail: '', message: '', deliverAt: '', purchaserName: '', purchaserEmail: '', design: DEFAULT_THEME_ID, physical: false, shipName: '', shipLine1: '', shipLine2: '', shipCity: '', shipPostcode: '', company: '' });
   const [stage, setStage] = useState<'form' | 'pay' | 'done'>('form');
   const [clientSecret, setClientSecret] = useState('');
   const [voucherId, setVoucherId] = useState('');
@@ -22,14 +22,23 @@ export function GiftVoucherFlow() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
-  const amountPence = f.custom ? Math.round(Number(f.custom) * 100) : f.amount;
+  const giftPence = f.custom ? Math.round(Number(f.custom) * 100) : f.amount;
+  const physical = physicalEnabled && f.physical;
+  const amountPence = giftPence + (physical ? physicalFeePence : 0);
 
   async function start() {
-    if (!(amountPence >= 1000 && amountPence <= 50000)) { setError('Choose an amount between £10 and £500.'); return; }
+    if (!(giftPence >= 1000 && giftPence <= 50000)) { setError('Choose an amount between £10 and £500.'); return; }
     if (!f.purchaserName.trim() || !/\S+@\S+\.\S+/.test(f.purchaserEmail)) { setError('Please enter your name and a valid email.'); return; }
+    if (physical && (!f.shipName.trim() || !f.shipLine1.trim() || !f.shipPostcode.trim())) { setError('For a posted card we need the delivery name, address and postcode.'); return; }
     setBusy(true); setError('');
     try {
-      const res = await fetch('/api/gift-vouchers/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...f, amountPence, deliverAt: f.deliverAt || undefined }) });
+      const body = {
+        amountPence: giftPence, purchaserName: f.purchaserName, purchaserEmail: f.purchaserEmail,
+        recipientName: f.recipientName, recipientEmail: f.recipientEmail, message: f.message,
+        deliverAt: f.deliverAt || undefined, design: f.design, company: f.company,
+        physical, ship: physical ? { name: f.shipName, line1: f.shipLine1, line2: f.shipLine2, city: f.shipCity, postcode: f.shipPostcode } : undefined,
+      };
+      const res = await fetch('/api/gift-vouchers/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const j = await res.json();
       if (j.ok && j.clientSecret) { setClientSecret(j.clientSecret); setVoucherId(j.voucherId); setStage('pay'); }
       else setError(j.error || 'Could not start the purchase.');
@@ -77,6 +86,29 @@ export function GiftVoucherFlow() {
                 <div><label className={label}>Your email *</label><input type="email" className={field} value={f.purchaserEmail} onChange={(e) => set('purchaserEmail', e.target.value)} placeholder="For your receipt" /></div>
                 <input type="text" tabIndex={-1} value={f.company} onChange={(e) => set('company', e.target.value)} className="absolute -left-[9999px]" aria-hidden />
               </div>
+
+              {/* Optional paid physical-card upgrade (only when the clinic offers it). */}
+              {physicalEnabled && (
+                <div className="mt-5 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input type="checkbox" checked={f.physical} onChange={(e) => set('physical', e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]" />
+                    <span className="text-sm">
+                      <span className="font-medium text-[var(--color-ink)]">Also post a beautifully printed card</span>
+                      <span className="text-[var(--color-stone)]"> — a keepsake card mailed to the recipient, on top of the emailed gift. <strong className="text-[var(--color-ink)]">+{money(physicalFeePence)}</strong></span>
+                    </span>
+                  </label>
+                  {f.physical && (
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div className="sm:col-span-2"><label className={label}>Deliver to (name)</label><input className={field} value={f.shipName} onChange={(e) => set('shipName', e.target.value)} placeholder="Recipient’s name" /></div>
+                      <div className="sm:col-span-2"><label className={label}>Address line 1</label><input className={field} value={f.shipLine1} onChange={(e) => set('shipLine1', e.target.value)} /></div>
+                      <div className="sm:col-span-2"><label className={label}>Address line 2 (optional)</label><input className={field} value={f.shipLine2} onChange={(e) => set('shipLine2', e.target.value)} /></div>
+                      <div><label className={label}>Town / city</label><input className={field} value={f.shipCity} onChange={(e) => set('shipCity', e.target.value)} /></div>
+                      <div><label className={label}>Postcode</label><input className={field} value={f.shipPostcode} onChange={(e) => set('shipPostcode', e.target.value)} /></div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {error && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
               <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
                 <span className="text-sm text-[var(--color-stone)]">Total <strong className="text-[var(--color-ink)]">{money(amountPence || 0)}</strong></span>
