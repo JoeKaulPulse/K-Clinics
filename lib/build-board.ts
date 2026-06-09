@@ -11,6 +11,7 @@ import type { BuildType, BuildStatus, BuildUrgency } from '@prisma/client';
 export type NewBuildItem = {
   type?: BuildType; title: string; detail?: string; urgency?: BuildUrgency;
   assignee?: string; reportedBy?: string; pageUrl?: string; screenshots?: string[];
+  value?: number; effort?: number;
 };
 
 /** Idempotently import Claude's working backlog (deduped by title) so the board
@@ -200,7 +201,8 @@ export async function reconcileBacklog(): Promise<{ updated: number }> {
   for (const it of BUILD_BACKLOG) {
     if (it.status !== 'SHIPPED') continue;
     const item = await db.buildItem.findFirst({ where: { title: it.title }, select: { id: true, status: true, githubUrl: true } });
-    if (!item || item.status === 'SHIPPED') continue;
+    // Skip terminal states — never drag a human-closed (or cancelled) card back to SHIPPED.
+    if (!item || ['SHIPPED', 'CLOSED', 'CANCELLED'].includes(item.status)) continue;
     await db.buildItem.update({
       where: { id: item.id },
       data: {
@@ -218,14 +220,37 @@ export async function listBuildItems() {
   return db.buildItem.findMany({
     orderBy: [{ status: 'asc' }, { urgency: 'asc' }, { createdAt: 'desc' }],
     take: 300,
-    include: { events: { orderBy: { createdAt: 'desc' }, take: 30 } },
+    include: {
+      events: { orderBy: { createdAt: 'desc' }, take: 30 },
+      subtasks: { orderBy: { order: 'asc' } },
+    },
   });
 }
 
+/** Recent Claude activity for the live ticker — newest first, across all items.
+ *  Plus what's actively in progress with Claude (the "now" focus). */
+export async function buildActivity(limit = 12) {
+  const [events, inProgress, continueAt] = await Promise.all([
+    db.buildEvent.findMany({
+      where: { actor: 'claude', kind: { in: ['status', 'shipped', 'comment', 'github', 'subtask', 'closed'] } },
+      orderBy: { createdAt: 'desc' }, take: limit,
+      include: { item: { select: { id: true, title: true } } },
+    }),
+    db.buildItem.findMany({ where: { assignee: 'claude', status: 'IN_PROGRESS' }, select: { id: true, title: true }, orderBy: { updatedAt: 'desc' }, take: 5 }),
+    db.setting.findUnique({ where: { key: 'build_continue_requested_at' } }).catch(() => null),
+  ]);
+  return {
+    events: events.map((e) => ({ id: e.id, kind: e.kind, body: e.body, title: e.item?.title || '', itemId: e.itemId, createdAt: e.createdAt })),
+    inProgress,
+    continueRequestedAt: continueAt?.value || null,
+  };
+}
+
 export async function createBuildItem(input: NewBuildItem, actor: string) {
+  const type = input.type ?? 'TASK';
   const item = await db.buildItem.create({
     data: {
-      type: input.type ?? 'TASK',
+      type,
       title: input.title.slice(0, 200),
       detail: input.detail?.slice(0, 5000) || null,
       urgency: input.urgency ?? 'P2',
@@ -233,10 +258,17 @@ export async function createBuildItem(input: NewBuildItem, actor: string) {
       reportedBy: input.reportedBy || actor,
       pageUrl: input.pageUrl?.slice(0, 300) || null,
       screenshots: (input.screenshots || []).slice(0, 6),
-      events: { create: { kind: 'created', actor, body: `Reported as ${input.type ?? 'TASK'} · ${input.urgency ?? 'P2'}` } },
+      value: typeof input.value === 'number' ? Math.max(1, Math.min(10, Math.round(input.value))) : null,
+      effort: typeof input.effort === 'number' ? Math.max(1, Math.min(10, Math.round(input.effort))) : null,
+      events: { create: { kind: 'created', actor, body: `Reported as ${type} · ${input.urgency ?? 'P2'}` } },
     },
-    include: { events: true },
+    include: { events: true, subtasks: true },
   });
+  // A captured idea is queued for Claude to score (value/effort) and triage into
+  // the workflow — push it to GitHub so the continue/triage loop can pick it up.
+  if (type === 'IDEA' && (item.assignee === 'claude') && (await githubConfigured())) {
+    await pushToGithub(item.id, 'system').catch(() => {});
+  }
   // Auto-bridge to GitHub the moment it's logged — so it's tracked and can
   // trigger Claude — for anything a person reports (a real reporter, not Claude/
   // system), any ERROR/bug, or anything urgent (P0/P1). Quieter Claude-authored
@@ -254,7 +286,12 @@ export async function createBuildItem(input: NewBuildItem, actor: string) {
   return item;
 }
 
-type Patch = { status?: BuildStatus; urgency?: BuildUrgency; assignee?: string; blocker?: string | null };
+type Patch = {
+  status?: BuildStatus; urgency?: BuildUrgency; assignee?: string; blocker?: string | null;
+  value?: number | null; effort?: number | null; estCompleteAt?: string | null;
+  estTokens?: number | null; actualTokens?: number | null;
+};
+const clampScore = (n: unknown) => (typeof n === 'number' && Number.isFinite(n) ? Math.max(1, Math.min(10, Math.round(n))) : null);
 export async function updateBuildItem(id: string, patch: Patch, actor: string) {
   const prev = await db.buildItem.findUnique({ where: { id } });
   if (!prev) return null;
@@ -262,14 +299,24 @@ export async function updateBuildItem(id: string, patch: Patch, actor: string) {
   const events: { kind: string; body: string; actor: string }[] = [];
   if (patch.status && patch.status !== prev.status) {
     data.status = patch.status;
-    if (patch.status === 'SHIPPED') data.shippedAt = new Date();
+    if (patch.status === 'IN_PROGRESS' && !prev.startedAt) data.startedAt = new Date();
+    if (patch.status === 'SHIPPED' && !prev.shippedAt) data.shippedAt = new Date();
     events.push({ kind: 'status', actor, body: `${prev.status} → ${patch.status}` });
   }
   if (patch.urgency && patch.urgency !== prev.urgency) { data.urgency = patch.urgency; events.push({ kind: 'urgency', actor, body: `${prev.urgency} → ${patch.urgency}` }); }
   if (patch.assignee && patch.assignee !== prev.assignee) { data.assignee = patch.assignee; events.push({ kind: 'assign', actor, body: `Assigned to ${patch.assignee}` }); }
   if (patch.blocker !== undefined) { data.blocker = patch.blocker; if (patch.blocker) events.push({ kind: 'blocker', actor, body: patch.blocker }); }
+  if (patch.value !== undefined) { data.value = patch.value === null ? null : clampScore(patch.value); }
+  if (patch.effort !== undefined) { data.effort = patch.effort === null ? null : clampScore(patch.effort); }
+  if (patch.estCompleteAt !== undefined) {
+    const d = patch.estCompleteAt ? new Date(patch.estCompleteAt) : null;
+    data.estCompleteAt = d && !isNaN(+d) ? d : null;
+    events.push({ kind: 'eta', actor, body: data.estCompleteAt ? `ETA set to ${(data.estCompleteAt as Date).toLocaleDateString('en-GB')}` : 'ETA cleared' });
+  }
+  if (patch.estTokens !== undefined) data.estTokens = patch.estTokens === null ? null : Math.max(0, Math.round(Number(patch.estTokens) || 0));
+  if (patch.actualTokens !== undefined) { data.actualTokens = patch.actualTokens === null ? null : Math.max(0, Math.round(Number(patch.actualTokens) || 0)); if (data.actualTokens) events.push({ kind: 'tokens', actor, body: `Logged ~${Number(data.actualTokens).toLocaleString()} tokens` }); }
   if (Object.keys(data).length === 0) return prev;
-  const updated = await db.buildItem.update({ where: { id }, data: { ...data, events: { create: events } }, include: { events: { orderBy: { createdAt: 'desc' }, take: 30 } } });
+  const updated = await db.buildItem.update({ where: { id }, data: { ...data, events: { create: events } }, include: { events: { orderBy: { createdAt: 'desc' }, take: 30 }, subtasks: { orderBy: { order: 'asc' } } } });
   // Notify: the new assignee on reassignment; the reporter when their item moves.
   const { notifyStaff } = await import('@/lib/notifications');
   if (patch.assignee && patch.assignee !== prev.assignee && patch.assignee !== 'claude') {
@@ -281,21 +328,115 @@ export async function updateBuildItem(id: string, patch: Patch, actor: string) {
   return updated;
 }
 
+/** Resolve @mentions in a comment to active staff emails. Matches @email or
+ *  @local-part or @name-token (case-insensitive) against the live roster. */
+async function resolveMentions(body: string): Promise<string[]> {
+  const tokens = Array.from(body.matchAll(/@([\w.+-]+@[\w.-]+|[\w.-]{2,})/g)).map((m) => m[1].toLowerCase());
+  if (!tokens.length) return [];
+  const users = await db.adminUser.findMany({ where: { active: true }, select: { email: true, name: true } });
+  const hits = new Set<string>();
+  for (const t of tokens) {
+    for (const u of users) {
+      const email = u.email.toLowerCase();
+      const local = email.split('@')[0];
+      const nameTokens = (u.name || '').toLowerCase().split(/\s+/).filter(Boolean);
+      if (t === email || t === local || nameTokens.includes(t)) hits.add(u.email);
+    }
+  }
+  return [...hits];
+}
+
 export async function addBuildComment(id: string, body: string, actor: string) {
   await db.buildEvent.create({ data: { itemId: id, kind: 'comment', body: body.slice(0, 2000), actor } });
   await db.buildItem.update({ where: { id }, data: { updatedAt: new Date() } });
-  const item = await db.buildItem.findUnique({ where: { id }, include: { events: { orderBy: { createdAt: 'desc' }, take: 30 } } });
-  // Feedback loop: ping the reporter and the assignee (whoever didn't write it).
+  const item = await db.buildItem.findUnique({ where: { id }, include: { events: { orderBy: { createdAt: 'desc' }, take: 30 }, subtasks: { orderBy: { order: 'asc' } } } });
+  // Feedback loop: ping the reporter and the assignee (whoever didn't write it),
+  // plus anyone @-mentioned in the comment.
   if (item) {
     const { notifyStaff } = await import('@/lib/notifications');
     const kind = item.type === 'IDEA' ? 'idea_feedback' : 'comment';
     const snippet = body.slice(0, 90);
-    const recipients = new Set([item.reportedBy, item.assignee].filter((r): r is string => !!r && r !== 'claude'));
+    const mentioned = await resolveMentions(body);
+    for (const m of mentioned) {
+      await notifyStaff(m, { kind: 'mention', title: `You were mentioned on “${item.title}”`, body: snippet, href: '/admin/build' }, actor);
+    }
+    const recipients = new Set([item.reportedBy, item.assignee].filter((r): r is string => !!r && r !== 'claude' && !mentioned.includes(r)));
     for (const r of recipients) {
       await notifyStaff(r, { kind, title: `New comment on “${item.title}”`, body: snippet, href: '/admin/build' }, actor);
     }
   }
   return item;
+}
+
+// ── Subtasks ─────────────────────────────────────────────────────────────────
+const withDetail = { events: { orderBy: { createdAt: 'desc' as const }, take: 30 }, subtasks: { orderBy: { order: 'asc' as const } } };
+
+export async function addSubtask(itemId: string, title: string, opts: { assignee?: string; ownerInput?: boolean }, actor: string) {
+  const t = title.trim().slice(0, 200);
+  if (!t) return null;
+  const last = await db.buildSubtask.findFirst({ where: { itemId }, orderBy: { order: 'desc' }, select: { order: true } });
+  await db.buildSubtask.create({ data: { itemId, title: t, assignee: opts.assignee || 'claude', ownerInput: !!opts.ownerInput, order: (last?.order ?? 0) + 1 } });
+  await db.buildEvent.create({ data: { itemId, kind: 'subtask', actor, body: `Added subtask “${t}”${opts.ownerInput ? ' (owner input)' : ''}` } });
+  return db.buildItem.findUnique({ where: { id: itemId }, include: withDetail });
+}
+
+export async function updateSubtask(subtaskId: string, patch: { status?: string; title?: string; assignee?: string }, actor: string) {
+  const sub = await db.buildSubtask.findUnique({ where: { id: subtaskId } });
+  if (!sub) return null;
+  const data: Record<string, unknown> = {};
+  if (patch.title && patch.title.trim() && patch.title !== sub.title) data.title = patch.title.trim().slice(0, 200);
+  if (patch.assignee && patch.assignee !== sub.assignee) data.assignee = patch.assignee;
+  const completing = patch.status === 'DONE' && sub.status !== 'DONE';
+  if (patch.status && ['TODO', 'DOING', 'DONE'].includes(patch.status) && patch.status !== sub.status) {
+    data.status = patch.status;
+    data.completedAt = completing ? new Date() : null;
+    data.completedBy = completing ? actor : null;
+  }
+  if (Object.keys(data).length === 0) return db.buildItem.findUnique({ where: { id: sub.itemId }, include: withDetail });
+  await db.buildSubtask.update({ where: { id: subtaskId }, data });
+
+  if (completing) {
+    const human = actor.includes('@');
+    await db.buildEvent.create({ data: { itemId: sub.itemId, kind: 'subtask', actor, body: `Completed subtask “${sub.title}”` } });
+    // Automated workflow: when a person completes an owner-input subtask, ping
+    // Claude to follow up — queue the parent with Claude and fire the GitHub
+    // trigger so the next Claude run picks it up.
+    if (sub.ownerInput && human) {
+      const parent = await db.buildItem.findUnique({ where: { id: sub.itemId }, select: { status: true, githubUrl: true } });
+      await db.buildItem.update({
+        where: { id: sub.itemId },
+        data: {
+          assignee: 'claude',
+          ...(parent?.status === 'BLOCKED' ? { status: 'TRIAGE' } : {}),
+          events: { create: { kind: 'status', actor: 'claude', body: `Owner completed “${sub.title}” — back with Claude to follow up.` } },
+        },
+      });
+      await triggerClaude(`Owner completed a subtask on a board item — please follow up.`, sub.itemId).catch(() => {});
+    }
+  }
+  return db.buildItem.findUnique({ where: { id: sub.itemId }, include: withDetail });
+}
+
+// ── Post-ship sign-off (admin only; enforced in the API) ─────────────────────
+export async function signoffItem(id: string, actor: string) {
+  const prev = await db.buildItem.findUnique({ where: { id } });
+  if (!prev) return null;
+  if (!['SHIPPED', 'IN_REVIEW'].includes(prev.status)) return prev; // only sign off shipped/in-review work
+  return db.buildItem.update({
+    where: { id },
+    data: { status: 'CLOSED', closedAt: new Date(), closedBy: actor, events: { create: { kind: 'closed', actor, body: `Signed off & closed by ${actor.split('@')[0]}` } } },
+    include: withDetail,
+  });
+}
+
+export async function reopenItem(id: string, reason: string | undefined, actor: string) {
+  const prev = await db.buildItem.findUnique({ where: { id } });
+  if (!prev) return null;
+  return db.buildItem.update({
+    where: { id },
+    data: { status: 'TRIAGE', assignee: 'claude', closedAt: null, closedBy: null, events: { create: { kind: 'status', actor, body: `Reopened${reason ? ` — ${reason.slice(0, 300)}` : ''} (back with Claude).` } } },
+    include: withDetail,
+  });
 }
 
 // ── GitHub bridge ────────────────────────────────────────────────────────────
@@ -410,4 +551,62 @@ export async function pushToGithub(id: string, actor: string) {
     where: { id },
     data: { githubUrl: issue.html_url || null, githubNumber: issue.number || null, events: { create: { kind: 'github', actor, body: `Created GitHub issue #${issue.number}` } } },
   });
+}
+
+// ── Wake Claude via GitHub ───────────────────────────────────────────────────
+// Claude Code on the web starts on GitHub activity, so the only reliable in-app
+// way to "prompt Claude" is to create/comment a GitHub issue that @-mentions it.
+
+async function ghComment(issueNumber: number, body: string): Promise<boolean> {
+  const cfg = await getGithubConfig();
+  if (!cfg) return false;
+  const res = await fetch(`https://api.github.com/repos/${cfg.repo}/issues/${issueNumber}/comments`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ body }),
+  });
+  return res.ok;
+}
+
+/** Ping Claude to follow up on a specific board item: comment its linked issue
+ *  (creating one first if needed) with an @claude mention so a session wakes. */
+export async function triggerClaude(message: string, itemId: string): Promise<boolean> {
+  if (!(await getGithubConfig())) return false;
+  let item = await db.buildItem.findUnique({ where: { id: itemId } });
+  if (!item) return false;
+  if (!item.githubNumber) { item = (await pushToGithub(itemId, 'system')) || item; }
+  if (!item.githubNumber) return false;
+  return ghComment(item.githubNumber, `@claude ${message}\n\n_Triggered from the Build & Issues board._`);
+}
+
+/** The board's "▶ Continue working" button: records the request and wakes Claude
+ *  via a singleton GitHub issue so it works through the prioritised backlog. */
+export async function requestClaudeContinue(actor: string): Promise<{ ok: boolean; githubUrl?: string; configured: boolean }> {
+  const now = new Date().toISOString();
+  await db.setting.upsert({ where: { key: 'build_continue_requested_at' }, update: { value: now, updatedBy: actor }, create: { key: 'build_continue_requested_at', value: now, updatedBy: actor } });
+  const cfg = await getGithubConfig();
+  if (!cfg) return { ok: true, configured: false };
+
+  const TITLE = '▶ Continue working through the backlog';
+  const numRow = await db.setting.findUnique({ where: { key: 'build_continue_issue_number' } });
+  const existing = numRow?.value ? Number(numRow.value) : null;
+  const msg = `@claude please continue working through the prioritised Build & Issues backlog (highest value-to-effort first, skipping owner-gated items). Requested by ${actor.split('@')[0]} at ${now}.`;
+
+  if (existing) {
+    // Reopen + comment the singleton issue so the mention re-triggers a session.
+    await fetch(`https://api.github.com/repos/${cfg.repo}/issues/${existing}`, {
+      method: 'PATCH', headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' }, body: JSON.stringify({ state: 'open' }),
+    }).catch(() => {});
+    const ok = await ghComment(existing, msg);
+    return { ok, configured: true, githubUrl: `https://github.com/${cfg.repo}/issues/${existing}` };
+  }
+
+  const res = await fetch(`https://api.github.com/repos/${cfg.repo}/issues`, {
+    method: 'POST', headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: TITLE, body: msg, labels: ['claude', 'continue'] }),
+  });
+  if (!res.ok) return { ok: false, configured: true };
+  const issue = (await res.json()) as { html_url?: string; number?: number };
+  if (issue.number) await db.setting.upsert({ where: { key: 'build_continue_issue_number' }, update: { value: String(issue.number), updatedBy: actor }, create: { key: 'build_continue_issue_number', value: String(issue.number), updatedBy: actor } });
+  return { ok: true, configured: true, githubUrl: issue.html_url };
 }
