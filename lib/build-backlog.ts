@@ -372,7 +372,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Shipped (#427): replaced the fire-and-forget with `after(() => runKioskAnalysis(...))` from next/server, which keeps the serverless function alive until the analysis completes. Top actionable backlog item by V:E; the most likely cause of the live flow stalling at "analysing".'],
   },
   {
-    title: 'Kiosk BUG: HEIC selfies sent to Claude as image/jpeg', type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', project: 'skin-smile-kiosk', pr: PR(428),
+    title: 'Kiosk BUG: HEIC selfies sent to Claude as image/jpeg', type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', project: 'skin-smile-kiosk', pr: PR(435),
     value: 6, effort: 2,
     detail: 'Photos are stored as kiosk/<token>.jpg regardless of real type; lib/kiosk-ai.mediaTypeFromUrl derives the media type from the .jpg URL, so an iPhone HEIC upload is sent to Claude as image/jpeg and analysis fails. Persist/carry the real content-type (store the actual extension, or pass file.type through runKioskAnalysis) so HEIC is labelled correctly.',
     notes: [
