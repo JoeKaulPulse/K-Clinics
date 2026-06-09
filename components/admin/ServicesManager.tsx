@@ -7,7 +7,7 @@ import { parsePriceMatrix } from '@/lib/price-import';
 import { PriceListUpload } from '@/components/admin/PriceListUpload';
 
 type Variant = { id: string; name: string; durationMin: number; pricePence: number; costPence: number | null; courses: { sessions: number; totalPence: number }[]; status: string | null };
-type Service = { id: string; slug: string; treatmentSlug: string; name: string; category: string; active: boolean; status: string; variants: Variant[] };
+type Service = { id: string; slug: string; treatmentSlug: string; name: string; category: string; vatClass: string | null; active: boolean; status: string; variants: Variant[] };
 type Offer = { id: string; name: string; scope: string; serviceId: string | null; variantId: string | null; percentOff: number | null; amountOffPence: number | null; startAt: string | null; endAt: string | null; promoted: boolean };
 type TreatmentOpt = { slug: string; title: string; category: string };
 
@@ -187,6 +187,16 @@ function ServiceCard({ service }: { service: Service }) {
             Public status
             <select value={service.status} onChange={(e) => act({ op: 'updateService', id: service.id, status: e.target.value })} className={field}>
               {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-[var(--color-stone)]" title="VAT class — applies once the clinic is VAT-registered (Finance → Financial controls)">
+            VAT
+            <select value={service.vatClass ?? ''} onChange={(e) => act({ op: 'updateService', id: service.id, vatClass: e.target.value })} className={field}>
+              <option value="">{service.category === 'dentistry' ? 'Default (exempt)' : 'Default (standard)'}</option>
+              <option value="STANDARD">Standard 20%</option>
+              <option value="REDUCED">Reduced 5%</option>
+              <option value="ZERO">Zero-rated</option>
+              <option value="EXEMPT">Exempt</option>
             </select>
           </label>
           <Link href={`/admin/services/content/${service.treatmentSlug}`} className="text-xs font-medium text-[var(--color-gold)] hover:underline">Edit page content →</Link>
