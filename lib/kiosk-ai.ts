@@ -81,23 +81,31 @@ export async function analyzeKioskPhoto(photoUrl: string): Promise<KioskAiResult
     const b64 = Buffer.from(ab).toString('base64');
     const media = mediaTypeFromUrl(photoUrl);
 
-    // 2) Call Claude (same pattern as callClaude in lib/ai-consultation.ts).
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: HAIKU,
-        max_tokens: 600,
-        system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'text', text: 'Here is my selfie — give me my fun skin & smile score!' },
-            { type: 'image', source: { type: 'base64', media_type: media, data: b64 } },
-          ],
-        }],
-      }),
-    });
+    // 2) Call Claude with a 30s timeout (same pattern as callClaude in lib/ai-consultation.ts).
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 30_000);
+    let res: Response;
+    try {
+      res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        signal: ac.signal,
+        headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: HAIKU,
+          max_tokens: 600,
+          system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Here is my selfie — give me my fun skin & smile score!' },
+              { type: 'image', source: { type: 'base64', media_type: media, data: b64 } },
+            ],
+          }],
+        }),
+      });
+    } finally {
+      clearTimeout(timer);
+    }
     if (!res.ok) {
       console.error('[kiosk-ai] anthropic', res.status, await res.text().catch(() => ''));
       return null;
