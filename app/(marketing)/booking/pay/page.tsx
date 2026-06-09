@@ -22,18 +22,23 @@ export default async function PayPage({ searchParams }: { searchParams: Promise<
   let view: { treatment: string; pricePence: number; clientSecret: string } | null = null;
 
   if (crmEnabled && stripeEnabled && clientSecret && clientSecret.startsWith('pi_')) {
-    const piId = clientSecret.split('_secret_')[0];
-    const { stripe } = await import('@/lib/stripe');
-    const { db } = await import('@/lib/db');
-    const pi = await stripe().paymentIntents.retrieve(piId).catch(() => null);
-    // Only proceed if the caller actually holds this PaymentIntent's secret.
-    if (pi && pi.client_secret === clientSecret && pi.metadata?.bookingId) {
-      const b = await db.booking.findUnique({ where: { id: pi.metadata.bookingId } });
-      if (b) {
-        if (pi.status === 'succeeded' || b.chargedAt) state = 'paid';
-        else if (ACTIONABLE.includes(pi.status)) { state = 'ready'; view = { treatment: b.treatmentTitle, pricePence: pi.amount, clientSecret }; }
-        else state = 'callus'; // e.g. canceled / requires_payment_method — needs a new card
+    try {
+      const piId = clientSecret.split('_secret_')[0];
+      const { stripe } = await import('@/lib/stripe');
+      const { db, withDbRetry } = await import('@/lib/db');
+      const pi = await stripe().paymentIntents.retrieve(piId).catch(() => null);
+      // Only proceed if the caller actually holds this PaymentIntent's secret.
+      if (pi && pi.client_secret === clientSecret && pi.metadata?.bookingId) {
+        const b = await withDbRetry(() => db.booking.findUnique({ where: { id: pi.metadata.bookingId } }));
+        if (b) {
+          if (pi.status === 'succeeded' || b.chargedAt) state = 'paid';
+          else if (ACTIONABLE.includes(pi.status)) { state = 'ready'; view = { treatment: b.treatmentTitle, pricePence: pi.amount, clientSecret }; }
+          else state = 'callus'; // e.g. canceled / requires_payment_method — needs a new card
+        }
       }
+    } catch (e) {
+      // A DB blip degrades to "link not found / call us", never a 500.
+      console.error('[booking/pay] lookup failed:', (e as Error)?.message);
     }
   }
 

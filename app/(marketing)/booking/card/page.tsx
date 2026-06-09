@@ -18,9 +18,10 @@ export default async function CardOnFilePage({ searchParams }: { searchParams: P
   let view: { treatment: string; startISO: string; clientSecret: string } | null = null;
 
   if (crmEnabled && stripeEnabled && t) {
-    const { db } = await import('@/lib/db');
+    try {
+    const { db, withDbRetry } = await import('@/lib/db');
     const { stripe, ensureCustomer } = await import('@/lib/stripe');
-    const b = await db.booking.findUnique({ where: { manageToken: t }, include: { client: true } });
+    const b = await withDbRetry(() => db.booking.findUnique({ where: { manageToken: t }, include: { client: true } }));
     if (b) {
       if (b.stripePaymentMethodId) state = 'saved';
       else if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(b.status)) state = 'closed';
@@ -41,6 +42,11 @@ export default async function CardOnFilePage({ searchParams }: { searchParams: P
           view = { treatment: b.treatmentTitle, startISO: b.startAt.toISOString(), clientSecret: si.client_secret };
         }
       }
+    }
+    } catch (e) {
+      // Degrade to the "link not found / call us" card rather than 500 on a blip.
+      console.error('[booking/card] lookup failed:', (e as Error)?.message);
+      state = 'notfound';
     }
   }
 

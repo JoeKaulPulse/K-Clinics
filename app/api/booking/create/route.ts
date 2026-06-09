@@ -30,9 +30,15 @@ export async function POST(req: Request) {
   const treatment = getTreatment(d.slug);
   if (!treatment) return NextResponse.json({ ok: false, error: 'Unknown treatment' }, { status: 404 });
 
+  // Everything below touches the DB. Wrap it so a transient blip during a deploy
+  // / cold start surfaces a clear, retryable message instead of an opaque 500 —
+  // and retry the idempotent *reads* so most blips are invisible. (Writes are not
+  // retried; on failure we return 503 and the client can safely try again.)
+  const { withDbRetry } = await import('@/lib/db');
+  try {
   const { durationMin, bufferMin } = bookingFor(d.slug);
   const { pricingForTreatment, isBookableStatus } = await import('@/lib/services');
-  const pricing = await pricingForTreatment(d.slug);
+  const pricing = await withDbRetry(() => pricingForTreatment(d.slug));
   // Effective status: admin status wins; onRequest forces "coming soon" only when
   // status is NORMAL — consistent with the treatment page + the account flow.
   let status = pricing?.status ?? 'NORMAL';
@@ -56,15 +62,15 @@ export async function POST(req: Request) {
   const { stripe, ensureCustomer } = await import('@/lib/stripe');
   const { getSetting } = await import('@/lib/settings');
 
-  if (!(await isSlotFree(d.startISO, durationMin, d.slug))) {
+  if (!(await withDbRetry(() => isSlotFree(d.startISO, durationMin, d.slug)))) {
     return NextResponse.json({ ok: false, error: 'That time was just taken. Please choose another slot.' }, { status: 409 });
   }
 
   // Auto-assign a competent, available clinician if enabled, and hold any
   // room/equipment the treatment requires.
   const autoAssign = await getSetting('auto_assign_practitioner');
-  const practitionerId = autoAssign ? await pickPractitioner(d.startISO, durationMin, d.slug) : null;
-  const resourceIds = await assignResources(d.startISO, durationMin, d.slug);
+  const practitionerId = autoAssign ? await withDbRetry(() => pickPractitioner(d.startISO, durationMin, d.slug)) : null;
+  const resourceIds = await withDbRetry(() => assignResources(d.startISO, durationMin, d.slug));
 
   // Upsert client + Stripe customer.
   const client = await db.client.upsert({
@@ -154,4 +160,8 @@ export async function POST(req: Request) {
   await db.booking.update({ where: { id: booking.id }, data: { stripeSetupIntentId: setupIntent.id } });
 
   return NextResponse.json({ ok: true, bookingId: booking.id, clientSecret: setupIntent.client_secret });
+  } catch (e) {
+    console.error('[booking/create] failed:', (e as Error)?.message);
+    return NextResponse.json({ ok: false, error: 'We couldn’t hold your slot just now — please try again in a moment, or call us.' }, { status: 503 });
+  }
 }
