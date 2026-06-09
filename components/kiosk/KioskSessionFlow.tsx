@@ -78,15 +78,23 @@ export function KioskSessionFlow({
         if (j?.status === 'ANALYZED' && j?.resultId) {
           if (pollRef.current) clearInterval(pollRef.current);
           loadResult(j.resultId);
+        } else if (j?.status === 'ANALYSIS_FAILED') {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setFile(null);
+          setPreview(null);
+          setError('We couldn\'t read that photo — try a clearer selfie in good light.');
+          setStep(3);
         } else if (j?.status === 'EXPIRED') {
           if (pollRef.current) clearInterval(pollRef.current);
           setError('This session expired. Please scan the code again.');
           setStep(3);
         }
       } catch { /* keep polling */ }
-      // Give up after ~60s of polling.
-      if (tries > 30) {
+      // Give up after ~90s of polling.
+      if (tries > 45) {
         if (pollRef.current) clearInterval(pollRef.current);
+        setFile(null);
+        setPreview(null);
         setError('Analysis is taking longer than expected. Please try again.');
         setStep(3);
       }

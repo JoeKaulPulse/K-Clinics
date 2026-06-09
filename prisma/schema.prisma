@@ -2671,6 +2671,7 @@ model StaffNotification {
 enum KioskStatus {
   ACTIVE
   PHOTO_TAKEN
+  ANALYSIS_FAILED
   ANALYZED
   SHARED
   EXPIRED
