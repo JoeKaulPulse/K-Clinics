@@ -336,7 +336,10 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                   </div>
                   {cn.treatments.length > 0 && <p className="mt-1 text-xs text-[var(--color-stone)]">{cn.treatments.join(', ')}</p>}
                   {cn.message && <p className="mt-2 whitespace-pre-wrap break-words text-sm">{tidyConsultText(cn.message)}</p>}
-                  <p className="mt-2 text-xs text-[var(--color-stone-soft)]">{new Date(cn.createdAt).toLocaleDateString('en-GB')}</p>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <p className="text-xs text-[var(--color-stone-soft)]">{new Date(cn.createdAt).toLocaleDateString('en-GB')}</p>
+                    <Link href={`/admin/consultations/${cn.id}`} className="text-xs text-[var(--color-gold)] hover:underline">Notes →</Link>
+                  </div>
                 </div>
               ))}
             </div>

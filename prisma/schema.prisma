@@ -425,11 +425,23 @@ model Consultation {
   medicalNotes    String?
   status          ConsultStatus @default(NEW)
   assignedTo      String?
+  notes           ConsultationNote[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
   @@index([status])
   @@index([createdAt])
+}
+
+model ConsultationNote {
+  id             String       @id @default(cuid())
+  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  consultationId String
+  body           String       @db.Text
+  author         String       // staff email
+  createdAt      DateTime     @default(now())
+
+  @@index([consultationId, createdAt])
 }
 
 model Interaction {
