@@ -61,11 +61,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   await logKioskEvent('consent', session.id, session.ipHash);
   await logKioskEvent('photo', session.id, session.ipHash);
 
+  // Capture the real MIME type before responding — file.type may be "image/heic"
+  // for iPhone selfies. We pass it to runKioskAnalysis so the AI call labels the
+  // image correctly; without this the stored .jpg filename always yields jpeg.
+  const photoContentType = file.type || undefined;
+
   // Run the analysis AFTER the response is sent, via `after()` — this keeps the
   // serverless function alive until it finishes (a plain fire-and-forget would be
   // frozen/killed once we respond, so the result would never be produced). The
   // client polls /api/kiosk/sessions/[token] for the result.
-  after(async () => { await runKioskAnalysis(session.id).catch(() => {}); });
+  after(async () => { await runKioskAnalysis(session.id, photoContentType).catch(() => {}); });
 
   return NextResponse.json({ ok: true });
 }

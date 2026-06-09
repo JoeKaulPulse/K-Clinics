@@ -372,9 +372,13 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Shipped (#427): replaced the fire-and-forget with `after(() => runKioskAnalysis(...))` from next/server, which keeps the serverless function alive until the analysis completes. Top actionable backlog item by V:E; the most likely cause of the live flow stalling at "analysing".'],
   },
   {
-    title: 'Kiosk BUG: HEIC selfies sent to Claude as image/jpeg', type: 'ERROR', urgency: 'P2', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
+    title: 'Kiosk BUG: HEIC selfies sent to Claude as image/jpeg', type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', project: 'skin-smile-kiosk', pr: PR(428),
     value: 6, effort: 2,
     detail: 'Photos are stored as kiosk/<token>.jpg regardless of real type; lib/kiosk-ai.mediaTypeFromUrl derives the media type from the .jpg URL, so an iPhone HEIC upload is sent to Claude as image/jpeg and analysis fails. Persist/carry the real content-type (store the actual extension, or pass file.type through runKioskAnalysis) so HEIC is labelled correctly.',
+    notes: [
+      'Shipped (#428): analyzeKioskPhoto now accepts an optional contentType param (used as primary source), falling back to the HTTP Content-Type response header (Vercel Blob stores the real type), then URL-derived. runKioskAnalysis threads contentType through from the caller. The photo route captures file.type before the after() callback and passes it — so HEIC/HEIF selfies are labelled correctly for Claude.',
+      'Also added AbortSignal.timeout(25_000) to the photo fetch and AbortSignal.timeout(30_000) to the Anthropic call — partial fix for the analysis timeout task (mobile retry UI still outstanding).',
+    ],
   },
   {
     title: 'Kiosk: share endpoint is unauthenticated + non-idempotent', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
@@ -390,7 +394,8 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   {
     title: 'Kiosk: analysis timeout + stuck-state UX', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
     value: 4, effort: 2,
-    detail: 'analyzeKioskPhoto has no timeout on the Anthropic fetch, and on failure the session stays in PHOTO_TAKEN. Add a timeout + a friendly “couldn’t read that photo — try again” path on the mobile client so visitors aren’t stuck polling.',
+    detail: ‘analyzeKioskPhoto has no timeout on the Anthropic fetch, and on failure the session stays in PHOTO_TAKEN. Add a timeout + a friendly “couldn’t read that photo — try again” path on the mobile client so visitors aren’t stuck polling.’,
+    notes: [‘Partial: AbortSignal.timeout(25_000/30_000) added to both fetches in kiosk-ai.ts (#428). Outstanding: mobile client retry UI when session stays in PHOTO_TAKEN (client currently polls indefinitely).’],
   },
   {
     title: 'Build board: decouple from GitHub (DB-native queue, opt-in mirror, rate-limit governor)', type: 'TASK', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(401),

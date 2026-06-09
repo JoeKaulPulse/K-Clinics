@@ -50,8 +50,12 @@ export const sessionExpiry = () => new Date(Date.now() + SESSION_TTL_MS);
  * Fire-and-forget: run the AI analysis for a session's photo and persist a
  * KioskResult, flipping the session to ANALYZED. Safe to call without awaiting;
  * never throws. Logs an `analyzed` event on success.
+ *
+ * `contentType` — the real MIME type of the uploaded photo. Pass `file.type`
+ * from the upload route so HEIC/HEIF selfies are labelled correctly rather than
+ * being derived from the stored .jpg filename.
  */
-export async function runKioskAnalysis(sessionId: string): Promise<void> {
+export async function runKioskAnalysis(sessionId: string, contentType?: string): Promise<void> {
   try {
     const session = await db.kioskSession.findUnique({ where: { id: sessionId } });
     if (!session?.photoUrl) return;
@@ -59,7 +63,7 @@ export async function runKioskAnalysis(sessionId: string): Promise<void> {
     const existing = await db.kioskResult.findUnique({ where: { sessionId } });
     if (existing) return;
 
-    const result = await analyzeKioskPhoto(session.photoUrl);
+    const result = await analyzeKioskPhoto(session.photoUrl, contentType);
     if (!result) {
       // Leave the session in PHOTO_TAKEN so the client can show a friendly error.
       return;

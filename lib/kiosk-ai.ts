@@ -62,8 +62,12 @@ function clampScore(n: unknown): number {
  * Analyse a kiosk selfie and return a friendly skin & smile rating.
  * Fetches the photo from its (public Vercel Blob) URL, base64-encodes it, and
  * calls Claude with the campaign prompt. Returns null on any failure.
+ *
+ * `contentType` — the real MIME type of the photo (e.g. "image/heic"). When
+ * supplied it is used directly so iPhone HEIC uploads aren't mislabelled as
+ * image/jpeg (which happens when the stored filename always ends in .jpg).
  */
-export async function analyzeKioskPhoto(photoUrl: string): Promise<KioskAiResult | null> {
+export async function analyzeKioskPhoto(photoUrl: string, contentType?: string): Promise<KioskAiResult | null> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) {
     console.error('[kiosk-ai] ANTHROPIC_API_KEY not set');
@@ -72,18 +76,24 @@ export async function analyzeKioskPhoto(photoUrl: string): Promise<KioskAiResult
 
   try {
     // 1) Fetch the photo and base64-encode it.
-    const imgRes = await fetch(photoUrl);
+    const imgRes = await fetch(photoUrl, { signal: AbortSignal.timeout(25_000) });
     if (!imgRes.ok) {
       console.error('[kiosk-ai] photo fetch failed', imgRes.status);
       return null;
     }
     const ab = await imgRes.arrayBuffer();
     const b64 = Buffer.from(ab).toString('base64');
-    const media = mediaTypeFromUrl(photoUrl);
+    // Prefer the caller-supplied type, then the response Content-Type header,
+    // then fall back to deriving from the URL (which always ends in .jpg and
+    // would misidentify HEIC files).
+    const media = contentType?.split(';')[0].trim()
+      || imgRes.headers.get('content-type')?.split(';')[0].trim()
+      || mediaTypeFromUrl(photoUrl);
 
     // 2) Call Claude (same pattern as callClaude in lib/ai-consultation.ts).
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
+      signal: AbortSignal.timeout(30_000),
       headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
         model: HAIKU,
