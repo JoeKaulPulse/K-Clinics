@@ -28,7 +28,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       // Filter on the appointment date (startAt) so imported/historical completed
       // bookings — which have no finishedAt — are counted too.
       where: { status: 'COMPLETED', startAt: { gte: since } },
-      select: { practitionerId: true, actualMinutes: true, durationMin: true, pricePence: true, chargedPence: true, pointsRedeemedPence: true, treatmentTitle: true, practitioner: { select: { name: true, email: true } } },
+      select: { practitionerId: true, actualMinutes: true, durationMin: true, pricePence: true, chargedPence: true, refundedPence: true, pointsRedeemedPence: true, treatmentTitle: true, practitioner: { select: { name: true, email: true } } },
     }),
     db.stockItem.findMany({ where: { active: true }, select: { currentQty: true, costPence: true } }),
     db.stockMovement.findMany({ where: { reason: { in: ['USED', 'WASTED'] }, createdAt: { gte: since } }, select: { delta: true, item: { select: { costPence: true } } } }),
@@ -39,7 +39,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   // completed-but-uncharged treatment as revenue (those surface separately via
   // the dashboard's "completed, not charged" prompt), so nothing shows as a
   // sale before payment is taken.
-  const rev = (b: { chargedPence: number | null }) => b.chargedPence ?? 0;
+  const rev = (b: { chargedPence: number | null; refundedPence: number | null }) => (b.chargedPence ?? 0) - (b.refundedPence ?? 0);
 
   // Staff performance.
   const staffMap = new Map<string, { name: string; count: number; actualMin: number; bookedMin: number; revenue: number }>();

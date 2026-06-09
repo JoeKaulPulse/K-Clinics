@@ -44,6 +44,25 @@ export async function sendPurchase(input: PurchaseInput): Promise<void> {
   }
 }
 
+/** Fire a GA4 `refund` conversion (best-effort) so ad/analytics ROAS nets out
+ *  refunds. (Meta has no standard refund event, so we skip it there.) */
+export async function sendRefund(input: { bookingId: string; valuePence: number; clientId?: string | null }): Promise<void> {
+  if (!crmEnabled || input.valuePence <= 0) return;
+  try {
+    const [ids, secrets] = await Promise.all([readJson(TRACKING_KEY), readJson(SECRETS_KEY)]);
+    if (!ids.ga4Id || !secrets.ga4ApiSecret) return;
+    const body = {
+      client_id: input.clientId || input.bookingId,
+      events: [{ name: 'refund', params: { currency: 'GBP', value: input.valuePence / 100, transaction_id: input.bookingId } }],
+    };
+    await fetch(`https://www.google-analytics.com/mp/collect?measurement_id=${encodeURIComponent(ids.ga4Id)}&api_secret=${encodeURIComponent(secrets.ga4ApiSecret)}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+    });
+  } catch (e) {
+    console.error('[conversions] refund send failed:', (e as Error)?.message);
+  }
+}
+
 async function ga4Purchase(measurementId: string, apiSecret: string, clientId: string, value: number, input: PurchaseInput) {
   const body = {
     client_id: clientId,

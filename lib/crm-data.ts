@@ -27,8 +27,8 @@ export async function getAnalytics() {
 
   const [charged30, charged60to30, bookings30, consults30, bookingsFromConsult30, upcomingCount, todays, newClients30] =
     await Promise.all([
-      db.booking.aggregate({ _sum: { chargedPence: true }, where: { chargedAt: { gte: d30 } } }),
-      db.booking.aggregate({ _sum: { chargedPence: true }, where: { chargedAt: { gte: d60, lt: d30 } } }),
+      db.booking.aggregate({ _sum: { chargedPence: true, refundedPence: true }, where: { chargedAt: { gte: d30 } } }),
+      db.booking.aggregate({ _sum: { chargedPence: true, refundedPence: true }, where: { chargedAt: { gte: d60, lt: d30 } } }),
       db.booking.count({ where: { createdAt: { gte: d30 } } }),
       db.consultation.count({ where: { createdAt: { gte: d30 } } }),
       db.consultation.count({ where: { createdAt: { gte: d30 }, status: 'BOOKED' } }),
@@ -41,8 +41,9 @@ export async function getAnalytics() {
       db.client.count({ where: { createdAt: { gte: d30 } } }),
     ]);
 
-  const rev30 = charged30._sum.chargedPence ?? 0;
-  const revPrev = charged60to30._sum.chargedPence ?? 0;
+  // Net revenue — refunds reduce the figure for the period the sale was charged.
+  const rev30 = (charged30._sum.chargedPence ?? 0) - (charged30._sum.refundedPence ?? 0);
+  const revPrev = (charged60to30._sum.chargedPence ?? 0) - (charged60to30._sum.refundedPence ?? 0);
   const revTrend = revPrev > 0 ? Math.round(((rev30 - revPrev) / revPrev) * 100) : null;
   const conversion = consults30 > 0 ? Math.round((bookingsFromConsult30 / consults30) * 100) : 0;
 
@@ -50,7 +51,7 @@ export async function getAnalytics() {
   const d14 = new Date(now.getTime() - 13 * 864e5); d14.setHours(0, 0, 0, 0);
   const chargedRows = await db.booking.findMany({
     where: { chargedAt: { gte: d14 }, chargedPence: { not: null } },
-    select: { chargedAt: true, chargedPence: true },
+    select: { chargedAt: true, chargedPence: true, refundedPence: true },
   });
   const series: { label: string; value: number }[] = [];
   for (let i = 0; i < 14; i++) {
@@ -58,7 +59,7 @@ export async function getAnalytics() {
     const next = new Date(day.getTime() + 864e5);
     const total = chargedRows
       .filter((r) => r.chargedAt && r.chargedAt >= day && r.chargedAt < next)
-      .reduce((s, r) => s + (r.chargedPence ?? 0), 0);
+      .reduce((s, r) => s + (r.chargedPence ?? 0) - (r.refundedPence ?? 0), 0);
     series.push({ label: day.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }), value: total });
   }
 
