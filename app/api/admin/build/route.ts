@@ -63,7 +63,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true, item });
       }
       case 'subtask-update': {
-        if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
+        // Any board user can tick off a subtask (e.g. complete their own); the
+        // actor is recorded and an owner-input completion pings Claude.
         if (!b.subtaskId) return NextResponse.json({ ok: false, error: 'Missing subtask id.' }, { status: 400 });
         const item = await board.updateSubtask(String(b.subtaskId), { status: b.status, title: b.title, assignee: b.assignee }, session.email);
         return NextResponse.json({ ok: true, item });
