@@ -25,6 +25,12 @@ export type BacklogItem = {
   // `ask` is the precise instruction posted to them on the board.
   needs?: OwnerInputRole;
   ask?: string;
+  // Declarative breakdown, seeded onto the board:
+  //  • subtasks — checklist under the item; ownerInput ones ping Claude when ticked.
+  //  • dependsOn — titles of other backlog items this one is blocked by; the board
+  //    wires these into dependency edges and auto-flows the dependent when they ship.
+  subtasks?: { title: string; ownerInput?: boolean; assignee?: string }[];
+  dependsOn?: string[];
 };
 
 // Who can unblock an input-required task. Resolved to an actual user from the
@@ -163,6 +169,80 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     title: 'Adopt the board as the work portal + migrate backlog', type: 'TASK', urgency: 'P2', status: 'SHIPPED',
     detail: 'Seed the session backlog here with statuses + decision notes; add an "assigned to me" view; create a task before any future work and log actions against it.',
     notes: ['This item is itself logged here. Going forward: create a board item (or GitHub issue) before starting, and record decisions as comments.', 'Superseded by the Build board v2 overhaul below — the board is now the portal.'],
+  },
+  {
+    title: 'Build board: task dependencies + auto-flow (declarative, in-app)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(404),
+    value: 8, effort: 5,
+    detail: 'Tasks can depend on other tasks. A task with open prerequisites is held BLOCKED; when its prerequisites ship/close it auto-advances to TRIAGE and is queued for Claude. Dependencies are editable in the modal and seedable from the backlog (dependsOn by title); subtasks are seedable too.',
+    notes: ['Shipped (#404): BuildDependency edges; addDependency/removeDependency + unblockDependents wired into update/sign-off/reconcile; declarative subtasks + dependsOn seeded via wireBacklogDependencies; modal shows “Blocked by / Blocks” with add/remove; cards show a lock when dependency-blocked.'],
+  },
+  {
+    title: 'Dedicated bot GitHub account / GitHub App for the board (remove shared rate limit)', type: 'TASK', urgency: 'P1', status: 'BLOCKED', assignee: 'claude',
+    value: 7, effort: 3, needs: 'OWNER',
+    ask: 'The board’s GitHub calls currently use the same account as the dev automation (JoeKaulPulse), so they share one rate limit. Give the board its own identity — either (A) a free “machine user” account (e.g. kclinics-bot) added as a repo collaborator, then paste its fine-grained token (Issues: Read & write, Contents/PRs as needed) into the board’s Connect GitHub; or (B, best) install a GitHub App on JoeKaulPulse/K-Clinics and share the App ID + installation — I’ll wire installation-token auth (higher, isolated limits). Tell me which you prefer and provide the token/App details, and I’ll switch the board over.',
+    detail: 'Root-cause fix for the rate-limit bottleneck: separate the board’s GitHub identity from the personal account used for development, so mirroring/wakes never contend with PR work. A GitHub App is preferred (scoped, higher limits, installation tokens).',
+  },
+  {
+    title: 'Storefront “Skin & Smile” QR kiosk — campaign epic', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    value: 8, effort: 8,
+    detail: 'From the owner’s idea (board): the storefront digital screen (Novastar controller) shows a QR code; scanning starts a session that captures a photo, runs an AI “skin & smile” rating, lets the visitor share the result on social, then routes them to create an account and claim a share-for-discount reward. High lead-gen/brand potential; built on the existing K Vision AI consultation, accounts and gift/discount engines. This epic gates on its component tasks below; its owner-input subtask unblocks the build.',
+    notes: ['Assessed from the captured idea (#403). Broken into the dependency chain below: kiosk session → photo+consent → AI rating → shareable card → account+discount, with the Novastar display and analytics/GDPR in parallel. V:E scored per task; owner-input subtasks auto-ping Claude when ticked.'],
+    subtasks: [
+      { title: 'Upload storefront photos/videos + screen & camera specs (Novastar controller)', ownerInput: true },
+      { title: 'Confirm campaign goal + which discount funds the share reward', ownerInput: true },
+    ],
+    dependsOn: [
+      'Kiosk: QR session + mobile entry (Skin & Smile)',
+      'Kiosk: photo capture + consent',
+      'Kiosk: AI Skin & Smile rating (reuse K Vision)',
+      'Kiosk: shareable result card + social sharing',
+      'Kiosk: account creation + share-to-claim discount',
+      'Kiosk: Novastar storefront screen — live QR + session display',
+      'Kiosk: analytics, anti-abuse & GDPR retention',
+    ],
+  },
+  {
+    title: 'Kiosk: QR session + mobile entry (Skin & Smile)', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    value: 7, effort: 5,
+    detail: 'Foundation: a QR on the storefront screen opens a tokenised mobile session (/kiosk/[token]) that pairs the phone with a display session and walks the visitor through the flow. Short-lived, anonymous-until-signup, rate-limited.',
+  },
+  {
+    title: 'Kiosk: photo capture + consent', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    value: 7, effort: 5,
+    detail: 'Capture/upload a face photo on the phone (or the display-side camera) with explicit, logged consent for analysis + optional social use. Stored per the retention policy; opt-out path.',
+    dependsOn: ['Kiosk: QR session + mobile entry (Skin & Smile)'],
+    subtasks: [{ title: 'Approve consent wording for photo capture + social sharing', ownerInput: true }],
+  },
+  {
+    title: 'Kiosk: AI Skin & Smile rating (reuse K Vision)', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    value: 8, effort: 4,
+    detail: 'Run the captured photo through the existing K Vision AI consultation to produce a friendly skin & smile rating + headline insights, tuned for a shareable, on-brand result (not a clinical diagnosis).',
+    dependsOn: ['Kiosk: photo capture + consent'],
+  },
+  {
+    title: 'Kiosk: shareable result card + social sharing', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    value: 8, effort: 5,
+    detail: 'Render a beautiful, branded result card (image + page with OG tags) and one-tap share to Instagram/TikTok/X/WhatsApp. The shared link drives traffic back to the claim page.',
+    dependsOn: ['Kiosk: AI Skin & Smile rating (reuse K Vision)'],
+  },
+  {
+    title: 'Kiosk: account creation + share-to-claim discount', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    value: 9, effort: 5,
+    detail: 'After sharing, prompt account creation and issue a single-use discount/voucher as the share reward (reusing the gift/discount engine). Verify the share where feasible; cap one reward per person.',
+    dependsOn: ['Kiosk: shareable result card + social sharing'],
+    subtasks: [{ title: 'Confirm discount mechanics (amount, single-use, share-verification approach)', ownerInput: true }],
+  },
+  {
+    title: 'Kiosk: Novastar storefront screen — live QR + session display', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude',
+    value: 6, effort: 6,
+    detail: 'Drive the storefront screen via the Novastar controller: show the QR + an attract loop, and reflect live session state (e.g. “scan to start”, “look at the camera”, result reveal). Exact integration depends on how the Novastar player accepts web content — gated on the owner’s specs.',
+    dependsOn: ['Kiosk: QR session + mobile entry (Skin & Smile)'],
+  },
+  {
+    title: 'Kiosk: analytics, anti-abuse & GDPR retention', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude',
+    value: 6, effort: 4,
+    detail: 'Conversion funnel analytics (scans → photos → shares → signups → redemptions), rate-limiting/anti-abuse on the public kiosk, and a clear photo-retention/erasure policy aligned to the consent wording.',
+    dependsOn: ['Kiosk: photo capture + consent'],
   },
   {
     title: 'Build board: decouple from GitHub (DB-native queue, opt-in mirror, rate-limit governor)', type: 'TASK', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(401),

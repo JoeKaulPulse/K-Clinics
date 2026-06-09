@@ -28,16 +28,46 @@ export async function seedBacklog(): Promise<{ created: number; skipped: number 
       data: {
         title: it.title, type: it.type, urgency: it.urgency, status: it.status,
         assignee: it.assignee || 'claude', reportedBy: 'claude', detail: it.detail,
+        value: it.value ?? null, effort: it.effort ?? null,
         githubUrl: it.pr || null, shippedAt: it.status === 'SHIPPED' ? new Date() : null,
         events: { create: [
           { kind: 'created', actor: 'claude', body: `Imported — ${it.type} · ${it.urgency} · ${it.status}${priority}${it.pr ? ` · ${it.pr}` : ''}` },
           ...(it.notes || []).map((n) => ({ kind: 'comment', actor: 'claude', body: n })),
         ] },
+        subtasks: it.subtasks?.length ? { create: it.subtasks.map((s, i) => ({ title: s.title, ownerInput: !!s.ownerInput, assignee: s.assignee || 'claude', order: i + 1 })) } : undefined,
       },
     });
     created += 1;
   }
   return { created, skipped };
+}
+
+/** Wire declarative `dependsOn` (by title) from the backlog into BuildDependency
+ *  edges, idempotently, then block any dependent whose prerequisites aren't done.
+ *  This is what makes seeded dependency chains flow automatically. */
+export async function wireBacklogDependencies(): Promise<void> {
+  const { BUILD_BACKLOG } = await import('@/lib/build-backlog');
+  const withDeps = BUILD_BACKLOG.filter((b) => b.dependsOn?.length);
+  if (!withDeps.length) return;
+  const titles = new Set<string>();
+  withDeps.forEach((b) => { titles.add(b.title); b.dependsOn!.forEach((t) => titles.add(t)); });
+  const rows = await db.buildItem.findMany({ where: { title: { in: [...titles] } }, select: { id: true, title: true, status: true } });
+  const byTitle = new Map(rows.map((r) => [r.title, r]));
+  for (const b of withDeps) {
+    const item = byTitle.get(b.title);
+    if (!item) continue;
+    for (const depTitle of b.dependsOn!) {
+      const dep = byTitle.get(depTitle);
+      if (!dep || dep.id === item.id) continue;
+      const exists = await db.buildDependency.findUnique({ where: { itemId_dependsOnId: { itemId: item.id, dependsOnId: dep.id } } }).catch(() => null);
+      if (!exists) await db.buildDependency.create({ data: { itemId: item.id, dependsOnId: dep.id } }).catch(() => {});
+    }
+    // Park it BLOCKED if any prerequisite isn't done yet (forward-only, never touches terminal/in-flight human work).
+    if (item.status === 'TRIAGE' && !(await depsMet(item.id))) {
+      const openDeps = (await db.buildDependency.findMany({ where: { itemId: item.id }, include: { dependsOn: { select: { title: true, status: true } } } })).filter((d) => !DONE_STATES.includes(d.dependsOn.status)).map((d) => d.dependsOn.title);
+      await db.buildItem.update({ where: { id: item.id }, data: { status: 'BLOCKED', blocker: `Waiting on: ${openDeps.join(', ')}`, events: { create: { kind: 'status', actor: 'claude', body: `→ BLOCKED (depends on ${openDeps.length} task${openDeps.length === 1 ? '' : 's'})` } } } }).catch(() => {});
+    }
+  }
 }
 
 async function stampSeeded(version: string) {
@@ -66,6 +96,7 @@ export async function ensureBacklogSeeded(): Promise<void> {
     }
     await assignOwnerInputTasks(); // idempotent; ensures blocked tasks have an owner + instructions
     await reconcileBacklog(); // advance shipped items so the board doesn't drift from the backlog
+    await wireBacklogDependencies(); // idempotently wire declarative dependencies + block what's waiting
   } catch (e) {
     backlogSeedChecked = false; // transient failure — let a later request retry
     console.error('[build] auto-seed backlog failed', e);
@@ -80,6 +111,7 @@ export async function rebuildBacklog(): Promise<{ created: number; skipped: numb
   const seed = await seedBacklog();
   await assignOwnerInputTasks();
   const rec = await reconcileBacklog();
+  await wireBacklogDependencies();
   await stampSeeded(BACKLOG_VERSION);
   return { ...seed, reconciled: rec.updated };
 }
@@ -211,20 +243,77 @@ export async function reconcileBacklog(): Promise<{ updated: number }> {
         events: { create: { kind: 'status', actor: 'claude', body: `${item.status} → SHIPPED${it.pr ? ` · ${it.pr}` : ''} (synced from backlog)` } },
       },
     });
+    await unblockDependents(item.id).catch(() => {}); // a shipped prerequisite frees its dependents
     updated += 1;
   }
   return { updated };
 }
 
+// Shared include so cards/modal always have events, subtasks and dependency edges
+// (each side carries the other item's id/title/status for "blocked by / blocks").
+const DEP_SELECT = { select: { id: true, title: true, status: true } } as const;
+export const ITEM_INCLUDE = {
+  events: { orderBy: { createdAt: 'desc' as const }, take: 30 },
+  subtasks: { orderBy: { order: 'asc' as const } },
+  dependencies: { include: { dependsOn: DEP_SELECT } },
+  dependents: { include: { item: DEP_SELECT } },
+};
+
 export async function listBuildItems() {
   return db.buildItem.findMany({
     orderBy: [{ status: 'asc' }, { urgency: 'asc' }, { createdAt: 'desc' }],
     take: 300,
-    include: {
-      events: { orderBy: { createdAt: 'desc' }, take: 30 },
-      subtasks: { orderBy: { order: 'asc' } },
-    },
+    include: ITEM_INCLUDE,
   });
+}
+
+const DONE_STATES = ['SHIPPED', 'CLOSED'];
+
+/** Add a dependency edge (item depends on dependsOn). If the prerequisite isn't
+ *  done yet, the dependent is parked as BLOCKED so it can't be worked early. */
+export async function addDependency(itemId: string, dependsOnId: string, actor: string) {
+  if (itemId === dependsOnId) return db.buildItem.findUnique({ where: { id: itemId }, include: ITEM_INCLUDE });
+  const dep = await db.buildItem.findUnique({ where: { id: dependsOnId }, select: { title: true, status: true } });
+  if (!dep) return db.buildItem.findUnique({ where: { id: itemId }, include: ITEM_INCLUDE });
+  await db.buildDependency.upsert({ where: { itemId_dependsOnId: { itemId, dependsOnId } }, update: {}, create: { itemId, dependsOnId } }).catch(() => {});
+  await db.buildEvent.create({ data: { itemId, kind: 'dependency', actor, body: `Blocked by “${dep.title}”` } }).catch(() => {});
+  if (!DONE_STATES.includes(dep.status)) {
+    const it = await db.buildItem.findUnique({ where: { id: itemId }, select: { status: true } });
+    if (it && !DONE_STATES.includes(it.status) && it.status !== 'BLOCKED') {
+      await db.buildItem.update({ where: { id: itemId }, data: { status: 'BLOCKED', blocker: `Waiting on “${dep.title}”`, events: { create: { kind: 'status', actor: 'claude', body: `→ BLOCKED (depends on “${dep.title}”)` } } } });
+    }
+  }
+  return db.buildItem.findUnique({ where: { id: itemId }, include: ITEM_INCLUDE });
+}
+
+export async function removeDependency(itemId: string, dependsOnId: string, actor: string) {
+  await db.buildDependency.deleteMany({ where: { itemId, dependsOnId } });
+  await db.buildEvent.create({ data: { itemId, kind: 'dependency', actor, body: 'Dependency removed' } }).catch(() => {});
+  await unblockIfReady(itemId); // removing the last open blocker may free it
+  return db.buildItem.findUnique({ where: { id: itemId }, include: ITEM_INCLUDE });
+}
+
+/** True when every dependency of `itemId` has shipped/closed. */
+async function depsMet(itemId: string): Promise<boolean> {
+  const deps = await db.buildDependency.findMany({ where: { itemId }, include: { dependsOn: { select: { status: true } } } });
+  return deps.every((d) => DONE_STATES.includes(d.dependsOn.status));
+}
+
+/** If a BLOCKED item's dependencies are now all met, advance it to TRIAGE and
+ *  queue it for Claude — this is how dependency tasks automatically flow. */
+async function unblockIfReady(itemId: string): Promise<boolean> {
+  const it = await db.buildItem.findUnique({ where: { id: itemId }, select: { status: true } });
+  if (!it || it.status !== 'BLOCKED') return false;
+  if (!(await depsMet(itemId))) return false;
+  await db.buildItem.update({ where: { id: itemId }, data: { status: 'TRIAGE', blocker: null, events: { create: { kind: 'status', actor: 'claude', body: 'BLOCKED → TRIAGE — all dependencies complete; ready to start.' } } } });
+  await setRaw('build_continue_requested_at', new Date().toISOString());
+  return true;
+}
+
+/** When `itemId` reaches a done state, re-evaluate everything that depends on it. */
+export async function unblockDependents(itemId: string): Promise<void> {
+  const edges = await db.buildDependency.findMany({ where: { dependsOnId: itemId }, select: { itemId: true } });
+  for (const e of edges) await unblockIfReady(e.itemId).catch(() => {});
 }
 
 /** Recent Claude activity for the live ticker — newest first, across all items.
@@ -311,7 +400,9 @@ export async function updateBuildItem(id: string, patch: Patch, actor: string) {
   if (patch.estTokens !== undefined) data.estTokens = patch.estTokens === null ? null : Math.max(0, Math.round(Number(patch.estTokens) || 0));
   if (patch.actualTokens !== undefined) { data.actualTokens = patch.actualTokens === null ? null : Math.max(0, Math.round(Number(patch.actualTokens) || 0)); if (data.actualTokens) events.push({ kind: 'tokens', actor, body: `Logged ~${Number(data.actualTokens).toLocaleString()} tokens` }); }
   if (Object.keys(data).length === 0) return prev;
-  const updated = await db.buildItem.update({ where: { id }, data: { ...data, events: { create: events } }, include: { events: { orderBy: { createdAt: 'desc' }, take: 30 }, subtasks: { orderBy: { order: 'asc' } } } });
+  const updated = await db.buildItem.update({ where: { id }, data: { ...data, events: { create: events } }, include: ITEM_INCLUDE });
+  // Dependency auto-flow: when this item reaches a done state, free anything that was waiting on it.
+  if (patch.status && patch.status !== prev.status && DONE_STATES.includes(patch.status)) await unblockDependents(id).catch(() => {});
   // Notify: the new assignee on reassignment; the reporter when their item moves.
   const { notifyStaff } = await import('@/lib/notifications');
   if (patch.assignee && patch.assignee !== prev.assignee && patch.assignee !== 'claude') {
@@ -364,7 +455,7 @@ export async function addBuildComment(id: string, body: string, actor: string) {
 }
 
 // ── Subtasks ─────────────────────────────────────────────────────────────────
-const withDetail = { events: { orderBy: { createdAt: 'desc' as const }, take: 30 }, subtasks: { orderBy: { order: 'asc' as const } } };
+const withDetail = ITEM_INCLUDE;
 
 export async function addSubtask(itemId: string, title: string, opts: { assignee?: string; ownerInput?: boolean }, actor: string) {
   const t = title.trim().slice(0, 200);
@@ -417,11 +508,13 @@ export async function signoffItem(id: string, actor: string) {
   const prev = await db.buildItem.findUnique({ where: { id } });
   if (!prev) return null;
   if (!['SHIPPED', 'IN_REVIEW'].includes(prev.status)) return prev; // only sign off shipped/in-review work
-  return db.buildItem.update({
+  const out = await db.buildItem.update({
     where: { id },
     data: { status: 'CLOSED', closedAt: new Date(), closedBy: actor, events: { create: { kind: 'closed', actor, body: `Signed off & closed by ${actor.split('@')[0]}` } } },
     include: withDetail,
   });
+  await unblockDependents(id).catch(() => {}); // closing may free dependents
+  return out;
 }
 
 export async function reopenItem(id: string, reason: string | undefined, actor: string) {

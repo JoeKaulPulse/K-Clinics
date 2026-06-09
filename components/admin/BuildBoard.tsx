@@ -4,13 +4,16 @@ import { useCallback, useEffect, useState } from 'react';
 
 type Ev = { id: string; kind: string; body: string | null; actor: string; createdAt: string };
 type Subtask = { id: string; title: string; status: string; assignee: string; ownerInput: boolean; order: number; completedAt: string | null; completedBy: string | null };
+type DepRef = { id: string; title: string; status: string };
+type Dependency = { id: string; dependsOn: DepRef };
+type Dependent = { id: string; item: DepRef };
 type Item = {
   id: string; type: string; title: string; detail: string | null; status: string; urgency: string;
   assignee: string; reportedBy: string | null; pageUrl: string | null; screenshots: string[];
   blocker: string | null; githubUrl: string | null; createdAt: string; updatedAt: string;
   value: number | null; effort: number | null; startedAt: string | null; estCompleteAt: string | null;
   estTokens: number | null; actualTokens: number | null; shippedAt: string | null; closedAt: string | null; closedBy: string | null;
-  events: Ev[]; subtasks: Subtask[];
+  events: Ev[]; subtasks: Subtask[]; dependencies: Dependency[]; dependents: Dependent[];
 };
 type Activity = { events: { id: string; kind: string; body: string | null; title: string; itemId: string; createdAt: string }[]; inProgress: { id: string; title: string }[]; continueRequestedAt: string | null };
 
@@ -187,7 +190,7 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
         </>
       )}
 
-      {active && <TaskModal item={active} canManage={canManage} isAdmin={isAdmin} gh={gh} staff={staff} onClose={() => setActive(null)} onChange={load} patch={patch} />}
+      {active && <TaskModal item={active} allItems={items} canManage={canManage} isAdmin={isAdmin} gh={gh} staff={staff} onClose={() => setActive(null)} onChange={load} patch={patch} />}
       {ideaOpen && <IdeaModal onClose={() => setIdeaOpen(false)} onDone={load} />}
     </>
   );
@@ -227,6 +230,7 @@ function Card({ i, onOpen }: { i: Item; onOpen: (i: Item) => void }) {
       <p className="text-sm font-medium leading-snug">{i.title}</p>
       <p className="mt-1 flex flex-wrap items-center gap-2 text-[0.65rem] text-[var(--color-stone)]">
         <span>{i.assignee === 'claude' ? '◆ Claude' : i.assignee.split('@')[0]}</span>
+        {i.dependencies.some((d) => !['SHIPPED', 'CLOSED'].includes(d.dependsOn.status)) && <span title="Blocked by dependencies">· 🔒 {i.dependencies.filter((d) => !['SHIPPED', 'CLOSED'].includes(d.dependsOn.status)).length}</span>}
         {i.subtasks.length > 0 && <span>· ☑ {done}/{i.subtasks.length}</span>}
         {d != null && <span>· ⏱ {fmtDur(d)}</span>}
         {i.screenshots.length > 0 && <span>· 📎{i.screenshots.length}</span>}
@@ -312,8 +316,8 @@ function TimelineView({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => v
 }
 
 // ── Task detail modal ────────────────────────────────────────────────────────
-function TaskModal({ item, canManage, isAdmin, gh, staff, onClose, onChange, patch }: {
-  item: Item; canManage: boolean; isAdmin: boolean; gh: { connected: boolean; repo: string | null };
+function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onChange, patch }: {
+  item: Item; allItems: Item[]; canManage: boolean; isAdmin: boolean; gh: { connected: boolean; repo: string | null };
   staff: { email: string; name: string | null }[]; onClose: () => void; onChange: () => void; patch: (id: string, body: object) => void;
 }) {
   const d = durMs(item);
@@ -344,6 +348,12 @@ function TaskModal({ item, canManage, isAdmin, gh, staff, onClose, onChange, pat
     if (r.ok) { setStTitle(''); setStOwner(false); onChange(); } else alert(r.error || 'Could not add subtask.');
   }
   async function setSubStatus(subId: string, status: string) { const r = await post({ op: 'subtask-update', subtaskId: subId, status }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
+
+  // Dependencies
+  async function addDep(dependsOnId: string) { if (!dependsOnId) return; const r = await post({ op: 'dep-add', id: item.id, dependsOnId }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
+  async function removeDep(dependsOnId: string) { const r = await post({ op: 'dep-remove', id: item.id, dependsOnId }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
+  const depIds = new Set([item.id, ...item.dependencies.map((d) => d.dependsOn.id)]);
+  const depDone = (s: string) => ['SHIPPED', 'CLOSED'].includes(s);
 
   async function signoff() { if (!confirm('Sign off and close this task? This marks the work reviewed & complete.')) return; const r = await post({ op: 'signoff', id: item.id }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
   async function reopen() { const reason = prompt('Reopen this task — add a note for Claude (what still needs doing):') || undefined; const r = await post({ op: 'reopen', id: item.id, reason }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
@@ -429,6 +439,39 @@ function TaskModal({ item, canManage, isAdmin, gh, staff, onClose, onChange, pat
             <button onClick={addSub} disabled={stBusy || !stTitle.trim()} className="rounded-[var(--radius-sm)] bg-[var(--color-ink)] px-3 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">Add</button>
           </div>
         )}
+
+        {/* Dependencies */}
+        <h3 className="mt-5 text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">Dependencies</h3>
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+          <div>
+            <p className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone-soft)]">Blocked by</p>
+            <ul className="mt-1 space-y-1">
+              {item.dependencies.map((d) => (
+                <li key={d.id} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm">
+                  <span title={d.dependsOn.status}>{depDone(d.dependsOn.status) ? '✅' : '🔒'}</span>
+                  <span className={depDone(d.dependsOn.status) ? 'text-[var(--color-stone-soft)] line-through' : ''}>{d.dependsOn.title}</span>
+                  {canManage && <button onClick={() => removeDep(d.dependsOn.id)} className="ml-auto text-[0.6rem] text-[var(--color-stone)] hover:underline">remove</button>}
+                </li>
+              ))}
+              {item.dependencies.length === 0 && <li className="text-xs text-[var(--color-stone-soft)]">Nothing — ready to start.</li>}
+            </ul>
+            {canManage && (
+              <select value="" onChange={(e) => { addDep(e.target.value); e.currentTarget.value = ''; }} className="mt-1.5 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-xs">
+                <option value="">+ Add a prerequisite…</option>
+                {allItems.filter((x) => !depIds.has(x.id)).map((x) => <option key={x.id} value={x.id}>{x.title}</option>)}
+              </select>
+            )}
+          </div>
+          <div>
+            <p className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone-soft)]">Blocks</p>
+            <ul className="mt-1 space-y-1">
+              {item.dependents.map((d) => (
+                <li key={d.id} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm">{d.item.title}</li>
+              ))}
+              {item.dependents.length === 0 && <li className="text-xs text-[var(--color-stone-soft)]">Nothing depends on this.</li>}
+            </ul>
+          </div>
+        </div>
 
         {/* Activity / comments */}
         <h3 className="mt-5 text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">Activity</h3>
