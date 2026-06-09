@@ -911,7 +911,7 @@ function queueHint(): string {
   const base = (process.env.NEXT_PUBLIC_SITE_URL || 'https://kclinics.co.uk').replace(/\/$/, '');
   const tok = process.env.BOARD_QUEUE_TOKEN;
   const auth = tok ? `Bearer ${tok}` : 'Bearer $BOARD_QUEUE_TOKEN';
-  return `Live work queue (incl. DB-only items like reported bugs): run \`curl -s -H "Authorization: ${auth}" ${base}/api/build/queue\` to see prioritised actionable items, then build the top one end-to-end.`;
+  return `Live work queue (incl. DB-only items like reported bugs): run \`curl -s -H "Authorization: ${auth}" ${base}/api/build/queue\` to see prioritised actionable items. Complete EVERY actionable item you can this run (batch related ones into one PR; skip owner-gated; don't duplicate work already in an open PR — check \`gh pr list --state open\`). Then launch an Opus 4.8 max-effort sub-agent to review, fix and audit everything; then merge the green changes to production and record a \`git revert <sha>\` rollback line per change.`;
 }
 // Routine runs are a scarce daily allowance shared across all projects on the
 // account. Hard-cap how many sessions THIS board may start per day so it can
