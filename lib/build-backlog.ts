@@ -229,7 +229,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
 
   // ── Staff notifications & secured finance (decisions captured) ─────────────
   {
-    title: 'In-app notification centre + easy idea submission with feedback', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    title: 'In-app notification centre + easy idea submission with feedback', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(369),
     value: 8, effort: 5,
     detail: 'A StaffNotification model + bell in the admin shell so all users see tasks/actions to complete; notify on assignment/comment. Make it effortless to add an idea to the board, and notify the submitter when it gets feedback or a status change.',
   },
