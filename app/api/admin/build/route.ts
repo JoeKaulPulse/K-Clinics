@@ -94,6 +94,18 @@ export async function POST(req: Request) {
         await board.setGithubMirror(!!b.on, session.email);
         return NextResponse.json({ ok: true, mirror: !!b.on });
       }
+      case 'dep-add': {
+        if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
+        if (!b.id || !b.dependsOnId) return NextResponse.json({ ok: false, error: 'Pick a task to depend on.' }, { status: 400 });
+        const item = await board.addDependency(String(b.id), String(b.dependsOnId), session.email);
+        return NextResponse.json({ ok: true, item });
+      }
+      case 'dep-remove': {
+        if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
+        if (!b.id || !b.dependsOnId) return NextResponse.json({ ok: false, error: 'Missing ids.' }, { status: 400 });
+        const item = await board.removeDependency(String(b.id), String(b.dependsOnId), session.email);
+        return NextResponse.json({ ok: true, item });
+      }
       case 'github': {
         if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
         if (!(await board.githubConfigured())) return NextResponse.json({ ok: false, error: 'GitHub isn’t connected yet.' }, { status: 400 });

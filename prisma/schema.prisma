@@ -2519,11 +2519,27 @@ model BuildItem {
   updatedAt    DateTime     @updatedAt
   events       BuildEvent[]
   subtasks     BuildSubtask[]
+  dependencies BuildDependency[] @relation("dependent")  // edges: this item depends on others
+  dependents   BuildDependency[] @relation("dependency") // edges: others depend on this item
 
   @@index([status])
   @@index([assignee, status])
   @@index([urgency])
   @@index([createdAt])
+}
+
+// A directed dependency edge: `item` is blocked until `dependsOn` ships/closes.
+// When the prerequisite completes, dependents auto-advance (see unblockDependents).
+model BuildDependency {
+  id          String    @id @default(cuid())
+  item        BuildItem @relation("dependent", fields: [itemId], references: [id], onDelete: Cascade)
+  itemId      String
+  dependsOn   BuildItem @relation("dependency", fields: [dependsOnId], references: [id], onDelete: Cascade)
+  dependsOnId String
+  createdAt   DateTime  @default(now())
+
+  @@unique([itemId, dependsOnId])
+  @@index([dependsOnId])
 }
 
 // A checklist item under a BuildItem, with its own status + assignee. When an
