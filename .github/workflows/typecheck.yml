@@ -1,0 +1,24 @@
+name: Typecheck
+
+# Fast correctness gate on every PR + main: regenerate the Prisma client and run
+# the TypeScript compiler. Catches syntax/type errors (e.g. stray smart-quotes in
+# a generated backlog entry) BEFORE a merge/deploy, rather than as a failed Vercel
+# build. Make this a required check in branch protection to hard-gate merges —
+# important now that the build routine can merge autonomously.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx tsc --noEmit
