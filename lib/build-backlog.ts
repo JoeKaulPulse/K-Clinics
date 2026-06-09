@@ -366,9 +366,10 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   // ── Kiosk audit findings (code review of the #422 autonomous build) ─────────
   {
-    title: 'Kiosk BUG: AI analysis is fire-and-forget — won’t run reliably on serverless', type: 'ERROR', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
+    title: 'Kiosk BUG: AI analysis is fire-and-forget — won’t run reliably on serverless', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', project: 'skin-smile-kiosk', pr: PR(427),
     value: 9, effort: 2,
-    detail: 'In app/api/kiosk/sessions/[token]/photo/route.ts the analysis is kicked off with `void runKioskAnalysis(...)` AFTER the response is returned. On Vercel, the function can be frozen/terminated once it responds, so the background work often never completes — the client then polls forever and never gets a result. Fix: run it with `after()` from next/server (or @vercel/functions `waitUntil`) so the platform keeps the function alive, or trigger analysis via a separate request. This is the most likely cause of the live flow stalling at “analysing”.',
+    detail: 'In app/api/kiosk/sessions/[token]/photo/route.ts the analysis was kicked off with `void runKioskAnalysis(...)` AFTER the response is returned. On Vercel the function can be frozen/terminated once it responds, so the background work often never completes — the client then polls forever and never gets a result.',
+    notes: ['Shipped (#427): replaced the fire-and-forget with `after(() => runKioskAnalysis(...))` from next/server, which keeps the serverless function alive until the analysis completes. Top actionable backlog item by V:E; the most likely cause of the live flow stalling at "analysing".'],
   },
   {
     title: 'Kiosk BUG: HEIC selfies sent to Claude as image/jpeg', type: 'ERROR', urgency: 'P2', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',

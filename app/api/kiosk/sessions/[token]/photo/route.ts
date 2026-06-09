@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { db } from '@/lib/db';
 import { logKioskEvent, runKioskAnalysis } from '@/lib/kiosk';
 
@@ -61,8 +61,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   await logKioskEvent('consent', session.id, session.ipHash);
   await logKioskEvent('photo', session.id, session.ipHash);
 
-  // Fire-and-forget the analysis — the client polls /api/kiosk/sessions/[token].
-  void runKioskAnalysis(session.id).catch(() => {});
+  // Run the analysis AFTER the response is sent, via `after()` — this keeps the
+  // serverless function alive until it finishes (a plain fire-and-forget would be
+  // frozen/killed once we respond, so the result would never be produced). The
+  // client polls /api/kiosk/sessions/[token] for the result.
+  after(async () => { await runKioskAnalysis(session.id).catch(() => {}); });
 
   return NextResponse.json({ ok: true });
 }
