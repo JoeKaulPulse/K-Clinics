@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
 import { site } from '@/lib/site';
 import { getTheme, themeToCss } from '@/lib/theme';
@@ -58,7 +59,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <style>{`[style*="opacity:0"]{opacity:1!important;transform:none!important;filter:none!important}`}</style>
         </noscript>
       </head>
-      <body>{children}</body>
+      <body>{children}<SpeedInsights /></body>
     </html>
   );
 }
