@@ -189,10 +189,15 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'A Finance → Financial controls admin panel for select users: set the refund window, define profit/margin rules, and monitor profitability by service (revenue − cost of goods/consumables − time). Phase 1 (#382): the refund window becomes a configurable setting used by the refund flow.',
   },
   {
-    title: 'VAT / tax configuration — per-service rate, inclusive/exclusive', type: 'TASK', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', needs: 'OWNER',
+    title: 'VAT / tax configuration — per-service rate, inclusive/exclusive', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(384),
     value: 8, effort: 7,
-    ask: 'Confirm: (a) are prices shown VAT-inclusive or exclusive by default? (b) the company isn’t VAT-registered yet — should the VAT rate default to 0/None until you register? (c) which services are exempt/zero-rated (e.g. dentistry) vs standard 20%? I’ll build a per-service VAT rate (standard 20% / reduced / zero / exempt), an inclusive/exclusive toggle, and surface VAT on prices, receipts and reports — all editable from Finance by permitted users.',
-    detail: 'Add a configurable VAT component across pricing: per-service rate (standard 20% “S”, reduced, zero, exempt — e.g. dentistry exempt), inclusive/exclusive display, finance-gated config. Company not yet VAT-registered, so default off/0 but ready to switch on.',
+    detail: 'Configurable VAT: per-service class (standard 20% / reduced / zero / exempt — dentistry exempt by default), inclusive/exclusive, finance-gated config, off until VAT-registered.',
+    notes: ['Owner decisions captured: inclusive by default; off (No VAT) until registered; dentistry exempt, others standard 20%.', 'Foundation shipped (#384): lib/vat.ts + Finance → Financial controls VAT section + per-service vatClass. Display wiring (prices/receipts/reports) is the follow-up below.'],
+  },
+  {
+    title: 'Apply VAT to prices, receipts & reports when registered', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    value: 6, effort: 5,
+    detail: 'Now the VAT foundation exists (#384), surface it once vat_registered is on: show net/VAT/gross on the charge receipt + payment-action emails, a VAT line in reports, and VAT-aware price display. Uses lib/vat.vatBreakdown with each service’s effectiveVatClass.',
   },
   {
     title: 'In-dashboard bookkeeping + MTD (payroll, suppliers, bills, receipts) via Xero', type: 'TASK', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', needs: 'OWNER',
