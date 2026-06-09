@@ -180,6 +180,68 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     value: 4, effort: 6,
     detail: 'Public "coming soon"/changelog fed by items flagged public, and auto-drafted on-brand release announcements when a feature ships.',
   },
+
+  // ── Reliability ───────────────────────────────────────────────────────────
+  {
+    title: 'Keep booking flow + client site up during deploys', type: 'ERROR', urgency: 'P0', status: 'IN_PROGRESS', assignee: 'claude',
+    value: 9, effort: 4,
+    detail: 'Client-facing pages and the booking flow must not 500 during deploys / cold starts. Apply the same hardening as the admin fix: wrap client/booking server reads in withDbRetry with graceful fallbacks, ensure no build-time DB dependency can break prerender, and cache/ISR where safe so the hot path survives a connection blip.',
+    notes: ['Top priority — booking being unavailable during deploys costs bookings. Extends the connection_limit/Accelerate work (#306) to every client-facing read.'],
+  },
+
+  // ── Gift cards (Products → Gifts) ─────────────────────────────────────────
+  // Built on the existing gift-voucher purchase/Stripe/email + guest-checkout
+  // and Product(DRAFT)/Order systems — a personalisation + physical-fulfilment +
+  // IA layer, sequenced by value-to-effort.
+  {
+    title: 'Gifts: section + giftable-package drafts (admin foundation)', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    value: 7, effort: 4,
+    detail: 'A "Gifts" grouping under Products holding gift cards + giftable packages. Add the gift_card_physical_enabled setting (admin on/off). Generate curated giftable packages (from lib/packages.ts) as DRAFT products for the owner to review and publish.',
+  },
+  {
+    title: 'Gifts: interactive gift-card studio (customise + guest checkout)', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    value: 9, effort: 6,
+    detail: 'An extra-special, interactive page to design a gift card — theme/colour, recipient, message, amount, delivery date — with a live preview, emailed to the recipient. Anyone can buy (no account needed), reusing the existing guest checkout + Stripe.',
+  },
+  {
+    title: 'Gifts: render & email the customised card', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    value: 7, effort: 5,
+    detail: 'Persist the customisation and render the chosen design as a real image (sharp SVG→PNG) for a beautiful recipient email + a shareable “view your card” link. New tmplCustomGiftCard template.',
+  },
+  {
+    title: 'Gifts: physical gift-card upgrade + fulfilment (admin-toggleable)', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude',
+    value: 6, effort: 5,
+    detail: 'Optional paid upgrade to a physical card posted to the recipient — shown only when the admin enables it (gift_card_physical_enabled), with a configurable fee, shipping address capture, and an admin fulfilment view (print/queue/mark posted).',
+  },
+  {
+    title: 'Gifts: giftable packages purchasable as gifts', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude',
+    value: 6, effort: 5,
+    detail: 'Let an approved giftable package be bought as a gift (earmarked voucher / package gift), shown in the Gifts section, guest checkout, with the same customised-card experience.',
+  },
+  {
+    title: 'Gifts: recipient experience (claim, scheduled delivery, share)', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude',
+    value: 5, effort: 4,
+    detail: 'Polish the recipient side: scheduled delivery, claim-to-account, balance view, and a shareable card page — end to end.',
+  },
+
+  // ── Staff notifications & secured finance (decisions captured) ─────────────
+  {
+    title: 'In-app notification centre + easy idea submission with feedback', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    value: 8, effort: 5,
+    detail: 'A StaffNotification model + bell in the admin shell so all users see tasks/actions to complete; notify on assignment/comment. Make it effortless to add an idea to the board, and notify the submitter when it gets feedback or a status change.',
+  },
+  {
+    title: 'Staff lifecycle emails (re-engagement + weekly digest + more)', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    value: 6, effort: 5,
+    detail: 'Email staff about work assigned to them if idle ≥8h; a weekly Monday work-summary digest (on by default), pointing admins to secured reports. Plus other staff emails: task assigned, comment/mention reply, time-off decision, low-stock to the responsible person, day-close reminder, security alerts.',
+    notes: ['Decisions captured: re-engagement threshold 8h; weekly Monday digest, on by default (each staff can opt out).'],
+  },
+  {
+    title: 'Financial data unlock: passkey + 6-digit PIN', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    value: 8, effort: 7,
+    detail: 'Gate financial reports / cashflow / finance KPIs behind a second factor: a passkey (Face ID / Touch ID / Windows Hello via the existing WebAuthn) with a 6-digit PIN fallback. Add a "finance" step-up purpose + short-lived unlock.',
+    notes: ['Decision captured: passkey + 6-digit PIN fallback (reuses existing WebAuthn/TOTP infra + step-up unlock pattern).'],
+  },
   {
     title: 'Verify mail.kclinics.co.uk in Resend (sending + inbound)', type: 'TASK', urgency: 'P1', status: 'BLOCKED',
     value: 7, effort: 1, needs: 'OWNER',
