@@ -551,6 +551,10 @@ model Booking {
   refundedAt             DateTime?
   refundReason           String?
 
+  // Xero accounting: InvoiceID of the ACCREC invoice raised on charge.
+  // Stored so credit notes on refunds can be allocated against the right invoice.
+  xeroInvoiceId          String?
+
   // Cancellation.
   cancelledAt   DateTime?
   cancelReason  String?

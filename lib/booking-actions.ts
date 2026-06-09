@@ -47,10 +47,26 @@ export async function chargeBooking(
     });
 
     if (pi.status === 'succeeded') {
+      const chargedAt = new Date();
       await db.booking.update({
         where: { id: booking.id },
-        data: { chargePaymentIntentId: pi.id, chargedPence: amountPence, chargedAt: new Date() },
+        data: { chargePaymentIntentId: pi.id, chargedPence: amountPence, chargedAt },
       });
+      // Push sale to Xero (fire-and-forget — never blocks the charge response).
+      import('@/lib/xero').then(async ({ pushSaleToXero }) => {
+        const xero = await pushSaleToXero({
+          bookingId: booking.id,
+          clientEmail: booking.client.email,
+          clientName: `${booking.client.firstName} ${booking.client.lastName}`,
+          treatmentTitle: booking.treatmentTitle,
+          amountPence,
+          chargedAt,
+        });
+        if (xero.invoiceId) {
+          await db.booking.update({ where: { id: booking.id }, data: { xeroInvoiceId: xero.invoiceId } }).catch(() => {});
+        }
+        if (!xero.ok) console.error('[xero] pushSaleToXero failed:', xero.error);
+      }).catch(() => {});
       await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment receipt', status: 'SENT' } });
       // VAT breakdown on the receipt once the clinic is VAT-registered (dormant otherwise).
       let vat: { netPence: number; vatPence: number; ratePct: number } | null = null;
@@ -139,6 +155,19 @@ export async function refundBooking(
     where: { id: booking.id },
     data: { refundedPence: totalRefunded, refundedAt: new Date(), refundReason: opts.reason?.slice(0, 500) || booking.refundReason || null },
   });
+  // Push credit note to Xero (fire-and-forget).
+  if (booking.xeroInvoiceId) {
+    import('@/lib/xero').then(async ({ pushRefundToXero }) => {
+      const xero = await pushRefundToXero({
+        xeroInvoiceId: booking.xeroInvoiceId!,
+        clientName: `${booking.client.firstName} ${booking.client.lastName}`,
+        treatmentTitle: booking.treatmentTitle,
+        amountPence: amount,
+        reason: opts.reason,
+      });
+      if (!xero.ok) console.error('[xero] pushRefundToXero failed:', xero.error);
+    }).catch(() => {});
+  }
 
   // Reverse loyalty points once the booking is fully refunded (best-effort).
   if (fully) {
@@ -192,6 +221,22 @@ export async function finalizeBookingCharge(
   try { const { awardClientSpend } = await import('./client-loyalty'); await awardClientSpend(bookingId); } catch (e) { console.error('[charge] loyalty failed:', (e as Error)?.message); }
   try { const { sendPurchase } = await import('./conversions'); await sendPurchase({ bookingId, valuePence: amountReceivedPence, clientId: booking.clientId, email: booking.client.email, campaign: booking.attribCampaign }); } catch (e) { console.error('[charge] conversion failed:', (e as Error)?.message); }
   try { await logAudit({ action: 'PAYMENT_CHARGED', actor: 'system', summary: `Charge completed (£${(amountReceivedPence / 100).toFixed(2)})`, bookingId, clientId: booking.clientId }); } catch { /* non-fatal */ }
+  // Push sale to Xero (fire-and-forget).
+  import('@/lib/xero').then(async ({ pushSaleToXero }) => {
+    const chargedAt = new Date();
+    const xero = await pushSaleToXero({
+      bookingId,
+      clientEmail: booking.client.email,
+      clientName: `${booking.client.firstName} ${booking.client.lastName}`,
+      treatmentTitle: booking.treatmentTitle,
+      amountPence: amountReceivedPence,
+      chargedAt,
+    });
+    if (xero.invoiceId) {
+      await db.booking.update({ where: { id: bookingId }, data: { xeroInvoiceId: xero.invoiceId } }).catch(() => {});
+    }
+    if (!xero.ok) console.error('[xero] finalizeBookingCharge pushSaleToXero failed:', xero.error);
+  }).catch(() => {});
   return true;
 }
 

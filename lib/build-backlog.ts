@@ -385,12 +385,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'A guided, best-in-class admin flow for taking bookings over the phone: any staff user finds an existing client (or creates a new one with email + phone for reminders), picks treatment + time, holds the slot, and the client is emailed a secure link to save their card and confirm — never reading card details over the phone (PCI-safe). A read-out T&C/confirmation dialogue script for staff, and if a card is already on file, a confirm-on-the-call path. Consent forms continue to go via the existing secure links.',
   },
   {
-    title: 'Push sales + refunds to Xero (invoice on charge, credit note on refund)', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    title: 'Push sales + refunds to Xero (invoice on charge, credit note on refund)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
     value: 6, effort: 6,
     detail: 'Today Xero is read-only (cash position + supplier bills). To make refunds a true accounting event we need to push the sales side too: on a booking charge, create an ACCREC invoice + payment in Xero; on a refund, raise a credit note / refund against it. Refunds already net out of admin revenue (#380) and fire a GA4 refund event — this closes the loop into the books.',
     notes: [
-      'Needs owner input on Xero account codes + tax treatment (which revenue account, VAT rate) before posting, so the books stay clean.',
-      'Build charge→invoice first (the counterpart that doesn’t exist yet), then refund→credit-note; idempotent + audited like the rest.',
+      'Shipped: xeroPost() + pushSaleToXero() + pushRefundToXero() in lib/xero.ts. Scope upgraded from accounting.transactions.read to accounting.transactions. xeroInvoiceId added to Booking model. chargeBooking + finalizeBookingCharge fire-and-forget Xero sale; refundBooking fires credit-note when xeroInvoiceId is present.',
+      'Owner action required: set XERO_REVENUE_ACCOUNT_CODE and XERO_BANK_ACCOUNT_CODE in Vercel env vars to match chart of accounts (defaults: 200 revenue, 090 bank). Existing Xero connections must reconnect to grant the new write scope. Switch TaxType to OUTPUT2 when VAT-registered.',
     ],
   },
   {

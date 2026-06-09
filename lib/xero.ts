@@ -5,9 +5,9 @@ import { saveConnection, getConnection, validAccessToken, type Tokens } from '@/
 //   XERO_CLIENT_ID, XERO_CLIENT_SECRET, [XERO_REDIRECT_URI]
 
 const PROVIDER = 'xero';
-// Adds contacts + transactions (read) so we can import supplier contacts and
-// list their bills. Existing connections must reconnect to grant the new scopes.
-const SCOPE = 'openid profile email accounting.reports.read accounting.settings.read accounting.contacts.read accounting.transactions.read offline_access';
+// accounting.transactions gives full read+write on invoices, payments, credit notes.
+// Existing connections must reconnect after this scope change.
+const SCOPE = 'openid profile email accounting.reports.read accounting.settings.read accounting.contacts.read accounting.transactions offline_access';
 
 export function xeroConfigured(): boolean {
   return Boolean(process.env.XERO_CLIENT_ID && process.env.XERO_CLIENT_SECRET);
@@ -56,8 +56,10 @@ export async function exchangeXeroCode(code: string): Promise<boolean> {
 
 const refresh = (refreshToken: string) => tokenRequest({ grant_type: 'refresh_token', refresh_token: refreshToken });
 
+type XeroResponse = { ok: boolean; status?: number; data?: unknown; error?: string };
+
 // Authenticated GET against the Xero Accounting API for the connected tenant.
-async function xeroGet(path: string): Promise<{ ok: boolean; status?: number; data?: unknown; error?: string }> {
+async function xeroGet(path: string): Promise<XeroResponse> {
   const conn = await getConnection(PROVIDER);
   if (!conn) return { ok: false, error: 'Xero is not connected.' };
   const token = await validAccessToken(PROVIDER, refresh);
@@ -72,6 +74,138 @@ async function xeroGet(path: string): Promise<{ ok: boolean; status?: number; da
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }
+}
+
+async function xeroPost(path: string, body: unknown): Promise<XeroResponse> {
+  const conn = await getConnection(PROVIDER);
+  if (!conn) return { ok: false, error: 'Xero is not connected.' };
+  const token = await validAccessToken(PROVIDER, refresh);
+  if (!token || !conn.accountRef) return { ok: false, error: 'Xero is not connected.' };
+  try {
+    const res = await fetch(`https://api.xero.com/api.xro/2.0/${path}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Xero-tenant-id': conn.accountRef, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (res.status === 403) return { ok: false, status: 403, error: 'Reconnect Xero to grant transaction write access.' };
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      return { ok: false, status: res.status, error: `Xero responded ${res.status}: ${text.slice(0, 300)}` };
+    }
+    return { ok: true, data: await res.json() };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+export type XeroSaleParams = {
+  bookingId: string;
+  clientEmail: string | null;
+  clientName: string;
+  treatmentTitle: string;
+  amountPence: number;
+  chargedAt: Date;
+};
+
+/**
+ * Push a completed booking charge to Xero as an ACCREC invoice + payment.
+ * Uses env vars XERO_REVENUE_ACCOUNT_CODE (default "200") and
+ * XERO_BANK_ACCOUNT_CODE (default "090") — configure these to match your Xero
+ * chart of accounts once the integration is live.
+ * Returns the Xero InvoiceID so it can be stored on the booking for later credit notes.
+ */
+export async function pushSaleToXero(params: XeroSaleParams): Promise<{ ok: boolean; invoiceId?: string; error?: string }> {
+  if (!xeroConfigured()) return { ok: false, error: 'Xero not configured.' };
+  const revenueCode = process.env.XERO_REVENUE_ACCOUNT_CODE || '200';
+  const bankCode = process.env.XERO_BANK_ACCOUNT_CODE || '090';
+  const amount = +(params.amountPence / 100).toFixed(2);
+  const dateStr = params.chargedAt.toISOString().slice(0, 10);
+
+  const invoiceRes = await xeroPost('Invoices', {
+    Invoices: [{
+      Type: 'ACCREC',
+      Contact: { Name: params.clientName, ...(params.clientEmail ? { EmailAddress: params.clientEmail } : {}) },
+      Date: dateStr,
+      DueDate: dateStr,
+      Status: 'AUTHORISED',
+      Reference: params.bookingId.slice(0, 255),
+      LineItems: [{
+        Description: params.treatmentTitle,
+        Quantity: 1,
+        UnitAmount: amount,
+        AccountCode: revenueCode,
+        // TaxType: 'OUTPUT2' when VAT-registered — use NONE until then.
+        TaxType: 'NONE',
+      }],
+    }],
+  });
+  if (!invoiceRes.ok) return { ok: false, error: invoiceRes.error };
+  const invoiceId = (invoiceRes.data as { Invoices?: { InvoiceID?: string }[] }).Invoices?.[0]?.InvoiceID;
+  if (!invoiceId) return { ok: false, error: 'Xero did not return an InvoiceID.' };
+
+  const paymentRes = await xeroPost('Payments', {
+    Payments: [{
+      Invoice: { InvoiceID: invoiceId },
+      Account: { Code: bankCode },
+      Date: dateStr,
+      Amount: amount,
+    }],
+  });
+  if (!paymentRes.ok) {
+    // Invoice exists but payment failed — still return invoiceId so it gets stored.
+    return { ok: false, invoiceId, error: `Invoice created (${invoiceId}) but payment failed: ${paymentRes.error}` };
+  }
+  return { ok: true, invoiceId };
+}
+
+/**
+ * Push a refund to Xero as an ACCRECCREDIT credit note allocated against the
+ * original invoice. Requires the xeroInvoiceId stored when the sale was pushed.
+ */
+export async function pushRefundToXero(params: {
+  xeroInvoiceId: string;
+  clientName: string;
+  treatmentTitle: string;
+  amountPence: number;
+  reason?: string;
+}): Promise<{ ok: boolean; creditNoteId?: string; error?: string }> {
+  if (!xeroConfigured()) return { ok: false, error: 'Xero not configured.' };
+  const revenueCode = process.env.XERO_REVENUE_ACCOUNT_CODE || '200';
+  const amount = +(params.amountPence / 100).toFixed(2);
+  const dateStr = new Date().toISOString().slice(0, 10);
+
+  const cnRes = await xeroPost('CreditNotes', {
+    CreditNotes: [{
+      Type: 'ACCRECCREDIT',
+      Contact: { Name: params.clientName },
+      Date: dateStr,
+      Status: 'AUTHORISED',
+      Reference: (params.reason || 'Refund').slice(0, 255),
+      LineItems: [{
+        Description: `Refund — ${params.treatmentTitle}`,
+        Quantity: 1,
+        UnitAmount: amount,
+        AccountCode: revenueCode,
+        TaxType: 'NONE',
+      }],
+    }],
+  });
+  if (!cnRes.ok) return { ok: false, error: cnRes.error };
+  const creditNoteId = (cnRes.data as { CreditNotes?: { CreditNoteID?: string }[] }).CreditNotes?.[0]?.CreditNoteID;
+  if (!creditNoteId) return { ok: false, error: 'Xero did not return a CreditNoteID.' };
+
+  // Allocate the credit note against the original invoice.
+  const allocRes = await xeroPost(`Invoices/${params.xeroInvoiceId}/Allocations`, {
+    Allocations: [{
+      CreditNote: { CreditNoteID: creditNoteId },
+      Amount: amount,
+      Date: dateStr,
+    }],
+  });
+  if (!allocRes.ok) {
+    return { ok: false, creditNoteId, error: `Credit note created (${creditNoteId}) but allocation failed: ${allocRes.error}` };
+  }
+  return { ok: true, creditNoteId };
 }
 
 type XeroPhone = { PhoneType?: string; PhoneNumber?: string; PhoneAreaCode?: string; PhoneCountryCode?: string };
