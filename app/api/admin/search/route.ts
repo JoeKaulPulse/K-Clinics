@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
+import { decClinical } from '@/lib/clinical-crypto';
 
 export const runtime = 'nodejs';
 
@@ -35,8 +36,10 @@ export async function GET(req: Request) {
       (await db.booking.findMany({ where: { OR: [{ treatmentTitle: ci }, { client: nameOr }, { client: { email: ci } }] }, orderBy: { startAt: 'desc' }, take: 12, select: { id: true, treatmentTitle: true, startAt: true, status: true, client: { select: { firstName: true, lastName: true } } } }))
         .map((b) => ({ id: b.id, title: b.treatmentTitle, sub: `${fullName(b.client.firstName, b.client.lastName)} · ${b.startAt.toLocaleDateString('en-GB')} · ${b.status.toLowerCase()}`, href: `/admin/bookings/${b.id}` }))),
     safe(can('consultations.view'), async () =>
-      (await db.consultation.findMany({ where: { OR: [{ client: nameOr }, { concerns: ci }, { message: ci }] }, orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, concerns: true, client: { select: { firstName: true, lastName: true } } } }))
-        .map((c) => ({ id: c.id, title: fullName(c.client.firstName, c.client.lastName, 'Consultation'), sub: snip(c.concerns), href: `/admin/consultations` }))),
+      // NB: concerns/message are encrypted at rest, so they can't be matched by a
+      // SQL `contains` filter — consultations are searched by client name only.
+      (await db.consultation.findMany({ where: { client: nameOr }, orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, concerns: true, client: { select: { firstName: true, lastName: true } } } }))
+        .map((c) => ({ id: c.id, title: fullName(c.client.firstName, c.client.lastName, 'Consultation'), sub: snip(decClinical(c.concerns)), href: `/admin/consultations` }))),
     safe(can('reviews.manage'), async () =>
       (await db.review.findMany({ where: { OR: [{ title: ci }, { body: ci }, { client: nameOr }] }, orderBy: { updatedAt: 'desc' }, take: 5, select: { id: true, rating: true, body: true, client: { select: { firstName: true, lastName: true } } } }))
         .map((r) => ({ id: r.id, title: `${fullName(r.client.firstName, r.client.lastName, 'Review')}${r.rating ? ` · ${r.rating}★` : ''}`, sub: snip(r.body), href: `/admin/reviews` }))),

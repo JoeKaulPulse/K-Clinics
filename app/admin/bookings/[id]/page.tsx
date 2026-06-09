@@ -75,6 +75,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const heldResources = await db.resource.findMany({ where: { bookings: { some: { id } } }, orderBy: { kind: 'asc' }, select: { name: true, kind: true, floor: true } });
   // Hospitality + aftercare + recommended next session for staff.
   const visitPrefs = await db.booking.findUnique({ where: { id }, select: { refreshments: true, allergyNote: true, aftercareAckAt: true, treatmentSlug: true, startAt: true, clientId: true } });
+  if (visitPrefs?.allergyNote) { const { decClinical } = await import('@/lib/clinical-crypto'); visitPrefs.allergyNote = decClinical(visitPrefs.allergyNote); }
   const { refreshmentLabel } = await import('@/lib/hospitality');
   let nextRec: string | null = null;
   if (visitPrefs) {
