@@ -202,15 +202,18 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
 function ActivityTicker({ activity }: { activity: Activity | null }) {
   if (!activity || (activity.events.length === 0 && activity.inProgress.length === 0)) return null;
   const icon = (k: string) => (k === 'shipped' || k === 'closed' ? '✅' : k === 'status' ? '→' : k === 'comment' ? '💬' : k === 'github' ? '🔗' : k === 'subtask' ? '☑' : '•');
+  const clip = (s: string) => (s.length > 110 ? `${s.slice(0, 110)}…` : s);
   const chips = [
     ...activity.inProgress.map((p) => `🛠 Working on: ${p.title}`),
-    ...activity.events.map((e) => `${icon(e.kind)} ${e.title}${e.body ? ` — ${e.body}` : ''}`),
+    ...activity.events.map((e) => clip(`${icon(e.kind)} ${e.title}${e.body ? ` — ${e.body}` : ''}`)),
   ];
   if (!chips.length) return null;
   const doubled = [...chips, ...chips]; // seamless loop
+  // The moving row is absolutely positioned so its max-content width can never
+  // contribute to layout width (otherwise it blows out the page horizontally).
   return (
-    <div className="mb-4 overflow-hidden rounded-full border border-[var(--color-line)] bg-[var(--color-ink)] py-2 text-xs text-[var(--color-porcelain)]">
-      <div className="flex w-max gap-8 whitespace-nowrap pl-4" style={{ animation: 'kcTicker 60s linear infinite' }}>
+    <div className="relative mb-4 h-9 w-full min-w-0 overflow-hidden rounded-full border border-[var(--color-line)] bg-[var(--color-ink)] text-xs text-[var(--color-porcelain)]">
+      <div className="absolute inset-y-0 left-0 flex items-center gap-8 whitespace-nowrap pl-4 will-change-transform" style={{ animation: 'kcTicker 60s linear infinite' }}>
         {doubled.map((c, i) => <span key={i} className="opacity-90">{c}</span>)}
       </div>
     </div>
@@ -229,7 +232,7 @@ function Card({ i, onOpen }: { i: Item; onOpen: (i: Item) => void }) {
         <span className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone-soft)]">{i.type}</span>
         {r != null && <span className="ml-auto text-[0.6rem] text-[var(--color-stone-soft)]">V:E {r}</span>}
       </div>
-      <p className="text-sm font-medium leading-snug">{i.title}</p>
+      <p className="break-words text-sm font-medium leading-snug">{i.title}</p>
       <p className="mt-1 flex flex-wrap items-center gap-2 text-[0.65rem] text-[var(--color-stone)]">
         <span>{i.assignee === 'claude' ? '◆ Claude' : i.assignee.split('@')[0]}</span>
         {i.dependencies.some((d) => !['SHIPPED', 'CLOSED'].includes(d.dependsOn.status)) && <span title="Blocked by dependencies">· 🔒 {i.dependencies.filter((d) => !['SHIPPED', 'CLOSED'].includes(d.dependsOn.status)).length}</span>}
@@ -247,7 +250,7 @@ function KanbanView({ columns, items, counts, onOpen }: { columns: { key: string
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
       {columns.map((col) => (
-        <div key={col.key} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
+        <div key={col.key} className="min-w-0 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
           <p className="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">{col.label}<span className="text-[var(--color-stone-soft)]">{counts(col.key)}</span></p>
           <div className="space-y-2">
             {items.filter((i) => i.status === col.key).map((i) => <Card key={i.id} i={i} onOpen={onOpen} />)}
