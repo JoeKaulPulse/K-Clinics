@@ -50,15 +50,20 @@ export const PROVIDERS: ProviderDef[] = [
     blurb: 'Facebook & Instagram ad performance, audiences and page insights.',
     authUrl: 'https://www.facebook.com/v19.0/dialog/oauth',
     tokenUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
-    scopes: ['ads_read', 'pages_show_list', 'pages_read_engagement', 'instagram_basic', 'business_management'],
+    // Ads + Pages only. `instagram_basic` is intentionally omitted — it's only
+    // grantable once the app has the Instagram Graph product configured, and
+    // requesting an unavailable scope makes the whole OAuth dialog fail for app
+    // admins ("Invalid Scopes: instagram_basic"). Instagram insights can be added
+    // back later once that product is set up + reviewed.
+    scopes: ['ads_read', 'business_management', 'pages_show_list', 'pages_read_engagement'],
     scopeSeparator: ',',
     envClientId: 'META_CLIENT_ID', envClientSecret: 'META_CLIENT_SECRET',
     docsUrl: 'https://developers.facebook.com/apps',
     setupSteps: [
       'Create an app at developers.facebook.com (type: Business).',
-      'Add the Facebook Login product and the Marketing API.',
-      `Set this OAuth redirect URI: ${REDIRECT_URI}?provider=meta`,
-      'Add META_CLIENT_ID and META_CLIENT_SECRET to the environment, then click Connect. (Ad scopes require Meta app review.)',
+      'Add the Facebook Login for Business product + the Marketing API.',
+      `In Facebook Login → Settings, add this exact OAuth redirect URI: ${REDIRECT_URI}?provider=meta`,
+      'Add META_CLIENT_ID and META_CLIENT_SECRET to the environment, then click Connect. Ads/Pages data for accounts beyond the app’s admins/testers needs Meta App Review; Instagram insights need the Instagram product added first.',
     ],
   },
   {
