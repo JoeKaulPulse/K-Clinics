@@ -414,10 +414,16 @@ export async function updateBuildItem(id: string, patch: Patch, actor: string) {
   return updated;
 }
 
+function mentionTokens(body: string): string[] {
+  return Array.from(body.matchAll(/(?:^|\s)@([\w.+-]+@[\w.-]+|[\w.-]{2,})/g)).map((m) => m[1].toLowerCase());
+}
+/** Was Claude @-mentioned? (so a comment can nudge Claude to carry on). */
+function mentionsClaude(body: string): boolean { return mentionTokens(body).includes('claude'); }
+
 /** Resolve @mentions in a comment to active staff emails. Matches @email or
  *  @local-part or @name-token (case-insensitive) against the live roster. */
 async function resolveMentions(body: string): Promise<string[]> {
-  const tokens = Array.from(body.matchAll(/@([\w.+-]+@[\w.-]+|[\w.-]{2,})/g)).map((m) => m[1].toLowerCase());
+  const tokens = mentionTokens(body);
   if (!tokens.length) return [];
   const users = await db.adminUser.findMany({ where: { active: true }, select: { email: true, name: true } });
   const hits = new Set<string>();
@@ -435,7 +441,7 @@ async function resolveMentions(body: string): Promise<string[]> {
 export async function addBuildComment(id: string, body: string, actor: string) {
   await db.buildEvent.create({ data: { itemId: id, kind: 'comment', body: body.slice(0, 2000), actor } });
   await db.buildItem.update({ where: { id }, data: { updatedAt: new Date() } });
-  const item = await db.buildItem.findUnique({ where: { id }, include: { events: { orderBy: { createdAt: 'desc' }, take: 30 }, subtasks: { orderBy: { order: 'asc' } } } });
+  const item = await db.buildItem.findUnique({ where: { id }, include: ITEM_INCLUDE });
   // Feedback loop: ping the reporter and the assignee (whoever didn't write it),
   // plus anyone @-mentioned in the comment.
   if (item) {
@@ -450,6 +456,9 @@ export async function addBuildComment(id: string, body: string, actor: string) {
     for (const r of recipients) {
       await notifyStaff(r, { kind, title: `New comment on “${item.title}”`, body: snippet, href: '/admin/build' }, actor);
     }
+    // @claude nudges Claude to carry on with this item (and its dependents) —
+    // recorded to the DB work queue, with an optional debounced GitHub wake.
+    if (mentionsClaude(body)) await triggerClaude(`You were @-mentioned on “${item.title}”: "${snippet}"`, id).catch(() => {});
   }
   return item;
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { MentionInput } from '@/components/admin/MentionInput';
 
 type Ev = { id: string; kind: string; body: string | null; actor: string; createdAt: string };
 type Subtask = { id: string; title: string; status: string; assignee: string; ownerInput: boolean; order: number; completedAt: string | null; completedBy: string | null };
@@ -581,10 +582,11 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
 function CommentBox({ id, onDone }: { id: string; onDone: () => void }) {
   const [v, setV] = useState('');
   const [busy, setBusy] = useState(false);
+  async function send() { if (!v.trim() || busy) return; setBusy(true); const r = await post({ op: 'comment', id, body: v }); setBusy(false); if (r.ok) { setV(''); onDone(); } }
   return (
-    <div className="mt-3 flex gap-2">
-      <input value={v} onChange={(e) => setV(e.target.value)} placeholder="Add a note… (@name to mention)" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
-      <button disabled={busy || !v.trim()} onClick={async () => { setBusy(true); const r = await post({ op: 'comment', id, body: v }); setBusy(false); if (r.ok) { setV(''); onDone(); } }} className="rounded-[var(--radius-sm)] bg-[var(--color-ink)] px-4 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">Note</button>
+    <div className="mt-3 flex items-start gap-2">
+      <MentionInput value={v} onChange={setV} onSubmit={send} placeholder="Add a note… (@ to mention; @claude to nudge me)" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+      <button disabled={busy || !v.trim()} onClick={send} className="rounded-[var(--radius-sm)] bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">Note</button>
     </div>
   );
 }
