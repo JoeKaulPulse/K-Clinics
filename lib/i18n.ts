@@ -96,6 +96,7 @@ export const DICT: Record<string, Entry> = {
   'nav.security': { en: 'Security centre', uk: 'Безпека' },
   'nav.golive': { en: 'Go live', uk: 'Запуск' },
   'nav.status': { en: 'Platform status', uk: 'Статус платформи' },
+  'nav.financeControls': { en: 'Financial controls', uk: 'Фінансовий контроль' },
   'nav.promotions': { en: 'Promotions', uk: 'Промокоди' },
   'nav.chat': { en: 'Live chat', uk: 'Онлайн-чат' },
   'nav.calls': { en: 'Calls', uk: 'Дзвінки' },
