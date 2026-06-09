@@ -14,6 +14,8 @@ export function ProductsList({ rows }: { rows: ProductRow[] }) {
   const router = useRouter();
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [giftBusy, setGiftBusy] = useState(false);
+  const [giftMsg, setGiftMsg] = useState('');
 
   async function create() {
     if (!name.trim()) return;
@@ -24,6 +26,14 @@ export function ProductsList({ rows }: { rows: ProductRow[] }) {
     if (j.ok && j.id) router.push(`/admin/products/${j.id}`); else router.refresh();
   }
 
+  async function generateGiftPackages() {
+    setGiftBusy(true); setGiftMsg('');
+    const j = await fetch('/api/admin/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'giftPackages' }) }).then((r) => r.json()).catch(() => ({ ok: false }));
+    setGiftBusy(false);
+    if (j.ok) { setGiftMsg(j.created ? `Created ${j.created} draft${j.created === 1 ? '' : 's'} — review & publish below.` : 'All giftable package drafts already exist.'); router.refresh(); }
+    else setGiftMsg('Could not generate — please retry.');
+  }
+
   return (
     <div className="space-y-6">
       <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
@@ -31,6 +41,17 @@ export function ProductsList({ rows }: { rows: ProductRow[] }) {
         <div className="flex flex-wrap items-end gap-2">
           <label className="text-xs text-[var(--color-stone)]">Name<br /><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Vitamin C Serum" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm w-64" /></label>
           <button onClick={create} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Creating…' : 'Create & edit'}</button>
+        </div>
+      </section>
+
+      <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
+        <h2 className="mb-1 font-[family-name:var(--font-display)] text-lg">🎁 Gifts</h2>
+        <p className="mb-3 max-w-2xl text-sm text-[var(--color-stone)]">
+          Gift cards and giftable packages live here. Generate your curated treatment packages as <strong>draft</strong> gift products — nothing goes live until you set a gift price and publish each one.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <button onClick={generateGiftPackages} disabled={giftBusy} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-bone)] disabled:opacity-50">{giftBusy ? 'Generating…' : 'Generate giftable package drafts'}</button>
+          {giftMsg && <span className="text-sm text-[var(--color-stone)]">{giftMsg}</span>}
         </div>
       </section>
 

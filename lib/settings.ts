@@ -21,7 +21,8 @@ export type SettingKey =
   | 'no_show_notice'             // email a warm rebooking note when an appointment is marked no-show
   | 'membership_renewal_nudge'   // email lapsing K Circle members to keep their tier
   | 'nps_survey'                 // send an NPS (0–10 recommend) survey after a completed visit
-  | 'post_course_checkin';       // email when a client completes a full treatment course
+  | 'post_course_checkin'        // email when a client completes a full treatment course
+  | 'gift_card_physical_enabled'; // offer a paid physical gift-card posted to the recipient
 
 export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   allow_clinician_choice: false,
@@ -41,6 +42,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   membership_renewal_nudge: false,
   nps_survey: false,
   post_course_checkin: false,
+  gift_card_physical_enabled: false,
 };
 
 export const SETTING_META: Record<SettingKey, { label: string; description: string }> = {
@@ -111,6 +113,10 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   post_course_checkin: {
     label: 'Post-course check-in',
     description: 'When a client completes a full course of a course-based treatment (e.g. laser hair removal), email a “course complete — here’s how to maintain your results” note with a maintenance-booking link. Sent once per course. Off by default.',
+  },
+  gift_card_physical_enabled: {
+    label: 'Offer a physical gift card (paid upgrade)',
+    description: 'Let buyers pay a small extra fee to have a beautifully printed gift card posted to the recipient, in addition to the emailed card. Off by default — turn on only when you’re set up to print and post cards.',
   },
 };
 

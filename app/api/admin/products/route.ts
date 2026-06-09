@@ -71,6 +71,14 @@ export async function POST(req: Request) {
       revalidatePath('/admin/products');
       return ok();
     }
+    case 'giftPackages': {
+      // Generate the curated treatment packages as DRAFT gift products to review.
+      const { seedGiftablePackageDrafts } = await import('@/lib/gift-packages');
+      const r = await seedGiftablePackageDrafts(session.email);
+      await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: `Generated ${r.created} giftable package draft(s)` });
+      revalidatePath('/admin/products');
+      return ok(r);
+    }
     default:
       return bad('Unknown operation');
   }
