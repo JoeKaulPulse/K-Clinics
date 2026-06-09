@@ -8,8 +8,11 @@ import { giftCardTheme } from './gift-card-themes';
 const apiKey = process.env.RESEND_API_KEY;
 const resend = apiKey ? new Resend(apiKey) : null;
 
-const FROM = process.env.EMAIL_FROM || `KClinics <hello@kclinics.co.uk>`;
-const REPLY_TO = process.env.EMAIL_REPLY_TO || site.email;
+// Resend sends from the verified `mail.<domain>` subdomain; replies (and reply
+// tracking) route to `reply.mail.<domain>` via Resend Inbound. Env overrides win.
+const MAIL_HOST = (() => { try { return new URL(site.url).hostname.replace(/^www\./, ''); } catch { return 'kclinics.co.uk'; } })();
+const FROM = process.env.EMAIL_FROM || `KClinics <hello@mail.${MAIL_HOST}>`;
+const REPLY_TO = process.env.EMAIL_REPLY_TO || `KClinics <replies@reply.mail.${MAIL_HOST}>`;
 
 export type SendResult = { ok: boolean; id?: string; error?: string };
 
