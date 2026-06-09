@@ -95,11 +95,14 @@ export const DEFAULT_TEMPLATES: { key: string; title: string; category: string; 
     acknowledgements: ['I have read and understood the information above', 'My medical/dental history is accurate and complete', 'I consent to proceed with this treatment'],
   },
   {
-    key: 'photo_opt_out', title: 'Photography & video consent', category: 'laser', version: 2,
-    // Audited Photo & Video Consent wording. The platform's before-photo system
-    // records the client's choice; the audited options are reproduced here.
-    bodyMd: `## Photo & video consent\n\nPlease confirm your choice regarding photography and video. A before photograph is standard practice for laser treatments — it documents the treatment area and supports safe, correct treatment and any future clinical or insurance review.\n\n- I consent to photographs and/or videos being taken before and after the procedure for medical documentation purposes.\n- I consent to the use of my photographs and/or videos for marketing and promotional purposes (website, social media, educational materials).\n- I do NOT consent to any photography or videography.`,
-    acknowledgements: ['I have read and understood the photography & video options above', 'The selection I have made with the clinic reflects my wishes'],
+    key: 'photo_opt_out', title: 'Photography & video — opt-out', category: 'laser', version: 3,
+    // This is specifically the OPT-OUT (decline) record: a client who does not
+    // want the before-photo signs this to decline it. The copy and ticks are
+    // therefore framed around declining — not the general opt-in photo consent.
+    // (Clients who DO want photos have them captured in-app at the time, which
+    // records their consent then.)
+    bodyMd: `## Declining photography & video\n\nA before photograph is standard practice for laser treatments — it documents the treatment area and supports safe, correct treatment and any future clinical or insurance review. The clinic has recommended one for your treatment.\n\nBy signing below, you are choosing **not** to have it taken:\n\n- I have been offered a before-and-after photograph for medical documentation and the reasons it is recommended have been explained to me.\n- I am declining photography and video: I do **not** consent to any photographs or videos being taken of me before, during or after my treatment.\n- I understand that without a before photograph there may be no visual record of the treatment area, which can limit future clinical or insurance review, and I accept this.`,
+    acknowledgements: ['I have read and understood the above, including why a before photograph is recommended', 'I am choosing NOT to have any photography or video taken, and this decision reflects my wishes'],
   },
 ];
 
