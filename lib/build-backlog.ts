@@ -356,6 +356,13 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
 ];
 
-// Bumps whenever the backlog set changes, so the lazy auto-seed re-runs after a
-// deploy and picks up newly-added items (the seed itself is deduped by title).
-export const BACKLOG_VERSION = `v1:${BUILD_BACKLOG.length}`;
+// A content hash over every item's title + status + PR, so ANY change (a new
+// task, a status flip to SHIPPED, a PR link) bumps the version and the board
+// re-syncs — not just a change in item count (the old `length`-based key could
+// miss status/content edits, leaving the board stale).
+export const BACKLOG_VERSION = (() => {
+  const sig = BUILD_BACKLOG.map((b) => `${b.title}|${b.status}|${b.pr ?? ''}`).join('\n');
+  let h = 5381;
+  for (let i = 0; i < sig.length; i++) h = ((h << 5) + h + sig.charCodeAt(i)) >>> 0;
+  return `v2:${BUILD_BACKLOG.length}:${h.toString(36)}`;
+})();

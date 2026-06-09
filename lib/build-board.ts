@@ -39,30 +39,69 @@ export async function seedBacklog(): Promise<{ created: number; skipped: number 
   return { created, skipped };
 }
 
+async function stampSeeded(version: string) {
+  const now = new Date().toISOString();
+  await db.setting.upsert({ where: { key: 'backlog_seeded_version' }, update: { value: version, updatedBy: 'system' }, create: { key: 'backlog_seeded_version', value: version, updatedBy: 'system' } });
+  await db.setting.upsert({ where: { key: 'backlog_seeded_at' }, update: { value: now, updatedBy: 'system' }, create: { key: 'backlog_seeded_at', value: now, updatedBy: 'system' } });
+}
+
 let backlogSeedChecked = false;
-/** Auto-import the backlog once per deploy, idempotently. Runs the first time the
- *  board is opened after a deploy (version-gated by a stored marker), so it adds
- *  no DB writes during the fragile deploy window. Also (re)assigns any
- *  input-required task to the best-placed real user. Safe to call on every load. */
+/** Keep the board in lock-step with the canonical backlog. Self-heals: re-seeds
+ *  when the content-hash version changed OR the live item count is short of the
+ *  backlog (so missing items can never silently persist), and ALWAYS reconciles
+ *  statuses + owner assignments. Runs once per warm process on board load. */
 export async function ensureBacklogSeeded(): Promise<void> {
   if (backlogSeedChecked) return; // already handled in this warm process
   backlogSeedChecked = true;
   try {
-    const { BACKLOG_VERSION } = await import('@/lib/build-backlog');
-    const row = await db.setting.findUnique({ where: { key: 'backlog_seeded_version' } });
-    if (row?.value !== BACKLOG_VERSION) {
+    const { BACKLOG_VERSION, BUILD_BACKLOG } = await import('@/lib/build-backlog');
+    const [row, dbCount] = await Promise.all([
+      db.setting.findUnique({ where: { key: 'backlog_seeded_version' } }),
+      db.buildItem.count(),
+    ]);
+    if (row?.value !== BACKLOG_VERSION || dbCount < BUILD_BACKLOG.length) {
       await seedBacklog();
-      await db.setting.upsert({
-        where: { key: 'backlog_seeded_version' },
-        update: { value: BACKLOG_VERSION, updatedBy: 'system' },
-        create: { key: 'backlog_seeded_version', value: BACKLOG_VERSION, updatedBy: 'system' },
-      });
+      await stampSeeded(BACKLOG_VERSION);
     }
     await assignOwnerInputTasks(); // idempotent; ensures blocked tasks have an owner + instructions
     await reconcileBacklog(); // advance shipped items so the board doesn't drift from the backlog
   } catch (e) {
     backlogSeedChecked = false; // transient failure — let a later request retry
     console.error('[build] auto-seed backlog failed', e);
+  }
+}
+
+/** Force a full sync now (the board's "Rebuild from backlog" button) — create
+ *  any missing items, reconcile statuses, reassign owner-input tasks, restamp. */
+export async function rebuildBacklog(): Promise<{ created: number; skipped: number; reconciled: number }> {
+  backlogSeedChecked = false;
+  const { BACKLOG_VERSION } = await import('@/lib/build-backlog');
+  const seed = await seedBacklog();
+  await assignOwnerInputTasks();
+  const rec = await reconcileBacklog();
+  await stampSeeded(BACKLOG_VERSION);
+  return { ...seed, reconciled: rec.updated };
+}
+
+/** What the board shows so the owner can SEE if it's current: the backlog
+ *  version it's seeded at, item counts, when it last synced, and the running
+ *  build commit (so a stale deploy is obvious at a glance). */
+export async function backlogSyncState() {
+  const { BACKLOG_VERSION, BUILD_BACKLOG } = await import('@/lib/build-backlog');
+  const commit = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'local';
+  try {
+    const [verRow, atRow, dbCount] = await Promise.all([
+      db.setting.findUnique({ where: { key: 'backlog_seeded_version' } }),
+      db.setting.findUnique({ where: { key: 'backlog_seeded_at' } }),
+      db.buildItem.count(),
+    ]);
+    return {
+      inSync: verRow?.value === BACKLOG_VERSION && dbCount >= BUILD_BACKLOG.length,
+      version: BACKLOG_VERSION, storedVersion: verRow?.value || null,
+      dbCount, backlogCount: BUILD_BACKLOG.length, lastSeededAt: atRow?.value || null, commit,
+    };
+  } catch {
+    return { inSync: false, version: BACKLOG_VERSION, storedVersion: null, dbCount: 0, backlogCount: BUILD_BACKLOG.length, lastSeededAt: null, commit };
   }
 }
 
