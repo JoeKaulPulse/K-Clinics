@@ -11,6 +11,46 @@ updates:
         dependency-type: "production"
       dev-deps:
         dependency-type: "development"
+    # Temporarily hold back the breaking MAJOR bumps that fail the build
+    # (Prisma 7 breaks `prisma generate`; Next 16 / Stripe SDK / zod 4 / jose 6
+    # are breaking API changes). These are handled deliberately via the
+    # "Dependency upgrades" backlog task — minor + patch updates still flow.
+    # Remove these ignores once that upgrade lands.
+    ignore:
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint-config-next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "prisma"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@prisma/client"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "stripe"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@stripe/stripe-js"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@stripe/react-stripe-js"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "zod"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "jose"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "bcryptjs"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/bcryptjs"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "motion"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "resend"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "dotenv"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "pdfkit"
+        update-types: ["version-update:semver-major"]
   # Keep the GitHub Actions used in CI patched too.
   - package-ecosystem: "github-actions"
     directory: "/"
