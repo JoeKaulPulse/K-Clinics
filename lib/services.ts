@@ -29,6 +29,7 @@ export type ServiceView = {
   treatmentSlug: string;
   name: string;
   category: string;
+  vatClass: string | null;
   active: boolean;
   status: ServiceStatus;
   variants: VariantView[];
@@ -67,7 +68,7 @@ export async function listServices(includeInactive = false): Promise<ServiceView
     include: { variants: { where: includeInactive ? {} : { active: true }, orderBy: { order: 'asc' } } },
   });
   return rows.map((s) => ({
-    id: s.id, slug: s.slug, treatmentSlug: s.treatmentSlug, name: s.name, category: s.category, active: s.active, status: toServiceStatus(s.status),
+    id: s.id, slug: s.slug, treatmentSlug: s.treatmentSlug, name: s.name, category: s.category, vatClass: s.vatClass, active: s.active, status: toServiceStatus(s.status),
     variants: s.variants.map(toVariant),
   }));
 }
@@ -78,7 +79,7 @@ export async function getServiceByTreatment(treatmentSlug: string): Promise<Serv
     include: { variants: { where: { active: true }, orderBy: { order: 'asc' } } },
   });
   if (!s) return null;
-  return { id: s.id, slug: s.slug, treatmentSlug: s.treatmentSlug, name: s.name, category: s.category, active: s.active, status: toServiceStatus(s.status), variants: s.variants.map(toVariant) };
+  return { id: s.id, slug: s.slug, treatmentSlug: s.treatmentSlug, name: s.name, category: s.category, vatClass: s.vatClass, active: s.active, status: toServiceStatus(s.status), variants: s.variants.map(toVariant) };
 }
 
 /** Effective public status of a variant: its own override, else the service's. */

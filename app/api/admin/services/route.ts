@@ -69,6 +69,7 @@ export async function POST(req: Request) {
         ...(typeof body.active === 'boolean' ? { active: body.active } : {}),
         ...(body.name ? { name: String(body.name).slice(0, 120) } : {}),
         ...(svcStatus ? { status: svcStatus as never } : {}),
+        ...('vatClass' in body ? { vatClass: ['STANDARD', 'REDUCED', 'ZERO', 'EXEMPT'].includes(body.vatClass) ? body.vatClass : null } : {}),
       } });
       return ok();
     }

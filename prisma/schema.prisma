@@ -637,6 +637,7 @@ model Service {
   treatmentSlug String          // links to a marketing Treatment (lib/treatments.ts)
   name          String
   category      String          @default("aesthetics") // aesthetics | dentistry
+  vatClass      String?         // STANDARD | REDUCED | ZERO | EXEMPT (null → derived: dentistry EXEMPT, else STANDARD)
   order         Int             @default(0)
   active        Boolean         @default(true)
   status        ServiceStatus   @default(NORMAL) // service-level public state

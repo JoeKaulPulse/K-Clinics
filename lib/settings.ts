@@ -24,7 +24,9 @@ export type SettingKey =
   | 'post_course_checkin'        // email when a client completes a full treatment course
   | 'gift_card_physical_enabled' // offer a paid physical gift-card posted to the recipient
   | 'staff_weekly_digest'        // Monday email: each staff member's work + admin report links
-  | 'staff_work_reengagement';   // email staff with pending assigned work if idle ≥8h
+  | 'staff_work_reengagement'    // email staff with pending assigned work if idle ≥8h
+  | 'vat_registered'             // the clinic is VAT-registered (turns VAT on across pricing)
+  | 'prices_vat_inclusive';      // prices are entered/shown VAT-inclusive (vs exclusive)
 
 export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   allow_clinician_choice: false,
@@ -47,6 +49,8 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   gift_card_physical_enabled: false,
   staff_weekly_digest: true,
   staff_work_reengagement: true,
+  vat_registered: false,
+  prices_vat_inclusive: true,
 };
 
 export const SETTING_META: Record<SettingKey, { label: string; description: string }> = {
@@ -130,13 +134,21 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
     label: 'Staff re-engagement email',
     description: 'If a staff member has work assigned to them but hasn’t signed in for 8+ hours, email them a gentle “you have work waiting” nudge (at most once every few days). On by default.',
   },
+  vat_registered: {
+    label: 'VAT registered',
+    description: 'Turn on once the clinic is VAT-registered. Off by default — until then everything is “No VAT”. When on, VAT is derived per service (dentistry exempt, others standard) and shown on prices, receipts and reports.',
+  },
+  prices_vat_inclusive: {
+    label: 'Prices include VAT',
+    description: 'When VAT is on, treat the prices you enter as VAT-inclusive (the displayed price is what the client pays). Turn off to add VAT on top. On by default.',
+  },
 };
 
 // Numeric/string config values (not booleans) live in the same Setting table
 // under their own keys — e.g. the physical gift-card fee. Defaults applied when
 // absent; never throws.
-export type ConfigKey = 'gift_card_physical_fee_pence' | 'refund_window_days';
-export const CONFIG_DEFAULTS: Record<ConfigKey, number> = { gift_card_physical_fee_pence: 495, refund_window_days: 180 };
+export type ConfigKey = 'gift_card_physical_fee_pence' | 'refund_window_days' | 'vat_default_rate_pct';
+export const CONFIG_DEFAULTS: Record<ConfigKey, number> = { gift_card_physical_fee_pence: 495, refund_window_days: 180, vat_default_rate_pct: 20 };
 
 export async function getConfigNumber(key: ConfigKey): Promise<number> {
   try {
