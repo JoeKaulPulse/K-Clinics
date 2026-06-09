@@ -59,6 +59,7 @@ export async function ensureBacklogSeeded(): Promise<void> {
       });
     }
     await assignOwnerInputTasks(); // idempotent; ensures blocked tasks have an owner + instructions
+    await reconcileBacklog(); // advance shipped items so the board doesn't drift from the backlog
   } catch (e) {
     backlogSeedChecked = false; // transient failure — let a later request retry
     console.error('[build] auto-seed backlog failed', e);
@@ -115,6 +116,31 @@ export async function assignOwnerInputTasks(): Promise<void> {
       await db.buildEvent.create({ data: { itemId: item.id, kind: 'comment', actor: 'claude', body: `${MARK} — ${it.ask}` } });
     }
   }
+}
+
+/** Propagate canonical backlog status onto already-seeded board items. seedBacklog
+ *  only ever *creates* (deduped by title), so when Claude ships a backlog task the
+ *  board would otherwise stay stuck on its old status. This advances a seeded item
+ *  to SHIPPED (terminal) when the backlog says so — forward-only, so it never
+ *  clobbers a human moving a card — and records the change as an event. */
+export async function reconcileBacklog(): Promise<{ updated: number }> {
+  const { BUILD_BACKLOG } = await import('@/lib/build-backlog');
+  let updated = 0;
+  for (const it of BUILD_BACKLOG) {
+    if (it.status !== 'SHIPPED') continue;
+    const item = await db.buildItem.findFirst({ where: { title: it.title }, select: { id: true, status: true, githubUrl: true } });
+    if (!item || item.status === 'SHIPPED') continue;
+    await db.buildItem.update({
+      where: { id: item.id },
+      data: {
+        status: 'SHIPPED', shippedAt: new Date(),
+        githubUrl: item.githubUrl || it.pr || null,
+        events: { create: { kind: 'status', actor: 'claude', body: `${item.status} → SHIPPED${it.pr ? ` · ${it.pr}` : ''} (synced from backlog)` } },
+      },
+    });
+    updated += 1;
+  }
+  return { updated };
 }
 
 export async function listBuildItems() {
