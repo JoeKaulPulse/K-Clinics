@@ -1,3 +1,6 @@
+# Claude Code runtime (worktrees, session data)
+.claude/
+
 # dependencies
 /node_modules
 /.pnp
