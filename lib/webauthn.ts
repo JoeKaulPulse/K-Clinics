@@ -6,8 +6,12 @@ import { SignJWT, jwtVerify } from 'jose';
 // The same flow gates several operations, distinguished by `purpose` so an
 // unlock minted for one action can't be replayed to authorise another.
 
-export const STEP_UP_PURPOSES = ['export', 'rotate-keys'] as const;
+export const STEP_UP_PURPOSES = ['export', 'rotate-keys', 'finance'] as const;
 export type StepUpPurpose = (typeof STEP_UP_PURPOSES)[number];
+
+// How long a fresh step-up stays valid, per purpose. Financial viewing gets a
+// 30-min window so admins aren't re-prompted on every page; the rest are tight.
+const UNLOCK_TTL: Partial<Record<StepUpPurpose, string>> = { finance: '30m' };
 
 export function isStepUpPurpose(v: unknown): v is StepUpPurpose {
   return typeof v === 'string' && (STEP_UP_PURPOSES as readonly string[]).includes(v);
@@ -46,7 +50,7 @@ export async function signUnlock(sub: string, purpose: StepUpPurpose = 'export')
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(sub)
     .setIssuedAt()
-    .setExpirationTime('3m')
+    .setExpirationTime(UNLOCK_TTL[purpose] || '3m')
     .sign(secret());
 }
 

@@ -15,6 +15,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   if (!crmEnabled) return <CrmDisabled />;
   const session = await getSession();
   if (!sessionCan(session, 'finance.view')) redirect('/admin');
+  const { financeUnlocked } = await import('@/lib/finance-lock');
+  if (!(await financeUnlocked(session!.sub))) redirect('/admin/finance/unlock?next=/admin/reports');
   const { range } = await searchParams;
   const all = range === 'all';
   const days = all ? 0 : (RANGES.includes(Number(range)) ? Number(range) : 90);
