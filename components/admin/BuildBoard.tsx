@@ -147,10 +147,12 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
     if (r.ok) { setMirror(!!r.mirror); load(true); } else alert(r.error || 'Failed');
   }
   const [continuing, setContinuing] = useState(false);
+  const [sessionUrl, setSessionUrl] = useState('');
   async function continueWork() {
     setContinuing(true);
     const r = await post({ op: 'continue' });
     setContinuing(false);
+    if (r.sessionUrl) setSessionUrl(r.sessionUrl);
     alert(r.note || (r.ok ? 'Saved to Claude’s work queue.' : (r.error || 'Could not request.')));
     load(true);
   }
@@ -181,6 +183,7 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
         {backoffUntil > Date.now() && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800" title="GitHub rate-limited; auto-pushes paused. The board is unaffected.">GitHub cooling down · {new Date(backoffUntil).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>}
         <span className="ml-auto flex flex-wrap items-center gap-2">
           {canManage && <button onClick={continueWork} disabled={continuing} className="rounded-full bg-[var(--color-gold)] px-4 py-1.5 text-xs font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50">{continuing ? 'Prompting…' : '▶ Continue working'}</button>}
+          {sessionUrl && <a href={sessionUrl} target="_blank" rel="noreferrer" className="rounded-full border border-[var(--color-jade)] px-3 py-1.5 text-xs text-[var(--color-jade)] hover:bg-[var(--color-jade)]/10">▶ Watch session ↗</a>}
           <button onClick={() => setIdeaOpen(true)} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-bone)]">💡 Add idea</button>
           <label className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} className="h-3.5 w-3.5 accent-[var(--color-gold)]" /> Mine</label>
           {canManage && <button onClick={importBacklog} disabled={seeding} className="rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:bg-[var(--color-bone)] disabled:opacity-50">{seeding ? 'Rebuilding…' : '↻ Rebuild'}</button>}

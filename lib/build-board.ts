@@ -767,25 +767,88 @@ async function canWakeViaGithub(): Promise<boolean> {
   return Date.now() - last > GH_WAKE_COOLDOWN_MS;
 }
 
-/** Record that a board item needs Claude's attention. DB-first: it's queued for
- *  the next session; a GitHub wake is only fired when the governor allows it. */
+// ── Preferred wake: Claude Code Routine (API trigger) ────────────────────────
+// A routine fire starts an unattended Claude session directly — GitHub-free, so
+// it never touches GitHub's rate limit. URL + token come from env (set in Vercel,
+// never committed). Bounded by a timeout so a board action can't hang on it.
+export function routineConfigured(): boolean {
+  return !!(process.env.CLAUDE_ROUTINE_FIRE_URL && process.env.CLAUDE_ROUTINE_FIRE_TOKEN);
+}
+async function fireRoutine(text: string): Promise<{ ok: boolean; sessionUrl?: string; error?: string }> {
+  const url = process.env.CLAUDE_ROUTINE_FIRE_URL;
+  const token = process.env.CLAUDE_ROUTINE_FIRE_TOKEN;
+  if (!url || !token) return { ok: false, error: 'not-configured' };
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'experimental-cc-routine-2026-04-01',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text: text.slice(0, 60000) }),
+      signal: ctrl.signal,
+    });
+    const j = (await res.json().catch(() => ({}))) as { claude_code_session_url?: string; error?: { message?: string } };
+    if (!res.ok) return { ok: false, error: j?.error?.message || `routine returned ${res.status}` };
+    return { ok: true, sessionUrl: j?.claude_code_session_url };
+  } catch (e) {
+    return { ok: false, error: (e as Error)?.name === 'AbortError' ? 'timed out' : ((e as Error)?.message || 'failed') };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Record that a board item needs Claude's attention, then wake a session. DB-first:
+ *  the request is always queued; the wake prefers the routine (GitHub-free) and
+ *  falls back to the governed GitHub @claude comment only if no routine is set. */
 export async function triggerClaude(message: string, itemId: string): Promise<boolean> {
   await setRaw('build_continue_requested_at', new Date().toISOString());
+  const item = await db.buildItem.findUnique({ where: { id: itemId }, select: { title: true, githubNumber: true } });
+  const text = `${message}${item ? `\n\nWork item: “${item.title}”.` : ''}\nContinue per the prioritised K-Clinics Build & Issues backlog.`;
+
+  if (routineConfigured()) {
+    await setRaw('build_continue_last_wake_at', String(Date.now()));
+    const r = await fireRoutine(text);
+    if (r.ok) {
+      await db.buildEvent.create({ data: { itemId, kind: 'status', actor: 'claude', body: `Claude session started${r.sessionUrl ? ` — ${r.sessionUrl}` : ''}` } }).catch(() => {});
+      if (r.sessionUrl) await setRaw('build_last_session_url', r.sessionUrl);
+      return true;
+    }
+    return false;
+  }
+
+  // Fallback: governed GitHub @claude comment.
   if (!(await canWakeViaGithub())) return false;
-  let item = await db.buildItem.findUnique({ where: { id: itemId } });
-  if (!item) return false;
-  if (!item.githubNumber) { item = (await pushToGithub(itemId, 'system')) || item; }
-  if (!item.githubNumber) return false;
+  let it = await db.buildItem.findUnique({ where: { id: itemId } });
+  if (!it) return false;
+  if (!it.githubNumber) { it = (await pushToGithub(itemId, 'system')) || it; }
+  if (!it.githubNumber) return false;
   await setRaw('build_continue_last_wake_at', String(Date.now()));
-  return ghComment(item.githubNumber, `@claude ${message}\n\n_Triggered from the Build & Issues board._`);
+  return ghComment(it.githubNumber, `@claude ${message}\n\n_Triggered from the Build & Issues board._`);
 }
 
 /** The board's "▶ Continue working" button. Always records the request to the DB
  *  queue (never lost, never fails); a GitHub wake is a best-effort, debounced
  *  extra that's skipped when mirroring is off / rate-limited / within cooldown. */
-export async function requestClaudeContinue(actor: string): Promise<{ ok: boolean; queued: boolean; woke: boolean; mirror: boolean; githubUrl?: string; note?: string }> {
-  await setRaw('build_continue_requested_at', new Date().toISOString(), actor);
+export async function requestClaudeContinue(actor: string): Promise<{ ok: boolean; queued: boolean; woke: boolean; via: 'routine' | 'github' | 'queue'; mirror: boolean; sessionUrl?: string; githubUrl?: string; note?: string }> {
+  const now = new Date().toISOString();
+  await setRaw('build_continue_requested_at', now, actor);
   const mirror = await githubMirrorEnabled();
+
+  // Preferred wake: fire the Claude Code Routine (GitHub-free, no rate limit).
+  if (routineConfigured()) {
+    await setRaw('build_continue_last_wake_at', String(Date.now()), actor);
+    const r = await fireRoutine(`Continue working through the prioritised K-Clinics Build & Issues backlog (highest value-to-effort first; skip owner-gated items). Requested by ${actor.split('@')[0]} at ${now}.`);
+    if (r.ok) {
+      if (r.sessionUrl) await setRaw('build_last_session_url', r.sessionUrl, actor);
+      return { ok: true, queued: true, woke: true, via: 'routine', mirror, sessionUrl: r.sessionUrl, note: 'Claude session started — it’s working the backlog now.' };
+    }
+    return { ok: true, queued: true, woke: false, via: 'queue', mirror, note: `Saved to the queue, but couldn’t auto-start a session (${r.error}). I’ll still pick it up; if this persists, re-check the routine token.` };
+  }
 
   if (!(await canWakeViaGithub())) {
     const note = !mirror
@@ -793,7 +856,7 @@ export async function requestClaudeContinue(actor: string): Promise<{ ok: boolea
       : (await ghBackoffActive())
         ? 'Saved to Claude’s work queue. GitHub is cooling down after heavy use, so no issue was created — Claude still picks it up from the board.'
         : 'Saved to Claude’s work queue — Claude will pick it up from the board on its next run.';
-    return { ok: true, queued: true, woke: false, mirror, note };
+    return { ok: true, queued: true, woke: false, via: 'queue', mirror, note };
   }
 
   const cfg = (await getGithubConfig())!;
@@ -806,13 +869,13 @@ export async function requestClaudeContinue(actor: string): Promise<{ ok: boolea
     const patch = await fetch(`https://api.github.com/repos/${cfg.repo}/issues/${existing}`, { method: 'PATCH', headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' }, body: JSON.stringify({ state: 'open' }) }).catch(() => null);
     if (patch) await noteGhResponse(patch);
     const woke = await ghComment(existing, msg);
-    return { ok: true, queued: true, woke, mirror, githubUrl: `https://github.com/${cfg.repo}/issues/${existing}`, note: woke ? 'Claude prompted via GitHub — a session will pick it up shortly.' : 'Saved to the queue (GitHub was busy) — Claude will still pick it up from the board.' };
+    return { ok: true, queued: true, woke, via: woke ? 'github' : 'queue', mirror, githubUrl: `https://github.com/${cfg.repo}/issues/${existing}`, note: woke ? 'Claude prompted via GitHub — a session will pick it up shortly.' : 'Saved to the queue (GitHub was busy) — Claude will still pick it up from the board.' };
   }
 
   const res = await fetch(`https://api.github.com/repos/${cfg.repo}/issues`, { method: 'POST', headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' }, body: JSON.stringify({ title: TITLE, body: msg, labels: ['claude', 'continue'] }) });
   await noteGhResponse(res);
-  if (!res.ok) return { ok: true, queued: true, woke: false, mirror, note: 'Saved to the queue (GitHub was busy) — Claude will still pick it up from the board.' };
+  if (!res.ok) return { ok: true, queued: true, woke: false, via: 'queue', mirror, note: 'Saved to the queue (GitHub was busy) — Claude will still pick it up from the board.' };
   const issue = (await res.json()) as { html_url?: string; number?: number };
   if (issue.number) await setRaw('build_continue_issue_number', String(issue.number), actor);
-  return { ok: true, queued: true, woke: true, mirror, githubUrl: issue.html_url, note: 'Claude prompted via GitHub — a session will pick it up shortly.' };
+  return { ok: true, queued: true, woke: true, via: 'github', mirror, githubUrl: issue.html_url, note: 'Claude prompted via GitHub — a session will pick it up shortly.' };
 }
