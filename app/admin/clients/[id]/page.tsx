@@ -93,6 +93,16 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
     } catch { /* AI section is best-effort */ }
   }
 
+  // Accountability (UK GDPR Art. 5(2) / Art. 32): record WHO viewed WHOSE clinical
+  // data whenever health/AI content was actually decrypted for display — not just
+  // on SAR export. No clinical content is placed in the summary.
+  if (clinical && (clinicalAssessments.length > 0 || aiAnalyses.length > 0)) {
+    try {
+      const { logAudit } = await import('@/lib/audit');
+      await logAudit({ action: 'ASSESSMENT_VIEWED', actor: session?.email || 'unknown', actorRole: session?.role, clientId: id, summary: 'Clinical record viewed (health/AI data decrypted for display)' });
+    } catch { /* audit is best-effort — never block the page */ }
+  }
+
   // Loyalty snapshot (balance + recent ledger). Best-effort — never blocks the page.
   const { clientLoyaltySummary, clientLedger, pointsToPence } = await import('@/lib/client-loyalty');
   const { formatPrice } = await import('@/lib/treatments');

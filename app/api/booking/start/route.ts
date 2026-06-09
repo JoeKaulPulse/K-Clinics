@@ -3,6 +3,7 @@ import { bookingStartSchema } from '@/lib/validation';
 import { crmEnabled } from '@/lib/crm';
 import { stripeEnabled } from '@/lib/stripe';
 import { bookingFor } from '@/lib/treatments';
+import { encClinical, decClinical } from '@/lib/clinical-crypto';
 
 export const runtime = 'nodejs';
 
@@ -123,7 +124,7 @@ export async function POST(req: Request) {
   const clientUpdate: Record<string, unknown> = {};
   if (d.smsReminders && !client.smsReminders) clientUpdate.smsReminders = true;
   // Persist stated allergies on the client record (latest wins) for safety + hospitality.
-  if (d.allergyNote && d.allergyNote.trim() && d.allergyNote.trim() !== (client.allergies || '')) clientUpdate.allergies = d.allergyNote.trim();
+  if (d.allergyNote && d.allergyNote.trim() && d.allergyNote.trim() !== (decClinical(client.allergies) || '')) clientUpdate.allergies = encClinical(d.allergyNote.trim());
   if (Object.keys(clientUpdate).length) await db.client.update({ where: { id: client.id }, data: clientUpdate }).catch(() => {});
 
   // Validate refreshment ids server-side.
@@ -155,7 +156,7 @@ export async function POST(req: Request) {
       status: 'PENDING',
       notes: d.notes || null,
       refreshments,
-      allergyNote: d.allergyNote?.trim() || null,
+      allergyNote: d.allergyNote?.trim() ? encClinical(d.allergyNote.trim()) : null,
       aftercareAckAt: d.aftercareAck ? new Date() : null,
       stripeCustomerId: customerId,
       practitionerId,

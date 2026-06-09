@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
+import { encClinical } from '@/lib/clinical-crypto';
 
 export const runtime = 'nodejs';
 
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
   await db.client.update({
     where: { id: clientId },
     data: {
-      medicalFlag: value || null,
+      medicalFlag: value ? encClinical(value) : null,
       medicalFlagSetBy: value ? session!.email : null,
       medicalFlagAt: value ? new Date() : null,
     },

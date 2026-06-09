@@ -8,6 +8,9 @@ import {
   SESSION_COOKIE as COOKIE,
   CLIENT_SESSION_COOKIE as CLIENT_COOKIE,
   ACADEMY_SESSION_COOKIE as ACADEMY_COOKIE,
+  ADMIN_AUDIENCE,
+  CLIENT_AUDIENCE,
+  ACADEMY_AUDIENCE,
   adminSecret as secret,
   clientSecret,
   academySecret,
@@ -65,6 +68,7 @@ export async function createSession(payload: Session) {
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(ADMIN_ABSOLUTE_TTL)
+    .setAudience(ADMIN_AUDIENCE)
     .sign(secret());
   (await cookies()).set(COOKIE, token, {
     httpOnly: true,
@@ -103,6 +107,7 @@ export async function createClientSession(payload: ClientSession) {
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('7d')
+    .setAudience(CLIENT_AUDIENCE)
     .sign(clientSecret());
   (await cookies()).set(CLIENT_COOKIE, token, {
     httpOnly: true,
@@ -128,6 +133,7 @@ export async function createAcademySession(payload: AcademySession) {
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('7d')
+    .setAudience(ACADEMY_AUDIENCE)
     .sign(academySecret());
   (await cookies()).set(ACADEMY_COOKIE, token, {
     httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 7,

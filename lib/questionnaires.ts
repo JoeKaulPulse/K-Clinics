@@ -41,7 +41,7 @@ const YESNO = [
 
 export const medicalHistory: Questionnaire = {
   key: 'medical-history',
-  version: 1,
+  version: 2,
   type: 'MEDICAL_HISTORY',
   title: 'Medical history',
   intro:
@@ -150,12 +150,27 @@ export const medicalHistory: Questionnaire = {
         { value: 'yes', label: 'I confirm' },
       ],
     },
+    {
+      // Durable, separately-recorded acknowledgement that the privacy notice was
+      // shown at the point special-category (health) data is collected (UK GDPR
+      // Art. 13 + Art. 9(2) condition evidencing). Stored with this questionnaire's
+      // key+version, so the exact wording acknowledged is always recoverable.
+      id: 'agreed_privacy',
+      type: 'boolean',
+      prompt: 'Have you read and understood how we use and protect your health information?',
+      help: 'See our Privacy Notice. Your answers are special-category data — encrypted and processed only to provide your care.',
+      required: true,
+      options: [
+        { value: 'no', label: 'Not yet' },
+        { value: 'yes', label: 'I have read the Privacy Notice' },
+      ],
+    },
   ],
 };
 
 export const treatmentConsent: Questionnaire = {
   key: 'treatment-consent',
-  version: 1,
+  version: 2,
   type: 'TREATMENT_CONSENT',
   title: 'Treatment consent',
   intro:
@@ -188,9 +203,22 @@ export const treatmentConsent: Questionnaire = {
       prompt: 'May we take confidential before & after photos for your clinical record?',
       required: true,
       options: [
-        { value: 'record_only', label: 'Yes — clinical record only' },
-        { value: 'marketing_ok', label: 'Yes — and anonymously for marketing' },
+        { value: 'record_only', label: 'Yes — for my clinical record' },
         { value: 'no', label: 'No' },
+      ],
+    },
+    {
+      // Marketing-photo consent is a SEPARATE, independently-revocable purpose —
+      // never bundled into the clinical-record question (consent purposes must not
+      // be conflated; UK GDPR Art. 7(2)). Only asked once clinical photos are agreed.
+      id: 'photos_marketing',
+      type: 'boolean',
+      prompt: 'Separately, may we use anonymised before/after photos to promote our work?',
+      help: 'Optional and independent of your clinical record — you can withdraw it at any time.',
+      showIf: { id: 'photos', equals: 'record_only' },
+      options: [
+        { value: 'no', label: 'No — clinical record only' },
+        { value: 'yes', label: 'Yes — anonymously for marketing' },
       ],
     },
     {

@@ -1,0 +1,7 @@
+# gitleaks false-positive suppressions (fingerprint = commit:path:rule:line).
+#
+# The audit report audit/01-auth-authz.md describes a passkey/2FA authorization
+# finding using the hyphenated phrase "2FA-policy-bypassing". gitleaks' generic
+# high-entropy rule (generic-api-key) matches that token on entropy alone — it is
+# documentation prose, not a credential. Reviewed and confirmed not a secret.
+118b544d6c7d6b38166981fa268850cfadfaa379:audit/01-auth-authz.md:generic-api-key:109

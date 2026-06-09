@@ -70,13 +70,10 @@ export async function finalizeOrder(orderId: string): Promise<{ ok: boolean; num
   // Clamp any negatives to zero.
   await db.product.updateMany({ where: { stockQty: { lt: 0 } }, data: { stockQty: 0 } }).catch(() => {});
 
-  // Redeem gift card balance used.
-  if (order.giftCardCode && order.giftCardPence > 0) {
-    try {
-      const v = await db.giftVoucher.findUnique({ where: { code: order.giftCardCode } });
-      if (v) { const { redeemVoucher } = await import('@/lib/gift-vouchers'); await redeemVoucher(v.id, order.giftCardPence); }
-    } catch { /* non-fatal */ }
-  }
+  // NB: the gift-card balance was already RESERVED (atomically decremented) at
+  // checkout time via reserveVoucher, so we deliberately do NOT redeem again here
+  // — doing so would double-decrement the card. A failed/abandoned order
+  // re-credits via creditVoucher (see the checkout route).
 
   // Confirmation email (best-effort).
   try {
