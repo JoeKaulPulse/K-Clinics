@@ -454,6 +454,24 @@ export async function addBuildComment(id: string, body: string, actor: string) {
   return item;
 }
 
+// ── Attachments (photos + videos) ────────────────────────────────────────────
+export async function addAttachments(id: string, urls: string[], actor: string) {
+  const clean = urls.filter((u) => typeof u === 'string' && /^https?:\/\//.test(u)).slice(0, 20);
+  if (!clean.length) return db.buildItem.findUnique({ where: { id }, include: ITEM_INCLUDE });
+  const item = await db.buildItem.findUnique({ where: { id }, select: { attachments: true } });
+  if (!item) return null;
+  const merged = Array.from(new Set([...item.attachments, ...clean])).slice(0, 40);
+  await db.buildItem.update({ where: { id }, data: { attachments: merged, events: { create: { kind: 'attachment', actor, body: `Added ${clean.length} file${clean.length === 1 ? '' : 's'}` } } } });
+  return db.buildItem.findUnique({ where: { id }, include: ITEM_INCLUDE });
+}
+
+export async function removeAttachment(id: string, url: string, actor: string) {
+  const item = await db.buildItem.findUnique({ where: { id }, select: { attachments: true } });
+  if (!item) return null;
+  await db.buildItem.update({ where: { id }, data: { attachments: item.attachments.filter((u) => u !== url), events: { create: { kind: 'attachment', actor, body: 'Removed a file' } } } });
+  return db.buildItem.findUnique({ where: { id }, include: ITEM_INCLUDE });
+}
+
 // ── Subtasks ─────────────────────────────────────────────────────────────────
 const withDetail = ITEM_INCLUDE;
 

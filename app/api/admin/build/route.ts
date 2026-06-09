@@ -106,6 +106,19 @@ export async function POST(req: Request) {
         const item = await board.removeDependency(String(b.id), String(b.dependsOnId), session.email);
         return NextResponse.json({ ok: true, item });
       }
+      case 'attach': {
+        // Any board user can attach files (like commenting). URLs come from the
+        // client-direct Blob upload (/api/admin/build/blob-token).
+        if (!b.id || !Array.isArray(b.urls)) return NextResponse.json({ ok: false, error: 'Nothing to attach.' }, { status: 400 });
+        const item = await board.addAttachments(String(b.id), b.urls.map(String), session.email);
+        return NextResponse.json({ ok: true, item });
+      }
+      case 'attach-remove': {
+        if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
+        if (!b.id || !b.url) return NextResponse.json({ ok: false, error: 'Missing url.' }, { status: 400 });
+        const item = await board.removeAttachment(String(b.id), String(b.url), session.email);
+        return NextResponse.json({ ok: true, item });
+      }
       case 'github': {
         if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
         if (!(await board.githubConfigured())) return NextResponse.json({ ok: false, error: 'GitHub isn’t connected yet.' }, { status: 400 });
