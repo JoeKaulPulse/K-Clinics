@@ -2642,3 +2642,60 @@ model StaffNotification {
   @@index([userId, readAt])
   @@index([userId, createdAt])
 }
+
+// ── Storefront "Skin & Smile" QR kiosk campaign ──────────────────────────────
+// A storefront screen shows a QR; a visitor scans it on their phone, takes a
+// selfie, gets a fun (non-clinical) AI skin & smile rating, shares it, and is
+// routed to claim a reward. Public + anonymous-until-signup; short-lived
+// sessions; photos deleted after 30 days (see /api/cron/kiosk-cleanup).
+
+enum KioskStatus {
+  ACTIVE
+  PHOTO_TAKEN
+  ANALYZED
+  SHARED
+  EXPIRED
+}
+
+model KioskSession {
+  id         String       @id @default(cuid())
+  token      String       @unique
+  status     KioskStatus  @default(ACTIVE)
+  ipHash     String?
+  photoUrl   String?
+  consentAt  DateTime?
+  result     KioskResult?
+  createdAt  DateTime     @default(now())
+  expiresAt  DateTime
+
+  @@index([token])
+  @@index([status, createdAt])
+}
+
+model KioskResult {
+  id         String       @id @default(cuid())
+  session    KioskSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId  String       @unique
+  headline   String
+  skinScore  Int
+  smileScore Int
+  insights   String[]
+  treatments String[]
+  photoUrl   String?
+  shareSlug  String       @unique
+  shareCount Int          @default(0)
+  createdAt  DateTime     @default(now())
+
+  @@index([shareSlug])
+}
+
+model KioskEvent {
+  id        String   @id @default(cuid())
+  event     String   // scan | consent | photo | analyzed | shared | claimed
+  sessionId String?
+  ipHash    String?
+  createdAt DateTime @default(now())
+
+  @@index([event, createdAt])
+  @@index([sessionId])
+}
