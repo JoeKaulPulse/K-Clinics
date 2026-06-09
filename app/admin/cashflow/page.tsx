@@ -12,6 +12,8 @@ export default async function CashflowPage() {
   if (!crmEnabled) return <CrmDisabled />;
   const session = await getSession();
   if (!sessionCan(session, 'finance.view')) redirect('/admin');
+  const { financeUnlocked } = await import('@/lib/finance-lock');
+  if (!(await financeUnlocked(session!.sub))) redirect('/admin/finance/unlock?next=/admin/cashflow');
   const canManage = sessionCan(session, 'finance.manage');
 
   const { buildForecast } = await import('@/lib/cashflow');

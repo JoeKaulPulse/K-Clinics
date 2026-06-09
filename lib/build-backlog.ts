@@ -222,7 +222,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Let an approved giftable package be bought as a gift (earmarked voucher / package gift), shown in the Gifts section, guest checkout, with the same customised-card experience.',
   },
   {
-    title: 'Gifts: recipient experience (claim, scheduled delivery, share)', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude',
+    title: 'Gifts: recipient experience (claim, scheduled delivery, share)', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude', pr: PR(367),
     value: 5, effort: 4,
     detail: 'Polish the recipient side: scheduled delivery, claim-to-account, balance view, and a shareable card page — end to end.',
   },
@@ -240,10 +240,13 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Decisions captured: re-engagement threshold 8h; weekly Monday digest, on by default (each staff can opt out).'],
   },
   {
-    title: 'Financial data unlock: passkey + 6-digit PIN', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    title: 'Financial data unlock: passkey + 6-digit PIN', type: 'TASK', urgency: 'P2', status: 'IN_PROGRESS', assignee: 'claude',
     value: 8, effort: 7,
     detail: 'Gate financial reports / cashflow / finance KPIs behind a second factor: a passkey (Face ID / Touch ID / Windows Hello via the existing WebAuthn) with a 6-digit PIN fallback. Add a "finance" step-up purpose + short-lived unlock.',
-    notes: ['Decision captured: passkey + 6-digit PIN fallback (reuses existing WebAuthn/TOTP infra + step-up unlock pattern).'],
+    notes: [
+      'Decision captured: passkey + 6-digit PIN fallback (reuses existing WebAuthn/TOTP infra + step-up unlock pattern).',
+      'PIN fallback SHIPPED (#372): reports + cashflow now sit behind a 6-digit PIN (30-min finance step-up). Remaining: wire the passkey path onto the same "finance" purpose (the WebAuthn step-up routes already exist).',
+    ],
   },
 
   // ── Platform observability ────────────────────────────────────────────────
