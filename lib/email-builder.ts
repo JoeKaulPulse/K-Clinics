@@ -1,5 +1,7 @@
 // Visual email builder blocks → email-safe, inline-styled HTML (the body that
 // goes inside emailShell). Pure module so the composer can live-preview it.
+import { escapeHtml } from './sanitize';
+
 export type Align = 'left' | 'center' | 'right';
 
 export type EmailBlock =
@@ -31,15 +33,19 @@ export const MERGE_TAGS: { tag: string; label: string }[] = [
 
 /** Replace {{first_name}} etc. Missing values fall back to a friendly default
  *  for the name fields ("there") and empty string otherwise. */
-export function applyMergeTags(text: string, ctx: MergeContext): string {
+export function applyMergeTags(text: string, ctx: MergeContext, opts?: { html?: boolean }): string {
   const first = (ctx.first_name || '').trim();
   const last = (ctx.last_name || '').trim();
   const full = (ctx.name || [first, last].filter(Boolean).join(' ')).trim();
+  // When the substitution target is an HTML body, escape the client-supplied
+  // values so a name/email containing markup can't inject HTML (in-domain
+  // phishing). Plain-text targets (subject lines) pass through unescaped.
+  const enc = opts?.html ? escapeHtml : (x: string) => x;
   const map: Record<string, string> = {
-    first_name: first || 'there',
-    last_name: last,
-    name: full || 'there',
-    email: (ctx.email || '').trim(),
+    first_name: enc(first || 'there'),
+    last_name: enc(last),
+    name: enc(full || 'there'),
+    email: enc((ctx.email || '').trim()),
   };
   return String(text ?? '').replace(/\{\{\s*(first_name|last_name|name|email)\s*\}\}/g, (_, k) => map[k] ?? '');
 }

@@ -78,26 +78,34 @@ export async function POST(req: Request) {
     const r = REASONS.includes(reason || '') ? (reason as string) : 'ADJUSTMENT';
     // RECEIVED adds; everything else removes (ADJUSTMENT can be signed via reason choice — kept simple: USED/WASTED/RETURNED subtract).
     const signed = r === 'RECEIVED' ? Math.abs(Number(qty)) : r === 'ADJUSTMENT' ? Number(qty) : -Math.abs(Number(qty));
-    // Don't let a removal drive stock negative — that corrupts inventory
-    // valuation and reorder suggestions. (RECEIVED/positive adjustments skip this.)
-    if (signed < 0) {
-      const current = await db.stockItem.findUnique({ where: { id: itemId }, select: { currentQty: true } });
-      if (!current) return NextResponse.json({ ok: false, error: 'Item not found.' }, { status: 404 });
-      if (current.currentQty + signed < 0) return NextResponse.json({ ok: false, error: `Not enough stock — only ${current.currentQty} on hand.` }, { status: 400 });
+    // Record the movement AND adjust the running quantity in one interactive
+    // transaction, guarding against negative stock with an ATOMIC conditional
+    // update (currentQty >= |delta|). This closes the TOCTOU race where two
+    // concurrent removals both read the old qty and both decrement below zero.
+    // (RECEIVED/positive adjustments have no lower bound.)
+    const moveData = {
+      itemId, delta: signed, reason: r as never,
+      batchNo: batchNo?.trim() || null,
+      expiry: expiry && !isNaN(Date.parse(expiry)) ? new Date(expiry) : null,
+      note: note?.trim().slice(0, 300) || null,
+      by: session.email,
+    };
+    const result = await db.$transaction(async (tx) => {
+      const upd = await tx.stockItem.updateMany({
+        where: signed < 0 ? { id: itemId, currentQty: { gte: -signed } } : { id: itemId },
+        data: { currentQty: { increment: signed } },
+      });
+      if (upd.count === 0) return { ok: false as const };
+      await tx.stockMovement.create({ data: moveData });
+      const after = await tx.stockItem.findUnique({ where: { id: itemId }, select: { currentQty: true } });
+      return { ok: true as const, currentQty: after?.currentQty ?? 0 };
+    });
+    if (!result.ok) {
+      const exists = await db.stockItem.findUnique({ where: { id: itemId }, select: { currentQty: true } });
+      if (!exists) return NextResponse.json({ ok: false, error: 'Item not found.' }, { status: 404 });
+      return NextResponse.json({ ok: false, error: `Not enough stock — only ${exists.currentQty} on hand.` }, { status: 400 });
     }
-    const [, item] = await db.$transaction([
-      db.stockMovement.create({
-        data: {
-          itemId, delta: signed, reason: r as never,
-          batchNo: batchNo?.trim() || null,
-          expiry: expiry && !isNaN(Date.parse(expiry)) ? new Date(expiry) : null,
-          note: note?.trim().slice(0, 300) || null,
-          by: session.email,
-        },
-      }),
-      db.stockItem.update({ where: { id: itemId }, data: { currentQty: { increment: signed } } }),
-    ]);
-    return NextResponse.json({ ok: true, currentQty: item.currentQty });
+    return NextResponse.json({ ok: true, currentQty: result.currentQty });
   }
 
   return NextResponse.json({ ok: false, error: 'Unknown op' }, { status: 400 });

@@ -100,25 +100,53 @@ export async function POST(req: Request) {
     !promo && finalPrice > 0 ? await db.discountClaim.findFirst({ where: { clientId: client.id, status: 'ACTIVE' } }) : null;
   if (claim) finalPrice = Math.round((finalPrice * (100 - claim.percent)) / 100);
 
-  // Hold the slot.
+  // Hold the slot — ATOMICALLY. Re-check for overlapping holds inside a
+  // Serializable transaction (mirrors redeemPromo/awardClientPoints) so two
+  // concurrent requests can't both book the same clinician / room / equipment:
+  // Postgres SSI aborts the loser, and an explicit clash check rejects a
+  // concurrent grab of the same precomputed practitioner/resource. ALL reads use
+  // `tx` (one connection) so this is safe under the serverless connection_limit=1.
   const { bookingAttribution } = await import('@/lib/marketing');
   const attribution = await bookingAttribution();
-  const booking = await db.booking.create({
-    data: {
-      clientId: client.id,
-      treatmentSlug: d.slug,
-      treatmentTitle: treatment.title,
-      startAt: start, endAt: end, durationMin,
-      bufferMin: bufferMin ?? 0,
-      pricePence: finalPrice,
-      status: 'PENDING',
-      notes: d.notes || null,
-      stripeCustomerId: customerId,
-      practitionerId,
-      ...attribution,
-      resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,
-    },
-  });
+  const endBuffered = new Date(end.getTime() + (bufferMin ?? 0) * 60_000);
+  let booking: { id: string } | null = null;
+  try {
+    booking = await db.$transaction(async (tx) => {
+      const overlapping = await tx.booking.findMany({
+        where: { status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { lt: endBuffered }, endAt: { gt: start } },
+        select: { practitionerId: true, resources: { select: { id: true } } },
+      });
+      const practitionerClash = !!practitionerId && overlapping.some((b) => b.practitionerId === practitionerId);
+      const resourceClash = resourceIds.length > 0 && overlapping.some((b) => b.resources.some((r) => resourceIds.includes(r.id)));
+      if (practitionerClash || resourceClash) return null;
+      return tx.booking.create({
+        data: {
+          clientId: client.id,
+          treatmentSlug: d.slug,
+          treatmentTitle: treatment.title,
+          startAt: start, endAt: end, durationMin,
+          bufferMin: bufferMin ?? 0,
+          pricePence: finalPrice,
+          status: 'PENDING',
+          notes: d.notes || null,
+          stripeCustomerId: customerId,
+          practitionerId,
+          ...attribution,
+          resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,
+        },
+        select: { id: true },
+      });
+    }, { isolationLevel: 'Serializable' });
+  } catch (e) {
+    const err = e as { code?: string; message?: string };
+    if (err.code === 'P2034' || /write conflict|deadlock|could not serialize/i.test(err.message || '')) {
+      return NextResponse.json({ ok: false, error: 'That time was just taken. Please choose another slot.' }, { status: 409 });
+    }
+    throw e;
+  }
+  if (!booking) {
+    return NextResponse.json({ ok: false, error: 'That time was just taken. Please choose another slot.' }, { status: 409 });
+  }
 
   // Immutable audit: booking created (+ assignment if auto-assigned).
   const { logAudit } = await import('@/lib/audit');

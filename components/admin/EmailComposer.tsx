@@ -141,7 +141,7 @@ export function EmailComposer({ segments, tags, initial, templates = [] }: { seg
     setMsg(j.ok ? 'Template saved ✓' : (j.error || 'Could not save template.'));
   }
 
-  const previewBody = applyMergeTags(emailBlocksToHtml(blocks), SAMPLE);
+  const previewBody = applyMergeTags(emailBlocksToHtml(blocks), SAMPLE, { html: true });
   const previewHtml = `<div style="font-family:Helvetica,Arial,sans-serif;background:#f6ece3;padding:20px;"><div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:28px;">${previewBody}</div></div>`;
   const spamHits = SPAMMY.filter((w) => subject.toLowerCase().includes(w));
   const starterTemplates = templates.filter((t) => !t.saved);

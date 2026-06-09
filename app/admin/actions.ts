@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, canViewClinical } from '@/lib/auth';
+import { marketingConsentFields } from '@/lib/consent';
 
 const NOTE_TYPES = ['NOTE', 'CLINICAL', 'COMPLAINT', 'FOLLOW_UP', 'CALL'] as const;
 
@@ -31,18 +32,40 @@ export async function eraseClientData(clientId: string) {
   if (!session || !sessionCan(session, 'clients.export')) return { ok: false, error: 'Not permitted' };
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
-  await db.client.update({
-    where: { id: clientId },
-    data: {
-      firstName: 'Erased', lastName: null, email: `erased-${clientId}@redacted.invalid`,
-      phone: null, dob: null, notes: null, medicalFlag: null, medicalFlagSetBy: null, medicalFlagAt: null,
-      marketingOptIn: false, unsubscribed: true, portalActive: false, passwordHash: null,
-      resetTokenHash: null, resetTokenExp: null,
-    },
-  });
-  // Remove free-text interactions that may contain personal data.
-  await db.interaction.deleteMany({ where: { clientId } });
-  await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal data erased (GDPR right-to-erasure)' });
+  // Art. 17 erasure across ALL personal/special-category data, atomically. We
+  // pseudonymise the Client row + strip clinical free-text from RETAINED
+  // financial records (bookings/consultations kept for HMRC/lawful retention,
+  // but with no identifying or health content), and hard-delete the child records
+  // that have no retention basis (health assessments, before-photos, AI analyses,
+  // signed consents, reviews, NPS/follow-up comments, email metadata, free-text
+  // interactions). Previously only the Client row + interactions were touched, so
+  // the person stayed fully re-identifiable with their medical history on file.
+  await db.$transaction([
+    db.client.update({
+      where: { id: clientId },
+      data: {
+        firstName: 'Erased', lastName: null, email: `erased-${clientId}@redacted.invalid`,
+        phone: null, dob: null, notes: null, allergies: null, medicalFlag: null, medicalFlagSetBy: null, medicalFlagAt: null,
+        marketingOptIn: false, unsubscribed: true, portalActive: false, passwordHash: null,
+        resetTokenHash: null, resetTokenExp: null,
+      },
+    }),
+    // Retain bookings/consultations (financial/clinical-audit basis) but strip the
+    // identifying + special-category free-text from them.
+    db.booking.updateMany({ where: { clientId }, data: { notes: null, allergyNote: null, cancelReason: null, clinicalNoteEnc: null, clinicalNoteBy: null, clinicalNoteAt: null } }),
+    db.consultation.updateMany({ where: { clientId }, data: { concerns: null, message: null, medicalNotes: null } }),
+    // Hard-delete the records that exist only to serve the data subject.
+    db.interaction.deleteMany({ where: { clientId } }),
+    db.healthAssessment.deleteMany({ where: { clientId } }),
+    db.beforePhoto.deleteMany({ where: { clientId } }),
+    db.aiAnalysis.deleteMany({ where: { clientId } }),
+    db.signedConsent.deleteMany({ where: { clientId } }),
+    db.review.deleteMany({ where: { clientId } }),
+    db.npsResponse.deleteMany({ where: { clientId } }),
+    db.followUp.deleteMany({ where: { clientId } }),
+    db.emailEvent.deleteMany({ where: { clientId } }),
+  ]);
+  await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
   revalidatePath(`/admin/clients/${clientId}`);
   return { ok: true };
 }
@@ -138,6 +161,7 @@ export async function toggleMarketing(clientId: string, optIn: boolean) {
   const session = await getSession();
   if (!session || !sessionCan(session, 'clients.edit')) return;
   const { db } = await import('@/lib/db');
-  await db.client.update({ where: { id: clientId }, data: { marketingOptIn: optIn, unsubscribed: optIn ? false : undefined } });
+  // Evidence the affirmative opt-in (who/when/version); clear the timestamp on opt-out.
+  await db.client.update({ where: { id: clientId }, data: { marketingOptIn: optIn, unsubscribed: optIn ? false : undefined, ...(optIn ? marketingConsentFields('admin') : { marketingConsentAt: null }) } });
   revalidatePath(`/admin/clients/${clientId}`);
 }

@@ -273,6 +273,11 @@ model Client {
   notes           String?
   allergies       String?        // client-stated allergies / dietary notes (hospitality + safety)
   marketingOptIn  Boolean        @default(false)
+  // Demonstrable marketing consent (UK GDPR Art. 7 / PECR reg. 22): what wording
+  // version, when, and how/where consent was captured — not just the boolean above.
+  marketingConsentAt      DateTime?
+  marketingConsentSource  String?
+  marketingConsentVersion String?
   smsReminders    Boolean        @default(false) // client opted in to SMS confirmations & reminders
   concerns        String[]       @default([]) // skin/treatment goals & concerns (onboarding)
   onboardedAt     DateTime?      // completed the welcome onboarding
@@ -2704,6 +2709,10 @@ model KioskResult {
   photoUrl   String?
   shareSlug  String       @unique
   shareCount Int          @default(0)
+  // Share-to-claim reward: the single-use discount code issued to the visitor.
+  claimCode  String?
+  claimEmail String?
+  claimedAt  DateTime?
   createdAt  DateTime     @default(now())
 
   @@index([shareSlug])

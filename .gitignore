@@ -28,6 +28,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 
+# visual QA harness output (screenshots + report; regenerate via scripts/visual-qa.mjs)
+/qa-output
+
 # editor
 .vscode/*
 !.vscode/extensions.json

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-export function FinancialControls({ refundWindowDays, minMarginPct, vat }: { refundWindowDays: number; minMarginPct: number; vat: { registered: boolean; inclusive: boolean; defaultRatePct: number } }) {
+export function FinancialControls({ refundWindowDays, minMarginPct, vat, kiosk }: { refundWindowDays: number; minMarginPct: number; vat: { registered: boolean; inclusive: boolean; defaultRatePct: number }; kiosk: { pct: number; enabled: boolean } }) {
   const [days, setDays] = useState(String(refundWindowDays));
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
@@ -23,6 +23,18 @@ export function FinancialControls({ refundWindowDays, minMarginPct, vat }: { ref
     const r = await fetch('/api/admin/finance/controls', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'margin', minMarginPct: Number(margin) }) }).then((x) => x.json()).catch(() => ({ ok: false }));
     setMarginBusy(false);
     setMarginMsg(r.ok ? 'Saved ✓' : (r.error || 'Could not save.'));
+  }
+
+  // Kiosk share reward
+  const [kEnabled, setKEnabled] = useState(kiosk.enabled);
+  const [kPct, setKPct] = useState(String(kiosk.pct));
+  const [kBusy, setKBusy] = useState(false);
+  const [kMsg, setKMsg] = useState('');
+  async function saveKiosk() {
+    setKBusy(true); setKMsg('');
+    const r = await fetch('/api/admin/finance/controls', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'kiosk', enabled: kEnabled, discountPct: Number(kPct) }) }).then((x) => x.json()).catch(() => ({ ok: false }));
+    setKBusy(false);
+    setKMsg(r.ok ? 'Saved ✓' : (r.error || 'Could not save.'));
   }
 
   // VAT
@@ -61,6 +73,22 @@ export function FinancialControls({ refundWindowDays, minMarginPct, vat }: { ref
           </label>
           <button onClick={saveMargin} disabled={marginBusy} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{marginBusy ? 'Saving…' : 'Save'}</button>
           {marginMsg && <span className="text-sm text-[var(--color-stone)]">{marginMsg}</span>}
+        </div>
+      </section>
+
+      <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
+        <h2 className="font-[family-name:var(--font-display)] text-lg">Storefront kiosk — share reward</h2>
+        <p className="mt-1 text-sm text-[var(--color-stone)]">The discount a “Skin &amp; Smile” kiosk visitor gets for sharing and creating an account (single-use, off their first treatment). Turn off to pause the offer.</p>
+        <label className="mt-3 flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={kEnabled} onChange={(e) => { setKEnabled(e.target.checked); setKMsg(''); }} className="h-4 w-4 accent-[var(--color-gold)]" />
+          Offer the share-to-claim reward
+        </label>
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <label className="text-xs text-[var(--color-stone)]">Discount (%)<br />
+            <input value={kPct} onChange={(e) => { setKPct(e.target.value.replace(/\D/g, '').slice(0, 3)); setKMsg(''); }} inputMode="numeric" className="mt-1 w-24 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+          </label>
+          <button onClick={saveKiosk} disabled={kBusy || !(Number(kPct) >= 1)} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{kBusy ? 'Saving…' : 'Save'}</button>
+          {kMsg && <span className="text-sm text-[var(--color-stone)]">{kMsg}</span>}
         </div>
       </section>
 
