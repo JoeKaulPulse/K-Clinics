@@ -283,5 +283,9 @@ export { notifyPasswordChanged };
 export const getCurrentClient = cache(async () => {
   const session = await getClientSession();
   if (!session) return null;
-  return withDbRetry(() => db.client.findUnique({ where: { id: session.sub } }));
+  const client = await withDbRetry(() => db.client.findUnique({ where: { id: session.sub } }));
+  // A deactivated client loses portal access immediately — don't wait for the
+  // 7-day token to expire (mirrors getCurrentStudent in lib/academy-auth.ts).
+  if (client && client.portalActive === false) return null;
+  return client;
 });

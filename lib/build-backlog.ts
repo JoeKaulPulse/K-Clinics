@@ -729,14 +729,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   // ── High ──────────────────────────────────────────────────────────────────────
   {
-    title: 'AUDIT H: Cross-portal JWT confusion — separate secrets + aud/typ claims', type: 'ERROR', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    title: 'AUDIT H: Cross-portal JWT confusion — separate secrets + aud/typ claims', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', project: 'audit-remediation',
     value: 8, effort: 3,
     detail: 'lib/auth-edge.ts: client/academy secrets fall back to ADMIN_JWT_SECRET and no token carries an aud/typ claim, so identical-shape client/academy tokens are interchangeable across portals. Fix: per-portal secrets + set and verify aud/typ on every token. (audit/01-auth-authz.md)',
+    notes: ['Shipped: each portal token now carries an aud claim (kc-admin/kc-client/kc-academy) set on sign (lib/auth.ts) and REQUIRED on jwtVerify (lib/auth-edge.ts), so secret reuse can no longer let a token cross portals — audience binding is the real isolation boundary. Added a one-time prod warning when CLIENT/ACADEMY_JWT_SECRET falls back to a shared value. One-time effect: existing tokens (no aud) are rejected, so users re-login once on deploy.'],
   },
   {
-    title: 'AUDIT H: Deactivated clients keep portal access until token expiry', type: 'ERROR', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    title: 'AUDIT H: Deactivated clients keep portal access until token expiry', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', project: 'audit-remediation',
     value: 7, effort: 2,
     detail: 'lib/client-auth.ts getCurrentClient never rechecks portalActive (admin/academy paths do), so a deactivated client keeps access for up to the 7-day token life. Fix: re-check portalActive (and active/deleted) on each request. (audit/01-auth-authz.md)',
+    notes: ['Shipped: getCurrentClient now rechecks portalActive on every request (React-cached, so no extra DB load) and returns null for deactivated clients — mirrors getCurrentStudent. A deactivated client loses portal access immediately instead of keeping it until the 7-day token expires. Confirmed portalActive is set true at register/activate/reset, so live clients are unaffected.'],
   },
   {
     title: 'AUDIT H: Gift card double-spend across concurrent orders', type: 'ERROR', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
