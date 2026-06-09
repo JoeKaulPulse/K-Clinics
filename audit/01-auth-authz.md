@@ -106,7 +106,7 @@ const session = await getSession();
 if (!session) return NextResponse.json({ ok: false, error: 'Sign in first.' }, { status: 403 });
 ```
 
-Any authenticated staff member (including a `STAFF`-role account) can register a platform passkey for their own account. Combined with the passkey-login finding above, that passkey then grants passwordless, 2FA-policy-bypassing sign-in.
+Any authenticated staff member (including a `STAFF`-role account) can register a platform passkey for their own account. Combined with the passkey-login finding above, that passkey then grants passwordless sign-in that also bypasses the 2FA enrolment policy.
 
 **Impact:** The privilege model intended for passkeys (OWNER step-up for exports/key-rotation) is wider in practice than documented. A low-privilege staff account can self-provision a passkey and thereafter authenticate without password or TOTP. Note the step-up *consumption* routes (`auth-options`/`auth-verify`) do enforce `OWNER`/`finance.view`, so the over-broad registration mainly affects passwordless login, not export/rotation authorization.
 
