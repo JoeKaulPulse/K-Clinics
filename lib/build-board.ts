@@ -97,9 +97,41 @@ export async function ensureBacklogSeeded(): Promise<void> {
     await assignOwnerInputTasks(); // idempotent; ensures blocked tasks have an owner + instructions
     await reconcileBacklog(); // advance shipped items so the board doesn't drift from the backlog
     await wireBacklogDependencies(); // idempotently wire declarative dependencies + block what's waiting
+    await syncProjects(); // create Projects + link their items (and the originating idea)
   } catch (e) {
     backlogSeedChecked = false; // transient failure — let a later request retry
     console.error('[build] auto-seed backlog failed', e);
+  }
+}
+
+/** Create the declared Projects and link items to them — including the idea each
+ *  project was formed from (the idea is "converted" by being linked to the
+ *  project). Idempotent; safe to run on every board load. */
+export async function syncProjects(): Promise<void> {
+  const { PROJECTS, BUILD_BACKLOG } = await import('@/lib/build-backlog');
+  if (!PROJECTS.length) return;
+  const idBySlug = new Map<string, string>();
+  for (const p of PROJECTS) {
+    const proj = await db.buildProject.upsert({
+      where: { slug: p.slug },
+      update: { name: p.name, summary: p.summary, originIdeaTitle: p.originIdeaTitle ?? null },
+      create: { slug: p.slug, name: p.name, summary: p.summary, originIdeaTitle: p.originIdeaTitle ?? null },
+    });
+    idBySlug.set(p.slug, proj.id);
+  }
+  // Link backlog items declaring a project, by title.
+  for (const it of BUILD_BACKLOG) {
+    if (!it.project) continue;
+    const pid = idBySlug.get(it.project);
+    if (!pid) continue;
+    await db.buildItem.updateMany({ where: { title: it.title, projectId: null }, data: { projectId: pid } }).catch(() => {});
+  }
+  // Convert each originating idea into its project by linking it (and any item
+  // whose title matches the idea) to the project.
+  for (const p of PROJECTS) {
+    if (!p.originIdeaTitle) continue;
+    const pid = idBySlug.get(p.slug);
+    if (pid) await db.buildItem.updateMany({ where: { title: p.originIdeaTitle, projectId: null }, data: { projectId: pid } }).catch(() => {});
   }
 }
 
@@ -112,6 +144,7 @@ export async function rebuildBacklog(): Promise<{ created: number; skipped: numb
   await assignOwnerInputTasks();
   const rec = await reconcileBacklog();
   await wireBacklogDependencies();
+  await syncProjects();
   await stampSeeded(BACKLOG_VERSION);
   return { ...seed, reconciled: rec.updated };
 }
@@ -257,6 +290,7 @@ export const ITEM_INCLUDE = {
   subtasks: { orderBy: { order: 'asc' as const } },
   dependencies: { include: { dependsOn: DEP_SELECT } },
   dependents: { include: { item: DEP_SELECT } },
+  project: { select: { id: true, slug: true, name: true } },
 };
 
 export async function listBuildItems() {
@@ -264,6 +298,35 @@ export async function listBuildItems() {
     orderBy: [{ status: 'asc' }, { urgency: 'asc' }, { createdAt: 'desc' }],
     take: 300,
     include: ITEM_INCLUDE,
+  });
+}
+
+const TERMINAL = ['SHIPPED', 'CLOSED', 'CANCELLED'];
+/** Is an item waiting on the owner? — it has a not-done owner-input subtask, or
+ *  it's blocked pending owner input. Drives the red "user-gated" badge count. */
+function isUserGated(i: { status: string; subtasks: { status: string; ownerInput: boolean }[] }): boolean {
+  return i.subtasks.some((s) => s.ownerInput && s.status !== 'DONE');
+}
+
+/** Projects with derived status: progress, open errors, and the count of
+ *  user-gated (owner-input) items — for the Projects section + red badges. */
+export async function listProjects() {
+  const projects = await db.buildProject.findMany({ orderBy: { createdAt: 'asc' } });
+  const items = await db.buildItem.findMany({
+    where: { projectId: { not: null } },
+    select: { id: true, title: true, type: true, status: true, urgency: true, projectId: true, subtasks: { select: { status: true, ownerInput: true } } },
+  });
+  return projects.map((p) => {
+    const own = items.filter((i) => i.projectId === p.id);
+    const done = own.filter((i) => TERMINAL.includes(i.status)).length;
+    const openErrors = own.filter((i) => i.type === 'ERROR' && !TERMINAL.includes(i.status)).length;
+    const userGated = own.filter((i) => !TERMINAL.includes(i.status) && isUserGated(i)).length;
+    const total = own.length;
+    return {
+      id: p.id, slug: p.slug, name: p.name, summary: p.summary, status: p.status, originIdeaTitle: p.originIdeaTitle,
+      total, done, open: total - done, openErrors, userGated,
+      progress: total ? Math.round((done / total) * 100) : 0,
+    };
   });
 }
 

@@ -11,11 +11,11 @@ export async function GET() {
   const session = await requirePermission('build.view');
   if (!session) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
   try {
-    const { listBuildItems, githubConfigured, githubRepo, backlogSyncState, buildActivity, githubMirrorEnabled, githubBackoffUntil, pendingWork } = await import('@/lib/build-board');
-    const [items, github, repo, sync, activity, mirror, backoffUntil, pending] = await Promise.all([
-      listBuildItems(), githubConfigured(), githubRepo(), backlogSyncState(), buildActivity(), githubMirrorEnabled(), githubBackoffUntil(), pendingWork(),
+    const { listBuildItems, githubConfigured, githubRepo, backlogSyncState, buildActivity, githubMirrorEnabled, githubBackoffUntil, pendingWork, listProjects } = await import('@/lib/build-board');
+    const [items, github, repo, sync, activity, mirror, backoffUntil, pending, projects] = await Promise.all([
+      listBuildItems(), githubConfigured(), githubRepo(), backlogSyncState(), buildActivity(), githubMirrorEnabled(), githubBackoffUntil(), pendingWork(), listProjects(),
     ]);
-    return NextResponse.json({ ok: true, items, github, githubRepo: repo, sync, activity, mirror, backoffUntil, pending });
+    return NextResponse.json({ ok: true, items, github, githubRepo: repo, sync, activity, mirror, backoffUntil, pending, projects });
   } catch (e) {
     console.error('[build] list failed', e);
     return NextResponse.json({ ok: false, error: 'Could not load the board.' }, { status: 500 });

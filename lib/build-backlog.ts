@@ -31,7 +31,21 @@ export type BacklogItem = {
   //    wires these into dependency edges and auto-flows the dependent when they ship.
   subtasks?: { title: string; ownerInput?: boolean; assignee?: string }[];
   dependsOn?: string[];
+  // Groups this item under a Project (by slug, see PROJECTS) — an epic + its
+  // sub-tasks share a project; the project is formed from an idea.
+  project?: string;
 };
+
+// Projects group an epic + its sub-tasks under one initiative, formed from an idea.
+export type ProjectDef = { slug: string; name: string; summary: string; originIdeaTitle?: string };
+export const PROJECTS: ProjectDef[] = [
+  {
+    slug: 'skin-smile-kiosk',
+    name: 'Storefront “Skin & Smile” QR kiosk',
+    summary: 'OOH interactive campaign: storefront screen QR → AI skin & smile rating → social share → account + share-to-claim discount. Formed from the owner’s marketing idea.',
+    originIdeaTitle: 'New marketing idea',
+  },
+];
 
 // Who can unblock an input-required task. Resolved to an actual user from the
 // live roster: OWNER → the account owner (business/admin/DNS decisions);
@@ -171,6 +185,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['This item is itself logged here. Going forward: create a board item (or GitHub issue) before starting, and record decisions as comments.', 'Superseded by the Build board v2 overhaul below — the board is now the portal.'],
   },
   {
+    title: 'Projects: group epics + sub-tasks into Projects (progress, errors, user-gated flags)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(426),
+    value: 8, effort: 5,
+    detail: 'Group an epic and its sub-tasks under a Project (formed from an idea). A Projects board section shows each project with progress %, open errors, and a red count of user-gated (owner-input) items. Cards show a red numerical badge for items needing owner input, and their project. The QR kiosk idea is converted into the "Storefront Skin & Smile QR kiosk" project with all its tasks linked.',
+    notes: ['Shipped (#426): BuildProject model + projectId on BuildItem; declarative PROJECTS + project field seeded by syncProjects (links items + converts the originating idea by linking it); listProjects derives progress/errors/userGated; Projects view + drill-in filter; red user-gated badges on cards + projects; kiosk audit findings filed under the project.'],
+  },
+  {
     title: 'Live visual QA harness (headless browser screenshots + findings)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(425),
     value: 7, effort: 4,
     detail: 'Enable real visual click-throughs: a Playwright harness drives a headless browser through key journeys against a BASE_URL, screenshots every step, captures console/page errors + failed requests, and writes a report. Test-tagged + auto-cleanup so running against production leaves no residue.',
@@ -259,7 +279,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Root-cause fix for the rate-limit bottleneck: separate the board’s GitHub identity from the personal account used for development, so mirroring/wakes never contend with PR work. A GitHub App is preferred (scoped, higher limits, installation tokens).',
   },
   {
-    title: 'Storefront “Skin & Smile” QR kiosk — campaign epic', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    title: 'Storefront “Skin & Smile” QR kiosk — campaign epic', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
     value: 8, effort: 8,
     detail: 'From the owner’s idea (board): the storefront digital screen (Novastar controller) shows a QR code; scanning starts a session that captures a photo, runs an AI “skin & smile” rating, lets the visitor share the result on social, then routes them to create an account and claim a share-for-discount reward. High lead-gen/brand potential; built on the existing K Vision AI consultation, accounts and gift/discount engines. This epic gates on its component tasks below; its owner-input subtask unblocks the build.',
     notes: [
@@ -282,7 +302,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: 'Kiosk: QR session + mobile entry (Skin & Smile)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    title: 'Kiosk: QR session + mobile entry (Skin & Smile)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', project: 'skin-smile-kiosk',
     value: 7, effort: 5,
     detail: 'Foundation: a QR on the storefront screen opens a tokenised mobile session (/kiosk/[token]) that pairs the phone with a display session and walks the visitor through the flow. Short-lived, anonymous-until-signup, rate-limited.',
     notes: [
@@ -290,7 +310,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: 'Kiosk: photo capture + consent', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    title: 'Kiosk: photo capture + consent', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', project: 'skin-smile-kiosk',
     value: 8, effort: 6,
     detail: 'Super-interactive, multi-source capture: (1) a fixed MAIN STORE CAMERA by the display for a live/“strike a pose” capture, (2) the visitor’s PHONE CAMERA via the QR session, and (3) additional CLOSE-UP uploads from the phone (skin/teeth detail). All with explicit, logged consent for analysis + optional social use; stored per the retention policy with an opt-out path. The phone session and the in-store camera are paired so either can drive the capture.',
     dependsOn: ['Kiosk: QR session + mobile entry (Skin & Smile)'],
@@ -300,7 +320,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: 'Kiosk: AI Skin & Smile rating (reuse K Vision)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    title: 'Kiosk: AI Skin & Smile rating (reuse K Vision)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', project: 'skin-smile-kiosk',
     value: 8, effort: 4,
     detail: 'Run the captured photo through the existing K Vision AI consultation to produce a friendly skin & smile rating + headline insights, tuned for a shareable, on-brand result (not a clinical diagnosis).',
     dependsOn: ['Kiosk: photo capture + consent'],
@@ -309,7 +329,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: 'Kiosk: shareable result card + social sharing', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    title: 'Kiosk: shareable result card + social sharing', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', project: 'skin-smile-kiosk',
     value: 8, effort: 5,
     detail: 'Render a beautiful, branded result card (image + page with OG tags) and one-tap share to Instagram/TikTok/X/WhatsApp. The shared link drives traffic back to the claim page.',
     dependsOn: ['Kiosk: AI Skin & Smile rating (reuse K Vision)'],
@@ -318,7 +338,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: 'Kiosk: account creation + share-to-claim discount', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    title: 'Kiosk: account creation + share-to-claim discount', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
     value: 9, effort: 5,
     detail: 'After sharing, prompt account creation and issue a single-use, campaign-tied discount as the share reward. Owner decision: this is a CAMPAIGN-SPECIFIC discount for the OOH interactive campaign — implement as a PromoCode with campaignId, seeded under a new “Storefront Skin & Smile (OOH)” MarketingCampaign so spend/conversions track against it. Verify the share where feasible; cap one reward per person.',
     dependsOn: ['Kiosk: shareable result card + social sharing'],
@@ -329,20 +349,47 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Technical foundation built. The result screen already routes to /account/register?ref=kiosk&slug={shareSlug} and a `claimed` funnel event fires on click. Awaiting owner confirmation of discount amount + validity before wiring the single-use campaign-tied PromoCode + “Storefront Skin & Smile (OOH)” MarketingCampaign.'],
   },
   {
-    title: 'Kiosk: Novastar storefront screen — live QR + session display', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude',
+    title: 'Kiosk: Novastar storefront screen — live QR + session display', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
     value: 6, effort: 6,
     detail: 'Drive the storefront screen via the Novastar controller: show the QR + an attract loop, mirror the MAIN STORE CAMERA feed (“strike a pose”), and reflect live session state (“scan to start”, “look at the camera”, result reveal) so the window is genuinely interactive. Exact integration depends on how the Novastar player accepts web content — gated on the owner’s specs.',
     dependsOn: ['Kiosk: QR session + mobile entry (Skin & Smile)'],
     notes: ['A web-renderable /kiosk/display is already live (full-screen QR + auto-regenerate countdown) for the storefront screen to point at. Awaiting owner storefront photos, screen specs, and Novastar controller details before building the live camera-mirror / session-aware attract loop.'],
   },
   {
-    title: 'Kiosk: analytics, anti-abuse & GDPR retention', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude',
+    title: 'Kiosk: analytics, anti-abuse & GDPR retention', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude', project: 'skin-smile-kiosk',
     value: 6, effort: 4,
     detail: 'Conversion funnel analytics (scans → photos → shares → signups → redemptions), rate-limiting/anti-abuse on the public kiosk, and a clear photo-retention/erasure policy aligned to the consent wording.',
     dependsOn: ['Kiosk: photo capture + consent'],
     notes: [
       'SHIPPED. Funnel analytics via the KioskEvent model: scan (server-side on /kiosk/[token] load), consent + photo (photo route), analyzed (after AI save), shared (share route), claimed (client POST to /api/kiosk/events on the claim CTA). The admin QR page now shows a "Skin & Smile Kiosk" panel with a link to /kiosk/display and live funnel counts (scans/photos/analyses/shares/claims) from KioskEvent groupBy. Anti-abuse: per-IP rate limit on POST /api/kiosk/sessions — max 3 sessions/IP/day and 5/IP/hour over a salted SHA-256 IP hash; sessions expire after 30 minutes (expiresAt enforced in the status route and the photo-upload route). GDPR retention: /api/cron/kiosk-cleanup (CRON_SECRET-protected, scheduled nightly in vercel.json) deletes Blob photos via del() and removes sessions (cascading results + events) older than 30 days, returning { ok, deleted }.',
     ],
+  },
+  // ── Kiosk audit findings (code review of the #422 autonomous build) ─────────
+  {
+    title: 'Kiosk BUG: AI analysis is fire-and-forget — won’t run reliably on serverless', type: 'ERROR', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
+    value: 9, effort: 2,
+    detail: 'In app/api/kiosk/sessions/[token]/photo/route.ts the analysis is kicked off with `void runKioskAnalysis(...)` AFTER the response is returned. On Vercel, the function can be frozen/terminated once it responds, so the background work often never completes — the client then polls forever and never gets a result. Fix: run it with `after()` from next/server (or @vercel/functions `waitUntil`) so the platform keeps the function alive, or trigger analysis via a separate request. This is the most likely cause of the live flow stalling at “analysing”.',
+  },
+  {
+    title: 'Kiosk BUG: HEIC selfies sent to Claude as image/jpeg', type: 'ERROR', urgency: 'P2', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
+    value: 6, effort: 2,
+    detail: 'Photos are stored as kiosk/<token>.jpg regardless of real type; lib/kiosk-ai.mediaTypeFromUrl derives the media type from the .jpg URL, so an iPhone HEIC upload is sent to Claude as image/jpeg and analysis fails. Persist/carry the real content-type (store the actual extension, or pass file.type through runKioskAnalysis) so HEIC is labelled correctly.',
+  },
+  {
+    title: 'Kiosk: share endpoint is unauthenticated + non-idempotent', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
+    value: 6, effort: 3,
+    detail: 'POST /api/kiosk/results/[id]/share increments shareCount and flips the session to SHARED with no rate-limit or verification — share counts can be inflated. This matters because the campaign reward is “share to claim a discount”; add light verification/rate-limiting before it gates a reward (ties into the account+discount task).',
+  },
+  {
+    title: 'Kiosk: flow dead-ends before the account + discount payoff (not launch-ready)', type: 'TASK', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
+    value: 8, effort: 5,
+    detail: 'Code audit: the live result page (app/kiosk/result/[slug]) ends at the shareable card + a “Get your score” link — there is no account-creation or share-to-claim discount step. The campaign’s conversion + ROI tracking aren’t live until the “account creation + share-to-claim discount” task ships, so the kiosk is not launch-ready yet. Flagging so it isn’t promoted prematurely.',
+    dependsOn: ['Kiosk: shareable result card + social sharing'],
+  },
+  {
+    title: 'Kiosk: analysis timeout + stuck-state UX', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
+    value: 4, effort: 2,
+    detail: 'analyzeKioskPhoto has no timeout on the Anthropic fetch, and on failure the session stays in PHOTO_TAKEN. Add a timeout + a friendly “couldn’t read that photo — try again” path on the mobile client so visitors aren’t stuck polling.',
   },
   {
     title: 'Build board: decouple from GitHub (DB-native queue, opt-in mirror, rate-limit governor)', type: 'TASK', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(401),
