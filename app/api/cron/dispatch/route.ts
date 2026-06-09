@@ -21,5 +21,11 @@ export async function GET(req: Request) {
   // Email any unseen live-chat reply once the visitor has clearly left.
   let chat = { emailed: 0 };
   try { const { sweepChatEmailFollowups } = await import('@/lib/chat-email'); chat = await sweepChatEmailFollowups(); } catch { /* non-fatal */ }
-  return NextResponse.json({ ok: true, ...result, chatFollowups: chat.emailed });
+  // Mirror any board items not yet on GitHub, a small throttled batch at a time,
+  // so the audit log in GitHub stays current automatically (no manual "Sync all"
+  // click) while staying well under GitHub's secondary rate limits. No-op unless
+  // GitHub is connected.
+  let ghSync = { synced: 0, remaining: 0 };
+  try { const { syncAllToGithub } = await import('@/lib/build-board'); ghSync = await syncAllToGithub('system', 6); } catch { /* non-fatal */ }
+  return NextResponse.json({ ok: true, ...result, chatFollowups: chat.emailed, githubSynced: ghSync.synced, githubRemaining: ghSync.remaining });
 }
