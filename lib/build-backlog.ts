@@ -719,9 +719,10 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Shipped: the slot recheck + booking.create now run in ONE Serializable $transaction (mirrors redeemPromo/awardClientPoints) with ALL reads on the tx client — safe under the serverless connection_limit=1 pool. It re-reads overlapping PENDING/CONFIRMED holds and rejects a concurrent grab of the same precomputed practitioner/resource; Postgres SSI aborts the write-skew loser, mapped to a retryable 409. Remaining defence-in-depth: a DB EXCLUDE USING gist (tstzrange) constraint — left as a follow-up because it needs a raw migration + btree_gist + dedup of any existing overlapping rows.'],
   },
   {
-    title: 'AUDIT C2: Right-to-erasure leaves health & personal data behind', type: 'ERROR', urgency: 'P0', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    title: 'AUDIT C2: Right-to-erasure leaves health & personal data behind', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', project: 'audit-remediation',
     value: 9, effort: 5,
     detail: 'app/admin/actions.ts eraseClientData pseudonymises only the Client row and deletes interactions; consultations, encrypted health assessments, signed consents, before-photos, AI analyses, email metadata and call transcripts all remain. UK GDPR Art.17. Fix: erase/pseudonymise across every table holding the client\'s personal/health data (or document a lawful retention exemption per category). (audit/06-pii-compliance.md)',
+    notes: ['Shipped: eraseClientData now runs ONE $transaction that — beyond pseudonymising the Client row (now incl. allergies) — strips clinical/PII free-text from RETAINED financial records (Booking notes/allergyNote/cancelReason/clinicalNote*, Consultation concerns/message/medicalNotes) and HARD-DELETES the special-category/personal child records with no retention basis: HealthAssessment, BeforePhoto, AiAnalysis (+images cascade), SignedConsent, Review, NpsResponse, FollowUp, EmailEvent, Interaction. The person is no longer re-identifiable and their medical history is gone, while HMRC-relevant booking/charge rows are kept pseudonymised. (deleteClient remains the full hard-delete option.)'],
   },
   {
     title: 'AUDIT C3: Encrypt special-category (health) + contact PII at rest', type: 'TASK', urgency: 'P0', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
@@ -766,14 +767,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Shipped: the staff Google refresh token is now encrypted at rest via the keyring (encryptJson on write in exchangeCodeForStaff, decryptJson on read in syncStaffCalendar — mirrors AdminUser.totpSecret). Reads tolerate any pre-existing plaintext during migration; the presence-count checks (integrations.ts, connected-staff sweep) still work on the encrypted blob.'],
   },
   {
-    title: 'AUDIT H: No audit record when clinical data is decrypted for viewing', type: 'TASK', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    title: 'AUDIT H: No audit record when clinical data is decrypted for viewing', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', project: 'audit-remediation',
     value: 7, effort: 3,
     detail: 'app/admin/clients/[id]/page.tsx: ASSESSMENT_VIEWED is logged only on SAR export, not when a clinician opens a client and formatAssessment decrypts their medical history. Fix: write an audit event whenever clinical/health data is decrypted for routine viewing. (audit/06-pii-compliance.md)',
+    notes: ['Shipped: the client-detail page now emits an ASSESSMENT_VIEWED audit event (actor + role + clientId, NO clinical content in the summary) whenever health assessments or AI-consultation findings/photos are actually decrypted for display — previously logged only on SAR export. Provides a who-viewed-whose-record trail for special-category data (Art. 5(2) / Art. 32). Best-effort so it never blocks the page.'],
   },
   {
-    title: 'AUDIT H: Marketing consent has no timestamp/version/source/lawful-basis', type: 'TASK', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    title: 'AUDIT H: Marketing consent has no timestamp/version/source/lawful-basis', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', project: 'audit-remediation',
     value: 7, effort: 4,
     detail: 'schema Client.marketingOptIn is a bare boolean a staff member can flip with no proof of consent (PECR / GDPR Art.7 demonstrability). Fix: capture marketingConsentAt/Source/Version (+ lawful basis) as evidenced, audited fields set at the point of consent. (audit/06-pii-compliance.md)',
+    notes: ['Shipped: added Client.marketingConsentAt/Source/Version (additive, nullable) + a marketingConsentFields(source) helper carrying the versioned wording (MARKETING_CONSENT_VERSION). Set on every genuine opt-in path — admin toggle ("admin"), portal registration ("registration"), consult form ("consult-form") — and the timestamp is cleared on admin opt-out. Now evidences what/when/how per Art. 7 / PECR reg. 22 instead of a bare boolean. Historic boolean-only opt-ins can\'t be retro-evidenced — re-permissioning those is an owner decision (per the audit).'],
   },
   {
     title: 'AUDIT H: Medical questionnaires capture no privacy-notice/granular consent', type: 'TASK', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',

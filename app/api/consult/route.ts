@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { consultSchema } from '@/lib/validation';
 import { crmEnabled } from '@/lib/crm';
 import { site } from '@/lib/site';
+import { marketingConsentFields } from '@/lib/consent';
 
 export const runtime = 'nodejs';
 
@@ -53,6 +54,7 @@ export async function POST(req: Request) {
         phone: data.phone || undefined,
         dob: data.dob ? new Date(data.dob) : undefined,
         marketingOptIn: data.marketingOptIn || undefined,
+        ...(data.marketingOptIn ? marketingConsentFields('consult-form') : {}),
       },
       create: {
         firstName: data.firstName,
@@ -62,6 +64,7 @@ export async function POST(req: Request) {
         dob: data.dob ? new Date(data.dob) : null,
         source: 'website',
         marketingOptIn: data.marketingOptIn,
+        ...(data.marketingOptIn ? marketingConsentFields('consult-form') : {}),
       },
     });
 

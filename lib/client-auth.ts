@@ -2,6 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import { db, withDbRetry } from '@/lib/db';
 import { hashPassword, verifyPassword, createClientSession, getClientSession } from '@/lib/auth';
+import { marketingConsentFields } from '@/lib/consent';
 import { fingerprint } from '@/lib/crypto';
 import crypto from 'crypto';
 
@@ -90,6 +91,7 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
       portalActive: true,
       locale: input.locale === 'uk' ? 'uk' : 'en',
       marketingOptIn: input.marketingOptIn || undefined,
+      ...(input.marketingOptIn ? marketingConsentFields('registration') : {}),
       signupIp: input.ip || undefined,
       source: existing?.source ?? 'portal-signup',
     },
@@ -105,6 +107,7 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
       portalActive: true,
       locale: input.locale === 'uk' ? 'uk' : 'en',
       marketingOptIn: input.marketingOptIn ?? false,
+      ...(input.marketingOptIn ? marketingConsentFields('registration') : {}),
       signupIp: input.ip || undefined,
       source: 'portal-signup',
     },
