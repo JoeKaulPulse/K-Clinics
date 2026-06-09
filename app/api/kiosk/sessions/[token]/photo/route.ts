@@ -9,6 +9,15 @@ export const maxDuration = 60;
 const MAX = 10 * 1024 * 1024; // 10MB
 const OK = /^image\/(png|jpe?g|webp|heic|heif)$/i;
 
+function extForMime(type: string): string {
+  const t = type.toLowerCase();
+  if (t === 'image/png') return '.png';
+  if (t === 'image/webp') return '.webp';
+  if (t === 'image/heic') return '.heic';
+  if (t === 'image/heif') return '.heif';
+  return '.jpg';
+}
+
 // Public. Accepts the visitor's selfie, stores it on Vercel Blob, records
 // consent, then kicks off (fire-and-forget) the AI analysis so the client can
 // poll the status endpoint. Returns immediately.
@@ -42,7 +51,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   let blobUrl: string;
   try {
     const { put } = await import('@vercel/blob');
-    const blob = await put(`kiosk/${token}-${Date.now()}.jpg`, file, {
+    // Use the real extension so the blob URL reflects the actual type, and the
+    // content-type header Vercel Blob sends on retrieval matches the data.
+    const ext = extForMime(file.type);
+    const blob = await put(`kiosk/${token}-${Date.now()}${ext}`, file, {
       access: 'public',
       addRandomSuffix: false,
       contentType: file.type || 'image/jpeg',

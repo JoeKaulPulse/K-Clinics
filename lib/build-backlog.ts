@@ -372,9 +372,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Shipped (#427): replaced the fire-and-forget with `after(() => runKioskAnalysis(...))` from next/server, which keeps the serverless function alive until the analysis completes. Top actionable backlog item by V:E; the most likely cause of the live flow stalling at "analysing".'],
   },
   {
-    title: 'Kiosk BUG: HEIC selfies sent to Claude as image/jpeg', type: 'ERROR', urgency: 'P2', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
+    title: 'Kiosk BUG: HEIC selfies sent to Claude as image/jpeg', type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', project: 'skin-smile-kiosk', pr: PR(428),
     value: 6, effort: 2,
     detail: 'Photos are stored as kiosk/<token>.jpg regardless of real type; lib/kiosk-ai.mediaTypeFromUrl derives the media type from the .jpg URL, so an iPhone HEIC upload is sent to Claude as image/jpeg and analysis fails. Persist/carry the real content-type (store the actual extension, or pass file.type through runKioskAnalysis) so HEIC is labelled correctly.',
+    notes: [
+      'Shipped (#428): two-part fix. (1) photo/route.ts now uses the real file extension in the Vercel Blob filename (extForMime: .heic/.heif/.png/.webp/.jpg) so the blob URL and its stored Content-Type both reflect the actual media type. (2) kiosk-ai.ts replaces the URL-extension-only mediaTypeFromUrl() with resolveMediaType() that reads the HTTP response Content-Type header first (Vercel Blob preserves the uploaded type) and falls back to URL extension. Claude\'s vision API only accepts JPEG/PNG/GIF/WebP — HEIC/HEIF returns null gracefully so the client\'s 60 s polling timeout shows "try again" rather than crashing.',
+    ],
   },
   {
     title: 'Kiosk: share endpoint is unauthenticated + non-idempotent', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',

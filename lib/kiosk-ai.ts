@@ -43,12 +43,22 @@ export type KioskAiResult = {
   treatments: string[];
 };
 
-function mediaTypeFromUrl(url: string): string {
+// Claude's vision API only accepts these four types.
+const CLAUDE_MEDIA_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+
+// Derive media type from a response Content-Type header (preferred — the blob
+// stores the real type) with a URL-extension fallback for edge cases.
+function resolveMediaType(contentTypeHeader: string | null, url: string): string | null {
+  const fromHeader = contentTypeHeader?.split(';')[0]?.trim().toLowerCase();
+  if (fromHeader && CLAUDE_MEDIA_TYPES.has(fromHeader)) return fromHeader;
+  if (fromHeader && (fromHeader === 'image/heic' || fromHeader === 'image/heif')) return null;
+
+  // Fallback: derive from URL extension.
   const u = url.toLowerCase().split('?')[0];
   if (u.endsWith('.png')) return 'image/png';
   if (u.endsWith('.webp')) return 'image/webp';
   if (u.endsWith('.gif')) return 'image/gif';
-  if (u.endsWith('.heic') || u.endsWith('.heif')) return 'image/heic';
+  if (u.endsWith('.heic') || u.endsWith('.heif')) return null;
   return 'image/jpeg';
 }
 
@@ -79,7 +89,14 @@ export async function analyzeKioskPhoto(photoUrl: string): Promise<KioskAiResult
     }
     const ab = await imgRes.arrayBuffer();
     const b64 = Buffer.from(ab).toString('base64');
-    const media = mediaTypeFromUrl(photoUrl);
+    // Use the response Content-Type header (Vercel Blob preserves the real type
+    // we set on upload), falling back to URL extension. HEIC/HEIF aren't
+    // supported by Claude's vision API — return null so the client retries.
+    const media = resolveMediaType(imgRes.headers.get('content-type'), photoUrl);
+    if (!media) {
+      console.error('[kiosk-ai] unsupported image type for Claude:', imgRes.headers.get('content-type'));
+      return null;
+    }
 
     // 2) Call Claude (same pattern as callClaude in lib/ai-consultation.ts).
     const res = await fetch('https://api.anthropic.com/v1/messages', {
