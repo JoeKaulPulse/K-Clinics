@@ -264,18 +264,13 @@ export async function createBuildItem(input: NewBuildItem, actor: string) {
     },
     include: { events: true, subtasks: true },
   });
-  // A captured idea is queued for Claude to score (value/effort) and triage into
-  // the workflow — push it to GitHub so the continue/triage loop can pick it up.
-  if (type === 'IDEA' && (item.assignee === 'claude') && (await githubConfigured())) {
-    await pushToGithub(item.id, 'system').catch(() => {});
-  }
-  // Auto-bridge to GitHub the moment it's logged — so it's tracked and can
-  // trigger Claude — for anything a person reports (a real reporter, not Claude/
-  // system), any ERROR/bug, or anything urgent (P0/P1). Quieter Claude-authored
-  // P2/P3 tasks still batch-sync via the cron to respect GitHub's rate limit.
+  // The item lives on the board — that's the source of truth and it needs no
+  // GitHub call to be tracked or actioned. Mirroring to a GitHub issue is opt-in
+  // (default OFF) and only happens for notable items when not rate-limited — so
+  // logging a bug/idea/task never competes for GitHub's API budget.
   const userReported = !!item.reportedBy && !['claude', 'system'].includes(item.reportedBy.toLowerCase());
-  const shouldSync = userReported || item.type === 'ERROR' || item.urgency === 'P0' || item.urgency === 'P1';
-  if (shouldSync && (await githubConfigured())) {
+  const notable = userReported || item.type === 'ERROR' || item.type === 'IDEA' || item.urgency === 'P0' || item.urgency === 'P1';
+  if (notable && (await githubMirrorEnabled()) && !(await ghBackoffActive())) {
     await pushToGithub(item.id, 'system').catch(() => {});
   }
   // Tell the assignee they've got something (unless they assigned it to themselves).
@@ -456,6 +451,45 @@ export async function getGithubConfig(): Promise<{ token: string; repo: string }
 export async function githubConfigured(): Promise<boolean> { return !!(await getGithubConfig()); }
 export async function githubRepo(): Promise<string | null> { return (await getGithubConfig())?.repo ?? null; }
 
+// ── GitHub usage governor ────────────────────────────────────────────────────
+// The board is the source of truth and works fully without GitHub. GitHub is an
+// OPTIONAL mirror/wake — off by default and rate-limit-aware — so the dashboard
+// (comments, tasks, ideas, bugs, backlog) never gets throttled by issue spam.
+const GH_WAKE_COOLDOWN_MS = 10 * 60 * 1000; // at most one Claude "wake" per 10 min
+
+async function getRaw(key: string): Promise<string | null> {
+  try { return (await db.setting.findUnique({ where: { key } }))?.value ?? null; } catch { return null; }
+}
+async function setRaw(key: string, value: string, by = 'system'): Promise<void> {
+  await db.setting.upsert({ where: { key }, update: { value, updatedBy: by }, create: { key, value, updatedBy: by } }).catch(() => {});
+}
+
+/** Mirroring to GitHub issues is opt-in (default OFF). When off, nothing is ever
+ *  auto-pushed — the board is entirely self-contained. */
+export async function githubMirrorEnabled(): Promise<boolean> { return (await getRaw('github_mirror_enabled')) === 'true'; }
+export async function setGithubMirror(on: boolean, by: string): Promise<void> { await setRaw('github_mirror_enabled', on ? 'true' : 'false', by); }
+
+/** When GitHub rate-limited us, we park all writes until this timestamp. */
+export async function githubBackoffUntil(): Promise<number> { const v = await getRaw('github_backoff_until'); return v ? Number(v) || 0 : 0; }
+async function ghBackoffActive(): Promise<boolean> { return (await githubBackoffUntil()) > Date.now(); }
+
+/** Inspect a GitHub response and arm/clear the backoff window from its rate-limit
+ *  headers, so one 403/429 stops us hammering until the limit resets. */
+async function noteGhResponse(res: Response): Promise<void> {
+  try {
+    const remaining = Number(res.headers.get('x-ratelimit-remaining'));
+    const retryAfter = Number(res.headers.get('retry-after'));
+    const reset = Number(res.headers.get('x-ratelimit-reset')) * 1000;
+    if (res.status === 429 || (res.status === 403 && (remaining === 0 || retryAfter > 0))) {
+      const until = retryAfter > 0 ? Date.now() + retryAfter * 1000 : (reset > Date.now() ? reset : Date.now() + 15 * 60 * 1000);
+      await setRaw('github_backoff_until', String(until));
+    } else if (res.ok && (Number.isNaN(remaining) || remaining > 5)) {
+      const cur = await githubBackoffUntil();
+      if (cur) await setRaw('github_backoff_until', '0'); // recovered — clear stale backoff
+    }
+  } catch { /* best-effort */ }
+}
+
 /** Tidy whatever the user pasted into a clean "owner/name". Accepts a full
  *  GitHub URL, an SSH remote, a trailing .git, leading @, or extra whitespace. */
 export function normalizeRepo(input: string): string {
@@ -512,8 +546,9 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** Push every board item not yet linked to a GitHub issue, in small throttled
  *  batches so GitHub's secondary rate limit isn't tripped. Returns how many were
  *  synced this run and how many remain (click again for the rest). */
-export async function syncAllToGithub(actor: string, max = 8): Promise<{ synced: number; remaining: number; stopped: boolean }> {
+export async function syncAllToGithub(actor: string, max = 8): Promise<{ synced: number; remaining: number; stopped: boolean; backoff?: boolean }> {
   if (!(await getGithubConfig())) return { synced: 0, remaining: 0, stopped: true };
+  if (await ghBackoffActive()) { const remaining = await db.buildItem.count({ where: { githubUrl: null } }); return { synced: 0, remaining, stopped: true, backoff: true }; }
   const items = await db.buildItem.findMany({ where: { githubUrl: null }, orderBy: [{ urgency: 'asc' }, { createdAt: 'asc' }], select: { id: true } });
   let synced = 0, stopped = false;
   for (const it of items) {
@@ -531,6 +566,7 @@ export async function pushToGithub(id: string, actor: string) {
   if (!item || item.githubUrl) return item; // already linked
   const cfg = await getGithubConfig();
   if (!cfg) return item;
+  if (await ghBackoffActive()) return item; // rate-limited — skip, the item stays on the board
   const { token, repo } = cfg;
   const body = [
     item.detail || '',
@@ -545,6 +581,7 @@ export async function pushToGithub(id: string, actor: string) {
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
     body: JSON.stringify({ title: `[${item.urgency}] ${item.title}`, body, labels: ['claude', item.type.toLowerCase()] }),
   });
+  await noteGhResponse(res);
   if (!res.ok) return item;
   const issue = (await res.json()) as { html_url?: string; number?: number };
   return db.buildItem.update({
@@ -553,9 +590,42 @@ export async function pushToGithub(id: string, actor: string) {
   });
 }
 
-// ── Wake Claude via GitHub ───────────────────────────────────────────────────
-// Claude Code on the web starts on GitHub activity, so the only reliable in-app
-// way to "prompt Claude" is to create/comment a GitHub issue that @-mentions it.
+// ── The work queue (DB-native) ───────────────────────────────────────────────
+// Claude continues work by reading this queue from the dashboard — no GitHub
+// round-trip required. Everything the team logs (tasks, ideas, bugs, comments,
+// backlog) surfaces here in priority order.
+
+const veRank = (i: { value: number | null; effort: number | null }) => (i.value && i.effort ? i.value / i.effort : 0);
+
+/** What Claude should pick up next, straight from the board. Pure DB read. */
+export async function pendingWork() {
+  const open = await db.buildItem.findMany({
+    where: { status: { in: ['TRIAGE', 'IN_PROGRESS', 'IN_REVIEW'] } },
+    select: { id: true, title: true, type: true, urgency: true, status: true, assignee: true, value: true, effort: true, reportedBy: true, createdAt: true },
+  });
+  const mine = open.filter((i) => i.assignee === 'claude');
+  const byPriority = (a: typeof open[number], b: typeof open[number]) => a.urgency.localeCompare(b.urgency) || veRank(b) - veRank(a) || +new Date(a.createdAt) - +new Date(b.createdAt);
+  const [continueAt, lastWake] = await Promise.all([getRaw('build_continue_requested_at'), getRaw('build_continue_last_wake_at')]);
+  return {
+    continueRequestedAt: continueAt,
+    lastWakeAt: lastWake,
+    queue: [...mine].sort(byPriority).slice(0, 25),
+    ideasToTriage: open.filter((i) => i.type === 'IDEA' && i.status === 'TRIAGE').sort(byPriority),
+    openBugs: open.filter((i) => i.type === 'ERROR').sort(byPriority),
+    counts: {
+      withClaude: mine.length,
+      ideas: open.filter((i) => i.type === 'IDEA').length,
+      bugs: open.filter((i) => i.type === 'ERROR').length,
+      awaitingSignoff: await db.buildItem.count({ where: { status: 'SHIPPED' } }),
+    },
+  };
+}
+
+// ── Optional, governed GitHub wake ───────────────────────────────────────────
+// A Claude session is started by GitHub activity, so an @claude issue comment can
+// wake one — but that's now a rare, debounced nudge (≤1 per cooldown, only when
+// mirroring is on and we're not rate-limited). The request itself is always
+// recorded in the DB queue above, so nothing depends on the GitHub call landing.
 
 async function ghComment(issueNumber: number, body: string): Promise<boolean> {
   const cfg = await getGithubConfig();
@@ -565,51 +635,64 @@ async function ghComment(issueNumber: number, body: string): Promise<boolean> {
     headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
     body: JSON.stringify({ body }),
   });
+  await noteGhResponse(res);
   return res.ok;
 }
 
-/** Ping Claude to follow up on a specific board item: comment its linked issue
- *  (creating one first if needed) with an @claude mention so a session wakes. */
+/** Should we spend a GitHub call to wake Claude now? Only if mirroring is on, not
+ *  backed off, and we haven't woken within the cooldown. */
+async function canWakeViaGithub(): Promise<boolean> {
+  if (!(await githubMirrorEnabled()) || (await ghBackoffActive()) || !(await getGithubConfig())) return false;
+  const last = Number((await getRaw('build_continue_last_wake_at')) || 0);
+  return Date.now() - last > GH_WAKE_COOLDOWN_MS;
+}
+
+/** Record that a board item needs Claude's attention. DB-first: it's queued for
+ *  the next session; a GitHub wake is only fired when the governor allows it. */
 export async function triggerClaude(message: string, itemId: string): Promise<boolean> {
-  if (!(await getGithubConfig())) return false;
+  await setRaw('build_continue_requested_at', new Date().toISOString());
+  if (!(await canWakeViaGithub())) return false;
   let item = await db.buildItem.findUnique({ where: { id: itemId } });
   if (!item) return false;
   if (!item.githubNumber) { item = (await pushToGithub(itemId, 'system')) || item; }
   if (!item.githubNumber) return false;
+  await setRaw('build_continue_last_wake_at', String(Date.now()));
   return ghComment(item.githubNumber, `@claude ${message}\n\n_Triggered from the Build & Issues board._`);
 }
 
-/** The board's "▶ Continue working" button: always records the request, then
- *  tries to wake Claude via a singleton GitHub issue. The request is never lost —
- *  if GitHub is rate-limited/unreachable, `woke` is false and `warning` explains
- *  it (the recorded request is picked up by the next session/sync). */
-export async function requestClaudeContinue(actor: string): Promise<{ ok: boolean; configured: boolean; woke: boolean; githubUrl?: string; warning?: string }> {
-  const now = new Date().toISOString();
-  await db.setting.upsert({ where: { key: 'build_continue_requested_at' }, update: { value: now, updatedBy: actor }, create: { key: 'build_continue_requested_at', value: now, updatedBy: actor } });
-  const cfg = await getGithubConfig();
-  if (!cfg) return { ok: true, configured: false, woke: false };
+/** The board's "▶ Continue working" button. Always records the request to the DB
+ *  queue (never lost, never fails); a GitHub wake is a best-effort, debounced
+ *  extra that's skipped when mirroring is off / rate-limited / within cooldown. */
+export async function requestClaudeContinue(actor: string): Promise<{ ok: boolean; queued: boolean; woke: boolean; mirror: boolean; githubUrl?: string; note?: string }> {
+  await setRaw('build_continue_requested_at', new Date().toISOString(), actor);
+  const mirror = await githubMirrorEnabled();
 
-  const TITLE = '▶ Continue working through the backlog';
-  const numRow = await db.setting.findUnique({ where: { key: 'build_continue_issue_number' } });
-  const existing = numRow?.value ? Number(numRow.value) : null;
-  const msg = `@claude please continue working through the prioritised Build & Issues backlog (highest value-to-effort first, skipping owner-gated items). Requested by ${actor.split('@')[0]} at ${now}.`;
-  const RATE = 'GitHub is rate-limiting right now (a lot of activity on the account today) — your request is saved and Claude will pick it up shortly; you can also just tell Claude to continue.';
-
-  if (existing) {
-    // Reopen + comment the singleton issue so the mention re-triggers a session.
-    await fetch(`https://api.github.com/repos/${cfg.repo}/issues/${existing}`, {
-      method: 'PATCH', headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' }, body: JSON.stringify({ state: 'open' }),
-    }).catch(() => {});
-    const woke = await ghComment(existing, msg);
-    return { ok: true, configured: true, woke, githubUrl: `https://github.com/${cfg.repo}/issues/${existing}`, warning: woke ? undefined : RATE };
+  if (!(await canWakeViaGithub())) {
+    const note = !mirror
+      ? 'Saved to Claude’s work queue. (GitHub mirroring is off — Claude works straight from the dashboard.)'
+      : (await ghBackoffActive())
+        ? 'Saved to Claude’s work queue. GitHub is cooling down after heavy use, so no issue was created — Claude still picks it up from the board.'
+        : 'Saved to Claude’s work queue — Claude will pick it up from the board on its next run.';
+    return { ok: true, queued: true, woke: false, mirror, note };
   }
 
-  const res = await fetch(`https://api.github.com/repos/${cfg.repo}/issues`, {
-    method: 'POST', headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title: TITLE, body: msg, labels: ['claude', 'continue'] }),
-  });
-  if (!res.ok) return { ok: true, configured: true, woke: false, warning: RATE };
+  const cfg = (await getGithubConfig())!;
+  const TITLE = '▶ Continue working through the backlog';
+  const existing = Number((await getRaw('build_continue_issue_number')) || 0) || null;
+  const msg = `@claude please continue working through the prioritised Build & Issues backlog (highest value-to-effort first, skipping owner-gated items). Requested by ${actor.split('@')[0]}.`;
+  await setRaw('build_continue_last_wake_at', String(Date.now()), actor);
+
+  if (existing) {
+    const patch = await fetch(`https://api.github.com/repos/${cfg.repo}/issues/${existing}`, { method: 'PATCH', headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' }, body: JSON.stringify({ state: 'open' }) }).catch(() => null);
+    if (patch) await noteGhResponse(patch);
+    const woke = await ghComment(existing, msg);
+    return { ok: true, queued: true, woke, mirror, githubUrl: `https://github.com/${cfg.repo}/issues/${existing}`, note: woke ? 'Claude prompted via GitHub — a session will pick it up shortly.' : 'Saved to the queue (GitHub was busy) — Claude will still pick it up from the board.' };
+  }
+
+  const res = await fetch(`https://api.github.com/repos/${cfg.repo}/issues`, { method: 'POST', headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' }, body: JSON.stringify({ title: TITLE, body: msg, labels: ['claude', 'continue'] }) });
+  await noteGhResponse(res);
+  if (!res.ok) return { ok: true, queued: true, woke: false, mirror, note: 'Saved to the queue (GitHub was busy) — Claude will still pick it up from the board.' };
   const issue = (await res.json()) as { html_url?: string; number?: number };
-  if (issue.number) await db.setting.upsert({ where: { key: 'build_continue_issue_number' }, update: { value: String(issue.number), updatedBy: actor }, create: { key: 'build_continue_issue_number', value: String(issue.number), updatedBy: actor } });
-  return { ok: true, configured: true, woke: true, githubUrl: issue.html_url };
+  if (issue.number) await setRaw('build_continue_issue_number', String(issue.number), actor);
+  return { ok: true, queued: true, woke: true, mirror, githubUrl: issue.html_url, note: 'Claude prompted via GitHub — a session will pick it up shortly.' };
 }

@@ -11,9 +11,11 @@ export async function GET() {
   const session = await requirePermission('build.view');
   if (!session) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
   try {
-    const { listBuildItems, githubConfigured, githubRepo, backlogSyncState, buildActivity } = await import('@/lib/build-board');
-    const [items, github, repo, sync, activity] = await Promise.all([listBuildItems(), githubConfigured(), githubRepo(), backlogSyncState(), buildActivity()]);
-    return NextResponse.json({ ok: true, items, github, githubRepo: repo, sync, activity });
+    const { listBuildItems, githubConfigured, githubRepo, backlogSyncState, buildActivity, githubMirrorEnabled, githubBackoffUntil, pendingWork } = await import('@/lib/build-board');
+    const [items, github, repo, sync, activity, mirror, backoffUntil, pending] = await Promise.all([
+      listBuildItems(), githubConfigured(), githubRepo(), backlogSyncState(), buildActivity(), githubMirrorEnabled(), githubBackoffUntil(), pendingWork(),
+    ]);
+    return NextResponse.json({ ok: true, items, github, githubRepo: repo, sync, activity, mirror, backoffUntil, pending });
   } catch (e) {
     console.error('[build] list failed', e);
     return NextResponse.json({ ok: false, error: 'Could not load the board.' }, { status: 500 });
@@ -86,6 +88,11 @@ export async function POST(req: Request) {
         if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
         const r = await board.requestClaudeContinue(session.email);
         return NextResponse.json(r);
+      }
+      case 'mirror': {
+        if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
+        await board.setGithubMirror(!!b.on, session.email);
+        return NextResponse.json({ ok: true, mirror: !!b.on });
       }
       case 'github': {
         if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });

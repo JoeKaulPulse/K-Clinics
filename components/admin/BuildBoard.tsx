@@ -54,6 +54,8 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
   const [ghForm, setGhForm] = useState({ repo: 'JoeKaulPulse/K-Clinics', token: '', busy: false, error: '' });
   const [sync, setSync] = useState<{ inSync: boolean; dbCount: number; backlogCount: number; lastSeededAt: string | null; commit: string } | null>(null);
   const [activity, setActivity] = useState<Activity | null>(null);
+  const [mirror, setMirror] = useState(false);
+  const [backoffUntil, setBackoffUntil] = useState(0);
   const [q, setQ] = useState('');
   const [view, setView] = useState<'kanban' | 'list' | 'timeline'>('kanban');
   const [mine, setMine] = useState(false);
@@ -62,7 +64,7 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
   const load = useCallback(async (force = false) => {
     if (!force && typeof document !== 'undefined' && document.hidden) return;
     const res = await fetch('/api/admin/build').then((x) => x.json()).catch(() => ({ ok: false }));
-    if (res.ok) { setItems(res.items); setGh({ connected: !!res.github, repo: res.githubRepo || null }); setSync(res.sync || null); setActivity(res.activity || null); }
+    if (res.ok) { setItems(res.items); setGh({ connected: !!res.github, repo: res.githubRepo || null }); setSync(res.sync || null); setActivity(res.activity || null); setMirror(!!res.mirror); setBackoffUntil(res.backoffUntil || 0); }
     setLoading(false);
   }, []);
 
@@ -88,7 +90,8 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
     setSyncing(true);
     const r = await post({ op: 'github-sync-all' });
     setSyncing(false);
-    if (r.ok) { alert(r.remaining > 0 ? `Synced ${r.synced} to GitHub · ${r.remaining} remaining — click again in a moment.` : `All synced to GitHub ✓ (${r.synced} this round).`); load(true); }
+    if (r.ok && r.backoff) alert('GitHub is cooling down after heavy use — sync paused automatically. Everything stays on the board; try again later.');
+    else if (r.ok) { alert(r.remaining > 0 ? `Synced ${r.synced} to GitHub · ${r.remaining} remaining — click again in a moment.` : `All synced to GitHub ✓ (${r.synced} this round).`); load(true); }
     else alert(r.error || 'Sync failed.');
   }
   const [seeding, setSeeding] = useState(false);
@@ -99,15 +102,16 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
     if (r.ok) { alert(`Rebuilt from backlog — ${r.created} added, ${r.reconciled || 0} status update(s)${r.skipped ? `, ${r.skipped} already present` : ''}.`); load(true); }
     else alert(r.error || 'Rebuild failed.');
   }
+  async function toggleMirror() {
+    const r = await post({ op: 'mirror', on: !mirror });
+    if (r.ok) { setMirror(!!r.mirror); load(true); } else alert(r.error || 'Failed');
+  }
   const [continuing, setContinuing] = useState(false);
   async function continueWork() {
     setContinuing(true);
     const r = await post({ op: 'continue' });
     setContinuing(false);
-    if (r.ok && r.woke) alert('Claude has been prompted to continue the backlog — a session will pick it up via GitHub shortly.');
-    else if (r.ok && r.warning) alert(r.warning);
-    else if (r.ok) alert('Request recorded. Connect GitHub to auto-wake Claude; otherwise it’s picked up on the next session.');
-    else alert(r.error || 'Could not request.');
+    alert(r.note || (r.ok ? 'Saved to Claude’s work queue.' : (r.error || 'Could not request.')));
     load(true);
   }
 
@@ -133,6 +137,8 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
         <span><strong className="text-[var(--color-ink)]">{awaitingSignoff}</strong> awaiting sign-off</span>
         <span><strong className="text-[var(--color-ink)]">{items.filter((i) => i.assignee === 'claude' && !['SHIPPED', 'CLOSED', 'CANCELLED'].includes(i.status)).length}</strong> with Claude</span>
         {gh.connected ? <span className="text-[var(--color-jade)]">GitHub ✓{gh.repo ? ` · ${gh.repo}` : ''}</span> : <span className="text-[var(--color-stone-soft)]">GitHub not connected</span>}
+        {gh.connected && canManage && <button onClick={toggleMirror} title="When off, the board never auto-pushes to GitHub — it runs entirely on its own and won’t hit API limits. Turn on to also mirror items to issues." className={`rounded-full px-2 py-0.5 text-xs ${mirror ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>mirror {mirror ? 'on' : 'off'}</button>}
+        {backoffUntil > Date.now() && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800" title="GitHub rate-limited; auto-pushes paused. The board is unaffected.">GitHub cooling down · {new Date(backoffUntil).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>}
         <span className="ml-auto flex flex-wrap items-center gap-2">
           {canManage && <button onClick={continueWork} disabled={continuing} className="rounded-full bg-[var(--color-gold)] px-4 py-1.5 text-xs font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50">{continuing ? 'Prompting…' : '▶ Continue working'}</button>}
           <button onClick={() => setIdeaOpen(true)} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-bone)]">💡 Add idea</button>

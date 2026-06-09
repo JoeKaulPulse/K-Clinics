@@ -21,12 +21,15 @@ export async function GET(req: Request) {
   // Email any unseen live-chat reply once the visitor has clearly left.
   let chat = { emailed: 0 };
   try { const { sweepChatEmailFollowups } = await import('@/lib/chat-email'); chat = await sweepChatEmailFollowups(); } catch { /* non-fatal */ }
-  // Mirror any board items not yet on GitHub, a small throttled batch at a time,
-  // so the audit log in GitHub stays current automatically (no manual "Sync all"
-  // click) while staying well under GitHub's secondary rate limits. No-op unless
-  // GitHub is connected.
+  // Mirror any board items not yet on GitHub, a small throttled batch at a time.
+  // Only runs when GitHub mirroring is explicitly enabled (default OFF) and we're
+  // not in a rate-limit backoff — so the board never burns GitHub's API budget on
+  // its own. The board is the source of truth regardless.
   let ghSync = { synced: 0, remaining: 0 };
-  try { const { syncAllToGithub } = await import('@/lib/build-board'); ghSync = await syncAllToGithub('system', 6); } catch { /* non-fatal */ }
+  try {
+    const { syncAllToGithub, githubMirrorEnabled } = await import('@/lib/build-board');
+    if (await githubMirrorEnabled()) ghSync = await syncAllToGithub('system', 6);
+  } catch { /* non-fatal */ }
   try {
     const { db } = await import('@/lib/db');
     await db.setting.upsert({ where: { key: 'cron_dispatch_last' }, update: { value: new Date().toISOString() }, create: { key: 'cron_dispatch_last', value: new Date().toISOString() } });
