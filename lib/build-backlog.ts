@@ -177,6 +177,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Shipped (#404): BuildDependency edges; addDependency/removeDependency + unblockDependents wired into update/sign-off/reconcile; declarative subtasks + dependsOn seeded via wireBacklogDependencies; modal shows “Blocked by / Blocks” with add/remove; cards show a lock when dependency-blocked.'],
   },
   {
+    title: 'Board: can’t add files to a task from iPhone', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(405),
+    value: 7, effort: 3,
+    detail: 'Owner couldn’t attach files to a task from an iPhone. Two causes: (1) the task modal had no upload control at all (attachments only existed on the “Report a problem” screenshot flow); (2) the upload endpoint rejected iPhone HEIC/HEIF photos and all video, and the 8 MB cap + serverless body limit blocked storefront videos.',
+    notes: ['Shipped (#405): task modal now has an Attachments section (photos + video) using client-direct Blob upload so it bypasses the serverless body limit and handles big videos; accepts iPhone HEIC/HEIF + .mov; BuildItem.attachments added; attach/attach-remove ops. Also widened the screenshot endpoint to accept HEIC/HEIF.'],
+  },
+  {
     title: 'Dedicated bot GitHub account / GitHub App for the board (remove shared rate limit)', type: 'TASK', urgency: 'P1', status: 'BLOCKED', assignee: 'claude',
     value: 7, effort: 3, needs: 'OWNER',
     ask: 'The board’s GitHub calls currently use the same account as the dev automation (JoeKaulPulse), so they share one rate limit. Give the board its own identity — either (A) a free “machine user” account (e.g. kclinics-bot) added as a repo collaborator, then paste its fine-grained token (Issues: Read & write, Contents/PRs as needed) into the board’s Connect GitHub; or (B, best) install a GitHub App on JoeKaulPulse/K-Clinics and share the App ID + installation — I’ll wire installation-token auth (higher, isolated limits). Tell me which you prefer and provide the token/App details, and I’ll switch the board over.',
@@ -208,8 +214,8 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Kiosk: photo capture + consent', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
-    value: 7, effort: 5,
-    detail: 'Capture/upload a face photo on the phone (or the display-side camera) with explicit, logged consent for analysis + optional social use. Stored per the retention policy; opt-out path.',
+    value: 8, effort: 6,
+    detail: 'Super-interactive, multi-source capture: (1) a fixed MAIN STORE CAMERA by the display for a live/“strike a pose” capture, (2) the visitor’s PHONE CAMERA via the QR session, and (3) additional CLOSE-UP uploads from the phone (skin/teeth detail). All with explicit, logged consent for analysis + optional social use; stored per the retention policy with an opt-out path. The phone session and the in-store camera are paired so either can drive the capture.',
     dependsOn: ['Kiosk: QR session + mobile entry (Skin & Smile)'],
     subtasks: [{ title: 'Approve consent wording for photo capture + social sharing', ownerInput: true }],
   },
@@ -228,14 +234,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   {
     title: 'Kiosk: account creation + share-to-claim discount', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
     value: 9, effort: 5,
-    detail: 'After sharing, prompt account creation and issue a single-use discount/voucher as the share reward (reusing the gift/discount engine). Verify the share where feasible; cap one reward per person.',
+    detail: 'After sharing, prompt account creation and issue a single-use, campaign-tied discount as the share reward. Owner decision: this is a CAMPAIGN-SPECIFIC discount for the OOH interactive campaign — implement as a PromoCode with campaignId, seeded under a new “Storefront Skin & Smile (OOH)” MarketingCampaign so spend/conversions track against it. Verify the share where feasible; cap one reward per person.',
     dependsOn: ['Kiosk: shareable result card + social sharing'],
-    subtasks: [{ title: 'Confirm discount mechanics (amount, single-use, share-verification approach)', ownerInput: true }],
+    subtasks: [
+      { title: 'Confirm discount amount + validity (single-use; % or £)', ownerInput: true },
+      { title: 'Seed the “Storefront Skin & Smile (OOH)” campaign + campaign-tied PromoCode', assignee: 'claude' },
+    ],
   },
   {
     title: 'Kiosk: Novastar storefront screen — live QR + session display', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude',
     value: 6, effort: 6,
-    detail: 'Drive the storefront screen via the Novastar controller: show the QR + an attract loop, and reflect live session state (e.g. “scan to start”, “look at the camera”, result reveal). Exact integration depends on how the Novastar player accepts web content — gated on the owner’s specs.',
+    detail: 'Drive the storefront screen via the Novastar controller: show the QR + an attract loop, mirror the MAIN STORE CAMERA feed (“strike a pose”), and reflect live session state (“scan to start”, “look at the camera”, result reveal) so the window is genuinely interactive. Exact integration depends on how the Novastar player accepts web content — gated on the owner’s specs.',
     dependsOn: ['Kiosk: QR session + mobile entry (Skin & Smile)'],
   },
   {

@@ -5,8 +5,8 @@ export const runtime = 'nodejs';
 
 // Screenshot upload for problem reports — available to any staff who can use the
 // board (build.view), unlike the settings-gated media library. Vercel Blob.
-const MAX = 8 * 1024 * 1024;
-const OK = /^image\/(png|jpe?g|webp|gif|avif)$/i;
+const MAX = 12 * 1024 * 1024;
+const OK = /^image\/(png|jpe?g|webp|gif|avif|heic|heif)$/i; // incl. iPhone HEIC/HEIF
 
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   const form = await req.formData().catch(() => null);
   const file = form?.get('file');
   if (!(file instanceof File)) return NextResponse.json({ ok: false, error: 'No file.' }, { status: 400 });
-  if (file.size > MAX) return NextResponse.json({ ok: false, error: 'Image is over 8 MB.' }, { status: 413 });
+  if (file.size > MAX) return NextResponse.json({ ok: false, error: 'Image is over 12 MB.' }, { status: 413 });
   if (file.type && !OK.test(file.type)) return NextResponse.json({ ok: false, error: 'Images only.' }, { status: 415 });
 
   try {

@@ -13,8 +13,10 @@ type Item = {
   blocker: string | null; githubUrl: string | null; createdAt: string; updatedAt: string;
   value: number | null; effort: number | null; startedAt: string | null; estCompleteAt: string | null;
   estTokens: number | null; actualTokens: number | null; shippedAt: string | null; closedAt: string | null; closedBy: string | null;
+  attachments: string[];
   events: Ev[]; subtasks: Subtask[]; dependencies: Dependency[]; dependents: Dependent[];
 };
+const isVideo = (url: string) => /\.(mp4|mov|webm|m4v|3gp)(\?|$)/i.test(url);
 type Activity = { events: { id: string; kind: string; body: string | null; title: string; itemId: string; createdAt: string }[]; inProgress: { id: string; title: string }[]; continueRequestedAt: string | null };
 
 const COLUMNS: { key: string; label: string }[] = [
@@ -355,6 +357,31 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
   const depIds = new Set([item.id, ...item.dependencies.map((d) => d.dependsOn.id)]);
   const depDone = (s: string) => ['SHIPPED', 'CLOSED'].includes(s);
 
+  // Attachments — client-direct upload to Blob (handles iPhone photos + videos).
+  const [upBusy, setUpBusy] = useState(false);
+  const [upErr, setUpErr] = useState('');
+  const [upProg, setUpProg] = useState('');
+  async function uploadFiles(files: FileList | null) {
+    if (!files?.length) return;
+    setUpBusy(true); setUpErr('');
+    try {
+      const { upload } = await import('@vercel/blob/client');
+      const urls: string[] = [];
+      const list = Array.from(files).slice(0, 10);
+      for (let i = 0; i < list.length; i++) {
+        const f = list[i];
+        setUpProg(`Uploading ${i + 1} of ${list.length}…`);
+        const blob = await upload(f.name || `file-${Date.now()}`, f, { access: 'public', handleUploadUrl: '/api/admin/build/blob-token', contentType: f.type || undefined });
+        urls.push(blob.url);
+      }
+      const r = await post({ op: 'attach', id: item.id, urls });
+      if (r.ok) onChange(); else setUpErr(r.error || 'Could not save attachments.');
+    } catch (e) {
+      setUpErr((e as Error)?.message || 'Upload failed. Large videos can take a moment — please retry.');
+    } finally { setUpBusy(false); setUpProg(''); }
+  }
+  async function removeAttachment(url: string) { const r = await post({ op: 'attach-remove', id: item.id, url }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
+
   async function signoff() { if (!confirm('Sign off and close this task? This marks the work reviewed & complete.')) return; const r = await post({ op: 'signoff', id: item.id }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
   async function reopen() { const reason = prompt('Reopen this task — add a note for Claude (what still needs doing):') || undefined; const r = await post({ op: 'reopen', id: item.id, reason }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
 
@@ -379,6 +406,30 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
         {item.screenshots.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">{item.screenshots.map((s) => <a key={s} href={s} target="_blank" rel="noreferrer"><img src={s} alt="" className="h-24 w-auto rounded border border-[var(--color-line)]" /></a>)}</div>
         )}
+
+        {/* Attachments — photos & videos (works from iPhone) */}
+        <div className="mt-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">Attachments</h3>
+            <label className={`cursor-pointer rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:bg-[var(--color-bone)] ${upBusy ? 'opacity-50' : ''}`}>
+              {upBusy ? (upProg || 'Uploading…') : '📎 Add photos / video'}
+              <input type="file" accept="image/*,video/*" multiple disabled={upBusy} className="hidden" onChange={(e) => uploadFiles(e.target.files)} />
+            </label>
+          </div>
+          {upErr && <p className="mt-2 text-xs text-[var(--color-blush)]">{upErr}</p>}
+          {item.attachments.length > 0 ? (
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {item.attachments.map((u) => (
+                <div key={u} className="group relative overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-black/5">
+                  {isVideo(u)
+                    ? <video src={u} controls playsInline className="h-28 w-full object-cover" />
+                    : <a href={u} target="_blank" rel="noreferrer"><img src={u} alt="" className="h-28 w-full object-cover" /></a>}
+                  {canManage && <button onClick={() => removeAttachment(u)} title="Remove" className="absolute right-1 top-1 rounded-full bg-black/60 px-1.5 text-xs text-white opacity-0 group-hover:opacity-100">✕</button>}
+                </div>
+              ))}
+            </div>
+          ) : <p className="mt-2 text-xs text-[var(--color-stone-soft)]">No files yet — add storefront photos or video straight from your phone.</p>}
+        </div>
 
         {/* Telemetry strip */}
         <div className="mt-4 grid grid-cols-2 gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3 text-xs sm:grid-cols-4">
