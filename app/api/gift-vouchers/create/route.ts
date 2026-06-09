@@ -13,6 +13,14 @@ const schema = z.object({
   message: z.string().max(500).optional().or(z.literal('')),
   deliverAt: z.string().optional().or(z.literal('')),
   design: z.string().max(40).optional().or(z.literal('')),
+  physical: z.boolean().optional(),
+  ship: z.object({
+    name: z.string().max(120).optional().or(z.literal('')),
+    line1: z.string().max(160).optional().or(z.literal('')),
+    line2: z.string().max(160).optional().or(z.literal('')),
+    city: z.string().max(80).optional().or(z.literal('')),
+    postcode: z.string().max(16).optional().or(z.literal('')),
+  }).optional(),
   company: z.string().max(0).optional().or(z.literal('')), // honeypot
 });
 
@@ -32,6 +40,8 @@ export async function POST(req: Request) {
     message: parsed.data.message || undefined,
     deliverAt: parsed.data.deliverAt || null,
     design: parsed.data.design || undefined,
+    physical: parsed.data.physical || false,
+    ship: parsed.data.ship,
   });
   return NextResponse.json(res, { status: res.ok ? 200 : 400 });
 }

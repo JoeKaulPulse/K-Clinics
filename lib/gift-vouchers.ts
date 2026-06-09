@@ -24,9 +24,13 @@ export type VoucherInput = {
   message?: string;
   deliverAt?: string | null; // ISO date for scheduled delivery
   design?: string;           // chosen card theme id (lib/gift-card-themes)
+  physical?: boolean;        // paid printed-card upgrade
+  ship?: { name?: string; line1?: string; line2?: string; city?: string; postcode?: string };
 };
 
-/** Create a PENDING voucher + a Stripe PaymentIntent (charged now). */
+/** Create a PENDING voucher + a Stripe PaymentIntent (charged now). The card
+ *  value is `amountPence`; an optional physical-card fee is added to the charge
+ *  only — the recipient's balance is always the gift value. */
 export async function createVoucherIntent(input: VoucherInput): Promise<{ ok: boolean; error?: string; voucherId?: string; clientSecret?: string }> {
   const amount = Math.round(input.amountPence);
   if (!(amount >= VOUCHER_MIN && amount <= VOUCHER_MAX)) return { ok: false, error: `Choose an amount between ${money(VOUCHER_MIN)} and ${money(VOUCHER_MAX)}.` };
@@ -34,6 +38,18 @@ export async function createVoucherIntent(input: VoucherInput): Promise<{ ok: bo
 
   const { stripe, stripeEnabled } = await import('@/lib/stripe');
   if (!stripeEnabled) return { ok: false, error: 'Payments aren’t available right now. Please call us.' };
+
+  // Physical-card upgrade — only honoured when the clinic has enabled it.
+  const { getSetting, getConfigNumber } = await import('@/lib/settings');
+  let physical = false; let feePence = 0;
+  if (input.physical && (await getSetting('gift_card_physical_enabled'))) {
+    if (!input.ship?.name?.trim() || !input.ship?.line1?.trim() || !input.ship?.postcode?.trim()) {
+      return { ok: false, error: 'For a posted card we need the delivery name, address line 1 and postcode.' };
+    }
+    physical = true;
+    feePence = await getConfigNumber('gift_card_physical_fee_pence');
+  }
+  const charge = amount + feePence;
 
   const deliverAt = input.deliverAt ? new Date(input.deliverAt) : null;
   const voucher = await db.giftVoucher.create({
@@ -44,13 +60,19 @@ export async function createVoucherIntent(input: VoucherInput): Promise<{ ok: bo
       message: input.message?.slice(0, 500) || null,
       deliverAt: deliverAt && !isNaN(+deliverAt) ? deliverAt : null,
       design: input.design?.slice(0, 40) || null,
+      physical, physicalFeePence: feePence, fulfillment: physical ? 'unfulfilled' : 'none',
+      shipName: physical ? input.ship?.name?.slice(0, 120) || null : null,
+      shipLine1: physical ? input.ship?.line1?.slice(0, 160) || null : null,
+      shipLine2: physical ? input.ship?.line2?.slice(0, 160) || null : null,
+      shipCity: physical ? input.ship?.city?.slice(0, 80) || null : null,
+      shipPostcode: physical ? input.ship?.postcode?.slice(0, 16) || null : null,
     },
   });
 
   try {
     const pi = await stripe().paymentIntents.create({
-      amount, currency: 'gbp', automatic_payment_methods: { enabled: true },
-      description: `KClinics gift voucher ${money(amount)}`,
+      amount: charge, currency: 'gbp', automatic_payment_methods: { enabled: true },
+      description: `KClinics gift card ${money(amount)}${physical ? ` + printed card ${money(feePence)}` : ''}`,
       receipt_email: input.purchaserEmail.trim().toLowerCase(),
       metadata: { voucherId: voucher.id, kind: 'gift_voucher' },
     });
