@@ -45,6 +45,12 @@ export const PROJECTS: ProjectDef[] = [
     summary: 'OOH interactive campaign: storefront screen QR → AI skin & smile rating → social share → account + share-to-claim discount. Formed from the owner’s marketing idea.',
     originIdeaTitle: 'New marketing idea',
   },
+  {
+    slug: 'audit-remediation',
+    name: 'Security & Compliance Audit Remediation',
+    summary: 'Fix every Critical + High finding from the 10-area codebase audit (audit/ on the branch): 3 Critical (booking race, GDPR erasure completeness, encrypt health/PII at rest) + 14 High (auth, payments, data races, XSS, consent, secrets, email). Each finding is one tracked item; the epic gates on all of them. Full detail per finding in audit/SUMMARY.md and the per-area reports.',
+    originIdeaTitle: 'Full-codebase audit (10 parallel area passes)',
+  },
 ];
 
 // Who can unblock an input-required task. Resolved to an actual user from the
@@ -673,6 +679,124 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ask: 'Tell me where your existing client records live (which booking/CRM system, a CSV/Excel export, or paper), roughly how many clients, and which fields to bring across (name, email, phone, DOB, marketing opt-in, notes, treatment history?). If you can attach a sample export (even 5–10 rows, anonymised), I’ll write a tested importer and run it on a copy first.',
     detail: 'Bring across existing client records.',
     notes: ['Needs owner input: where the old records live (system/CSV/paper), rough volume, and what to bring across. Then I can write an importer.'],
+  },
+
+  // ── Security & Compliance Audit Remediation ─────────────────────────────────
+  // The 10-area audit (audit/ on the branch) found 3 Critical + 14 High (unique,
+  // after deduping cross-area overlaps). Each is tracked below under the
+  // 'audit-remediation' project; the epic gates on all of them. Statuses flip to
+  // SHIPPED as each fix lands. Canonical detail: audit/SUMMARY.md + per-area NN-*.md.
+  {
+    title: 'Security & Compliance Audit Remediation — epic', type: 'TASK', urgency: 'P0', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    value: 10, effort: 9,
+    detail: 'Umbrella for the audit fix-up: remediate every Critical + High finding from the 10-area codebase audit. Gates on the 17 component items below. See audit/SUMMARY.md for the consolidated rollup, remediation order and systemic root causes.',
+    notes: ['Formed from the full-codebase audit. Risk concentrates in data-at-rest protection, GDPR data-subject handling, missing HTML sanitization and a few concurrency races — not the API/auth surface, which reviewed strongly.'],
+    dependsOn: [
+      'AUDIT C1: Booking slot allocation race — add transaction + uniqueness',
+      'AUDIT C2: Right-to-erasure leaves health & personal data behind',
+      'AUDIT C3: Encrypt special-category (health) + contact PII at rest',
+      'AUDIT H: Cross-portal JWT confusion — separate secrets + aud/typ claims',
+      'AUDIT H: Deactivated clients keep portal access until token expiry',
+      'AUDIT H: Gift card double-spend across concurrent orders',
+      'AUDIT H: Inventory stock movement TOCTOU race',
+      'AUDIT H: Build-time prisma db push mutates production DB',
+      'AUDIT H: OAuth refresh token stored plaintext at rest',
+      'AUDIT H: No audit record when clinical data is decrypted for viewing',
+      'AUDIT H: Marketing consent has no timestamp/version/source/lawful-basis',
+      'AUDIT H: Medical questionnaires capture no privacy-notice/granular consent',
+      'AUDIT H: Unauthenticated session-replay ingest endpoint',
+      'AUDIT H: Google Calendar OAuth callback missing CSRF state nonce',
+      'AUDIT H: Raw-HTML Journal block renders unsanitized (stored XSS)',
+      'AUDIT H: Imported WordPress HTML rendered unsanitized (stored XSS)',
+      'AUDIT H: Marketing/automation emails inject client data unescaped',
+    ],
+  },
+  // ── Critical ────────────────────────────────────────────────────────────────
+  {
+    title: 'AUDIT C1: Booking slot allocation race — add transaction + uniqueness', type: 'ERROR', urgency: 'P0', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    value: 10, effort: 4,
+    detail: 'app/api/booking/create/route.ts + lib/availability.ts: slot allocation has no transaction, row lock or unique constraint, so two concurrent requests can book the same slot/room/staff. Fix: allocate inside a Serializable transaction that re-checks availability, plus a DB uniqueness guard on the slot key. (audit/04-data-prisma.md)',
+  },
+  {
+    title: 'AUDIT C2: Right-to-erasure leaves health & personal data behind', type: 'ERROR', urgency: 'P0', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    value: 9, effort: 5,
+    detail: 'app/admin/actions.ts eraseClientData pseudonymises only the Client row and deletes interactions; consultations, encrypted health assessments, signed consents, before-photos, AI analyses, email metadata and call transcripts all remain. UK GDPR Art.17. Fix: erase/pseudonymise across every table holding the client\'s personal/health data (or document a lawful retention exemption per category). (audit/06-pii-compliance.md)',
+  },
+  {
+    title: 'AUDIT C3: Encrypt special-category (health) + contact PII at rest', type: 'TASK', urgency: 'P0', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    value: 9, effort: 7,
+    detail: 'Client.allergies/medicalFlag, Consultation.medicalNotes/concerns/message, Booking.allergyNote (and contact PII: DOB/phone) are stored plaintext OUTSIDE the existing AES-256-GCM keyring, so a DB-read compromise exposes medical data directly (GDPR Art.9). Fix: route these through lib/crypto (encrypt-at-write, tolerant decrypt-at-read for legacy plaintext); owner runs a one-time backfill. (audit/06 + 04)',
+  },
+  // ── High ──────────────────────────────────────────────────────────────────────
+  {
+    title: 'AUDIT H: Cross-portal JWT confusion — separate secrets + aud/typ claims', type: 'ERROR', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    value: 8, effort: 3,
+    detail: 'lib/auth-edge.ts: client/academy secrets fall back to ADMIN_JWT_SECRET and no token carries an aud/typ claim, so identical-shape client/academy tokens are interchangeable across portals. Fix: per-portal secrets + set and verify aud/typ on every token. (audit/01-auth-authz.md)',
+  },
+  {
+    title: 'AUDIT H: Deactivated clients keep portal access until token expiry', type: 'ERROR', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    value: 7, effort: 2,
+    detail: 'lib/client-auth.ts getCurrentClient never rechecks portalActive (admin/academy paths do), so a deactivated client keeps access for up to the 7-day token life. Fix: re-check portalActive (and active/deleted) on each request. (audit/01-auth-authz.md)',
+  },
+  {
+    title: 'AUDIT H: Gift card double-spend across concurrent orders', type: 'ERROR', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    value: 8, effort: 4,
+    detail: 'app/api/shop/checkout/route.ts + lib/shop.ts: a gift card balance is read and the discount reserved against the new order, but only decremented later in finalizeOrder, so parallel checkouts each reserve the full balance. Fix: reserve/decrement the balance atomically at checkout. (audit/02-payments-finance.md)',
+  },
+  {
+    title: 'AUDIT H: Inventory stock movement TOCTOU race', type: 'ERROR', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    value: 7, effort: 2,
+    detail: 'app/api/admin/inventory/route.ts: the negative-stock guard sits outside the transaction, so concurrent movements can drive stock negative. Fix: move the read+guard+write inside a single $transaction (Serializable) or use an atomic conditional update. (audit/04-data-prisma.md)',
+  },
+  {
+    title: 'AUDIT H: Build-time prisma db push mutates production DB', type: 'TASK', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    value: 8, effort: 3,
+    detail: 'package.json prebuild → scripts/db-sync.mjs runs `prisma db push` against prod on every deploy, mutating the schema and failing the deploy if the DB is unreachable. Fix: do not mutate prod schema from prebuild by default; prefer versioned `prisma migrate deploy` (USE_MIGRATIONS) and make build resilient to DB unavailability. Also fix the db-sync.mjs sleep() TDZ bug. (audit/10 + 04)',
+  },
+  {
+    title: 'AUDIT H: OAuth refresh token stored plaintext at rest', type: 'ERROR', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    value: 7, effort: 3,
+    detail: 'Staff Google Calendar refresh token is stored plaintext on AdminUser (schema.prisma:857, written lib/google-calendar.ts) beside an explicitly-encrypted TOTP secret. Integration is currently parked (GOOGLE_INTEGRATION_ENABLED=false) but the live path is plaintext the moment it is enabled. Fix: encrypt via lib/crypto before persist, decrypt on read. (audit/07 + 04)',
+  },
+  {
+    title: 'AUDIT H: No audit record when clinical data is decrypted for viewing', type: 'TASK', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    value: 7, effort: 3,
+    detail: 'app/admin/clients/[id]/page.tsx: ASSESSMENT_VIEWED is logged only on SAR export, not when a clinician opens a client and formatAssessment decrypts their medical history. Fix: write an audit event whenever clinical/health data is decrypted for routine viewing. (audit/06-pii-compliance.md)',
+  },
+  {
+    title: 'AUDIT H: Marketing consent has no timestamp/version/source/lawful-basis', type: 'TASK', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    value: 7, effort: 4,
+    detail: 'schema Client.marketingOptIn is a bare boolean a staff member can flip with no proof of consent (PECR / GDPR Art.7 demonstrability). Fix: capture marketingConsentAt/Source/Version (+ lawful basis) as evidenced, audited fields set at the point of consent. (audit/06-pii-compliance.md)',
+  },
+  {
+    title: 'AUDIT H: Medical questionnaires capture no privacy-notice/granular consent', type: 'TASK', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    value: 7, effort: 4,
+    detail: 'Live medical/treatment questionnaires record no privacy-notice acknowledgement or granular consent for processing special-category data. Fix: capture an explicit privacy-notice acknowledgement (version + timestamp) and the processing consent alongside the questionnaire submission. (audit/06-pii-compliance.md)',
+  },
+  {
+    title: 'AUDIT H: Unauthenticated session-replay ingest endpoint', type: 'ERROR', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    value: 8, effort: 3,
+    detail: 'app/api/track/replay/route.ts accepts rrweb batches from anyone with no auth, consent check or rate-limit (masking is client-side only), so PII can be ingested without consent and the table can be flooded. Fix: gate on analytics consent + a session/token check + per-IP rate-limit, and cap payload size. (audit/06 + 03)',
+  },
+  {
+    title: 'AUDIT H: Google Calendar OAuth callback missing CSRF state nonce', type: 'ERROR', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    value: 7, effort: 3,
+    detail: 'app/api/admin/gcal/callback/route.ts uses a bare staffId as the OAuth state with no signed/random nonce, so the callback is CSRF-able. Fix: issue a signed, single-use state nonce at initiation and verify it on callback. (audit/07-secrets-integrations.md)',
+  },
+  {
+    title: 'AUDIT H: Raw-HTML Journal block renders unsanitized (stored XSS)', type: 'ERROR', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    value: 9, effort: 4,
+    detail: 'lib/blocks.ts:107 → app/(marketing)/journal/[slug]/page.tsx renders a raw-HTML block unsanitized on the public site. There is NO HTML sanitizer anywhere in the repo. Fix: add one allowlist sanitizer and apply it at every raw-HTML render sink (shared root cause with the WordPress-import finding). (audit/08-frontend-xss.md)',
+  },
+  {
+    title: 'AUDIT H: Imported WordPress HTML rendered unsanitized (stored XSS)', type: 'ERROR', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    value: 8, effort: 3,
+    detail: 'lib/blocks.ts:171 → lib/blog.ts:56 stores imported WordPress HTML as a raw block and renders it unsanitized. Fix: sanitize on render (same sanitizer as the Journal-block fix) and ideally on import. (audit/08-frontend-xss.md)',
+  },
+  {
+    title: 'AUDIT H: Marketing/automation emails inject client data unescaped', type: 'ERROR', urgency: 'P1', status: 'TRIAGE', assignee: 'claude', project: 'audit-remediation',
+    value: 8, effort: 3,
+    detail: 'lib/email-builder.ts + lib/email-campaigns.ts + lib/automations.ts interpolate client name/email into HTML email bodies without escaping (HTML/CSS/link injection → in-domain phishing). Fix: HTML-escape all interpolated user/client values in email templates. (audit/09-email-notifications.md)',
   },
 ];
 
