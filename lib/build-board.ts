@@ -147,6 +147,8 @@ export async function assignOwnerInputTasks(): Promise<void> {
           where: { id: item.id },
           data: { assignee: user.email, events: { create: { kind: 'assign', actor: 'claude', body: `Assigned to ${who} — best placed to action this (${it.needs.toLowerCase()} input).` } } },
         });
+        const { notifyStaff } = await import('@/lib/notifications');
+        await notifyStaff(user.email, { kind: 'assigned', title: `Action needed from you: ${item.title}`, body: it.ask, href: '/admin/build' });
       }
     }
 
@@ -209,6 +211,11 @@ export async function createBuildItem(input: NewBuildItem, actor: string) {
   if ((item.urgency === 'P0' || item.urgency === 'P1') && (await githubConfigured())) {
     await pushToGithub(item.id, 'system').catch(() => {});
   }
+  // Tell the assignee they've got something (unless they assigned it to themselves).
+  if (item.assignee && item.assignee !== 'claude') {
+    const { notifyStaff } = await import('@/lib/notifications');
+    await notifyStaff(item.assignee, { kind: 'assigned', title: `New ${item.type.toLowerCase()} assigned: ${item.title}`, href: '/admin/build' }, actor);
+  }
   return item;
 }
 
@@ -227,13 +234,33 @@ export async function updateBuildItem(id: string, patch: Patch, actor: string) {
   if (patch.assignee && patch.assignee !== prev.assignee) { data.assignee = patch.assignee; events.push({ kind: 'assign', actor, body: `Assigned to ${patch.assignee}` }); }
   if (patch.blocker !== undefined) { data.blocker = patch.blocker; if (patch.blocker) events.push({ kind: 'blocker', actor, body: patch.blocker }); }
   if (Object.keys(data).length === 0) return prev;
-  return db.buildItem.update({ where: { id }, data: { ...data, events: { create: events } }, include: { events: { orderBy: { createdAt: 'desc' }, take: 30 } } });
+  const updated = await db.buildItem.update({ where: { id }, data: { ...data, events: { create: events } }, include: { events: { orderBy: { createdAt: 'desc' }, take: 30 } } });
+  // Notify: the new assignee on reassignment; the reporter when their item moves.
+  const { notifyStaff } = await import('@/lib/notifications');
+  if (patch.assignee && patch.assignee !== prev.assignee && patch.assignee !== 'claude') {
+    await notifyStaff(patch.assignee, { kind: 'assigned', title: `Assigned to you: ${updated.title}`, href: '/admin/build' }, actor);
+  }
+  if (patch.status && patch.status !== prev.status && prev.reportedBy && prev.reportedBy !== 'claude') {
+    await notifyStaff(prev.reportedBy, { kind: 'status', title: `“${updated.title}” → ${patch.status.toLowerCase().replace('_', ' ')}`, href: '/admin/build' }, actor);
+  }
+  return updated;
 }
 
 export async function addBuildComment(id: string, body: string, actor: string) {
   await db.buildEvent.create({ data: { itemId: id, kind: 'comment', body: body.slice(0, 2000), actor } });
   await db.buildItem.update({ where: { id }, data: { updatedAt: new Date() } });
-  return db.buildItem.findUnique({ where: { id }, include: { events: { orderBy: { createdAt: 'desc' }, take: 30 } } });
+  const item = await db.buildItem.findUnique({ where: { id }, include: { events: { orderBy: { createdAt: 'desc' }, take: 30 } } });
+  // Feedback loop: ping the reporter and the assignee (whoever didn't write it).
+  if (item) {
+    const { notifyStaff } = await import('@/lib/notifications');
+    const kind = item.type === 'IDEA' ? 'idea_feedback' : 'comment';
+    const snippet = body.slice(0, 90);
+    const recipients = new Set([item.reportedBy, item.assignee].filter((r): r is string => !!r && r !== 'claude'));
+    for (const r of recipients) {
+      await notifyStaff(r, { kind, title: `New comment on “${item.title}”`, body: snippet, href: '/admin/build' }, actor);
+    }
+  }
+  return item;
 }
 
 // ── GitHub bridge ────────────────────────────────────────────────────────────

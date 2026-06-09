@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 import { site } from '@/lib/site';
 import { GlobalSearch } from '@/components/admin/GlobalSearch';
+import { NotificationBell } from '@/components/admin/NotificationBell';
 import { GuideHost } from '@/components/guide/GuideHost';
 import { CloseDownReminder } from '@/components/admin/CloseDownReminder';
 import { ReportProblem } from '@/components/admin/ReportProblem';
@@ -253,7 +254,10 @@ export function AdminShell({
               </p>
             </div>
           </div>
-          <div data-tour="admin-search"><GlobalSearch placeholder={t('shell.search')} /></div>
+          <div className="flex items-center gap-2 px-2">
+            <div data-tour="admin-search" className="min-w-0 flex-1"><GlobalSearch placeholder={t('shell.search')} /></div>
+            <NotificationBell />
+          </div>
 
           {/* Mobile: a menu button opening a full grouped drawer (incl. account). */}
           <div className="lg:hidden">
