@@ -146,16 +146,20 @@ export async function goLiveChecklist(): Promise<GoLiveState> {
   const m = (id: string) => manual.has(id);
   const host = (() => { try { return new URL(site.url).hostname.replace(/^www\./, ''); } catch { return 'kclinics.co.uk'; } })();
 
-  let services = 0, products = 0, ga4 = false, metaPixel = false, connections = 0;
+  let services = 0, products = 0, ga4 = false, metaPixel = false, connections = 0, gbpLocation = false;
   try {
     const { db } = await import('@/lib/db');
-    const [svc, prod, conn, tracking] = await Promise.all([
+    const [svc, prod, conn, tracking, gbpConn] = await Promise.all([
       db.service.count({ where: { active: true } }),
       db.product.count(),
       db.externalConnection.count(),
       db.setting.findUnique({ where: { key: 'tracking_config' } }),
+      db.externalConnection.findFirst({ where: { provider: 'google-business' }, select: { accountRef: true } }),
     ]);
     services = svc; products = prod; connections = conn;
+    // GBP is "ready" once connected AND a location is resolved — either the env
+    // IDs are set, or one was auto-discovered + stored on the connection.
+    gbpLocation = (has(env.GOOGLE_BUSINESS_ACCOUNT_ID) && has(env.GOOGLE_BUSINESS_LOCATION_ID)) || /accounts\/.+\/locations\/.+/.test(gbpConn?.accountRef || '');
     if (tracking?.value) { const t = JSON.parse(tracking.value); ga4 = has(t.ga4Id); metaPixel = has(t.metaPixelId); }
   } catch { /* DB not reachable at build */ }
   const net = await dnsState(host);
@@ -210,13 +214,13 @@ export async function goLiveChecklist(): Promise<GoLiveState> {
       heading: 'Google (with the owner)',
       intro: 'Local presence, reviews, mailboxes and search.',
       items: [
-        mk('gbp', has(env.GOOGLE_BUSINESS_LOCATION_ID), { title: 'Google Business Profile (reviews + manage)', what: 'Imports Google reviews and lets you reply to them and manage the profile from the dashboard.', owner: true, links: [EXT.googleCloud, EXT.gbp, { label: 'Marketing → Connections', href: '/admin/marketing/connections' }], how: [
-          '1 · Google Cloud Console → create/select a project, then APIs & Services → Library → enable the “Business Profile API” (and “My Business Account Management API” + “My Business Business Information API”).',
+        mk('gbp', gbpLocation, { title: 'Google Business Profile (reviews + manage)', what: 'Imports Google reviews and lets you reply to them and manage the profile from the dashboard.', owner: true, links: [EXT.googleCloud, EXT.gbp, { label: 'Marketing → Connections', href: '/admin/marketing/connections' }], how: [
+          '1 · Google Cloud Console → create/select a project, then APIs & Services → Library → enable the “Business Profile API” (and “My Business Account Management API” + “My Business Business Information API”). NB: Google must also grant your project access via a short one-time request form before these APIs return data.',
           '2 · OAuth consent screen → User type External → fill app name + support email → add scope https://www.googleapis.com/auth/business.manage → add the owner’s Google account under “Test users” (or Publish the app).',
           '3 · Credentials → Create credentials → OAuth client ID → Application type “Web application”. Add this exact Authorised redirect URI: https://' + host + '/api/admin/integrations/google-business/callback',
           '4 · Copy the Client ID + Client secret → in Vercel set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, then redeploy.',
           '5 · Claim/verify the clinic at business.google.com (if not already), then come back to Marketing → Connections and click Connect Google — approve the business.manage scope.',
-          '6 · After connecting, set GOOGLE_BUSINESS_ACCOUNT_ID + GOOGLE_BUSINESS_LOCATION_ID (numeric IDs the connect screen surfaces). Reviews then import daily and you can reply + manage the profile under Reviews.',
+          '6 · That’s it — on connect we auto-detect your account + location and reviews start importing (reply/manage under Reviews). Only if you have several locations and need to pin one: set GOOGLE_BUSINESS_ACCOUNT_ID + GOOGLE_BUSINESS_LOCATION_ID.',
         ] }),
         mk('google-places', has(env.GOOGLE_PLACES_API_KEY) && has(env.GOOGLE_PLACE_ID), { title: 'Google reviews on the site', what: 'Shows the live Google rating & reviews on the website.', optional: true, owner: true, links: [EXT.googleCloud], how: ['Create a Google Places API key + find the clinic Place ID.', 'Set GOOGLE_PLACES_API_KEY + GOOGLE_PLACE_ID.'] }),
         mk('workspace', m('workspace'), { title: 'Google Workspace mailboxes', what: 'Create info@/support@ mailboxes on the domain.', manual: true, owner: true, how: ['Set up Google Workspace for ' + host + '.', 'Create the shared mailboxes.', 'Add the MX records it gives you in Cloudflare.'] }),
