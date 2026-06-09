@@ -207,9 +207,9 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'An extra-special, interactive page to design a gift card — theme/colour, recipient, message, amount, delivery date — with a live preview, emailed to the recipient. Anyone can buy (no account needed), reusing the existing guest checkout + Stripe.',
   },
   {
-    title: 'Gifts: render & email the customised card', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    title: 'Gifts: render & email the customised card', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(367),
     value: 7, effort: 5,
-    detail: 'Persist the customisation and render the chosen design as a real image (sharp SVG→PNG) for a beautiful recipient email + a shareable “view your card” link. New tmplCustomGiftCard template.',
+    detail: 'Persist the customisation and render the chosen design into the recipient email (theme-aware card, Outlook-safe) + a shareable “view your card” page reusing the studio preview. New tmplCustomGiftCard template.',
   },
   {
     title: 'Gifts: physical gift-card upgrade + fulfilment (admin-toggleable)', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude',

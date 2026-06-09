@@ -87,12 +87,12 @@ export async function confirmVoucher(voucherId: string): Promise<{ ok: boolean; 
 async function sendVoucherEmails(voucherId: string, sendToRecipient: boolean) {
   const v = await db.giftVoucher.findUnique({ where: { id: voucherId } });
   if (!v) return;
-  const { sendEmail, tmplGiftVoucher, tmplGiftVoucherReceipt } = await import('@/lib/email');
+  const { sendEmail, tmplCustomGiftCard, tmplGiftVoucherReceipt } = await import('@/lib/email');
   const tasks: Promise<unknown>[] = [
-    sendEmail({ to: v.purchaserEmail, subject: `Your KClinics gift voucher — ${money(v.amountPence)}`, html: tmplGiftVoucherReceipt({ purchaserName: v.purchaserName, amount: money(v.amountPence), code: v.code, recipientName: v.recipientName, scheduled: !sendToRecipient && !!v.deliverAt, deliverAt: v.deliverAt }) }),
+    sendEmail({ to: v.purchaserEmail, subject: `Your KClinics gift card — ${money(v.amountPence)}`, html: tmplGiftVoucherReceipt({ purchaserName: v.purchaserName, amount: money(v.amountPence), code: v.code, recipientName: v.recipientName, scheduled: !sendToRecipient && !!v.deliverAt, deliverAt: v.deliverAt, designId: v.design }) }),
   ];
   if (sendToRecipient && v.recipientEmail) {
-    tasks.push(sendEmail({ to: v.recipientEmail, subject: `${v.purchaserName} sent you a KClinics gift voucher 🎁`, html: tmplGiftVoucher({ recipientName: v.recipientName || 'there', fromName: v.purchaserName, amount: money(v.amountPence), code: v.code, message: v.message, bookUrl: `${baseUrl()}/account/gift-cards?code=${v.code}` }) }));
+    tasks.push(sendEmail({ to: v.recipientEmail, subject: `${v.purchaserName} sent you a KClinics gift card 🎁`, html: tmplCustomGiftCard({ recipientName: v.recipientName || 'there', fromName: v.purchaserName, amount: money(v.amountPence), code: v.code, message: v.message, designId: v.design, viewUrl: `${baseUrl()}/gift/${v.code}`, claimUrl: `${baseUrl()}/account/gift-cards?code=${v.code}` }) }));
   }
   await Promise.allSettled(tasks);
 }
