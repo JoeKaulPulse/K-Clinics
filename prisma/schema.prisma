@@ -2720,6 +2720,7 @@ enum KioskStatus {
   ANALYZED
   SHARED
   EXPIRED
+  AGE_DECLINED // AI challenge-21 backstop failed — photos purged, no result
 }
 
 model KioskSession {
@@ -2727,11 +2728,20 @@ model KioskSession {
   token      String       @unique
   status     KioskStatus  @default(ACTIVE)
   ipHash     String?
-  photoUrl   String?
+  photoUrl   String?      // kept for back-compat with the single-photo v1 flow
   consentAt  DateTime?
   result     KioskResult?
   createdAt  DateTime     @default(now())
   expiresAt  DateTime
+
+  // ── Kiosk v2 live session (phone ↔ storefront display) ──
+  stage         String    @default("idle") // live stage machine (lib/kiosk-live.ts)
+  poseIdx       Int       @default(0)      // current pose in the capture sequence
+  photoUrls     String[]  @default([])     // multi-capture (max 4)
+  liveFrame     String?   @db.Text         // latest mirror frame as data-URL jpeg ≤120KB
+  liveFrameAt   DateTime?
+  ageDeclaredAt DateTime?                  // when the explicit 18+ tap happened
+  updatedAt     DateTime  @default(now()) @updatedAt
 
   @@index([token])
   @@index([status, createdAt])
@@ -2749,6 +2759,10 @@ model KioskResult {
   photoUrl   String?
   shareSlug  String       @unique
   shareCount Int          @default(0)
+  // ── Kiosk v2 ──
+  annotations  Json?      // AI observations (KioskObservation[] — lib/kiosk-ai.ts)
+  shareCaption String?    // first-person caption for the share sheet
+  bestPhotoUrl String?    // chosen photo (session-scoped use only; NEVER on the public share page)
   // Share-to-claim reward: the single-use discount code issued to the visitor.
   claimCode  String?
   claimEmail String?

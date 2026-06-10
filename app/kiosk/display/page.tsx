@@ -36,5 +36,5 @@ export default async function KioskDisplayPage() {
   const url = `${origin}/kiosk/${token}`;
   const svg = await qrSvg(url, { dark: '#2a2420', light: '#ffffff' });
 
-  return <KioskDisplay svg={svg} url={url} />;
+  return <KioskDisplay svg={svg} url={url} token={token} />;
 }

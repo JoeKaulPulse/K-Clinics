@@ -1,0 +1,449 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   K CLINICS — Kiosk display surface (/kiosk/display)
+   Hardware: Novastar Taurus Android WebView (ViPlex). Therefore:
+   CSS transforms / opacity / SVG ONLY — no WebGL, no backdrop-filter, no
+   video, no heavy filters. Designed portrait-first (1080×1920) with a
+   deliberate landscape (1920×1080) arrangement via orientation queries.
+   All scene transitions 400–700ms on var(--ease-lux).
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Stage root ─────────────────────────────────────────────────────────────── */
+.kd-stage {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--color-ink);
+  color: var(--color-porcelain);
+  cursor: none; /* non-interactive storefront glass */
+  user-select: none;
+}
+
+/* Scene layers cross-fade on top of each other. */
+.kd-scene {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.kd-scene-enter { animation: kd-scene-in 0.65s var(--ease-lux) both; }
+.kd-scene-exit  { animation: kd-scene-out 0.6s var(--ease-lux) both; pointer-events: none; }
+
+@keyframes kd-scene-in {
+  from { opacity: 0; transform: translateY(1.25rem) scale(0.992); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes kd-scene-out {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateY(-0.75rem) scale(1.004); }
+}
+
+/* ── Ambient: slow radial gold shimmer (transform-only rotation) ───────────── */
+.kd-shimmer {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 240vmax;
+  height: 240vmax;
+  margin: -120vmax 0 0 -120vmax;
+  pointer-events: none;
+  background:
+    radial-gradient(closest-side at 62% 38%, rgba(169, 138, 109, 0.16) 0%, rgba(169, 138, 109, 0.05) 38%, transparent 62%),
+    radial-gradient(closest-side at 30% 70%, rgba(220, 196, 168, 0.07) 0%, transparent 55%);
+  animation: kd-shimmer-turn 70s linear infinite;
+  will-change: transform;
+}
+@keyframes kd-shimmer-turn {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Soft static vignette so frames/photos sit into the ink canvas. */
+.kd-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 100% at 50% 45%, transparent 55%, rgba(20, 16, 13, 0.55) 100%);
+}
+
+/* ── Drifting gold dots (≤24 nodes, transform/opacity only) ─────────────────── */
+.kd-dot {
+  position: absolute;
+  border-radius: 999px;
+  background: var(--color-gold-bright);
+  animation: kd-drift var(--kd-dur, 22s) ease-in-out var(--kd-delay, 0s) infinite;
+  will-change: transform, opacity;
+}
+@keyframes kd-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); opacity: 0; }
+  12%  { opacity: var(--kd-op, 0.45); }
+  50%  { transform: translate3d(var(--kd-dx, 2vw), var(--kd-dy, -6vh), 0) scale(1.25); opacity: var(--kd-op, 0.45); }
+  88%  { opacity: var(--kd-op, 0.45); }
+  100% { transform: translate3d(calc(var(--kd-dx, 2vw) * 1.6), calc(var(--kd-dy, -6vh) * 1.9), 0) scale(0.9); opacity: 0; }
+}
+
+/* ── Attract scene ──────────────────────────────────────────────────────────── */
+.kd-attract {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  padding: 7vmin;
+  grid-template-rows: auto 1fr auto;
+  justify-items: center;
+  text-align: center;
+}
+@media (orientation: landscape) {
+  .kd-attract {
+    grid-template-rows: none;
+    grid-template-columns: 1.25fr 1fr;
+    align-items: center;
+    justify-items: stretch;
+    text-align: left;
+    column-gap: 6vmin;
+    padding: 6vmin 8vmin;
+  }
+}
+
+/* Rotating value lines: 3 lines, 6s each on an 18s loop, pure CSS crossfade. */
+.kd-lines { position: relative; width: 100%; }
+.kd-line {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  animation: kd-line-cycle 18s var(--ease-glide) infinite;
+  will-change: opacity, transform;
+}
+@media (orientation: landscape) {
+  .kd-line { justify-content: flex-start; }
+}
+.kd-line:nth-child(2) { animation-delay: 6s; }
+.kd-line:nth-child(3) { animation-delay: 12s; }
+@keyframes kd-line-cycle {
+  0%      { opacity: 0; transform: translateY(0.9rem); }
+  4.5%    { opacity: 1; transform: none; }
+  29%     { opacity: 1; transform: none; }
+  33.333% { opacity: 0; transform: translateY(-0.7rem); }
+  100%    { opacity: 0; transform: translateY(0.9rem); }
+}
+
+/* Breathing QR card: scale 1 ↔ 1.02 over 4s. */
+.kd-qr-card {
+  background: #ffffff;
+  border-radius: var(--radius-xl);
+  padding: clamp(1.25rem, 3vmin, 2.5rem);
+  box-shadow: 0 18px 70px -18px rgba(169, 138, 109, 0.55), 0 6px 24px -8px rgba(0, 0, 0, 0.5);
+  animation: kd-breathe 4s ease-in-out infinite;
+  will-change: transform;
+}
+@keyframes kd-breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.02); }
+}
+.kd-qr-card svg { display: block; width: 100%; height: 100%; }
+
+/* Halo ring pulsing behind the QR card. */
+.kd-qr-halo {
+  position: absolute;
+  inset: -7%;
+  border-radius: calc(var(--radius-xl) + 1rem);
+  border: 1px solid rgba(220, 196, 168, 0.5);
+  animation: kd-halo 4s var(--ease-glide) infinite;
+  pointer-events: none;
+}
+@keyframes kd-halo {
+  0%   { transform: scale(0.97); opacity: 0; }
+  35%  { opacity: 0.85; }
+  100% { transform: scale(1.12); opacity: 0; }
+}
+
+/* ── Paired / interstitial scene ────────────────────────────────────────────── */
+.kd-pulse-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: 1.5px solid rgba(194, 165, 137, 0.7);
+  animation: kd-pulse 2.8s var(--ease-glide) infinite;
+}
+@keyframes kd-pulse {
+  0%   { transform: scale(0.65); opacity: 0; }
+  30%  { opacity: 0.9; }
+  100% { transform: scale(1.45); opacity: 0; }
+}
+
+/* ── Mirror scene (posing / countdown / captured) ───────────────────────────── */
+.kd-mirror-layout {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3.5vmin;
+  padding: 5vmin;
+}
+.kd-mirror-frame {
+  position: relative;
+  width: min(86vw, 64vh);
+  height: min(114vw, 76vh);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  background: #1c1713;
+  box-shadow: 0 30px 90px -30px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(194, 165, 137, 0.28);
+}
+@media (orientation: landscape) {
+  .kd-mirror-layout { flex-direction: row; gap: 6vmin; }
+  .kd-mirror-frame { width: min(44vw, 58vh); height: min(58.5vw, 78vh); }
+}
+/* Two stacked buffers; the incoming one fades in over 200ms ON TOP of the
+   outgoing one (which only drops after the cross-fade) — no dark flicker. */
+.kd-mirror-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* mirror! movement matches the person */
+  opacity: 0;
+  transition: opacity 1ms linear 260ms; /* back buffer: drop after the new front is in */
+}
+.kd-mirror-img.kd-front {
+  opacity: 1;
+  transition: opacity 200ms linear; /* front buffer: 200ms cross-fade in */
+  z-index: 2;
+}
+.kd-mirror-waiting { animation: kd-soft-pulse 2.4s ease-in-out infinite; }
+@keyframes kd-soft-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+
+/* Pose banner */
+.kd-pose-banner { animation: kd-banner-in 0.7s var(--ease-lux) both; }
+@keyframes kd-banner-in {
+  from { opacity: 0; transform: translateY(1rem) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Giant countdown numeral — re-keyed per second. */
+.kd-count {
+  animation: kd-count-pop 1s var(--ease-lux) both;
+  will-change: transform, opacity;
+}
+@keyframes kd-count-pop {
+  0%   { opacity: 0; transform: scale(1.7); }
+  18%  { opacity: 1; transform: scale(0.98); }
+  30%  { transform: scale(1.02); }
+  78%  { opacity: 1; transform: scale(1.02); }
+  100% { opacity: 0; transform: scale(0.94); }
+}
+
+/* White capture flash. */
+.kd-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  pointer-events: none;
+  animation: kd-flash-out 0.7s ease-out both;
+  z-index: 30;
+}
+@keyframes kd-flash-out {
+  0%   { opacity: 0.96; }
+  100% { opacity: 0; }
+}
+
+/* Guide frame gently breathes. */
+.kd-guide { animation: kd-guide-breathe 3.6s ease-in-out infinite; will-change: transform; }
+@keyframes kd-guide-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50%      { transform: scale(1.012); opacity: 1; }
+}
+
+/* ── Analyzing scene ────────────────────────────────────────────────────────── */
+.kd-scan-photo {
+  position: relative;
+  width: min(70vw, 52vh);
+  height: min(93vw, 68vh);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: 0 30px 90px -30px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(194, 165, 137, 0.3);
+}
+@media (orientation: landscape) {
+  .kd-scan-photo { width: min(36vw, 48vh); height: min(48vw, 64vh); }
+}
+.kd-scanline {
+  position: absolute;
+  left: -10%;
+  width: 120%;
+  height: 18%;
+  top: -20%;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(220, 196, 168, 0.12) 30%,
+    rgba(255, 246, 234, 0.5) 50%,
+    rgba(220, 196, 168, 0.12) 70%,
+    transparent 100%
+  );
+  animation: kd-scan-sweep 2.6s var(--ease-glide) infinite;
+  will-change: transform;
+}
+@keyframes kd-scan-sweep {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(640%); }
+}
+/* Rotating micro-copy: 4 lines, 3.5s each on a 14s loop. */
+.kd-micro { position: relative; height: 2.2em; width: 100%; }
+.kd-micro span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  animation: kd-micro-cycle 14s var(--ease-glide) infinite;
+}
+.kd-micro span:nth-child(2) { animation-delay: 3.5s; }
+.kd-micro span:nth-child(3) { animation-delay: 7s; }
+.kd-micro span:nth-child(4) { animation-delay: 10.5s; }
+@keyframes kd-micro-cycle {
+  0%   { opacity: 0; transform: translateY(0.6rem); }
+  4%   { opacity: 1; transform: none; }
+  21%  { opacity: 1; transform: none; }
+  25%  { opacity: 0; transform: translateY(-0.5rem); }
+  100% { opacity: 0; transform: translateY(0.6rem); }
+}
+
+/* ── Reveal scene ───────────────────────────────────────────────────────────── */
+.kd-reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3vmin;
+  width: 100%;
+  height: 100%;
+  padding: 4.5vmin;
+}
+.kd-reveal-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3vmin;
+}
+@media (orientation: landscape) {
+  .kd-reveal { flex-direction: row; gap: 5vmin; }
+  .kd-reveal-side { max-width: 34vw; }
+}
+/* The wrapper shrink-wraps the image at its NATURAL aspect (no cropping) so
+   normalized 0–1 annotation boxes map 1:1 onto the displayed rect. */
+.kd-reveal-photo {
+  position: relative;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: 0 30px 90px -30px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(194, 165, 137, 0.3);
+  animation: kd-photo-in 0.9s var(--ease-lux) 1.1s both;
+}
+.kd-reveal-photo > .kd-photo {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 86vw;
+  max-height: 52vh;
+}
+@media (orientation: landscape) {
+  .kd-reveal-photo > .kd-photo { max-width: 44vw; max-height: 76vh; }
+}
+@keyframes kd-photo-in {
+  from { opacity: 0; transform: scale(1.04); }
+  to   { opacity: 1; transform: none; }
+}
+.kd-rise { animation: kd-el-rise 0.8s var(--ease-lux) both; }
+@keyframes kd-el-rise {
+  from { opacity: 0; transform: translateY(1.1rem); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Annotation group: box scales in, leader line draws, card rises — the group
+   is staggered 600ms apart via inline animation-delay on .kd-anno. */
+.kd-anno { opacity: 0; animation: kd-anno-in 0.001s linear both; }
+@keyframes kd-anno-in { to { opacity: 1; } }
+.kd-anno-box {
+  transform-origin: center;
+  animation: kd-box-in 0.6s var(--ease-spring) both;
+  animation-delay: inherit;
+}
+@keyframes kd-box-in {
+  from { opacity: 0; transform: scale(0.7); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.kd-anno-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: kd-line-draw 0.55s var(--ease-glide) both;
+  animation-delay: inherit;
+}
+@keyframes kd-line-draw { to { stroke-dashoffset: 0; } }
+.kd-anno-card {
+  animation: kd-card-in 0.6s var(--ease-lux) both;
+  animation-delay: inherit;
+}
+@keyframes kd-card-in {
+  from { opacity: 0; transform: translateY(0.6rem); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Score ring sweep (stroke-dashoffset transition, triggered from JS). */
+.kd-ring-arc { transition: stroke-dashoffset 1.2s var(--ease-glide); }
+
+/* Treatment pills */
+.kd-pill {
+  animation: kd-card-in 0.6s var(--ease-lux) both;
+}
+
+/* ── Corner badge (non-attract scenes) ──────────────────────────────────────── */
+.kd-corner {
+  position: absolute;
+  top: 3.2vmin;
+  right: 3.2vmin;
+  z-index: 40;
+  animation: kd-scene-in 0.7s var(--ease-lux) both;
+}
+.kd-brand-corner {
+  position: absolute;
+  top: 3.2vmin;
+  left: 3.6vmin;
+  z-index: 40;
+}
+
+/* ── Share / goodbye sparkle ────────────────────────────────────────────────── */
+.kd-spark {
+  position: absolute;
+  animation: kd-spark-pop 2.6s ease-in-out var(--kd-delay, 0s) infinite;
+  will-change: transform, opacity;
+}
+@keyframes kd-spark-pop {
+  0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+  50%      { opacity: 0.9; transform: scale(1) rotate(24deg); }
+}
+
+/* ── Reduced motion: everything collapses to simple fades / end states ──────
+   (globals.css also zeroes animation durations globally; these keep the
+   surface legible by pinning loops to their visible state.) */
+@media (prefers-reduced-motion: reduce) {
+  .kd-shimmer, .kd-dot, .kd-qr-card, .kd-pulse-ring,
+  .kd-scanline, .kd-guide, .kd-spark, .kd-mirror-waiting,
+  .kd-count, .kd-line, .kd-micro span {
+    animation: none !important;
+  }
+  .kd-qr-halo, .kd-dot, .kd-spark, .kd-pulse-ring { display: none; }
+  /* Rotating stacks pin to their first line, statically visible. */
+  .kd-line, .kd-micro span { opacity: 0; transform: none; }
+  .kd-line:first-child, .kd-micro span:first-child { opacity: 1; }
+  .kd-count { opacity: 1; transform: none; }
+  .kd-ring-arc { transition: none; }
+  .kd-mirror-img { transition: none; }
+}
