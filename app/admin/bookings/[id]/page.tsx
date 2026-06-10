@@ -175,6 +175,21 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
         </section>
 
         <section className="space-y-6">
+          {/* BLD-138: the immersive in-clinic walkthrough (arrival → wrap-up). */}
+          {!['CANCELLED', 'NO_SHOW'].includes(b.status) && sessionCan(session, 'bookings.manage') && (
+            <Link
+              href={`/admin/bookings/${b.id}/session`}
+              className="flex items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-gold)]/50 bg-[var(--color-bone)] p-5 transition-all hover:border-[var(--color-gold)] hover:shadow-[var(--shadow-soft)]"
+            >
+              <span>
+                <span className="block font-[family-name:var(--font-display)] text-lg">Live appointment session</span>
+                <span className="mt-0.5 block text-sm text-[var(--color-stone)]">
+                  {b.finishedAt ? 'Completed — review the walkthrough & timings' : b.startedAt ? 'In progress — rejoin the walkthrough' : 'Run the guided client walkthrough: arrival, consent, treatment, aftercare'}
+                </span>
+              </span>
+              <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-gold)] text-white">→</span>
+            </Link>
+          )}
           <ReadinessPanel items={readiness.items} ready={readiness.ready} neededCount={readiness.neededCount} started={!!b.startedAt} />
           <div data-tour="clinical-workflow"><ClinicalWorkflow
             bookingId={b.id}
