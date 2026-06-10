@@ -191,10 +191,22 @@ async function findOrCreateContact(name: string, email: string | null): Promise<
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
-async function saleTaxType(): Promise<string> {
+// BLD-121: resolve per-service VAT class so exempt services (e.g. dentistry)
+// get EXEMPTOUTPUT instead of the blanket OUTPUT2 that would mis-categorise
+// them in the books once the clinic becomes VAT-registered.
+async function xeroTaxType(treatmentSlug: string): Promise<string> {
   try {
-    const { getVatConfig } = await import('@/lib/vat');
-    return (await getVatConfig()).registered ? 'OUTPUT2' : 'NONE';
+    const { getVatConfig, effectiveVatClass } = await import('@/lib/vat');
+    const cfg = await getVatConfig();
+    if (!cfg.registered) return 'NONE';
+    const { getServiceByTreatment } = await import('@/lib/services');
+    const svc = await getServiceByTreatment(treatmentSlug);
+    const cls = effectiveVatClass({ vatClass: svc?.vatClass, category: svc?.category });
+    switch (cls) {
+      case 'EXEMPT': return 'EXEMPTOUTPUT';
+      case 'ZERO': return 'ZERORATEDOUTPUT';
+      default: return 'OUTPUT2'; // STANDARD / REDUCED
+    }
   } catch { return 'NONE'; }
 }
 
@@ -227,7 +239,7 @@ export async function pushBookingSaleToXero(bookingId: string): Promise<void> {
         Date: isoDay(when), DueDate: isoDay(when),
         LineAmountTypes: 'Inclusive', Status: 'AUTHORISED',
         Reference: `Booking ${booking.id}`,
-        LineItems: [{ Description: `${booking.treatmentTitle} — ${isoDay(booking.startAt)}`, Quantity: 1, UnitAmount: amountPence / 100, AccountCode: cfg.salesAccount, TaxType: await saleTaxType() }],
+        LineItems: [{ Description: `${booking.treatmentTitle} — ${isoDay(booking.startAt)}`, Quantity: 1, UnitAmount: amountPence / 100, AccountCode: cfg.salesAccount, TaxType: await xeroTaxType(booking.treatmentSlug) }],
       }],
     });
     const invoiceId = inv.ok ? (inv.data as { Invoices?: { InvoiceID?: string }[] }).Invoices?.[0]?.InvoiceID : undefined;
@@ -267,7 +279,7 @@ export async function pushBookingRefundToXero(bookingId: string, amountPence: nu
         Type: 'ACCRECCREDIT', Contact: { ContactID: contact.contactId },
         Date: today, LineAmountTypes: 'Inclusive', Status: 'AUTHORISED',
         Reference: `Refund — booking ${booking.id}`,
-        LineItems: [{ Description: `Refund — ${booking.treatmentTitle}${reason ? ` (${reason.slice(0, 120)})` : ''}`, Quantity: 1, UnitAmount: amountPence / 100, AccountCode: cfg.salesAccount, TaxType: await saleTaxType() }],
+        LineItems: [{ Description: `Refund — ${booking.treatmentTitle}${reason ? ` (${reason.slice(0, 120)})` : ''}`, Quantity: 1, UnitAmount: amountPence / 100, AccountCode: cfg.salesAccount, TaxType: await xeroTaxType(booking.treatmentSlug) }],
       }],
     });
     const creditNoteId = cn.ok ? (cn.data as { CreditNotes?: { CreditNoteID?: string }[] }).CreditNotes?.[0]?.CreditNoteID : undefined;

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { timingSafeEqual } from 'node:crypto';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
@@ -22,7 +23,10 @@ export async function GET(req: Request) {
 
   const { cookies } = await import('next/headers');
   const jar = await cookies();
-  if (jar.get('kc_oauth_state')?.value !== state) return to(`error=${providerId}_bad_state`);
+  // BLD-130: timing-safe comparison prevents CSRF-state oracle timing attacks.
+  const storedState = jar.get('kc_oauth_state')?.value ?? '';
+  const stateMatch = storedState.length === state.length && timingSafeEqual(Buffer.from(storedState), Buffer.from(state));
+  if (!storedState || !stateMatch) return to(`error=${providerId}_bad_state`);
 
   const { getProvider, isConfigured, REDIRECT_URI } = await import('@/lib/marketing-connections');
   const p = getProvider(providerId);
