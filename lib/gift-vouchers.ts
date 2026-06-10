@@ -110,6 +110,13 @@ export async function confirmVoucher(voucherId: string): Promise<{ ok: boolean; 
   const { stripe } = await import('@/lib/stripe');
   const pi = await stripe().paymentIntents.retrieve(v.stripePaymentIntentId);
   if (pi.status !== 'succeeded') return { ok: false, error: 'Payment not completed.' };
+  // BLD-130: guard against discount/currency manipulation — the amount the card
+  // was charged must cover the full stored price (value + any physical-card fee).
+  const expectedPence = v.amountPence + (v.physicalFeePence ?? 0);
+  if (pi.currency !== 'gbp' || pi.amount_received < expectedPence) {
+    console.error('[gift-voucher] amount_received mismatch:', { received: pi.amount_received, expected: expectedPence, currency: pi.currency });
+    return { ok: false, error: 'Payment amount mismatch.' };
+  }
 
   const expiresAt = new Date(); expiresAt.setFullYear(expiresAt.getFullYear() + 1);
   const immediate = !v.deliverAt || v.deliverAt <= new Date();
