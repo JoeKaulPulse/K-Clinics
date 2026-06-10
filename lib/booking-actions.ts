@@ -299,11 +299,16 @@ export async function rescheduleBooking(
 
   const newStart = new Date(newStartISO);
   if (isNaN(newStart.getTime())) return { ok: false, error: 'Invalid date/time.' };
-  // Validate the new slot isn't in the past.
   if (newStart.getTime() < Date.now()) return { ok: false, error: 'The requested slot is in the past.' };
 
   const durationMs = booking.endAt.getTime() - booking.startAt.getTime();
+  const durationMin = Math.round(durationMs / 60_000);
   const newEnd = new Date(newStart.getTime() + durationMs);
+
+  // Verify the new slot is still free (same logic as the booking creation path).
+  const { isSlotFree } = await import('@/lib/availability');
+  const free = await isSlotFree(newStartISO, durationMin, booking.treatmentSlug, booking.locationId);
+  if (!free) return { ok: false, error: 'That slot is no longer available. Please choose another time.' };
 
   const oldStart = booking.startAt;
   await db.booking.update({
