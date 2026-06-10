@@ -2,13 +2,17 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
-import { formatPrice } from '@/lib/treatments';
+import { formatPrice, bookableTreatments } from '@/lib/treatments';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { RevenueChart, TopTreatments } from '@/components/admin/Charts';
 import { OnboardingHost } from '@/components/onboarding/OnboardingHost';
 import { ONBOARDING } from '@/lib/onboarding-steps';
 import { getLocale } from '@/lib/locale';
+import { getWeather, uvBand } from '@/lib/weather';
+import { LiveClock } from '@/components/admin/DashboardLive';
+import { ArrivalPrep, type NextArrival } from '@/components/admin/ArrivalPrep';
+import { NewBookingButton } from '@/components/admin/NewBookingButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -117,10 +121,56 @@ export default async function AdminOverview() {
   const greeting = londonHour < 12 ? 'Good morning' : londonHour < 18 ? 'Good afternoon' : 'Good evening';
   const todayLabel = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'long', day: 'numeric', month: 'long' }).format(now);
 
+  // ── Front-of-house essentials: local weather/UV + the next client arrival ──
+  const weather = await getWeather();
+  const uv = weather?.uvMax != null ? uvBand(weather.uvMax) : null;
+  const treatments = bookableTreatments.map((t) => ({ slug: t.slug, title: t.title }));
+  const endOfToday = new Date(now); endOfToday.setHours(23, 59, 59, 999);
+  const nextBk = canBookings
+    ? await db.booking.findFirst({
+        where: { startAt: { gte: now }, status: { in: ['CONFIRMED', 'PENDING'] } },
+        orderBy: { startAt: 'asc' },
+        select: {
+          id: true, startAt: true, treatmentTitle: true, refreshments: true, clientId: true,
+          client: { select: { firstName: true, lastName: true, allergies: true, medicalFlag: true } },
+          practitioner: { select: { name: true } },
+        },
+      }).catch(() => null)
+    : null;
+  const nextRoom = nextBk ? await db.resource.findFirst({ where: { bookings: { some: { id: nextBk.id } } }, select: { name: true } }).catch(() => null) : null;
+  const nextArrival: NextArrival | null = nextBk ? {
+    id: nextBk.id,
+    clientId: nextBk.clientId,
+    clientName: [nextBk.client.firstName, nextBk.client.lastName].filter(Boolean).join(' ') || 'Client',
+    treatment: nextBk.treatmentTitle,
+    startIso: nextBk.startAt.toISOString(),
+    timeLabel: nextBk.startAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + (nextBk.startAt <= endOfToday ? '' : ` · ${nextBk.startAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`),
+    practitioner: nextBk.practitioner?.name ?? null,
+    room: nextRoom?.name ?? null,
+    drinks: nextBk.refreshments ?? [],
+    allergies: nextBk.client.allergies ?? null,
+    medicalFlag: nextBk.client.medicalFlag ?? null,
+  } : null;
+
   return (
     <AdminShell user={session?.email} can={can} locale={locale}>
-      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-stone-soft)]">Overview · {todayLabel}</p>
-      <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl">{greeting}{session?.name ? `, ${session.name}` : ''}</h1>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-stone-soft)]">Overview · {todayLabel}</p>
+          <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl">{greeting}{session?.name ? `, ${session.name}` : ''}</h1>
+        </div>
+        <div className="flex items-center gap-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5">
+          <LiveClock />
+          {weather && (
+            <div className="border-l border-[var(--color-line)] pl-4 leading-tight">
+              <p className="text-sm font-medium text-[var(--color-ink)]"><span className="tabular-nums">{weather.tempC}°</span> <span className="font-normal text-[var(--color-stone)]">{weather.label}</span></p>
+              {weather.uvMax != null && uv && (
+                <p className="text-xs text-[var(--color-stone)]">UV <span className="tabular-nums">{weather.uvMax}</span> · <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{uv.label}</span></p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Needs attention */}
       {attention.length > 0 && (
@@ -133,6 +183,37 @@ export default async function AdminOverview() {
           ))}
         </div>
       )}
+
+      {/* Up next · prepare for arrival + day actions — the front-of-house core */}
+      <div className="mt-6 grid gap-4 lg:grid-cols-[1.5fr_1fr] [&>*]:min-w-0">
+        {nextArrival ? (
+          <ArrivalPrep a={nextArrival} />
+        ) : (
+          <section className="flex flex-col items-start justify-center rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
+            <p className="eyebrow text-[var(--color-stone)]">Up next</p>
+            <p className="mt-2 font-[family-name:var(--font-display)] text-xl">No upcoming appointments</p>
+            <p className="mt-1 text-sm text-[var(--color-stone)]">Nothing booked ahead right now — enjoy the calm, or take a new booking.</p>
+          </section>
+        )}
+        <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
+          <p className="eyebrow mb-3 text-[var(--color-stone)]">Quick actions</p>
+          {canBookings && <div className="mb-3"><NewBookingButton treatments={treatments} /></div>}
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { href: '/admin/calendar', label: 'Calendar', perm: 'calendar.view' },
+              { href: '/admin/my-day', label: 'My day' },
+              { href: '/admin/schedule', label: 'Lunch & breaks', perm: 'schedule.manage' },
+              { href: '/admin/day-close', label: 'Day-close', perm: 'dayclose.run' },
+            ]
+              .filter((t) => !t.perm || sessionCan(session, t.perm))
+              .map((t) => (
+                <Link key={t.href} href={t.href} className="flex items-center justify-center rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-3 text-center text-sm text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)]">
+                  {t.label}
+                </Link>
+              ))}
+          </div>
+        </section>
+      </div>
 
       {/* KPI row */}
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
