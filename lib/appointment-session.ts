@@ -48,6 +48,31 @@ export function isSessionStep(v: unknown): v is SessionStepKey {
   return typeof v === 'string' && (SESSION_STEP_KEYS as string[]).includes(v);
 }
 
+// v1 shipped a 'wrap' step that v2 split into checkout/nextvisit/farewell.
+// In-flight sessions from before the rename are normalised at every read
+// boundary so they resume where they left off instead of resetting to arrival.
+const LEGACY_STEP_MAP: Record<string, SessionStepKey> = { wrap: 'farewell' };
+
+export function normalizeStepKey(v: unknown): SessionStepKey {
+  if (isSessionStep(v)) return v;
+  if (typeof v === 'string' && LEGACY_STEP_MAP[v]) return LEGACY_STEP_MAP[v];
+  return 'arrival';
+}
+
+/** Remap legacy keys inside a stored timing map (merges seconds/visits). */
+export function normalizeTimings(timings: Record<string, StepTiming | undefined>): StepTimings {
+  const out: StepTimings = {};
+  for (const [k, t] of Object.entries(timings)) {
+    if (!t) continue;
+    const key = normalizeStepKey(k);
+    const prev = out[key];
+    out[key] = prev
+      ? { enteredAt: prev.enteredAt ?? t.enteredAt, seconds: prev.seconds + t.seconds, visits: prev.visits + t.visits, ...(prev.skipped || t.skipped ? { skipped: true } : {}) }
+      : t;
+  }
+  return out;
+}
+
 /** Per-step timing entry stored in AppointmentSession.steps. */
 export type StepTiming = { enteredAt: string | null; seconds: number; visits: number; skipped?: boolean };
 export type StepTimings = Partial<Record<SessionStepKey, StepTiming>>;

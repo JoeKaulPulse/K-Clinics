@@ -1,12 +1,15 @@
 import 'server-only';
 import crypto from 'node:crypto';
 import { db } from '@/lib/db';
+import { normalizeStepKey, normalizeTimings } from '@/lib/appointment-session';
 import type { SessionStepKey, StepTimings, SessionData, Touchpoint } from '@/lib/appointment-session';
 
 // BLD-138 v2 — shared server helpers for the realtime appointment session.
 // One snapshot shape feeds every consumer: the staff runner (any device), the
 // staff SSE stream, and the client's live phone page (sanitised). The DB row
-// is the single source of truth; devices reconcile to snapshots.
+// is the single source of truth; devices reconcile to snapshots. The active
+// staff member is DERIVED from the tail of the append-only touchpoints log —
+// one record of truth, nothing to desynchronise.
 
 export type StaffProfile = { email: string; name: string; title: string | null; photo: string | null };
 
@@ -24,7 +27,7 @@ export type SessionSnapshot = {
   rev: string;
   session: {
     status: string;
-    currentStep: SessionStepKey | string;
+    currentStep: SessionStepKey;
     steps: StepTimings;
     data: SessionData;
     touchpoints: Touchpoint[];
@@ -64,14 +67,20 @@ export async function sessionSnapshot(bookingId: string): Promise<SessionSnapsho
   ]);
   if (!b) return null;
 
+  const touchpoints = ((s?.touchpoints ?? []) as Touchpoint[]).map((t) => ({ ...t, step: normalizeStepKey(t.step) }));
+  const last = touchpoints[touchpoints.length - 1];
+
   const snap: Omit<SessionSnapshot, 'rev'> = {
     session: s ? {
       status: s.status,
-      currentStep: s.currentStep,
-      steps: (s.steps ?? {}) as StepTimings,
+      currentStep: normalizeStepKey(s.currentStep),
+      steps: normalizeTimings((s.steps ?? {}) as Record<string, StepTimings[SessionStepKey]>),
       data: (s.data ?? {}) as SessionData,
-      touchpoints: (s.touchpoints ?? []) as Touchpoint[],
-      activeStaff: s.activeStaffEmail ? { email: s.activeStaffEmail, name: s.activeStaffName || s.activeStaffEmail, title: s.activeStaffTitle, photo: s.activeStaffPhoto } : null,
+      touchpoints,
+      // Presence = the last handoff; cleared once the visit completes.
+      activeStaff: last && s.status !== 'COMPLETED'
+        ? { email: last.staffEmail, name: last.staffName, title: last.staffTitle ?? null, photo: last.staffPhoto ?? null }
+        : null,
       startedAt: s.startedAt.toISOString(),
       completedAt: s.completedAt?.toISOString() ?? null,
     } : null,
@@ -97,6 +106,19 @@ export async function sessionSnapshot(bookingId: string): Promise<SessionSnapsho
   return { rev, ...snap };
 }
 
+/** Cheap change probe for the SSE poll loops: three trivial indexed reads
+ *  instead of the full four-query snapshot build + hash on every tick. The
+ *  full snapshot is built only when this string moves. */
+export async function sessionProbe(bookingId: string): Promise<string | null> {
+  const [b, consentCount, photoCount] = await Promise.all([
+    db.booking.findUnique({ where: { id: bookingId }, select: { updatedAt: true, liveSession: { select: { updatedAt: true } } } }),
+    db.signedConsent.count({ where: { bookingId } }),
+    db.beforePhoto.count({ where: { bookingId } }),
+  ]);
+  if (!b) return null;
+  return `${+b.updatedAt}|${b.liveSession ? +b.liveSession.updatedAt : 0}|${consentCount}|${photoCount}`;
+}
+
 /** What the CLIENT's phone may see — no emails, no clinical/gate detail. */
 export type ClientLiveView = {
   rev: string;
@@ -109,30 +131,26 @@ export type ClientLiveView = {
 };
 
 export function clientView(snap: SessionSnapshot): ClientLiveView {
+  const a = snap.session?.activeStaff;
   return {
     rev: snap.rev,
     status: snap.session?.status ?? 'PENDING',
     stage: snap.session?.currentStep ?? 'arrival',
     startedAt: snap.session?.startedAt ?? null,
     finishedAt: !!snap.booking.finishedAt,
-    with: snap.session?.activeStaff ? { name: snap.session.activeStaff.name, title: snap.session.activeStaff.title, photo: snap.session.activeStaff.photo } : null,
+    with: a ? { name: a.name, title: a.title, photo: a.photo } : null,
     journey: (snap.session?.touchpoints ?? []).map((t) => ({ at: t.at, step: t.step, name: t.staffName, title: t.staffTitle ?? null, photo: t.staffPhoto ?? null })),
   };
 }
 
-/** Append a touchpoint when the (staff, step) pair actually changes, and set
- *  the active-staff fields. Returns the data patch for the update call. */
-export function touchpointPatch(existing: Touchpoint[], step: SessionStepKey, staff: StaffProfile) {
+/** Append a touchpoint when the (staff, step) pair actually changes. The
+ *  touchpoints log is the single record of presence — the active staff member
+ *  is always derived from its tail. */
+export function touchpointAppend(existing: Touchpoint[], step: SessionStepKey, staff: StaffProfile): { touchpoints: object } {
   const last = existing[existing.length - 1];
-  const changed = !last || last.staffEmail !== staff.email || last.step !== step;
+  const changed = !last || last.staffEmail !== staff.email || normalizeStepKey(last.step) !== step;
   const touchpoints = changed
     ? [...existing, { at: new Date().toISOString(), step, staffEmail: staff.email, staffName: staff.name, staffTitle: staff.title, staffPhoto: staff.photo } satisfies Touchpoint]
     : existing;
-  return {
-    activeStaffEmail: staff.email,
-    activeStaffName: staff.name,
-    activeStaffTitle: staff.title,
-    activeStaffPhoto: staff.photo,
-    touchpoints: touchpoints as object,
-  };
+  return { touchpoints: touchpoints as object };
 }

@@ -9,7 +9,9 @@ export const maxDuration = 60;
 // snapshot stream and reconciles instantly — no refreshes between handoffs.
 // Pattern mirrors the kiosk stream: short-lived function (~55s), retry: 1000
 // so EventSource reconnects seamlessly, heartbeat comments to keep proxies
-// alive, push only on change (rev hash).
+// alive. Each tick runs a 3-read change probe; the full snapshot is built and
+// pushed only when the probe moves. Transient DB errors skip a tick rather
+// than ending the stream.
 const POLL_MS = 750;
 const HEARTBEAT_MS = 15_000;
 const LIFETIME_MS = 55_000;
@@ -23,39 +25,45 @@ export async function GET(req: Request) {
   const bookingId = new URL(req.url).searchParams.get('bookingId') || '';
   if (!bookingId) return new Response('missing bookingId', { status: 400 });
 
-  const { sessionSnapshot } = await import('@/lib/appointment-session-server');
+  const { sessionSnapshot, sessionProbe } = await import('@/lib/appointment-session-server');
 
   const encoder = new TextEncoder();
+  let closed = false;
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (text: string) => controller.enqueue(encoder.encode(text));
+      const send = (text: string) => {
+        if (closed) return;
+        try { controller.enqueue(encoder.encode(text)); } catch { closed = true; }
+      };
       send('retry: 1000\n\n');
 
-      let lastRev = '';
+      let lastProbe = '__init__';
       let lastBeat = Date.now();
       const startedAt = Date.now();
-      let closed = false;
       const abort = () => { closed = true; };
       req.signal.addEventListener('abort', abort);
 
-      try {
-        while (!closed && Date.now() - startedAt < LIFETIME_MS) {
-          const snap = await sessionSnapshot(bookingId).catch(() => null);
-          if (!snap) { send('event: gone\ndata: {}\n\n'); break; }
-          if (snap.rev !== lastRev) {
-            lastRev = snap.rev;
+      while (!closed && Date.now() - startedAt < LIFETIME_MS) {
+        try {
+          const probe = await sessionProbe(bookingId);
+          if (probe === null) { send('event: gone\ndata: {}\n\n'); break; }
+          if (probe !== lastProbe) {
+            const snap = await sessionSnapshot(bookingId);
+            if (!snap) { send('event: gone\ndata: {}\n\n'); break; }
+            lastProbe = probe;
             send(`data: ${JSON.stringify(snap)}\n\n`);
             lastBeat = Date.now();
           } else if (Date.now() - lastBeat > HEARTBEAT_MS) {
             send(': hb\n\n');
             lastBeat = Date.now();
           }
-          await new Promise((r) => setTimeout(r, POLL_MS));
-        }
-      } catch { /* connection torn down mid-write — EventSource will reconnect */ }
+        } catch { /* transient DB error — skip this tick, keep the stream */ }
+        await new Promise((r) => setTimeout(r, POLL_MS));
+      }
       req.signal.removeEventListener('abort', abort);
       try { controller.close(); } catch { /* already closed */ }
     },
+    cancel() { closed = true; },
   });
 
   return new Response(stream, {

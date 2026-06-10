@@ -22,6 +22,7 @@ type Props = {
   canCharge: boolean;
   canPos: boolean;
   canClinical: boolean;
+  baseUrl: string;
   liveUrl: string;
   liveQrSvg: string;
   products: Product[];
@@ -49,21 +50,33 @@ const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFra
 
 export function SessionRunner(p: Props) {
   const reduce = useReducedMotion();
-  const { snapshot: liveSnap } = useSessionChannel(p.booking.id, true);
+  const { snapshot: liveSnap } = useSessionChannel(p.booking.id);
   const snap = liveSnap ?? p.initialSnapshot;
   const sess = snap?.session ?? null;
+  const sessionDone = sess?.status === 'COMPLETED';
 
   const serverStep: SessionStepKey = (sess && SESSION_STEPS.some((s) => s.key === sess.currentStep)
     ? sess.currentStep : 'arrival') as SessionStepKey;
-  const [step, setStep] = useState<SessionStepKey>(serverStep);
+  // The server is authoritative; an expiring optimistic overlay makes local
+  // taps feel instant without ever stranding a device on an unconfirmed step.
+  const [optimistic, setOptimistic] = useState<{ step: SessionStepKey; until: number } | null>(null);
+  // Browsing a completed session is local-only (the server step is frozen).
+  const [browse, setBrowse] = useState<SessionStepKey | null>(null);
   const [presenting, setPresenting] = useState(false);
   const [err, setErr] = useState('');
   const [pending, startTransition] = useTransition();
   const [now, setNow] = useState(() => Date.now());
-  const startedRef = useRef(false);
+  const startAttempts = useRef(0);
+  const enterChain = useRef<Promise<unknown>>(Promise.resolve());
 
-  // Follow remote devices: when the authoritative step moves, move with it.
-  useEffect(() => { setStep(serverStep); }, [serverStep]);
+  const step: SessionStepKey = sessionDone
+    ? (browse ?? serverStep)
+    : (optimistic && optimistic.until > now && optimistic.step !== serverStep ? optimistic.step : serverStep);
+
+  // Clear the overlay once the server confirms it.
+  useEffect(() => {
+    if (optimistic && serverStep === optimistic.step) setOptimistic(null);
+  }, [serverStep, optimistic]);
 
   const api = useCallback(async (payload: Record<string, unknown>) => {
     const res = await fetch('/api/admin/bookings/session', {
@@ -74,10 +87,21 @@ export function SessionRunner(p: Props) {
   }, [p.booking.id]);
 
   // Create/resume the session on first open (front-desk check-in moment).
+  // Retries on transient failure — otherwise the whole visit would silently
+  // run without timings, touchpoints or the client's live page.
   useEffect(() => {
-    if (startedRef.current || sess) return;
-    startedRef.current = true;
-    api({ op: 'start' }).catch(() => {});
+    if (sess || startAttempts.current >= 5) return;
+    let cancelled = false;
+    const attempt = () => {
+      startAttempts.current += 1;
+      api({ op: 'start' }).then((r) => {
+        if (cancelled || r?.ok) return;
+        if (startAttempts.current >= 5) setErr('Could not start the live session — check the connection and reload.');
+      }).catch(() => { /* retried below */ });
+    };
+    attempt();
+    const id = setInterval(() => { if (!sess && startAttempts.current < 5) attempt(); else clearInterval(id); }, 4000);
+    return () => { cancelled = true; clearInterval(id); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sess]);
 
@@ -94,10 +118,16 @@ export function SessionRunner(p: Props) {
 
   const goTo = useCallback((next: SessionStepKey, opts: { skip?: boolean } = {}) => {
     setErr('');
+    if (sessionDone) { setBrowse(next); return; }
     const from = step;
-    setStep(next); // optimistic — SSE confirms for every device
-    api({ op: 'enter', step: next, ...(opts.skip ? { skippedFrom: from } : {}) }).catch(() => {});
-  }, [api, step]);
+    setOptimistic({ step: next, until: Date.now() + 5000 });
+    // Serialised: rapid taps land in order, and failures are surfaced instead
+    // of leaving this device on a step the rest of the clinic never sees.
+    enterChain.current = enterChain.current
+      .then(() => api({ op: 'enter', step: next, ...(opts.skip ? { skippedFrom: from } : {}) }))
+      .then((r) => { if (!(r as { ok?: boolean })?.ok) setErr((r as { error?: string })?.error || 'Step change didn’t reach the server — it will snap back.'); })
+      .catch(() => setErr('Network hiccup — the step change didn’t save.'));
+  }, [api, step, sessionDone]);
 
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>) =>
     startTransition(async () => {
@@ -135,7 +165,6 @@ export function SessionRunner(p: Props) {
 
   const active = sess?.activeStaff ?? null;
   const isMine = active?.email === p.me.email;
-  const sessionDone = sess?.status === 'COMPLETED';
 
   const idx = SESSION_STEPS.findIndex((s) => s.key === step);
   const def = SESSION_STEPS[idx];
@@ -152,7 +181,7 @@ export function SessionRunner(p: Props) {
     : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -8 }, transition: { duration: 0.26, ease: [0.16, 1, 0.3, 1] as const } };
 
   return (
-    <div className={presenting ? 'session-presenting' : ''}>
+    <div>
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-20 border-b border-[var(--color-line)] bg-[var(--color-porcelain)]/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
@@ -266,7 +295,7 @@ export function SessionRunner(p: Props) {
                 )}
                 {step === 'treatment' && (
                   <TreatmentStep
-                    p={p} live={live} pending={pending} presenting={presenting} canStart={canStart}
+                    p={p} live={live} sessData={sess?.data ?? {}} pending={pending} presenting={presenting} canStart={canStart}
                     gateHints={{ flagOk, sopOk, consentOk, photoOk }}
                     elapsed={treatmentElapsed} api={api}
                     onStart={() => run(() => startAppointment(p.booking.id))}
@@ -448,7 +477,9 @@ function ConsentStep({ p, live, onContinue, onSkip }: {
   p: Props; live: { consentSigned: boolean; consents: { kind: string; title: string; signedAt: string; cert: string }[] };
   onContinue: () => void; onSkip: () => void;
 }) {
-  const [link, setLink] = useState(p.consent.pendingToken ? `/sign/${p.consent.pendingToken}` : '');
+  // Always the canonical host — a link copied to the client's phone must work
+  // even when staff drive the session from a preview/internal hostname.
+  const [link, setLink] = useState(p.consent.pendingToken ? `${p.baseUrl}/sign/${p.consent.pendingToken}` : '');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const treatmentConsents = live.consents.filter((c) => c.kind === 'treatment');
@@ -499,7 +530,7 @@ function ConsentStep({ p, live, onContinue, onSkip }: {
           </a>
           <div className="flex flex-wrap items-center gap-3 text-sm">
             <button type="button" className="min-h-11 rounded-full border border-[var(--color-line)] px-4 py-2 text-[var(--color-stone)] transition-colors hover:text-[var(--color-ink)]"
-              onClick={() => { navigator.clipboard?.writeText(new URL(link, window.location.origin).toString()).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }}>
+              onClick={() => { navigator.clipboard?.writeText(link).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }}>
               {copied ? 'Copied' : 'Copy link for the client’s phone'}
             </button>
           </div>
@@ -523,14 +554,18 @@ function ConsentStep({ p, live, onContinue, onSkip }: {
   );
 }
 
-function TreatmentStep({ p, live, pending, presenting, canStart, gateHints, elapsed, api, onStart, onFinish, onSaveNote, onContinue }: {
-  p: Props; live: { startedAt: string | null; finishedAt: string | null }; pending: boolean; presenting: boolean; canStart: boolean;
+function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateHints, elapsed, api, onStart, onFinish, onSaveNote, onContinue }: {
+  p: Props; live: { startedAt: string | null; finishedAt: string | null }; sessData: Record<string, { value: string; by: string; at: string }>;
+  pending: boolean; presenting: boolean; canStart: boolean;
   gateHints: { flagOk: boolean; sopOk: boolean; consentOk: boolean; photoOk: boolean };
   elapsed: number; api: (payload: Record<string, unknown>) => Promise<{ ok: boolean }>;
   onStart: () => void; onFinish: () => void; onSaveNote: (note: string) => void; onContinue: () => void;
 }) {
   const [note, setNote] = useState(p.clinicalNote);
-  const [comfort, setComfort] = useState('');
+  // Live-derived until this device edits — a note saved on another device (or
+  // before a reload) shows everywhere instead of looking lost.
+  const [localComfort, setLocalComfort] = useState<string | null>(null);
+  const comfort = localComfort ?? sessData.comfort_note?.value ?? '';
   const [savedMsg, setSavedMsg] = useState('');
   const started = !!live.startedAt;
   const finished = !!live.finishedAt;
@@ -574,7 +609,7 @@ function TreatmentStep({ p, live, pending, presenting, canStart, gateHints, elap
             <>
               <div>
                 <label htmlFor="session-comfort" className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">Comfort & preferences (front-of-house note)</label>
-                <input id="session-comfort" value={comfort} onChange={(e) => setComfort(e.target.value)}
+                <input id="session-comfort" value={comfort} onChange={(e) => setLocalComfort(e.target.value)}
                   onBlur={() => { if (comfort.trim()) { api({ op: 'save', field: 'comfort_note', value: comfort.trim() }).then(() => { setSavedMsg('Saved'); setTimeout(() => setSavedMsg(''), 1500); }); } }}
                   placeholder="e.g. prefers the room cooler, music low…"
                   className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--color-gold)]" />
@@ -734,43 +769,59 @@ function Boutique({ p, sessData, api, presenting }: {
   const [localPaid, setLocalPaid] = useState<string | null>(null);
   // Another device's payment lands via the live snapshot; this device's via state.
   const paidNumber = localPaid ?? sessData.boutique?.value ?? null;
+  const [ageOk, setAgeOk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  // A payment started on ANY device is recorded on the session, so a step
+  // change (which unmounts this card everywhere) can't orphan a paid order.
+  const pendingRaw = sessData.boutique_pending?.value || '';
+  const pending = !qr && !paidNumber && pendingRaw.includes('|')
+    ? { orderId: pendingRaw.split('|')[0], totalPence: Number(pendingRaw.split('|')[1]) || 0 }
+    : null;
 
   const total = useMemo(() => Object.entries(basket).reduce((sum, [id, qty]) => {
     const prod = p.products.find((x) => x.id === id);
     return sum + (prod ? prod.pricePence * qty : 0);
   }, 0), [basket, p.products]);
   const count = Object.values(basket).reduce((a, b) => a + b, 0);
+  const hasAgeRestricted = Object.entries(basket).some(([id, qty]) => qty > 0 && p.products.find((x) => x.id === id)?.ageRestricted);
 
-  // Poll the order until the client's phone payment lands.
+  // Poll the open order (this device's QR or a resumed pending one) until the
+  // client's phone payment lands.
+  const watchOrderId = qr?.orderId ?? pending?.orderId ?? null;
+  const watchTotal = qr?.totalPence ?? pending?.totalPence ?? 0;
   useEffect(() => {
-    if (!qr || paidNumber) return;
+    if (!watchOrderId || paidNumber) return;
     const id = setInterval(async () => {
       try {
-        const res = await fetch('/api/admin/pos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'status', orderId: qr.orderId }) });
+        const res = await fetch('/api/admin/pos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'status', orderId: watchOrderId }) });
         const j = await res.json().catch(() => null);
         if (j?.ok && j.status === 'PAID') {
           setLocalPaid(j.number || 'paid');
           setQr(null);
-          api({ op: 'save', field: 'boutique', value: `${j.number} — ${money(qr.totalPence)}` }).catch(() => {});
+          api({ op: 'save', field: 'boutique', value: `${j.number} — ${money(watchTotal)}` }).catch(() => {});
+          api({ op: 'save', field: 'boutique_pending', value: '' }).catch(() => {});
         }
       } catch { /* next tick */ }
     }, 3000);
     return () => clearInterval(id);
-  }, [qr, paidNumber, api]);
+  }, [watchOrderId, watchTotal, paidNumber, api]);
 
   async function payOnPhone() {
+    if (hasAgeRestricted && !ageOk) { setError('This basket includes an 18+ product — tick the age confirmation first.'); return; }
     setBusy(true); setError('');
     try {
       const items = Object.entries(basket).filter(([, q]) => q > 0).map(([productId, qty]) => ({ productId, qty }));
       const res = await fetch('/api/admin/pos', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ op: 'checkout', method: 'card', items, customerName: p.client.fullName, customerEmail: p.client.email, ageVerified: true }),
+        body: JSON.stringify({ op: 'checkout', method: 'card', items, customerName: p.client.fullName, customerEmail: p.client.email, ageVerified: hasAgeRestricted ? ageOk : undefined }),
       });
       const j = await res.json().catch(() => ({ ok: false }));
-      if (j.ok && j.qr) setQr({ orderId: j.orderId, qr: j.qr, url: j.url, totalPence: j.totalPence });
-      else setError(j.error || 'Could not start the payment.');
+      if (j.ok && j.qr) {
+        setQr({ orderId: j.orderId, qr: j.qr, url: j.url, totalPence: j.totalPence });
+        api({ op: 'save', field: 'boutique_pending', value: `${j.orderId}|${j.totalPence}` }).catch(() => {});
+      } else setError(j.error || 'Could not start the payment.');
     } finally { setBusy(false); }
   }
 
@@ -787,7 +838,16 @@ function Boutique({ p, sessData, api, presenting }: {
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
       <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">Take the ritual home</p>
-      {qr ? (
+      {pending ? (
+        <div className="mt-4 text-center">
+          <p className="font-[family-name:var(--font-display)] text-xl tabular-nums">{money(pending.totalPence)}</p>
+          <p className="mt-1 text-sm text-[var(--color-stone)]" role="status" aria-live="polite">A phone payment is in progress — this updates the moment it goes through.</p>
+          {!presenting && (
+            <button type="button" onClick={() => api({ op: 'save', field: 'boutique_pending', value: '' })}
+              className="mt-3 text-xs text-[var(--color-stone)] underline-offset-4 hover:underline">Abandon and start a new basket</button>
+          )}
+        </div>
+      ) : qr ? (
         <div className="mt-4 flex flex-col items-center gap-3 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={qr.qr} alt="Scan to pay on your phone" width={208} height={208} className="h-52 w-52 rounded-[var(--radius-sm)]" />
@@ -824,12 +884,20 @@ function Boutique({ p, sessData, api, presenting }: {
             })}
           </ul>
           {count > 0 && (
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <p className="font-[family-name:var(--font-display)] text-xl tabular-nums">{money(total)} <span className="text-sm text-[var(--color-stone)]">· {count} item{count === 1 ? '' : 's'}</span></p>
-              <button type="button" disabled={busy} onClick={payOnPhone}
-                className="min-h-12 rounded-full bg-[var(--color-ink)] px-7 py-3 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold)] disabled:opacity-50">
-                {busy ? 'Preparing…' : 'Pay on your phone (QR)'}
-              </button>
+            <div className="mt-4 space-y-3">
+              {hasAgeRestricted && (
+                <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-[var(--radius-sm)] bg-[var(--color-bone)] p-3 text-sm">
+                  <input type="checkbox" checked={ageOk} onChange={(e) => setAgeOk(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-gold)]" />
+                  This basket includes an 18+ product — I confirm the buyer is over 18.
+                </label>
+              )}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="font-[family-name:var(--font-display)] text-xl tabular-nums">{money(total)} <span className="text-sm text-[var(--color-stone)]">· {count} item{count === 1 ? '' : 's'}</span></p>
+                <button type="button" disabled={busy} onClick={payOnPhone}
+                  className="min-h-12 rounded-full bg-[var(--color-ink)] px-7 py-3 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold)] disabled:opacity-50">
+                  {busy ? 'Preparing…' : 'Pay on your phone (QR)'}
+                </button>
+              </div>
             </div>
           )}
           {error && <p role="alert" className="mt-3 text-sm text-[var(--color-blush)]">{error}</p>}
@@ -855,9 +923,13 @@ function NextVisitStep({ p, sessData, api, onContinue, onSkip }: {
   useEffect(() => {
     if (booked) return;
     setLoading(true); setSlot('');
+    // Stale-response guard: a slow reply for a previously-selected date must
+    // never overwrite the list (the slot ISO would book the wrong day).
+    let stale = false;
     fetch('/api/booking/availability', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: p.booking.treatmentSlug, date, durationMin: p.booking.durationMin }) })
-      .then((r) => r.json()).then((j) => setSlots(j.slots || [])).catch(() => setSlots([]))
-      .finally(() => setLoading(false));
+      .then((r) => r.json()).then((j) => { if (!stale) setSlots(j.slots || []); }).catch(() => { if (!stale) setSlots([]); })
+      .finally(() => { if (!stale) setLoading(false); });
+    return () => { stale = true; };
   }, [date, booked, p.booking.treatmentSlug, p.booking.durationMin]);
 
   async function reserve() {
@@ -940,10 +1012,15 @@ function FarewellStep({ p, live, pending, sessionDone, timings, stepSeconds, onC
       </div>
 
       {!sessionDone ? (
-        <button type="button" disabled={pending} onClick={onComplete}
-          className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-50">
-          Complete the visit <ArrowIcon />
-        </button>
+        <>
+          <button type="button" disabled={pending || !live.finishedAt} onClick={onComplete}
+            className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+            Complete the visit <ArrowIcon />
+          </button>
+          {!live.finishedAt && (
+            <p className="text-sm text-[var(--color-stone)]">End the treatment first (Treatment step) — that records the visit, Beauty Points and review invite before the session closes.</p>
+          )}
+        </>
       ) : (
         total > 0 && (
           <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">

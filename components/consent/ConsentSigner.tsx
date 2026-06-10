@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 
 // BLD-138 v2 — the consent experience, rebuilt as a guided three-act flow:
@@ -26,68 +26,19 @@ export function ConsentSigner({
   const [err, setErr] = useState('');
   const [readPct, setReadPct] = useState(0);
   const openedAt = useRef(new Date().toISOString());
-  const canvas = useRef<HTMLCanvasElement>(null);
-  const article = useRef<HTMLDivElement>(null);
-  const drawing = useRef(false);
-  const lastPoint = useRef<{ x: number; y: number } | null>(null);
+  const padRef = useRef<SignaturePadHandle>(null);
 
   const allTicked = ticks.every(Boolean);
   const acts: Act[] = ['read', 'agree', 'sign'];
   const actIdx = acts.indexOf(act === 'done' ? 'sign' : act);
-
-  // Reading progress — the gold thread fills as the client scrolls the wording.
-  useEffect(() => {
-    if (act !== 'read') return;
-    const el = article.current;
-    if (!el) return;
-    const onScroll = () => {
-      const max = el.scrollHeight - el.clientHeight;
-      setReadPct(max <= 8 ? 100 : Math.min(100, Math.round((el.scrollTop / max) * 100)));
-    };
-    onScroll();
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => el.removeEventListener('scroll', onScroll);
-  }, [act]);
-
-  // Signature canvas — DPI-aware with midpoint-smoothed strokes (real-ink feel).
-  useEffect(() => {
-    if (act !== 'sign') return;
-    const c = canvas.current; if (!c) return;
-    const ctx = c.getContext('2d'); if (!ctx) return;
-    const ratio = window.devicePixelRatio || 1;
-    c.width = c.offsetWidth * ratio; c.height = c.offsetHeight * ratio; ctx.scale(ratio, ratio);
-    ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#2a2420';
-    const pos = (e: PointerEvent) => { const r = c.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
-    const down = (e: PointerEvent) => {
-      drawing.current = true; const p = pos(e); lastPoint.current = p;
-      ctx.beginPath(); ctx.moveTo(p.x, p.y); c.setPointerCapture(e.pointerId);
-    };
-    const move = (e: PointerEvent) => {
-      if (!drawing.current || !lastPoint.current) return;
-      const p = pos(e); const l = lastPoint.current;
-      // Quadratic through the midpoint — strokes curve naturally instead of jagging.
-      const mid = { x: (l.x + p.x) / 2, y: (l.y + p.y) / 2 };
-      ctx.quadraticCurveTo(l.x, l.y, mid.x, mid.y);
-      ctx.stroke();
-      lastPoint.current = p;
-      setHasSig(true);
-    };
-    const up = () => { drawing.current = false; lastPoint.current = null; };
-    c.addEventListener('pointerdown', down); c.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
-    return () => { c.removeEventListener('pointerdown', down); c.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
-  }, [act]);
-
-  function clearSig() {
-    const c = canvas.current; const ctx = c?.getContext('2d');
-    if (c && ctx) { ctx.clearRect(0, 0, c.width, c.height); ctx.beginPath(); setHasSig(false); }
-  }
 
   async function submit() {
     setErr('');
     if (!name.trim()) return setErr('Please type your full name.');
     if (!allTicked) return setErr('Please confirm every statement first.');
     if (!hasSig) return setErr('Please sign in the box.');
-    const signatureDataUrl = canvas.current?.toDataURL('image/png') ?? '';
+    const signatureDataUrl = padRef.current?.toDataURL() ?? '';
+    if (!signatureDataUrl) return setErr('Please sign in the box.');
     setBusy(true);
     const res = await fetch('/api/consent/sign', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -145,7 +96,18 @@ export function ConsentSigner({
               {/* Gold reading thread */}
               <span aria-hidden className="absolute left-0 top-0 z-10 h-0.5 bg-[var(--color-gold)] transition-[width] duration-200" style={{ width: `${readPct}%` }} />
               <div
-                ref={article}
+                // Callback ref: this pane mounts AFTER the act switch (AnimatePresence
+                // mode="wait"), so a [act]-dep effect would miss it.
+                ref={(el) => {
+                  if (!el) return;
+                  const onScroll = () => {
+                    const max = el.scrollHeight - el.clientHeight;
+                    setReadPct(max <= 8 ? 100 : Math.min(100, Math.round((el.scrollTop / max) * 100)));
+                  };
+                  onScroll();
+                  el.addEventListener('scroll', onScroll, { passive: true });
+                  return () => el.removeEventListener('scroll', onScroll);
+                }}
                 className="prose-consent max-h-[55dvh] overflow-y-auto p-6 text-sm leading-relaxed text-[var(--color-ink-soft)] [&_h2]:font-[family-name:var(--font-display)] [&_h2]:text-lg [&_h2]:text-[var(--color-ink)] [&_li]:mt-1.5 [&_p]:mt-3 [&_strong]:text-[var(--color-ink)]"
                 dangerouslySetInnerHTML={{ __html: bodyHtml }}
               />
@@ -213,16 +175,9 @@ export function ConsentSigner({
               <div className="mt-5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--color-stone)]">Signature</span>
-                  {hasSig && <button type="button" onClick={clearSig} className="min-h-9 rounded-full px-3 text-xs text-[var(--color-stone)] transition-colors hover:text-[var(--color-ink)]">Start again</button>}
+                  {hasSig && <button type="button" onClick={() => padRef.current?.clear()} className="min-h-9 rounded-full px-3 text-xs text-[var(--color-stone)] transition-colors hover:text-[var(--color-ink)]">Start again</button>}
                 </div>
-                <div className="relative mt-1.5">
-                  <canvas ref={canvas} className="h-44 w-full touch-none rounded-[var(--radius-sm)] border border-dashed border-[var(--color-gold)]/50 bg-white" aria-label="Signature pad — sign with your finger" />
-                  {!hasSig && (
-                    <span aria-hidden className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-[var(--color-stone-soft)]">
-                      Sign here with your finger
-                    </span>
-                  )}
-                </div>
+                <SignaturePad handleRef={padRef} hasSig={hasSig} onInk={setHasSig} />
               </div>
 
               {err && <p role="alert" aria-live="assertive" className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-3 py-2 text-sm">{err}</p>}
@@ -241,6 +196,67 @@ export function ConsentSigner({
           </motion.section>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+type SignaturePadHandle = { toDataURL: () => string; clear: () => void };
+
+// Owns the canvas with a mount-scoped effect — inside AnimatePresence
+// mode="wait" the pad mounts after the act switch, so the parent's [act]
+// effect would fire before the canvas exists and never attach listeners.
+// Mounting also resets the ink flag: a remounted canvas is blank, and a blank
+// canvas must never pass the "signed" check (it would seal an empty signature
+// into the consent record).
+function SignaturePad({ handleRef, hasSig, onInk }: { handleRef: Ref<SignaturePadHandle>; hasSig: boolean; onInk: (v: boolean) => void }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const drawing = useRef(false);
+  const lastPoint = useRef<{ x: number; y: number } | null>(null);
+
+  useImperativeHandle(handleRef, () => ({
+    toDataURL: () => canvas.current?.toDataURL('image/png') ?? '',
+    clear: () => {
+      const c = canvas.current; const ctx = c?.getContext('2d');
+      if (c && ctx) { ctx.clearRect(0, 0, c.width, c.height); ctx.beginPath(); onInk(false); }
+    },
+  }), [onInk]);
+
+  useEffect(() => {
+    onInk(false); // fresh (blank) canvas on every mount
+    const c = canvas.current; if (!c) return;
+    const ctx = c.getContext('2d'); if (!ctx) return;
+    const ratio = window.devicePixelRatio || 1;
+    c.width = c.offsetWidth * ratio; c.height = c.offsetHeight * ratio; ctx.scale(ratio, ratio);
+    ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#2a2420';
+    const pos = (e: PointerEvent) => { const r = c.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+    const down = (e: PointerEvent) => {
+      drawing.current = true; const p = pos(e); lastPoint.current = p;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); c.setPointerCapture(e.pointerId);
+    };
+    const move = (e: PointerEvent) => {
+      if (!drawing.current || !lastPoint.current) return;
+      const p = pos(e); const l = lastPoint.current;
+      // Quadratic through the midpoint — strokes curve naturally instead of jagging.
+      const mid = { x: (l.x + p.x) / 2, y: (l.y + p.y) / 2 };
+      ctx.quadraticCurveTo(l.x, l.y, mid.x, mid.y);
+      ctx.stroke();
+      lastPoint.current = p;
+      onInk(true);
+    };
+    const up = () => { drawing.current = false; lastPoint.current = null; };
+    c.addEventListener('pointerdown', down); c.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+    return () => { c.removeEventListener('pointerdown', down); c.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="relative mt-1.5">
+      <canvas ref={canvas} className="h-44 w-full touch-none rounded-[var(--radius-sm)] border border-dashed border-[var(--color-gold)]/50 bg-white" aria-label="Signature pad — sign with your finger" />
+      {!hasSig && (
+        <span aria-hidden className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-[var(--color-stone-soft)]">
+          Sign here with your finger
+        </span>
+      )}
     </div>
   );
 }

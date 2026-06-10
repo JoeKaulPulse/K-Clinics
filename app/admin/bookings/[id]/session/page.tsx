@@ -106,6 +106,7 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
         canCharge={sessionCan(session, 'bookings.charge')}
         canPos={canPos}
         canClinical={canClinical}
+        baseUrl={baseUrl}
         liveUrl={liveUrl}
         liveQrSvg={liveQrSvg}
         products={products}

@@ -9,13 +9,12 @@ import type { SessionSnapshot } from '@/lib/appointment-session-server';
 // deduped by rev so devices re-render only on real change.
 const POLL_MS = 2000;
 
-export function useSessionChannel(bookingId: string, enabled: boolean) {
+export function useSessionChannel(bookingId: string) {
   const [snapshot, setSnapshot] = useState<SessionSnapshot | null>(null);
   const [mode, setMode] = useState<'sse' | 'poll'>('sse');
   const lastRev = useRef('');
 
   useEffect(() => {
-    if (!enabled) return;
     let stopped = false;
     let es: EventSource | null = null;
     let pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -68,7 +67,7 @@ export function useSessionChannel(bookingId: string, enabled: boolean) {
       es?.close();
       if (pollTimer) clearInterval(pollTimer);
     };
-  }, [bookingId, enabled]);
+  }, [bookingId]);
 
   return { snapshot, mode };
 }
