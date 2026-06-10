@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Too many booking attempts. Please wait a moment and try again.' }, { status: 429 });
   }
   const parsed = bookingStartSchema.safeParse(await req.json().catch(() => ({})));
-  if (!parsed.success) return NextResponse.json({ ok: false, error: parsed.error.errors[0]?.message || 'Invalid request' }, { status: 422 });
+  if (!parsed.success) return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message || 'Invalid request' }, { status: 422 });
   const d = parsed.data;
 
   const { getCurrentClient } = await import('@/lib/client-auth');

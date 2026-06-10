@@ -13,7 +13,7 @@ export const consultSchema = z.object({
   preferredTime: z.string().max(120).optional().or(z.literal('')),
   preferredContact: z.enum(['email', 'phone', 'whatsapp']).optional(),
   marketingOptIn: z.boolean().default(false),
-  consent: z.literal(true, { errorMap: () => ({ message: 'Please accept to continue' }) }),
+  consent: z.literal(true, 'Please accept to continue'),
   // Honeypot — must stay empty.
   company: z.string().max(0).optional().or(z.literal('')),
 });
@@ -33,7 +33,7 @@ export const clientSignupSchema = z.object({
   gender: z.enum(['FEMALE', 'MALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_SAY', '']).optional(),
   genderSelfDescribe: z.string().max(60).optional().or(z.literal('')),
   ref: z.string().max(40).optional().or(z.literal('')), // referral code (a friend's)
-  consent: z.literal(true, { errorMap: () => ({ message: 'Please accept the terms to continue.' }) }),
+  consent: z.literal(true, 'Please accept the terms to continue.'),
   // Honeypot — accept any string so a browser/password-manager autofill never
   // blocks a real person with a cryptic error. The route handles a filled value
   // (treats it as a bot) on its own.
@@ -47,7 +47,7 @@ export const clientLoginSchema = z.object({
 
 export const assessmentSchema = z.object({
   key: z.string().min(1).max(64),
-  answers: z.record(z.unknown()),
+  answers: z.record(z.string(), z.unknown()),
   bookingId: z.string().optional(),
 });
 
@@ -94,10 +94,10 @@ export const bookingCreateSchema = z.object({
   email: z.string().email(),
   phone: z.string().max(40).optional().or(z.literal('')),
   dob: z.string().min(1, 'Date of birth is required').refine((v) => { const d = new Date(v); return !isNaN(+d) && d < new Date() && d.getFullYear() > 1900; }, 'Enter a valid date of birth'),
-  ageDeclare: z.literal(true, { errorMap: () => ({ message: 'Please confirm you are 18 or over.' }) }),
+  ageDeclare: z.literal(true, 'Please confirm you are 18 or over.'),
   notes: z.string().max(2000).optional().or(z.literal('')),
   marketingOptIn: z.boolean().default(false),
-  consent: z.literal(true, { errorMap: () => ({ message: 'Please accept the booking terms' }) }),
+  consent: z.literal(true, 'Please accept the booking terms'),
   promoCode: z.string().max(40).optional().or(z.literal('')),
   company: z.string().max(0).optional().or(z.literal('')), // honeypot
 });

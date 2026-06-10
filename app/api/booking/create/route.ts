@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
   const parsed = bookingCreateSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: parsed.error.errors[0]?.message || 'Invalid request' }, { status: 422 });
+    return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message || 'Invalid request' }, { status: 422 });
   }
   const d = parsed.data;
   if (d.company) return NextResponse.json({ ok: true }); // honeypot

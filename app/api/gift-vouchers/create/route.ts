@@ -28,7 +28,7 @@ const schema = z.object({
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'Not available.' }, { status: 503 });
   const parsed = schema.safeParse(await req.json().catch(() => ({})));
-  if (!parsed.success) return NextResponse.json({ ok: false, error: parsed.error.errors[0]?.message || 'Check your details.' }, { status: 422 });
+  if (!parsed.success) return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message || 'Check your details.' }, { status: 422 });
   if (parsed.data.company) return NextResponse.json({ ok: true });
 
   const { createVoucherIntent } = await import('@/lib/gift-vouchers');
