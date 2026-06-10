@@ -163,6 +163,7 @@ enum AuditAction {
   BEFORE_PHOTO_CAPTURED
   CLIENT_DELETED
   DATA_EXPORTED
+  SESSION_EDITED // a captured in-session answer was changed after first save (BLD-138)
 }
 
 enum ReviewStatus {
@@ -599,12 +600,39 @@ model Booking {
   reviews       Review[]
   items         BookingItem[] // line items: primary treatment + any upsell add-ons
   followUp      FollowUp?     // post-treatment follow-up questionnaire
+  liveSession   AppointmentSession? // BLD-138 interactive in-clinic session
 
   @@index([startAt])
   @@index([status])
   @@index([clientId])
   @@index([practitionerId])
   @@index([marketingCampaignId])
+}
+
+// ── Interactive appointment session (BLD-138) ───────────────────────────────
+// One per booking: the clinician-driven, sequenced walkthrough of the visit
+// (arrival → safety → consent → treatment → aftercare → wrap-up). Per-step
+// timings power the operations analytics the owner asked for (which sections
+// take longest / get skipped). Clinical content does NOT live here — the
+// treatment note and SOP responses stay in their existing encrypted homes on
+// Booking; `data` holds only non-clinical operational answers. Manual edits to
+// captured answers are audit-logged (SESSION_EDITED).
+model AppointmentSession {
+  id          String    @id @default(cuid())
+  booking     Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId   String    @unique
+  status      String    @default("ACTIVE") // ACTIVE | COMPLETED
+  currentStep String    @default("arrival")
+  startedBy   String    // staff email driving the session
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  // Per-step timing: { [stepKey]: { enteredAt: ISO|null, seconds: number, visits: number, skipped?: boolean } }
+  steps       Json      @default("{}")
+  // Non-clinical operational answers: { [fieldKey]: { value: string, by: string, at: ISO } }
+  data        Json      @default("{}")
+  updatedAt   DateTime  @updatedAt
+
+  @@index([startedAt])
 }
 
 // ── Marketing campaigns (umbrella orchestrator) ──────────────────────────────
