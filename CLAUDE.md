@@ -56,6 +56,20 @@ Rules:
   get a ref at creation, and pre-scheme rows are backfilled on board load
   (`ensureTaskRefs` / `ensureBuildRefs`).
 
+## Board replies (owner-set standard)
+
+When replying to staff/owner comments on the Tasks or Build & Issues boards,
+write **step-by-step, field-level instructions assuming no technical
+background** ("explain it like I'm an idiot" — the owner's words):
+
+- Number every step; one action per step.
+- Name buttons/fields **exactly as they appear on screen** (and where they are:
+  "left sidebar", "red Delete button", "dropdown on the Issues row").
+- Say explicitly what to leave alone/unticked, not just what to change.
+- If a required field blocks them, say which action makes it disappear.
+- End with "Done when: …" — what success visibly looks like.
+- Keep board comments under 2,000 characters (they are truncated beyond that).
+
 ## Audits
 
 - `audit/` holds the standing security/quality audit reports (auth, payments,
