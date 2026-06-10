@@ -35,12 +35,12 @@ export default async function KioskResultPage({ params }: { params: Promise<{ sl
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[var(--color-ink)] px-5 py-10">
-      <ResultCard result={result} showShare />
+      <ResultCard result={result} showShare claimHref={`/account/register?ref=kiosk&slug=${result.shareSlug}`} />
       <a
         href="/kiosk/display"
-        className="rounded-[var(--radius-md)] bg-[var(--color-gold)] px-6 py-3 text-base font-medium text-[var(--color-ink)] transition hover:opacity-90"
+        className="text-sm text-[var(--color-gold-soft)] underline underline-offset-4 hover:text-[var(--color-gold)]"
       >
-        Get your score →
+        Try the Skin &amp; Smile scanner →
       </a>
     </main>
   );

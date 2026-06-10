@@ -566,7 +566,8 @@ model Booking {
   // Client self-service link token.
   manageToken   String        @unique @default(cuid())
 
-  remindersSent Boolean       @default(false)
+  remindersSent   Boolean       @default(false)
+  rescheduleCount Int           @default(0)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: 'Manage your booking | KClinics', rob
 export default async function ManageBookingPage({ searchParams }: { searchParams: Promise<{ t?: string }> }) {
   const { t } = await searchParams;
 
-  let booking: { treatmentTitle: string; startISO: string; status: string; pricePence: number; within24h: boolean; cancelled: boolean } | null = null;
+  let booking: { treatmentTitle: string; treatmentSlug: string; startISO: string; status: string; pricePence: number; within24h: boolean; within48h: boolean; cancelled: boolean; rescheduleCount: number } | null = null;
   if (crmEnabled && t) {
     try {
       const { db, withDbRetry } = await import('@/lib/db');
@@ -19,11 +19,14 @@ export default async function ManageBookingPage({ searchParams }: { searchParams
       if (b) {
         booking = {
           treatmentTitle: b.treatmentTitle,
+          treatmentSlug: b.treatmentSlug,
           startISO: b.startAt.toISOString(),
           status: b.status,
           pricePence: b.pricePence,
           within24h: b.startAt.getTime() - Date.now() < 24 * 60 * 60 * 1000,
+          within48h: b.startAt.getTime() - Date.now() < 48 * 60 * 60 * 1000,
           cancelled: b.status === 'CANCELLED',
+          rescheduleCount: b.rescheduleCount,
         };
       }
     } catch (e) {
