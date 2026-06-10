@@ -318,6 +318,13 @@ model Client {
   medicalFlagSetBy String?
   medicalFlagAt   DateTime?
 
+  // ── Public loyalty leaderboard ───────────────────────────────────────────
+  // Only clients who explicitly opt in (leaderboardOptIn) appear on the public
+  // leaderboard. leaderboardPhotoUrl is set by staff after written permission.
+  leaderboardOptIn   Boolean  @default(false)
+  leaderboardPhotoUrl String?
+  leaderboardDisplayName String? // preferred display name (first name only by default)
+
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -572,7 +579,9 @@ model Booking {
   // Client self-service link token.
   manageToken   String        @unique @default(cuid())
 
-  remindersSent   Boolean       @default(false)
+  remindersSent   Boolean       @default(false) // 24h reminder sent
+  reminder48Sent  Boolean       @default(false) // 48h reminder (optional, setting-gated)
+  reminder72Sent  Boolean       @default(false) // 72h reminder (optional, setting-gated)
   rescheduleCount Int           @default(0)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
