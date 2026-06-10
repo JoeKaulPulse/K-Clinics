@@ -9,9 +9,11 @@ import { withAccelerate } from '@prisma/extension-accelerate';
 // exhausting the underlying Postgres's low connection cap (booking/admin pages
 // erroring under traffic + deploys at the same time).
 //
-// So: if a pooled prisma+postgres:// URL is available we use it (via the
-// Accelerate client extension). Otherwise we fall back to a direct postgres://
-// connection (previous behaviour) so nothing breaks if the pooled URL isn't set.
+// Prisma 7 removed `datasources` from the PrismaClient constructor and also
+// dropped the old binary/library engine — the only engine is now the WASM
+// "client" engine, which REQUIRES either `accelerateUrl` or an `adapter`.
+// The adapter approach uses pg's Pool, which is lazy (connects on first query,
+// not at construction time) so builds without a DATABASE_URL still succeed.
 //
 // Migrations are deliberately the *other* way round — scripts/db-sync.mjs always
 // uses a direct postgres:// URL — so schema syncs never compete with live
@@ -39,40 +41,32 @@ function resolveDirectUrl(): string | undefined {
   return candidates.find((u) => /^postgres(ql)?:\/\//.test(u)) ?? undefined;
 }
 
-/**
- * Cap how many connections each serverless instance opens on a *direct*
- * postgres:// connection. Vercel scales horizontally, so without this every
- * concurrent function instance opens Prisma's default pool (num_cpus*2+1),
- * which exhausts the database's connection limit and 500s pages/deploys. On
- * serverless we force a tiny per-instance pool + short timeouts; locally we keep
- * Prisma's defaults. Only applied to raw postgres:// URLs — the Accelerate
- * `prisma+postgres://` pooler manages connections itself and is left untouched.
- */
-function withServerlessParams(url: string): string {
-  const onServerless = Boolean(process.env.VERCEL) || process.env.NODE_ENV === 'production';
-  if (!onServerless) return url;
-  try {
-    const u = new URL(url);
-    if (!u.searchParams.has('connection_limit')) u.searchParams.set('connection_limit', '1');
-    if (!u.searchParams.has('pool_timeout')) u.searchParams.set('pool_timeout', '15');
-    if (!u.searchParams.has('connect_timeout')) u.searchParams.set('connect_timeout', '10');
-    return u.toString();
-  } catch {
-    return url; // unparseable (shouldn't happen) — use as-is rather than break boot
-  }
-}
-
 const log = process.env.NODE_ENV === 'development' ? (['warn', 'error'] as const) : (['error'] as const);
 
 function makeClient() {
   const pooled = resolvePooledUrl();
   if (pooled) {
     // Route every runtime query through the Accelerate pooler.
-    return new PrismaClient({ datasources: { db: { url: pooled } }, log: [...log] }).$extends(withAccelerate());
+    return new PrismaClient({ accelerateUrl: pooled, log: [...log] }).$extends(withAccelerate());
   }
+
+  // Direct connection path: use the pg driver adapter. pg's Pool is lazy —
+  // it does not connect until the first query, so this is safe to construct
+  // even when no DATABASE_URL is configured (e.g. during static builds or CI
+  // without a database). It will fail at query time, not at import time.
+  //
+  // Dynamic requires keep pg out of the Accelerate bundle path.
+  const { Pool } = require('pg') as typeof import('pg');
+  const { PrismaPg } = require('@prisma/adapter-pg') as typeof import('@prisma/adapter-pg');
+
   const direct = resolveDirectUrl();
-  const url = direct ? withServerlessParams(direct) : undefined;
-  return new PrismaClient({ ...(url ? { datasources: { db: { url } } } : {}), log: [...log] });
+  const onServerless = Boolean(process.env.VERCEL) || process.env.NODE_ENV === 'production';
+  const pool = new Pool({
+    ...(direct ? { connectionString: direct } : {}),
+    ...(onServerless ? { max: 1, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 15_000 } : {}),
+  });
+  const adapter = new PrismaPg(pool);
+  return new PrismaClient({ adapter, log: [...log] });
 }
 
 // The Accelerate-extended client is a structural superset of PrismaClient for
