@@ -26,7 +26,8 @@ export function HeatmapViewer({ path, baseUrl, points }: { path: string; baseUrl
         </div>
       </div>
       <div className="relative mx-auto w-full max-w-[1100px] overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white" style={{ height }}>
-        <iframe src={`${baseUrl}${path}`} title="Page preview" className="absolute inset-0 h-full w-full" sandbox="allow-same-origin allow-scripts" loading="lazy" />
+        {/* pointer-events-none so admin cannot accidentally navigate away via links inside the preview */}
+        <iframe src={`${baseUrl}${path}`} title="Page preview" className="absolute inset-0 h-full w-full pointer-events-none" loading="lazy" />
         {show && (
           <div className="pointer-events-none absolute inset-0 mix-blend-multiply">
             {points.map((p, i) => (
