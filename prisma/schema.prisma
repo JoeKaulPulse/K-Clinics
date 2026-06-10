@@ -630,6 +630,16 @@ model AppointmentSession {
   steps       Json      @default("{}")
   // Non-clinical operational answers: { [fieldKey]: { value: string, by: string, at: ISO } }
   data        Json      @default("{}")
+  // ── Realtime coordination (BLD-138 v2) ──
+  // The staff member currently driving the session (live handoff between
+  // devices: front desk → host → clinician → checkout).
+  activeStaffEmail String?
+  activeStaffName  String?
+  activeStaffTitle String?
+  activeStaffPhoto String?
+  // Touchpoint log (append-only): [{ at: ISO, step, staffEmail, staffName, staffTitle?, staffPhoto? }]
+  // — powers "who you're with" on the client's live phone page.
+  touchpoints Json      @default("[]")
   updatedAt   DateTime  @updatedAt
 
   @@index([startedAt])
