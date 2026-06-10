@@ -130,7 +130,7 @@ function SopChecklist({ bookingId, title, steps, saved, acknowledged, disabled }
             <li key={i}>
               <label className="flex items-start gap-2.5">
                 <input type="checkbox" checked={items[i]?.checked ?? false} onChange={() => toggle(i)} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-gold)]" />
-                <span className={`text-sm ${items[i]?.checked ? 'text-[var(--color-stone)]' : 'text-[var(--color-ink-soft)]'}`}>{s.step}</span>
+                <span className={`min-w-0 break-words text-sm ${items[i]?.checked ? 'text-[var(--color-stone)]' : 'text-[var(--color-ink-soft)]'}`}>{s.step}</span>
               </label>
               {s.capture && (
                 <input
