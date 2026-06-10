@@ -573,6 +573,9 @@ model Booking {
   manageToken   String        @unique @default(cuid())
 
   remindersSent   Boolean       @default(false)
+  // BLD-126: additional reminder windows (72h/48h) — additive, default false.
+  reminder72hSent Boolean       @default(false)
+  reminder48hSent Boolean       @default(false)
   rescheduleCount Int           @default(0)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt

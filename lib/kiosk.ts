@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { analyzeKioskPhoto, analyzeKioskPhotosV2 } from '@/lib/kiosk-ai';
 import { createPersonalCode } from '@/lib/promo';
 import { site } from '@/lib/site';
+import { marketingConsentFields } from '@/lib/consent';
 
 // ── Shared kiosk helpers ─────────────────────────────────────────────────────
 // Token/slug generation, IP hashing (no raw IPs stored), funnel event logging,
@@ -247,8 +248,9 @@ export async function claimKioskDiscount(resultId: string, emailRaw: string, fir
   try {
     await db.client.upsert({
       where: { email },
-      update: { marketingOptIn: true, ...(ageDeclaredAt ? { ageDeclaredAt } : {}) },
-      create: { email, firstName, marketingOptIn: true, source: 'kiosk', ...(ageDeclaredAt ? { ageDeclaredAt } : {}) },
+      // BLD-128: record consent evidence (what/when/where) per GDPR Art. 7.
+      update: { marketingOptIn: true, ...marketingConsentFields('kiosk'), ...(ageDeclaredAt ? { ageDeclaredAt } : {}) },
+      create: { email, firstName, marketingOptIn: true, source: 'kiosk', ...marketingConsentFields('kiosk'), ...(ageDeclaredAt ? { ageDeclaredAt } : {}) },
     });
   } catch (e) { console.error('[kiosk] client upsert failed (continuing):', (e as Error)?.message); }
 

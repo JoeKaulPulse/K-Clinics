@@ -39,7 +39,14 @@ export async function POST(req: Request) {
     // Self-description only applies to OTHER; clear it otherwise.
     data.genderSelfDescribe = d.gender === 'OTHER' ? (d.genderSelfDescribe?.trim() || null) : null;
   }
-  if (typeof d.marketingOptIn === 'boolean') data.marketingOptIn = d.marketingOptIn;
+  if (typeof d.marketingOptIn === 'boolean') {
+    data.marketingOptIn = d.marketingOptIn;
+    // BLD-128: evidence consent when the client explicitly opts in via their profile.
+    if (d.marketingOptIn) {
+      const { marketingConsentFields } = await import('@/lib/consent');
+      Object.assign(data, marketingConsentFields('portal-profile'));
+    }
+  }
   if (typeof d.smsReminders === 'boolean') data.smsReminders = d.smsReminders;
   if (d.newPassword) data.passwordHash = await hashPassword(d.newPassword);
 

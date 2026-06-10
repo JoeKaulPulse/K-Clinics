@@ -73,12 +73,19 @@ export async function POST(req: Request) {
   const resourceIds = await withDbRetry(() => assignResources(d.startISO, durationMin, d.slug));
 
   // Upsert client + Stripe customer.
+  const { marketingConsentFields } = await import('@/lib/consent');
   const client = await db.client.upsert({
     where: { email: d.email.toLowerCase() },
-    update: { firstName: d.firstName, lastName: d.lastName || undefined, phone: d.phone || undefined, dob: new Date(d.dob), ageDeclaredAt: new Date(), marketingOptIn: d.marketingOptIn || undefined },
+    update: {
+      firstName: d.firstName, lastName: d.lastName || undefined, phone: d.phone || undefined, dob: new Date(d.dob), ageDeclaredAt: new Date(),
+      marketingOptIn: d.marketingOptIn || undefined,
+      // BLD-128: evidence consent when opt-in is explicitly given.
+      ...(d.marketingOptIn ? marketingConsentFields('website-booking') : {}),
+    },
     create: {
       firstName: d.firstName, lastName: d.lastName || null, email: d.email.toLowerCase(),
       phone: d.phone || null, dob: new Date(d.dob), ageDeclaredAt: new Date(), source: 'website-booking', marketingOptIn: d.marketingOptIn,
+      ...(d.marketingOptIn ? marketingConsentFields('website-booking') : {}),
     },
   });
   const customerId = await ensureCustomer(client);

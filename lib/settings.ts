@@ -27,7 +27,9 @@ export type SettingKey =
   | 'staff_work_reengagement'    // email staff with pending assigned work if idle ≥8h
   | 'vat_registered'             // the clinic is VAT-registered (turns VAT on across pricing)
   | 'prices_vat_inclusive'       // prices are entered/shown VAT-inclusive (vs exclusive)
-  | 'kiosk_discount_enabled';    // the storefront kiosk issues a share-to-claim discount code
+  | 'kiosk_discount_enabled'     // the storefront kiosk issues a share-to-claim discount code
+  | 'reminder_72h'               // send a 3-day-ahead appointment reminder (BLD-126)
+  | 'reminder_48h';              // send a 2-day-ahead appointment reminder (BLD-126)
 
 export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   allow_clinician_choice: false,
@@ -53,6 +55,8 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   vat_registered: false,
   prices_vat_inclusive: true,
   kiosk_discount_enabled: true,
+  reminder_72h: false,
+  reminder_48h: false,
 };
 
 export const SETTING_META: Record<SettingKey, { label: string; description: string }> = {
@@ -147,6 +151,14 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   kiosk_discount_enabled: {
     label: 'Storefront kiosk share reward',
     description: 'When on, a storefront “Skin & Smile” kiosk visitor who shares their result can create an account and claim a single-use discount code (set the % under Finance → Financial controls). Turn off to pause the reward.',
+  },
+  reminder_72h: {
+    label: '72-hour appointment reminder',
+    description: 'Send a reminder email (and SMS if configured) 3 days before a confirmed appointment, in addition to the standard 24-hour reminder. Off by default.',
+  },
+  reminder_48h: {
+    label: '48-hour appointment reminder',
+    description: 'Send a reminder email (and SMS if configured) 2 days before a confirmed appointment, in addition to the standard 24-hour reminder. Off by default.',
   },
 };
 
