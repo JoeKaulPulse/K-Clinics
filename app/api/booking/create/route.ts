@@ -75,10 +75,11 @@ export async function POST(req: Request) {
   // Upsert client + Stripe customer.
   const client = await db.client.upsert({
     where: { email: d.email.toLowerCase() },
-    update: { firstName: d.firstName, lastName: d.lastName || undefined, phone: d.phone || undefined, dob: new Date(d.dob), ageDeclaredAt: new Date(), marketingOptIn: d.marketingOptIn || undefined },
+    update: { firstName: d.firstName, lastName: d.lastName || undefined, phone: d.phone || undefined, dob: new Date(d.dob), ageDeclaredAt: new Date(), marketingOptIn: d.marketingOptIn || undefined, ...(d.marketingOptIn ? (await import('@/lib/consent')).marketingConsentFields('booking-form') : {}) },
     create: {
       firstName: d.firstName, lastName: d.lastName || null, email: d.email.toLowerCase(),
       phone: d.phone || null, dob: new Date(d.dob), ageDeclaredAt: new Date(), source: 'website-booking', marketingOptIn: d.marketingOptIn,
+      ...(d.marketingOptIn ? (await import('@/lib/consent')).marketingConsentFields('booking-form') : {}),
     },
   });
   const customerId = await ensureCustomer(client);

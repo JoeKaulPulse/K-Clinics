@@ -20,7 +20,7 @@ export async function POST(req: Request) {
       ...(b.gender && GENDERS.includes(b.gender) ? { gender: b.gender } : {}),
       ...(Array.isArray(b.concerns) ? { concerns: b.concerns.map((c: string) => String(c).slice(0, 60)).slice(0, 12) } : {}),
       ...(typeof b.smsReminders === 'boolean' ? { smsReminders: b.smsReminders } : {}),
-      ...(typeof b.marketingOptIn === 'boolean' ? { marketingOptIn: b.marketingOptIn } : {}),
+      ...(typeof b.marketingOptIn === 'boolean' ? { marketingOptIn: b.marketingOptIn, ...(b.marketingOptIn ? (await import('@/lib/consent')).marketingConsentFields('onboarding') : {}) } : {}),
       onboardedAt: new Date(),
     },
   });

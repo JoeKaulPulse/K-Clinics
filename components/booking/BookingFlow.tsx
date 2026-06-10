@@ -138,8 +138,10 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
       });
       const j = await res.json();
       if (!j.ok) { setError(j.error || 'Could not book.'); setSubmitting(false); return; }
-      if (j.needCard) { setClientSecret(j.clientSecret); setBookingId(j.bookingId); setStage('card'); }
-      else { setStage('done'); }
+      if (j.needCard) {
+        setClientSecret(j.clientSecret); setBookingId(j.bookingId); setStage('card');
+        try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'add_payment_info', { currency: 'GBP', value: orderTotal / 100, items: [{ item_id: variantId, item_name: service?.name, item_category: service?.category }] }); } catch { /* analytics best-effort */ }
+      } else { setStage('done'); }
     } catch { setError('Network error. Please try again.'); }
     finally { setSubmitting(false); }
   }
@@ -396,13 +398,13 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
         </motion.div>
       </AnimatePresence>
 
-      {error && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
 
       {stage !== 'card' && stage !== 'account' && (
         <div className="mt-8 flex items-center justify-between gap-4">
           <button type="button" onClick={() => goBack()} className="text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Back</button>
           {stage === 'variant' && <Button onClick={() => variant && setStage('time')} variant={variant ? 'gold' : 'outline'}>Continue <ArrowIcon /></Button>}
-          {stage === 'time' && <Button onClick={() => slot && setStage('upsell')} variant={slot ? 'gold' : 'outline'}>Continue <ArrowIcon /></Button>}
+          {stage === 'time' && <Button onClick={() => { if (!slot) return; setStage('upsell'); try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'begin_checkout', { currency: 'GBP', value: orderTotal / 100, items: [{ item_id: variantId, item_name: service?.name, item_category: service?.category }] }); } catch { /* analytics best-effort */ } }} variant={slot ? 'gold' : 'outline'}>Continue <ArrowIcon /></Button>}
           {stage === 'upsell' && <Button onClick={() => { if (!aftercareAck) { setError('Please confirm you’ve read and agree to the aftercare instructions.'); return; } if (!ageDeclare) { setError('Please confirm you are 18 or over.'); return; } if (!submitting) submitBooking(); }} variant={aftercareAck && ageDeclare ? 'gold' : 'outline'}>{submitting ? 'Securing…' : 'Continue to confirm'} <ArrowIcon /></Button>}
           {stage === 'service' && <span />}
         </div>

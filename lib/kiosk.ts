@@ -247,8 +247,8 @@ export async function claimKioskDiscount(resultId: string, emailRaw: string, fir
   try {
     await db.client.upsert({
       where: { email },
-      update: { marketingOptIn: true, ...(ageDeclaredAt ? { ageDeclaredAt } : {}) },
-      create: { email, firstName, marketingOptIn: true, source: 'kiosk', ...(ageDeclaredAt ? { ageDeclaredAt } : {}) },
+      update: { marketingOptIn: true, ...(ageDeclaredAt ? { ageDeclaredAt } : {}), ...(await import('@/lib/consent')).marketingConsentFields('kiosk') },
+      create: { email, firstName, marketingOptIn: true, source: 'kiosk', ...(ageDeclaredAt ? { ageDeclaredAt } : {}), ...(await import('@/lib/consent')).marketingConsentFields('kiosk') },
     });
   } catch (e) { console.error('[kiosk] client upsert failed (continuing):', (e as Error)?.message); }
 

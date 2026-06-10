@@ -103,6 +103,8 @@ export function EnquiryForm() {
       <AnimatePresence>
         {status !== 'idle' && (
           <motion.p
+            role="status"
+            aria-live="polite"
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-jade)]/12 px-4 py-3 text-sm text-[var(--color-jade)]"
