@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export type GReview = {
@@ -54,10 +54,110 @@ function GoogleSetupGuide({ configured, redirectUri }: { configured: boolean; re
   );
 }
 
-export function GoogleReviewsPanel({ connected, configured, reviews, redirectUri }: { connected: boolean; configured: boolean; reviews: GReview[]; redirectUri: string }) {
+type LocationOpt = { ref: string; title: string; address: string | null };
+
+function LocationSetup({ onReady }: { onReady: () => void }) {
+  const [state, setState] = useState<'loading' | 'ok' | 'pending' | 'none' | 'error'>('loading');
+  const [locations, setLocations] = useState<LocationOpt[]>([]);
+  const [chosen, setChosen] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  async function load() {
+    setState('loading'); setErr('');
+    const r = await post({ op: 'locations' });
+    if (!r.ok) { setState('error'); setErr(r.message || r.error || ''); return; }
+    setState(r.status);
+    if (r.status === 'ok') {
+      setLocations(r.locations || []);
+      setChosen(r.locations?.[0]?.ref || '');
+    }
+  }
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+
+  async function choose(ref: string) {
+    setBusy(true); setErr('');
+    const r = await post({ op: 'setLocation', ref });
+    setBusy(false);
+    if (r.ok) onReady(); else setErr(r.error || 'Could not save your choice. Please try again.');
+  }
+
+  if (state === 'loading') {
+    return <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-4 text-sm text-[var(--color-stone)]">Finding your business on Google…</div>;
+  }
+
+  if (state === 'pending') {
+    return (
+      <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/50 p-4">
+        <p className="text-sm font-medium text-[var(--color-ink)]">✓ Google account connected</p>
+        <p className="mt-1.5 text-sm text-[var(--color-stone)]">Google is still approving access to your reviews. This usually takes a few days and happens automatically — there’s nothing else you need to do. We’ll start importing the moment it’s ready.</p>
+        <button onClick={load} disabled={busy} className="mt-3 rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs font-medium hover:bg-[var(--color-bone)] disabled:opacity-50">Check again</button>
+      </div>
+    );
+  }
+
+  if (state === 'none') {
+    return (
+      <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/50 p-4">
+        <p className="text-sm font-medium text-[var(--color-ink)]">No business found on this Google account</p>
+        <p className="mt-1.5 text-sm text-[var(--color-stone)]">The Google account you connected doesn’t manage a Business Profile yet. Claim or verify your clinic on <a href="https://business.google.com" target="_blank" rel="noreferrer noopener" className="text-[var(--color-gold-deep)] underline">business.google.com</a>, then check again.</p>
+        <button onClick={load} disabled={busy} className="mt-3 rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs font-medium hover:bg-[var(--color-bone)] disabled:opacity-50">Check again</button>
+      </div>
+    );
+  }
+
+  if (state === 'error') {
+    return (
+      <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-amber-50 p-4">
+        <p className="text-sm font-medium text-amber-900">We couldn’t reach Google just now</p>
+        {err && <p className="mt-1 text-sm text-amber-800">{err}</p>}
+        <button onClick={load} disabled={busy} className="mt-3 rounded-full border border-amber-300 px-4 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-50">Try again</button>
+      </div>
+    );
+  }
+
+  // state === 'ok'
+  if (locations.length === 1) {
+    const l = locations[0];
+    return (
+      <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/50 p-4">
+        <p className="text-sm font-medium text-[var(--color-ink)]">We found your business</p>
+        <div className="mt-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2">
+          <p className="text-sm font-medium">{l.title}</p>
+          {l.address && <p className="text-xs text-[var(--color-stone-soft)]">{l.address}</p>}
+        </div>
+        {err && <p className="mt-2 text-xs text-[var(--color-blush)]">{err}</p>}
+        <button onClick={() => choose(l.ref)} disabled={busy} className="mt-3 rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Importing reviews…' : 'Use this & import reviews'}</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/50 p-4">
+      <p className="text-sm font-medium text-[var(--color-ink)]">Which location are these reviews for?</p>
+      <div className="mt-2 space-y-2">
+        {locations.map((l) => (
+          <label key={l.ref} className={`flex cursor-pointer items-start gap-3 rounded-[var(--radius-sm)] border px-3 py-2 ${chosen === l.ref ? 'border-[var(--color-gold)] bg-white' : 'border-[var(--color-line)] bg-white/60'}`}>
+            <input type="radio" name="gloc" checked={chosen === l.ref} onChange={() => setChosen(l.ref)} className="mt-1 accent-[var(--color-gold-deep)]" />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium">{l.title}</span>
+              {l.address && <span className="block text-xs text-[var(--color-stone-soft)]">{l.address}</span>}
+            </span>
+          </label>
+        ))}
+      </div>
+      {err && <p className="mt-2 text-xs text-[var(--color-blush)]">{err}</p>}
+      <button onClick={() => choose(chosen)} disabled={busy || !chosen} className="mt-3 rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Importing reviews…' : 'Use this & import reviews'}</button>
+    </div>
+  );
+}
+
+export function GoogleReviewsPanel({ connected, configured, locationSet, reviews, redirectUri }: { connected: boolean; configured: boolean; locationSet: boolean; reviews: GReview[]; redirectUri: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState('');
+
+  const ready = connected && locationSet;
 
   async function sync() {
     setBusy('sync'); setMsg('Importing from Google…');
@@ -79,11 +179,13 @@ export function GoogleReviewsPanel({ connected, configured, reviews, redirectUri
           <p className="mt-0.5 text-sm text-[var(--color-stone)]">Every review from your Google Business Profile — read them here and reply directly.</p>
         </div>
         <div className="flex items-center gap-2">
-          {connected ? (
+          {ready ? (
             <>
               <button onClick={sync} disabled={!!busy} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy === 'sync' ? 'Importing…' : 'Sync now'}</button>
               <button onClick={disconnect} disabled={!!busy} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-stone)] hover:border-[var(--color-blush)]">Disconnect</button>
             </>
+          ) : connected ? (
+            <button onClick={disconnect} disabled={!!busy} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-stone)] hover:border-[var(--color-blush)]">Disconnect</button>
           ) : configured ? (
             <a href="/api/admin/integrations/google-business/connect" className="rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white">Connect Google Business</a>
           ) : null}
@@ -94,7 +196,9 @@ export function GoogleReviewsPanel({ connected, configured, reviews, redirectUri
 
       {!connected && <GoogleSetupGuide configured={configured} redirectUri={redirectUri} />}
 
-      {connected && (
+      {connected && !locationSet && <LocationSetup onReady={() => router.refresh()} />}
+
+      {ready && (
         <div className="mt-5 space-y-3">
           {reviews.length === 0 && <p className="text-sm text-[var(--color-stone)]">No reviews imported yet — click “Sync now”.</p>}
           {reviews.map((r) => <GoogleReviewCard key={r.id} review={r} onChange={() => router.refresh()} />)}

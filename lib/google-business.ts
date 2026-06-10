@@ -87,19 +87,75 @@ async function tokenRequest(body: Record<string, string>): Promise<Tokens | null
  *  or null (e.g. Business Profile API access not yet granted) — in which case we
  *  fall back to the GOOGLE_BUSINESS_* env vars. Best-effort; never throws. */
 async function discoverLocation(access: string): Promise<string | null> {
+  const list = await listLocationsWith(access);
+  return list.locations?.[0]?.ref || null;
+}
+
+export type BusinessLocation = { ref: string; title: string; address: string | null };
+export type LocationListing = {
+  status: 'ok' | 'pending' | 'none' | 'error';
+  locations?: BusinessLocation[];
+  message?: string;
+};
+
+/** List every Business Profile location the connected owner can manage, with a
+ *  human-meaningful status so the UI never has to surface raw API errors:
+ *    ok      — one or more locations found (pick one)
+ *    pending — Google hasn't granted Business Profile API access yet (403/429)
+ *    none    — access granted but the account has no locations
+ *    error   — anything else (network, auth) */
+async function listLocationsWith(access: string): Promise<LocationListing> {
   try {
     const h = { Authorization: `Bearer ${access}` };
     const accRes = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', { headers: h });
-    if (!accRes.ok) return null;
+    if (accRes.status === 403 || accRes.status === 429) return { status: 'pending' };
+    if (!accRes.ok) return { status: 'error', message: `Couldn't reach Google (${accRes.status}).` };
     const accounts = ((await accRes.json()) as { accounts?: { name?: string }[] }).accounts || [];
-    const account = accounts[0]?.name; // e.g. "accounts/123"
-    if (!account) return null;
-    const locRes = await fetch(`https://mybusinessbusinessinformation.googleapis.com/v1/${account}/locations?readMask=name&pageSize=1`, { headers: h });
-    if (!locRes.ok) return null;
-    const loc = ((await locRes.json()) as { locations?: { name?: string }[] }).locations?.[0]?.name; // "locations/456"
-    if (!loc) return null;
-    return `${account}/${loc}`; // accounts/123/locations/456
-  } catch { return null; }
+    const out: BusinessLocation[] = [];
+    for (const acc of accounts) {
+      const account = acc.name;
+      if (!account) continue;
+      const mask = 'name,title,storefrontAddress';
+      const locRes = await fetch(`https://mybusinessbusinessinformation.googleapis.com/v1/${account}/locations?readMask=${mask}&pageSize=100`, { headers: h });
+      if (locRes.status === 403 || locRes.status === 429) return { status: 'pending' };
+      if (!locRes.ok) continue;
+      const locs = ((await locRes.json()) as {
+        locations?: { name?: string; title?: string; storefrontAddress?: { addressLines?: string[]; locality?: string; postalCode?: string } }[];
+      }).locations || [];
+      for (const l of locs) {
+        if (!l.name) continue;
+        const a = l.storefrontAddress;
+        const address = a ? [...(a.addressLines || []), a.locality, a.postalCode].filter(Boolean).join(', ') : null;
+        out.push({ ref: `${account}/${l.name}`, title: l.title || 'Your business', address: address || null });
+      }
+    }
+    return out.length ? { status: 'ok', locations: out } : { status: 'none' };
+  } catch {
+    return { status: 'error', message: "Couldn't reach Google. Please try again." };
+  }
+}
+
+/** Public: list the locations for the connected owner (refreshes the token). */
+export async function listBusinessLocations(): Promise<LocationListing> {
+  const access = await token();
+  if (!access) return { status: 'error', message: 'Not connected.' };
+  return listLocationsWith(access);
+}
+
+/** Pin the location whose reviews we import (validates the shape, persists it on
+ *  the connection so resolveLocation() picks it up). */
+export async function setBusinessLocation(ref: string): Promise<{ ok: boolean; error?: string }> {
+  if (!/^accounts\/.+\/locations\/.+$/.test(ref)) return { ok: false, error: 'Invalid location.' };
+  const conn = await getConnection(PROVIDER);
+  if (!conn) return { ok: false, error: 'Not connected.' };
+  await saveConnection(PROVIDER, conn.tokens, ref, conn.label || 'Google Business Profile');
+  return { ok: true };
+}
+
+/** The location currently pinned for imports (env var wins, else the stored
+ *  connection ref), or null if none has been chosen yet. */
+export async function currentBusinessLocation(): Promise<string | null> {
+  return resolveLocation();
 }
 
 /** The location to read reviews for: the GOOGLE_BUSINESS_* env vars if set
@@ -152,7 +208,7 @@ type GBReview = {
 /** Import every Google review into the GoogleReview table (idempotent). */
 export async function syncGoogleReviews(): Promise<{ ok: boolean; imported: number; detail?: string }> {
   const loc = await resolveLocation();
-  if (!loc) return { ok: false, imported: 0, detail: 'Connect Google Business (location not detected yet — grant Business Profile API access, or set GOOGLE_BUSINESS_ACCOUNT_ID + GOOGLE_BUSINESS_LOCATION_ID).' };
+  if (!loc) return { ok: false, imported: 0, detail: 'Choose which business location to import reviews from first.' };
   const access = await token();
   if (!access) return { ok: false, imported: 0, detail: 'Not connected — connect Google Business first.' };
 
