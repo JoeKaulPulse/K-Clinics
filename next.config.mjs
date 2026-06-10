@@ -68,14 +68,18 @@ const nextConfig = {
   // Vercel lambda filesystem → "Failed to load external module …: Cannot find
   // module" → 500 on every DB-touching route.
   turbopack: { root: import.meta.dirname },
-  // Prisma 7 + driver adapter must be treated as server-external packages so
-  // Next traces them into every serverless function. lib/db.ts loads the pg
-  // adapter with a dynamic require('@prisma/adapter-pg'); Turbopack neither
-  // bundles nor traces that, so the module was absent from all 336 function
-  // bundles and the direct-connection path threw "Failed to load external
-  // module" at runtime on every dynamic route. Declaring it external (like pg,
-  // which Next already externalises) forces it into the trace.
-  serverExternalPackages: ['@prisma/client', '@prisma/adapter-pg', '@prisma/extension-accelerate', 'pg'],
+  // BUNDLE the whole Prisma/pg stack into the compiled server chunks instead of
+  // externalising it. Turbopack loads externalised server packages through
+  // hash-aliased ids (require("@prisma/client-<hash>")) backed by symlinks in
+  // .next/node_modules — and that machinery proved unreliable inside Vercel's
+  // lambda filesystem: the ESM external import of @prisma/extension-accelerate
+  // failed with "Failed to load external module …: Cannot find module" on every
+  // DB-touching route, across cached AND clean builds. Listing the packages in
+  // transpilePackages opts @prisma/client out of Next's DEFAULT external list
+  // and forces all four to compile into the chunks: no external requires, no
+  // symlinks, nothing left to resolve at runtime. The generated client's WASM
+  // query compiler is embedded as base64 JS, so it bundles cleanly.
+  transpilePackages: ['@prisma/client', '@prisma/adapter-pg', '@prisma/extension-accelerate', 'pg'],
   // Keep non-runtime files OUT of serverless function bundles. lib/og.tsx reads
   // images/fonts with a dynamic fs.readFileSync(path.join(process.cwd(), …)) that
   // Next/Turbopack can't statically analyse, so it traces the WHOLE project into

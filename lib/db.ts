@@ -1,5 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { withAccelerate } from '@prisma/extension-accelerate';
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 // ── Database client ──────────────────────────────────────────────────────────
 // Prisma Postgres is meant to be reached through Prisma's connection *pooler*
@@ -55,10 +57,9 @@ function makeClient() {
   // even when no DATABASE_URL is configured (e.g. during static builds or CI
   // without a database). It will fail at query time, not at import time.
   //
-  // Dynamic requires keep pg out of the Accelerate bundle path.
-  const { Pool } = require('pg') as typeof import('pg');
-  const { PrismaPg } = require('@prisma/adapter-pg') as typeof import('@prisma/adapter-pg');
-
+  // pg + PrismaPg are static imports (bundled via transpilePackages in
+  // next.config.mjs). The previous dynamic require()s were invisible to
+  // Turbopack's tracer and broke in the deployed lambda.
   const direct = resolveDirectUrl();
   const onServerless = Boolean(process.env.VERCEL) || process.env.NODE_ENV === 'production';
   const pool = new Pool({
