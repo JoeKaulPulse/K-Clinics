@@ -279,34 +279,44 @@ async function keyReencryption(t: Tally) {
   }
 }
 
-// 24-hour appointment reminder — for CONFIRMED bookings starting tomorrow.
+// BLD-126: Multi-window appointment reminders (72h / 48h / 24h).
+// 24h is always on; 72h and 48h are behind the reminder_72h / reminder_48h
+// settings so the owner can enable them progressively.
 async function reminders(t: Tally) {
-  const start = new Date(); start.setDate(start.getDate() + 1); start.setHours(0, 0, 0, 0);
-  const end = new Date(start); end.setHours(23, 59, 59, 999);
-  const bookings = await db.booking.findMany({
-    where: { status: 'CONFIRMED', remindersSent: false, startAt: { gte: start, lte: end } },
-    include: { client: true },
-  });
   const { smsConfigured, sendSms } = await import('@/lib/sms');
   const smsOn = smsConfigured();
-  for (const b of bookings) {
-    const manageUrl = `${SITE_URL}/booking/manage?token=${b.manageToken}`;
-    if (canEmailCare(b.client)) {
-      const res = await sendEmail({
-        to: b.client.email,
-        subject: `Reminder: your ${b.treatmentTitle} is tomorrow`,
-        html: tmplAppointmentReminder({ firstName: b.client.firstName, treatment: b.treatmentTitle, start: b.startAt, manageUrl }),
-      });
-      await logEvent(b.clientId, 'APPOINTMENT_REMINDER', b.client.email, 'Appointment reminder', res);
-      res.ok ? t.reminders++ : t.errors++;
+  const { getSetting } = await import('@/lib/settings');
+  const [r72, r48] = await Promise.all([getSetting('reminder_72h'), getSetting('reminder_48h')]);
+
+  async function sendWindow(daysAhead: number, sentFlag: 'reminder72hSent' | 'reminder48hSent' | 'remindersSent', label: string) {
+    const start = new Date(); start.setDate(start.getDate() + daysAhead); start.setHours(0, 0, 0, 0);
+    const end = new Date(start); end.setHours(23, 59, 59, 999);
+    const bookings = await db.booking.findMany({
+      where: { status: 'CONFIRMED', [sentFlag]: false, startAt: { gte: start, lte: end } },
+      include: { client: true },
+    });
+    for (const b of bookings) {
+      const manageUrl = `${SITE_URL}/booking/manage?token=${b.manageToken}`;
+      if (canEmailCare(b.client)) {
+        const res = await sendEmail({
+          to: b.client.email,
+          subject: `Reminder: your ${b.treatmentTitle} is ${label}`,
+          html: tmplAppointmentReminder({ firstName: b.client.firstName, treatment: b.treatmentTitle, start: b.startAt, manageUrl }),
+        });
+        await logEvent(b.clientId, 'APPOINTMENT_REMINDER', b.client.email, `Appointment reminder (${label})`, res);
+        res.ok ? t.reminders++ : t.errors++;
+      }
+      if (smsOn && b.client.smsReminders && b.client.phone) {
+        const when = b.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        await sendSms(b.client.phone, `KClinics reminder: your ${b.treatmentTitle} is ${label}, ${when}. Manage: ${manageUrl}`).catch(() => {});
+      }
+      await db.booking.update({ where: { id: b.id }, data: { [sentFlag]: true } });
     }
-    // SMS reminder when the client opted in to text reminders.
-    if (smsOn && b.client.smsReminders && b.client.phone) {
-      const when = b.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-      await sendSms(b.client.phone, `KClinics reminder: your ${b.treatmentTitle} is tomorrow, ${when}. Manage: ${manageUrl}`).catch(() => {});
-    }
-    await db.booking.update({ where: { id: b.id }, data: { remindersSent: true } });
   }
+
+  if (r72) await sendWindow(3, 'reminder72hSent', 'in 3 days');
+  if (r48) await sendWindow(2, 'reminder48hSent', 'in 2 days');
+  await sendWindow(1, 'remindersSent', 'tomorrow');
 }
 
 // Pre-treatment health-form reminder — 2 days before, if the client has a

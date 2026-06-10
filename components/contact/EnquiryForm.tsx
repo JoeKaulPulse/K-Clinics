@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, useId, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { treatments } from '@/lib/treatments';
 import { site } from '@/lib/site';
@@ -12,6 +12,8 @@ import { Button, ArrowIcon } from '@/components/ui/Button';
 export function EnquiryForm() {
   const [status, setStatus] = useState<'idle' | 'sent' | 'mailto'>('idle');
   const [busy, setBusy] = useState(false);
+  // BLD-125: stable IDs for aria-describedby on the success/fallback message.
+  const statusId = useId();
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -55,8 +57,9 @@ export function EnquiryForm() {
   const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-7 md:p-9">
-      <div className="grid gap-5 sm:grid-cols-2">
+    <form onSubmit={handleSubmit} className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-7 md:p-9" aria-describedby={status !== 'idle' ? statusId : undefined}>
+      {/* BLD-122: md:grid-cols-2 (was sm:) so name/phone labels don't wrap on <=390px */}
+      <div className="grid gap-5 md:grid-cols-2">
         <div>
           <label htmlFor="name" className={label}>Name</label>
           <input id="name" name="name" required autoComplete="name" className={field} placeholder="Your name" />
@@ -65,12 +68,12 @@ export function EnquiryForm() {
           <label htmlFor="phone" className={label}>Phone</label>
           <input id="phone" name="phone" type="tel" autoComplete="tel" className={field} placeholder="Optional" />
         </div>
-        <div className="sm:col-span-2">
+        <div className="md:col-span-2">
           <label htmlFor="email" className={label}>Email</label>
           <input id="email" name="email" type="email" required autoComplete="email" className={field} placeholder="you@email.com" />
         </div>
-        <div className="sm:col-span-2">
-          <label htmlFor="interest" className={label}>I’m interested in</label>
+        <div className="md:col-span-2">
+          <label htmlFor="interest" className={label}>I'm interested in</label>
           <select id="interest" name="interest" className={field} defaultValue="">
             <option value="" disabled>Select a treatment…</option>
             <option value="General enquiry">General enquiry</option>
@@ -87,9 +90,9 @@ export function EnquiryForm() {
             </optgroup>
           </select>
         </div>
-        <div className="sm:col-span-2">
+        <div className="md:col-span-2">
           <label htmlFor="message" className={label}>Message *</label>
-          <textarea id="message" name="message" rows={4} required minLength={2} className={field} placeholder="Tell us a little about what you’re looking for…" />
+          <textarea id="message" name="message" rows={4} required minLength={2} className={field} placeholder="Tell us a little about what you're looking for…" />
         </div>
       </div>
 
@@ -100,15 +103,20 @@ export function EnquiryForm() {
         </p>
       </div>
 
+      {/* BLD-125: role=status announces the confirmation to screen readers without
+          interrupting the current interaction (live region, not alert). */}
       <AnimatePresence>
         {status !== 'idle' && (
           <motion.p
+            id={statusId}
+            role="status"
+            aria-live="polite"
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-jade)]/12 px-4 py-3 text-sm text-[var(--color-jade)]"
           >
             {status === 'sent'
-              ? <>Thank you — we’ve received your enquiry and will be in touch shortly.</>
+              ? <>Thank you — we&apos;ve received your enquiry and will be in touch shortly.</>
               : <>Your email app should now open with your enquiry ready to send. If not, email us directly at <a href={site.emailHref} className="link-underline font-medium">{site.email}</a>.</>}
           </motion.p>
         )}
