@@ -29,10 +29,13 @@ if (!dbUrl || !/^postgres(ql)?:\/\//.test(dbUrl)) {
 
 console.log('\n[safe-migrate] Checking schema diff…\n');
 
-// Show what would change.
+// Show what would change. Prisma 7: `--from-url` was removed and
+// `--to-schema-datamodel` renamed to `--to-schema`; the live DB URL is read from
+// prisma.config.ts (which reads DATABASE_URL, already set in this env) via
+// `--from-config-datasource`.
 try {
   execSync(
-    `npx prisma migrate diff --from-url "${dbUrl}" --to-schema-datamodel prisma/schema.prisma`,
+    `npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma`,
     { stdio: 'inherit' },
   );
 } catch {
