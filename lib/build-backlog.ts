@@ -444,6 +444,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['All three shipped, opt-in (default OFF): NPS survey (lib/nps.ts + /nps/[token] + /admin/nps) and post-course check-in fire on booking completion; membership renewal runs in lib/automations.ts. No-show rebooking note also wired on the no-show action.'],
   },
   {
+    title: 'P0 session replay: fix rrweb-player v2 white-box (use rrweb.Replayer directly)', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(479),
+    value: 8, effort: 2,
+    detail: 'rrweb-player v2.0.1 ships with a broken Svelte runtime where on_mount is empty and onMount is never exported, causing the internal Replayer to never instantiate — the replay modal showed a white box. Fix: replace rrweb-player with a direct rrweb.Replayer instantiation in components/admin/ReplayList.tsx, with Play/Pause controls, elapsed/total timer, and proper cleanup on modal close.',
+    notes: ['Shipped (#479): ReplayList.tsx rewritten to use rrweb.Replayer directly (dynamic import). Adds Play/Pause button + elapsed timer; skipInactive, showWarning/showDebug=false; finish + state-change event listeners for UI sync; setInterval ticker for elapsed time; proper destroy() on unmount. Bypasses rrweb-player entirely.'],
+  },
+  {
     title: 'Self-serve reschedule flow + confirmation email', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude', pr: PR(477),
     value: 6, effort: 5,
     detail: 'Clients can reschedule from the booking management page. Owner rules: 48h notice, max 3 free reschedules per booking (4th+ incurs full treatment fee), 24h cancel unchanged.',
