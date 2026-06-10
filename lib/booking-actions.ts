@@ -72,6 +72,8 @@ export async function chargeBooking(
         subject: opts.late ? 'Late-cancellation fee — KClinics' : `Receipt — ${booking.treatmentTitle}`,
         html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountPence, late: opts.late, vat }),
       });
+      // Books: raise the Xero invoice (+ payment). Idempotent vs the webhook path.
+      try { const { pushBookingSaleToXero } = await import('@/lib/xero'); await pushBookingSaleToXero(booking.id); } catch (e) { console.error('[charge] xero push failed:', (e as Error)?.message); }
       return { ok: true };
     }
     return { ok: false, error: `Payment status: ${pi.status}` };
@@ -159,6 +161,9 @@ export async function refundBooking(
   // Net the refund out of ad/analytics ROAS (GA4 refund event), best-effort.
   try { const { sendRefund } = await import('@/lib/conversions'); await sendRefund({ bookingId: booking.id, valuePence: amount, clientId: booking.clientId }); } catch { /* non-fatal */ }
 
+  // Books: raise the matching Xero credit note (+ cash refund), best-effort.
+  try { const { pushBookingRefundToXero } = await import('@/lib/xero'); await pushBookingRefundToXero(booking.id, amount, opts.reason); } catch { /* non-fatal */ }
+
   return { ok: true, refundedPence: totalRefunded };
 }
 
@@ -193,6 +198,7 @@ export async function finalizeBookingCharge(
     await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment receipt', status: 'SENT' } });
   } catch (e) { console.error('[charge] receipt failed:', (e as Error)?.message); }
   try { const { awardClientSpend } = await import('./client-loyalty'); await awardClientSpend(bookingId); } catch (e) { console.error('[charge] loyalty failed:', (e as Error)?.message); }
+  try { const { pushBookingSaleToXero } = await import('@/lib/xero'); await pushBookingSaleToXero(bookingId); } catch (e) { console.error('[charge] xero push failed:', (e as Error)?.message); }
   try { const { sendPurchase } = await import('./conversions'); await sendPurchase({ bookingId, valuePence: amountReceivedPence, clientId: booking.clientId, email: booking.client.email, campaign: booking.attribCampaign }); } catch (e) { console.error('[charge] conversion failed:', (e as Error)?.message); }
   try { await logAudit({ action: 'PAYMENT_CHARGED', actor: 'system', summary: `Charge completed (£${(amountReceivedPence / 100).toFixed(2)})`, bookingId, clientId: booking.clientId }); } catch { /* non-fatal */ }
   return true;

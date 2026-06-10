@@ -38,6 +38,8 @@ const URGENCIES = ['P0', 'P1', 'P2', 'P3'];
 
 // Token-authed writes for routine sessions (e.g. the End-of-Day Audit):
 //  { action: 'create', items: [{ type, title, detail, urgency, value, effort }] }
+//  { action: 'update', id|ref, comment?, status? } → progress/annotate an item
+//    (status limited to working states — CLOSED stays an admin sign-off)
 //  { action: 'continue' }  → fire the night fix routine (subject to the daily cap)
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'CRM disabled' }, { status: 503 });
@@ -72,11 +74,28 @@ export async function POST(req: Request) {
       }
       return NextResponse.json({ ok: true, created, skipped, createdCount: created.length });
     }
+    if (b.action === 'update') {
+      // Look up by DB id or by reference ID (e.g. BLD-12) — refs are the
+      // traceable handle routine sessions already cite in commits/PRs.
+      let item = b.id ? await db.buildItem.findUnique({ where: { id: String(b.id) }, select: { id: true, status: true } }).catch(() => null) : null;
+      if (!item && b.ref) item = await db.buildItem.findFirst({ where: { ref: String(b.ref) }, select: { id: true, status: true } }).catch(() => null);
+      if (!item) return NextResponse.json({ ok: false, error: 'Item not found (pass id or ref).' }, { status: 404 });
+      const comment = typeof b.comment === 'string' ? b.comment.trim() : '';
+      if (comment) await board.addBuildComment(item.id, comment, 'routine');
+      // Working states only: sign-off (CLOSED) and CANCELLED remain human calls.
+      const ROUTINE_STATUSES = ['TRIAGE', 'IN_PROGRESS', 'IN_REVIEW', 'BLOCKED', 'SHIPPED'];
+      let updated = null;
+      if (b.status) {
+        if (!ROUTINE_STATUSES.includes(b.status)) return NextResponse.json({ ok: false, error: `Status must be one of ${ROUTINE_STATUSES.join(', ')}.` }, { status: 400 });
+        updated = await board.updateBuildItem(item.id, { status: b.status }, 'routine');
+      }
+      return NextResponse.json({ ok: true, id: item.id, status: updated?.status ?? item.status, commented: Boolean(comment) });
+    }
     if (b.action === 'continue') {
       const r = await board.requestClaudeContinue('routine');
       return NextResponse.json(r);
     }
-    return NextResponse.json({ ok: false, error: 'Unknown action. Use "create" or "continue".' }, { status: 400 });
+    return NextResponse.json({ ok: false, error: 'Unknown action. Use "create", "update" or "continue".' }, { status: 400 });
   } catch (e) {
     console.error('[build/queue] write failed', e);
     return NextResponse.json({ ok: false, error: 'Write failed.' }, { status: 500 });

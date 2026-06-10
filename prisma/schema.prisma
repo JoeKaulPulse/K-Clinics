@@ -139,6 +139,8 @@ enum AuditAction {
   PAYMENT_CHARGED
   PAYMENT_FAILED
   PAYMENT_REFUNDED
+  XERO_INVOICE_PUSHED
+  XERO_REFUND_PUSHED
   ASSESSMENT_SUBMITTED
   ASSESSMENT_VIEWED
   NOTE_ADDED
@@ -554,6 +556,11 @@ model Booking {
   refundedPence          Int?
   refundedAt             DateTime?
   refundReason           String?
+  // Xero sales push (lib/xero.ts): the ACCREC invoice raised for the charge
+  // ('PENDING' while a push is in flight — doubles as the idempotency claim),
+  // and the credit note raised for each refund.
+  xeroInvoiceId          String?
+  xeroCreditNoteIds      String[]      @default([])
 
   // Cancellation.
   cancelledAt   DateTime?

@@ -670,11 +670,29 @@ export async function reopenItem(id: string, reason: string | undefined, actor: 
 }
 
 // ── GitHub bridge ────────────────────────────────────────────────────────────
-// Config comes from env (GITHUB_TOKEN + GITHUB_REPO) or, for self-serve setup,
-// from an encrypted connection saved in admin (provider 'github'; the PAT lives
-// in tokens.access, the "owner/repo" in accountRef).
+// Identity preference: (1) a dedicated GitHub App installation (lib/github-app.ts
+// — its own rate limit, so board mirroring/wakes never contend with dev PR work),
+// then (2) env GITHUB_TOKEN + GITHUB_REPO, then (3) the encrypted connection
+// saved in admin (provider 'github'; PAT in tokens.access, "owner/repo" in
+// accountRef).
+async function savedRepo(): Promise<string | null> {
+  try {
+    const { getConnection } = await import('@/lib/oauth-connections');
+    return (await getConnection('github'))?.accountRef ?? null;
+  } catch { return null; }
+}
+
 export async function getGithubConfig(): Promise<{ token: string; repo: string } | null> {
-  const envToken = process.env.GITHUB_TOKEN, envRepo = process.env.GITHUB_REPO;
+  const envRepo = process.env.GITHUB_REPO;
+  try {
+    const { githubAppConfigured, githubAppToken } = await import('@/lib/github-app');
+    if (githubAppConfigured()) {
+      const repo = envRepo || (await savedRepo());
+      const token = repo ? await githubAppToken() : null;
+      if (token && repo) return { token, repo };
+    }
+  } catch { /* fall through to PAT paths */ }
+  const envToken = process.env.GITHUB_TOKEN;
   if (envToken && envRepo) return { token: envToken, repo: envRepo };
   try {
     const { getConnection } = await import('@/lib/oauth-connections');
