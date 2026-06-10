@@ -67,6 +67,14 @@ const PR = (n: number) => `https://github.com/JoeKaulPulse/K-Clinics/pull/${n}`;
 export const BUILD_BACKLOG: BacklogItem[] = [
   // ── Shipped this session ──────────────────────────────────────────────────
   {
+    title: 'Heatmap isn\'t loading in and session recordings not working', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude',
+    detail: 'Heatmap iframe blank; session replay modal shows white box with no content. Two separate root causes.',
+    notes: [
+      'Cause 1 (heatmap): X-Frame-Options: DENY + frame-ancestors \'none\' prevented the live-page iframe inside HeatmapViewer from loading even from the same origin. Fix: SAMEORIGIN + frame-ancestors \'self\' (still blocks third-party clickjacking).',
+      'Cause 2 (replay): rrweb-player v2.0.1 has a build defect — its bundled Svelte runtime is missing the onMount export, so the internal Replayer is never instantiated. The .rr-player shell renders (white bg) but the replay iframe is never created. Fix: replaced rrweb-player with a direct rrweb.Replayer instantiation in ReplayList.tsx — same events API, full play/pause controls, eliminates the broken Svelte wrapper entirely.',
+    ],
+  },
+  {
     title: 'Enhance search (admin + public) — powerful & access-gated', type: 'TASK', urgency: 'P1', status: 'SHIPPED', pr: PR(331),
     value: 8, effort: 5,
     detail: 'Make search powerful everywhere it appears — admin global search and the public website — gated by user type and access, except public marketing-page search which stays open to anyone (incl. non-users).',
