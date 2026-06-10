@@ -80,13 +80,14 @@ export async function GET(req: Request) {
       (await db.post.findMany({ where: { OR: [{ title: ci }, { category: ci }, { excerpt: ci }] }, orderBy: { updatedAt: 'desc' }, take: 5, select: { id: true, title: true, category: true } }))
         .map((p) => ({ id: p.id, title: p.title, sub: p.category || 'Journal', href: `/admin/journal` }))),
     // Tasks: scoped to the signed-in user's own tasks (always safe to surface),
-    // so search never leaks another person's task list.
+    // so search never leaks another person's task list. Reference IDs (TSK-12)
+    // match too, so a cited ref can be pasted straight into search.
     safe(!!session.sub, async () =>
-      (await db.task.findMany({ where: { assigneeId: session.sub, OR: [{ title: ci }, { detail: ci }] }, orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, title: true, status: true } }))
-        .map((tk) => ({ id: tk.id, title: tk.title, sub: tk.status.toLowerCase(), href: `/admin/tasks` }))),
+      (await db.task.findMany({ where: { assigneeId: session.sub, OR: [{ title: ci }, { detail: ci }, { ref: ci }] }, orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, ref: true, title: true, status: true } }))
+        .map((tk) => ({ id: tk.id, title: tk.ref ? `${tk.ref} · ${tk.title}` : tk.title, sub: tk.status.toLowerCase(), href: `/admin/tasks` }))),
     safe(can('build.view'), async () =>
-      (await db.buildItem.findMany({ where: { OR: [{ title: ci }, { detail: ci }] }, orderBy: { updatedAt: 'desc' }, take: 5, select: { id: true, title: true, status: true, urgency: true } }))
-        .map((bi) => ({ id: bi.id, title: bi.title, sub: `${bi.urgency} · ${bi.status.toLowerCase().replace('_', ' ')}`, href: `/admin/build` }))),
+      (await db.buildItem.findMany({ where: { OR: [{ title: ci }, { detail: ci }, { ref: ci }] }, orderBy: { updatedAt: 'desc' }, take: 5, select: { id: true, ref: true, title: true, status: true, urgency: true } }))
+        .map((bi) => ({ id: bi.id, title: bi.ref ? `${bi.ref} · ${bi.title}` : bi.title, sub: `${bi.urgency} · ${bi.status.toLowerCase().replace('_', ' ')}`, href: `/admin/build` }))),
     safe(can('settings.manage'), async () =>
       (await db.page.findMany({ where: { OR: [{ title: ci }, { path: ci }] }, orderBy: { updatedAt: 'desc' }, take: 5, select: { id: true, title: true, path: true } }))
         .map((pg) => ({ id: pg.id, title: pg.title || pg.path, sub: pg.path, href: `/admin/pages` }))),

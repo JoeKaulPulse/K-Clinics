@@ -1112,8 +1112,15 @@ model StaffTimeOff {
 }
 
 // ── Internal tasks / to-dos ─────────────────────────────────────────────────
+// Every task carries a stable human-readable reference (`ref`) for tracing,
+// search and identification: top-level tasks are TSK-<seq> (seq is a Postgres
+// sequence, so numbering is race-free; gaps are normal), and sub-tasks branch
+// from their parent's ref (TSK-12 → TSK-12.1 → TSK-12.1.1). Refs never change
+// once assigned. See lib/task-refs.ts.
 model Task {
   id          String       @id @default(cuid())
+  seq         Int          @unique @default(autoincrement())
+  ref         String?      @unique
   title       String
   detail      String?
   status      TaskStatus   @default(OPEN)
@@ -1123,6 +1130,10 @@ model Task {
   assigneeId  String?
   client      Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
   clientId    String?
+  // Sub-tasks: deleting a parent removes its sub-tasks with it (the branch is one unit of work).
+  parent      Task?        @relation("TaskSubtasks", fields: [parentId], references: [id], onDelete: Cascade)
+  parentId    String?
+  subtasks    Task[]       @relation("TaskSubtasks")
   createdBy   String?
   completedAt DateTime?
   completedBy String?
@@ -1132,6 +1143,7 @@ model Task {
   @@index([status])
   @@index([assigneeId, status])
   @@index([dueAt])
+  @@index([parentId])
 }
 
 // ── Inventory: consumables & stock control ──────────────────────────────────
@@ -2505,6 +2517,12 @@ enum BuildUrgency {
 
 model BuildItem {
   id           String       @id @default(cuid())
+  // Stable human-readable reference for tracing/search: standalone items are
+  // BLD-<seq>; items created/seeded inside a project branch from the project's
+  // ref (PRJ-3 → PRJ-3.1). Immutable once assigned (an item moved into a
+  // project later keeps its BLD ref). See lib/task-refs.ts.
+  seq          Int          @unique @default(autoincrement())
+  ref          String?      @unique
   type         BuildType    @default(TASK)
   title        String
   detail       String?      @db.Text
@@ -2555,6 +2573,10 @@ model BuildItem {
 // user-gated (owner-input) items are derived from its items (see listProjects).
 model BuildProject {
   id              String      @id @default(cuid())
+  // Root of the reference tree for everything grouped under this project:
+  // PRJ-<seq> → items PRJ-<seq>.<n> → subtasks PRJ-<seq>.<n>.<m>.
+  seq             Int         @unique @default(autoincrement())
+  ref             String?     @unique
   slug            String      @unique
   name            String
   summary         String?     @db.Text
@@ -2584,6 +2606,8 @@ model BuildDependency {
 // up on the parent (see lib/build-board.ts completeSubtask).
 model BuildSubtask {
   id          String    @id @default(cuid())
+  // Branches from the parent item's ref (BLD-7 → BLD-7.1; PRJ-3.1 → PRJ-3.1.2).
+  ref         String?   @unique
   item        BuildItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
   itemId      String
   title       String

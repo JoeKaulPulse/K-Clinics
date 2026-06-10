@@ -14,28 +14,39 @@ export default async function TasksPage() {
   if (!session) redirect('/admin/login');
 
   const { db } = await import('@/lib/db');
+  // Self-healing: tasks created before the reference scheme get a TSK-n ref on
+  // first board load (new tasks are assigned one at creation).
+  const { ensureTaskRefs } = await import('@/lib/task-refs');
+  await ensureTaskRefs();
+
+  const taskInclude = {
+    assignee: { select: { name: true, email: true } },
+    client: { select: { id: true, firstName: true, lastName: true } },
+    parent: { select: { ref: true, title: true } },
+  } as const;
   const [open, done, staff] = await Promise.all([
     db.task.findMany({
       where: { status: 'OPEN' },
       orderBy: [{ dueAt: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }],
       take: 200,
-      include: { assignee: { select: { name: true, email: true } }, client: { select: { id: true, firstName: true, lastName: true } } },
+      include: taskInclude,
     }),
     db.task.findMany({
       where: { status: 'DONE' },
       orderBy: { completedAt: 'desc' },
       take: 20,
-      include: { assignee: { select: { name: true, email: true } }, client: { select: { id: true, firstName: true, lastName: true } } },
+      include: taskInclude,
     }),
     db.adminUser.findMany({ where: { active: true }, orderBy: { name: 'asc' }, select: { id: true, name: true, email: true } }),
   ]);
 
   const shape = (t: (typeof open)[number]) => ({
-    id: t.id, title: t.title, detail: t.detail, status: t.status as string, priority: t.priority as string,
+    id: t.id, ref: t.ref, title: t.title, detail: t.detail, status: t.status as string, priority: t.priority as string,
     dueAt: t.dueAt ? t.dueAt.toISOString() : null, assigneeId: t.assigneeId,
     assigneeName: t.assignee?.name || t.assignee?.email || null,
     createdBy: t.createdBy, completedAt: t.completedAt ? t.completedAt.toISOString() : null, completedBy: t.completedBy,
     clientId: t.clientId, clientName: t.client ? [t.client.firstName, t.client.lastName].filter(Boolean).join(' ') : null,
+    parentId: t.parentId, parentRef: t.parent?.ref || null,
   });
 
   const can = await sessionPermissions();
