@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 // Media library backed by Vercel Blob. Requires settings.manage and a
 // BLOB_READ_WRITE_TOKEN (auto-set once a Blob store is connected in Vercel).
 const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
-const OK_MIME = /^image\/(png|jpe?g|webp|gif|avif|svg\+xml)$/i;
+const OK_MIME = /^image\/(png|jpe?g|webp|gif|avif)$/i;
 
 async function guard() {
   if (!crmEnabled) return { error: NextResponse.json({ ok: false }, { status: 503 }) };

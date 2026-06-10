@@ -110,6 +110,8 @@ export async function confirmVoucher(voucherId: string): Promise<{ ok: boolean; 
   const { stripe } = await import('@/lib/stripe');
   const pi = await stripe().paymentIntents.retrieve(v.stripePaymentIntentId);
   if (pi.status !== 'succeeded') return { ok: false, error: 'Payment not completed.' };
+  const expectedPence = v.amountPence + (v.physicalFeePence ?? 0);
+  if ((pi.amount_received ?? 0) < expectedPence) return { ok: false, error: 'Payment amount does not match.' };
 
   const expiresAt = new Date(); expiresAt.setFullYear(expiresAt.getFullYear() + 1);
   const immediate = !v.deliverAt || v.deliverAt <= new Date();

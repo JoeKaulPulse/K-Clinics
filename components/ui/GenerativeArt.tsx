@@ -61,7 +61,7 @@ export function GenerativeArt({
 
       {/* Static metallic sheen — the "luxury" tell */}
       <span
-        className="pointer-events-none absolute -inset-1/4"
+        className="pointer-events-none absolute -inset-4 overflow-hidden"
         style={{
           background:
             'conic-gradient(from 210deg, transparent 0deg, rgba(255,255,255,0.10) 40deg, transparent 90deg, transparent 270deg, rgba(255,255,255,0.07) 310deg, transparent 360deg)',

@@ -20,9 +20,12 @@ export async function GET(req: Request) {
   if (url.searchParams.get('error')) return to(`error=${providerId}_denied`);
   if (!code || !state) return to(`error=${providerId}_no_code`);
 
+  const { timingSafeEqual } = await import('node:crypto');
   const { cookies } = await import('next/headers');
   const jar = await cookies();
-  if (jar.get('kc_oauth_state')?.value !== state) return to(`error=${providerId}_bad_state`);
+  const stored = jar.get('kc_oauth_state')?.value || '';
+  const a = Buffer.from(state), b = Buffer.from(stored);
+  if (!stored || a.length !== b.length || !timingSafeEqual(a, b)) return to(`error=${providerId}_bad_state`);
 
   const { getProvider, isConfigured, REDIRECT_URI } = await import('@/lib/marketing-connections');
   const p = getProvider(providerId);

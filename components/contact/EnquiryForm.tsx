@@ -56,7 +56,7 @@ export function EnquiryForm() {
 
   return (
     <form onSubmit={handleSubmit} className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-7 md:p-9">
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-5 md:grid-cols-2">
         <div>
           <label htmlFor="name" className={label}>Name</label>
           <input id="name" name="name" required autoComplete="name" className={field} placeholder="Your name" />

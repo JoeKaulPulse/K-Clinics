@@ -38,8 +38,35 @@ export async function POST(req: Request) {
         if (pi.metadata?.kind === 'shop_order' && pi.metadata?.orderId) {
           try { const { finalizeOrder } = await import('@/lib/shop'); await finalizeOrder(pi.metadata.orderId); } catch (e) { console.error('[webhook] order finalize failed:', (e as Error)?.message); }
         }
-        if (pi.metadata?.kind === 'gift_voucher' && pi.metadata?.voucherId) {
+        if ((pi.metadata?.kind === 'gift_voucher' || pi.metadata?.kind === 'gift_package') && pi.metadata?.voucherId) {
           try { const { confirmVoucher } = await import('@/lib/gift-vouchers'); await confirmVoucher(pi.metadata.voucherId); } catch (e) { console.error('[webhook] voucher confirm failed:', (e as Error)?.message); }
+        }
+        break;
+      }
+      case 'charge.refunded': {
+        // A refund issued directly in the Stripe dashboard: sync the booking's
+        // refunded amount and run the same side-effects as refundBooking so
+        // loyalty, Xero and GA4 all stay in sync. Idempotent: skips any delta
+        // already recorded.
+        const charge = event.data.object;
+        const piId = typeof charge.payment_intent === 'string' ? charge.payment_intent : null;
+        if (piId) {
+          try {
+            const booking = await db.booking.findFirst({ where: { chargePaymentIntentId: piId }, include: { client: true } });
+            if (booking) {
+              const totalRefundedPence = charge.amount_refunded ?? 0;
+              const alreadyRecorded = booking.refundedPence ?? 0;
+              const delta = totalRefundedPence - alreadyRecorded;
+              if (delta > 0) {
+                const fully = totalRefundedPence >= (booking.chargedPence ?? 0);
+                await db.booking.update({ where: { id: booking.id }, data: { refundedPence: totalRefundedPence, refundedAt: new Date() } });
+                if (fully) { try { const { refundBookingPoints } = await import('@/lib/client-loyalty'); await refundBookingPoints(booking.id); } catch { /* non-fatal */ } }
+                try { const { sendRefund } = await import('@/lib/conversions'); await sendRefund({ bookingId: booking.id, valuePence: delta, clientId: booking.clientId }); } catch { /* non-fatal */ }
+                try { const { pushBookingRefundToXero } = await import('@/lib/xero'); await pushBookingRefundToXero(booking.id, delta, 'Stripe dashboard refund'); } catch { /* non-fatal */ }
+                await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Stripe-dashboard refund synced: £${(delta / 100).toFixed(2)} for ${booking.treatmentTitle}`, author: 'stripe-webhook' } }).catch(() => {});
+              }
+            }
+          } catch (e) { console.error('[webhook] charge.refunded sync failed:', (e as Error)?.message); }
         }
         break;
       }
