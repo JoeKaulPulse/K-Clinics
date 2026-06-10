@@ -58,6 +58,28 @@ const nextConfig = {
   compress: true,
   // Tree-shake large client libraries → smaller client bundles.
   experimental: { optimizePackageImports: ['motion'] },
+  // Pin the workspace root to THIS directory. Stray lockfiles above the project
+  // (e.g. /vercel/package-lock.json on Vercel builders, /home/user/… in dev
+  // containers) make Next infer the wrong root. With the wrong root, Turbopack
+  // resolves externalised server packages (@prisma/client, pg, …) as "outside
+  // the project" and emits hash-aliased requires backed by symlinks in
+  // .next/node_modules whose targets escape the project directory
+  // (../../../<dirname>/node_modules/<pkg>). Those symlinks break inside the
+  // Vercel lambda filesystem → "Failed to load external module …: Cannot find
+  // module" → 500 on every DB-touching route.
+  turbopack: { root: import.meta.dirname },
+  // BUNDLE the whole Prisma/pg stack into the compiled server chunks instead of
+  // externalising it. Turbopack loads externalised server packages through
+  // hash-aliased ids (require("@prisma/client-<hash>")) backed by symlinks in
+  // .next/node_modules — and that machinery proved unreliable inside Vercel's
+  // lambda filesystem: the ESM external import of @prisma/extension-accelerate
+  // failed with "Failed to load external module …: Cannot find module" on every
+  // DB-touching route, across cached AND clean builds. Listing the packages in
+  // transpilePackages opts @prisma/client out of Next's DEFAULT external list
+  // and forces all four to compile into the chunks: no external requires, no
+  // symlinks, nothing left to resolve at runtime. The generated client's WASM
+  // query compiler is embedded as base64 JS, so it bundles cleanly.
+  transpilePackages: ['@prisma/client', '@prisma/adapter-pg', '@prisma/extension-accelerate', 'pg'],
   // Keep non-runtime files OUT of serverless function bundles. lib/og.tsx reads
   // images/fonts with a dynamic fs.readFileSync(path.join(process.cwd(), …)) that
   // Next/Turbopack can't statically analyse, so it traces the WHOLE project into
