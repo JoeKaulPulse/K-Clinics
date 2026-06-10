@@ -312,6 +312,15 @@ export async function rescheduleBooking(
 
   const newEnd = new Date(newStart.getTime() + booking.durationMin * 60 * 1000);
 
+  // The chosen time must be a genuinely free, in-hours slot — the same guard every
+  // booking-creation path uses. Without this a crafted POST could move a booking
+  // outside opening hours or on top of another appointment (the UI only offers
+  // valid slots, but the API must not trust the client).
+  const { isSlotFree } = await import('@/lib/availability');
+  if (!(await isSlotFree(newStartISO, booking.durationMin, booking.treatmentSlug))) {
+    return { ok: false, error: 'That time is no longer available. Please choose another slot.' };
+  }
+
   let charged = 0;
   let requiresAction = false;
 
@@ -349,8 +358,11 @@ export async function rescheduleBooking(
     meta: { from: booking.startAt.toISOString(), to: newStart.toISOString(), rescheduleCount: booking.rescheduleCount + 1 },
   }).catch(() => {});
 
-  // Update the shared clinic calendar entry (best-effort).
-  import('@/lib/hostinger-calendar').then((m) => m.removeBooking(booking.id)).catch(() => {});
+  // Update the shared clinic calendar entry to the new time (best-effort). The
+  // CalDAV event is keyed by booking id, so re-pushing PUTs the moved times over
+  // the existing entry — we must NOT remove it (that would drop the appointment
+  // from the clinic calendar entirely).
+  import('@/lib/hostinger-calendar').then((m) => m.pushBooking(booking.id)).catch(() => {});
 
   // Confirmation email (best-effort).
   await sendEmail({

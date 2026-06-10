@@ -64,11 +64,17 @@ export function ManageClient({ token, booking }: { token: string; booking: B }) 
         body: JSON.stringify({ slug: booking.treatmentSlug, date }),
       });
       const j = await res.json();
+      // The availability endpoint returns `slots` as an array of ISO strings
+      // (same contract BookingFlow consumes). Map them into {startISO,label}.
       if (j.ok && Array.isArray(j.slots)) {
-        setSlots(j.slots.map((s: { startISO: string; label?: string }) => ({
-          startISO: s.startISO,
-          label: s.label || new Date(s.startISO).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-        })));
+        setSlots(
+          (j.slots as string[])
+            .filter((iso) => typeof iso === 'string')
+            .map((iso) => ({
+              startISO: iso,
+              label: new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+            })),
+        );
       }
     } catch { /* ignore */ }
     finally { setLoadingSlots(false); }
