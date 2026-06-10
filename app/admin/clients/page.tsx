@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
+import { PageSearch } from '@/components/admin/PageSearch';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { getLocale } from '@/lib/locale';
 import { t } from '@/lib/i18n';
@@ -63,18 +64,11 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
           <h1 className="font-[family-name:var(--font-display)] text-3xl">{t(locale, 'nav.clients')}</h1>
           <p className="mt-1 text-sm text-[var(--color-stone)]">{rows.length}{rows.length === 200 ? '+' : ''} {rows.length === 1 ? 'client' : 'clients'}</p>
         </div>
-        <form className="flex gap-2">
-          {flag && <input type="hidden" name="flag" value={flag} />}
-          {sort && <input type="hidden" name="sort" value={sort} />}
-          {dir && <input type="hidden" name="dir" value={dir} />}
-          <input
-            name="q"
-            defaultValue={q}
-            placeholder="Search name, email or phone…"
-            className="w-56 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm outline-none focus:border-[var(--color-gold)]"
-          />
-          <button className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)]">Search</button>
-        </form>
+        <PageSearch
+          defaultValue={q}
+          placeholder="Search name, email or phone…"
+          hidden={{ flag, sort, dir }}
+        />
       </div>
 
       {/* Filters */}

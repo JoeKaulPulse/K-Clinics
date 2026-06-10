@@ -69,20 +69,27 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
         <input type="hidden" name="filter" value={filter} />
         <label className="text-xs text-[var(--color-stone)]">
           Search
-          <input name="q" defaultValue={q} placeholder="Client or treatment…"
-            className="mt-1 block w-56 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+          <span className="group relative mt-1 flex items-center">
+            <span className="pointer-events-none absolute left-3 text-[var(--color-stone)] transition-colors group-focus-within:text-[var(--color-gold-deep)]">
+              <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+                <circle cx="9" cy="9" r="6.25" /><path d="m14 14 3.5 3.5" />
+              </svg>
+            </span>
+            <input name="q" defaultValue={q} placeholder="Client or treatment…"
+              className="block h-11 w-56 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] pl-9 pr-4 text-sm outline-none transition-shadow placeholder:text-[var(--color-stone-soft)] focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
+          </span>
         </label>
         <label className="text-xs text-[var(--color-stone)]">
           From
           <input type="date" name="from" defaultValue={from}
-            className="mt-1 block rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+            className="mt-1 block h-11 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 text-sm outline-none transition-shadow focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
         </label>
         <label className="text-xs text-[var(--color-stone)]">
           To
           <input type="date" name="to" defaultValue={to}
-            className="mt-1 block rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+            className="mt-1 block h-11 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 text-sm outline-none transition-shadow focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
         </label>
-        <button className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)]">Apply</button>
+        <button className="h-11 rounded-full bg-[var(--color-ink)] px-4 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-ink-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">Apply</button>
         {(q || from || to) && (
           <Link href={`/admin/bookings?filter=${filter}`} className="px-2 py-2 text-sm text-[var(--color-stone)] underline">Clear</Link>
         )}
