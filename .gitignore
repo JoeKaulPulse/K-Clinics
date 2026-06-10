@@ -41,3 +41,4 @@ import/*.xml
 
 # Generated brand dossier (regenerate via scripts/build-dossier.mjs)
 KClinics-Platform-Guide.pdf
+/qa-kiosk
