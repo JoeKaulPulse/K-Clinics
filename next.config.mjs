@@ -58,6 +58,14 @@ const nextConfig = {
   compress: true,
   // Tree-shake large client libraries → smaller client bundles.
   experimental: { optimizePackageImports: ['motion'] },
+  // Prisma 7 + driver adapter must be treated as server-external packages so
+  // Next traces them into every serverless function. lib/db.ts loads the pg
+  // adapter with a dynamic require('@prisma/adapter-pg'); Turbopack neither
+  // bundles nor traces that, so the module was absent from all 336 function
+  // bundles and the direct-connection path threw "Failed to load external
+  // module" at runtime on every dynamic route. Declaring it external (like pg,
+  // which Next already externalises) forces it into the trace.
+  serverExternalPackages: ['@prisma/client', '@prisma/adapter-pg', '@prisma/extension-accelerate', 'pg'],
   // Keep non-runtime files OUT of serverless function bundles. lib/og.tsx reads
   // images/fonts with a dynamic fs.readFileSync(path.join(process.cwd(), …)) that
   // Next/Turbopack can't statically analyse, so it traces the WHOLE project into
