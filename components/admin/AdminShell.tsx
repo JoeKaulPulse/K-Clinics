@@ -243,7 +243,7 @@ export function AdminShell({
 
         {/* Main column — sticky top bar (search · notifications · profile). */}
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-[var(--color-line)] bg-[var(--color-porcelain)]/85 px-3 backdrop-blur md:gap-3 md:px-6">
+          <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-[var(--color-line)] bg-[var(--color-porcelain)]/85 px-5 backdrop-blur md:gap-3 md:px-8 lg:px-10">
             <button
               onClick={() => setMobileOpen(true)}
               aria-label={t('shell.menu')}
@@ -253,7 +253,7 @@ export function AdminShell({
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><path d="M3 5h14M3 10h14M3 15h14" /></svg>
             </button>
             <span className="block h-6 w-[0.9rem] shrink-0 text-[var(--color-ink)] lg:hidden"><KMark /></span>
-            <div data-tour="admin-search" className="min-w-0 max-w-xl flex-1"><GlobalSearch placeholder={t('shell.search')} pages={navPages} /></div>
+            <div data-tour="admin-search" className="min-w-0 flex-1"><div className="max-w-xl"><GlobalSearch placeholder={t('shell.search')} pages={navPages} /></div></div>
             <div className="flex shrink-0 items-center gap-1 md:gap-2">
               <NotificationBell />
               <div ref={profileRef} className="relative">

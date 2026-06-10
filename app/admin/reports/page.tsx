@@ -135,7 +135,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           { label: L('Consumables used', 'Витратні'), value: gbp(consumablesUsed) },
         ].map((k) => (
           <div key={k.label} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
-            <div className="font-[family-name:var(--font-display)] text-2xl">{k.value}</div>
+            <div className="font-[family-name:var(--font-display)] text-2xl tabular-nums">{k.value}</div>
             <div className="mt-1 text-xs text-[var(--color-stone)]">{k.label}</div>
           </div>
         ))}
@@ -146,7 +146,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <section>
           <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">{L('Clinician performance', 'Ефективність клініцистів')}</h2>
           <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
-            <table className="w-full min-w-[480px] text-sm">
+            <table className="w-full min-w-[480px] text-sm tabular-nums">
               <thead className="bg-[var(--color-bone)] text-xs uppercase tracking-wide text-[var(--color-stone)]">
                 <tr>{[L('Clinician', 'Клініцист'), L('Appts', 'Записи'), L('Hours', 'Години'), L('Avg vs booked', 'Факт/план'), L('Revenue', 'Дохід')].map((h) => <th key={h} className="px-4 py-2.5 text-right first:text-left">{h}</th>)}</tr>
               </thead>
@@ -156,7 +156,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                   const avgActual = s.count ? Math.round(s.actualMin / s.count) : 0;
                   const avgBooked = s.count ? Math.round(s.bookedMin / s.count) : 0;
                   return (
-                    <tr key={s.name} className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)]">
+                    <tr key={s.name} className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-bone)]">
                       <td className="px-4 py-2.5 font-medium">{s.name}</td>
                       <td className="px-4 py-2.5 text-right">{s.count}</td>
                       <td className="px-4 py-2.5 text-right">{hrs(s.actualMin)}</td>
@@ -177,9 +177,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
               {treatments.length === 0 && <p className="p-4 text-sm text-[var(--color-stone)]">{L('No data yet.', 'Немає даних.')}</p>}
               {treatments.map((t) => (
-                <div key={t.title} className="flex items-center justify-between border-b border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5 text-sm last:border-0">
-                  <span>{t.title} <span className="text-xs text-[var(--color-stone-soft)]">×{t.count}</span></span>
-                  <span className="text-[var(--color-jade)]">{gbp(t.revenue)}</span>
+                <div key={t.title} className="flex items-center justify-between border-b border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5 text-sm transition-colors last:border-0 hover:bg-[var(--color-bone)]">
+                  <span>{t.title} <span className="text-xs tabular-nums text-[var(--color-stone-soft)]">×{t.count}</span></span>
+                  <span className="tabular-nums text-[var(--color-jade)]">{gbp(t.revenue)}</span>
                 </div>
               ))}
             </div>
@@ -190,12 +190,12 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               <span className="text-xs text-[var(--color-stone-soft)]">{L('revenue − goods & consumables', 'дохід − товари та витратні')}</span>
             </div>
             <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm tabular-nums">
                 <thead><tr className="bg-[var(--color-bone)] text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">{[L('Service', 'Послуга'), L('Revenue', 'Дохід'), L('Cost', 'Собівартість'), L('Margin', 'Маржа'), '%'].map((h) => <th key={h} className="px-4 py-2.5 text-right first:text-left">{h}</th>)}</tr></thead>
                 <tbody>
                   {profitability.length === 0 && <tr><td colSpan={5} className="px-4 py-4 text-[var(--color-stone)]">{L('No data yet.', 'Немає даних.')}</td></tr>}
                   {profitability.map((p) => (
-                    <tr key={p.title} className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)]">
+                    <tr key={p.title} className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-bone)]">
                       <td className="px-4 py-2.5 font-medium">{p.title} <span className="text-xs text-[var(--color-stone-soft)]">×{p.count}</span>{minMarginPct > 0 && p.cost > 0 && p.marginPct < minMarginPct && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[0.6rem] font-medium text-amber-800">⚠ below {minMarginPct}%</span>}</td>
                       <td className="px-4 py-2.5 text-right text-[var(--color-jade)]">{gbp(p.revenue)}</td>
                       <td className="px-4 py-2.5 text-right text-[var(--color-stone)]">{p.cost > 0 ? gbp(p.cost) : '—'}</td>

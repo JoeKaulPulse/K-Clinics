@@ -5,6 +5,7 @@ import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { NewBookingButton } from '@/components/admin/NewBookingButton';
+import { EmptyState } from '@/components/admin/EmptyState';
 import { bookableTreatments } from '@/lib/treatments';
 import { getLocale } from '@/lib/locale';
 import { t } from '@/lib/i18n';
@@ -95,7 +96,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
         )}
       </form>
 
-      <div className="mt-5 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
+      <div className="mt-5 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] tabular-nums">
         <p className="px-5 pt-3 text-sm text-[var(--color-stone)]">{rows.length}{rows.length === 300 ? '+' : ''} {rows.length === 1 ? 'booking' : 'bookings'}</p>
         {/* Header row */}
         <div className={`${rowCls} mt-2 bg-[var(--color-bone)] text-xs uppercase tracking-[0.12em] text-[var(--color-stone)]`}>
@@ -104,7 +105,13 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
           <span className="hidden sm:block">Price</span>
           <span className="justify-self-end">Status</span>
         </div>
-        {rows.length === 0 && <p className="p-6 text-sm text-[var(--color-stone)]">No bookings in this view.</p>}
+        {rows.length === 0 && (
+          <EmptyState
+            title={q || from || to ? 'No bookings match' : 'No bookings in this view'}
+            hint={q || from || to ? 'Try a wider date range or clear the search.' : 'Bookings appear here once appointments are made — or add one with “New phone booking”.'}
+            icon={<><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3" /></>}
+          />
+        )}
         {rows.map((b) => (
           <Link key={b.id} href={`/admin/bookings/${b.id}`} className={`${rowCls} hover:bg-[var(--color-bone)]`}>
             <div>
