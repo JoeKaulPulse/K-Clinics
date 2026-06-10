@@ -95,7 +95,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
         )}
       </form>
 
-      <div className="mt-5 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
+      <div className="mt-5 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] tabular-nums">
         <p className="px-5 pt-3 text-sm text-[var(--color-stone)]">{rows.length}{rows.length === 300 ? '+' : ''} {rows.length === 1 ? 'booking' : 'bookings'}</p>
         {/* Header row */}
         <div className={`${rowCls} mt-2 bg-[var(--color-bone)] text-xs uppercase tracking-[0.12em] text-[var(--color-stone)]`}>

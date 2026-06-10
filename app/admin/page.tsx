@@ -143,9 +143,9 @@ export default async function AdminOverview() {
             className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 transition-shadow hover:shadow-[var(--shadow-soft)]"
           >
             <div className="flex items-baseline justify-between gap-2">
-              <p className="font-[family-name:var(--font-display)] text-3xl text-[var(--color-ink)]">{k.value}</p>
+              <p className="font-[family-name:var(--font-display)] text-3xl tabular-nums text-[var(--color-ink)]">{k.value}</p>
               {typeof k.trend === 'number' && (
-                <span className={`text-xs font-medium ${k.trend >= 0 ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush)]'}`}>
+                <span className={`text-xs font-medium tabular-nums ${k.trend >= 0 ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush)]'}`}>
                   {k.trend >= 0 ? '▲' : '▼'} {Math.abs(k.trend)}%
                 </span>
               )}
@@ -239,7 +239,7 @@ export default async function AdminOverview() {
                 { label: 'Subscribers', value: o.marketingClients },
               ].map((s) => (
                 <div key={s.label} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
-                  <p className="font-[family-name:var(--font-display)] text-2xl">{s.value}</p>
+                  <p className="font-[family-name:var(--font-display)] text-2xl tabular-nums">{s.value}</p>
                   <p className="text-xs text-[var(--color-stone)]">{s.label}</p>
                 </div>
               ))}

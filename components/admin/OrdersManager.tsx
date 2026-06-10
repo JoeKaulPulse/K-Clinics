@@ -16,7 +16,7 @@ export function OrdersManager({ rows, canManage }: { rows: OrderRow[]; canManage
   if (rows.length === 0) return <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 text-sm text-[var(--color-stone)]">No orders yet.</p>;
   return (
     <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
-      <table className="w-full text-sm">
+      <table className="w-full text-sm tabular-nums">
         <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th className="p-3">Order</th><th className="p-3">Customer</th><th className="p-3">Total</th><th className="p-3">Status</th><th className="p-3">Fulfilment</th></tr></thead>
         <tbody>
           {rows.map((r) => (

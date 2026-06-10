@@ -81,7 +81,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         ))}
       </div>
 
-      <div className="mt-5 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
+      <div className="mt-5 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] tabular-nums">
         {/* Header row */}
         <div className={`${rowCls} bg-[var(--color-bone)] text-xs uppercase tracking-[0.12em] text-[var(--color-stone)]`}>
           <SortHead col="name" label="Name" />
