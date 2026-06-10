@@ -5,11 +5,11 @@
   "engines": {
     "node": ">=20.0.0 <23.0.0"
   },
-  "description": "K Clinics — premium aesthetics & aesthetic dentistry, Islington London.",
+  "description": "K Clinics \u2014 premium aesthetics & aesthetic dentistry, Islington London.",
   "scripts": {
     "dev": "node scripts/gen-image-manifest.mjs && next dev",
     "postinstall": "prisma generate",
-    "prebuild": "node scripts/check-backlog-quotes.mjs && node scripts/gen-image-manifest.mjs && node scripts/db-sync.mjs && node scripts/run-seeds.mjs",
+    "prebuild": "node scripts/clean-build-cache.mjs && node scripts/check-backlog-quotes.mjs && node scripts/gen-image-manifest.mjs && node scripts/db-sync.mjs && node scripts/run-seeds.mjs",
     "db:seed:lms": "node scripts/seed-lms.mjs",
     "db:seed:rooms": "node scripts/seed-rooms.mjs",
     "db:seed:services": "node scripts/seed-services.mjs",
