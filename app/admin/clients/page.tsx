@@ -4,6 +4,7 @@ import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { PageSearch } from '@/components/admin/PageSearch';
+import { EmptyState } from '@/components/admin/EmptyState';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { getLocale } from '@/lib/locale';
 import { t } from '@/lib/i18n';
@@ -90,7 +91,13 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
           <SortHead col="created" label="Added" className="hidden sm:inline-flex" />
           <span className="justify-self-end">Flags</span>
         </div>
-        {rows.length === 0 && <p className="p-6 text-sm text-[var(--color-stone)]">No clients found.</p>}
+        {rows.length === 0 && (
+          <EmptyState
+            title={q || flag ? 'No matching clients' : 'No clients yet'}
+            hint={q || flag ? 'Try a different name, email or phone — or clear the filters above.' : 'Clients appear here automatically when someone books, enquires or signs up.'}
+            icon={<><circle cx="9" cy="7" r="3" /><path d="M3.5 19a6 6 0 0 1 11 0" /><path d="M17 11h4M19 9v4" /></>}
+          />
+        )}
         {rows.map((c) => {
           const review = c.tags?.includes('needs-name-review');
           const test = c.tags?.includes('likely-test');
