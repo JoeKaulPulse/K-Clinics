@@ -14,10 +14,16 @@ import { db } from '@/lib/db';
 //   PRJ-3.1         build item created/seeded inside project PRJ-3
 //   PRJ-3.1.2       subtask 2 of that item
 //
-// Root numbers come from a Postgres sequence (`seq Int @default(autoincrement())`)
-// so allocation is race-free with no app-side locking. Child numbers are derived
-// from existing sibling refs (max suffix + 1) and guarded by the `@unique`
-// constraint on `ref` — callers retry on the rare concurrent collision.
+// Uniqueness is structural, NOT a DB constraint — the deploy gate (`prisma db
+// push` without --accept-data-loss) refuses to add unique constraints to
+// existing tables, so none are declared:
+//   • seq comes from a Postgres sequence (unique by construction), and root
+//     refs derive from seq, so they can never collide;
+//   • child refs (the dotted branches) are allocated inside a transaction that
+//     row-locks the parent (SELECT … FOR UPDATE), serialising concurrent
+//     sibling creation;
+//   • the ensure* backfills include a dedupe pass that re-assigns any
+//     duplicate ref that slips through, so the system self-heals.
 //
 // Cite these refs in commits, PRs, audit findings and reports so work is
 // traceable end-to-end (board → code → deploy).
@@ -46,13 +52,11 @@ export function nextChildSuffix(parentRef: string, siblingRefs: (string | null)[
   return max + 1;
 }
 
-const isUniqueViolation = (e: unknown) => (e as { code?: string })?.code === 'P2002';
-
 // ── Internal Tasks board ─────────────────────────────────────────────────────
 
 /** Assign `ref` to a freshly created task: TSK-<seq> for top-level tasks, or the
- *  next branch of the parent's ref for sub-tasks. Retries on the (rare) ref
- *  collision from two concurrent sub-task creations under one parent. */
+ *  next branch of the parent's ref for sub-tasks. Sibling allocation is
+ *  serialised by row-locking the parent, so concurrent creates can't collide. */
 export async function assignTaskRef(taskId: string): Promise<string | null> {
   const task = await db.task.findUnique({ where: { id: taskId }, select: { seq: true, ref: true, parentId: true } });
   if (!task) return null;
@@ -74,23 +78,20 @@ export async function assignTaskRef(taskId: string): Promise<string | null> {
     return ref;
   }
 
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const siblings = await db.task.findMany({ where: { parentId: task.parentId }, select: { ref: true } });
-    const ref = `${parentRef}.${nextChildSuffix(parentRef, siblings.map((s) => s.ref)) + attempt}`;
-    try {
-      await db.task.update({ where: { id: taskId }, data: { ref } });
-      return ref;
-    } catch (e) {
-      if (!isUniqueViolation(e)) throw e;
-    }
-  }
-  return null;
+  const parentId = task.parentId;
+  return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "Task" WHERE "id" = ${parentId} FOR UPDATE`;
+    const siblings = await tx.task.findMany({ where: { parentId }, select: { ref: true } });
+    const ref = `${parentRef}.${nextChildSuffix(parentRef, siblings.map((s) => s.ref))}`;
+    await tx.task.update({ where: { id: taskId }, data: { ref } });
+    return ref;
+  });
 }
 
 let taskRefsChecked = false;
-/** Backfill refs for tasks created before the scheme existed. Parents first so
- *  sub-tasks always have a parent ref to branch from. Idempotent + memoised per
- *  warm process (new tasks get a ref at creation, so once clean, stays clean). */
+/** Backfill refs for tasks created before the scheme existed, and re-assign any
+ *  duplicate ref (self-healing). Parents first so sub-tasks always have a parent
+ *  ref to branch from. Idempotent + memoised per warm process. */
 export async function ensureTaskRefs(): Promise<void> {
   if (taskRefsChecked) return;
   try {
@@ -105,6 +106,16 @@ export async function ensureTaskRefs(): Promise<void> {
         });
         if (!batch.length) break;
         for (const t of batch) await assignTaskRef(t.id).catch(() => {});
+      }
+    }
+    // Dedupe: if a race ever produced the same ref twice, keep the oldest and
+    // re-assign the rest.
+    const dups = await db.$queryRaw<{ ref: string }[]>`SELECT "ref" FROM "Task" WHERE "ref" IS NOT NULL GROUP BY "ref" HAVING COUNT(*) > 1`;
+    for (const { ref } of dups) {
+      const rows = await db.task.findMany({ where: { ref }, orderBy: { seq: 'asc' }, select: { id: true } });
+      for (const r of rows.slice(1)) {
+        await db.task.update({ where: { id: r.id }, data: { ref: null } });
+        await assignTaskRef(r.id).catch(() => {});
       }
     }
     taskRefsChecked = true;
@@ -123,19 +134,16 @@ export async function assignBuildItemRef(itemId: string): Promise<string | null>
   if (item.ref) return item.ref;
 
   if (item.projectId) {
-    const projectRef = await assignProjectRef(item.projectId);
+    const projectId = item.projectId;
+    const projectRef = await assignProjectRef(projectId);
     if (projectRef) {
-      for (let attempt = 0; attempt < 5; attempt++) {
-        const siblings = await db.buildItem.findMany({ where: { projectId: item.projectId }, select: { ref: true } });
-        const ref = `${projectRef}.${nextChildSuffix(projectRef, siblings.map((s) => s.ref)) + attempt}`;
-        try {
-          await db.buildItem.update({ where: { id: itemId }, data: { ref } });
-          return ref;
-        } catch (e) {
-          if (!isUniqueViolation(e)) throw e;
-        }
-      }
-      return null;
+      return db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "BuildProject" WHERE "id" = ${projectId} FOR UPDATE`;
+        const siblings = await tx.buildItem.findMany({ where: { projectId }, select: { ref: true } });
+        const ref = `${projectRef}.${nextChildSuffix(projectRef, siblings.map((s) => s.ref))}`;
+        await tx.buildItem.update({ where: { id: itemId }, data: { ref } });
+        return ref;
+      });
     }
   }
 
@@ -161,25 +169,23 @@ export async function assignBuildSubtaskRef(subtaskId: string): Promise<string |
   if (sub.ref) return sub.ref;
   const itemRef = await assignBuildItemRef(sub.itemId);
   if (!itemRef) return null;
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const siblings = await db.buildSubtask.findMany({ where: { itemId: sub.itemId }, select: { ref: true } });
-    const ref = `${itemRef}.${nextChildSuffix(itemRef, siblings.map((s) => s.ref)) + attempt}`;
-    try {
-      await db.buildSubtask.update({ where: { id: subtaskId }, data: { ref } });
-      return ref;
-    } catch (e) {
-      if (!isUniqueViolation(e)) throw e;
-    }
-  }
-  return null;
+  const itemId = sub.itemId;
+  return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "BuildItem" WHERE "id" = ${itemId} FOR UPDATE`;
+    const siblings = await tx.buildSubtask.findMany({ where: { itemId }, select: { ref: true } });
+    const ref = `${itemRef}.${nextChildSuffix(itemRef, siblings.map((s) => s.ref))}`;
+    await tx.buildSubtask.update({ where: { id: subtaskId }, data: { ref } });
+    return ref;
+  });
 }
 
 let buildRefsChecked = false;
 /** Backfill refs across the Build board: projects → items → subtasks, oldest
  *  first, so grouped work numbers in creation order and branches always have a
  *  root. Runs after project links are synced (see ensureBacklogSeeded) so
- *  pre-existing project members get PRJ-branch refs. Idempotent + memoised;
- *  pass force=true after seeding new items (the memo would otherwise skip them). */
+ *  pre-existing project members get PRJ-branch refs. Includes the duplicate-ref
+ *  self-heal. Idempotent + memoised; pass force=true after seeding new items
+ *  (the memo would otherwise skip them). */
 export async function ensureBuildRefs(force = false): Promise<void> {
   if (buildRefsChecked && !force) return;
   try {
@@ -201,6 +207,23 @@ export async function ensureBuildRefs(force = false): Promise<void> {
     if (subtasks > 0) {
       for (const s of await db.buildSubtask.findMany({ where: { ref: null }, orderBy: [{ itemId: 'asc' }, { order: 'asc' }], select: { id: true } })) {
         await assignBuildSubtaskRef(s.id).catch(() => {});
+      }
+    }
+    // Dedupe: keep the oldest holder of a duplicated ref, re-assign the rest.
+    const dupItems = await db.$queryRaw<{ ref: string }[]>`SELECT "ref" FROM "BuildItem" WHERE "ref" IS NOT NULL GROUP BY "ref" HAVING COUNT(*) > 1`;
+    for (const { ref } of dupItems) {
+      const rows = await db.buildItem.findMany({ where: { ref }, orderBy: { seq: 'asc' }, select: { id: true } });
+      for (const r of rows.slice(1)) {
+        await db.buildItem.update({ where: { id: r.id }, data: { ref: null } });
+        await assignBuildItemRef(r.id).catch(() => {});
+      }
+    }
+    const dupSubs = await db.$queryRaw<{ ref: string }[]>`SELECT "ref" FROM "BuildSubtask" WHERE "ref" IS NOT NULL GROUP BY "ref" HAVING COUNT(*) > 1`;
+    for (const { ref } of dupSubs) {
+      const rows = await db.buildSubtask.findMany({ where: { ref }, orderBy: { createdAt: 'asc' }, select: { id: true } });
+      for (const r of rows.slice(1)) {
+        await db.buildSubtask.update({ where: { id: r.id }, data: { ref: null } });
+        await assignBuildSubtaskRef(r.id).catch(() => {});
       }
     }
     buildRefsChecked = true;

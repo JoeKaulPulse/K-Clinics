@@ -69,3 +69,9 @@ Deploys run `prisma db push` without `--accept-data-loss` (see
 `scripts/db-sync.mjs`): schema changes must be additive/non-destructive. For
 anything destructive, add a backfill path first (or move to versioned
 migrations with `USE_MIGRATIONS=true`).
+
+The gate also refuses **adding `@unique` to an existing table** (Prisma flags
+it as potential data loss — "will fail if duplicates exist"), so it fails every
+deploy. Don't declare new unique constraints; enforce uniqueness structurally
+instead (sequences, lock-serialised allocation, self-healing dedupe — see
+`lib/task-refs.ts` for the pattern).
