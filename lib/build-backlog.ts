@@ -444,7 +444,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['All three shipped, opt-in (default OFF): NPS survey (lib/nps.ts + /nps/[token] + /admin/nps) and post-course check-in fire on booking completion; membership renewal runs in lib/automations.ts. No-show rebooking note also wired on the no-show action.'],
   },
   {
-    title: 'Self-serve reschedule flow + confirmation email', type: 'TASK', urgency: 'P3', status: 'IN_PROGRESS', assignee: 'claude',
+    title: 'Self-serve reschedule flow + confirmation email', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude', pr: PR(477),
     value: 6, effort: 5,
     detail: 'Clients can reschedule from the booking management page. Owner rules: 48h notice, max 3 free reschedules per booking (4th+ incurs full treatment fee), 24h cancel unchanged.',
     notes: [
