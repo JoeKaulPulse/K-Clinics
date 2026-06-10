@@ -722,9 +722,9 @@ function escape(s: string) {
 }
 
 // ── Care-related (transactional) reminders ──────────────────────────────────
-export function tmplAppointmentReminder(o: { firstName: string; treatment: string; start: Date; manageUrl: string }) {
+export function tmplAppointmentReminder(o: { firstName: string; treatment: string; start: Date; manageUrl: string; whenLabel?: string }) {
   return emailShell({
-    preheader: `Reminder: your ${o.treatment} is tomorrow`,
+    preheader: `Reminder: your ${o.treatment} is ${o.whenLabel ?? 'tomorrow'}`,
     body: `${heroBand('reminder')}
     <h1 style="font-size:24px;margin:0 0 16px;">See you soon, ${escape(o.firstName)}.</h1>
     <p>This is a gentle reminder of your upcoming appointment at KClinics:</p>

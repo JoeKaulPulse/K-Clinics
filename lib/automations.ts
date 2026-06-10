@@ -309,7 +309,7 @@ async function reminders(t: Tally) {
             : `Reminder: your ${b.treatmentTitle} is ${w.label}`;
           const res = await sendEmail({
             to: b.client.email, subject,
-            html: tmplAppointmentReminder({ firstName: b.client.firstName, treatment: b.treatmentTitle, start: b.startAt, manageUrl }),
+            html: tmplAppointmentReminder({ firstName: b.client.firstName, treatment: b.treatmentTitle, start: b.startAt, manageUrl, whenLabel: w.label }),
           });
           await logEvent(b.clientId, 'APPOINTMENT_REMINDER', b.client.email, subject, res);
           res.ok ? t.reminders++ : t.errors++;
