@@ -69,14 +69,14 @@ export async function POST(req: Request) {
       await db.page.update({ where: { id: body.id }, data: { draft: J(sections), published: J(sections), status: 'PUBLISHED', publishAt: parseDate(body.publishAt), unpublishAt: parseDate(body.unpublishAt), updatedBy: editor } });
       const old = await db.pageRevision.findMany({ where: { pageId: body.id }, orderBy: { createdAt: 'desc' }, skip: 30, select: { id: true } });
       if (old.length) await db.pageRevision.deleteMany({ where: { id: { in: old.map((r) => r.id) } } });
-      revalidateTag(PAGES_TAG);
+      revalidateTag(PAGES_TAG, {});
       return NextResponse.json({ ok: true });
     }
 
     if (op === 'unpublish') {
       const { Prisma } = await import('@prisma/client');
       await db.page.update({ where: { id: body.id }, data: { published: Prisma.DbNull, status: 'DRAFT', updatedBy: editor } });
-      revalidateTag(PAGES_TAG);
+      revalidateTag(PAGES_TAG, {});
       return NextResponse.json({ ok: true });
     }
 
@@ -84,13 +84,13 @@ export async function POST(req: Request) {
       const rev = await db.pageRevision.findUnique({ where: { id: String(body.revisionId) } });
       if (!rev) return NextResponse.json({ ok: false, error: 'Revision not found.' }, { status: 404 });
       await db.page.update({ where: { id: body.id }, data: { draft: J(rev.data), published: J(rev.data), status: 'PUBLISHED', updatedBy: editor } });
-      revalidateTag(PAGES_TAG);
+      revalidateTag(PAGES_TAG, {});
       return NextResponse.json({ ok: true });
     }
 
     if (op === 'delete') {
       await db.page.delete({ where: { id: body.id } }).catch(() => {});
-      revalidateTag(PAGES_TAG);
+      revalidateTag(PAGES_TAG, {});
       return NextResponse.json({ ok: true });
     }
 

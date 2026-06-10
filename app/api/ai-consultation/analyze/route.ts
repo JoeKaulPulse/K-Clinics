@@ -11,7 +11,7 @@ const schema = z.object({
   budgetPence: z.number().int().positive().max(5_000_000).nullable().default(null),
   budgetLabel: z.string().max(40).default('Flexible'),
   storeImages: z.boolean().default(true),
-  consent: z.literal(true, { errorMap: () => ({ message: 'Please give your consent to continue.' }) }),
+  consent: z.literal(true, 'Please give your consent to continue.'),
 });
 
 export async function POST(req: Request) {
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   }
 
   const parsed = schema.safeParse(await req.json().catch(() => ({})));
-  if (!parsed.success) return NextResponse.json({ ok: false, reason: 'error', message: parsed.error.errors[0]?.message || 'Check your photos and try again.' }, { status: 422 });
+  if (!parsed.success) return NextResponse.json({ ok: false, reason: 'error', message: parsed.error.issues[0]?.message || 'Check your photos and try again.' }, { status: 422 });
 
   const { analyze } = await import('@/lib/ai-consultation');
   const result = await analyze({ clientId: client.id, areas: parsed.data.areas, images: parsed.data.images, storeImages: parsed.data.storeImages, budgetPence: parsed.data.budgetPence, budgetLabel: parsed.data.budgetLabel });

@@ -28,7 +28,9 @@ function envVal(file, key) {
 const fromEnvFiles = (key) => process.env[key] || envVal(path.join(root, 'scripts/migrate-wp/.env'), key) || envVal(path.join(root, '.env'), key);
 
 const arg = process.argv.slice(2).find((a) => a.startsWith('http'));
-const site = (arg || fromEnvFiles('NEXT_PUBLIC_SITE_URL') || 'https://kclinics.co.uk').replace(/\/$/, '');
+// BASE_URL is the canonical target variable shared by all routine tooling
+// (visual-qa, audits, Claude Code sessions); NEXT_PUBLIC_SITE_URL is the app's own.
+const site = (arg || fromEnvFiles('BASE_URL') || fromEnvFiles('NEXT_PUBLIC_SITE_URL') || 'https://kclinics.co.uk').replace(/\/$/, '');
 const secret = fromEnvFiles('CRON_SECRET');
 
 const G = '\x1b[32m', R = '\x1b[31m', Y = '\x1b[33m', D = '\x1b[2m', X = '\x1b[0m';

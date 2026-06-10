@@ -12,20 +12,27 @@
 //
 // Behind a TLS-intercepting egress gateway (e.g. the standard Claude Code web
 // environment), Chromium rejects the re-signed cert with ERR_CERT_AUTHORITY_INVALID
-// even though Node's fetch trusts it via NODE_EXTRA_CA_CERTS. Set QA_IGNORE_HTTPS_ERRORS=1
-// to let the browser contexts through. Leave it off in full-network runs so a genuinely
-// broken production certificate is still caught.
+// even though Node's fetch trusts it via NODE_EXTRA_CA_CERTS. The harness detects
+// that gateway (NODE_EXTRA_CA_CERTS set) and lets the browser contexts through
+// automatically; QA_IGNORE_HTTPS_ERRORS=1/0 overrides either way. On full-network
+// runs leave detection alone so a genuinely broken production certificate is caught.
 //
 // Output: qa-output/<step>.png screenshots + qa-output/report.json + report.md.
 import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync, rmSync, readFileSync } from 'fs';
 import path from 'path';
 
-const BASE = (process.env.BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
+// Target resolution: BASE_URL (the canonical variable for all routine tooling —
+// set it in the Claude Code environment) → NEXT_PUBLIC_SITE_URL → local dev.
+const BASE = (process.env.BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
 const QA_TOKEN = process.env.QA_TOKEN || process.env.BOARD_QUEUE_TOKEN || '';
 const OUT = process.env.QA_OUT || 'qa-output';
 const VIEWPORT = { width: 390, height: 844 }; // iPhone-ish; kiosk is phone-first
-const IGNORE_HTTPS_ERRORS = /^(1|true|yes)$/i.test(process.env.QA_IGNORE_HTTPS_ERRORS || '');
+// Explicit QA_IGNORE_HTTPS_ERRORS wins; otherwise auto-detect the sandbox's
+// TLS-intercepting gateway via NODE_EXTRA_CA_CERTS (set only in such environments).
+const IGNORE_HTTPS_ERRORS = process.env.QA_IGNORE_HTTPS_ERRORS
+  ? /^(1|true|yes)$/i.test(process.env.QA_IGNORE_HTTPS_ERRORS)
+  : Boolean(process.env.NODE_EXTRA_CA_CERTS);
 const CONTEXT_OPTS = { viewport: VIEWPORT, ignoreHTTPSErrors: IGNORE_HTTPS_ERRORS };
 
 // Kiosk upload payload. Pass a real selfie (QA_SELFIE=/path/to/photo.jpg) to verify

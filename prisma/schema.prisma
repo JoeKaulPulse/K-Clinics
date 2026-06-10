@@ -7,7 +7,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum ConsultStatus {
@@ -140,6 +139,8 @@ enum AuditAction {
   PAYMENT_CHARGED
   PAYMENT_FAILED
   PAYMENT_REFUNDED
+  XERO_INVOICE_PUSHED
+  XERO_REFUND_PUSHED
   ASSESSMENT_SUBMITTED
   ASSESSMENT_VIEWED
   NOTE_ADDED
@@ -555,6 +556,11 @@ model Booking {
   refundedPence          Int?
   refundedAt             DateTime?
   refundReason           String?
+  // Xero sales push (lib/xero.ts): the ACCREC invoice raised for the charge
+  // ('PENDING' while a push is in flight — doubles as the idempotency claim),
+  // and the credit note raised for each refund.
+  xeroInvoiceId          String?
+  xeroCreditNoteIds      String[]      @default([])
 
   // Cancellation.
   cancelledAt   DateTime?
@@ -566,7 +572,8 @@ model Booking {
   // Client self-service link token.
   manageToken   String        @unique @default(cuid())
 
-  remindersSent Boolean       @default(false)
+  remindersSent   Boolean       @default(false)
+  rescheduleCount Int           @default(0)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -1112,8 +1119,21 @@ model StaffTimeOff {
 }
 
 // ── Internal tasks / to-dos ─────────────────────────────────────────────────
+// Every task carries a stable human-readable reference (`ref`) for tracing,
+// search and identification: top-level tasks are TSK-<seq> (seq is a Postgres
+// sequence, so numbering is race-free; gaps are normal), and sub-tasks branch
+// from their parent's ref (TSK-12 → TSK-12.1 → TSK-12.1.1). Refs never change
+// once assigned. See lib/task-refs.ts.
+//
+// NB: seq/ref carry NO @unique — the deploy gate (`prisma db push` without
+// --accept-data-loss) refuses to add unique constraints to existing tables.
+// Uniqueness is guaranteed structurally instead: seq by the sequence, root refs
+// by derivation from seq, child refs by lock-serialised allocation + a
+// self-healing dedupe pass (lib/task-refs.ts).
 model Task {
   id          String       @id @default(cuid())
+  seq         Int          @default(autoincrement())
+  ref         String?
   title       String
   detail      String?
   status      TaskStatus   @default(OPEN)
@@ -1123,6 +1143,10 @@ model Task {
   assigneeId  String?
   client      Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
   clientId    String?
+  // Sub-tasks: deleting a parent removes its sub-tasks with it (the branch is one unit of work).
+  parent      Task?        @relation("TaskSubtasks", fields: [parentId], references: [id], onDelete: Cascade)
+  parentId    String?
+  subtasks    Task[]       @relation("TaskSubtasks")
   createdBy   String?
   completedAt DateTime?
   completedBy String?
@@ -1132,6 +1156,7 @@ model Task {
   @@index([status])
   @@index([assigneeId, status])
   @@index([dueAt])
+  @@index([parentId])
 }
 
 // ── Inventory: consumables & stock control ──────────────────────────────────
@@ -2505,6 +2530,13 @@ enum BuildUrgency {
 
 model BuildItem {
   id           String       @id @default(cuid())
+  // Stable human-readable reference for tracing/search: standalone items are
+  // BLD-<seq>; items created/seeded inside a project branch from the project's
+  // ref (PRJ-3 → PRJ-3.1). Immutable once assigned (an item moved into a
+  // project later keeps its BLD ref). No @unique — the no-data-loss deploy gate
+  // can't add unique constraints; uniqueness is structural (lib/task-refs.ts).
+  seq          Int          @default(autoincrement())
+  ref          String?
   type         BuildType    @default(TASK)
   title        String
   detail       String?      @db.Text
@@ -2555,6 +2587,11 @@ model BuildItem {
 // user-gated (owner-input) items are derived from its items (see listProjects).
 model BuildProject {
   id              String      @id @default(cuid())
+  // Root of the reference tree for everything grouped under this project:
+  // PRJ-<seq> → items PRJ-<seq>.<n> → subtasks PRJ-<seq>.<n>.<m>.
+  // No @unique (deploy gate); unique by derivation from the sequence.
+  seq             Int         @default(autoincrement())
+  ref             String?
   slug            String      @unique
   name            String
   summary         String?     @db.Text
@@ -2584,6 +2621,9 @@ model BuildDependency {
 // up on the parent (see lib/build-board.ts completeSubtask).
 model BuildSubtask {
   id          String    @id @default(cuid())
+  // Branches from the parent item's ref (BLD-7 → BLD-7.1; PRJ-3.1 → PRJ-3.1.2).
+  // No @unique (deploy gate); allocation is lock-serialised per parent item.
+  ref         String?
   item        BuildItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
   itemId      String
   title       String

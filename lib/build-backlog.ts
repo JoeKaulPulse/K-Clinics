@@ -65,6 +65,23 @@ export const vToE = (it: { value?: number; effort?: number }): number | null =>
 const PR = (n: number) => `https://github.com/JoeKaulPulse/K-Clinics/pull/${n}`;
 
 export const BUILD_BACKLOG: BacklogItem[] = [
+  // ── Reconciliation entries ─────────────────────────────────────────────────
+  // These mirror DB-only board items (user/routine-reported, so not originally
+  // in this file) whose work has shipped: reconcileBacklog() matches by exact
+  // title and advances the live item to SHIPPED on the next board load.
+  {
+    title: "Heatmap isn't loading in and session recordings not working", type: 'ERROR', urgency: 'P0', status: 'SHIPPED', pr: PR(489),
+    detail: 'Owner-reported (issue #374): the Behaviour-insights heatmap preview and session replays were broken.',
+    notes: [
+      'Fixed across four merged PRs: #474 CSP frame-ancestors none→self + X-Frame-Options DENY→SAMEORIGIN so the same-origin admin preview iframe can render at all; #479 replaced rrweb-player (broken Svelte build: missing onMount, player never instantiated) with a direct rrweb Replayer; #486 removed the restrictive iframe sandbox that left a broken-page icon in Safari/some Chromium; #489 bundled the Prisma/pg stack into the function chunks, fixing the 500s that had taken down every DB route incl. the insights page and track endpoints.',
+      'Verified on production endpoints: POST /api/track/heatmap validates (400 on bad payload, no module-load 500), /api/track/replay consent-gates (403), /admin/marketing/insights auth-redirects (307). NB the production domain must be promoted to a current build to serve #486/#489 — it is currently pinned (rolled back) to b7ba22b.',
+    ],
+  },
+  {
+    title: 'Session merge summary — 2026-06-10', type: 'REVIEW', urgency: 'P2', status: 'SHIPPED', pr: PR(490),
+    detail: 'Routine-logged record of PRs #474 (heatmap admin iframe fix) and #477 (self-serve reschedule + kiosk claim CTA + ToS update) merged to main, with per-PR rollback lines.',
+    notes: ['The summary records completed, merged work — moving to SHIPPED so it enters the admin sign-off pile rather than sitting in Claude’s actionable queue.'],
+  },
   // ── Shipped this session ──────────────────────────────────────────────────
   {
     title: 'Enhance search (admin + public) — powerful & access-gated', type: 'TASK', urgency: 'P1', status: 'SHIPPED', pr: PR(331),
@@ -186,6 +203,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
 
   // ── Open / next ───────────────────────────────────────────────────────────
   {
+    title: 'Google Business: Connect button never appears even with OAuth creds set', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(472),
+    value: 7, effort: 1,
+    detail: 'Admin → Reviews gated the “Connect Google Business” button on googleBusinessConfigured(), which also requires GOOGLE_BUSINESS_ACCOUNT_ID + GOOGLE_BUSINESS_LOCATION_ID — but the location is auto-detected on connect and the UI says only GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET are needed. So the owner set the OAuth creds but the button stayed hidden behind the “Waiting on…” notice.',
+    notes: ['Shipped (#472): the Reviews page now gates the Connect button on googleOAuthConfigured() (CLIENT_ID + SECRET only); the account/location are auto-detected on connect (only needed manually for multi-location pinning). After a redeploy the button appears on Admin → Reviews.'],
+  },
+  {
     title: 'Adopt the board as the work portal + migrate backlog', type: 'TASK', urgency: 'P2', status: 'SHIPPED',
     detail: 'Seed the session backlog here with statuses + decision notes; add an "assigned to me" view; create a task before any future work and log actions against it.',
     notes: ['This item is itself logged here. Going forward: create a board item (or GitHub issue) before starting, and record decisions as comments.', 'Superseded by the Build board v2 overhaul below — the board is now the portal.'],
@@ -234,10 +257,14 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Shipped (#424): @vercel/speed-insights ^2 + <SpeedInsights/> in app/layout.tsx. tsc + build green.'],
   },
   {
-    title: 'Dependency upgrades: Next 16, Prisma 7, Stripe SDKs, zod 4, jose 6 (incremental + tested)', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    title: 'Dependency upgrades: Next 16, Prisma 7, Stripe SDKs, zod 4, jose 6 (incremental + tested)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(480),
     value: 6, effort: 7,
     detail: 'Dependabot proposed sweeping MAJOR bumps in two PRs (#84 production, #307 dev): Next 15→16, Prisma 6→7, @stripe/* 3→6/5→9/17→22, zod 3→4, jose 5→6, bcryptjs 2→3, resend 4→6, TypeScript 5→6, @types/node 22→25. These cannot be blanket-merged — verified locally that the bundle breaks immediately (Prisma 7 `prisma generate` fails on install). Do them deliberately and per-family, each with its own migration + tsc/build verification, on their own PRs.',
-    notes: ['Blanket bump verified to break (Prisma 7 generate). #84/#307 left open for reference but must NOT be merged as-is. Sequence suggestion: TypeScript/types first, then Prisma 6→7 (client + schema), then Next 15→16, then Stripe SDKs (API-version sensitive), then zod 3→4 (schema API changes), jose 6, resend 6.', 'Partial: the 4 moderate npm-audit vulns flagged by the audit (postcss <8.5.10 XSS, bundled inside next + reached via @vercel/speed-insights/geist) are now RESOLVED via a package.json overrides forcing postcss ^8.5.15 — `npm audit` reports 0 vulnerabilities and `next build` compiles cleanly, WITHOUT the risky Next 16 major bump. The major-version upgrades above remain.'],
+    notes: [
+      'Blanket bump verified to break (Prisma 7 generate). #84/#307 left open for reference but must NOT be merged as-is. Sequence suggestion: TypeScript/types first, then Prisma 6→7 (client + schema), then Next 15→16, then Stripe SDKs (API-version sensitive), then zod 3→4 (schema API changes), jose 6, resend 6.',
+      'Partial: the 4 moderate npm-audit vulns flagged by the audit (postcss <8.5.10 XSS, bundled inside next + reached via @vercel/speed-insights/geist) are now RESOLVED via a package.json overrides forcing postcss ^8.5.15.',
+      'Shipped all 6 families (#480 TS6, #481 Prisma7, #482 jose6+resend6, #483 zod4, #484 Stripe22, #485 Next16). Key migrations: Prisma 7 removed binary engine — uses @prisma/adapter-pg with lazy pg.Pool; TS 6 requires declare module for CSS side-effect imports; zod 4 renames ZodError.errors->issues, z.literal() second arg is now a string, z.record() requires explicit key schema; Next 16 revalidateTag() requires second CacheLifeConfig arg; Stripe 22 apiVersion updated to 2026-05-27.dahlia.',
+    ],
   },
   {
     title: 'EOD Audit enablers: routine task-create/continue API + daily run cap', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(423),
@@ -293,8 +320,11 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   {
     title: 'Dedicated bot GitHub account / GitHub App for the board (remove shared rate limit)', type: 'TASK', urgency: 'P1', status: 'BLOCKED', assignee: 'claude',
     value: 7, effort: 3, needs: 'OWNER',
-    ask: 'The board’s GitHub calls currently use the same account as the dev automation (JoeKaulPulse), so they share one rate limit. Give the board its own identity — either (A) a free “machine user” account (e.g. kclinics-bot) added as a repo collaborator, then paste its fine-grained token (Issues: Read & write, Contents/PRs as needed) into the board’s Connect GitHub; or (B, best) install a GitHub App on JoeKaulPulse/K-Clinics and share the App ID + installation — I’ll wire installation-token auth (higher, isolated limits). Tell me which you prefer and provide the token/App details, and I’ll switch the board over.',
+    ask: 'The code side is DONE (#491) — installation-token auth is wired and preferred automatically once configured. Your 5-minute setup (answers your question: a PRIVATE App on your own account, nothing published to the marketplace): GitHub → Settings → Developer settings → GitHub Apps → New GitHub App → name e.g. kclinics-board, any homepage URL, untick Webhook → Permissions: Issues Read&write + Metadata Read-only → Create. Then: (1) note the App ID; (2) Generate a private key (downloads a .pem); (3) Install App → only JoeKaulPulse/K-Clinics, and note the installation ID (the number at the end of the installation URL). Set in Vercel: GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY (paste the .pem contents), GITHUB_APP_INSTALLATION_ID — the board switches over on the next deploy, no code change needed.',
     detail: 'Root-cause fix for the rate-limit bottleneck: separate the board’s GitHub identity from the personal account used for development, so mirroring/wakes never contend with PR work. A GitHub App is preferred (scoped, higher limits, installation tokens).',
+    notes: [
+      'Shipped (#491): lib/github-app.ts mints installation tokens (App JWT → access-token exchange, cached in Settings with early refresh); getGithubConfig() prefers the App identity over the personal-token paths whenever the three env vars are present. Remaining: the owner setup in the ask above.',
+    ],
   },
   {
     title: 'Storefront “Skin & Smile” QR kiosk — campaign epic', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude', project: 'skin-smile-kiosk',
@@ -438,11 +468,25 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['All three shipped, opt-in (default OFF): NPS survey (lib/nps.ts + /nps/[token] + /admin/nps) and post-course check-in fire on booking completion; membership renewal runs in lib/automations.ts. No-show rebooking note also wired on the no-show action.'],
   },
   {
-    title: 'Self-serve reschedule flow + confirmation email', type: 'TASK', urgency: 'P3', status: 'BLOCKED', assignee: 'claude',
-    value: 6, effort: 5, needs: 'OWNER',
-    ask: 'Decide whether clients can reschedule their own appointments online, or whether it stays staff-handled by phone. If self-serve, tell me your rules — e.g. minimum notice (24/48h), how many times a booking may be moved, and whether a deposit transfers. Reply with your choice and rules and I’ll build it, including the reschedule-confirmation email.',
-    detail: 'There is no self-serve reschedule today (clients are pointed to call). Building the reschedule action is a prerequisite for a reschedule-confirmation email.',
-    notes: ['Question for the owner: do you want clients to self-reschedule online, or keep it staff-handled? Blocked pending that decision.'],
+    title: 'P0 session replay: fix rrweb-player v2 white-box (use rrweb.Replayer directly)', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(479),
+    value: 8, effort: 2,
+    detail: 'rrweb-player v2.0.1 ships with a broken Svelte runtime where on_mount is empty and onMount is never exported, causing the internal Replayer to never instantiate — the replay modal showed a white box. Fix: replace rrweb-player with a direct rrweb.Replayer instantiation in components/admin/ReplayList.tsx, with Play/Pause controls, elapsed/total timer, and proper cleanup on modal close.',
+    notes: ['Shipped (#479): ReplayList.tsx rewritten to use rrweb.Replayer directly (dynamic import). Adds Play/Pause button + elapsed timer; skipInactive, showWarning/showDebug=false; finish + state-change event listeners for UI sync; setInterval ticker for elapsed time; proper destroy() on unmount. Bypasses rrweb-player entirely.'],
+  },
+  {
+    title: 'P0 heatmap preview: iframe broken-page icon (sandbox too restrictive)', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(486),
+    value: 7, effort: 1,
+    detail: 'HeatmapViewer.tsx used sandbox="allow-same-origin allow-scripts" on the page-preview iframe. Despite the CSP fix (PR #474 frame-ancestors self), Safari and some Chromium builds showed a broken-page icon because the sandbox prevented the embedded page from fully initialising its browser context. Admin-only preview of the clinic own pages; sandbox provided no meaningful security. Fix: removed sandbox, added pointer-events-none so admins cannot accidentally navigate away by clicking preview links.',
+    notes: ['Shipped (#486): Removed sandbox attribute from HeatmapViewer iframe; added pointer-events-none Tailwind class. tsc clean, one-line diff.'],
+  },
+  {
+    title: 'Self-serve reschedule flow + confirmation email', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude', pr: PR(477),
+    value: 6, effort: 5,
+    detail: 'Clients can reschedule from the booking management page. Owner rules: 48h notice, max 3 free reschedules per booking (4th+ incurs full treatment fee), 24h cancel unchanged.',
+    notes: [
+      'Owner rules confirmed (2026-06-09): 48h to reschedule, 24h to cancel, 3 reschedules allowed before full-price charge applies.',
+      'Built: Booking.rescheduleCount (schema), rescheduleBooking()+isWithin48h() in lib/booking-actions.ts, POST /api/booking/reschedule, slot-picker UI in ManageClient, tmplBookingRescheduled email, ToS updated in lib/info-pages.ts.',
+    ],
   },
   {
     title: 'Resend domains: send via mail.kclinics.co.uk, reply via reply.mail.kclinics.co.uk', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(373),
@@ -481,12 +525,13 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'A guided, best-in-class admin flow for taking bookings over the phone: any staff user finds an existing client (or creates a new one with email + phone for reminders), picks treatment + time, holds the slot, and the client is emailed a secure link to save their card and confirm — never reading card details over the phone (PCI-safe). A read-out T&C/confirmation dialogue script for staff, and if a card is already on file, a confirm-on-the-call path. Consent forms continue to go via the existing secure links.',
   },
   {
-    title: 'Push sales + refunds to Xero (invoice on charge, credit note on refund)', type: 'TASK', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    title: 'Push sales + refunds to Xero (invoice on charge, credit note on refund)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(491),
     value: 6, effort: 6,
     detail: 'Today Xero is read-only (cash position + supplier bills). To make refunds a true accounting event we need to push the sales side too: on a booking charge, create an ACCREC invoice + payment in Xero; on a refund, raise a credit note / refund against it. Refunds already net out of admin revenue (#380) and fire a GA4 refund event — this closes the loop into the books.',
     notes: [
       'Needs owner input on Xero account codes + tax treatment (which revenue account, VAT rate) before posting, so the books stay clean.',
       'Build charge→invoice first (the counterpart that doesn’t exist yet), then refund→credit-note; idempotent + audited like the rest.',
+      'Shipped (#491): charge → ACCREC invoice (+ payment when a bank account code is set); refund → ACCRECCREDIT credit note (+ cash refund). Idempotent via a Booking.xeroInvoiceId claim; every push audited. OFF by default — owner enables with the xero_sales_push setting once account codes are confirmed (xero_sales_account, default 200 Sales; xero_bank_account, unset = invoices post as awaiting payment). Tax follows the VAT settings (registered → 20% inclusive, else no tax). Requires one Xero reconnect to grant the new write scopes (accounting.transactions + accounting.contacts).',
     ],
   },
   {
@@ -497,6 +542,35 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
 
   // ── Reliability ───────────────────────────────────────────────────────────
+  {
+    title: 'P0 outage on new-stack deploys: 500s on every DB route (broken Turbopack external symlinks)', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(489),
+    value: 10, effort: 3,
+    detail: 'The first deploy that survived #487+#488 went live and 500d on every dynamic route with "Failed to load external module ...: Cannot find module". Owner rolled production back to the last known-good build. Two stacked causes from the Next 16 / Prisma 7 upgrades: (1) lib/db.ts loads the pg driver adapter via dynamic require("@prisma/adapter-pg"), which Turbopack neither bundles nor traces, so the module was absent from all 336 function bundles. (2) Deeper: Turbopack compiles externalised server packages as hash-aliased requires (require("@prisma/client-<hash>")) backed by symlinks in .next/node_modules - and because stray lockfiles above the project (e.g. on the Vercel builder) made Next infer the wrong workspace root, the symlink targets escaped the project directory (../../../<dirname>/node_modules/<pkg>) and broke inside the lambda filesystem. Every route that touches lib/db.ts threw at require time; static pages and the non-DB /og function were fine.',
+    notes: [
+      'Diagnosis trail: runtime logs showed "Cannot find module" + matched "external module @prisma" but not "adapter-pg"; /og (no DB) returned 200 on the same preview while every DB route 500d; compiled chunks contained require("pg-<hash>")/require("@prisma/client-<hash>"); .next/node_modules symlinks pointed to ../../../K-Clinics/node_modules/* (wrong root geometry, mirrors /vercel/path0 on the builder).',
+      'Fix: (a) serverExternalPackages: [@prisma/client, @prisma/adapter-pg, @prisma/extension-accelerate, pg] so the adapter is traced into every function; (b) turbopack.root pinned to the project dir so external symlinks become project-relative (.next/node_modules/pg-<hash> -> ../../node_modules/pg, which maps to /var/task/node_modules/pg in the lambda). Also silences the "inferred workspace root" warning. Verified on a preview deploy (DB routes 200) before merging to production.',
+      'Hygiene follow-up for owner: a stray /home/user/package-lock.json (83 bytes) exists above the repo in dev containers; harmless now that turbopack.root is pinned, but worth deleting if it reappears in tooling.',
+    ],
+  },
+  {
+    title: 'P0 deploys wedged on Vercel "Deploying outputs": OG route traced whole project', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(488),
+    value: 10, effort: 2,
+    detail: 'After the db-sync flag fix (#487) unblocked the prebuild, deploys built in 2 min then hung in Vercel "Deploying outputs" (the lambda upload step) for 15+ min and never went live. Root cause: lib/og.tsx reads images and fonts with a dynamic fs.readFileSync(path.join(process.cwd(), ...)) that Next 16 / Turbopack cannot statically analyse, so it traced the WHOLE project into every route that transitively imports it via lib/seo.tsx page metadata (~150 of 336 serverless functions). Each function bundled all 167 MB of public/treatments/ photos plus 18 MB of WordPress migration dumps under scripts/migrate-wp/ and import/content.json, pushing functions to ~220-230 MB - right against Vercel 250 MB uncompressed limit - which wedges the deploy. The live site stayed up on the last good (pre-upgrade) deployment the whole time; new code simply could not land.',
+    notes: [
+      'Diagnosed from the Vercel build log NFT warning ("the whole project was traced unintentionally", import trace ./lib/og.tsx -> ./app/og/route.tsx) plus du: public/treatments is 167 MB / 1329 files. Confirmed 150/336 function nft.json manifests carried the migration zips, public images, and import/content.json.',
+      'Fix: next.config.mjs outputFileTracingExcludes drops public/, scripts/, import/, audit/, docs/, *.tsbuildinfo from all function bundles. Verified via the .next nft.json manifests: those refs went 150 -> 0 and the largest function fell from ~230 MB to 52 MB (og route 167 MB -> 43 MB). Fraunces display fonts (assets/fonts) stay bundled; images keep their runtime URL fallback. tsc + next build green.',
+      'Follow-ups (non-blocking, deferred): the dynamic reads still trigger a whole-project trace so sharp (~32 MB) is still bundled into OG functions, and the Geist label font (node_modules/geist) is not traced on Next 16 (pre-existing, cosmetic). A root-cause fix would make lib/og.tsx use static/literal paths or turbopackIgnore; left out of this hotfix to avoid risk to the OG renderer.',
+    ],
+  },
+  {
+    title: 'P0 deploys all failing on Vercel: Prisma 7 removed db-sync CLI flags', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(487),
+    value: 10, effort: 1,
+    detail: 'Every Vercel deploy (production + previews) errored in the prebuild step after the Prisma 6->7 upgrade. Root cause: scripts/db-sync.mjs used CLI flags that Prisma 7 removed/renamed. (1) prisma migrate diff still used --from-url and --to-schema-datamodel; Prisma 7 removed --from-url (use --from-config-datasource, which reads the URL from prisma.config.ts) and renamed --to-schema-datamodel to --to-schema. The invalid flag exited 1, which the pre-check misread as could-not-reach-database and retried 6 times. (2) prisma db push still passed --skip-generate, which Prisma 7 removed (db push no longer generates the client); the unknown flag made Prisma print usage and exit non-zero on all 5 retries, so failBuild() failed the deploy. tsc + next build always passed locally, so it only surfaced as a Vercel deploy ERROR.',
+    notes: [
+      'Diagnosed from the Vercel build logs: db push printed its help text instead of running, and the diff pre-check failed 6x with could-not-reach-database. Reproduced locally against Prisma 7.8.0: the old --from-url errors with "--from-url was removed", the new --from-config-datasource gets past flag parsing to a real connection attempt (P1001).',
+      'Fix: scripts/db-sync.mjs migrate-diff now uses --from-config-datasource --to-schema; db push drops --skip-generate. Also fixed the same stale flags in the local dev helper scripts/safe-migrate.mjs. The injected DATABASE_URL flows through prisma.config.ts datasource.url for both commands. tsc + next build green.',
+    ],
+  },
   {
     title: 'Keep booking flow + client site up during deploys', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(335),
     value: 9, effort: 4,
@@ -598,37 +672,49 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     value: 8, effort: 7,
     detail: 'Turborepo/Nx monorepo + remote caching + affected-only builds; enforce module boundaries; extract framework-agnostic domain packages shared by both tracks. No infra change. Exit gate: live build cost per change ↓ ≥50%; boundary lint green; live unaffected. This is the front-loaded value step (also reduces the deploy-herd pain) with zero infra risk.',
     notes: ['Proposed first concrete spike (§18.2): move one domain (e.g. Learning) into a shared package and demonstrate affected-only builds.'],
+    // The plan is explicit (§18.1): nothing executes until the owner baselines it.
+    // Wiring that gate as a dependency keeps the phases out of the actionable
+    // queue until sign-off, instead of looking like startable work.
+    dependsOn: ['SaaS — final sign-off to baseline the platform plan'],
   },
   {
     title: 'SaaS Phase 1 — platform foundation (K8s, gateway, identity, observability)', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude',
     value: 7, effort: 9,
     detail: 'New isolated Vercel project + managed GKE, API gateway/BFF, Identity & RBAC, event bus, OpenTelemetry observability, GitOps, secrets via External Secrets/KMS. Containerise the monolith and run it in-cluster (still one workload), read-only on prod DB. Exit gate: monolith serves in-cluster from a replica; tracing end-to-end; DR drill #1 passes.',
+    dependsOn: ['SaaS Phase 0 — modularise in place (monorepo, affected-only builds)'],
   },
   {
     title: 'SaaS Phase 2 — tenancy layer (tenant_id + RLS, backfill tenant #1)', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude',
     value: 8, effort: 9,
     detail: 'Add non-null tenant_id (expand-only) + Postgres Row-Level Security as the backstop; backfill K Clinics as tenant #1 (additive, no destructive change); resolve tenant context at the edge; billing/metering skeleton; automated cross-tenant isolation tests. Exit gate: isolation tests pass; K Clinics runs as a tenant in staging with zero data change in prod.',
     notes: ['Isolation model (ADR-003): pooled + RLS by default; bridge (schema-per-tenant); silo (dedicated DB/region) on demand for enterprise/PHI.'],
+    dependsOn: ['SaaS Phase 1 — platform foundation (K8s, gateway, identity, observability)'],
   },
   {
     title: 'SaaS Phase 3 — first service extraction (Content/CMS behind the gateway)', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude',
     value: 6, effort: 6,
     detail: 'Extract Content/CMS (or Learning) — lowest coupling — behind the gateway to prove contracts, events, per-tool pipeline, deploy and rollback. Exit gate: one tool deploys to staging independently; contract tests gate; parity vs monolith.',
+    dependsOn: ['SaaS Phase 2 — tenancy layer (tenant_id + RLS, backfill tenant #1)'],
   },
   {
     title: 'SaaS Phase 4 — extract by value/coupling (Payments & CRM/Clinical last)', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude',
     value: 7, effort: 9,
     detail: 'Strangle the remaining bounded contexts in order: Marketing → Commerce → Loyalty → Booking; Payments and CRM/Clinical (PHI) extracted last with the highest care. Each tool gets its own pipeline, SLOs, isolation, parity and rollback. Treatment-lifecycle chain becomes durable sagas with idempotent handlers.',
+    dependsOn: ['SaaS Phase 3 — first service extraction (Content/CMS behind the gateway)'],
   },
   {
     title: 'SaaS Phase 5 — cutover (shadow at load → DNS blue/green → bake)', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude',
     value: 7, effort: 8,
     detail: 'Run the new platform in production-shadow at real load; migrate Stripe webhooks, OAuth redirect URIs, email links and passkey rpID before cutover; cutover = a DNS repoint (blue/green); ~4-week bake with the old env hot; instant DNS rollback. Gated behind every §12 check incl. pen test + DR drill.',
+    dependsOn: ['SaaS Phase 4 — extract by value/coupling (Payments & CRM/Clinical last)'],
   },
   {
     title: 'SaaS Phase 6 — commercial launch (onboarding, plans, white-label, pilot)', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude',
     value: 7, effort: 8,
     detail: 'Self-serve tenant onboarding (idempotent seeds), plan entitlements + metering, white-label public site/theming, status page, support — and a first external pilot clinic on pooled tenancy with the SLA instrumented. Runs in parallel from Phase 2.',
+    // Per the plan this track runs in parallel FROM Phase 2 — so it gates on
+    // Phase 2, not on the full extraction chain.
+    dependsOn: ['SaaS Phase 2 — tenancy layer (tenant_id + RLS, backfill tenant #1)'],
   },
   {
     title: 'SaaS — DB safety: expand/contract migrations + PITR + DR drills', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
@@ -643,6 +729,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     title: 'SaaS — security & compliance roadmap (CE → DSPT → ISO 27001 → SOC 2)', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude',
     value: 7, effort: 8,
     detail: 'Phased certifications as a sellable trust signal: Cyber Essentials (quick), NHS DSPT, ISO 27001, then SOC 2 Type II. Clinical/PHI zone with per-tenant envelope encryption, zero-trust mTLS, DSAR/erasure per tenant, sub-processor register, UK/EU data residency, annual + pre-cutover pen test. (§10, ADR-011.)',
+    dependsOn: ['SaaS — final sign-off to baseline the platform plan'],
   },
   {
     title: 'SaaS — final sign-off to baseline the platform plan', type: 'TASK', urgency: 'P3', status: 'BLOCKED', needs: 'OWNER',

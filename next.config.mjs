@@ -13,7 +13,7 @@ const csp = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
-  "frame-ancestors 'none'",
+  "frame-ancestors 'self'",
   "form-action 'self'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' https://fonts.gstatic.com data:",
@@ -29,7 +29,7 @@ const securityHeaders = [
   ...(process.env.CSP_DISABLED === 'true' ? [] : [{ key: 'Content-Security-Policy', value: csp }]),
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
-  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=(), payment=(self), interest-cohort=()' },
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
@@ -58,6 +58,49 @@ const nextConfig = {
   compress: true,
   // Tree-shake large client libraries → smaller client bundles.
   experimental: { optimizePackageImports: ['motion'] },
+  // Pin the workspace root to THIS directory. Stray lockfiles above the project
+  // (e.g. /vercel/package-lock.json on Vercel builders, /home/user/… in dev
+  // containers) make Next infer the wrong root. With the wrong root, Turbopack
+  // resolves externalised server packages (@prisma/client, pg, …) as "outside
+  // the project" and emits hash-aliased requires backed by symlinks in
+  // .next/node_modules whose targets escape the project directory
+  // (../../../<dirname>/node_modules/<pkg>). Those symlinks break inside the
+  // Vercel lambda filesystem → "Failed to load external module …: Cannot find
+  // module" → 500 on every DB-touching route.
+  turbopack: { root: import.meta.dirname },
+  // BUNDLE the whole Prisma/pg stack into the compiled server chunks instead of
+  // externalising it. Turbopack loads externalised server packages through
+  // hash-aliased ids (require("@prisma/client-<hash>")) backed by symlinks in
+  // .next/node_modules — and that machinery proved unreliable inside Vercel's
+  // lambda filesystem: the ESM external import of @prisma/extension-accelerate
+  // failed with "Failed to load external module …: Cannot find module" on every
+  // DB-touching route, across cached AND clean builds. Listing the packages in
+  // transpilePackages opts @prisma/client out of Next's DEFAULT external list
+  // and forces all four to compile into the chunks: no external requires, no
+  // symlinks, nothing left to resolve at runtime. The generated client's WASM
+  // query compiler is embedded as base64 JS, so it bundles cleanly.
+  transpilePackages: ['@prisma/client', '@prisma/adapter-pg', '@prisma/extension-accelerate', 'pg'],
+  // Keep non-runtime files OUT of serverless function bundles. lib/og.tsx reads
+  // images/fonts with a dynamic fs.readFileSync(path.join(process.cwd(), …)) that
+  // Next/Turbopack can't statically analyse, so it traces the WHOLE project into
+  // every route that transitively imports it via lib/seo.tsx (~150 functions) —
+  // pulling in 167 MB of public/treatments/ photos, 18 MB of WordPress migration
+  // dumps under scripts/, import/content.json, etc. That bloat (functions near the
+  // 250 MB limit) wedges Vercel's "Deploying outputs" step. None of these are read
+  // at runtime: next/image serves public/ as static assets, the OG renderer falls
+  // back to fetching the image URL when it isn't on disk, and scripts//import/ are
+  // build-time only. Fonts (assets/fonts + node_modules/geist) are NOT excluded,
+  // so OG cards keep their typefaces.
+  outputFileTracingExcludes: {
+    '**': [
+      './public/**/*',
+      './scripts/**/*',
+      './import/**/*',
+      './audit/**/*',
+      './docs/**/*',
+      './*.tsbuildinfo',
+    ],
+  },
   // Exposed to client + server so image paths from /public can be prefixed with
   // the Pages sub-path. next/image does NOT prepend basePath to unoptimized
   // /public images in a static export, so we do it ourselves (see treatment-images).

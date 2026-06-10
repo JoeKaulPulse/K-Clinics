@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   const parsed = consultSchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json(
-      { ok: false, error: parsed.error.errors[0]?.message || 'Validation failed' },
+      { ok: false, error: parsed.error.issues[0]?.message || 'Validation failed' },
       { status: 422 },
     );
   }
