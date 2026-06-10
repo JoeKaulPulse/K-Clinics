@@ -58,6 +58,16 @@ const nextConfig = {
   compress: true,
   // Tree-shake large client libraries → smaller client bundles.
   experimental: { optimizePackageImports: ['motion'] },
+  // Pin the workspace root to THIS directory. Stray lockfiles above the project
+  // (e.g. /vercel/package-lock.json on Vercel builders, /home/user/… in dev
+  // containers) make Next infer the wrong root. With the wrong root, Turbopack
+  // resolves externalised server packages (@prisma/client, pg, …) as "outside
+  // the project" and emits hash-aliased requires backed by symlinks in
+  // .next/node_modules whose targets escape the project directory
+  // (../../../<dirname>/node_modules/<pkg>). Those symlinks break inside the
+  // Vercel lambda filesystem → "Failed to load external module …: Cannot find
+  // module" → 500 on every DB-touching route.
+  turbopack: { root: import.meta.dirname },
   // Prisma 7 + driver adapter must be treated as server-external packages so
   // Next traces them into every serverless function. lib/db.ts loads the pg
   // adapter with a dynamic require('@prisma/adapter-pg'); Turbopack neither
