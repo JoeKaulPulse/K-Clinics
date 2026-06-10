@@ -28,8 +28,21 @@ npm install --no-audit --no-fund
 
 # 2) Playwright Chromium (+ OS deps) for the visual QA harness. Idempotent: the
 #    installer skips browsers that are already present.
+#
+#    Resilience: `--with-deps` shells out to apt-get to install OS libraries,
+#    which needs root and a reachable package mirror. On a container where that
+#    step can't elevate (or the mirror is blocked) it exits non-zero and, under
+#    `set -e`, aborts the whole setup — the recurring "setup script failed"
+#    symptom. Visual QA is optional tooling, never a gate, so a browser-install
+#    hiccup must not fail the session: try with OS deps, fall back to the
+#    browser-only install, and if even that fails, warn and continue.
 echo "[session-start] installing Playwright Chromium…"
-npx playwright install --with-deps chromium
+if ! npx playwright install --with-deps chromium; then
+  echo "[session-start] ⚠ playwright --with-deps failed (likely no root / blocked mirror); retrying browser-only…"
+  if ! npx playwright install chromium; then
+    echo "[session-start] ⚠ Chromium install failed — visual QA (scripts/visual-qa.mjs) is unavailable this session; everything else is unaffected."
+  fi
+fi
 
 # 3) Readiness report. Verifies the environment variables every routine task
 #    (visual QA, audits, healthchecks, board-queue reads) relies on, and probes
