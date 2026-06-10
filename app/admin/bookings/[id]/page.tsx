@@ -136,7 +136,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[1.1fr_1fr]">
+      <div className="mt-8 grid gap-8 lg:grid-cols-[1.1fr_1fr] [&>section]:min-w-0">
         <section>
           <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Client</h2>
           <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
@@ -164,8 +164,8 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
               <ul className="space-y-1.5 text-sm">
                 {b.client.assessments.map((a) => (
                   <li key={a.id} className="flex items-center justify-between gap-3">
-                    <span>{assessmentLabel(a)}</span>
-                    <span className="text-xs text-[var(--color-stone)]">{a.submittedAt ? new Date(a.submittedAt).toLocaleDateString('en-GB') : '—'}</span>
+                    <span className="min-w-0 break-words">{assessmentLabel(a)}</span>
+                    <span className="shrink-0 text-xs text-[var(--color-stone)]">{a.submittedAt ? new Date(a.submittedAt).toLocaleDateString('en-GB') : '—'}</span>
                   </li>
                 ))}
               </ul>
@@ -181,7 +181,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
               href={`/admin/bookings/${b.id}/session`}
               className="flex items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-gold)]/50 bg-[var(--color-bone)] p-5 transition-all hover:border-[var(--color-gold)] hover:shadow-[var(--shadow-soft)]"
             >
-              <span>
+              <span className="min-w-0">
                 <span className="block font-[family-name:var(--font-display)] text-lg">Live appointment session</span>
                 <span className="mt-0.5 block text-sm text-[var(--color-stone)]">
                   {b.finishedAt ? 'Completed — review the walkthrough & timings' : b.startedAt ? 'In progress — rejoin the walkthrough' : 'Run the guided client walkthrough: arrival, consent, treatment, aftercare'}
