@@ -14,6 +14,20 @@ export async function POST(req: Request) {
   const gb = await import('@/lib/google-business');
 
   switch (b.op) {
+    case 'locations': {
+      const r = await gb.listBusinessLocations();
+      return NextResponse.json({ ok: true, ...r });
+    }
+    case 'setLocation': {
+      if (!b.ref || typeof b.ref !== 'string') return NextResponse.json({ ok: false, error: 'Bad request.' }, { status: 400 });
+      const r = await gb.setBusinessLocation(String(b.ref));
+      if (r.ok) {
+        // Import straight away so the owner sees reviews immediately.
+        const synced = await gb.syncGoogleReviews();
+        return NextResponse.json({ ...r, imported: synced.imported });
+      }
+      return NextResponse.json(r, { status: 400 });
+    }
     case 'sync': {
       const r = await gb.syncGoogleReviews();
       return NextResponse.json(r, { status: r.ok ? 200 : 400 });
