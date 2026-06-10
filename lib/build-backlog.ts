@@ -454,6 +454,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Shipped (#479): ReplayList.tsx rewritten to use rrweb.Replayer directly (dynamic import). Adds Play/Pause button + elapsed timer; skipInactive, showWarning/showDebug=false; finish + state-change event listeners for UI sync; setInterval ticker for elapsed time; proper destroy() on unmount. Bypasses rrweb-player entirely.'],
   },
   {
+    title: 'P0 heatmap preview: iframe broken-page icon (sandbox too restrictive)', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(486),
+    value: 7, effort: 1,
+    detail: 'HeatmapViewer.tsx used sandbox="allow-same-origin allow-scripts" on the page-preview iframe. Despite the CSP fix (PR #474 frame-ancestors self), Safari and some Chromium builds showed a broken-page icon because the sandbox prevented the embedded page from fully initialising its browser context. Admin-only preview of the clinic own pages; sandbox provided no meaningful security. Fix: removed sandbox, added pointer-events-none so admins cannot accidentally navigate away by clicking preview links.',
+    notes: ['Shipped (#486): Removed sandbox attribute from HeatmapViewer iframe; added pointer-events-none Tailwind class. tsc clean, one-line diff.'],
+  },
+  {
     title: 'Self-serve reschedule flow + confirmation email', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude', pr: PR(477),
     value: 6, effort: 5,
     detail: 'Clients can reschedule from the booking management page. Owner rules: 48h notice, max 3 free reschedules per booking (4th+ incurs full treatment fee), 24h cancel unchanged.',
