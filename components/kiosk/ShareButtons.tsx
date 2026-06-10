@@ -6,17 +6,26 @@ type Props = {
   resultId?: string | null; // present in the live flow (lets us count shares)
   shareSlug: string;
   skinScore: number;
+  /** v2: the AI's first-person caption — used as the share text when present. */
+  shareCaption?: string | null;
+  /** Clinic Instagram handle appended to the caption. */
+  instagramHandle?: string;
   origin?: string;
 };
 
 // Social share row. Every share also pings the share API (if we have a resultId)
-// to increment the counter. Uses the Web Share API where available.
-export function ShareButtons({ resultId, shareSlug, skinScore, origin }: Props) {
+// to increment the counter — and a successful native share keeps the SHARED
+// claim-gate satisfied. Uses the Web Share API where available; when the device
+// can share files, we attach the branded share-card PNG from /results/[id]/card.
+export function ShareButtons({ resultId, shareSlug, skinScore, shareCaption, instagramHandle = '@kclinics', origin }: Props) {
   const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const base = origin || (typeof window !== 'undefined' ? window.location.origin : '');
   const shareUrl = `${base}/kiosk/result/${shareSlug}`;
-  const shareText = `I got ${skinScore}/10 on my skin score! Check yours at K Clinics → ${shareUrl}`;
+  const shareText = shareCaption
+    ? `${shareCaption} 📍 K Clinics, Islington London ${instagramHandle} ${shareUrl}`
+    : `I got ${skinScore}/10 on my skin score! Check yours at K Clinics → ${shareUrl}`;
 
   function countShare() {
     if (!resultId) return;
@@ -33,14 +42,33 @@ export function ShareButtons({ resultId, shareSlug, skinScore, origin }: Props) 
   }
 
   async function nativeShare() {
-    countShare();
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({ title: 'My K Clinics Skin & Smile Score', text: shareText, url: shareUrl });
-      } catch { /* user cancelled */ }
-    } else {
+    if (typeof navigator === 'undefined' || !navigator.share) {
+      countShare();
       copyLink();
+      return;
     }
+    if (busy) return;
+    setBusy(true);
+    // Default payload: text + url. Upgraded to the branded share-card PNG when
+    // the device supports file sharing (the url stays inside the text).
+    let payload: ShareData = { title: 'My K Clinics Skin & Smile Score', text: shareText, url: shareUrl };
+    if (resultId && typeof navigator.canShare === 'function') {
+      try {
+        const res = await fetch(`/api/kiosk/results/${resultId}/card`);
+        if (res.ok) {
+          const blob = await res.blob();
+          const file = new File([blob], 'kclinics-skin-smile.png', { type: blob.type || 'image/png' });
+          if (navigator.canShare({ files: [file], text: shareText })) {
+            payload = { files: [file], text: shareText };
+          }
+        }
+      } catch { /* card unavailable — share text + link instead */ }
+    }
+    try {
+      await navigator.share(payload);
+      countShare(); // successful share → keeps the SHARED claim-gate
+    } catch { /* user cancelled */ }
+    finally { setBusy(false); }
   }
 
   const btn = 'flex-1 rounded-[var(--radius-md)] px-4 py-3 text-sm font-medium transition';
@@ -66,8 +94,8 @@ export function ShareButtons({ resultId, shareSlug, skinScore, origin }: Props) 
           X / Twitter
         </a>
       </div>
-      <button onClick={nativeShare} className={`${btn} bg-[var(--color-gold)] text-center text-[var(--color-ink)] hover:opacity-90`}>
-        Share to Instagram / more…
+      <button onClick={nativeShare} disabled={busy} className={`${btn} bg-[var(--color-gold)] text-center text-[var(--color-ink)] hover:opacity-90 disabled:opacity-60`}>
+        {busy ? 'Preparing your card…' : 'Share to Instagram / more…'}
       </button>
     </div>
   );
