@@ -4,22 +4,25 @@ import { useCallback, useEffect, useState } from 'react';
 import { MentionInput } from '@/components/admin/MentionInput';
 
 type Ev = { id: string; kind: string; body: string | null; actor: string; createdAt: string };
-type Subtask = { id: string; title: string; status: string; assignee: string; ownerInput: boolean; order: number; completedAt: string | null; completedBy: string | null };
-type DepRef = { id: string; title: string; status: string };
+type Subtask = { id: string; ref: string | null; title: string; status: string; assignee: string; ownerInput: boolean; order: number; completedAt: string | null; completedBy: string | null };
+type DepRef = { id: string; ref: string | null; title: string; status: string };
 type Dependency = { id: string; dependsOn: DepRef };
 type Dependent = { id: string; item: DepRef };
 type Item = {
-  id: string; type: string; title: string; detail: string | null; status: string; urgency: string;
+  id: string; ref: string | null; type: string; title: string; detail: string | null; status: string; urgency: string;
   assignee: string; reportedBy: string | null; pageUrl: string | null; screenshots: string[];
   blocker: string | null; githubUrl: string | null; createdAt: string; updatedAt: string;
   value: number | null; effort: number | null; startedAt: string | null; estCompleteAt: string | null;
   estTokens: number | null; actualTokens: number | null; shippedAt: string | null; closedAt: string | null; closedBy: string | null;
   isPublic: boolean;
   attachments: string[];
-  project: { id: string; slug: string; name: string } | null;
+  project: { id: string; slug: string; name: string; ref: string | null } | null;
   events: Ev[]; subtasks: Subtask[]; dependencies: Dependency[]; dependents: Dependent[];
 };
-type Project = { id: string; slug: string; name: string; summary: string | null; status: string; originIdeaTitle: string | null; total: number; done: number; open: number; openErrors: number; userGated: number; progress: number };
+type Project = { id: string; ref: string | null; slug: string; name: string; summary: string | null; status: string; originIdeaTitle: string | null; total: number; done: number; open: number; openErrors: number; userGated: number; progress: number };
+// A task's reference ID with its title, for any list that needs both (cards,
+// dependency chips, dropdowns) — refs are the searchable/traceable handle.
+const withRef = (r: { ref: string | null; title: string }) => (r.ref ? `${r.ref} · ${r.title}` : r.title);
 const isVideo = (url: string) => /\.(mp4|mov|webm|m4v|3gp)(\?|$)/i.test(url);
 // Count of pending owner-input subtasks on an item → the red "user-gated" badge.
 const gatedCount = (i: Item) => i.subtasks.filter((s) => s.ownerInput && s.status !== 'DONE').length;
@@ -168,7 +171,7 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
   const view2 = items
     .filter((i) => (mine ? i.assignee === me : true))
     .filter((i) => (projectFilter ? i.project?.id === projectFilter : true))
-    .filter((i) => (ql ? `${i.title} ${i.detail || ''} ${i.assignee} ${i.urgency} ${i.type}`.toLowerCase().includes(ql) : true));
+    .filter((i) => (ql ? `${i.ref || ''} ${i.title} ${i.detail || ''} ${i.assignee} ${i.urgency} ${i.type}`.toLowerCase().includes(ql) : true));
   const activeProject = projectFilter ? projects.find((p) => p.id === projectFilter) : null;
   const counts = (k: string) => view2.filter((i) => i.status === k).length;
   const open = items.filter((i) => !['SHIPPED', 'CLOSED', 'CANCELLED'].includes(i.status)).length;
@@ -287,13 +290,14 @@ function Card({ i, onOpen }: { i: Item; onOpen: (i: Item) => void }) {
   return (
     <button onClick={() => onOpen(i)} className="block w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3 text-left hover:border-[var(--color-gold)]">
       <div className="mb-1 flex items-center gap-1.5">
+        {i.ref && <span className="rounded bg-[var(--color-bone)] px-1 py-0.5 font-mono text-[0.6rem] tracking-tight text-[var(--color-stone)]">{i.ref}</span>}
         <span className={`rounded-full px-1.5 py-0.5 text-[0.6rem] font-semibold ${URGENCY[i.urgency]?.cls}`}>{i.urgency}</span>
         <span className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone-soft)]">{i.type}</span>
         {gatedCount(i) > 0 && <span title={`${gatedCount(i)} item(s) need your input`} className="grid h-4 min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[0.6rem] font-bold text-white">{gatedCount(i)}</span>}
         {r != null && <span className="ml-auto text-[0.6rem] text-[var(--color-stone-soft)]">V:E {r}</span>}
       </div>
       <p className="break-words text-sm font-medium leading-snug">{i.title}</p>
-      {i.project && <p className="mt-0.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-gold-deep)]">▣ {i.project.name}</p>}
+      {i.project && <p className="mt-0.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-gold-deep)]">▣ {i.project.ref ? `${i.project.ref} · ` : ''}{i.project.name}</p>}
       <p className="mt-1 flex flex-wrap items-center gap-2 text-[0.65rem] text-[var(--color-stone)]">
         <span>{i.assignee === 'claude' ? '◆ Claude' : i.assignee.split('@')[0]}</span>
         {i.dependencies.some((d) => !['SHIPPED', 'CLOSED'].includes(d.dependsOn.status)) && <span title="Blocked by dependencies">· 🔒 {i.dependencies.filter((d) => !['SHIPPED', 'CLOSED'].includes(d.dependsOn.status)).length}</span>}
@@ -314,7 +318,10 @@ function ProjectsView({ projects, onOpen }: { projects: Project[]; onOpen: (id: 
       {projects.map((p) => (
         <button key={p.id} onClick={() => onOpen(p.id)} className="flex flex-col rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 text-left hover:border-[var(--color-gold)]">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-[family-name:var(--font-display)] text-lg leading-tight">{p.name}</h3>
+            <div>
+              {p.ref && <span className="mb-1 inline-block rounded bg-[var(--color-bone)] px-1.5 py-0.5 font-mono text-[0.65rem] tracking-tight text-[var(--color-stone)]">{p.ref}</span>}
+              <h3 className="font-[family-name:var(--font-display)] text-lg leading-tight">{p.name}</h3>
+            </div>
             {p.userGated > 0 && <span title={`${p.userGated} task(s) need your input`} className="shrink-0 grid h-6 min-w-6 place-items-center rounded-full bg-red-600 px-1.5 text-xs font-bold text-white">{p.userGated}</span>}
           </div>
           {p.summary && <p className="mt-1.5 line-clamp-2 text-sm text-[var(--color-stone)]">{p.summary}</p>}
@@ -355,13 +362,14 @@ function ListView({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => void 
     <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
       <table className="w-full min-w-[760px] text-sm">
         <thead className="bg-[var(--color-porcelain)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]">
-          <tr>{['Task', 'Type', 'Urgency', 'Status', 'Owner', 'V:E', 'Subtasks', 'Time', 'ETA'].map((h) => <th key={h} className="px-3 py-2 font-semibold">{h}</th>)}</tr>
+          <tr>{['ID', 'Task', 'Type', 'Urgency', 'Status', 'Owner', 'V:E', 'Subtasks', 'Time', 'ETA'].map((h) => <th key={h} className="px-3 py-2 font-semibold">{h}</th>)}</tr>
         </thead>
         <tbody>
           {sorted.map((i) => {
             const done = i.subtasks.filter((s) => s.status === 'DONE').length; const d = durMs(i); const r = ve(i);
             return (
               <tr key={i.id} onClick={() => onOpen(i)} className="cursor-pointer border-t border-[var(--color-line)] bg-white hover:bg-[var(--color-bone)]">
+                <td className="px-3 py-2 font-mono text-xs text-[var(--color-stone)]">{i.ref || '—'}</td>
                 <td className="px-3 py-2 font-medium">{i.title}</td>
                 <td className="px-3 py-2 text-xs text-[var(--color-stone)]">{i.type}</td>
                 <td className="px-3 py-2"><span className={`rounded-full px-1.5 py-0.5 text-[0.6rem] font-semibold ${URGENCY[i.urgency]?.cls}`}>{i.urgency}</span></td>
@@ -398,7 +406,7 @@ function TimelineView({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => v
           <button key={i.id} onClick={() => onOpen(i)} className="group block w-full">
             <div className="relative h-6 w-full rounded-full bg-white">
               <div className="absolute top-0 flex h-6 items-center rounded-full px-2 text-[0.6rem] text-white" style={{ left: pct(s), width: `max(8%, ${((e - s) / span) * 100}%)`, background: barColor(i.status) }}>
-                <span className="truncate">{i.title}</span>
+                <span className="truncate">{withRef(i)}</span>
               </div>
             </div>
           </button>
@@ -487,8 +495,10 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="mb-1 flex items-center gap-2">
+              <CopyRef refId={item.ref} />
               <span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${URGENCY[item.urgency]?.cls}`}>{URGENCY[item.urgency]?.label}</span>
               <span className="text-[0.65rem] uppercase tracking-wide text-[var(--color-stone-soft)]">{item.type}</span>
+              {item.project && <span className="text-[0.65rem] uppercase tracking-wide text-[var(--color-gold-deep)]">▣ {item.project.ref ? `${item.project.ref} · ` : ''}{item.project.name}</span>}
               {closed && <span className="rounded-full bg-[var(--color-jade)]/15 px-2 py-0.5 text-[0.65rem] font-medium text-[var(--color-jade)]">Closed ✓</span>}
             </div>
             <h2 className="font-[family-name:var(--font-display)] text-xl">{item.title}</h2>
@@ -574,6 +584,7 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
           {item.subtasks.map((s) => (
             <li key={s.id} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm">
               <input type="checkbox" checked={s.status === 'DONE'} onChange={(e) => setSubStatus(s.id, e.target.checked ? 'DONE' : 'TODO')} className="h-4 w-4 accent-[var(--color-jade)]" />
+              {s.ref && <span className="shrink-0 rounded bg-[var(--color-bone)] px-1 py-0.5 font-mono text-[0.6rem] tracking-tight text-[var(--color-stone)]">{s.ref}</span>}
               <span className={s.status === 'DONE' ? 'text-[var(--color-stone-soft)] line-through' : ''}>{s.title}</span>
               {s.ownerInput && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[0.55rem] font-medium text-amber-800">owner input</span>}
               <span className="ml-auto text-[0.6rem] text-[var(--color-stone-soft)]">{s.assignee === 'claude' ? '◆' : s.assignee.split('@')[0]}{s.status === 'DOING' ? ' · doing' : ''}</span>
@@ -599,7 +610,7 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
               {item.dependencies.map((d) => (
                 <li key={d.id} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm">
                   <span title={d.dependsOn.status}>{depDone(d.dependsOn.status) ? '✅' : '🔒'}</span>
-                  <span className={depDone(d.dependsOn.status) ? 'text-[var(--color-stone-soft)] line-through' : ''}>{d.dependsOn.title}</span>
+                  <span className={depDone(d.dependsOn.status) ? 'text-[var(--color-stone-soft)] line-through' : ''}>{withRef(d.dependsOn)}</span>
                   {canManage && <button onClick={() => removeDep(d.dependsOn.id)} className="ml-auto text-[0.6rem] text-[var(--color-stone)] hover:underline">remove</button>}
                 </li>
               ))}
@@ -608,7 +619,7 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
             {canManage && (
               <select value="" onChange={(e) => { addDep(e.target.value); e.currentTarget.value = ''; }} className="mt-1.5 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-xs">
                 <option value="">+ Add a prerequisite…</option>
-                {allItems.filter((x) => !depIds.has(x.id)).map((x) => <option key={x.id} value={x.id}>{x.title}</option>)}
+                {allItems.filter((x) => !depIds.has(x.id)).map((x) => <option key={x.id} value={x.id}>{withRef(x)}</option>)}
               </select>
             )}
           </div>
@@ -616,7 +627,7 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
             <p className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone-soft)]">Blocks</p>
             <ul className="mt-1 space-y-1">
               {item.dependents.map((d) => (
-                <li key={d.id} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm">{d.item.title}</li>
+                <li key={d.id} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm">{withRef(d.item)}</li>
               ))}
               {item.dependents.length === 0 && <li className="text-xs text-[var(--color-stone-soft)]">Nothing depends on this.</li>}
             </ul>
@@ -633,6 +644,22 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
         <CommentBox id={item.id} onDone={onChange} />
       </div>
     </div>
+  );
+}
+
+/** The item's reference ID (e.g. BLD-12, PRJ-3.1) — click to copy, so it can be
+ *  pasted into search, commits, PRs or reports for tracing. */
+function CopyRef({ refId }: { refId: string | null }) {
+  const [copied, setCopied] = useState(false);
+  if (!refId) return null;
+  return (
+    <button
+      onClick={() => navigator.clipboard?.writeText(refId).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1200); }).catch(() => {})}
+      title="Click to copy the task ID"
+      className="rounded bg-[var(--color-bone)] px-1.5 py-0.5 font-mono text-[0.65rem] tracking-tight text-[var(--color-stone)] hover:bg-[var(--color-ink)] hover:text-[var(--color-porcelain)]"
+    >
+      {copied ? '✓ copied' : refId}
+    </button>
   );
 }
 

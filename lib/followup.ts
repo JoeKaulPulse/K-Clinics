@@ -50,6 +50,9 @@ export async function submitFollowUp(token: string, sentiment: string, comment?:
       },
     });
     taskId = task.id;
+    // Reference ID (TSK-n) for tracing/search; best-effort (backfill self-heals).
+    const { assignTaskRef } = await import('@/lib/task-refs');
+    await assignTaskRef(task.id).catch(() => {});
     await db.interaction.create({ data: { clientId: fu.clientId, type: 'FOLLOW_UP', summary: `Post-treatment concern flagged (${fu.treatmentTitle})`, detail: note || undefined, author: 'system' } }).catch(() => {});
   }
 

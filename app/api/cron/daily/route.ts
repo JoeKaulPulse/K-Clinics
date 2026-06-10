@@ -109,6 +109,10 @@ export async function GET(req: Request) {
     board = await seedBacklog();
     await assignOwnerInputTasks();
     await reconcileBacklog();
+    // Reference IDs for anything just seeded (and the nightly self-heal for both boards).
+    const { ensureBuildRefs, ensureTaskRefs } = await import('@/lib/task-refs');
+    await ensureBuildRefs(board.created > 0);
+    await ensureTaskRefs();
   } catch (e) {
     console.error('[cron] build-board seed failed (continuing):', (e as Error)?.message);
   }

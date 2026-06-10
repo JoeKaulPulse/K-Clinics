@@ -90,14 +90,21 @@ export async function ensureBacklogSeeded(): Promise<void> {
       db.setting.findUnique({ where: { key: 'backlog_seeded_version' } }),
       db.buildItem.count(),
     ]);
+    let seeded = false;
     if (row?.value !== BACKLOG_VERSION || dbCount < BUILD_BACKLOG.length) {
       await seedBacklog();
       await stampSeeded(BACKLOG_VERSION);
+      seeded = true;
     }
     await assignOwnerInputTasks(); // idempotent; ensures blocked tasks have an owner + instructions
     await reconcileBacklog(); // advance shipped items so the board doesn't drift from the backlog
     await wireBacklogDependencies(); // idempotently wire declarative dependencies + block what's waiting
     await syncProjects(); // create Projects + link their items (and the originating idea)
+    // After projects are linked, give everything a reference ID (PRJ-3 → PRJ-3.1
+    // → PRJ-3.1.2; standalone items BLD-n) for tracing/search. Self-healing;
+    // forced when this run seeded new (ref-less) items.
+    const { ensureBuildRefs } = await import('@/lib/task-refs');
+    await ensureBuildRefs(seeded);
   } catch (e) {
     backlogSeedChecked = false; // transient failure — let a later request retry
     console.error('[build] auto-seed backlog failed', e);
@@ -118,6 +125,11 @@ export async function syncProjects(): Promise<void> {
       create: { slug: p.slug, name: p.name, summary: p.summary, originIdeaTitle: p.originIdeaTitle ?? null },
     });
     idBySlug.set(p.slug, proj.id);
+    // Reference ID (PRJ-n) — the root every item/subtask in the project branches from.
+    if (!proj.ref) {
+      const { assignProjectRef } = await import('@/lib/task-refs');
+      await assignProjectRef(proj.id).catch(() => {});
+    }
   }
   // Link backlog items declaring a project, by title.
   for (const it of BUILD_BACKLOG) {
@@ -145,6 +157,8 @@ export async function rebuildBacklog(): Promise<{ created: number; skipped: numb
   const rec = await reconcileBacklog();
   await wireBacklogDependencies();
   await syncProjects();
+  const { ensureBuildRefs } = await import('@/lib/task-refs');
+  await ensureBuildRefs(true); // force: this run may have just seeded new items
   await stampSeeded(BACKLOG_VERSION);
   return { ...seed, reconciled: rec.updated };
 }
@@ -284,13 +298,13 @@ export async function reconcileBacklog(): Promise<{ updated: number }> {
 
 // Shared include so cards/modal always have events, subtasks and dependency edges
 // (each side carries the other item's id/title/status for "blocked by / blocks").
-const DEP_SELECT = { select: { id: true, title: true, status: true } } as const;
+const DEP_SELECT = { select: { id: true, ref: true, title: true, status: true } } as const;
 export const ITEM_INCLUDE = {
   events: { orderBy: { createdAt: 'desc' as const }, take: 30 },
   subtasks: { orderBy: { order: 'asc' as const } },
   dependencies: { include: { dependsOn: DEP_SELECT } },
   dependents: { include: { item: DEP_SELECT } },
-  project: { select: { id: true, slug: true, name: true } },
+  project: { select: { id: true, slug: true, name: true, ref: true } },
 };
 
 export async function listBuildItems() {
@@ -323,7 +337,7 @@ export async function listProjects() {
     const userGated = own.filter((i) => !TERMINAL.includes(i.status) && isUserGated(i)).length;
     const total = own.length;
     return {
-      id: p.id, slug: p.slug, name: p.name, summary: p.summary, status: p.status, originIdeaTitle: p.originIdeaTitle,
+      id: p.id, ref: p.ref, slug: p.slug, name: p.name, summary: p.summary, status: p.status, originIdeaTitle: p.originIdeaTitle,
       total, done, open: total - done, openErrors, userGated,
       progress: total ? Math.round((done / total) * 100) : 0,
     };
@@ -336,7 +350,7 @@ export async function listPublicItems() {
     where: { isPublic: true, status: { notIn: ['CANCELLED'] } },
     orderBy: [{ shippedAt: 'desc' }, { createdAt: 'desc' }],
     select: {
-      id: true, type: true, title: true, detail: true, status: true, urgency: true,
+      id: true, ref: true, type: true, title: true, detail: true, status: true, urgency: true,
       shippedAt: true, estCompleteAt: true, value: true, effort: true,
     },
     take: 100,
@@ -429,6 +443,12 @@ export async function createBuildItem(input: NewBuildItem, actor: string) {
     },
     include: { events: true, subtasks: true },
   });
+  // Reference ID (BLD-n) for tracing/search. Best-effort: the item exists either
+  // way, and the board-load backfill self-heals any miss.
+  try {
+    const { assignBuildItemRef } = await import('@/lib/task-refs');
+    item.ref = (await assignBuildItemRef(item.id)) ?? item.ref;
+  } catch (e) { console.error('[build] ref assignment failed', e); }
   // The item lives on the board — that's the source of truth and it needs no
   // GitHub call to be tracked or actioned. Mirroring to a GitHub issue is opt-in
   // (default OFF) and only happens for notable items when not rate-limited — so
@@ -576,8 +596,15 @@ export async function addSubtask(itemId: string, title: string, opts: { assignee
   const t = title.trim().slice(0, 200);
   if (!t) return null;
   const last = await db.buildSubtask.findFirst({ where: { itemId }, orderBy: { order: 'desc' }, select: { order: true } });
-  await db.buildSubtask.create({ data: { itemId, title: t, assignee: opts.assignee || 'claude', ownerInput: !!opts.ownerInput, order: (last?.order ?? 0) + 1 } });
-  await db.buildEvent.create({ data: { itemId, kind: 'subtask', actor, body: `Added subtask “${t}”${opts.ownerInput ? ' (owner input)' : ''}` } });
+  const sub = await db.buildSubtask.create({ data: { itemId, title: t, assignee: opts.assignee || 'claude', ownerInput: !!opts.ownerInput, order: (last?.order ?? 0) + 1 } });
+  // Reference ID branching from the parent item (BLD-7 → BLD-7.2). Best-effort:
+  // the board-load backfill self-heals any miss.
+  let subRef: string | null = null;
+  try {
+    const { assignBuildSubtaskRef } = await import('@/lib/task-refs');
+    subRef = await assignBuildSubtaskRef(sub.id);
+  } catch (e) { console.error('[build] subtask ref assignment failed', e); }
+  await db.buildEvent.create({ data: { itemId, kind: 'subtask', actor, body: `Added subtask ${subRef ? `${subRef} ` : ''}“${t}”${opts.ownerInput ? ' (owner input)' : ''}` } });
   return db.buildItem.findUnique({ where: { id: itemId }, include: withDetail });
 }
 
@@ -643,11 +670,29 @@ export async function reopenItem(id: string, reason: string | undefined, actor: 
 }
 
 // ── GitHub bridge ────────────────────────────────────────────────────────────
-// Config comes from env (GITHUB_TOKEN + GITHUB_REPO) or, for self-serve setup,
-// from an encrypted connection saved in admin (provider 'github'; the PAT lives
-// in tokens.access, the "owner/repo" in accountRef).
+// Identity preference: (1) a dedicated GitHub App installation (lib/github-app.ts
+// — its own rate limit, so board mirroring/wakes never contend with dev PR work),
+// then (2) env GITHUB_TOKEN + GITHUB_REPO, then (3) the encrypted connection
+// saved in admin (provider 'github'; PAT in tokens.access, "owner/repo" in
+// accountRef).
+async function savedRepo(): Promise<string | null> {
+  try {
+    const { getConnection } = await import('@/lib/oauth-connections');
+    return (await getConnection('github'))?.accountRef ?? null;
+  } catch { return null; }
+}
+
 export async function getGithubConfig(): Promise<{ token: string; repo: string } | null> {
-  const envToken = process.env.GITHUB_TOKEN, envRepo = process.env.GITHUB_REPO;
+  const envRepo = process.env.GITHUB_REPO;
+  try {
+    const { githubAppConfigured, githubAppToken } = await import('@/lib/github-app');
+    if (githubAppConfigured()) {
+      const repo = envRepo || (await savedRepo());
+      const token = repo ? await githubAppToken() : null;
+      if (token && repo) return { token, repo };
+    }
+  } catch { /* fall through to PAT paths */ }
+  const envToken = process.env.GITHUB_TOKEN;
   if (envToken && envRepo) return { token: envToken, repo: envRepo };
   try {
     const { getConnection } = await import('@/lib/oauth-connections');
@@ -787,7 +832,7 @@ export async function pushToGithub(id: string, actor: string) {
   const res = await fetch(`https://api.github.com/repos/${repo}/issues`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title: `[${item.urgency}] ${item.title}`, body, labels: ['claude', item.type.toLowerCase()] }),
+    body: JSON.stringify({ title: `${item.ref ? `[${item.ref}] ` : ''}[${item.urgency}] ${item.title}`, body, labels: ['claude', item.type.toLowerCase()] }),
   });
   await noteGhResponse(res);
   if (!res.ok) return item;
@@ -809,7 +854,7 @@ const veRank = (i: { value: number | null; effort: number | null }) => (i.value 
 export async function pendingWork() {
   const open = await db.buildItem.findMany({
     where: { status: { in: ['TRIAGE', 'IN_PROGRESS', 'IN_REVIEW'] } },
-    select: { id: true, title: true, type: true, urgency: true, status: true, assignee: true, value: true, effort: true, reportedBy: true, createdAt: true },
+    select: { id: true, ref: true, title: true, type: true, urgency: true, status: true, assignee: true, value: true, effort: true, reportedBy: true, createdAt: true },
   });
   const mine = open.filter((i) => i.assignee === 'claude');
   const byPriority = (a: typeof open[number], b: typeof open[number]) => a.urgency.localeCompare(b.urgency) || veRank(b) - veRank(a) || +new Date(a.createdAt) - +new Date(b.createdAt);
@@ -845,12 +890,12 @@ export async function routineQueue() {
   const serialize = (i: typeof items[number]) => {
     const blockedBy = i.dependencies.filter((d) => !DONE_STATES.includes(d.dependsOn.status)).map((d) => d.dependsOn.title);
     return {
-      id: i.id, title: i.title, type: i.type, urgency: i.urgency, status: i.status,
+      id: i.id, ref: i.ref, title: i.title, type: i.type, urgency: i.urgency, status: i.status,
       value: i.value, effort: i.effort, ve: veRank(i) || null,
       detail: i.detail, pageUrl: i.pageUrl, screenshots: i.screenshots, attachments: i.attachments,
       reportedBy: i.reportedBy, githubUrl: i.githubUrl, updatedAt: i.updatedAt,
       blockedBy,
-      openSubtasks: i.subtasks.filter((s) => s.status !== 'DONE').map((s) => ({ title: s.title, status: s.status, assignee: s.assignee, ownerInput: s.ownerInput })),
+      openSubtasks: i.subtasks.filter((s) => s.status !== 'DONE').map((s) => ({ ref: s.ref, title: s.title, status: s.status, assignee: s.assignee, ownerInput: s.ownerInput })),
       recentComments: i.events.map((e) => ({ actor: e.actor, body: e.body, at: e.createdAt })),
     };
   };
@@ -860,7 +905,7 @@ export async function routineQueue() {
   const [continueAt, lastWake] = await Promise.all([getRaw('build_continue_requested_at'), getRaw('build_continue_last_wake_at')]);
   return {
     generatedAt: new Date().toISOString(),
-    guidance: 'Work the highest item in `actionable` first (already ordered by urgency then value:effort). Skip owner-gated items (those waiting on an owner-input subtask you cannot do yourself). Build end-to-end, run `npx tsc --noEmit` and `npm run build`, open a PR on a claude/ branch (no "Closes"), and update lib/build-backlog.ts.',
+    guidance: 'Work the highest item in `actionable` first (already ordered by urgency then value:effort). Skip owner-gated items (those waiting on an owner-input subtask you cannot do yourself). Build end-to-end, run `npx tsc --noEmit` and `npm run build`, open a PR on a claude/ branch (no "Closes"), and update lib/build-backlog.ts. Cite each item’s reference ID (`ref`, e.g. BLD-12 / PRJ-3.1) in commit messages, PR titles/bodies and reports so the work is traceable end-to-end.',
     continueRequestedAt: continueAt,
     lastWakeAt: lastWake,
     counts: { actionable: actionable.length, blocked: blocked.length, awaitingSignoff: await db.buildItem.count({ where: { status: 'SHIPPED' } }) },
@@ -963,8 +1008,8 @@ async function fireRoutine(text: string): Promise<{ ok: boolean; sessionUrl?: st
  *  falls back to the governed GitHub @claude comment only if no routine is set. */
 export async function triggerClaude(message: string, itemId: string): Promise<boolean> {
   await setRaw('build_continue_requested_at', new Date().toISOString());
-  const item = await db.buildItem.findUnique({ where: { id: itemId }, select: { title: true, githubNumber: true } });
-  const text = `${message}${item ? `\n\nWork item: “${item.title}”.` : ''}\nContinue per the prioritised K-Clinics Build & Issues backlog.\n\n${queueHint()}`;
+  const item = await db.buildItem.findUnique({ where: { id: itemId }, select: { ref: true, title: true, githubNumber: true } });
+  const text = `${message}${item ? `\n\nWork item: ${item.ref ? `${item.ref} ` : ''}“${item.title}”.` : ''}\nContinue per the prioritised K-Clinics Build & Issues backlog.\n\n${queueHint()}`;
 
   if (routineConfigured()) {
     await setRaw('build_continue_last_wake_at', String(Date.now()));
