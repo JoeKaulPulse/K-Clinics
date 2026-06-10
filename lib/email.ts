@@ -559,6 +559,33 @@ export function tmplBookingCancelled(o: { firstName: string; treatment: string; 
   });
 }
 
+export function tmplBookingRescheduled(o: {
+  firstName: string;
+  treatment: string;
+  oldStart: Date;
+  newStart: Date;
+  feeCharged?: number;
+  reschedulesLeft: number;
+}) {
+  const fee = o.feeCharged
+    ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">As you have used your three free reschedules, a fee of <strong>${fmtMoney(o.feeCharged)}</strong> has been charged to your card on file.</p>`
+    : o.reschedulesLeft > 0
+    ? `<p style="font-size:13px;color:#91766e;">You have <strong>${o.reschedulesLeft}</strong> free reschedule${o.reschedulesLeft === 1 ? '' : 's'} remaining on this booking.</p>`
+    : `<p style="font-size:13px;color:#91766e;">This was your last free reschedule. Any further changes will incur the full treatment fee.</p>`;
+  return emailShell({
+    preheader: `Your ${o.treatment} appointment has been rescheduled`,
+    body: `<h1 style="font-size:24px;margin:0 0 16px;">Appointment rescheduled</h1>
+    <p>Hi ${escape(o.firstName)}, your <strong>${escape(o.treatment)}</strong> appointment has been moved.</p>
+    <table style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#3d352f;line-height:1.9;margin:16px 0;">
+      <tr><td style="color:#91766e;padding-right:16px;">Was</td><td><s>${fmtWhen(o.oldStart)}</s></td></tr>
+      <tr><td style="color:#91766e;padding-right:16px;">Now</td><td><strong>${fmtWhen(o.newStart)}</strong></td></tr>
+    </table>
+    ${fee}
+    <p style="font-size:13px;color:#91766e;">To cancel or reschedule again, visit your booking management page or call us on 020 8050 0750.</p>
+    <p style="margin:24px 0 0;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
 export function tmplChargeReceipt(o: { firstName: string; treatment: string; pricePence: number; late?: boolean; vat?: { netPence: number; vatPence: number; ratePct: number } | null }) {
   const vatRows = o.vat
     ? `<tr><td style="color:#91766e;padding-right:20px;">Net</td><td>${fmtMoney(o.vat.netPence)}</td></tr>

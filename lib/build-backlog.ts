@@ -444,11 +444,13 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['All three shipped, opt-in (default OFF): NPS survey (lib/nps.ts + /nps/[token] + /admin/nps) and post-course check-in fire on booking completion; membership renewal runs in lib/automations.ts. No-show rebooking note also wired on the no-show action.'],
   },
   {
-    title: 'Self-serve reschedule flow + confirmation email', type: 'TASK', urgency: 'P3', status: 'BLOCKED', assignee: 'claude',
-    value: 6, effort: 5, needs: 'OWNER',
-    ask: 'Decide whether clients can reschedule their own appointments online, or whether it stays staff-handled by phone. If self-serve, tell me your rules — e.g. minimum notice (24/48h), how many times a booking may be moved, and whether a deposit transfers. Reply with your choice and rules and I’ll build it, including the reschedule-confirmation email.',
-    detail: 'There is no self-serve reschedule today (clients are pointed to call). Building the reschedule action is a prerequisite for a reschedule-confirmation email.',
-    notes: ['Question for the owner: do you want clients to self-reschedule online, or keep it staff-handled? Blocked pending that decision.'],
+    title: 'Self-serve reschedule flow + confirmation email', type: 'TASK', urgency: 'P3', status: 'IN_PROGRESS', assignee: 'claude',
+    value: 6, effort: 5,
+    detail: 'Clients can reschedule from the booking management page. Owner rules: 48h notice, max 3 free reschedules per booking (4th+ incurs full treatment fee), 24h cancel unchanged.',
+    notes: [
+      'Owner rules confirmed (2026-06-09): 48h to reschedule, 24h to cancel, 3 reschedules allowed before full-price charge applies.',
+      'Built: Booking.rescheduleCount (schema), rescheduleBooking()+isWithin48h() in lib/booking-actions.ts, POST /api/booking/reschedule, slot-picker UI in ManageClient, tmplBookingRescheduled email, ToS updated in lib/info-pages.ts.',
+    ],
   },
   {
     title: 'Resend domains: send via mail.kclinics.co.uk, reply via reply.mail.kclinics.co.uk', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(373),

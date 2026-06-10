@@ -7,11 +7,14 @@ import {
   tmplBookingCancelled,
   tmplChargeReceipt,
   tmplPaymentActionRequired,
+  tmplBookingRescheduled,
 } from './email';
 import { logAudit } from './audit';
 import type { Booking, Client } from '@prisma/client';
 
 const CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
+const RESCHEDULE_WINDOW_MS = 48 * 60 * 60 * 1000;
+const MAX_FREE_RESCHEDULES = 3;
 
 type BookingWithClient = Booking & { client: Client };
 
@@ -273,4 +276,107 @@ export async function cancelBooking(
   });
 
   return { ok: true, charged, requiresAction, feeFailed };
+}
+
+export function isWithin48h(b: Pick<Booking, 'startAt'>): boolean {
+  return b.startAt.getTime() - Date.now() < RESCHEDULE_WINDOW_MS;
+}
+
+/**
+ * Reschedule a booking to a new start time.
+ * Rules:
+ * - Must give >=48h notice from the CURRENT appointment time
+ * - First 3 reschedules are free; 4th+ charges the full booking price
+ * - New startAt must be at least 48h in the future
+ */
+export async function rescheduleBooking(
+  bookingId: string,
+  newStartISO: string,
+  opts: { by: string; reason?: string },
+): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; error?: string }> {
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
+  if (!booking) return { ok: false, error: 'Booking not found.' };
+  if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(booking.status)) {
+    return { ok: false, error: 'This booking can no longer be rescheduled.' };
+  }
+  if (isWithin48h(booking)) {
+    return { ok: false, error: "Reschedules require at least 48 hours' notice. Please call us on 020 8050 0750 if you need to make a late change." };
+  }
+
+  const newStart = new Date(newStartISO);
+  if (isNaN(newStart.getTime())) return { ok: false, error: 'Invalid date.' };
+  if (newStart.getTime() <= Date.now()) return { ok: false, error: 'The new appointment time must be in the future.' };
+  if (newStart.getTime() - Date.now() < RESCHEDULE_WINDOW_MS) {
+    return { ok: false, error: 'The new appointment must be at least 48 hours from now.' };
+  }
+
+  const newEnd = new Date(newStart.getTime() + booking.durationMin * 60 * 1000);
+
+  // The chosen time must be a genuinely free, in-hours slot — the same guard every
+  // booking-creation path uses. Without this a crafted POST could move a booking
+  // outside opening hours or on top of another appointment (the UI only offers
+  // valid slots, but the API must not trust the client).
+  const { isSlotFree } = await import('@/lib/availability');
+  if (!(await isSlotFree(newStartISO, booking.durationMin, booking.treatmentSlug))) {
+    return { ok: false, error: 'That time is no longer available. Please choose another slot.' };
+  }
+
+  let charged = 0;
+  let requiresAction = false;
+
+  // 4th+ reschedule incurs the full booking price.
+  if (booking.rescheduleCount >= MAX_FREE_RESCHEDULES && booking.pricePence > 0) {
+    const res = await chargeBooking(booking, booking.pricePence, { late: false });
+    if (!res.ok) {
+      if (res.requiresAction) requiresAction = true;
+      else return { ok: false, error: res.error || 'Payment required for this reschedule could not be processed.' };
+    } else {
+      charged = booking.pricePence;
+    }
+  }
+
+  await db.booking.update({
+    where: { id: booking.id },
+    data: { startAt: newStart, endAt: newEnd, rescheduleCount: { increment: 1 } },
+  });
+
+  await db.interaction.create({
+    data: {
+      clientId: booking.clientId,
+      type: 'APPOINTMENT',
+      summary: `Rescheduled ${booking.treatmentTitle} from ${booking.startAt.toLocaleString('en-GB')} to ${newStart.toLocaleString('en-GB')}${charged ? ` — charged £${(charged / 100).toFixed(2)} (reschedule ${booking.rescheduleCount + 1})` : ''}`,
+      author: opts.by,
+    },
+  });
+
+  await logAudit({
+    action: 'BOOKING_RESCHEDULED',
+    actor: opts.by,
+    bookingId: booking.id,
+    clientId: booking.clientId,
+    summary: `Rescheduled to ${newStart.toISOString()}`,
+    meta: { from: booking.startAt.toISOString(), to: newStart.toISOString(), rescheduleCount: booking.rescheduleCount + 1 },
+  }).catch(() => {});
+
+  // Update the shared clinic calendar entry to the new time (best-effort). The
+  // CalDAV event is keyed by booking id, so re-pushing PUTs the moved times over
+  // the existing entry — we must NOT remove it (that would drop the appointment
+  // from the clinic calendar entirely).
+  import('@/lib/hostinger-calendar').then((m) => m.pushBooking(booking.id)).catch(() => {});
+
+  // Confirmation email (best-effort).
+  await sendEmail({
+    to: booking.client.email,
+    subject: `Appointment rescheduled — ${booking.treatmentTitle}`,
+    html: tmplBookingRescheduled({
+      firstName: booking.client.firstName,
+      treatment: booking.treatmentTitle,
+      oldStart: booking.startAt,
+      newStart,
+      feeCharged: charged || undefined,
+      reschedulesLeft: Math.max(0, MAX_FREE_RESCHEDULES - (booking.rescheduleCount + 1)),
+    }),
+  }).catch(() => {});
+
+  return { ok: true, charged, requiresAction };
 }
