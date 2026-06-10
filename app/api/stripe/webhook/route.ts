@@ -46,11 +46,21 @@ export async function POST(req: Request) {
       case 'charge.refunded': {
         // A refund issued directly in the Stripe dashboard: sync the booking's
         // refunded amount and run the same side-effects as refundBooking so
-        // loyalty, Xero and GA4 all stay in sync. Idempotent: skips any delta
-        // already recorded.
+        // loyalty, Xero and GA4 all stay in sync.
+        //
+        // Idempotency / no double-counting: refunds raised in-app via
+        // refundBooking() carry metadata.bookingId and already run every
+        // side-effect themselves. Such refunds still fire this webhook (and may
+        // race ahead of refundBooking's own DB write), so we skip the whole
+        // handler when any refund on the charge originated in-app — otherwise
+        // we'd raise a SECOND Xero credit note and a SECOND GA4 refund event.
+        // For genuine dashboard refunds we advance refundedPence with a
+        // compare-and-swap; if it's already at the target (webhook retry or a
+        // concurrent writer) the update no-ops and we skip the side-effects.
         const charge = event.data.object;
         const piId = typeof charge.payment_intent === 'string' ? charge.payment_intent : null;
-        if (piId) {
+        const originatedInApp = (charge.refunds?.data ?? []).some((r) => Boolean(r.metadata?.bookingId));
+        if (piId && !originatedInApp) {
           try {
             const booking = await db.booking.findFirst({ where: { chargePaymentIntentId: piId }, include: { client: true } });
             if (booking) {
@@ -59,11 +69,18 @@ export async function POST(req: Request) {
               const delta = totalRefundedPence - alreadyRecorded;
               if (delta > 0) {
                 const fully = totalRefundedPence >= (booking.chargedPence ?? 0);
-                await db.booking.update({ where: { id: booking.id }, data: { refundedPence: totalRefundedPence, refundedAt: new Date() } });
-                if (fully) { try { const { refundBookingPoints } = await import('@/lib/client-loyalty'); await refundBookingPoints(booking.id); } catch { /* non-fatal */ } }
-                try { const { sendRefund } = await import('@/lib/conversions'); await sendRefund({ bookingId: booking.id, valuePence: delta, clientId: booking.clientId }); } catch { /* non-fatal */ }
-                try { const { pushBookingRefundToXero } = await import('@/lib/xero'); await pushBookingRefundToXero(booking.id, delta, 'Stripe dashboard refund'); } catch { /* non-fatal */ }
-                await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Stripe-dashboard refund synced: £${(delta / 100).toFixed(2)} for ${booking.treatmentTitle}`, author: 'stripe-webhook' } }).catch(() => {});
+                // CAS: only the writer that advances refundedPence past the value
+                // it observed runs the side-effects. Guards webhook redeliveries.
+                const claimed = await db.booking.updateMany({
+                  where: { id: booking.id, refundedPence: booking.refundedPence },
+                  data: { refundedPence: totalRefundedPence, refundedAt: new Date() },
+                });
+                if (claimed.count > 0) {
+                  if (fully) { try { const { refundBookingPoints } = await import('@/lib/client-loyalty'); await refundBookingPoints(booking.id); } catch { /* non-fatal */ } }
+                  try { const { sendRefund } = await import('@/lib/conversions'); await sendRefund({ bookingId: booking.id, valuePence: delta, clientId: booking.clientId }); } catch { /* non-fatal */ }
+                  try { const { pushBookingRefundToXero } = await import('@/lib/xero'); await pushBookingRefundToXero(booking.id, delta, 'Stripe dashboard refund'); } catch { /* non-fatal */ }
+                  await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Stripe-dashboard refund synced: £${(delta / 100).toFixed(2)} for ${booking.treatmentTitle}`, author: 'stripe-webhook' } }).catch(() => {});
+                }
               }
             }
           } catch (e) { console.error('[webhook] charge.refunded sync failed:', (e as Error)?.message); }
