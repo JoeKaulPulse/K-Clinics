@@ -129,6 +129,20 @@ export function AdminShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => { setMobileOpen(false); }, [pathname]); // close on navigation
 
+  // Top-bar profile dropdown (account · language · sign out).
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { setProfileOpen(false); }, [pathname]); // close on navigation
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => { if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setProfileOpen(false); };
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onClick); document.removeEventListener('keydown', onKey); };
+  }, []);
+  // Initials for the avatar, derived from the signed-in email local-part.
+  const initials = (user || '').replace(/@.*/, '').split(/[.\-_ ]+/).filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase()).join('') || 'K';
+
   const renderLink = (n: NavItem) => (
     <Link
       key={n.href}
@@ -161,113 +175,128 @@ export function AdminShell({
     router.refresh();
   }
 
+  // Brand lockup — shared by the desktop sidebar and the mobile drawer header.
+  const brand = (
+    <div className="inline-flex flex-col items-center text-[var(--color-ink)]">
+      <span className="block h-9 w-[1.35rem]"><KMark /></span>
+      <span className="mt-3 block h-[0.62rem] w-[6.75rem]"><ClinicsWordmark /></span>
+      <p className="mt-3 pl-[0.3em] text-center text-[0.66rem] font-medium uppercase tracking-[0.3em] text-[var(--color-stone)]">
+        {locationLabel}
+        <span className="text-[var(--color-stone-soft)]"> · CRM</span>
+      </p>
+    </div>
+  );
+
+  // Collapsible grouped navigation — shared by the desktop sidebar and the
+  // mobile drawer so they can never drift.
+  const navTree = (
+    <>
+      {groups.map((g, gi) => {
+        const key = groupKey(g, gi);
+        const open = openGroups.has(key);
+        const pending = groupBadge(g.items);
+        return (
+          <div key={key}>
+            <button
+              onClick={() => toggleGroup(key)}
+              aria-expanded={open}
+              className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-4 pb-1 pt-4 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)] transition-colors hover:text-[var(--color-stone)]"
+            >
+              <span className="text-[0.7rem] leading-none text-[var(--color-stone)]">{open ? '▾' : '▸'}</span>
+              <GroupIcon name={g.icon} />
+              <span className="flex-1 text-left">{g.heading ? t(g.heading) : ''}</span>
+              {!open && pending > 0 && (
+                <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[0.6rem] font-semibold text-amber-950">{pending}</span>
+              )}
+            </button>
+            {open && <div className="flex flex-col gap-0.5">{g.items.map(renderLink)}</div>}
+          </div>
+        );
+      })}
+    </>
+  );
+
   return (
     <I18nProvider locale={locale}>
-      <div className="flex min-h-screen flex-col lg:flex-row">
-        <aside className="flex shrink-0 flex-col gap-1 border-b border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 lg:w-64 lg:border-b-0 lg:border-r lg:p-6">
-          <div className="mb-7 flex justify-center px-2">
-            <div className="inline-flex flex-col items-center text-[var(--color-ink)]">
-              <span className="block h-9 w-[1.35rem]"><KMark /></span>
-              <span className="mt-3 block h-[0.62rem] w-[6.75rem]"><ClinicsWordmark /></span>
-              <p className="mt-3 pl-[0.3em] text-center text-[0.66rem] font-medium uppercase tracking-[0.3em] text-[var(--color-stone)]">
-                {locationLabel}
-                <span className="text-[var(--color-stone-soft)]"> · CRM</span>
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 px-2">
-            <div data-tour="admin-search" className="min-w-0 flex-1"><GlobalSearch placeholder={t('shell.search')} pages={navPages} /></div>
-            <NotificationBell />
-          </div>
-
-          {/* Mobile: a menu button opening a full grouped drawer (incl. account). */}
-          <div className="lg:hidden">
-            <button
-              onClick={() => setMobileOpen((o) => !o)}
-              aria-expanded={mobileOpen}
-              className="mt-2 flex w-full items-center justify-between rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-medium text-[var(--color-ink)]"
-            >
-              <span>{t('shell.menu')}</span>
-              <span aria-hidden className="text-lg leading-none">{mobileOpen ? '✕' : '☰'}</span>
-            </button>
-            {mobileOpen && (
-              <div className="mt-2 max-h-[72vh] overflow-y-auto rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-2">
-                {groups.map((g, gi) => (
-                  <div key={groupKey(g, gi)} className="mb-2">
-                    {g.heading && <p className="flex items-center gap-1.5 px-3 pb-1 pt-2 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)]"><GroupIcon name={g.icon} />{t(g.heading)}</p>}
-                    <div className="flex flex-col gap-0.5">{g.items.map(renderLink)}</div>
-                  </div>
-                ))}
-                {/* Account: language · profile · sign out */}
-                <div className="mt-2 border-t border-[var(--color-line)] px-2 pt-3">
-                  <label className="mb-3 block">
-                    <span className="mb-1 block text-[0.65rem] uppercase tracking-[0.14em] text-[var(--color-stone)]">{t('shell.language')}</span>
-                    <select value={locale} onChange={(e) => changeLanguage(e.target.value as Locale)} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]">
-                      {LOCALES.map((l) => <option key={l} value={l}>{LOCALE_LABELS[l]}</option>)}
-                    </select>
-                  </label>
-                  {user && <p className="text-xs text-[var(--color-stone)]">{user}</p>}
-                  <div className="mt-2 flex items-center gap-3">
-                    <Link href="/admin/profile" className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">{t('shell.profile')}</Link>
-                    <span className="text-[var(--color-line)]">·</span>
-                    <button onClick={signOut} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">{t('shell.signOut')}</button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Desktop: collapsible sections (collapsed by default) */}
-          <nav data-tour="admin-nav" className="hidden flex-col gap-0.5 lg:flex">
-            {groups.map((g, gi) => {
-              const key = groupKey(g, gi);
-              const open = openGroups.has(key);
-              const pending = groupBadge(g.items);
-              return (
-                <div key={key}>
-                  <button
-                    onClick={() => toggleGroup(key)}
-                    aria-expanded={open}
-                    className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-4 pb-1 pt-4 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)] transition-colors hover:text-[var(--color-stone)]"
-                  >
-                    <span className="text-[0.7rem] leading-none text-[var(--color-stone)]">{open ? '▾' : '▸'}</span>
-                    <GroupIcon name={g.icon} />
-                    <span className="flex-1 text-left">{g.heading ? t(g.heading) : ''}</span>
-                    {!open && pending > 0 && (
-                      <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[0.6rem] font-semibold text-amber-950">{pending}</span>
-                    )}
-                  </button>
-                  {open && <div className="flex flex-col gap-0.5">{g.items.map(renderLink)}</div>}
-                </div>
-              );
-            })}
-          </nav>
-          <div className="mt-auto hidden border-t border-[var(--color-line)] pt-4 lg:block">
-            {/* Language switcher */}
-            <label className="mb-3 block px-2">
-              <span className="mb-1 block text-[0.65rem] uppercase tracking-[0.14em] text-[var(--color-stone)]">{t('shell.language')}</span>
-              <select
-                value={locale}
-                onChange={(e) => changeLanguage(e.target.value as Locale)}
-                className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]"
-              >
-                {LOCALES.map((l) => <option key={l} value={l}>{LOCALE_LABELS[l]}</option>)}
-              </select>
-            </label>
-            {user && <p className="px-2 text-xs text-[var(--color-stone)]">{user}</p>}
-            <div className="mt-2 flex items-center gap-3 px-2">
-              <Link href="/admin/profile" className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">{t('shell.profile')}</Link>
-              <span className="text-[var(--color-line)]">·</span>
-              <button onClick={signOut} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">
-                {t('shell.signOut')}
-              </button>
-            </div>
-          </div>
+      <div className="flex min-h-screen bg-[var(--color-bone)]">
+        {/* Desktop sidebar — navigation only; account moved to the top bar. */}
+        <aside className="hidden shrink-0 flex-col border-r border-[var(--color-line)] bg-[var(--color-porcelain)] lg:flex lg:w-64">
+          <div className="flex justify-center px-6 pb-5 pt-6">{brand}</div>
+          <nav data-tour="admin-nav" className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-4 pb-6">{navTree}</nav>
         </aside>
-        <main className="flex-1 p-5 md:p-8 lg:p-10">
-          {allowed.has('dayclose.run') && <CloseDownReminder />}
-          {children}
-        </main>
+
+        {/* Mobile drawer — off-canvas, opened from the top-bar hamburger. */}
+        {mobileOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
+            <div className="absolute inset-0 bg-[var(--color-ink)]/45 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
+            <aside className="absolute inset-y-0 left-0 flex w-[82%] max-w-xs flex-col bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)]">
+              <div className="flex items-center justify-between border-b border-[var(--color-line)] px-5 py-4">
+                {brand}
+                <button onClick={() => setMobileOpen(false)} aria-label="Close menu" className="flex h-10 w-10 items-center justify-center rounded-full text-[var(--color-stone)] transition-colors hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)]">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><path d="m3 3 10 10M13 3 3 13" /></svg>
+                </button>
+              </div>
+              <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-6">{navTree}</nav>
+            </aside>
+          </div>
+        )}
+
+        {/* Main column — sticky top bar (search · notifications · profile). */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-[var(--color-line)] bg-[var(--color-porcelain)]/85 px-3 backdrop-blur md:gap-3 md:px-6">
+            <button
+              onClick={() => setMobileOpen(true)}
+              aria-label={t('shell.menu')}
+              aria-expanded={mobileOpen}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-ink)] transition-colors hover:bg-[var(--color-bone)] lg:hidden"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><path d="M3 5h14M3 10h14M3 15h14" /></svg>
+            </button>
+            <span className="block h-6 w-[0.9rem] shrink-0 text-[var(--color-ink)] lg:hidden"><KMark /></span>
+            <div data-tour="admin-search" className="min-w-0 max-w-xl flex-1"><GlobalSearch placeholder={t('shell.search')} pages={navPages} /></div>
+            <div className="flex shrink-0 items-center gap-1 md:gap-2">
+              <NotificationBell />
+              <div ref={profileRef} className="relative">
+                <button
+                  onClick={() => setProfileOpen((o) => !o)}
+                  aria-haspopup="menu"
+                  aria-expanded={profileOpen}
+                  className="flex items-center gap-2 rounded-full p-1 transition-colors hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] md:pr-2.5"
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-porcelain)]">{initials}</span>
+                  <span className="hidden max-w-[10rem] truncate text-sm text-[var(--color-ink-soft)] md:block">{user}</span>
+                  <svg className={`hidden text-[var(--color-stone)] transition-transform md:block ${profileOpen ? 'rotate-180' : ''}`} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m4 6 4 4 4-4" /></svg>
+                </button>
+                {profileOpen && (
+                  <div role="menu" className="absolute right-0 z-40 mt-2 w-64 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white shadow-[var(--shadow-lift)]">
+                    <div className="border-b border-[var(--color-line)] bg-[var(--color-bone)]/60 px-4 py-3">
+                      <p className="text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)]">Signed in as</p>
+                      {user && <p className="mt-0.5 truncate text-sm font-medium text-[var(--color-ink)]">{user}</p>}
+                    </div>
+                    <Link href="/admin/profile" role="menuitem" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-bone)]">
+                      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="text-[var(--color-stone)]"><circle cx="8" cy="5.5" r="2.5" /><path d="M3.5 13c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" /></svg>
+                      {t('shell.profile')}
+                    </Link>
+                    <label className="block px-4 py-2.5">
+                      <span className="mb-1 block text-[0.6rem] uppercase tracking-[0.14em] text-[var(--color-stone)]">{t('shell.language')}</span>
+                      <select value={locale} onChange={(e) => changeLanguage(e.target.value as Locale)} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]">
+                        {LOCALES.map((l) => <option key={l} value={l}>{LOCALE_LABELS[l]}</option>)}
+                      </select>
+                    </label>
+                    <button onClick={signOut} role="menuitem" className="flex w-full items-center gap-2.5 border-t border-[var(--color-line)] px-4 py-2.5 text-left text-sm text-[#b23b3b] transition-colors hover:bg-[color-mix(in_oklab,#b23b3b_10%,transparent)]">
+                      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M6 2.5H3.5v11H6M10.5 11l3-3-3-3M13 8H6.5" /></svg>
+                      {t('shell.signOut')}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </header>
+          <main className="flex-1 p-5 md:p-8 lg:p-10">
+            {allowed.has('dayclose.run') && <CloseDownReminder />}
+            {children}
+          </main>
+        </div>
         {allowed.has('build.view') && <ReportProblem />}
       </div>
       <GuideHost />
