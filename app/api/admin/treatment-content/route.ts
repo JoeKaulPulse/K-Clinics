@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   if (!slug) return NextResponse.json({ ok: false, error: 'No treatment.' }, { status: 400 });
   const { db } = await import('@/lib/db');
 
-  const revalidate = () => { revalidateTag(TREATMENT_CONTENT_TAG); revalidateTag(`treatment-${slug}`); revalidatePath(`/${slug}`); };
+  const revalidate = () => { revalidateTag(TREATMENT_CONTENT_TAG, {}); revalidateTag(`treatment-${slug}`, {}); revalidatePath(`/${slug}`); };
 
   if (body.op === 'reset') {
     await db.treatmentContent.delete({ where: { slug } }).catch(() => {});

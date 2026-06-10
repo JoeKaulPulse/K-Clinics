@@ -17,7 +17,7 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const { db } = await import('@/lib/db');
-  const refresh = () => { revalidateTag(GLOBALS_TAG); revalidateTag(PAGES_TAG); };
+  const refresh = () => { revalidateTag(GLOBALS_TAG, {}); revalidateTag(PAGES_TAG, {}); };
 
   if (body.op === 'create') {
     const def = sectionDef(String(body.type));

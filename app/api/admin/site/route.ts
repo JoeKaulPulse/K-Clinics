@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     const current = await db.siteConfig.findUnique({ where: { id: 'singleton' }, select: { data: true } });
     if (current) await db.siteConfigRevision.create({ data: { configId: 'singleton', data: current.data as object, label: 'Before rollback', createdBy: editor } });
     await db.siteConfig.update({ where: { id: 'singleton' }, data: { data: rev.data as object, updatedBy: editor } });
-    revalidateTag(SITE_CONFIG_TAG);
+    revalidateTag(SITE_CONFIG_TAG, {});
     return NextResponse.json({ ok: true });
   }
 
@@ -52,6 +52,6 @@ export async function POST(req: Request) {
     update: { data, updatedBy: editor },
     create: { id: 'singleton', data, updatedBy: editor },
   });
-  revalidateTag(SITE_CONFIG_TAG);
+  revalidateTag(SITE_CONFIG_TAG, {});
   return NextResponse.json({ ok: true });
 }
