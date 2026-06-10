@@ -559,6 +559,21 @@ export function tmplBookingCancelled(o: { firstName: string; treatment: string; 
   });
 }
 
+export function tmplBookingRescheduled(o: { firstName: string; treatment: string; oldStart: Date; newStart: Date; manageUrl: string }) {
+  return emailShell({
+    preheader: `Your ${o.treatment} has been moved to ${fmtWhen(o.newStart)}`,
+    body: `<h1 style="font-size:24px;margin:0 0 16px;">Booking rescheduled</h1>
+    <p>Hi ${escape(o.firstName)}, your <strong>${escape(o.treatment)}</strong> appointment has been moved.</p>
+    <table role="presentation" style="margin:16px 0;font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#3d352f;">
+      <tr><td style="color:#91766e;padding-right:20px;">Was</td><td style="text-decoration:line-through;color:#91766e;">${fmtWhen(o.oldStart)}</td></tr>
+      <tr><td style="color:#91766e;padding-right:20px;">Now</td><td><strong>${fmtWhen(o.newStart)}</strong></td></tr>
+    </table>
+    <p>Everything else about your booking stays the same. Need to change it again? You can reschedule up to 3 times using the link below.</p>
+    <p style="margin:22px 0;">${btn(o.manageUrl, 'Manage booking')}</p>
+    <p>With warmth,<br>The KClinics team</p>`,
+  });
+}
+
 export function tmplChargeReceipt(o: { firstName: string; treatment: string; pricePence: number; late?: boolean; vat?: { netPence: number; vatPence: number; ratePct: number } | null }) {
   const vatRows = o.vat
     ? `<tr><td style="color:#91766e;padding-right:20px;">Net</td><td>${fmtMoney(o.vat.netPence)}</td></tr>

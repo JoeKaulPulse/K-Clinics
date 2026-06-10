@@ -566,6 +566,10 @@ model Booking {
   // Client self-service link token.
   manageToken   String        @unique @default(cuid())
 
+  // Self-serve reschedule: how many times the client has moved this booking.
+  // Capped at 3; beyond that they must call. Each reschedule requires >48h notice.
+  rescheduleCount Int          @default(0)
+
   remindersSent Boolean       @default(false)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt

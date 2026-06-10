@@ -444,11 +444,10 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['All three shipped, opt-in (default OFF): NPS survey (lib/nps.ts + /nps/[token] + /admin/nps) and post-course check-in fire on booking completion; membership renewal runs in lib/automations.ts. No-show rebooking note also wired on the no-show action.'],
   },
   {
-    title: 'Self-serve reschedule flow + confirmation email', type: 'TASK', urgency: 'P3', status: 'BLOCKED', assignee: 'claude',
-    value: 6, effort: 5, needs: 'OWNER',
-    ask: 'Decide whether clients can reschedule their own appointments online, or whether it stays staff-handled by phone. If self-serve, tell me your rules — e.g. minimum notice (24/48h), how many times a booking may be moved, and whether a deposit transfers. Reply with your choice and rules and I’ll build it, including the reschedule-confirmation email.',
-    detail: 'There is no self-serve reschedule today (clients are pointed to call). Building the reschedule action is a prerequisite for a reschedule-confirmation email.',
-    notes: ['Question for the owner: do you want clients to self-reschedule online, or keep it staff-handled? Blocked pending that decision.'],
+    title: 'Self-serve reschedule flow + confirmation email', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 5,
+    detail: 'Self-serve reschedule on /booking/manage. Rules: max 3 reschedules per booking, at least 48h notice required. POST /api/booking/reschedule validates via manageToken. Confirmation email sent via tmplBookingRescheduled. Cancellations & Refunds policy updated. Prisma: rescheduleCount Int @default(0) on Booking.',
+    notes: ['Shipped on claude/reschedule-flow: Prisma schema (rescheduleCount), booking-actions.ts (canReschedule + rescheduleBooking), email.ts (tmplBookingRescheduled), /api/booking/reschedule route, ManageClient.tsx reschedule UI (date picker + slot grid), info-pages.ts policy update.'],
   },
   {
     title: 'Resend domains: send via mail.kclinics.co.uk, reply via reply.mail.kclinics.co.uk', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(373),

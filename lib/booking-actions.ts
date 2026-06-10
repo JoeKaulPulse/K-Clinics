@@ -5,6 +5,7 @@ import { site } from './site';
 import {
   sendEmail,
   tmplBookingCancelled,
+  tmplBookingRescheduled,
   tmplChargeReceipt,
   tmplPaymentActionRequired,
 } from './email';
@@ -273,4 +274,63 @@ export async function cancelBooking(
   });
 
   return { ok: true, charged, requiresAction, feeFailed };
+}
+
+export const MAX_RESCHEDULES = 3;
+// Clients must give at least 48 hours notice to reschedule online.
+export const RESCHEDULE_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+export function canReschedule(b: Pick<import('@prisma/client').Booking, 'startAt' | 'rescheduleCount' | 'status'>): { ok: boolean; reason?: string } {
+  if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(b.status)) return { ok: false, reason: 'This booking can no longer be changed.' };
+  if (b.rescheduleCount >= MAX_RESCHEDULES) return { ok: false, reason: `Maximum of ${MAX_RESCHEDULES} reschedules reached. Please call us to make further changes.` };
+  if (b.startAt.getTime() - Date.now() < RESCHEDULE_WINDOW_MS) return { ok: false, reason: 'Less than 48 hours until your appointment. Please call us to reschedule.' };
+  return { ok: true };
+}
+
+export async function rescheduleBooking(
+  bookingId: string,
+  newStartISO: string,
+  opts: { by: string },
+): Promise<{ ok: boolean; error?: string }> {
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
+  if (!booking) return { ok: false, error: 'Booking not found.' };
+  const check = canReschedule(booking);
+  if (!check.ok) return { ok: false, error: check.reason };
+
+  const newStart = new Date(newStartISO);
+  if (isNaN(newStart.getTime())) return { ok: false, error: 'Invalid date/time.' };
+  // Validate the new slot isn't in the past.
+  if (newStart.getTime() < Date.now()) return { ok: false, error: 'The requested slot is in the past.' };
+
+  const durationMs = booking.endAt.getTime() - booking.startAt.getTime();
+  const newEnd = new Date(newStart.getTime() + durationMs);
+
+  const oldStart = booking.startAt;
+  await db.booking.update({
+    where: { id: bookingId },
+    data: { startAt: newStart, endAt: newEnd, rescheduleCount: { increment: 1 } },
+  });
+
+  await db.interaction.create({
+    data: {
+      clientId: booking.clientId,
+      type: 'APPOINTMENT',
+      summary: `Rescheduled ${booking.treatmentTitle} from ${oldStart.toLocaleString('en-GB')} to ${newStart.toLocaleString('en-GB')}`,
+      author: opts.by,
+    },
+  });
+
+  await logAudit({ action: 'BOOKING_RESCHEDULED', actor: opts.by, bookingId: booking.id, clientId: booking.clientId, summary: `Rescheduled to ${newStart.toISOString()}` }).catch(() => {});
+
+  const manageUrl = `${process.env.NEXT_PUBLIC_SITE_URL || site.url}/booking/manage?t=${booking.manageToken}`;
+  await sendEmail({
+    to: booking.client.email,
+    subject: `Booking rescheduled — ${booking.treatmentTitle}`,
+    html: tmplBookingRescheduled({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, oldStart, newStart, manageUrl }),
+  });
+
+  // Re-push the booking to the clinic calendar with the new slot (PUT overwrites).
+  import('@/lib/hostinger-calendar').then((m) => m.pushBooking(booking.id)).catch(() => {});
+
+  return { ok: true };
 }
