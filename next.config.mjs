@@ -58,6 +58,27 @@ const nextConfig = {
   compress: true,
   // Tree-shake large client libraries → smaller client bundles.
   experimental: { optimizePackageImports: ['motion'] },
+  // Keep non-runtime files OUT of serverless function bundles. lib/og.tsx reads
+  // images/fonts with a dynamic fs.readFileSync(path.join(process.cwd(), …)) that
+  // Next/Turbopack can't statically analyse, so it traces the WHOLE project into
+  // every route that transitively imports it via lib/seo.tsx (~150 functions) —
+  // pulling in 167 MB of public/treatments/ photos, 18 MB of WordPress migration
+  // dumps under scripts/, import/content.json, etc. That bloat (functions near the
+  // 250 MB limit) wedges Vercel's "Deploying outputs" step. None of these are read
+  // at runtime: next/image serves public/ as static assets, the OG renderer falls
+  // back to fetching the image URL when it isn't on disk, and scripts//import/ are
+  // build-time only. Fonts (assets/fonts + node_modules/geist) are NOT excluded,
+  // so OG cards keep their typefaces.
+  outputFileTracingExcludes: {
+    '**': [
+      './public/**/*',
+      './scripts/**/*',
+      './import/**/*',
+      './audit/**/*',
+      './docs/**/*',
+      './*.tsbuildinfo',
+    ],
+  },
   // Exposed to client + server so image paths from /public can be prefixed with
   // the Pages sub-path. next/image does NOT prepend basePath to unoptimized
   // /public images in a static export, so we do it ourselves (see treatment-images).
