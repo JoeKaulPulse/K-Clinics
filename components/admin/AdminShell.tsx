@@ -12,96 +12,7 @@ import { CloseDownReminder } from '@/components/admin/CloseDownReminder';
 import { ReportProblem } from '@/components/admin/ReportProblem';
 import { I18nProvider } from '@/components/i18n/I18nProvider';
 import { translator, isLocale, LOCALES, LOCALE_LABELS, DEFAULT_LOCALE, type Locale } from '@/lib/i18n';
-
-type NavItem = { href: string; key: string; exact?: boolean; perm?: string; badge?: 'tasks' | 'timeoff' | 'chat' };
-type GroupIconKey = 'today' | 'clients' | 'loyalty' | 'catalogue' | 'website' | 'operations' | 'marketing' | 'finance' | 'admin';
-const navGroups: { heading?: string; icon?: GroupIconKey; items: NavItem[] }[] = [
-  { heading: 'nav.group.today', icon: 'today', items: [
-    { href: '/admin', key: 'nav.overview', exact: true, perm: 'dashboard.view' },
-    { href: '/admin/my-day', key: 'nav.myday' },
-    { href: '/admin/calendar', key: 'nav.calendar', perm: 'calendar.view' },
-    { href: '/admin/tasks', key: 'nav.tasks', badge: 'tasks' },
-    { href: '/admin/time-off', key: 'nav.timeoff', badge: 'timeoff' },
-  ] },
-  // Clients & bookings: the people and conversations. Loyalty/offers split out
-  // below so this group stays focused on records and front-desk work.
-  { heading: 'nav.group.clients', icon: 'clients', items: [
-    { href: '/admin/bookings', key: 'nav.bookings', perm: 'bookings.view' },
-    { href: '/admin/consultations', key: 'nav.consultations', perm: 'consultations.view' },
-    { href: '/admin/chat', key: 'nav.chat', perm: 'clients.view', badge: 'chat' },
-    { href: '/admin/calls', key: 'nav.calls', perm: 'calls.view' },
-    { href: '/admin/clients', key: 'nav.clients', perm: 'clients.view' },
-    { href: '/admin/reviews', key: 'nav.reviews', perm: 'reviews.manage' },
-    { href: '/admin/nps', key: 'nav.nps', perm: 'reviews.manage' },
-  ] },
-  // Loyalty & offers: everything that gives a client a price break or a perk.
-  { heading: 'nav.group.loyalty', icon: 'loyalty', items: [
-    { href: '/admin/discounts', key: 'nav.discounts', perm: 'discounts.manage' },
-    { href: '/admin/promotions', key: 'nav.promotions', perm: 'discounts.manage' },
-    { href: '/admin/rewards', key: 'nav.rewards', perm: 'rewards.view' },
-    { href: '/admin/membership', key: 'nav.membership', perm: 'discounts.manage' },
-    { href: '/admin/gift-vouchers', key: 'nav.gift', perm: 'finance.view' },
-  ] },
-  // Catalogue: what you sell — services and retail products.
-  { heading: 'nav.group.catalogue', icon: 'catalogue', items: [
-    { href: '/admin/services', key: 'nav.services', perm: 'settings.manage' },
-    { href: '/admin/products', key: 'nav.products', perm: 'settings.manage' },
-  ] },
-  // Website: the public-facing content and pages.
-  { heading: 'nav.group.website', icon: 'website', items: [
-    { href: '/admin/pages', key: 'nav.pages', perm: 'settings.manage' },
-    { href: '/admin/blocks', key: 'nav.blocks', perm: 'settings.manage' },
-    { href: '/admin/journal', key: 'nav.journal', perm: 'settings.manage' },
-    { href: '/admin/media', key: 'nav.media', perm: 'settings.manage' },
-    { href: '/admin/academy', key: 'nav.academy', perm: 'settings.manage' },
-    { href: '/admin/gallery', key: 'nav.gallery', perm: 'settings.manage' },
-    { href: '/admin/careers', key: 'nav.careers', perm: 'settings.manage' },
-  ] },
-  { heading: 'nav.group.operations', icon: 'operations', items: [
-    { href: '/admin/schedule', key: 'nav.schedule', perm: 'schedule.manage' },
-    { href: '/admin/inventory', key: 'nav.inventory', perm: 'inventory.view' },
-    { href: '/admin/reorder', key: 'nav.reorder', perm: 'inventory.view' },
-    { href: '/admin/suppliers', key: 'nav.suppliers', perm: 'suppliers.view' },
-    { href: '/admin/sops', key: 'nav.sops', perm: 'sop.manage' },
-    { href: '/admin/consent', key: 'nav.consent', perm: 'settings.manage' },
-    { href: '/admin/day-close', key: 'nav.dayclose', perm: 'dayclose.run' },
-  ] },
-  { heading: 'nav.group.marketing', icon: 'marketing', items: [
-    { href: '/admin/marketing', key: 'nav.marketing', exact: true, perm: 'campaigns.view' },
-    { href: '/admin/marketing/performance', key: 'nav.performance', perm: 'campaigns.view' },
-    { href: '/admin/marketing/campaigns', key: 'nav.campaigns', perm: 'campaigns.view' },
-    { href: '/admin/marketing/audiences', key: 'nav.audiences', perm: 'campaigns.view' },
-    { href: '/admin/marketing/email', key: 'nav.email', perm: 'campaigns.view' },
-    { href: '/admin/marketing/templates', key: 'nav.templates', perm: 'campaigns.view' },
-    { href: '/admin/automations', key: 'nav.automations', perm: 'automations.view' },
-    { href: '/admin/marketing/ab', key: 'nav.ab', perm: 'campaigns.view' },
-    { href: '/admin/marketing/insights', key: 'nav.insights', perm: 'campaigns.view' },
-    { href: '/admin/brand', key: 'nav.brand', perm: 'settings.manage' },
-    { href: '/admin/marketing/connections', key: 'nav.connections', perm: 'settings.manage' },
-    { href: '/admin/qr', key: 'nav.qr', perm: 'settings.manage' },
-  ] },
-  { heading: 'nav.group.finance', icon: 'finance', items: [
-    { href: '/admin/pos', key: 'nav.pos', perm: 'pos.use' },
-    { href: '/admin/orders', key: 'nav.orders', perm: 'finance.view' },
-    { href: '/admin/cashflow', key: 'nav.cashflow', perm: 'finance.view' },
-    { href: '/admin/reports', key: 'nav.reports', perm: 'finance.view' },
-    { href: '/admin/finance/controls', key: 'nav.financeControls', perm: 'finance.manage' },
-  ] },
-  { heading: 'nav.group.admin', icon: 'admin', items: [
-    { href: '/admin/go-live', key: 'nav.golive', perm: 'settings.manage' },
-    { href: '/admin/status', key: 'nav.status', perm: 'platform.status' },
-    { href: '/admin/build', key: 'nav.build', perm: 'build.view' },
-    { href: '/admin/staff', key: 'nav.staff', perm: 'staff.view' },
-    { href: '/admin/security', key: 'nav.security', perm: 'security.manage' },
-    { href: '/admin/activity', key: 'nav.activity', perm: 'staff.view' },
-    { href: '/admin/site', key: 'nav.site', perm: 'settings.manage' },
-    { href: '/admin/locations', key: 'nav.locations', perm: 'settings.manage' },
-    { href: '/admin/seo', key: 'nav.seo', perm: 'settings.manage' },
-    { href: '/admin/redirects', key: 'nav.redirects', perm: 'settings.manage' },
-    { href: '/admin/integrations', key: 'nav.integrations', perm: 'settings.manage' },
-    { href: '/admin/settings', key: 'nav.settings', perm: 'settings.manage' },
-  ] },
-];
+import { navGroups, type NavItem, type GroupIconKey } from '@/lib/admin-nav';
 
 // Restrained group-level iconography: a single line glyph per section so the
 // collapsed sidebar is scannable at a glance. Inherits currentColor; no per-item
@@ -161,6 +72,12 @@ export function AdminShell({
   useEffect(() => { if (!localeProp) setLocale(readCookieLocale()); }, [localeProp]);
   const t = translator(locale);
 
+  // Flattened, permission-filtered page index handed to global search so the
+  // sidebar's destinations are themselves searchable ("Go to" results).
+  const navPages = groups.flatMap((g) =>
+    g.items.map((n) => ({ href: n.href, label: t(n.key), group: g.heading ? t(g.heading) : '', keywords: n.keywords || '' })),
+  );
+
   // Sidebar badges — a single lightweight request per shell mount.
   const [pendingTimeOff, setPendingTimeOff] = useState(0);
   const [openTasks, setOpenTasks] = useState(0);
@@ -217,11 +134,14 @@ export function AdminShell({
       key={n.href}
       href={n.href}
       data-tour={n.key}
-      className={`flex items-center justify-between gap-2 whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-2.5 text-sm transition-colors ${
-        isActive(n) ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-bone)]'
+      aria-current={isActive(n) ? 'page' : undefined}
+      className={`flex min-h-[2.75rem] items-center justify-between gap-2 whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] lg:min-h-0 ${
+        isActive(n)
+          ? 'bg-[var(--color-ink)] font-medium text-[var(--color-porcelain)]'
+          : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)]'
       }`}
     >
-      <span>{t(n.key)}</span>
+      <span className="truncate">{t(n.key)}</span>
       {badgeCount(n.badge) > 0 && (
         <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[0.65rem] font-semibold text-amber-950">{badgeCount(n.badge)}</span>
       )}
@@ -256,7 +176,7 @@ export function AdminShell({
             </div>
           </div>
           <div className="flex items-center gap-2 px-2">
-            <div data-tour="admin-search" className="min-w-0 flex-1"><GlobalSearch placeholder={t('shell.search')} /></div>
+            <div data-tour="admin-search" className="min-w-0 flex-1"><GlobalSearch placeholder={t('shell.search')} pages={navPages} /></div>
             <NotificationBell />
           </div>
 
