@@ -522,6 +522,15 @@ export const BUILD_BACKLOG: BacklogItem[] = [
 
   // ── Reliability ───────────────────────────────────────────────────────────
   {
+    title: 'P0 deploys all failing on Vercel: Prisma 7 removed db-sync CLI flags', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(487),
+    value: 10, effort: 1,
+    detail: 'Every Vercel deploy (production + previews) errored in the prebuild step after the Prisma 6->7 upgrade. Root cause: scripts/db-sync.mjs used CLI flags that Prisma 7 removed/renamed. (1) prisma migrate diff still used --from-url and --to-schema-datamodel; Prisma 7 removed --from-url (use --from-config-datasource, which reads the URL from prisma.config.ts) and renamed --to-schema-datamodel to --to-schema. The invalid flag exited 1, which the pre-check misread as could-not-reach-database and retried 6 times. (2) prisma db push still passed --skip-generate, which Prisma 7 removed (db push no longer generates the client); the unknown flag made Prisma print usage and exit non-zero on all 5 retries, so failBuild() failed the deploy. tsc + next build always passed locally, so it only surfaced as a Vercel deploy ERROR.',
+    notes: [
+      'Diagnosed from the Vercel build logs: db push printed its help text instead of running, and the diff pre-check failed 6x with could-not-reach-database. Reproduced locally against Prisma 7.8.0: the old --from-url errors with "--from-url was removed", the new --from-config-datasource gets past flag parsing to a real connection attempt (P1001).',
+      'Fix: scripts/db-sync.mjs migrate-diff now uses --from-config-datasource --to-schema; db push drops --skip-generate. Also fixed the same stale flags in the local dev helper scripts/safe-migrate.mjs. The injected DATABASE_URL flows through prisma.config.ts datasource.url for both commands. tsc + next build green.',
+    ],
+  },
+  {
     title: 'Keep booking flow + client site up during deploys', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(335),
     value: 9, effort: 4,
     detail: 'Client-facing pages and the booking flow must not 500 during deploys / cold starts. Apply the same hardening as the admin fix: wrap client/booking server reads in withDbRetry with graceful fallbacks, ensure no build-time DB dependency can break prerender, and cache/ISR where safe so the hot path survives a connection blip.',
