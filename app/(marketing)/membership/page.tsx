@@ -111,6 +111,9 @@ export default async function MembershipPage() {
           </Reveal>
         </div>
 
+        {/* Loyalty leaderboard -- only rendered when opted-in members exist */}
+        <Leaderboard />
+
         <Reveal>
           <div className="surface-ink grain relative mt-16 overflow-hidden rounded-[var(--radius-2xl)] p-10 text-center md:p-16">
             <div className="relative">
@@ -127,5 +130,63 @@ export default async function MembershipPage() {
         </Reveal>
       </section>
     </>
+  );
+}
+
+const MEDAL = ['🥇', '🥈', '🥉'];
+
+async function Leaderboard() {
+  type Entry = { id: string; name: string; photoUrl: string | null; tier: string | null; totalPoints: number };
+  let entries: Entry[] = [];
+  try {
+    const { db } = await import('@/lib/db');
+    const clients = await db.client.findMany({
+      where: { leaderboardOptIn: true },
+      select: { id: true, firstName: true, leaderboardDisplayName: true, leaderboardPhotoUrl: true, membershipTier: true, points: { select: { points: true } } },
+      take: 50,
+    });
+    entries = clients
+      .map((c) => ({ id: c.id, name: c.leaderboardDisplayName || c.firstName || 'Member', photoUrl: c.leaderboardPhotoUrl ?? null, tier: c.membershipTier ?? null, totalPoints: c.points.reduce((s: number, r: { points: number }) => s + r.points, 0) }))
+      .filter((e) => e.totalPoints > 0)
+      .sort((a, b) => b.totalPoints - a.totalPoints)
+      .slice(0, 12);
+  } catch { /* DB optional -- skip the section if unavailable */ }
+
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="mt-20">
+      <Reveal>
+        <p className="eyebrow mb-3 text-center">Our community</p>
+        <h2 className="text-title mx-auto max-w-2xl text-center">Our most loyal members.</h2>
+        <p className="mx-auto mt-3 max-w-xl text-center text-sm text-[var(--color-stone)]">
+          Members who&apos;ve kindly agreed to be featured. Want to appear here? Let us know at your next visit.
+        </p>
+      </Reveal>
+      <Stagger className="mt-[var(--space-block)] grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        {entries.map((e, i) => (
+          <StaggerItem key={e.id}>
+            <div className="flex items-center gap-4 rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5">
+              {e.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={e.photoUrl} alt={`${e.name} -- KClinics member`} width={56} height={56} loading="lazy" decoding="async" className="h-14 w-14 shrink-0 rounded-full object-cover" />
+              ) : (
+                <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[var(--color-ink)] font-[family-name:var(--font-display)] text-xl text-[var(--color-gold-soft)]" aria-hidden>
+                  {(e.name[0] || '?').toUpperCase()}
+                </span>
+              )}
+              <div className="min-w-0">
+                <p className="flex items-center gap-1.5 font-[family-name:var(--font-display)] text-base leading-tight">
+                  {i < 3 && <span aria-hidden>{MEDAL[i]}</span>}
+                  <span className="truncate">{e.name}</span>
+                </p>
+                {e.tier && <p className="mt-0.5 text-xs uppercase tracking-[0.12em] text-[var(--color-gold)]">{e.tier}</p>}
+                <p className="mt-1 text-xs text-[var(--color-stone)]">{e.totalPoints.toLocaleString('en-GB')} pts</p>
+              </div>
+            </div>
+          </StaggerItem>
+        ))}
+      </Stagger>
+    </div>
   );
 }

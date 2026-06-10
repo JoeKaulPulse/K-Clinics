@@ -152,10 +152,10 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
               </div>
               <p className="mt-3 text-sm text-[#9a8f80]">{AREAS.find((a) => areas.has(a.id))?.hint} For the most accurate read, use <span className="text-[#cdbfae]">Take photo</span> and follow the on-screen face guide.</p>
               <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {photos.map((p) => (
+                {photos.map((p, idx) => (
                   <div key={p.id} className="group relative aspect-square overflow-hidden rounded-2xl border border-white/10">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.dataUrl} alt="" className="h-full w-full object-cover" />
+                    <img src={p.dataUrl} alt={`Uploaded photo ${idx + 1}`} className="h-full w-full object-cover" />
                     <button onClick={() => setPhotos((arr) => arr.filter((x) => x.id !== p.id))} className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-xs opacity-0 transition-opacity group-hover:opacity-100">✕</button>
                   </div>
                 ))}
@@ -177,7 +177,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
             <motion.div key="analysing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mx-auto max-w-md text-center">
               <div className="relative mx-auto aspect-square w-72 overflow-hidden rounded-3xl border border-white/10">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {photos[0] && <img src={photos[0].dataUrl} alt="" className="h-full w-full object-cover opacity-90" />}
+                {photos[0] && <img src={photos[0].dataUrl} alt="Analysing your uploaded photo" className="h-full w-full object-cover opacity-90" />}
                 <div className="absolute inset-0" style={{ background: 'linear-gradient(transparent, rgba(12,11,10,0.5))' }} />
                 <motion.div className="absolute inset-x-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${gold}, transparent)`, boxShadow: `0 0 18px ${gold}` }} initial={{ top: '0%' }} animate={{ top: ['0%', '100%', '0%'] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }} />
                 {[[30, 35], [62, 44], [46, 62]].map(([x, y], i) => (

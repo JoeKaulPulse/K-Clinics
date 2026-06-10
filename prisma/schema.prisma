@@ -318,6 +318,13 @@ model Client {
   medicalFlagSetBy String?
   medicalFlagAt   DateTime?
 
+  // ── Public loyalty leaderboard (PRJ-1.11) ────────────────────────────────
+  // Only clients who explicitly opt in appear on the public leaderboard.
+  // leaderboardPhotoUrl is staff-set after the client's written permission.
+  leaderboardOptIn       Boolean  @default(false)
+  leaderboardPhotoUrl    String?
+  leaderboardDisplayName String?  // preferred display name (first name by default)
+
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 

@@ -85,6 +85,12 @@ export async function POST(req: Request) {
         const charge = event.data.object;
         const piId = typeof charge.payment_intent === 'string' ? charge.payment_intent : null;
         if (!piId) break;
+        // Refunds raised in-app via refundBooking() carry metadata.bookingId and
+        // already run every side-effect themselves. Their webhook echo can race
+        // ahead of refundBooking's own DB write — without this skip we'd raise a
+        // SECOND Xero credit note and double-log the refund.
+        const originatedInApp = (charge.refunds?.data ?? []).some((r) => Boolean(r.metadata?.bookingId));
+        if (originatedInApp) break;
         const booking = await db.booking.findFirst({
           where: { chargePaymentIntentId: piId },
           include: { client: true },
@@ -96,10 +102,13 @@ export async function POST(req: Request) {
         if (delta <= 0) break; // already fully reconciled
         const newTotal = alreadyRecorded + delta;
         const fully = newTotal >= (booking.chargedPence ?? 0);
-        await db.booking.update({
-          where: { id: booking.id },
+        // Compare-and-swap: only the writer that advances refundedPence past the
+        // value it observed runs the side-effects. Guards webhook redeliveries.
+        const claimed = await db.booking.updateMany({
+          where: { id: booking.id, refundedPence: booking.refundedPence },
           data: { refundedPence: newTotal, refundedAt: new Date() },
         });
+        if (claimed.count === 0) break; // a concurrent writer got there first
         if (fully) {
           try { const { refundBookingPoints } = await import('@/lib/client-loyalty'); await refundBookingPoints(booking.id); } catch { /* non-fatal */ }
         }
