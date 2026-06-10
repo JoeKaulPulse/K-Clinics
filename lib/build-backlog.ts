@@ -460,6 +460,13 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Shipped (#486): Removed sandbox attribute from HeatmapViewer iframe; added pointer-events-none Tailwind class. tsc clean, one-line diff.'],
   },
   {
+    title: 'Session merge summary — 2026-06-10', type: 'REVIEW', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    detail: 'Eight PRs merged to main this session.\n\nPR #474 — Heatmap admin CSP (8b024f8): frame-ancestors none->self, X-Frame-Options DENY->SAMEORIGIN. Rollback: git revert 8b024f8\n\nPR #477 — Self-serve reschedule + kiosk claim CTA + ToS (a8d5116): Booking.rescheduleCount, rescheduleBooking() (48h/3-free rules), isSlotFree guard, pushBooking CalDAV upsert, ManageClient date picker, tmplBookingRescheduled email, info-pages ToS, kiosk claimHref. Rollback: git revert a8d5116\n\nPR #479 — Session replay rrweb fix (9d9386a): rrweb-player v2 broken Svelte runtime; replaced with direct rrweb.Replayer. Rollback: git revert 9d9386a\n\nPR #480 — TypeScript 5->6 (b7ba22b): Added declare module for CSS side-effect imports. Rollback: git revert b7ba22b\n\nPR #481 — Prisma 6->7 (d874312): Binary engine removed; @prisma/adapter-pg with lazy pg.Pool; url moved to prisma.config.ts. Rollback: git revert d874312\n\nPR #482 — jose 5->6 + resend 4->6 (77721b4): API-compatible. Rollback: git revert 77721b4\n\nPR #483 — zod 3->4 (53bad72): ZodError.errors->issues, z.literal() second arg string, z.record() explicit key. Rollback: git revert 53bad72\n\nPR #484 — Stripe SDKs 17->22 (189a156): apiVersion 2026-05-27.dahlia. Rollback: git revert 189a156\n\nPR #485 — Next.js 15->16 (c963f05): revalidateTag() second CacheLifeConfig arg. Rollback: git revert c963f05\n\nPR #486 — Heatmap iframe sandbox (8acabe5): Removed sandbox attr; added pointer-events-none. Rollback: git revert 8acabe5',
+    notes: [
+      'Rollback lines: git revert 8b024f8 (CSP) | git revert a8d5116 (reschedule) | git revert 9d9386a (rrweb) | git revert b7ba22b (TS6) | git revert d874312 (Prisma7) | git revert 77721b4 (jose+resend) | git revert 53bad72 (zod4) | git revert 189a156 (Stripe22) | git revert c963f05 (Next16) | git revert 8acabe5 (iframe)',
+    ],
+  },
+  {
     title: 'Self-serve reschedule flow + confirmation email', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude', pr: PR(477),
     value: 6, effort: 5,
     detail: 'Clients can reschedule from the booking management page. Owner rules: 48h notice, max 3 free reschedules per booking (4th+ incurs full treatment fee), 24h cancel unchanged.',
