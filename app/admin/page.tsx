@@ -110,10 +110,17 @@ export default async function AdminOverview() {
 
   const can = await sessionPermissions();
   const locale = await getLocale();
+
+  // Time-aware greeting in clinic-local (London) time — the server may run in UTC.
+  const now = new Date();
+  const londonHour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: 'numeric', hour12: false }).format(now));
+  const greeting = londonHour < 12 ? 'Good morning' : londonHour < 18 ? 'Good afternoon' : 'Good evening';
+  const todayLabel = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'long', day: 'numeric', month: 'long' }).format(now);
+
   return (
     <AdminShell user={session?.email} can={can} locale={locale}>
-      <h1 className="font-[family-name:var(--font-display)] text-3xl">Overview</h1>
-      <p className="mt-1 text-sm text-[var(--color-stone)]">Welcome back{session?.name ? `, ${session.name}` : ''}.</p>
+      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-stone-soft)]">Overview · {todayLabel}</p>
+      <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl">{greeting}{session?.name ? `, ${session.name}` : ''}</h1>
 
       {/* Needs attention */}
       {attention.length > 0 && (
