@@ -103,6 +103,10 @@
     text-rendering: optimizeLegibility;
     overflow-x: clip;
     max-width: 100%;
+    /* Long unbreakable strings (emails, IDs, slugs, URLs) must wrap rather than
+       force width — with overflow-x: clip an overflow would otherwise be cut off
+       and unreadable on narrow screens. */
+    overflow-wrap: break-word;
   }
 
   h1, h2, h3, h4 {
