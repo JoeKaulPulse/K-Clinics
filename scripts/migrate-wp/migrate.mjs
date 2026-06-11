@@ -34,12 +34,12 @@ const MAP = new Set([
   'first_name', 'last_name', 'description',
   'billing_first_name', 'billing_last_name', 'billing_email', 'billing_phone',
   'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city',
-  'billing_state', 'billing_postcode', 'billing_country',
+  'billing_state', 'billing_postcode', 'billing_country', 'booked_phone',
 ]);
 const DOB_KEYS = ['dob', 'date_of_birth', 'birth_date', 'birthday', 'billing_dob'];
 const OPTIN_KEYS = ['newsletter', 'marketing_optin', 'subscribe', 'email_marketing', 'mailchimp_woocommerce_is_subscribed'];
 // Internal WordPress noise we never preserve into client notes.
-const NOISE = /^(wp_|_wp|session_tokens|capabilities|user_level|rich_editing|syntax_highlighting|comment_shortcuts|admin_color|use_ssl|show_admin_bar|dismissed_|nickname|locale|last_update|community-events|managenav|metaboxhidden|closedpostboxes|meta-box-order|screen_layout|primary_blog|source_domain|_yoast|_application_passwords|wc_last_active|paying_customer)/i;
+const NOISE = /^(wp_|_wp|session_tokens|capabilities|user_level|rich_editing|syntax_highlighting|comment_shortcuts|admin_color|use_ssl|show_admin_bar|dismissed_|nickname|locale|last_update|community-events|managenav|metaboxhidden|closedpostboxes|meta-box-order|screen_layout|primary_blog|source_domain|_yoast|_application_passwords|wc_last_active|paying_customer|shipping_|xoo_el_reg_terms|xoo-|_woocommerce|woocommerce_|wpr_|jetpack_|my-jetpack|elementor_|nav_menu|show_welcome_panel|default_password_nag)/i;
 
 const truthy = (v) => /^(1|yes|true|on|subscribed)$/i.test(String(v ?? '').trim());
 
@@ -261,6 +261,13 @@ try {
       tags: [...c.tags],
       notes: notes.slice(0, 4000),
       marketingOptIn: c.marketingOptIn,
+      // Demonstrable consent provenance (UK GDPR Art. 7): record where the
+      // legacy opt-in came from, dated to their signup on the old site.
+      ...(c.marketingOptIn ? {
+        marketingConsentAt: c.createdAt || new Date(),
+        marketingConsentSource: 'wordpress-import (legacy newsletter/MailPoet opt-in)',
+        marketingConsentVersion: 'legacy-wp',
+      } : {}),
       smsReminders: c.smsReminders,
       lastVisitAt: c.lastVisitAt || null,
       ...(c.createdAt ? { createdAt: c.createdAt } : {}),

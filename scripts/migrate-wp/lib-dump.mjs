@@ -52,7 +52,15 @@ export function parseValues(s) {
         let j = i;
         while (j < n && s[j] !== ',' && s[j] !== ')') j++;
         const tok = s.slice(i, j).trim();
-        row.push(tok === 'NULL' ? null : /^-?\d+(\.\d+)?$/.test(tok) ? Number(tok) : tok);
+        // Hex literals (0x6461…) are how phpMyAdmin dumps BLOB columns (e.g.
+        // sign_table.podp signature images). Decode to text — kept raw, they'd
+        // import as useless "0x…" strings.
+        row.push(
+          tok === 'NULL' ? null
+          : /^0x[0-9a-fA-F]*$/.test(tok) ? Buffer.from(tok.slice(2), 'hex').toString('utf8')
+          : /^-?\d+(\.\d+)?$/.test(tok) ? Number(tok)
+          : tok,
+        );
         i = j;
       }
     }
