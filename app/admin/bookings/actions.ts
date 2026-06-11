@@ -17,7 +17,7 @@ export async function setBookingLocation(bookingId: string, locationId: string |
 }
 
 // Staff: charge the saved card for a delivered service (adjustable amount).
-export async function chargeBookingAction(bookingId: string, amountPence: number) {
+export async function chargeBookingAction(bookingId: string, amountPence: number, opts?: { discountReason?: string; originalPence?: number }) {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
   if (!session) return { ok: false, error: 'Unauthorised' };
@@ -65,8 +65,12 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
   const res = await chargeBooking(booking, Math.round(amountPence), { late: false });
   const { logAudit } = await import('@/lib/audit');
   if (res.ok) {
-    await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Charged £${(amountPence / 100).toFixed(2)} for ${booking.treatmentTitle}`, author: session.email } });
-    await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId, summary: `Charged £${(amountPence / 100).toFixed(2)}` });
+    // BLD-207: record any ad-hoc price adjustment / discount + reason, immutably.
+    const disc = opts?.discountReason?.trim()
+      ? ` (price adjustment — ${opts.discountReason.trim()}${opts.originalPence && opts.originalPence > amountPence ? `; was £${(opts.originalPence / 100).toFixed(2)}` : ''})`
+      : '';
+    await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Charged £${(amountPence / 100).toFixed(2)} for ${booking.treatmentTitle}${disc}`, author: session.email } });
+    await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId, summary: `Charged £${(amountPence / 100).toFixed(2)}${disc}` });
     // The charged amount is the truest spend signal — credit loyalty points
     // (idempotent: a no-op if completion already awarded them).
     try {
