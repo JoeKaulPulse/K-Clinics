@@ -1,10 +1,8 @@
 import 'server-only';
 import { sessionCan, type Session } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { timeStatus } from '@/lib/time-tracking';
 import { fmtClinicDate } from '@/lib/clinic-time';
-import { DashWidget, EmptyWidget } from './Widgets';
-import { ClockInOut } from '@/components/admin/ClockInOut';
+import { DashWidget } from './Widgets';
 import { ContractorTasks, type ContractorTaskView } from '@/components/admin/ContractorTasks';
 import { ContractorTaskAssign } from '@/components/admin/ContractorTaskAssign';
 import { FacilityDocsViewer, type FacilityDocView } from '@/components/admin/FacilityDocsViewer';
@@ -18,8 +16,7 @@ export async function ContractorView({ session }: { session: Session }) {
   const canFacility = sessionCan(session, 'facility.view');
   const now = new Date();
 
-  const [clock, taskRows, docsRaw, contractors] = await Promise.all([
-    timeStatus(session.sub).catch(() => null),
+  const [taskRows, docsRaw, contractors] = await Promise.all([
     db.contractorTask.findMany({
       where: canManage ? {} : { assigneeId: session.sub },
       orderBy: [{ status: 'asc' }, { dueAt: 'asc' }, { createdAt: 'desc' }],
@@ -45,28 +42,11 @@ export async function ContractorView({ session }: { session: Session }) {
 
   return (
     <div className="mt-6 space-y-6">
-      <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr] [&>*]:min-w-0">
-        {/* Contracted tasks */}
-        <DashWidget title={canManage ? 'Contracted tasks' : 'My tasks'} eyebrow={`${open.length} to do`}>
-          {canManage && <ContractorTaskAssign contractors={contractorOpts} />}
-          <ContractorTasks tasks={tasks} showAssignee={canManage} />
-        </DashWidget>
-
-        {/* Time tracking */}
-        <DashWidget title="Time">
-          {clock ? (
-            <ClockInOut
-              onShift={clock.onShift}
-              onBreak={clock.onBreak}
-              shiftStartIso={clock.shiftStart ? clock.shiftStart.toISOString() : null}
-              workedTodayMin={clock.workedTodayMin}
-              breakTodayMin={clock.breakTodayMin}
-            />
-          ) : (
-            <EmptyWidget title="Time clock unavailable" />
-          )}
-        </DashWidget>
-      </div>
+      {/* Contracted tasks (the clock + breaks live in the dashboard header aside) */}
+      <DashWidget title={canManage ? 'Contracted tasks' : 'My tasks'} eyebrow={`${open.length} to do`}>
+        {canManage && <ContractorTaskAssign contractors={contractorOpts} />}
+        <ContractorTasks tasks={tasks} showAssignee={canManage} />
+      </DashWidget>
 
       {/* Facility knowledge base */}
       {canFacility && (
