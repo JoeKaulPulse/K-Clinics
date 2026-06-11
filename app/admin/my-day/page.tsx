@@ -8,6 +8,7 @@ import { ONBOARDING } from '@/lib/onboarding-steps';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { getLocale } from '@/lib/locale';
 import { translator } from '@/lib/i18n';
+import { fmtClinicTime } from '@/lib/clinic-time';
 
 export const dynamic = 'force-dynamic';
 
@@ -97,7 +98,7 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
   const totalMin = mine.reduce((s, b) => s + b.durationMin, 0);
   const completed = mine.filter((b) => b.status === 'COMPLETED').length;
 
-  const fmtTime = (x: Date) => new Date(x).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const fmtTime = (x: Date) => fmtClinicTime(x);
   const name = (c: { firstName: string | null; lastName: string | null }) => [c.firstName, c.lastName].filter(Boolean).join(' ') || '—';
 
   const Row = ({ b, showClinician }: { b: (typeof mine)[number]; showClinician?: boolean }) => (

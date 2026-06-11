@@ -45,10 +45,13 @@ export function ArrivalsBoard({ initialArrivals, canManage }: { initialArrivals:
       {rows.map((r) => (
         <div key={r.id} className={`flex items-center gap-3 border-b border-[var(--color-line)] px-4 py-3 last:border-0 ${r.arrived && !r.done ? 'bg-[color-mix(in_oklab,var(--color-jade)_7%,transparent)]' : ''}`}>
           <span className="w-12 shrink-0 font-[family-name:var(--font-display)] text-base tabular-nums text-[var(--color-gold)]">{r.timeLabel}</span>
-          <div className="min-w-0 flex-1">
-            <Link href={`/admin/clients/${r.clientId}`} className="truncate text-sm font-medium hover:text-[var(--color-gold)]">{r.client}</Link>
-            <p className="truncate text-xs text-[var(--color-stone)]">{r.treatment}{r.room ? ` · ${r.room}` : ''}</p>
-          </div>
+          {/* Open the appointment itself (not just the client profile) straight from the board. */}
+          <Link href={`/admin/bookings/${r.id}`} className="group min-w-0 flex-1">
+            <span className="block truncate text-sm font-medium group-hover:text-[var(--color-gold)]">{r.client}</span>
+            <span className="block truncate text-xs text-[var(--color-stone)]">{r.treatment}{r.room ? ` · ${r.room}` : ''}</span>
+            <span className="text-[0.65rem] text-[var(--color-stone-soft)] opacity-0 transition-opacity group-hover:opacity-100">Open appointment →</span>
+          </Link>
+          <Link href={`/admin/clients/${r.clientId}`} title="Open client profile" className="hidden shrink-0 rounded-full border border-[var(--color-line)] px-2.5 py-1.5 text-xs text-[var(--color-stone)] hover:bg-[var(--color-bone)] sm:inline-block">Profile</Link>
           {r.done ? (
             <span className="shrink-0 rounded-full bg-[var(--color-ink)] px-2.5 py-1 text-xs font-medium text-[var(--color-porcelain)]">Done</span>
           ) : canManage ? (

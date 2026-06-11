@@ -9,6 +9,7 @@ import { OnboardingHost } from '@/components/onboarding/OnboardingHost';
 import { ONBOARDING } from '@/lib/onboarding-steps';
 import { getLocale } from '@/lib/locale';
 import { getWeather, uvBand } from '@/lib/weather';
+import { fmtClinicTime, fmtClinicDate } from '@/lib/clinic-time';
 import { LiveClock } from '@/components/admin/DashboardLive';
 import { ArrivalPrep, type NextArrival } from '@/components/admin/ArrivalPrep';
 import { NewBookingButton } from '@/components/admin/NewBookingButton';
@@ -58,6 +59,24 @@ export default async function AdminOverview() {
     </>
   );
 
+  // Live clock + local weather/UV — front-of-house essentials shown on every view
+  // (built once here so the role views below get it too, not just the overview).
+  const weather = await getWeather();
+  const uv = weather?.uvMax != null ? uvBand(weather.uvMax) : null;
+  const clockWeather = (
+    <div className="flex items-center gap-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5">
+      <LiveClock />
+      {weather && (
+        <div className="border-l border-[var(--color-line)] pl-4 leading-tight">
+          <p className="text-sm font-medium text-[var(--color-ink)]"><span className="tabular-nums">{weather.tempC}°</span> <span className="font-normal text-[var(--color-stone)]">{weather.label}</span></p>
+          {weather.uvMax != null && uv && (
+            <p className="text-xs text-[var(--color-stone)]">UV <span className="tabular-nums">{weather.uvMax}</span> · <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{uv.label}</span></p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   // Preview branch: an OWNER/ADMIN is viewing a role whose dashboard is still
   // being built — skip the heavy overview queries and show its planned widgets.
   if (renderedView !== 'admin') {
@@ -65,7 +84,7 @@ export default async function AdminOverview() {
     const locale = await getLocale();
     return (
       <AdminShell user={session?.email} can={can} locale={locale}>
-        <DashboardShell role={role} view={renderedView} heading={heading}>
+        <DashboardShell role={role} view={renderedView} heading={heading} aside={clockWeather}>
           {renderedView === 'clinician' && session ? <ClinicianView session={session} />
             : renderedView === 'reception' && session ? <ReceptionistView session={session} />
             : renderedView === 'developer' && session ? <DeveloperView session={session} />
@@ -159,9 +178,7 @@ export default async function AdminOverview() {
   const can = await sessionPermissions();
   const locale = await getLocale();
 
-  // ── Front-of-house essentials: local weather/UV + the next client arrival ──
-  const weather = await getWeather();
-  const uv = weather?.uvMax != null ? uvBand(weather.uvMax) : null;
+  // ── Front-of-house essentials: the next client arrival (clock/weather above) ──
   const treatments = bookableTreatments.map((t) => ({ slug: t.slug, title: t.title }));
   const endOfToday = new Date(now); endOfToday.setHours(23, 59, 59, 999);
   const nextBk = canBookings
@@ -186,7 +203,7 @@ export default async function AdminOverview() {
     clientName: [nextBk.client.firstName, nextBk.client.lastName].filter(Boolean).join(' ') || 'Client',
     treatment: nextBk.treatmentTitle,
     startIso: nextBk.startAt.toISOString(),
-    timeLabel: nextBk.startAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + (nextBk.startAt <= endOfToday ? '' : ` · ${nextBk.startAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`),
+    timeLabel: fmtClinicTime(nextBk.startAt) + (nextBk.startAt <= endOfToday ? '' : ` · ${fmtClinicDate(nextBk.startAt)}`),
     practitioner: nextBk.practitioner?.name ?? null,
     room: nextRoom?.name ?? null,
     roomId: nextRoom?.id ?? null,
@@ -198,20 +215,6 @@ export default async function AdminOverview() {
   } : null;
   // Rooms board (front-of-house / clinician): availability + prep for the day.
   const roomsToday = canRoomsPrep ? await getRoomsForDay().catch(() => []) : [];
-
-  const clockWeather = (
-    <div className="flex items-center gap-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5">
-      <LiveClock />
-      {weather && (
-        <div className="border-l border-[var(--color-line)] pl-4 leading-tight">
-          <p className="text-sm font-medium text-[var(--color-ink)]"><span className="tabular-nums">{weather.tempC}°</span> <span className="font-normal text-[var(--color-stone)]">{weather.label}</span></p>
-          {weather.uvMax != null && uv && (
-            <p className="text-xs text-[var(--color-stone)]">UV <span className="tabular-nums">{weather.uvMax}</span> · <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{uv.label}</span></p>
-          )}
-        </div>
-      )}
-    </div>
-  );
 
   return (
     <AdminShell user={session?.email} can={can} locale={locale}>

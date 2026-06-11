@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { sessionCan, type Session } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { decClinical } from '@/lib/clinical-crypto';
+import { fmtClinicTime } from '@/lib/clinic-time';
 import { getRoomsForDay } from '@/lib/room-prep';
 import { DashWidget, TimelineList, EmptyWidget, type TimelineItem } from './Widgets';
 import { RoomPrepStatus } from '@/components/admin/rooms/RoomPrepStatus';
@@ -15,7 +16,7 @@ import { RoomPrepStatus } from '@/components/admin/rooms/RoomPrepStatus';
 // Self-contained async server component — does its own scoped queries (no revenue/
 // management data), so it's safe for the clinician role and for admin preview.
 
-const fmtTime = (d: Date) => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+const fmtTime = fmtClinicTime;
 const fullName = (c: { firstName: string | null; lastName: string | null }) => [c.firstName, c.lastName].filter(Boolean).join(' ') || 'Client';
 
 export async function ClinicianView({ session }: { session: Session }) {
