@@ -314,7 +314,7 @@ export function KioskSessionFlow({
                 {uploads < MAX_UPLOADS && (
                   <button
                     onClick={() => { setRetakePose(s.poseIdx); setError(null); setStep('camera'); }}
-                    className="mt-1 text-xs text-[var(--color-gold-soft)] underline underline-offset-2"
+                    className="mt-1 inline-flex min-h-9 items-center gap-1 rounded-full px-3 py-2 text-xs text-[var(--color-gold-soft)] underline underline-offset-2 transition-colors hover:bg-[color-mix(in_oklab,var(--color-gold)_12%,transparent)]"
                   >
                     Retake
                   </button>
