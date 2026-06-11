@@ -2978,3 +2978,33 @@ model KioskEvent {
   @@index([event, createdAt])
   @@index([sessionId])
 }
+
+// ── Device registry + hardware integrations (BLD-195) ───────────────────────
+// A registry of the physical devices in a clinic — card terminals, storefront
+// displays, sign-in kiosks, receipt printers. Terminals carry the provider +
+// the provider's device id so the payment layer (lib/terminal.ts) can route an
+// in-person capture to the right reader. New table only — additive, no @unique.
+enum DeviceKind {
+  TERMINAL // card payment terminal (e.g. Tyl by NatWest)
+  DISPLAY  // storefront / waiting-room screen
+  KIOSK    // self-service sign-in kiosk
+  PRINTER  // receipt / label printer
+  OTHER
+}
+
+model Device {
+  id         String     @id @default(cuid())
+  name       String                          // friendly label ("Reception terminal")
+  kind       DeviceKind @default(TERMINAL)
+  provider   String?                         // e.g. "tyl" for card terminals
+  externalId String?                         // the provider's device / POI id
+  location   String?                         // "Reception", "Room 1"
+  station    String?                         // reception | room (mirrors BLD-202)
+  active     Boolean    @default(true)
+  lastSeenAt DateTime?
+  notes      String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([kind, active])
+}
