@@ -46,8 +46,11 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
   const [matches, setMatches] = useState<Found[]>([]);
   const [selected, setSelected] = useState<Found | null>(null);
   const [selectedGroup, setSelectedGroup] = useState(firstGroup);
-  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', treatmentSlug: firstSlug, variantId: treatments.find((t) => t.slug === firstSlug)?.variants?.[0]?.id ?? '', date: '', time: '10:00', notes: '' });
+  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', treatmentSlug: firstSlug, variantId: treatments.find((t) => t.slug === firstSlug)?.variants?.[0]?.id ?? '', asConsultation: false, date: '', time: '10:00', notes: '' });
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD((p) => ({ ...p, [k]: v }));
+  // The standalone "Consultation" category is already a consultation; the toggle
+  // is for booking a *real* treatment category as a consultation (BLD-208).
+  const isConsultationCat = d.treatmentSlug === 'consultation';
 
   const groupTreatments = treatments.filter((t) => t.group === selectedGroup);
   // The chosen category's specific service variants/areas (each its own price + time).
@@ -69,7 +72,7 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
 
   const baseTitle = treatments.find((t) => t.slug === d.treatmentSlug)?.title || 'your treatment';
   const variantName = variants.find((v) => v.id === d.variantId)?.name;
-  const treatmentTitle = variantName ? `${baseTitle} — ${variantName}` : baseTitle;
+  const treatmentTitle = (d.asConsultation && !isConsultationCat) ? `${baseTitle} — Consultation` : variantName ? `${baseTitle} — ${variantName}` : baseTitle;
   const whenLabel = d.date ? new Date(`${d.date}T${d.time}`).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '—';
 
   function submit(override = false) {
@@ -85,7 +88,7 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
         lastName: selected?.lastName || d.lastName,
         email: selected?.email || d.email,
         phone: selected?.phone || d.phone,
-        treatmentSlug: d.treatmentSlug, variantId: d.variantId || undefined, startISO, notes: d.notes, override,
+        treatmentSlug: d.treatmentSlug, variantId: d.asConsultation ? undefined : (d.variantId || undefined), asConsultation: d.asConsultation, startISO, notes: d.notes, override,
       });
       if (r.ok) setResult(r as Result);
       else { setError(r.error || 'Could not create booking.'); setClash(Boolean(r.clash)); }
@@ -153,10 +156,17 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
                 {groupTreatments.map((t) => <option key={t.slug} value={t.slug}>{t.title}</option>)}
               </select>
             )}
-            {variants.length > 0 && (
+            {variants.length > 0 && !d.asConsultation && (
               <select className={f} value={d.variantId} onChange={(e) => set('variantId', e.target.value)} aria-label="Specific service / area">
                 {variants.map((v) => <option key={v.id} value={v.id}>{v.name} — {priceLabel(v.pricePence)} · {v.durationMin} min</option>)}
               </select>
+            )}
+            {/* Book any treatment category as a consultation (BLD-208). */}
+            {!isConsultationCat && (
+              <label className="flex items-center gap-2 text-sm text-[var(--color-stone)]">
+                <input type="checkbox" checked={d.asConsultation} onChange={(e) => set('asConsultation', e.target.checked)} />
+                Book as a consultation <span className="text-[var(--color-stone-soft)]">(30 min · on consultation)</span>
+              </label>
             )}
             <div className="grid grid-cols-2 gap-3">
               <input className={f} type="date" value={d.date} onChange={(e) => set('date', e.target.value)} />
