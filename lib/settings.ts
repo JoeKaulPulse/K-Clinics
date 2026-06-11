@@ -44,9 +44,9 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   review_requests_enabled: true,
   require_consent: false,
   require_before_photo: true,
-  abandoned_booking_recovery: false,
+  abandoned_booking_recovery: true, // BLD-131: enabled (owner-approved revenue automation)
   no_show_notice: false,
-  membership_renewal_nudge: false,
+  membership_renewal_nudge: true, // BLD-131: enabled (owner-approved revenue automation)
   nps_survey: false,
   post_course_checkin: false,
   gift_card_physical_enabled: false,
