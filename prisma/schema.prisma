@@ -67,6 +67,8 @@ enum Role {
   ADMIN         // full CRM access
   PRACTITIONER  // clinician / doctor — full client + clinical (health) access
   FRONT_DESK    // scheduling & client contact; no clinical health data
+  DEVELOPER     // build/CI/platform only — no client or clinical data (PRJ-63)
+  CONTRACTOR    // contracted tasks, time tracking, facility docs — no client data (PRJ-63)
   STAFF         // legacy / general staff
 }
 
@@ -914,6 +916,7 @@ model AdminUser {
   googleRefreshToken String?
 
   locale       String   @default("en") // CRM UI language (en | uk)
+  preferredDashboardView String? // PRJ-63: OWNER/ADMIN can pin a role-view to land on (null = role default)
 
   // ── Two-factor authentication (TOTP) ────────────────────────────────────
   totpSecret    String?    // encrypted base32 secret (lib/crypto keyring)

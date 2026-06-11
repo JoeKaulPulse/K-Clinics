@@ -13,6 +13,7 @@ import { getWeather, uvBand } from '@/lib/weather';
 import { LiveClock } from '@/components/admin/DashboardLive';
 import { ArrivalPrep, type NextArrival } from '@/components/admin/ArrivalPrep';
 import { NewBookingButton } from '@/components/admin/NewBookingButton';
+import { decClinical } from '@/lib/clinical-crypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -148,8 +149,8 @@ export default async function AdminOverview() {
     practitioner: nextBk.practitioner?.name ?? null,
     room: nextRoom?.name ?? null,
     drinks: nextBk.refreshments ?? [],
-    allergies: nextBk.client.allergies ?? null,
-    medicalFlag: nextBk.client.medicalFlag ?? null,
+    allergies: decClinical(nextBk.client.allergies) ?? null,
+    medicalFlag: decClinical(nextBk.client.medicalFlag) ?? null,
   } : null;
 
   return (
