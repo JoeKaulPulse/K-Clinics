@@ -101,9 +101,9 @@ export default async function ClinicsPage() {
                 <h3 className="font-[family-name:var(--font-display)] text-xl">By car</h3>
                 <p className="mt-2 text-sm text-[var(--color-stone)]">Set your sat-nav to <strong className="text-[var(--color-ink)]">EC1M 7AN</strong>. Paid car parks nearby:</p>
                 <ul className="mt-3 space-y-1 text-sm text-[var(--color-stone)]">
-                  {CARPARKS.map(([n, pc]) => <li key={pc}>{n} <span className="text-[var(--color-stone-soft)]">· {pc}</span></li>)}
+                  {CARPARKS.map(([n, pc]) => <li key={pc}>{n} <span className="text-[var(--color-stone)]">· {pc}</span></li>)}
                 </ul>
-                <p className="mt-3 text-xs text-[var(--color-stone-soft)]">On-street parking around Goswell Road is limited and restrictions may apply. The clinic is within the Congestion Charge zone — please check charges before arrival.</p>
+                <p className="mt-3 text-xs text-[var(--color-stone)]">On-street parking around Goswell Road is limited and restrictions may apply. The clinic is within the Congestion Charge zone — please check charges before arrival.</p>
               </div>
             </StaggerItem>
           </Stagger>

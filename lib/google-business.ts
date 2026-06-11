@@ -74,6 +74,7 @@ async function tokenRequest(body: Record<string, string>): Promise<Tokens | null
   const res = await fetch(TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    signal: AbortSignal.timeout(10_000),
     body: new URLSearchParams({ client_id: process.env.GOOGLE_CLIENT_ID!, client_secret: process.env.GOOGLE_CLIENT_SECRET!, ...body }),
   });
   if (!res.ok) return null;
@@ -107,7 +108,7 @@ export type LocationListing = {
 async function listLocationsWith(access: string): Promise<LocationListing> {
   try {
     const h = { Authorization: `Bearer ${access}` };
-    const accRes = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', { headers: h });
+    const accRes = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', { headers: h, signal: AbortSignal.timeout(10_000) });
     if (accRes.status === 403 || accRes.status === 429) return { status: 'pending' };
     if (!accRes.ok) return { status: 'error', message: `Couldn't reach Google (${accRes.status}).` };
     const accounts = ((await accRes.json()) as { accounts?: { name?: string }[] }).accounts || [];
@@ -116,7 +117,7 @@ async function listLocationsWith(access: string): Promise<LocationListing> {
       const account = acc.name;
       if (!account) continue;
       const mask = 'name,title,storefrontAddress';
-      const locRes = await fetch(`https://mybusinessbusinessinformation.googleapis.com/v1/${account}/locations?readMask=${mask}&pageSize=100`, { headers: h });
+      const locRes = await fetch(`https://mybusinessbusinessinformation.googleapis.com/v1/${account}/locations?readMask=${mask}&pageSize=100`, { headers: h, signal: AbortSignal.timeout(10_000) });
       if (locRes.status === 403 || locRes.status === 429) return { status: 'pending' };
       if (!locRes.ok) continue;
       const locs = ((await locRes.json()) as {
@@ -219,7 +220,7 @@ export async function syncGoogleReviews(): Promise<{ ok: boolean; imported: numb
       const url = new URL(`${MB_V4}/${loc}/reviews`);
       url.searchParams.set('pageSize', '50');
       if (pageToken) url.searchParams.set('pageToken', pageToken);
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${access}` } });
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${access}` }, signal: AbortSignal.timeout(10_000) });
       if (!res.ok) return { ok: false, imported, detail: `Google API ${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}` };
       const data = (await res.json()) as { reviews?: GBReview[]; nextPageToken?: string };
       for (const r of data.reviews || []) {
@@ -257,6 +258,7 @@ export async function replyToGoogleReview(googleName: string, comment: string): 
       method: 'PUT',
       headers: { Authorization: `Bearer ${access}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ comment: body.slice(0, 4096) }),
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) return { ok: false, error: `Google API ${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}` };
     const d = (await res.json()) as { comment?: string; updateTime?: string };
@@ -275,7 +277,7 @@ export async function deleteGoogleReply(googleName: string): Promise<{ ok: boole
   const access = await token();
   if (!access) return { ok: false, error: 'Not connected.' };
   try {
-    const res = await fetch(`${MB_V4}/${googleName}/reply`, { method: 'DELETE', headers: { Authorization: `Bearer ${access}` } });
+    const res = await fetch(`${MB_V4}/${googleName}/reply`, { method: 'DELETE', headers: { Authorization: `Bearer ${access}` }, signal: AbortSignal.timeout(10_000) });
     if (!res.ok && res.status !== 404) return { ok: false, error: `Google API ${res.status}` };
     await db.googleReview.update({ where: { googleName }, data: { replyComment: null, replyUpdateTime: null } }).catch(() => {});
     return { ok: true };

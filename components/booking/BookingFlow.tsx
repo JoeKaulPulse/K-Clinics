@@ -141,6 +141,7 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
       if (j.needCard) {
         setClientSecret(j.clientSecret); setBookingId(j.bookingId); setStage('card');
         try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'add_payment_info', { currency: 'GBP', value: orderTotal / 100, items: [{ item_id: variantId, item_name: service?.name, item_category: service?.category }] }); } catch { /* analytics best-effort */ }
+        try { (window as Window & { fbq?: (...a: unknown[]) => void }).fbq?.('track', 'InitiateCheckout', { currency: 'GBP', value: orderTotal / 100 }); } catch { /* analytics best-effort */ }
       } else { setStage('done'); }
     } catch { setError('Network error. Please try again.'); }
     finally { setSubmitting(false); }
@@ -163,7 +164,7 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
   ];
   const stepIndex = Math.max(0, steps.findIndex((s) => s.key === stage));
 
-  if (stage === 'done') return <Done firstName={firstName} treatment={service?.name} slot={slot} />;
+  if (stage === 'done') return <Done firstName={firstName} treatment={service?.name} slot={slot} orderTotal={orderTotal} variantId={variantId} category={service?.category} />;
 
   return (
     <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6 md:p-10">
@@ -403,8 +404,8 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
       {stage !== 'card' && stage !== 'account' && (
         <div className="mt-8 flex items-center justify-between gap-4">
           <button type="button" onClick={() => goBack()} className="text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Back</button>
-          {stage === 'variant' && <Button onClick={() => variant && setStage('time')} variant={variant ? 'gold' : 'outline'}>Continue <ArrowIcon /></Button>}
-          {stage === 'time' && <Button onClick={() => { if (!slot) return; setStage('upsell'); try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'begin_checkout', { currency: 'GBP', value: orderTotal / 100, items: [{ item_id: variantId, item_name: service?.name, item_category: service?.category }] }); } catch { /* analytics best-effort */ } }} variant={slot ? 'gold' : 'outline'}>Continue <ArrowIcon /></Button>}
+          {stage === 'variant' && <Button onClick={() => variant && setStage('time')} variant={variant ? 'gold' : 'outline'} disabled={!variant}>Continue <ArrowIcon /></Button>}
+          {stage === 'time' && <Button onClick={() => { if (!slot) return; setStage('upsell'); try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'begin_checkout', { currency: 'GBP', value: orderTotal / 100, items: [{ item_id: variantId, item_name: service?.name, item_category: service?.category }] }); } catch { /* analytics best-effort */ } }} variant={slot ? 'gold' : 'outline'} disabled={!slot}>Continue <ArrowIcon /></Button>}
           {stage === 'upsell' && <Button onClick={() => { if (!aftercareAck) { setError('Please confirm you’ve read and agree to the aftercare instructions.'); return; } if (!ageDeclare) { setError('Please confirm you are 18 or over.'); return; } if (!submitting) submitBooking(); }} variant={aftercareAck && ageDeclare ? 'gold' : 'outline'}>{submitting ? 'Securing…' : 'Continue to confirm'} <ArrowIcon /></Button>}
           {stage === 'service' && <span />}
         </div>
@@ -501,7 +502,18 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
   );
 }
 
-function Done({ firstName, treatment, slot }: { firstName: string; treatment?: string; slot: string }) {
+function Done({ firstName, treatment, slot, orderTotal, variantId, category }: { firstName: string; treatment?: string; slot: string; orderTotal: number; variantId: string; category?: string }) {
+  useEffect(() => {
+    try {
+      (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'purchase', {
+        currency: 'GBP', value: orderTotal / 100,
+        items: [{ item_id: variantId, item_name: treatment, item_category: category }],
+      });
+    } catch { /* analytics best-effort */ }
+    try {
+      (window as Window & { fbq?: (...a: unknown[]) => void }).fbq?.('track', 'Schedule', { currency: 'GBP', value: orderTotal / 100 });
+    } catch { /* analytics best-effort */ }
+  }, []);
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-10 text-center md:p-16">
       <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-full bg-[var(--color-ink)] text-[var(--color-gold-soft)]">

@@ -33,6 +33,7 @@ async function tokenRequest(body: Record<string, string>): Promise<Tokens | null
     method: 'POST',
     headers: { Authorization: `Basic ${basic}`, 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams(body),
+    signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) return null;
   const d = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number };
@@ -47,7 +48,7 @@ export async function exchangeXeroCode(code: string): Promise<boolean> {
   // Resolve the tenant (org) this token can access.
   let tenantId: string | null = null, tenantName: string | null = null;
   try {
-    const res = await fetch('https://api.xero.com/connections', { headers: { Authorization: `Bearer ${tokens.access}`, 'Content-Type': 'application/json' } });
+    const res = await fetch('https://api.xero.com/connections', { headers: { Authorization: `Bearer ${tokens.access}`, 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(10_000) });
     if (res.ok) {
       const conns = (await res.json()) as { tenantId: string; tenantName: string }[];
       tenantId = conns[0]?.tenantId ?? null;
@@ -69,6 +70,7 @@ async function xeroGet(path: string): Promise<{ ok: boolean; status?: number; da
   try {
     const res = await fetch(`https://api.xero.com/api.xro/2.0/${path}`, {
       headers: { Authorization: `Bearer ${token}`, 'Xero-tenant-id': conn.accountRef, Accept: 'application/json' },
+      signal: AbortSignal.timeout(10_000),
     });
     if (res.status === 403) return { ok: false, status: 403, error: 'Reconnect Xero to grant contacts/bills access.' };
     if (!res.ok) return { ok: false, status: res.status, error: `Xero responded ${res.status}.` };
@@ -156,6 +158,7 @@ async function xeroWrite(path: string, body: unknown): Promise<{ ok: boolean; st
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Xero-tenant-id': conn.accountRef, Accept: 'application/json', 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10_000),
     });
     const data: unknown = await res.json().catch(() => null);
     if (res.status === 403) return { ok: false, status: 403, error: 'Reconnect Xero to grant write (contacts/transactions) access.' };
@@ -307,6 +310,7 @@ export async function getXeroCashPence(): Promise<{ ok: boolean; pence: number; 
   try {
     const res = await fetch('https://api.xero.com/api.xro/2.0/Reports/BankSummary', {
       headers: { Authorization: `Bearer ${token}`, 'Xero-tenant-id': conn.accountRef, Accept: 'application/json' },
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) return { ok: false, pence: 0, label: conn.label };
     const data = (await res.json()) as { Reports?: { Rows?: { RowType?: string; Rows?: { Cells?: { Value?: string }[] }[] }[] }[] };

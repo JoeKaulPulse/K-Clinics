@@ -37,7 +37,7 @@ async function metaSpend(days: number): Promise<ProviderSpend[]> {
     // Ad accounts: from the stored accountRef, else discovered from the token.
     let accountIds = (conn.accountRef ? [conn.accountRef] : []).map((a) => a.replace(/^act_/, ''));
     if (accountIds.length === 0) {
-      const r = await fetch(`https://graph.facebook.com/v19.0/me/adaccounts?fields=account_id&limit=50&access_token=${encodeURIComponent(token)}`);
+      const r = await fetch(`https://graph.facebook.com/v19.0/me/adaccounts?fields=account_id&limit=50&access_token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(10_000) });
       const j = await r.json().catch(() => ({}));
       accountIds = (j?.data ?? []).map((a: { account_id: string }) => a.account_id).filter(Boolean);
     }
@@ -45,7 +45,7 @@ async function metaSpend(days: number): Promise<ProviderSpend[]> {
     for (const acct of accountIds) {
       const tr = encodeURIComponent(JSON.stringify({ since, until }));
       const url = `https://graph.facebook.com/v19.0/act_${acct}/insights?level=campaign&fields=campaign_name,spend&time_range=${tr}&limit=200&access_token=${encodeURIComponent(token)}`;
-      const r = await fetch(url);
+      const r = await fetch(url, { signal: AbortSignal.timeout(10_000) });
       const j = await r.json().catch(() => ({}));
       for (const row of j?.data ?? []) {
         const spend = Number(row.spend);
@@ -73,6 +73,7 @@ async function googleSpend(days: number): Promise<ProviderSpend[]> {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ query }),
+      signal: AbortSignal.timeout(10_000),
     });
     const j = await r.json().catch(() => ([]));
     const rows = Array.isArray(j) ? j.flatMap((batch: { results?: unknown[] }) => batch.results ?? []) : (j?.results ?? []);
@@ -95,7 +96,7 @@ async function tiktokSpend(days: number): Promise<ProviderSpend[]> {
     const base = 'https://business-api.tiktok.com/open_api/v1.3';
     let advertiserIds = conn.accountRef ? [conn.accountRef] : [];
     if (advertiserIds.length === 0) {
-      const r = await fetch(`${base}/oauth2/advertiser/get/`, { headers: { 'Access-Token': token } });
+      const r = await fetch(`${base}/oauth2/advertiser/get/`, { headers: { 'Access-Token': token }, signal: AbortSignal.timeout(10_000) });
       const j = await r.json().catch(() => ({}));
       advertiserIds = (j?.data?.list ?? []).map((a: { advertiser_id: string }) => a.advertiser_id).filter(Boolean);
     }
@@ -107,7 +108,7 @@ async function tiktokSpend(days: number): Promise<ProviderSpend[]> {
         dimensions: JSON.stringify(['campaign_id']), metrics: JSON.stringify(['campaign_name', 'spend']),
         start_date: since, end_date: until, page_size: '200',
       });
-      const r = await fetch(`${base}/report/integrated/get/?${params}`, { headers: { 'Access-Token': token } });
+      const r = await fetch(`${base}/report/integrated/get/?${params}`, { headers: { 'Access-Token': token }, signal: AbortSignal.timeout(10_000) });
       const j = await r.json().catch(() => ({}));
       for (const row of j?.data?.list ?? []) {
         const name = row?.metrics?.campaign_name;

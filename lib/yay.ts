@@ -231,6 +231,7 @@ export async function clickToCall({ agent, to }: { agent: string; to: string }):
         'X-Auth-Password': password,
       },
       body: JSON.stringify({ from: agent, to, caller_id: digits(site.phoneHref) }),
+      signal: AbortSignal.timeout(10_000),
     });
     if (res.status === 401 || res.status === 403) return { ok: false, error: 'yay.com rejected the request — check the API password and that this server’s IP is allow-listed in yay.' };
     if (!res.ok) return { ok: false, error: `yay.com responded ${res.status}` };

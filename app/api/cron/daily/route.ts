@@ -95,6 +95,7 @@ export async function GET(req: Request) {
     // BLD-127: call recordings/transcripts/raw payloads are minimised after ~13
     // months — the call facts (who/when/duration) stay, the content is scrubbed.
     const callCutoff = new Date(Date.now() - 395 * 24 * 60 * 60 * 1000);
+    const secEventCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
     const [r, h, , , , calls] = await Promise.all([
       db.replaySession.deleteMany({ where: { startedAt: { lt: replayCutoff } } }), // cascades to chunks
       db.heatmapEvent.deleteMany({ where: { at: { lt: heatCutoff } } }),
@@ -106,6 +107,8 @@ export async function GET(req: Request) {
         data: { transcript: null, recordingUrl: null, raw: Prisma.DbNull, transcriptStatus: 'unavailable' },
       }),
     ]);
+    // GDPR: SecurityEvent rows hold IP + email + UA — no need beyond 90 days.
+    await db.securityEvent.deleteMany({ where: { createdAt: { lt: secEventCutoff } } }).catch(() => {});
     retention = { replays: r.count, heatmap: h.count, calls: calls.count };
   } catch (e) {
     failures++; console.error('[cron] analytics retention failed (continuing):', (e as Error)?.message);
