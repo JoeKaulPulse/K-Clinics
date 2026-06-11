@@ -10,6 +10,8 @@ import { getLocale } from '@/lib/locale';
 import { translator } from '@/lib/i18n';
 import { fmtClinicTime } from '@/lib/clinic-time';
 import { ClockInOut } from '@/components/admin/ClockInOut';
+import { getWeather, uvBand } from '@/lib/weather';
+import { LiveClock } from '@/components/admin/DashboardLive';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,6 +98,9 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
   const t = translator(locale);
   const uk = locale === 'uk';
 
+  const weather = isToday ? await getWeather() : null;
+  const uv = weather?.uvMax != null ? uvBand(weather.uvMax) : null;
+
   // Time tracking — clock status + this week's worked total (own record).
   const { timeStatus, timesheet, fmtDuration } = await import('@/lib/time-tracking');
   const clock = await timeStatus(session.sub).catch(() => null);
@@ -147,7 +152,20 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
             {day.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}{isToday ? ` · ${uk ? 'сьогодні' : 'today'}` : ''}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {isToday && (
+            <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2">
+              <LiveClock />
+              {weather && (
+                <div className="border-l border-[var(--color-line)] pl-3 leading-tight">
+                  <p className="text-sm font-medium text-[var(--color-ink)]"><span className="tabular-nums">{weather.tempC}°</span> <span className="font-normal text-[var(--color-stone)]">{weather.label}</span></p>
+                  {weather.uvMax != null && uv && (
+                    <p className="text-xs text-[var(--color-stone)]">UV <span className="tabular-nums">{weather.uvMax}</span> · <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{uv.label}</span></p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           <Link href={`/admin/my-day?d=${iso(prev)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm hover:bg-[var(--color-bone)]">←</Link>
           <Link href="/admin/my-day" className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:bg-[var(--color-bone)]">{uk ? 'Сьогодні' : 'Today'}</Link>
           <Link href={`/admin/my-day?d=${iso(next)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm hover:bg-[var(--color-bone)]">→</Link>

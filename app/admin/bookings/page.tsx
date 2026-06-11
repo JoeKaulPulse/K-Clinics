@@ -52,7 +52,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-[family-name:var(--font-display)] text-3xl">{t(locale, 'nav.bookings')}</h1>
         {sessionCan(session, 'bookings.manage') && (
-          <NewBookingButton treatments={bookableTreatments.map((t) => ({ slug: t.slug, title: t.title }))} />
+          <NewBookingButton treatments={bookableTreatments.map((t) => ({ slug: t.slug, title: t.title, group: t.group }))} />
         )}
       </div>
 

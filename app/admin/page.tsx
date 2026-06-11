@@ -181,7 +181,7 @@ export default async function AdminOverview() {
   const locale = await getLocale();
 
   // ── Front-of-house essentials: the next client arrival (clock/weather above) ──
-  const treatments = bookableTreatments.map((t) => ({ slug: t.slug, title: t.title }));
+  const treatments = bookableTreatments.map((t) => ({ slug: t.slug, title: t.title, group: t.group }));
   const endOfToday = new Date(now); endOfToday.setHours(23, 59, 59, 999);
   const nextBk = canBookings
     ? await db.booking.findFirst({
