@@ -44,6 +44,30 @@ export const CLIENT_STAGE_COPY: Record<SessionStepKey, { title: string; note: st
 
 export const SESSION_STEP_KEYS = SESSION_STEPS.map((s) => s.key);
 
+// BLD-202 — which station each step belongs to. The owner's split: Reception
+// handles arrival and the wrap-up (checkout / next visit / farewell); the Room
+// handles the clinical middle (safety / consent / treatment / aftercare). One
+// session + one step sequence is kept; a device just picks which station it is.
+export type SessionStation = 'reception' | 'room';
+export type StationMode = 'full' | SessionStation;
+
+export const STEP_STATION: Record<SessionStepKey, SessionStation> = {
+  arrival: 'reception',
+  safety: 'room',
+  consent: 'room',
+  treatment: 'room',
+  aftercare: 'room',
+  checkout: 'reception',
+  nextvisit: 'reception',
+  farewell: 'reception',
+};
+
+export const STATION_LABEL: Record<SessionStation, string> = { reception: 'Reception', room: 'Room' };
+
+/** Does a step show full-size on a device set to this station mode? */
+export const stepActiveAtStation = (step: SessionStepKey, mode: StationMode): boolean =>
+  mode === 'full' || STEP_STATION[step] === mode;
+
 export function isSessionStep(v: unknown): v is SessionStepKey {
   return typeof v === 'string' && (SESSION_STEP_KEYS as string[]).includes(v);
 }

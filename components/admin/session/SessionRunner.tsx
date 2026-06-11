@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { SESSION_STEPS, type SessionStepKey, type StepTimings } from '@/lib/appointment-session';
+import { SESSION_STEPS, STEP_STATION, STATION_LABEL, stepActiveAtStation, type SessionStepKey, type StationMode, type StepTimings } from '@/lib/appointment-session';
 import type { SessionSnapshot } from '@/lib/appointment-session-server';
 import { reviewMedicalFlag, saveSopChecklist, startAppointment, finishAppointment, saveClinicalNote } from '@/app/admin/bookings/clinical-actions';
 import { useSessionChannel } from '@/components/admin/session/useSessionChannel';
@@ -64,6 +64,12 @@ export function SessionRunner(p: Props) {
   const [browse, setBrowse] = useState<SessionStepKey | null>(null);
   const [presenting, setPresenting] = useState(false);
   const [err, setErr] = useState('');
+  // BLD-202 — per-device station: Full | Reception | Room. Remembered on the
+  // device; one shared session, but each station shows only its own phase
+  // full-size and the other phase as a compact read-only handoff.
+  const [station, setStation] = useState<StationMode>('full');
+  useEffect(() => { try { const s = localStorage.getItem('kc_session_station'); if (s === 'reception' || s === 'room' || s === 'full') setStation(s); } catch { /* ignore */ } }, []);
+  const pickStation = (s: StationMode) => { setStation(s); try { localStorage.setItem('kc_session_station', s); } catch { /* ignore */ } };
   const [pending, startTransition] = useTransition();
   const [now, setNow] = useState(() => Date.now());
   const startAttempts = useRef(0);
@@ -168,6 +174,8 @@ export function SessionRunner(p: Props) {
 
   const idx = SESSION_STEPS.findIndex((s) => s.key === step);
   const def = SESSION_STEPS[idx];
+  // Does the current step belong to this device's station? (Full → always.)
+  const activeHere = stepActiveAtStation(step, station);
   const clientSafe = def.clientFacing;
 
   const flagOk = !p.client.medicalFlag || !p.gates.requireMedical || !!live.medicalFlagReviewedAt;
@@ -211,6 +219,16 @@ export function SessionRunner(p: Props) {
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
+            {!presenting && (
+              <div className="hidden items-center rounded-full border border-[var(--color-line)] p-0.5 text-xs sm:flex" role="group" aria-label="Station mode">
+                {(['full', 'reception', 'room'] as const).map((s) => (
+                  <button key={s} type="button" onClick={() => pickStation(s)} aria-pressed={station === s}
+                    className={`rounded-full px-2.5 py-1 capitalize transition-colors ${station === s ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
             {live.startedAt && !live.finishedAt && (
               <span className="hidden items-center gap-2 rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-porcelain)] sm:flex">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--color-gold-bright)]" aria-hidden />
@@ -236,12 +254,14 @@ export function SessionRunner(p: Props) {
             {SESSION_STEPS.map((s, i) => {
               const state = i < idx ? 'done' : i === idx ? 'current' : 'todo';
               const secs = stepSeconds(s.key);
+              const otherStation = station !== 'full' && STEP_STATION[s.key] !== station;
               return (
                 <li key={s.key}>
                   <button
                     type="button" onClick={() => goTo(s.key)}
                     aria-current={state === 'current' ? 'step' : undefined}
-                    className={`group flex w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-left transition-colors ${state === 'current' ? 'bg-[var(--color-bone)]' : 'hover:bg-[var(--color-bone)]/60'}`}
+                    title={otherStation ? `${STATION_LABEL[STEP_STATION[s.key]]} station` : undefined}
+                    className={`group flex w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-left transition-colors ${state === 'current' ? 'bg-[var(--color-bone)]' : 'hover:bg-[var(--color-bone)]/60'} ${otherStation ? 'opacity-45' : ''}`}
                   >
                     <span aria-hidden className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[10px] transition-colors ${
                       state === 'done' ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white'
@@ -281,6 +301,17 @@ export function SessionRunner(p: Props) {
               {err && <p role="alert" aria-live="assertive" className="mt-6 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm">{err}</p>}
 
               <div className="mt-8 space-y-6">
+                {!activeHere ? (
+                  <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] bg-[var(--color-bone)]/40 p-8 text-center">
+                    <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-stone-soft)]">{STATION_LABEL[STEP_STATION[step]]} station</p>
+                    <p className="mt-3 text-lg">The <span className="font-medium">{STATION_LABEL[STEP_STATION[step]]}</span> team is with {p.client.firstName} — <span className="font-medium">{def.label}</span>.</p>
+                    <p className="mt-2 text-sm text-[var(--color-stone)]">This stage happens at the {STATION_LABEL[STEP_STATION[step]]} station. Your screen picks up again when it returns to the {STATION_LABEL[station as 'reception' | 'room']}.</p>
+                    {live.startedAt && !live.finishedAt && step === 'treatment' && (
+                      <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-porcelain)]"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--color-gold-bright)]" aria-hidden /><span className="tabular-nums">{fmtClock(treatmentElapsed)}</span></p>
+                    )}
+                    <button type="button" onClick={() => pickStation('full')} className="mt-5 block w-full text-xs text-[var(--color-stone-soft)] underline-offset-2 hover:underline">Switch this device to Full view</button>
+                  </div>
+                ) : (<>
                 {step === 'arrival' && <ArrivalStep p={p} presenting={presenting} onBegin={() => goTo('safety')} />}
                 {step === 'safety' && (
                   <SafetyStep
@@ -317,6 +348,7 @@ export function SessionRunner(p: Props) {
                   <FarewellStep p={p} live={live} pending={pending} sessionDone={sessionDone} timings={timings} stepSeconds={stepSeconds}
                     onComplete={() => run(() => api({ op: 'complete' }))} />
                 )}
+                </>)}
               </div>
 
               {idx > 0 && step !== 'farewell' && !presenting && (
