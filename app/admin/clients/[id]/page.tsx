@@ -73,6 +73,17 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
 
   const can = await sessionPermissions();
 
+  // Signed consent forms (e-signature records, incl. legacy WordPress imports).
+  // Listed from clear metadata only — the encrypted body/signature stays sealed
+  // until staff open the certificate.
+  let signedConsents: { id: string; title: string; signedAt: Date; declined: boolean; templateKey: string }[] = [];
+  if (clinical) {
+    try {
+      const { db } = await import('@/lib/db');
+      signedConsents = await db.signedConsent.findMany({ where: { clientId: c.id }, orderBy: { signedAt: 'desc' }, select: { id: true, title: true, signedAt: true, declined: true, templateKey: true } });
+    } catch { /* consent list is best-effort */ }
+  }
+
   // K Vision AI consultations (clinical — decrypt findings + photos for the clinician).
   const aiAnalyses: { id: string; createdAt: Date; summary: string | null; treatments: string[]; findings: { label: string; note: string; severity: string }[]; images: string[] }[] = [];
   if (clinical) {
@@ -246,6 +257,34 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                         </div>
                       ))}
                     </dl>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Clinical: signed consent forms (practitioners/admins only) */}
+        {clinical && (
+          <section>
+            <div className="mb-3 flex items-center gap-2">
+              <h2 className="font-[family-name:var(--font-display)] text-xl">Consent forms</h2>
+              <span className="rounded-full bg-[var(--color-ink)] px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.14em] text-[var(--color-gold-soft)]">Encrypted · clinical</span>
+            </div>
+            {signedConsents.length === 0 ? (
+              <p className="text-sm text-[var(--color-stone)]">No consent forms on record.</p>
+            ) : (
+              <div className="space-y-2">
+                {signedConsents.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
+                    <div>
+                      <p className="text-sm font-medium">{s.title}</p>
+                      <p className="text-xs text-[var(--color-stone-soft)]">
+                        {s.declined ? 'Declined' : 'Signed'} · {new Date(s.signedAt).toLocaleDateString('en-GB')}
+                        {s.templateKey === 'legacy_wordpress' ? ' · imported from the old site' : ''}
+                      </p>
+                    </div>
+                    <Link href={`/admin/consent/cert/${s.id}`} className="shrink-0 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:border-[var(--color-gold)]">Certificate</Link>
                   </div>
                 ))}
               </div>
