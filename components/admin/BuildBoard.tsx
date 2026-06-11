@@ -110,6 +110,12 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
   const [ideaOpen, setIdeaOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectFilter, setProjectFilter] = useState<string | null>(null); // project id
+  // Filtering + sorting (board search/filter/sort).
+  const [fUrgency, setFUrgency] = useState('');
+  const [fType, setFType] = useState('');
+  const [fStatus, setFStatus] = useState('');
+  const [fAssignee, setFAssignee] = useState('');
+  const [sortBy, setSortBy] = useState<'priority' | 'newest' | 'oldest' | 'updated' | 'ref'>('priority');
 
   const load = useCallback(async (force = false) => {
     if (!force && typeof document !== 'undefined' && document.hidden) return;
@@ -167,11 +173,43 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
     load(true);
   }
 
-  const ql = q.trim().toLowerCase();
+  // Search: every space-separated term must match (AND), across ref/title/detail/
+  // people/urgency/type/status — so "p0 booking" finds P0 items mentioning booking.
+  const terms = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const matchesSearch = (i: Item) => {
+    if (!terms.length) return true;
+    const hay = `${i.ref || ''} ${i.title} ${i.detail || ''} ${i.assignee} ${i.reportedBy || ''} ${i.urgency} ${i.type} ${i.status}`.toLowerCase();
+    return terms.every((t) => hay.includes(t));
+  };
+  const URGENCY_ORDER: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
+  const sortItems = (a: Item, b: Item) => {
+    switch (sortBy) {
+      case 'newest': return b.createdAt.localeCompare(a.createdAt);
+      case 'oldest': return a.createdAt.localeCompare(b.createdAt);
+      case 'updated': return b.updatedAt.localeCompare(a.updatedAt);
+      case 'ref': return (a.ref || '~').localeCompare(b.ref || '~', undefined, { numeric: true });
+      default: { // priority: urgency, then value/effort, then newest
+        const u = (URGENCY_ORDER[a.urgency] ?? 9) - (URGENCY_ORDER[b.urgency] ?? 9);
+        if (u) return u;
+        const ve = ((b.value ?? 0) / Math.max(b.effort ?? 1, 0.5)) - ((a.value ?? 0) / Math.max(a.effort ?? 1, 0.5));
+        if (ve) return ve;
+        return b.createdAt.localeCompare(a.createdAt);
+      }
+    }
+  };
+  const typeOptions = Array.from(new Set(items.map((i) => i.type))).sort();
+  const assigneeOptions = Array.from(new Set(items.map((i) => i.assignee).filter(Boolean))).sort();
+  const filtersActive = !!(q || fUrgency || fType || fStatus || fAssignee || mine || projectFilter);
+  const clearFilters = () => { setQ(''); setFUrgency(''); setFType(''); setFStatus(''); setFAssignee(''); setMine(false); setProjectFilter(null); };
   const view2 = items
     .filter((i) => (mine ? i.assignee === me : true))
     .filter((i) => (projectFilter ? i.project?.id === projectFilter : true))
-    .filter((i) => (ql ? `${i.ref || ''} ${i.title} ${i.detail || ''} ${i.assignee} ${i.urgency} ${i.type}`.toLowerCase().includes(ql) : true));
+    .filter((i) => (fUrgency ? i.urgency === fUrgency : true))
+    .filter((i) => (fType ? i.type === fType : true))
+    .filter((i) => (fStatus ? i.status === fStatus : true))
+    .filter((i) => (fAssignee ? i.assignee === fAssignee : true))
+    .filter(matchesSearch)
+    .sort(sortItems);
   const activeProject = projectFilter ? projects.find((p) => p.id === projectFilter) : null;
   const counts = (k: string) => view2.filter((i) => i.status === k).length;
   const open = items.filter((i) => !['SHIPPED', 'CLOSED', 'CANCELLED'].includes(i.status)).length;
@@ -203,8 +241,8 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
       </div>
 
       {/* Search + view switcher + sync state */}
-      <div className="mb-5 flex flex-wrap items-center gap-3">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search tasks (incl. shipped & closed)…" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search ref, title, detail, people… (all words must match)" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
         <div className="flex rounded-full border border-[var(--color-line)] bg-white p-0.5 text-xs">
           {(['kanban', 'list', 'timeline', 'projects'] as const).map((v) => (
             <button key={v} onClick={() => { setView(v); if (v === 'projects') setProjectFilter(null); }} className={`rounded-full px-3 py-1 capitalize ${view === v ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)]'}`}>{v}</button>
@@ -218,6 +256,41 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
           </span>
         )}
       </div>
+
+      {/* Filter + sort bar */}
+      {view !== 'projects' && (
+        <div className="mb-5 flex flex-wrap items-center gap-2 text-xs text-[var(--color-stone)]">
+          {(() => { const sel = 'rounded-full border border-[var(--color-line)] bg-white px-2.5 py-1.5 outline-none focus:border-[var(--color-gold)]'; return (<>
+            <span className="text-[var(--color-stone-soft)]">Filter</span>
+            <select aria-label="Priority" value={fUrgency} onChange={(e) => setFUrgency(e.target.value)} className={sel}>
+              <option value="">All priorities</option>
+              {Object.keys(URGENCY).map((u) => <option key={u} value={u}>{URGENCY[u].label}</option>)}
+            </select>
+            <select aria-label="Type" value={fType} onChange={(e) => setFType(e.target.value)} className={sel}>
+              <option value="">All types</option>
+              {typeOptions.map((t) => <option key={t} value={t}>{t.charAt(0) + t.slice(1).toLowerCase()}</option>)}
+            </select>
+            <select aria-label="Status" value={fStatus} onChange={(e) => setFStatus(e.target.value)} className={sel}>
+              <option value="">All statuses</option>
+              {ALL_STATUSES.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ').toLowerCase().replace(/^./, (c) => c.toUpperCase())}</option>)}
+            </select>
+            <select aria-label="Assignee" value={fAssignee} onChange={(e) => setFAssignee(e.target.value)} className={sel}>
+              <option value="">Anyone</option>
+              {assigneeOptions.map((a) => <option key={a} value={a}>{a === 'claude' ? 'Claude' : a}</option>)}
+            </select>
+            <span className="ml-2 text-[var(--color-stone-soft)]">Sort</span>
+            <select aria-label="Sort by" value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className={sel}>
+              <option value="priority">Priority</option>
+              <option value="newest">Newest</option>
+              <option value="oldest">Oldest</option>
+              <option value="updated">Recently updated</option>
+              <option value="ref">Reference</option>
+            </select>
+            {filtersActive && <button onClick={clearFilters} className="rounded-full border border-[var(--color-line)] px-2.5 py-1 hover:bg-[var(--color-bone)]">Clear</button>}
+            <span className="ml-auto text-[var(--color-stone-soft)]">{view2.length} shown</span>
+          </>); })()}
+        </div>
+      )}
 
       {/* Connect GitHub (self-serve) */}
       {canManage && !gh.connected && (
