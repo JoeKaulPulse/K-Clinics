@@ -297,6 +297,7 @@ model Client {
   passwordHash    String?        // set when the client creates a portal account
   emailVerified   DateTime?
   portalActive    Boolean        @default(false)
+  sessionEpoch    Int            @default(0) // BLD-161: bump to revoke all outstanding portal JWTs (e.g. on password reset)
   locale          String         @default("en") // preferred portal language (en | uk)
   lastLoginAt     DateTime?
   // Password reset (hashed token + expiry).

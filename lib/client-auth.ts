@@ -154,7 +154,7 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
     }
   }
 
-  await createClientSession({ sub: client.id, email: client.email, firstName: client.firstName });
+  await createClientSession({ sub: client.id, email: client.email, firstName: client.firstName, epoch: 0 });
 
   return {
     ok: true,
@@ -176,12 +176,12 @@ export async function loginClient(email: string, password: string): Promise<{ ok
   // Select only what we need: a default findUnique pulls every column, so any
   // not-yet-migrated column in production would throw before we can sign in.
   // Retry once on a transient connection error (serverless cold-start blip).
-  let client: { id: string; email: string; firstName: string; passwordHash: string | null; locale: string } | null = null;
+  let client: { id: string; email: string; firstName: string; passwordHash: string | null; locale: string; sessionEpoch: number } | null = null;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       client = await db.client.findUnique({
         where: { email: email.trim().toLowerCase() },
-        select: { id: true, email: true, firstName: true, passwordHash: true, locale: true },
+        select: { id: true, email: true, firstName: true, passwordHash: true, locale: true, sessionEpoch: true },
       });
       break;
     } catch (err) {
@@ -206,7 +206,7 @@ export async function loginClient(email: string, password: string): Promise<{ ok
     console.error('[login] lastLoginAt update failed (continuing):', (e as Error)?.message);
   }
   try {
-    await createClientSession({ sub: client.id, email: client.email, firstName: client.firstName });
+    await createClientSession({ sub: client.id, email: client.email, firstName: client.firstName, epoch: client.sessionEpoch });
   } catch (err) {
     throw stageError('session', err);
   }
@@ -256,12 +256,15 @@ export async function performPasswordReset(clientId: string, token: string, newP
   if (!hashesEqual(sha256(token), client.resetTokenHash)) return { ok: false, error: 'Invalid reset link.' };
   const { isBreachedPassword } = await import('@/lib/security/breached-password');
   if (await isBreachedPassword(newPassword)) return { ok: false, error: 'That password has appeared in a known data breach. Please choose a different one.' };
-  await db.client.update({
+  // BLD-161: bump sessionEpoch so any outstanding portal JWTs are revoked — a
+  // password reset must invalidate sessions held by whoever knew the old one.
+  const updated = await db.client.update({
     where: { id: client.id },
-    data: { passwordHash: await hashPassword(newPassword), resetTokenHash: null, resetTokenExp: null, portalActive: true },
+    data: { passwordHash: await hashPassword(newPassword), resetTokenHash: null, resetTokenExp: null, portalActive: true, sessionEpoch: { increment: 1 } },
+    select: { sessionEpoch: true },
   });
   await notifyPasswordChanged(client.email, client.firstName);
-  await createClientSession({ sub: client.id, email: client.email, firstName: client.firstName });
+  await createClientSession({ sub: client.id, email: client.email, firstName: client.firstName, epoch: updated.sessionEpoch });
   return { ok: true };
 }
 
