@@ -2989,8 +2989,9 @@ model KioskEvent {
 // in-person capture to the right reader. New table only — additive, no @unique.
 enum DeviceKind {
   TERMINAL // card payment terminal (e.g. Tyl by NatWest)
-  DISPLAY  // storefront / waiting-room screen
+  DISPLAY  // storefront / waiting-room / treatment-room screen (e.g. iiyama TW1023ASC)
   KIOSK    // self-service sign-in kiosk
+  SCANNER  // barcode scanner (e.g. Zebra DS2278 keyboard-wedge)
   PRINTER  // receipt / label printer
   OTHER
 }
