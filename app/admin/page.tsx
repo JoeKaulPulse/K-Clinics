@@ -20,6 +20,7 @@ import { ScaffoldView } from '@/components/admin/dashboard/ScaffoldView';
 import { ClinicianView } from '@/components/admin/dashboard/ClinicianView';
 import { ReceptionistView } from '@/components/admin/dashboard/ReceptionistView';
 import { DeveloperView } from '@/components/admin/dashboard/DeveloperView';
+import { ContractorView } from '@/components/admin/dashboard/ContractorView';
 import { RoomPrepStatus } from '@/components/admin/rooms/RoomPrepStatus';
 
 export const dynamic = 'force-dynamic';
@@ -44,7 +45,7 @@ export default async function AdminOverview() {
   //    unbuilt view lands on its scaffold.
   const role = session?.role ?? 'STAFF';
   const view: DashboardView = resolveView(role, meProf?.preferredDashboardView);
-  const BUILT_VIEWS: DashboardView[] = ['admin', 'clinician', 'reception', 'developer'];
+  const BUILT_VIEWS: DashboardView[] = ['admin', 'clinician', 'reception', 'developer', 'contractor'];
   const renderedView: DashboardView = BUILT_VIEWS.includes(view) ? view : canSwitchViews(role) ? view : 'admin';
 
   // Time-aware greeting in clinic-local (London) time — the server may run in UTC.
@@ -88,6 +89,7 @@ export default async function AdminOverview() {
           {renderedView === 'clinician' && session ? <ClinicianView session={session} />
             : renderedView === 'reception' && session ? <ReceptionistView session={session} />
             : renderedView === 'developer' && session ? <DeveloperView session={session} />
+            : renderedView === 'contractor' && session ? <ContractorView session={session} />
             : <ScaffoldView view={renderedView} />}
         </DashboardShell>
         {staffOnb && <OnboardingHost pending={staffOnb.pending} title={ONBOARDING.staff.title} intro={ONBOARDING.staff.intro} steps={ONBOARDING.staff.steps} initial={staffOnb.initial} endpoint={ONBOARDING.staff.endpoint} />}
