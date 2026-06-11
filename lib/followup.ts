@@ -1,6 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db';
 import { site } from '@/lib/site';
+import { encClinical } from '@/lib/clinical-crypto';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || site.url;
 
@@ -53,7 +54,7 @@ export async function submitFollowUp(token: string, sentiment: string, comment?:
     // Reference ID (TSK-n) for tracing/search; best-effort (backfill self-heals).
     const { assignTaskRef } = await import('@/lib/task-refs');
     await assignTaskRef(task.id).catch(() => {});
-    await db.interaction.create({ data: { clientId: fu.clientId, type: 'FOLLOW_UP', summary: `Post-treatment concern flagged (${fu.treatmentTitle})`, detail: note || undefined, author: 'system' } }).catch(() => {});
+    await db.interaction.create({ data: { clientId: fu.clientId, type: 'FOLLOW_UP', summary: `Post-treatment concern flagged (${fu.treatmentTitle})`, detail: note ? encClinical(note) : undefined, author: 'system' } }).catch(() => {});
   }
 
   await db.followUp.update({ where: { id: fu.id }, data: { respondedAt: new Date(), sentiment: valid, concern, comment: note, taskId } });
