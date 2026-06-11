@@ -166,6 +166,9 @@ export async function POST(req: Request) {
     await logAudit({ action: 'PRACTITIONER_ASSIGNED', actor: 'system', bookingId: booking.id, clientId: client.id, summary: 'Clinician auto-assigned' });
   }
 
+  // BLD-133: if this booking came from a waitlist claim link, retire the offer.
+  if (d.waitlistToken) { const { claimWaitlist } = await import('@/lib/waitlist'); await claimWaitlist(d.waitlistToken, { clientId: client.id }); }
+
   // Staff incentive: reward the practitioner of the client's previous treatment
   // for securing this repeat booking (best-effort).
   try { const { awardForRebooking } = await import('@/lib/gamification'); await awardForRebooking(booking.id); } catch { /* non-fatal */ }

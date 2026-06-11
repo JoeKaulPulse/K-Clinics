@@ -179,6 +179,9 @@ export async function POST(req: Request) {
   const { logAudit } = await import('@/lib/audit');
   await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Booking created: ${title} on ${start.toLocaleString('en-GB')}`, meta: { totalPence: totalPrice, items: items.length } });
 
+  // BLD-133: if this booking came from a waitlist claim link, retire the offer.
+  if (d.waitlistToken) { const { claimWaitlist } = await import('@/lib/waitlist'); await claimWaitlist(d.waitlistToken, { clientId: client.id }); }
+
   // ── Card on file: reuse a saved card, else save one via SetupIntent ──
   let defaultPm: string | null = null;
   try {
