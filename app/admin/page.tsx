@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { formatPrice, bookableTreatments } from '@/lib/treatments';
@@ -17,6 +16,7 @@ import { decClinical } from '@/lib/clinical-crypto';
 import { resolveView, canSwitchViews, type DashboardView } from '@/lib/dashboard-views';
 import { DashboardShell } from '@/components/admin/dashboard/DashboardShell';
 import { ScaffoldView } from '@/components/admin/dashboard/ScaffoldView';
+import { ClinicianView } from '@/components/admin/dashboard/ClinicianView';
 import { RoomPrepStatus } from '@/components/admin/rooms/RoomPrepStatus';
 
 export const dynamic = 'force-dynamic';
@@ -30,12 +30,9 @@ export default async function AdminOverview() {
   const meProf = session ? await db.adminUser.findUnique({ where: { id: session.sub }, select: { onboardedAt: true, name: true, title: true, credentials: true, photoUrl: true, publicPhone: true, preferredDashboardView: true } }) : null;
   const staffOnb = meProf ? { pending: !meProf.onboardedAt, initial: { name: meProf.name ?? '', title: meProf.title ?? '', credentials: meProf.credentials ?? '', photoUrl: meProf.photoUrl ?? '', publicPhone: meProf.publicPhone ?? '' } } : null;
 
-  // A practising clinician's home is "My day", not the owner KPI overview.
-  // Send clinical-only roles there; managers (OWNER/ADMIN) keep the overview.
-  if (session && !['OWNER', 'ADMIN'].includes(session.role)) {
-    const me = await db.adminUser.findUnique({ where: { id: session.sub }, select: { isClinician: true } });
-    if (me?.isClinician) redirect('/admin/my-day');
-  }
+  // (PRJ-63) Clinicians used to be redirected to /admin/my-day; they now land on
+  // the role-shaped Clinician dashboard view below (My day stays in the nav and
+  // is linked from that view). The per-role view is resolved next.
 
   // ── Which dashboard view is active? (PRJ-63) Each role has a default view;
   //    OWNER/ADMIN may pin another role's view to preview it. Views whose
@@ -44,7 +41,7 @@ export default async function AdminOverview() {
   //    unbuilt view lands on its scaffold.
   const role = session?.role ?? 'STAFF';
   const view: DashboardView = resolveView(role, meProf?.preferredDashboardView);
-  const BUILT_VIEWS: DashboardView[] = ['admin'];
+  const BUILT_VIEWS: DashboardView[] = ['admin', 'clinician'];
   const renderedView: DashboardView = BUILT_VIEWS.includes(view) ? view : canSwitchViews(role) ? view : 'admin';
 
   // Time-aware greeting in clinic-local (London) time — the server may run in UTC.
@@ -67,7 +64,7 @@ export default async function AdminOverview() {
     return (
       <AdminShell user={session?.email} can={can} locale={locale}>
         <DashboardShell role={role} view={renderedView} heading={heading}>
-          <ScaffoldView view={renderedView} />
+          {renderedView === 'clinician' && session ? <ClinicianView session={session} /> : <ScaffoldView view={renderedView} />}
         </DashboardShell>
         {staffOnb && <OnboardingHost pending={staffOnb.pending} title={ONBOARDING.staff.title} intro={ONBOARDING.staff.intro} steps={ONBOARDING.staff.steps} initial={staffOnb.initial} endpoint={ONBOARDING.staff.endpoint} />}
       </AdminShell>
