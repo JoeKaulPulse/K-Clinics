@@ -225,9 +225,21 @@ function SignaturePad({ handleRef, hasSig, onInk }: { handleRef: Ref<SignaturePa
     onInk(false); // fresh (blank) canvas on every mount
     const c = canvas.current; if (!c) return;
     const ctx = c.getContext('2d'); if (!ctx) return;
-    const ratio = window.devicePixelRatio || 1;
-    c.width = c.offsetWidth * ratio; c.height = c.offsetHeight * ratio; ctx.scale(ratio, ratio);
-    ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#2a2420';
+
+    function initCanvas() {
+      if (!c || !ctx) return;
+      const ratio = window.devicePixelRatio || 1;
+      // BLD-149: re-read offsetWidth/Height so canvas bitmap stays in sync after
+      // device rotation or window resize. Clears any in-progress strokes because
+      // resizing the canvas bitmap always resets it — an in-flight partial stroke
+      // must never be captured and sealed as the consent signature.
+      c.width = c.offsetWidth * ratio; c.height = c.offsetHeight * ratio;
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#2a2420';
+      drawing.current = false; lastPoint.current = null; onInk(false);
+    }
+    initCanvas();
+
     const pos = (e: PointerEvent) => { const r = c.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
     const down = (e: PointerEvent) => {
       drawing.current = true; const p = pos(e); lastPoint.current = p;
@@ -245,7 +257,11 @@ function SignaturePad({ handleRef, hasSig, onInk }: { handleRef: Ref<SignaturePa
     };
     const up = () => { drawing.current = false; lastPoint.current = null; };
     c.addEventListener('pointerdown', down); c.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
-    return () => { c.removeEventListener('pointerdown', down); c.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+
+    const ro = new ResizeObserver(initCanvas);
+    ro.observe(c);
+
+    return () => { c.removeEventListener('pointerdown', down); c.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); ro.disconnect(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
