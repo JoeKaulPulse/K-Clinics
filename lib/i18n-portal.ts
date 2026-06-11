@@ -116,6 +116,8 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'assess.back': { en: '← Back', uk: '← Назад' },
   'assess.continue': { en: 'Continue', uk: 'Далі' },
   'assess.continueSkip': { en: 'Continue / skip', uk: 'Далі / пропустити' },
+  'assess.required': { en: 'Required', uk: 'Обовʼязково' },
+  'assess.optional': { en: 'Optional — you can skip', uk: 'Необовʼязково — можна пропустити' },
   'assess.almost': { en: 'Almost there', uk: 'Майже готово' },
   'assess.readySubmit': { en: 'Ready to submit?', uk: 'Готові надіслати?' },
   'assess.submitIntro': { en: 'Once submitted, your answers form part of your confidential clinical record. You can submit a fresh version later if anything changes.', uk: 'Після надсилання ваші відповіді стають частиною конфіденційного клінічного запису. За потреби ви зможете надіслати оновлену версію пізніше.' },
