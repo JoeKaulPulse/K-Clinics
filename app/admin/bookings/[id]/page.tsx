@@ -13,6 +13,7 @@ import { BookingLocation } from '@/components/admin/BookingLocation';
 import { ConsentPanel } from '@/components/admin/ConsentPanel';
 import { BeforePhotoCapture } from '@/components/admin/BeforePhotoCapture';
 import { ReadinessPanel } from '@/components/admin/ReadinessPanel';
+import { AddTreatment } from '@/components/admin/AddTreatment';
 import { sessionCan } from '@/lib/auth';
 import { site } from '@/lib/site';
 
@@ -93,6 +94,20 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const used = usedRaw.map((m) => ({
     id: m.id, itemName: m.item.name, unit: m.item.unit, qty: Math.abs(m.delta), batchNo: m.batchNo, by: m.by, at: m.createdAt.toISOString(),
   }));
+
+  // Treatments & billing — add-on line items taken on this appointment, plus the
+  // variants a clinician can add mid-session (canonical prices).
+  const canManageBk = sessionCan(session, 'bookings.manage');
+  const addOnItems = await db.bookingItem.findMany({ where: { bookingId: id, isAddon: true }, orderBy: { createdAt: 'asc' }, select: { id: true, label: true, pricePence: true } }).catch(() => []);
+  const addOnTotal = addOnItems.reduce((s, it) => s + it.pricePence, 0);
+  const basePence = Math.max(0, b.pricePence - addOnTotal);
+  const canAddTreatment = canManageBk && !b.chargedAt && !['CANCELLED', 'NO_SHOW'].includes(b.status);
+  let variantOptions: { id: string; label: string; pricePence: number }[] = [];
+  if (canAddTreatment) {
+    const { listServices } = await import('@/lib/services');
+    const svcs = await listServices(false).catch(() => []);
+    variantOptions = svcs.flatMap((s) => s.variants.map((v) => ({ id: v.id, label: `${s.name} — ${v.name}`, pricePence: v.pricePence }))).slice(0, 300);
+  }
 
   // Clinical treatment note (clinical staff only) — decrypt for display.
   const canClinical = sessionCan(session, 'clients.clinical.view');
@@ -189,6 +204,30 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
               </span>
               <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-gold)] text-white">→</span>
             </Link>
+          )}
+          {/* Treatments & billing — itemised total; add a treatment mid-session */}
+          {!['CANCELLED', 'NO_SHOW'].includes(b.status) && (canManageBk || addOnItems.length > 0) && (
+            <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
+              <p className="eyebrow mb-3 text-[var(--color-stone)]">Treatments &amp; billing</p>
+              <div className="space-y-1.5 text-sm">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="min-w-0 break-words">{b.treatmentTitle}</span>
+                  <span className="shrink-0 tabular-nums text-[var(--color-stone)]">{basePence > 0 ? money(basePence) : 'On consultation'}</span>
+                </div>
+                {addOnItems.map((it) => (
+                  <div key={it.id} className="flex items-baseline justify-between gap-3">
+                    <span className="min-w-0 break-words text-[var(--color-stone)]">+ {it.label}</span>
+                    <span className="shrink-0 tabular-nums text-[var(--color-stone)]">{money(it.pricePence)}</span>
+                  </div>
+                ))}
+                <div className="flex items-baseline justify-between gap-3 border-t border-[var(--color-line)] pt-2 font-medium">
+                  <span>{b.chargedAt ? 'Charged' : 'Total to charge'}</span>
+                  <span className="tabular-nums">{money(b.chargedAt ? (b.chargedPence ?? b.pricePence) : b.pricePence)}</span>
+                </div>
+              </div>
+              {canAddTreatment && <div className="mt-4"><AddTreatment bookingId={b.id} variants={variantOptions} /></div>}
+              {b.chargedAt && addOnItems.length > 0 && <p className="mt-3 text-xs text-[var(--color-stone-soft)]">Already charged — add further treatments to a new booking.</p>}
+            </div>
           )}
           <ReadinessPanel items={readiness.items} ready={readiness.ready} neededCount={readiness.neededCount} started={!!b.startedAt} />
           <div data-tour="clinical-workflow"><ClinicalWorkflow
