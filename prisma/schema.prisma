@@ -3004,6 +3004,12 @@ model Device {
   externalId String?                         // the provider's device / POI id
   location   String?                         // "Reception", "Room 1"
   station    String?                         // reception | room (mirrors BLD-202)
+  // BLD-225 — a DISPLAY mounted outside a treatment room shows that room's live
+  // status. roomId references a Resource (ROOM) by id; token secures the public
+  // /room-display/[token] URL the panel loads. No @unique (deploy-gate safe) —
+  // token is a cuid, collision-proof by construction.
+  roomId     String?
+  token      String?
   active     Boolean    @default(true)
   lastSeenAt DateTime?
   notes      String?

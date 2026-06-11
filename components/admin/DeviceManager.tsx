@@ -7,7 +7,9 @@ import { saveDevice, setDeviceActive, deleteDevice } from '@/app/admin/devices/a
 export type DeviceRow = {
   id: string; name: string; kind: string; provider: string | null; externalId: string | null;
   location: string | null; station: string | null; active: boolean; lastSeenAt: string | null; notes: string | null;
+  roomId: string | null; token: string | null;
 };
+export type RoomOpt = { id: string; name: string };
 
 const KINDS = [
   { value: 'TERMINAL', label: 'Card terminal' }, { value: 'DISPLAY', label: 'Display screen' },
@@ -16,9 +18,9 @@ const KINDS = [
 ];
 const kindLabel = (k: string) => KINDS.find((x) => x.value === k)?.label ?? k;
 const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
-const blank = { id: undefined as string | undefined, name: '', kind: 'TERMINAL', provider: '', externalId: '', location: '', station: '', notes: '' };
+const blank = { id: undefined as string | undefined, name: '', kind: 'TERMINAL', provider: '', externalId: '', location: '', station: '', notes: '', roomId: '' };
 
-export function DeviceManager({ devices, providers }: { devices: DeviceRow[]; providers: { id: string; label: string }[] }) {
+export function DeviceManager({ devices, providers, rooms = [] }: { devices: DeviceRow[]; providers: { id: string; label: string }[]; rooms?: RoomOpt[] }) {
   const router = useRouter();
   const [form, setForm] = useState<typeof blank | null>(null);
   const [pending, start] = useTransition();
@@ -27,7 +29,7 @@ export function DeviceManager({ devices, providers }: { devices: DeviceRow[]; pr
 
   function edit(d: DeviceRow) {
     setError(null);
-    setForm({ id: d.id, name: d.name, kind: d.kind, provider: d.provider ?? '', externalId: d.externalId ?? '', location: d.location ?? '', station: d.station ?? '', notes: d.notes ?? '' });
+    setForm({ id: d.id, name: d.name, kind: d.kind, provider: d.provider ?? '', externalId: d.externalId ?? '', location: d.location ?? '', station: d.station ?? '', notes: d.notes ?? '', roomId: d.roomId ?? '' });
   }
   function save() {
     if (!form) return;
@@ -63,6 +65,14 @@ export function DeviceManager({ devices, providers }: { devices: DeviceRow[]; pr
               </label>
               <label className="text-xs text-[var(--color-stone)]">Provider device ID<input className={`${f} mt-1`} value={form.externalId} onChange={(e) => set('externalId', e.target.value)} placeholder="POI / terminal id" /></label>
             </>)}
+            {form.kind === 'DISPLAY' && (
+              <label className="text-xs text-[var(--color-stone)] sm:col-span-2">Treatment room (for a room-status display)
+                <select className={`${f} mt-1`} value={form.roomId} onChange={(e) => set('roomId', e.target.value)}>
+                  <option value="">— not a room display —</option>
+                  {rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+              </label>
+            )}
             <label className="text-xs text-[var(--color-stone)]">Location<input className={`${f} mt-1`} value={form.location} onChange={(e) => set('location', e.target.value)} placeholder="Reception" /></label>
             <label className="text-xs text-[var(--color-stone)]">Station
               <select className={`${f} mt-1`} value={form.station} onChange={(e) => set('station', e.target.value)}>
@@ -92,7 +102,11 @@ export function DeviceManager({ devices, providers }: { devices: DeviceRow[]; pr
                 {d.externalId ? ` · ${d.externalId}` : ''}
                 {d.location ? ` · ${d.location}` : ''}
                 {d.station ? ` · ${d.station}` : ''}
+                {d.kind === 'DISPLAY' && d.roomId ? ` · ${rooms.find((r) => r.id === d.roomId)?.name ?? 'room'}` : ''}
               </p>
+              {d.kind === 'DISPLAY' && d.token && (
+                <p className="mt-1 text-xs text-[var(--color-stone-soft)]">Point the screen at <a href={`/room-display/${d.token}`} target="_blank" rel="noreferrer" className="break-all text-[var(--color-gold)] underline">/room-display/{d.token}</a></p>
+              )}
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <button onClick={() => edit(d)} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-bone)]">Edit</button>
