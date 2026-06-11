@@ -18,6 +18,7 @@ type Phase = 'starting' | 'posing' | 'countdown' | 'captured';
 // path via `onFallback` when the camera is denied/unavailable.
 export function CameraCapture({
   token,
+  secret,
   startPose = 0,
   singlePose = false,
   uploadsUsed = 0,
@@ -28,6 +29,8 @@ export function CameraCapture({
   postStage,
 }: {
   token: string;
+  /** BLD-159 capability secret (from the QR) — required to write frames. */
+  secret?: string;
   /** Pose to start at (used for retakes from the review screen). */
   startPose?: number;
   /** Capture just `startPose`, then finish (retake mode). */
@@ -121,7 +124,7 @@ export function CameraCapture({
     ctx.restore();
     const frame = canvas.toDataURL('image/jpeg', 0.6);
     frameBusy.current = true;
-    fetch(`/api/kiosk/sessions/${token}/frame`, {
+    fetch(`/api/kiosk/sessions/${token}/frame${secret ? `?s=${encodeURIComponent(secret)}` : ''}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ frame }),

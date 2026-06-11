@@ -1,5 +1,5 @@
 import 'server-only';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { db } from '@/lib/db';
 import { analyzeKioskPhoto, analyzeKioskPhotosV2 } from '@/lib/kiosk-ai';
 import { createPersonalCode } from '@/lib/promo';
@@ -25,6 +25,19 @@ export function randomToken(len = 10): string {
 
 /** 8-char share slug. */
 export const randomShareSlug = () => randomToken(8);
+
+/** A high-entropy capability secret for a kiosk session (BLD-159). Travels in
+ *  the storefront QR (?s=) — physically in-store, not derivable from the short,
+ *  brute-forceable token — and is required to read (/stream) or write (/frame)
+ *  the live camera feed. 28 chars ≈ 166 bits, far beyond brute force. */
+export const randomSecret = () => randomToken(28);
+
+/** Timing-safe compare for the session secret. */
+export function secretMatches(expected: string | null | undefined, provided: string | null | undefined): boolean {
+  if (!expected) return true; // legacy session minted before BLD-159 — no secret to check
+  if (!provided || provided.length !== expected.length) return false;
+  try { return timingSafeEqual(Buffer.from(provided), Buffer.from(expected)); } catch { return false; }
+}
 
 /** Hash a client IP so we never store the raw address (anti-abuse counting only). */
 export function hashIp(ip: string | null | undefined): string | null {

@@ -50,8 +50,8 @@ function sceneFor(p: KioskLivePayload | null): SceneKind {
   }
 }
 
-export function KioskDisplay({ svg, token }: { svg: string; url?: string; token: string }) {
-  const { payload } = useKioskChannel(token);
+export function KioskDisplay({ svg, token, secret }: { svg: string; url?: string; token: string; secret?: string }) {
+  const { payload } = useKioskChannel(token, secret);
   const [remaining, setRemaining] = useState(REGEN_MS);
   // The reveal tail is locally paced: reveal → share outro → reload (fresh
   // session). Timestamps, not timers, so re-renders can't double-fire.

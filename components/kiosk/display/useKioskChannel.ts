@@ -30,7 +30,7 @@ function stageFromStatus(status: string, hasResult: boolean): KioskStage {
   }
 }
 
-export function useKioskChannel(token: string): { payload: KioskLivePayload | null; mode: 'sse' | 'poll' } {
+export function useKioskChannel(token: string, secret?: string): { payload: KioskLivePayload | null; mode: 'sse' | 'poll' } {
   const [payload, setPayload] = useState<KioskLivePayload | null>(null);
   const [mode, setMode] = useState<'sse' | 'poll'>('sse');
   // Stable identity for change-detection so 1s polling doesn't re-render idly.
@@ -108,7 +108,7 @@ export function useKioskChannel(token: string): { payload: KioskLivePayload | nu
     const startSse = () => {
       if (typeof EventSource === 'undefined') { startPoll(); return; }
       try {
-        es = new EventSource(`/api/kiosk/sessions/${token}/stream`);
+        es = new EventSource(`/api/kiosk/sessions/${token}/stream${secret ? `?s=${encodeURIComponent(secret)}` : ''}`);
       } catch {
         startPoll();
         return;
@@ -148,7 +148,7 @@ export function useKioskChannel(token: string): { payload: KioskLivePayload | nu
       es?.close();
       if (pollTimer) clearInterval(pollTimer);
     };
-  }, [token]);
+  }, [token, secret]);
 
   return { payload, mode };
 }

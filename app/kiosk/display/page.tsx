@@ -1,7 +1,7 @@
 import { headers } from 'next/headers';
 import { db } from '@/lib/db';
 import { qrSvg } from '@/lib/qr';
-import { randomToken, sessionExpiry } from '@/lib/kiosk';
+import { randomToken, randomSecret, sessionExpiry } from '@/lib/kiosk';
 import { KioskDisplay } from '@/components/kiosk/KioskDisplay';
 
 export const dynamic = 'force-dynamic';
@@ -31,10 +31,13 @@ export default async function KioskDisplayPage() {
     if (!clash) break;
     token = randomToken();
   }
-  await db.kioskSession.create({ data: { token, status: 'ACTIVE', expiresAt: sessionExpiry() } }).catch(() => {});
+  // BLD-159: a capability secret travels in the QR (?s=) — not in the brute-
+  // forceable token — and gates the live camera feed (/stream, /frame).
+  const secret = randomSecret();
+  await db.kioskSession.create({ data: { token, secret, status: 'ACTIVE', expiresAt: sessionExpiry() } }).catch(() => {});
 
-  const url = `${origin}/kiosk/${token}`;
+  const url = `${origin}/kiosk/${token}?s=${secret}`;
   const svg = await qrSvg(url, { dark: '#2a2420', light: '#ffffff' });
 
-  return <KioskDisplay svg={svg} url={url} token={token} />;
+  return <KioskDisplay svg={svg} url={url} token={token} secret={secret} />;
 }
