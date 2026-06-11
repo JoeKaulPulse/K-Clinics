@@ -17,6 +17,7 @@ import { decClinical } from '@/lib/clinical-crypto';
 import { resolveView, canSwitchViews, type DashboardView } from '@/lib/dashboard-views';
 import { DashboardShell } from '@/components/admin/dashboard/DashboardShell';
 import { ScaffoldView } from '@/components/admin/dashboard/ScaffoldView';
+import { RoomPrepStatus } from '@/components/admin/rooms/RoomPrepStatus';
 
 export const dynamic = 'force-dynamic';
 
@@ -172,7 +173,11 @@ export default async function AdminOverview() {
         },
       }).catch(() => null)
     : null;
-  const nextRoom = nextBk ? await db.resource.findFirst({ where: { bookings: { some: { id: nextBk.id } } }, select: { name: true } }).catch(() => null) : null;
+  const canRoomsPrep = sessionCan(session, 'rooms.prep.manage');
+  const nextRoom = nextBk ? await db.resource.findFirst({ where: { kind: 'ROOM', bookings: { some: { id: nextBk.id } } }, select: { id: true, name: true } }).catch(() => null) : null;
+  // The next arrival's room prep state (for the live arrival-prep checklist).
+  const { getRoomPrepFor, getRoomsForDay } = await import('@/lib/room-prep');
+  const nextRoomPrep = nextRoom ? await getRoomPrepFor(nextRoom.id).catch(() => null) : null;
   const nextArrival: NextArrival | null = nextBk ? {
     id: nextBk.id,
     clientId: nextBk.clientId,
@@ -182,10 +187,15 @@ export default async function AdminOverview() {
     timeLabel: nextBk.startAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + (nextBk.startAt <= endOfToday ? '' : ` · ${nextBk.startAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`),
     practitioner: nextBk.practitioner?.name ?? null,
     room: nextRoom?.name ?? null,
+    roomId: nextRoom?.id ?? null,
+    roomPrep: nextRoomPrep?.status,
+    canManageRoom: canRoomsPrep,
     drinks: nextBk.refreshments ?? [],
     allergies: decClinical(nextBk.client.allergies) ?? null,
     medicalFlag: decClinical(nextBk.client.medicalFlag) ?? null,
   } : null;
+  // Rooms board (front-of-house / clinician): availability + prep for the day.
+  const roomsToday = canRoomsPrep ? await getRoomsForDay().catch(() => []) : [];
 
   const clockWeather = (
     <div className="flex items-center gap-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5">
@@ -247,6 +257,17 @@ export default async function AdminOverview() {
           </div>
         </section>
       </div>
+
+      {/* Rooms today — live availability + prep handoff (front-of-house / clinician) */}
+      {canRoomsPrep && roomsToday.length > 0 && (
+        <section className="mt-6">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-[family-name:var(--font-display)] text-xl">Rooms today</h2>
+            <span className="text-xs text-[var(--color-stone)]">Tap a room to set its readiness · updates live</span>
+          </div>
+          <RoomPrepStatus initialRooms={roomsToday} initialCanManage={canRoomsPrep} />
+        </section>
+      )}
 
       {/* KPI row */}
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

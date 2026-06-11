@@ -1128,6 +1128,9 @@ model Resource {
 
   bookings   Booking[]
 
+  // Daily prep/turnover state for this room (ROOM kind only). One row per day.
+  roomPreps  RoomPrep[]
+
   // Which equipment is physically placed in a ROOM. Self-relation: a room holds
   // many equipment; a piece of equipment can sit in many rooms. Owner-managed and
   // changeable over time. (Informational today; available to drive assignment.)
@@ -1141,6 +1144,35 @@ model Resource {
 enum ResourceKind {
   ROOM
   EQUIPMENT
+}
+
+// ── Daily room prep / turnover state (PRJ-63) ───────────────────────────────
+// One row per room per day. Powers the clinician + receptionist views and the
+// dashboard arrival-prep checklist: a receptionist marking a room READY surfaces
+// live to the clinician (polled). This is a NEW table, so the compound @@unique
+// is created fresh with no existing rows to dedupe — it passes the `prisma db
+// push` gate (which only refuses adding @unique to an *existing* table) and lets
+// us upsert cleanly by (roomId, date).
+model RoomPrep {
+  id        String         @id @default(cuid())
+  room      Resource       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId    String
+  date      DateTime       @db.Date // DateOnly — the clinic day this state is for
+  status    RoomPrepStatus @default(DIRTY)
+  cleanedAt DateTime?
+  cleanedBy String? // staff email who set it READY
+  note      String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([roomId, date])
+  @@index([date, status])
+}
+
+enum RoomPrepStatus {
+  DIRTY
+  CLEANING
+  READY
 }
 
 // ── Time off / busy blocks (manual or Google-Calendar-synced) ───────────────
