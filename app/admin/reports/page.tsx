@@ -104,6 +104,30 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const inventoryValue = items.reduce((s, i) => s + i.currentQty * (i.costPence ?? 0), 0);
   const consumablesUsed = consumables.reduce((s, m) => s + Math.abs(m.delta) * (m.item.costPence ?? 0), 0);
 
+  // Appointment-session timing analytics (BLD-143): how long each stage takes,
+  // what gets skipped, and where the most time goes — from AppointmentSession.steps.
+  const { SESSION_STEPS } = await import('@/lib/appointment-session');
+  const sessions = await db.appointmentSession.findMany({
+    where: { booking: { status: 'COMPLETED', startAt: { gte: since } } },
+    select: { steps: true },
+  }).catch(() => [] as { steps: unknown }[]);
+  const stepAgg = new Map<string, { secs: number; n: number; skips: number; visits: number }>();
+  for (const s of sessions) {
+    const steps = (s.steps && typeof s.steps === 'object') ? s.steps as Record<string, { seconds?: number; visits?: number; skipped?: boolean }> : {};
+    for (const [k, t] of Object.entries(steps)) {
+      if (!t || typeof t !== 'object') continue;
+      const a = stepAgg.get(k) || { secs: 0, n: 0, skips: 0, visits: 0 };
+      a.secs += t.seconds || 0; a.n += 1; if (t.skipped) a.skips += 1; a.visits += t.visits || 0;
+      stepAgg.set(k, a);
+    }
+  }
+  const stepRows = SESSION_STEPS.filter((s) => stepAgg.has(s.key)).map((s) => {
+    const a = stepAgg.get(s.key)!;
+    return { label: s.label, avgSec: a.n ? Math.round(a.secs / a.n) : 0, skipPct: a.n ? Math.round((a.skips / a.n) * 100) : 0, avgVisits: a.n ? a.visits / a.n : 0 };
+  });
+  const maxAvgSec = Math.max(1, ...stepRows.map((r) => r.avgSec));
+  const mmss = (s: number) => `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`;
+
   const can = await sessionPermissions();
   const locale = await getLocale();
   const uk = locale === 'uk';
@@ -217,6 +241,41 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           </div>
         </section>
       </div>
+
+      {/* Appointment timing — where each session spends time + what gets skipped (BLD-143) */}
+      <section className="mt-10">
+        <div className="mb-3 flex items-baseline justify-between gap-2">
+          <h2 className="font-[family-name:var(--font-display)] text-xl">{L('Appointment timing', 'Тривалість етапів')}</h2>
+          <span className="text-xs text-[var(--color-stone-soft)]">{L(`avg per stage across ${sessions.length} live session${sessions.length === 1 ? '' : 's'}`, `середнє за ${sessions.length} сесій`)}</span>
+        </div>
+        {stepRows.length === 0 ? (
+          <p className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 text-sm text-[var(--color-stone)]">{L('No live-session timing recorded in this period yet.', 'Ще немає даних про тривалість сесій за цей період.')}</p>
+        ) : (
+          <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+            <table className="w-full min-w-[520px] text-sm tabular-nums">
+              <thead className="bg-[var(--color-bone)] text-xs uppercase tracking-wide text-[var(--color-stone)]">
+                <tr>{[L('Stage', 'Етап'), L('Avg time', 'Сер. час'), L('Skipped', 'Пропущено'), L('Revisits', 'Повернення')].map((h) => <th key={h} className="px-4 py-2.5 text-right first:text-left">{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {stepRows.map((r) => (
+                  <tr key={r.label} className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-bone)]">
+                    <td className="px-4 py-2.5 font-medium">{r.label}</td>
+                    <td className="px-4 py-2.5 text-right">
+                      <span className="inline-flex items-center justify-end gap-2">
+                        <span aria-hidden className="hidden h-1.5 rounded-full bg-[var(--color-gold)]/60 sm:inline-block" style={{ width: `${Math.round((r.avgSec / maxAvgSec) * 80)}px` }} />
+                        {mmss(r.avgSec)}
+                      </span>
+                    </td>
+                    <td className={`px-4 py-2.5 text-right ${r.skipPct >= 25 ? 'text-amber-700' : 'text-[var(--color-stone)]'}`}>{r.skipPct}%</td>
+                    <td className="px-4 py-2.5 text-right text-[var(--color-stone)]">{r.avgVisits > 1.05 ? `${r.avgVisits.toFixed(1)}×` : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="mt-2 text-xs text-[var(--color-stone-soft)]">{L('Longest stages show where time concentrates; high skip rates flag stages staff routinely bypass; revisits > 1× mean a stage is returned to.', 'Найдовші етапи показують, де зосереджено час; високий відсоток пропусків — етапи, які часто оминають.')}</p>
+      </section>
     </AdminShell>
   );
 }
