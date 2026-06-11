@@ -179,7 +179,9 @@ export async function POST(req: Request) {
       const nextPrice = current.items[0]?.pricePence ?? current.pricePence;
 
       const { isSlotFree, pickPractitioner, assignResources } = await import('@/lib/availability');
-      if (!(await isSlotFree(startISO, current.durationMin, current.treatmentSlug))) {
+      // Staff-driven flow: any future time is fine — the public 2-hour lead
+      // window doesn't apply (the past is already rejected above).
+      if (!(await isSlotFree(startISO, current.durationMin, current.treatmentSlug, null, { leadMinutes: 0 }))) {
         return bad('That time has just been taken — pick another.');
       }
       const { getSetting } = await import('@/lib/settings');

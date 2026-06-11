@@ -327,8 +327,11 @@ export async function assignResources(startISO: string, durationMin: number, tre
   return ids;
 }
 
-/** Validate a proposed start is still free (used at create time). */
-export async function isSlotFree(startISO: string, durationMin: number, treatmentSlug?: string, locationId?: string | null): Promise<boolean> {
+/** Validate a proposed start is still free (used at create time).
+ *  `opts.leadMinutes` overrides the public lead window (default LEAD_MINUTES):
+ *  staff flows pass 0 — or a small negative grace to log a client who has just
+ *  arrived — so same-day phone/walk-in bookings aren't reported as clashes. */
+export async function isSlotFree(startISO: string, durationMin: number, treatmentSlug?: string, locationId?: string | null, opts?: { leadMinutes?: number }): Promise<boolean> {
   const start = new Date(startISO);
   if (isNaN(start.getTime())) return false;
   const end = new Date(start.getTime() + durationMin * 60_000);
@@ -338,7 +341,7 @@ export async function isSlotFree(startISO: string, durationMin: number, treatmen
   const open = parseHM(hours.open), close = parseHM(hours.close);
   const startM = start.getHours() * 60 + start.getMinutes();
   if (open == null || close == null || startM < open || startM + durationMin > close) return false;
-  if (start.getTime() < Date.now() + LEAD_MINUTES * 60_000) return false;
+  if (start.getTime() < Date.now() + (opts?.leadMinutes ?? LEAD_MINUTES) * 60_000) return false;
 
   const dayStart = new Date(start); dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(start); dayEnd.setHours(23, 59, 59, 999);

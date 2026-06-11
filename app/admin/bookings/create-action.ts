@@ -57,8 +57,15 @@ export async function createManualBooking(input: {
   const { db } = await import('@/lib/db');
   const { isSlotFree, assignResources, pickPractitioner } = await import('@/lib/availability');
   // Guard against double-booking a room/clinician (unless explicitly overridden).
-  if (!input.override && !(await isSlotFree(input.startISO, durationMin, input.treatmentSlug))) {
-    return { ok: false, error: 'That slot clashes with an existing appointment, closure, or has no free room/clinician. Tick “book anyway” to override.', clash: true };
+  // Reception books same-day phone/walk-in appointments, so the public 2-hour
+  // lead window must NOT apply here; a small grace also lets staff log a client
+  // who has just arrived.
+  const PAST_GRACE_MIN = 15;
+  if (!input.override && start.getTime() < Date.now() - PAST_GRACE_MIN * 60_000) {
+    return { ok: false, error: 'That time has already passed — pick a time from now onwards, or tick “book anyway” to record a back-dated booking.', clash: true };
+  }
+  if (!input.override && !(await isSlotFree(input.startISO, durationMin, input.treatmentSlug, undefined, { leadMinutes: -PAST_GRACE_MIN }))) {
+    return { ok: false, error: 'That slot clashes with an existing appointment or closure, falls outside opening hours, or has no free room/clinician. Tick “book anyway” to override.', clash: true };
   }
   // Assign a competent, available clinician (so it shows in their day) + hold resources.
   const practitionerId = await pickPractitioner(input.startISO, durationMin, input.treatmentSlug);
