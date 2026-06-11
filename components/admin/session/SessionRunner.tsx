@@ -748,8 +748,9 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
 }) {
   const [amount, setAmount] = useState(() => (p.booking.pricePence / 100).toFixed(2));
   const charged = !!live.chargedAt;
-  // Unified payment capture (BLD-196): card on file / payment link / terminal.
-  const [method, setMethod] = useState<'card' | 'link' | 'terminal'>(p.hasCardOnFile ? 'card' : 'link');
+  // Unified payment capture (BLD-196): card on file / payment link / terminal /
+  // Treatwell (recorded as paid externally — BLD-200).
+  const [method, setMethod] = useState<'card' | 'link' | 'terminal' | 'treatwell'>(p.hasCardOnFile ? 'card' : 'link');
   const [deviceId, setDeviceId] = useState(p.terminals[0]?.id ?? '');
   const [linkQr, setLinkQr] = useState<{ url: string; qr: string } | null>(null);
   const [payErr, setPayErr] = useState('');
@@ -769,6 +770,12 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
     setPayBusy(false);
     if (!res.ok) setPayErr(res.error || 'Terminal payment is unavailable.');
   }
+  async function takeTreatwell() {
+    setPayErr(''); setPayBusy(true);
+    const res = await api({ op: 'external', channel: 'treatwell', amountPence });
+    setPayBusy(false);
+    if (!res.ok) setPayErr(res.error || 'Could not record the payment.');
+  }
 
   return (
     <>
@@ -782,7 +789,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
         {charged ? (
           <p className="mt-3 inline-flex items-center gap-2 text-sm text-[var(--color-stone)]">
             <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-gold)] text-white" aria-hidden><CheckIcon /></span>
-            Paid {new Date(live.chargedAt!).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} — no card needed, it’s already on file.
+            Paid {new Date(live.chargedAt!).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}.
           </p>
         ) : !presenting && p.canCharge ? (
           <div className="mt-4">
@@ -796,6 +803,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                 {p.hasCardOnFile && <button type="button" onClick={() => { setMethod('card'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'card'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'card' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Card on file</button>}
                 <button type="button" onClick={() => { setMethod('link'); setPayErr(''); }} aria-pressed={method === 'link'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'link' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Payment link</button>
                 <button type="button" onClick={() => { setMethod('terminal'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'terminal'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'terminal' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Terminal</button>
+                <button type="button" onClick={() => { setMethod('treatwell'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'treatwell'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'treatwell' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Treatwell</button>
               </div>
             </div>
 
@@ -835,6 +843,15 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                     className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
                     {payBusy ? 'Sending to terminal…' : 'Take payment on terminal'}
                   </button>
+                </div>
+              )}
+              {method === 'treatwell' && (
+                <div>
+                  <button type="button" disabled={payBusy || !live.finishedAt} onClick={takeTreatwell}
+                    className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+                    {payBusy ? 'Recording…' : 'Record as paid via Treatwell'}
+                  </button>
+                  <p className="mt-2 max-w-md text-xs text-[var(--color-stone)]">Records the sale as settled on Treatwell — no card is charged here. Tip: invite {p.client.firstName} to book their next visit directly with us to skip the Treatwell commission.</p>
                 </div>
               )}
             </div>
