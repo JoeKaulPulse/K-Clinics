@@ -5,6 +5,7 @@ import { getSession, canViewClinical, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { AddNote, PinToggle, SendEmail, StatusSelect } from '@/components/admin/ClientActions';
+import { EditClientDetails } from '@/components/admin/EditClientDetails';
 import { DiscountAction } from '@/components/admin/DiscountActions';
 import { AdjustClientPoints } from '@/components/admin/AdjustClientPoints';
 
@@ -167,7 +168,12 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
             </span>
           </div>
         </div>
-        {sessionCan(session, 'clients.edit') && <SendEmail clientId={c.id} email={c.email} />}
+        {sessionCan(session, 'clients.edit') && (
+          <div className="flex items-center gap-2">
+            <EditClientDetails client={{ id: c.id, firstName: c.firstName, lastName: c.lastName, email: c.email, phone: c.phone, dob: c.dob ? new Date(c.dob).toISOString() : null, gender: c.gender, genderSelfDescribe: c.genderSelfDescribe, allergies: c.allergies, notes: c.notes, marketingOptIn: c.marketingOptIn }} />
+            <SendEmail clientId={c.id} email={c.email} />
+          </div>
+        )}
       </div>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.5fr_1fr]">
@@ -489,8 +495,8 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
             </div>
           </section>
 
-          {/* Activity log — audited actions on this client's record */}
-          {auditRows.length > 0 && (
+          {/* Activity log — immutable audit trail; admin-only (BLD-199). */}
+          {auditRows.length > 0 && sessionCan(session, 'staff.view') && (
             <section>
               <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Activity log</h2>
               <ol className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
