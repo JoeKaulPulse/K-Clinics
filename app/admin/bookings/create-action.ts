@@ -33,6 +33,7 @@ export async function createManualBooking(input: {
   email: string;
   phone?: string;
   treatmentSlug: string;
+  variantId?: string;
   startISO: string;
   notes?: string;
   override?: boolean;
@@ -49,9 +50,27 @@ export async function createManualBooking(input: {
   const start = new Date(input.startISO);
   if (isNaN(+start)) return { ok: false, error: 'Invalid date/time.' };
 
-  const { durationMin, bufferMin } = bookingFor(input.treatmentSlug);
-  const { lowestPenceForTreatment } = await import('@/lib/services');
-  const pricePence = await lowestPenceForTreatment(input.treatmentSlug);
+  // A treatment category (e.g. "Laser Hair Removal") has specific service
+  // variants/areas (Underarms, Full Legs…), each with its own duration + price.
+  // When the booker picks one, use ITS duration/price and record a billing line
+  // item; otherwise fall back to the category's generic duration + "from" price.
+  const { durationMin: baseDuration, bufferMin } = bookingFor(input.treatmentSlug);
+  let durationMin = baseDuration;
+  let pricePence: number | null = null;
+  let bookingTitle = treatment.title;
+  let itemLabel = treatment.title;
+  let chosenVariantId: string | null = null;
+  const { getVariant, lowestPenceForTreatment } = await import('@/lib/services');
+  const variant = input.variantId ? await getVariant(input.variantId) : null;
+  if (variant && variant.service.treatmentSlug === input.treatmentSlug) {
+    durationMin = variant.variant.durationMin || baseDuration;
+    pricePence = variant.variant.pricePence;
+    bookingTitle = `${treatment.title} — ${variant.variant.name}`;
+    itemLabel = bookingTitle;
+    chosenVariantId = variant.variant.id;
+  } else {
+    pricePence = await lowestPenceForTreatment(input.treatmentSlug);
+  }
   const end = new Date(start.getTime() + durationMin * 60000);
 
   const { db } = await import('@/lib/db');
@@ -75,7 +94,7 @@ export async function createManualBooking(input: {
     data: {
       clientId: client.id,
       treatmentSlug: input.treatmentSlug,
-      treatmentTitle: treatment.title,
+      treatmentTitle: bookingTitle,
       startAt: start,
       endAt: end,
       durationMin,
@@ -85,10 +104,13 @@ export async function createManualBooking(input: {
       notes: input.notes || null,
       practitionerId,
       resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,
+      // Primary line item so the itemised receipt + billing reflect the exact
+      // service/area chosen (not just the category).
+      items: { create: [{ variantId: chosenVariantId, treatmentSlug: input.treatmentSlug, label: itemLabel, sessions: 1, durationMin, pricePence: pricePence ?? 0, isAddon: false }] },
     },
   });
   await db.interaction.create({
-    data: { clientId: client.id, type: 'APPOINTMENT', summary: `Booking created by staff: ${treatment.title}`, author: session.email },
+    data: { clientId: client.id, type: 'APPOINTMENT', summary: `Booking created by staff: ${bookingTitle}`, author: session.email },
   });
 
   // Staff incentive: reward the prior practitioner for a secured repeat booking.
