@@ -34,6 +34,8 @@ export async function createManualBooking(input: {
   phone?: string;
   treatmentSlug: string;
   variantId?: string;
+  /** Book this treatment category as a consultation (BLD-208): 30 min, £0. */
+  asConsultation?: boolean;
   startISO: string;
   notes?: string;
   override?: boolean;
@@ -58,22 +60,30 @@ export async function createManualBooking(input: {
   // variants/areas (Underarms, Full Legs…), each with its own duration + price.
   // When the booker picks one, use ITS duration/price and record a billing line
   // item; otherwise fall back to the category's generic duration + "from" price.
+  // A consultation booking — the standalone "Consultation" (BLD-203) OR any
+  // treatment category booked as a consultation (BLD-208) — is 30 min, £0.
+  const consultBooking = isConsultation || (!!treatment && !!input.asConsultation);
   const { durationMin: baseDuration, bufferMin } = bookingFor(input.treatmentSlug);
-  let durationMin = isConsultation ? 30 : baseDuration;
+  let durationMin = baseDuration;
   let pricePence: number | null = null;
   let bookingTitle = treatment?.title ?? 'Consultation';
   let itemLabel = treatment?.title ?? 'Consultation';
   let chosenVariantId: string | null = null;
   const { getVariant, lowestPenceForTreatment } = await import('@/lib/services');
-  const variant = !isConsultation && input.variantId ? await getVariant(input.variantId) : null;
-  if (variant && treatment && variant.service.treatmentSlug === input.treatmentSlug) {
+  const variant = !consultBooking && input.variantId ? await getVariant(input.variantId) : null;
+  if (consultBooking) {
+    durationMin = 30;
+    pricePence = 0;
+    bookingTitle = treatment ? `${treatment.title} — Consultation` : 'Consultation';
+    itemLabel = bookingTitle;
+  } else if (variant && treatment && variant.service.treatmentSlug === input.treatmentSlug) {
     durationMin = variant.variant.durationMin || baseDuration;
     pricePence = variant.variant.pricePence;
     bookingTitle = `${treatment.title} — ${variant.variant.name}`;
     itemLabel = bookingTitle;
     chosenVariantId = variant.variant.id;
   } else {
-    pricePence = isConsultation ? 0 : await lowestPenceForTreatment(input.treatmentSlug);
+    pricePence = await lowestPenceForTreatment(input.treatmentSlug);
   }
   const end = new Date(start.getTime() + durationMin * 60000);
 
