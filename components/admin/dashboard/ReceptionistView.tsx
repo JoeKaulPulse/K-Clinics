@@ -4,6 +4,8 @@ import { sessionCan, type Session } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { bookableTreatments } from '@/lib/treatments';
 import { getRoomsForDay, getRoomPrepFor, clinicDay } from '@/lib/room-prep';
+import { fmtClinicTime } from '@/lib/clinic-time';
+import { postAppointmentUpsells } from '@/lib/upsell';
 import { DashWidget, StatTile } from './Widgets';
 import { ArrivalPrep, type NextArrival } from '@/components/admin/ArrivalPrep';
 import { ArrivalsBoard, type ArrivalRow } from '@/components/admin/rooms/ArrivalsBoard';
@@ -16,7 +18,7 @@ import { NewBookingButton } from '@/components/admin/NewBookingButton';
 // handoff, the live rooms board (set READY → clinician sees it), payments to take,
 // and new-booking / walk-in quick actions. Self-contained async server bundle.
 
-const fmtTime = (d: Date) => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+const fmtTime = fmtClinicTime;
 const fullName = (c: { firstName: string | null; lastName: string | null }) => [c.firstName, c.lastName].filter(Boolean).join(' ') || 'Client';
 
 export async function ReceptionistView({ session }: { session: Session }) {
@@ -32,7 +34,7 @@ export async function ReceptionistView({ session }: { session: Session }) {
       where: { startAt: { gte: start, lte: end }, status: { notIn: ['CANCELLED'] } },
       orderBy: { startAt: 'asc' },
       select: {
-        id: true, clientId: true, startAt: true, status: true, treatmentTitle: true, refreshments: true,
+        id: true, clientId: true, startAt: true, status: true, treatmentTitle: true, treatmentSlug: true, refreshments: true,
         arrivedAt: true, startedAt: true, finishedAt: true,
         client: { select: { firstName: true, lastName: true } },
         practitioner: { select: { name: true } },
@@ -45,6 +47,13 @@ export async function ReceptionistView({ session }: { session: Session }) {
 
   type Bk = (typeof todays)[number];
   const roomOf = (b: Bk) => b.resources.find((r) => r.kind === 'ROOM')?.name ?? null;
+
+  // Post-appointment upsell prompts for clients who finished today (most recent first).
+  const finishedToday = todays
+    .filter((b) => b.status === 'COMPLETED' || !!b.finishedAt)
+    .sort((a, b) => +(b.finishedAt ?? b.startAt) - +(a.finishedAt ?? a.startAt))
+    .map((b) => ({ id: b.id, clientId: b.clientId, clientName: fullName(b.client), treatmentSlug: b.treatmentSlug, treatmentTitle: b.treatmentTitle, startAt: b.startAt }));
+  const upsells = finishedToday.length ? await postAppointmentUpsells(finishedToday).catch(() => []) : [];
 
   const arrivals: ArrivalRow[] = todays.map((b) => ({
     id: b.id,
@@ -122,6 +131,37 @@ export async function ReceptionistView({ session }: { session: Session }) {
         <StatTile label="Arrived · waiting" value={arrivedCount} />
         {canCharge && <StatTile label="Payments to take" value={paymentsToTake} href="/admin/bookings" />}
       </div>
+
+      {/* Upsell opportunities — after an appointment finishes, with the reason why */}
+      {upsells.length > 0 && (
+        <DashWidget title="Upsell opportunities" eyebrow="After today’s appointments">
+          <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
+            {upsells.map((u) => (
+              <div key={u.bookingId} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-4">
+                <div className="flex items-baseline justify-between gap-2">
+                  <Link href={`/admin/clients/${u.clientId}`} className="text-sm font-medium hover:text-[var(--color-gold)]">{u.clientName}</Link>
+                  <span className="text-xs text-[var(--color-stone-soft)]">just finished {u.treatment}</span>
+                </div>
+                <ul className="mt-3 space-y-2.5">
+                  {u.suggestions.map((s, i) => (
+                    <li key={i} className="border-t border-[var(--color-line)] pt-2.5 first:border-0 first:pt-0">
+                      <div className="flex items-baseline justify-between gap-2">
+                        {s.href ? (
+                          <Link href={s.href} className="text-sm font-medium text-[var(--color-ink)] hover:text-[var(--color-gold)]">{s.title}</Link>
+                        ) : (
+                          <span className="text-sm font-medium">{s.title}</span>
+                        )}
+                        {s.pricePence != null && <span className="shrink-0 text-sm tabular-nums text-[var(--color-gold-deep)]">£{(s.pricePence / 100).toLocaleString('en-GB', { minimumFractionDigits: s.pricePence % 100 ? 2 : 0 })}</span>}
+                      </div>
+                      <p className="mt-0.5 text-xs text-[var(--color-stone)]">{s.reason}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </DashWidget>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr] [&>*]:min-w-0">
         {/* Arrivals timeline + one-tap check-in */}

@@ -586,22 +586,63 @@ export function tmplBookingRescheduled(o: {
   });
 }
 
-export function tmplChargeReceipt(o: { firstName: string; treatment: string; pricePence: number; late?: boolean; vat?: { netPence: number; vatPence: number; ratePct: number } | null }) {
-  const vatRows = o.vat
-    ? `<tr><td style="color:#91766e;padding-right:20px;">Net</td><td>${fmtMoney(o.vat.netPence)}</td></tr>
-       <tr><td style="color:#91766e;padding-right:20px;">VAT (${o.vat.ratePct}%)</td><td>${fmtMoney(o.vat.vatPence)}</td></tr>`
-    : '';
+export function tmplChargeReceipt(o: {
+  firstName: string;
+  treatment: string;
+  pricePence: number;
+  late?: boolean;
+  vat?: { netPence: number; vatPence: number; ratePct: number } | null;
+  // Richer, itemised receipt detail (all optional — falls back to a single line).
+  items?: { label: string; pricePence: number }[];
+  clinician?: string | null;
+  dateLabel?: string | null;
+  paymentMethod?: string | null;
+  reference?: string | null;
+  discountPence?: number | null;
+}) {
+  const lc = 'font-family:Helvetica,Arial,sans-serif;';
+  const muted = 'color:#91766e;';
+  // Itemised lines — the booked treatment(s) and any add-ons. Late fees are a
+  // single line; otherwise fall back to the primary treatment when no items.
+  const lines = o.late
+    ? [{ label: 'Late-cancellation fee', pricePence: o.pricePence }]
+    : (o.items && o.items.length ? o.items : [{ label: o.treatment, pricePence: o.pricePence }]);
+  const itemRows = lines.map((it, i) => `
+        <tr>
+          <td style="padding:11px 0 11px;${i ? 'border-top:1px solid rgba(42,36,32,0.08);' : ''}color:#3d352f;">${escape(it.label)}</td>
+          <td align="right" style="padding:11px 0 11px;${i ? 'border-top:1px solid rgba(42,36,32,0.08);' : ''}color:#3d352f;white-space:nowrap;">${fmtMoney(it.pricePence)}</td>
+        </tr>`).join('');
+  const totalRow = (label: string, value: string, strong = false) => `
+        <tr><td style="padding:8px 0;${muted}">${label}</td><td align="right" style="padding:8px 0;${strong ? 'font-weight:700;color:#2a2420;font-size:18px;' : 'color:#3d352f;'}white-space:nowrap;">${value}</td></tr>`;
+  const summaryRows = [
+    o.discountPence ? totalRow('Discount', `−${fmtMoney(o.discountPence)}`) : '',
+    o.vat ? totalRow('Net', fmtMoney(o.vat.netPence)) : '',
+    o.vat ? totalRow(`VAT (${o.vat.ratePct}%)`, fmtMoney(o.vat.vatPence)) : '',
+    totalRow('Total paid', fmtMoney(o.pricePence), true),
+  ].join('');
+  // Meta block (date / reference / clinician / payment method) — only what's known.
+  const metaRow = (label: string, value: string) => `
+        <tr><td style="padding:3px 16px 3px 0;${muted}white-space:nowrap;">${label}</td><td style="padding:3px 0;color:#3d352f;">${escape(value)}</td></tr>`;
+  const meta = [
+    o.dateLabel ? metaRow('Date', o.dateLabel) : '',
+    o.reference ? metaRow('Reference', o.reference) : '',
+    o.clinician ? metaRow('Clinician', o.clinician) : '',
+    o.paymentMethod ? metaRow('Payment', o.paymentMethod) : '',
+  ].join('');
   return emailShell({
     preheader: `Receipt — ${o.treatment}`,
     body: `${heroBand('receipt')}
-    <h1 style="font-size:24px;margin:0 0 16px;">Thank you, ${escape(o.firstName)}.</h1>
-    <p>${o.late ? 'A late-cancellation fee has been processed' : 'Your payment has been processed'} for your <strong>${escape(o.treatment)}</strong>.</p>
-    <table style="font-family:Helvetica,Arial,sans-serif;font-size:16px;color:#3d352f;line-height:2;">
-      ${vatRows}
-      <tr><td style="color:#91766e;padding-right:20px;">${o.vat ? 'Total paid' : 'Amount'}</td><td><strong>${fmtMoney(o.pricePence)}</strong></td></tr>
+    <h1 style="font-size:24px;margin:0 0 14px;">Thank you, ${escape(o.firstName)}.</h1>
+    <p style="margin:0 0 22px;">${o.late ? 'A late-cancellation fee has been processed.' : `Your payment has been received for your <strong>${escape(o.treatment)}</strong>. Here is your receipt.`}</p>
+    ${meta ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="${lc}font-size:13px;line-height:1.5;margin:0 0 18px;">${meta}</table>` : ''}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="${lc}font-size:15px;background:#fbf5ee;border:1px solid rgba(42,36,32,0.08);border-radius:12px;padding:6px 20px;">
+      <tr><td colspan="2" style="padding:14px 0 6px;font-size:10px;letter-spacing:2px;text-transform:uppercase;${muted}">Details</td></tr>
+      ${itemRows}
+      <tr><td colspan="2" style="padding:2px 0;border-top:2px solid rgba(42,36,32,0.12);"></td></tr>
+      ${summaryRows}
     </table>
-    <p style="margin-top:20px;">This is your receipt. ${o.late ? '' : 'We hope you love your results.'}</p>
-    <p>With warmth,<br>The KClinics team</p>`,
+    <p style="margin:22px 0 0;font-size:13px;${muted}">${o.vat ? 'Includes VAT at the rate shown. ' : ''}Please keep this receipt for your records.${o.late ? '' : ' We hope you love your results.'}</p>
+    <p style="margin-top:18px;">With warmth,<br>The KClinics team</p>`,
   });
 }
 
