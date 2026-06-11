@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import { createManualBooking, searchClientsForBooking } from '@/app/admin/bookings/create-action';
 
-type Treatment = { slug: string; title: string };
+type Treatment = { slug: string; title: string; group: string };
 type Found = { id: string; firstName: string; lastName: string | null; email: string; phone: string | null; hasDob: boolean; hasCard: boolean };
 type Result = { bookingId: string; manageToken?: string; hasCard?: boolean; clientFirstName?: string; clientEmail?: string; clientHasEmail?: boolean };
 
@@ -33,13 +33,27 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
   const [clash, setClash] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
 
+  // Group treatments by their group field for the two-step dropdown.
+  const groups = Array.from(new Set(treatments.map((t) => t.group)));
+  const firstGroup = groups[0] ?? '';
+  const firstSlug = treatments.find((t) => t.group === firstGroup)?.slug ?? treatments[0]?.slug ?? '';
+
   // Client selection
   const [tab, setTab] = useState<'existing' | 'new'>('existing');
   const [q, setQ] = useState('');
   const [matches, setMatches] = useState<Found[]>([]);
   const [selected, setSelected] = useState<Found | null>(null);
-  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', treatmentSlug: treatments[0]?.slug ?? '', date: '', time: '10:00', notes: '' });
+  const [selectedGroup, setSelectedGroup] = useState(firstGroup);
+  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', treatmentSlug: firstSlug, date: '', time: '10:00', notes: '' });
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD((p) => ({ ...p, [k]: v }));
+
+  const groupTreatments = treatments.filter((t) => t.group === selectedGroup);
+
+  function handleGroupChange(group: string) {
+    setSelectedGroup(group);
+    const first = treatments.find((t) => t.group === group);
+    if (first) set('treatmentSlug', first.slug);
+  }
 
   useEffect(() => {
     if (tab !== 'existing' || selected || q.trim().length < 2) { setMatches([]); return; }
@@ -122,10 +136,15 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
               </div>
             )}
 
-            {/* Appointment */}
-            <select className={f} value={d.treatmentSlug} onChange={(e) => set('treatmentSlug', e.target.value)}>
-              {treatments.map((t) => <option key={t.slug} value={t.slug}>{t.title}</option>)}
+            {/* Appointment: group then specific treatment */}
+            <select className={f} value={selectedGroup} onChange={(e) => handleGroupChange(e.target.value)}>
+              {groups.map((g) => <option key={g} value={g}>{g}</option>)}
             </select>
+            {groupTreatments.length > 1 && (
+              <select className={f} value={d.treatmentSlug} onChange={(e) => set('treatmentSlug', e.target.value)}>
+                {groupTreatments.map((t) => <option key={t.slug} value={t.slug}>{t.title}</option>)}
+              </select>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <input className={f} type="date" value={d.date} onChange={(e) => set('date', e.target.value)} />
               <input className={f} type="time" value={d.time} onChange={(e) => set('time', e.target.value)} />
