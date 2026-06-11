@@ -29,6 +29,47 @@ export async function saveClinicalNote(bookingId: string, note: string) {
   return { ok: true };
 }
 
+// Add a treatment (service variant) to an appointment mid-session. Creates an
+// add-on line item AND raises the booking's price + duration, so the eventual
+// charge and the itemised receipt both reflect it. Blocked once the booking is
+// charged or cancelled (the money's already settled / the slot is void).
+export async function addTreatmentToBooking(bookingId: string, variantId: string) {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'Not permitted' };
+  if (!variantId) return { ok: false, error: 'Choose a treatment to add.' };
+  const { db } = await import('@/lib/db');
+  const { logAudit } = await import('@/lib/audit');
+
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true, chargedAt: true, clientId: true } });
+  if (!booking) return { ok: false, error: 'Booking not found.' };
+  if (booking.chargedAt) return { ok: false, error: 'This appointment is already paid — add the treatment to a new booking instead.' };
+  if (booking.status === 'CANCELLED' || booking.status === 'NO_SHOW') return { ok: false, error: 'This appointment is cancelled.' };
+
+  const { getVariant } = await import('@/lib/services');
+  const v = await getVariant(variantId);
+  if (!v) return { ok: false, error: 'That treatment is unavailable.' };
+  const label = `${v.service.name} — ${v.variant.name}`;
+
+  // Line item + roll the price/duration into the booking in one transaction.
+  await db.$transaction([
+    db.bookingItem.create({
+      data: {
+        bookingId, variantId, treatmentSlug: v.service.treatmentSlug, label,
+        pricePence: v.variant.pricePence, durationMin: v.variant.durationMin, isAddon: true,
+      },
+    }),
+    db.booking.update({
+      where: { id: bookingId },
+      data: { pricePence: { increment: v.variant.pricePence }, durationMin: { increment: v.variant.durationMin } },
+    }),
+  ]);
+  await logAudit({ action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId, summary: `Added ${label} (+£${(v.variant.pricePence / 100).toFixed(2)})` });
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath(`/admin/bookings/${bookingId}/session`);
+  return { ok: true };
+}
+
 // Clinician confirms they've reviewed the SOP for this appointment.
 export async function acknowledgeSop(bookingId: string) {
   if (!crmEnabled) return { ok: false };
