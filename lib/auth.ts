@@ -124,7 +124,19 @@ export async function destroyClientSession() {
 
 export async function getClientSession(): Promise<ClientSession | null> {
   const token = (await cookies()).get(CLIENT_COOKIE)?.value;
-  return verifyClientToken(token);
+  const session = await verifyClientToken(token);
+  if (!session) return null;
+  // BLD-161: validate the token's epoch against the client's current
+  // sessionEpoch so a password reset (or future "sign out everywhere") revokes
+  // outstanding portal JWTs immediately. DB-unreachable falls back to the signed
+  // claims (mirrors getSession) so a transient blip can't lock everyone out.
+  try {
+    const { db } = await import('@/lib/db');
+    const c = await db.client.findUnique({ where: { id: session.sub }, select: { sessionEpoch: true } });
+    if (!c) return null;
+    if ((session.epoch ?? 0) !== (c.sessionEpoch ?? 0)) return null;
+  } catch { /* fall back to the valid signed token */ }
+  return session;
 }
 
 // ── Academy (trainee) portal sessions (separate cookie + secret) ────────────

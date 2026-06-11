@@ -39,7 +39,7 @@ export type Session = {
   /** Session-revocation epoch, validated against the DB in getSession(). */
   epoch?: number;
 };
-export type ClientSession = { sub: string; email: string; firstName: string };
+export type ClientSession = { sub: string; email: string; firstName: string; epoch?: number };
 export type AcademySession = { sub: string; email: string; firstName: string };
 
 // HS256 requires a key of at least 256 bits (32 bytes); `jose` rejects shorter
