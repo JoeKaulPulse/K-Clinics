@@ -136,6 +136,11 @@ export async function POST(req: Request) {
         action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId,
         summary: `Aftercare walked through in session — confirmed on screen by "${confirmedBy}"`,
       }).catch(() => {});
+      // BLD-151: send the care-instructions email immediately so in-session
+      // clients leave with written aftercare guidance (automations fire 3 days
+      // later and can't backfill the moment of departure).
+      const { notifyAftercare } = await import('@/lib/booking-notify');
+      notifyAftercare(bookingId).catch((e) => console.error('[session] aftercare email failed:', (e as Error)?.message));
       return ok();
     }
 

@@ -92,3 +92,34 @@ export async function notifyBookingConfirmed(bookingId: string): Promise<void> {
     data: { clientId: c.id, type: 'APPOINTMENT', summary: `Booked ${booking.treatmentTitle}`, detail: booking.startAt.toISOString(), author: 'system' },
   }).catch(() => {});
 }
+
+/**
+ * BLD-151: Send care-instructions email immediately after the session aftercare
+ * step is acknowledged on-screen. The older (non-session) flow sends a follow-up
+ * at 3 days via automations; in-session clients confirm live so they need the
+ * email at that moment — otherwise they leave without written care instructions.
+ * Fire-and-forget safe: a failure logs to console but does not throw.
+ */
+export async function notifyAftercare(bookingId: string): Promise<void> {
+  const booking = await db.booking.findUnique({
+    where: { id: bookingId },
+    include: { client: true },
+  });
+  if (!booking || !booking.client) return;
+  const c = booking.client;
+  if (!c.email) return;
+
+  const { sendEmail, tmplFollowUp } = await import('@/lib/email');
+
+  const siteUrl = baseUrl().replace(/\/$/, '');
+  const unsubUrl = `${siteUrl}/api/unsubscribe?t=${c.unsubToken}`;
+
+  const res = await sendEmail({
+    to: c.email,
+    subject: `Your aftercare guide — ${booking.treatmentTitle}`,
+    html: tmplFollowUp(c.firstName || 'there', booking.treatmentTitle, unsubUrl),
+  });
+  await db.emailEvent.create({
+    data: { clientId: c.id, kind: 'FOLLOW_UP', to: c.email, subject: `Aftercare guide — ${booking.treatmentTitle}`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error },
+  }).catch(() => {});
+}
