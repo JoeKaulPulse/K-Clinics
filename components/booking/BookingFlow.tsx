@@ -279,7 +279,7 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
                     : slots.length === 0 ? (
                       <div>
                         <p className="text-sm text-[var(--color-stone)]">No availability that day — please try another date.</p>
-                        {date && <WaitlistCTA treatmentSlug={service.treatmentSlug} treatmentTitle={service.name} date={date} client={client} />}
+                        <WaitlistCTA treatmentSlug={service.treatmentSlug} treatmentTitle={service.name} date={date} client={client} />
                       </div>
                     )
                     : (
