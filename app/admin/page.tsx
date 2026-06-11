@@ -14,6 +14,9 @@ import { LiveClock } from '@/components/admin/DashboardLive';
 import { ArrivalPrep, type NextArrival } from '@/components/admin/ArrivalPrep';
 import { NewBookingButton } from '@/components/admin/NewBookingButton';
 import { decClinical } from '@/lib/clinical-crypto';
+import { resolveView, canSwitchViews, type DashboardView } from '@/lib/dashboard-views';
+import { DashboardShell } from '@/components/admin/dashboard/DashboardShell';
+import { ScaffoldView } from '@/components/admin/dashboard/ScaffoldView';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +26,7 @@ export default async function AdminOverview() {
   const session = await getSession();
   const { db, withDbRetry } = await import('@/lib/db');
 
-  const meProf = session ? await db.adminUser.findUnique({ where: { id: session.sub }, select: { onboardedAt: true, name: true, title: true, credentials: true, photoUrl: true, publicPhone: true } }) : null;
+  const meProf = session ? await db.adminUser.findUnique({ where: { id: session.sub }, select: { onboardedAt: true, name: true, title: true, credentials: true, photoUrl: true, publicPhone: true, preferredDashboardView: true } }) : null;
   const staffOnb = meProf ? { pending: !meProf.onboardedAt, initial: { name: meProf.name ?? '', title: meProf.title ?? '', credentials: meProf.credentials ?? '', photoUrl: meProf.photoUrl ?? '', publicPhone: meProf.publicPhone ?? '' } } : null;
 
   // A practising clinician's home is "My day", not the owner KPI overview.
@@ -31,6 +34,43 @@ export default async function AdminOverview() {
   if (session && !['OWNER', 'ADMIN'].includes(session.role)) {
     const me = await db.adminUser.findUnique({ where: { id: session.sub }, select: { isClinician: true } });
     if (me?.isClinician) redirect('/admin/my-day');
+  }
+
+  // ── Which dashboard view is active? (PRJ-63) Each role has a default view;
+  //    OWNER/ADMIN may pin another role's view to preview it. Views whose
+  //    dedicated bundle hasn't shipped yet fall back to the Admin overview, so
+  //    real role users never regress — only an admin actively previewing an
+  //    unbuilt view lands on its scaffold.
+  const role = session?.role ?? 'STAFF';
+  const view: DashboardView = resolveView(role, meProf?.preferredDashboardView);
+  const BUILT_VIEWS: DashboardView[] = ['admin'];
+  const renderedView: DashboardView = BUILT_VIEWS.includes(view) ? view : canSwitchViews(role) ? view : 'admin';
+
+  // Time-aware greeting in clinic-local (London) time — the server may run in UTC.
+  const now = new Date();
+  const londonHour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: 'numeric', hour12: false }).format(now));
+  const greeting = londonHour < 12 ? 'Good morning' : londonHour < 18 ? 'Good afternoon' : 'Good evening';
+  const todayLabel = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'long', day: 'numeric', month: 'long' }).format(now);
+  const heading = (
+    <>
+      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-stone-soft)]">Overview · {todayLabel}</p>
+      <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl">{greeting}{session?.name ? `, ${session.name}` : ''}</h1>
+    </>
+  );
+
+  // Preview branch: an OWNER/ADMIN is viewing a role whose dashboard is still
+  // being built — skip the heavy overview queries and show its planned widgets.
+  if (renderedView !== 'admin') {
+    const can = await sessionPermissions();
+    const locale = await getLocale();
+    return (
+      <AdminShell user={session?.email} can={can} locale={locale}>
+        <DashboardShell role={role} view={renderedView} heading={heading}>
+          <ScaffoldView view={renderedView} />
+        </DashboardShell>
+        {staffOnb && <OnboardingHost pending={staffOnb.pending} title={ONBOARDING.staff.title} intro={ONBOARDING.staff.intro} steps={ONBOARDING.staff.steps} initial={staffOnb.initial} endpoint={ONBOARDING.staff.endpoint} />}
+      </AdminShell>
+    );
   }
 
   const canApproveTimeOff = sessionCan(session, 'schedule.manage');
@@ -116,12 +156,6 @@ export default async function AdminOverview() {
   const can = await sessionPermissions();
   const locale = await getLocale();
 
-  // Time-aware greeting in clinic-local (London) time — the server may run in UTC.
-  const now = new Date();
-  const londonHour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: 'numeric', hour12: false }).format(now));
-  const greeting = londonHour < 12 ? 'Good morning' : londonHour < 18 ? 'Good afternoon' : 'Good evening';
-  const todayLabel = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'long', day: 'numeric', month: 'long' }).format(now);
-
   // ── Front-of-house essentials: local weather/UV + the next client arrival ──
   const weather = await getWeather();
   const uv = weather?.uvMax != null ? uvBand(weather.uvMax) : null;
@@ -153,25 +187,23 @@ export default async function AdminOverview() {
     medicalFlag: decClinical(nextBk.client.medicalFlag) ?? null,
   } : null;
 
-  return (
-    <AdminShell user={session?.email} can={can} locale={locale}>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-stone-soft)]">Overview · {todayLabel}</p>
-          <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl">{greeting}{session?.name ? `, ${session.name}` : ''}</h1>
-        </div>
-        <div className="flex items-center gap-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5">
-          <LiveClock />
-          {weather && (
-            <div className="border-l border-[var(--color-line)] pl-4 leading-tight">
-              <p className="text-sm font-medium text-[var(--color-ink)]"><span className="tabular-nums">{weather.tempC}°</span> <span className="font-normal text-[var(--color-stone)]">{weather.label}</span></p>
-              {weather.uvMax != null && uv && (
-                <p className="text-xs text-[var(--color-stone)]">UV <span className="tabular-nums">{weather.uvMax}</span> · <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{uv.label}</span></p>
-              )}
-            </div>
+  const clockWeather = (
+    <div className="flex items-center gap-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5">
+      <LiveClock />
+      {weather && (
+        <div className="border-l border-[var(--color-line)] pl-4 leading-tight">
+          <p className="text-sm font-medium text-[var(--color-ink)]"><span className="tabular-nums">{weather.tempC}°</span> <span className="font-normal text-[var(--color-stone)]">{weather.label}</span></p>
+          {weather.uvMax != null && uv && (
+            <p className="text-xs text-[var(--color-stone)]">UV <span className="tabular-nums">{weather.uvMax}</span> · <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{uv.label}</span></p>
           )}
         </div>
-      </div>
+      )}
+    </div>
+  );
+
+  return (
+    <AdminShell user={session?.email} can={can} locale={locale}>
+      <DashboardShell role={role} view={renderedView} heading={heading} aside={clockWeather}>
 
       {/* Needs attention */}
       {attention.length > 0 && (
@@ -342,6 +374,7 @@ export default async function AdminOverview() {
           </div>
         </section>
       </div>
+      </DashboardShell>
       {staffOnb && <OnboardingHost pending={staffOnb.pending} title={ONBOARDING.staff.title} intro={ONBOARDING.staff.intro} steps={ONBOARDING.staff.steps} initial={staffOnb.initial} endpoint={ONBOARDING.staff.endpoint} />}
     </AdminShell>
   );
