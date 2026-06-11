@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Countdown } from '@/components/admin/DashboardLive';
+import type { RoomPrepState } from '@/lib/room-prep';
 
 export type NextArrival = {
   id: string;
@@ -13,6 +14,11 @@ export type NextArrival = {
   timeLabel: string;
   practitioner?: string | null;
   room?: string | null;
+  /** When known, the room checklist item reflects + sets the live prep state. */
+  roomId?: string | null;
+  roomPrep?: RoomPrepState;
+  /** Whether this user may set room readiness (rooms.prep.manage). */
+  canManageRoom?: boolean;
   drinks: string[];
   allergies?: string | null;
   medicalFlag?: string | null;
@@ -24,15 +30,41 @@ export type NextArrival = {
 // welcome screen). Checklist state is local/ephemeral — a satisfying per-arrival
 // ritual, not a record to persist.
 export function ArrivalPrep({ a }: { a: NextArrival }) {
+  // The room row is backed by the shared RoomPrep service when we know the room:
+  // tapping it sets READY (or back to DIRTY) and surfaces live to the clinician.
+  // The remaining rows stay local/ephemeral — a per-arrival ritual, not a record.
+  const liveRoom = !!(a.roomId && a.canManageRoom);
+  const [roomPrep, setRoomPrep] = useState<RoomPrepState>(a.roomPrep ?? 'DIRTY');
+  const [roomBusy, setRoomBusy] = useState(false);
+  const roomLabel = a.room
+    ? roomPrep === 'READY' ? `Room ready — ${a.room}` : roomPrep === 'CLEANING' ? `Room being cleaned — ${a.room}` : `Mark room ready — ${a.room}`
+    : 'Treatment room cleaned & set up';
   const prep = [
-    { key: 'room', label: a.room ? `Room ready & cleaned — ${a.room}` : 'Treatment room cleaned & set up' },
+    { key: 'room', label: roomLabel },
     { key: 'drinks', label: a.drinks.length ? `Prepare drinks — ${a.drinks.join(', ')}` : 'Offer a drink — water, tea or coffee' },
     { key: 'notes', label: 'Review client notes & today’s treatment' },
     { key: 'welcome', label: 'Personalise the welcome screen', soon: true },
   ];
   const [done, setDone] = useState<Set<string>>(new Set());
   const toggle = (k: string) => setDone((p) => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n; });
-  const readyCount = prep.filter((p) => !p.soon && done.has(p.key)).length;
+
+  async function setRoom(next: RoomPrepState) {
+    if (!a.roomId || roomBusy) return;
+    setRoomBusy(true);
+    const prevState = roomPrep;
+    setRoomPrep(next); // optimistic
+    try {
+      const res = await fetch('/api/admin/rooms/prep', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId: a.roomId, status: next }),
+      });
+      if (!res.ok) setRoomPrep(prevState);
+    } catch { setRoomPrep(prevState); }
+    finally { setRoomBusy(false); }
+  }
+
+  const isChecked = (k: string) => (k === 'room' && liveRoom ? roomPrep === 'READY' : done.has(k));
+  const readyCount = prep.filter((p) => !p.soon && isChecked(p.key)).length;
   const total = prep.filter((p) => !p.soon).length;
 
   return (
@@ -65,20 +97,28 @@ export function ArrivalPrep({ a }: { a: NextArrival }) {
           </div>
           <ul className="space-y-1.5">
             {prep.map((p) => {
-              const checked = done.has(p.key);
+              const checked = isChecked(p.key);
+              const isLiveRoom = p.key === 'room' && liveRoom;
+              const disabled = p.soon || (isLiveRoom && roomBusy);
+              const onClick = () => {
+                if (p.soon) return;
+                if (isLiveRoom) setRoom(roomPrep === 'READY' ? 'DIRTY' : 'READY');
+                else toggle(p.key);
+              };
               return (
                 <li key={p.key}>
                   <button
                     type="button"
-                    onClick={() => !p.soon && toggle(p.key)}
-                    disabled={p.soon}
+                    onClick={onClick}
+                    disabled={disabled}
                     aria-pressed={checked}
-                    className={`flex w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-left text-sm transition-colors ${p.soon ? 'cursor-default opacity-60' : 'hover:bg-[var(--color-bone)]'}`}
+                    className={`flex w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-left text-sm transition-colors ${p.soon ? 'cursor-default opacity-60' : 'hover:bg-[var(--color-bone)]'} ${isLiveRoom && roomBusy ? 'opacity-60' : ''}`}
                   >
                     <span aria-hidden className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors ${checked ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-sand)]'}`}>
                       {checked && <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6.2 4.8 9 10 3.4" /></svg>}
                     </span>
                     <span className={`min-w-0 break-words ${checked ? 'text-[var(--color-stone)] line-through' : 'text-[var(--color-ink-soft)]'}`}>{p.label}</span>
+                    {isLiveRoom && <span className="ml-auto shrink-0 rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">Live</span>}
                     {p.soon && <span className="ml-auto shrink-0 rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">Soon</span>}
                   </button>
                 </li>
