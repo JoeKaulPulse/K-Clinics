@@ -182,6 +182,8 @@ export async function getClient(id: string) {
     c.allergies = decClinical(c.allergies);
     for (const con of c.consultations) { con.concerns = decClinical(con.concerns); con.message = decClinical(con.message); con.medicalNotes = decClinical(con.medicalNotes); }
     for (const b of c.bookings) { b.allergyNote = decClinical(b.allergyNote); }
+    // BLD-127: interaction notes (free-text, special-category) are encrypted at rest.
+    for (const it of c.interactions) { it.detail = decClinical(it.detail); }
   }
   return c;
 }

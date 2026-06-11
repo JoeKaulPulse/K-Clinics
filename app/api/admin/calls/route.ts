@@ -13,6 +13,7 @@ export async function POST(req: Request) {
 
   const b = await req.json().catch(() => ({}));
   const { db } = await import('@/lib/db');
+  const { decClinical } = await import('@/lib/clinical-crypto'); // BLD-127: recordings/transcripts encrypted at rest
 
   switch (b.op) {
     case 'list': {
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, calls: rows.map((c) => ({
         id: c.id, direction: c.direction, fromNumber: c.fromNumber, toNumber: c.toNumber,
         status: c.status, startedAt: c.startedAt.toISOString(), durationSec: c.durationSec,
-        recordingUrl: c.recordingUrl, transcriptStatus: c.transcriptStatus, hasTranscript: !!c.transcript,
+        recordingUrl: decClinical(c.recordingUrl), transcriptStatus: c.transcriptStatus, hasTranscript: !!c.transcript,
         matchType: c.matchType, matchedLabel: c.matchedLabel,
         client: c.matchedClient ? { id: c.matchedClient.id, name: [c.matchedClient.firstName, c.matchedClient.lastName].filter(Boolean).join(' ') } : null,
         supplier: c.matchedSupplier ? { id: c.matchedSupplier.id, name: c.matchedSupplier.name } : null,
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, call: {
         ...c, startedAt: c.startedAt.toISOString(), answeredAt: c.answeredAt?.toISOString() ?? null,
         endedAt: c.endedAt?.toISOString() ?? null, createdAt: c.createdAt.toISOString(), raw: undefined,
+        recordingUrl: decClinical(c.recordingUrl), transcript: decClinical(c.transcript),
         client: c.matchedClient ? { id: c.matchedClient.id, name: [c.matchedClient.firstName, c.matchedClient.lastName].filter(Boolean).join(' ') } : null,
         supplier: c.matchedSupplier ? { id: c.matchedSupplier.id, name: c.matchedSupplier.name } : null,
       } });

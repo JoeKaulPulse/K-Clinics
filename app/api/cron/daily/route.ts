@@ -83,22 +83,30 @@ export async function GET(req: Request) {
   }
   // Behaviour-analytics retention: prune old session replays (90d) and heatmap
   // points (180d) so storage stays bounded and we hold data no longer than needed.
-  let retention = { replays: 0, heatmap: 0 };
+  let retention = { replays: 0, heatmap: 0, calls: 0 };
   try {
     const { db } = await import('@/lib/db');
+    const { Prisma } = await import('@prisma/client');
     const replayCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
     const heatCutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
     // Clinical records: purge signed consents (and stale requests) after 8 years
     // (UK adult clinical-records norm).
     const consentCutoff = new Date(Date.now() - 8 * 365 * 24 * 60 * 60 * 1000);
-    const [r, h] = await Promise.all([
+    // BLD-127: call recordings/transcripts/raw payloads are minimised after ~13
+    // months — the call facts (who/when/duration) stay, the content is scrubbed.
+    const callCutoff = new Date(Date.now() - 395 * 24 * 60 * 60 * 1000);
+    const [r, h, , , , calls] = await Promise.all([
       db.replaySession.deleteMany({ where: { startedAt: { lt: replayCutoff } } }), // cascades to chunks
       db.heatmapEvent.deleteMany({ where: { at: { lt: heatCutoff } } }),
       db.signedConsent.deleteMany({ where: { signedAt: { lt: consentCutoff } } }),
       db.consentRequest.deleteMany({ where: { status: 'PENDING', expiresAt: { lt: new Date() } } }),
       db.beforePhoto.deleteMany({ where: { createdAt: { lt: consentCutoff } } }),
+      db.callRecord.updateMany({
+        where: { startedAt: { lt: callCutoff }, OR: [{ transcript: { not: null } }, { recordingUrl: { not: null } }] },
+        data: { transcript: null, recordingUrl: null, raw: Prisma.DbNull, transcriptStatus: 'unavailable' },
+      }),
     ]);
-    retention = { replays: r.count, heatmap: h.count };
+    retention = { replays: r.count, heatmap: h.count, calls: calls.count };
   } catch (e) {
     failures++; console.error('[cron] analytics retention failed (continuing):', (e as Error)?.message);
   }

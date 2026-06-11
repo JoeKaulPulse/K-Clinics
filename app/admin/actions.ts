@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, canViewClinical } from '@/lib/auth';
 import { marketingConsentFields } from '@/lib/consent';
+import { encClinical } from '@/lib/clinical-crypto';
+import { Prisma } from '@prisma/client';
 
 const NOTE_TYPES = ['NOTE', 'CLINICAL', 'COMPLAINT', 'FOLLOW_UP', 'CALL'] as const;
 
@@ -16,7 +18,7 @@ export async function addNote(clientId: string, summary: string, type: string = 
   if (t === 'CLINICAL' && !canViewClinical(session.role)) return { ok: false, error: 'Clinical notes are restricted to clinical staff.' };
   const { db } = await import('@/lib/db');
   const note = await db.interaction.create({
-    data: { clientId, type: t as never, summary: summary.trim(), detail: detail?.trim() || null, author: session.email, pinned: Boolean(pinned) },
+    data: { clientId, type: t as never, summary: summary.trim(), detail: detail?.trim() ? encClinical(detail.trim()) : null, author: session.email, pinned: Boolean(pinned) },
   });
   const { logAudit } = await import('@/lib/audit');
   await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, clientId, summary: `${t.toLowerCase()} note added`, meta: { noteId: note.id } });
@@ -68,6 +70,8 @@ export async function eraseClientData(clientId: string) {
     // contains the client's typed name; startedBy stores staff email). Must be
     // erased under Art. 17 — no financial retention basis for the session data.
     db.appointmentSession.deleteMany({ where: { booking: { clientId } } }),
+    // BLD-127: scrub call recordings/transcripts/raw payload for this client.
+    db.callRecord.updateMany({ where: { matchedClientId: clientId }, data: { transcript: null, recordingUrl: null, raw: Prisma.DbNull, transcriptStatus: 'unavailable' } }),
   ]);
   await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
   revalidatePath(`/admin/clients/${clientId}`);

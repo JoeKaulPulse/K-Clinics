@@ -1,6 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db';
 import { site } from '@/lib/site';
+import { encClinical } from '@/lib/clinical-crypto';
 
 // ── yay.com VoIP integration ────────────────────────────────────────────────
 // Ingests call events from yay.com (webhook), matches the caller against the
@@ -153,8 +154,8 @@ export async function ingestCall(parsed: ParsedCall, raw: unknown): Promise<{ id
     // Enrichment only — fill in later events (answer, end, recording, voicemail
     // transcript) without rewriting the original facts.
     const data: Record<string, unknown> = {};
-    if (parsed.recordingUrl) { data.recordingUrl = parsed.recordingUrl; if (parsed.recordingMime) data.recordingMime = parsed.recordingMime; }
-    if (parsed.transcript) { data.transcript = parsed.transcript; data.transcriptStatus = 'ready'; }
+    if (parsed.recordingUrl) { data.recordingUrl = encClinical(parsed.recordingUrl); if (parsed.recordingMime) data.recordingMime = parsed.recordingMime; }
+    if (parsed.transcript) { data.transcript = encClinical(parsed.transcript); data.transcriptStatus = 'ready'; }
     if (parsed.answeredAt) data.answeredAt = parsed.answeredAt;
     if (parsed.endedAt) data.endedAt = parsed.endedAt;
     if (parsed.durationSec) data.durationSec = parsed.durationSec;
@@ -178,9 +179,9 @@ export async function ingestCall(parsed: ParsedCall, raw: unknown): Promise<{ id
       durationSec: parsed.durationSec,
       agentExtension: parsed.agentExtension ?? null,
       agentEmail: parsed.agentEmail ?? null,
-      recordingUrl: parsed.recordingUrl ?? null,
+      recordingUrl: parsed.recordingUrl ? encClinical(parsed.recordingUrl) : null,
       recordingMime: parsed.recordingMime ?? null,
-      transcript: parsed.transcript ?? null,
+      transcript: parsed.transcript ? encClinical(parsed.transcript) : null,
       transcriptStatus: parsed.transcript ? 'ready' : 'pending',
       matchType: match.type,
       matchedClientId: match.clientId ?? null,
