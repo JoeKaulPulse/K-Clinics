@@ -32,7 +32,7 @@ function suitable(audience: string, gender: string | null): boolean {
 
 type Stage = 'account' | 'service' | 'variant' | 'time' | 'upsell' | 'card' | 'done';
 
-export function BookingFlow({ catalogue, client, preselect = null }: { catalogue: Service[]; client: ClientInfo; preselect?: string | null }) {
+export function BookingFlow({ catalogue, client, preselect = null, preselectDate = '', waitlistToken = '' }: { catalogue: Service[]; client: ClientInfo; preselect?: string | null; preselectDate?: string; waitlistToken?: string }) {
   const [authed, setAuthed] = useState(client.signedIn);
   const [firstName, setFirstName] = useState(client.firstName);
   const [gender, setGender] = useState<string | null>(client.gender);
@@ -46,7 +46,9 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
   const [serviceId, setServiceId] = useState(validPreselect);
   const [variantId, setVariantId] = useState('');
   const [sessions, setSessions] = useState(1);
-  const [date, setDate] = useState('');
+  // From a waitlist claim link the offered day is pre-filled so the client lands
+  // straight on the freed slot (BLD-133 phase 2).
+  const [date, setDate] = useState(preselectDate || '');
   const [slots, setSlots] = useState<string[]>([]);
   const [preferred, setPreferred] = useState<string[]>([]);
   const [popularDays, setPopularDays] = useState<string[]>([]);
@@ -134,7 +136,7 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
     try {
       const res = await fetch('/api/booking/start', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variantId, sessions, startISO: slot, addOnVariantIds: [...addOns], smsReminders: smsPref, refreshments: [...refreshments], allergyNote, aftercareAck, ageDeclare, promoCode: promo?.ok ? promo.code : undefined }),
+        body: JSON.stringify({ variantId, sessions, startISO: slot, addOnVariantIds: [...addOns], smsReminders: smsPref, refreshments: [...refreshments], allergyNote, aftercareAck, ageDeclare, promoCode: promo?.ok ? promo.code : undefined, waitlistToken: waitlistToken || undefined }),
       });
       const j = await res.json();
       if (!j.ok) { setError(j.error || 'Could not book.'); setSubmitting(false); return; }

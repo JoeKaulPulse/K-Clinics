@@ -3088,6 +3088,7 @@ model WaitlistEntry {
   offeredStart   DateTime?      // the freed slot offered on notify
   notifiedAt     DateTime?
   expiresAt      DateTime?
+  claimedAt      DateTime?      // when the offered slot was booked (phase 2)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 

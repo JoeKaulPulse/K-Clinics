@@ -83,6 +83,7 @@ export const bookingStartSchema = z.object({
   aftercareAck: z.boolean().default(false),
   ageDeclare: z.boolean().default(false), // "I confirm I am 18 or over"
   promoCode: z.string().max(40).optional().or(z.literal('')),
+  waitlistToken: z.string().max(64).optional().or(z.literal('')), // BLD-133 claim link
 });
 export type BookingStartInput = z.infer<typeof bookingStartSchema>;
 
@@ -99,6 +100,7 @@ export const bookingCreateSchema = z.object({
   marketingOptIn: z.boolean().default(false),
   consent: z.literal(true, 'Please accept the booking terms'),
   promoCode: z.string().max(40).optional().or(z.literal('')),
+  waitlistToken: z.string().max(64).optional().or(z.literal('')), // BLD-133 claim link
   company: z.string().max(0).optional().or(z.literal('')), // honeypot
 });
 
