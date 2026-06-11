@@ -71,14 +71,20 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
   // Clinical (health) data — practitioners/admins/owner only. Decrypt the latest
   // version of each assessment type for display.
   const clinical = canViewClinical(session?.role);
-  const clinicalAssessments: { title: string; version: number; submittedAt: Date; tampered: boolean; sourceLocale?: string; translatedNote?: string | null; items: { id: string; prompt: string; value: string; original?: string }[] }[] = [];
+  const clinicalAssessments: { id: string; title: string; version: number; submittedAt: Date; tampered: boolean; current: boolean; sourceLocale?: string; translatedNote?: string | null; items: { id: string; prompt: string; value: string; original?: string }[] }[] = [];
   if (clinical && c.assessments.length) {
-    const seen = new Set<string>();
-    const latest = c.assessments.filter((a) => (seen.has(a.type) ? false : (seen.add(a.type), true)));
     const { formatAssessment } = await import('@/lib/health-assessments');
-    for (const a of latest) {
+    // Show EVERY submission, newest first — full history is retained and viewable
+    // for audit / insurer requests (BLD-193), not just the latest of each type.
+    // The newest of each type is flagged as the current one in force.
+    const ordered = [...c.assessments].sort((a, b) => +new Date(b.submittedAt) - +new Date(a.submittedAt)).slice(0, 24);
+    const seenType = new Set<string>();
+    for (const a of ordered) {
       const f = await formatAssessment(a.id);
-      if (f) clinicalAssessments.push(f);
+      if (!f) continue;
+      const current = !seenType.has(a.type);
+      seenType.add(a.type);
+      clinicalAssessments.push({ ...f, id: a.id, current });
     }
   }
 
@@ -323,9 +329,12 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
             ) : (
               <div className="space-y-4">
                 {clinicalAssessments.map((a) => (
-                  <div key={a.title} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
+                  <div key={a.id} className={`rounded-[var(--radius-md)] border bg-[var(--color-porcelain)] p-4 ${a.current ? 'border-[var(--color-line)]' : 'border-dashed border-[var(--color-line)] opacity-90'}`}>
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-medium">{a.title}</p>
+                      <p className="text-sm font-medium">
+                        {a.title}
+                        <span className={`ml-2 rounded-full px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.12em] ${a.current ? 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{a.current ? 'Current' : 'Previous'}</span>
+                      </p>
                       <p className="text-xs text-[var(--color-stone-soft)]">v{a.version} · {new Date(a.submittedAt).toLocaleDateString('en-GB')}</p>
                     </div>
                     {a.tampered && <p className="mt-1 text-xs font-medium text-[var(--color-blush)]">⚠ Integrity check failed — record may have been altered.</p>}
