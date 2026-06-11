@@ -130,12 +130,17 @@ export async function POST(req: Request) {
       const data = { ...((row.data ?? {}) as Data) };
       data['aftercare_confirmed_by'] = { value: confirmedBy, by: session.email, at: new Date().toISOString() };
       await db.appointmentSession.update({ where: { bookingId }, data: { data: data as object } });
-      await db.booking.updateMany({ where: { id: bookingId, aftercareAckAt: null }, data: { aftercareAckAt: new Date() } });
+      const acked = await db.booking.updateMany({ where: { id: bookingId, aftercareAckAt: null }, data: { aftercareAckAt: new Date() } });
       const { logAudit } = await import('@/lib/audit');
       await logAudit({
         action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId,
         summary: `Aftercare walked through in session — confirmed on screen by "${confirmedBy}"`,
       }).catch(() => {});
+      // BLD-151: email the client their aftercare guide once, when the ack first
+      // lands (parity with the non-session flow). Best-effort — never block the ack.
+      if (acked.count > 0) {
+        await import('@/lib/booking-notify').then((m) => m.notifyAftercare(bookingId)).catch((e) => console.error('[session] aftercare email failed:', (e as Error)?.message));
+      }
       return ok();
     }
 

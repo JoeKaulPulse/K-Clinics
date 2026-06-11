@@ -20,6 +20,9 @@ export async function GET(req: Request) {
 
   const { runDailyAutomations } = await import('@/lib/automations');
   const result = await runDailyAutomations();
+  // BLD-153: count failures so the cron doesn't silently return 200 when work
+  // failed. Vercel Cron / the status page key off the HTTP status + ok flag.
+  let failures = result.errors;
 
   // Safety net for scheduled email campaigns in case the frequent dispatch cron
   // isn't configured (e.g. plan without sub-daily crons) — also runs here daily.
@@ -28,7 +31,7 @@ export async function GET(req: Request) {
     const { dispatchDueCampaigns } = await import('@/lib/email-campaigns');
     scheduledEmail = await dispatchDueCampaigns();
   } catch (e) {
-    console.error('[cron] scheduled-email dispatch failed (continuing):', (e as Error)?.message);
+    failures++; console.error('[cron] scheduled-email dispatch failed (continuing):', (e as Error)?.message);
   }
 
   // Client loyalty maintenance: birthday gifts + expire 12-month-old points.
@@ -37,7 +40,7 @@ export async function GET(req: Request) {
     const { awardBirthdayPoints, expireOldPoints } = await import('@/lib/client-loyalty');
     loyalty = { birthdays: await awardBirthdayPoints(), expired: await expireOldPoints() };
   } catch (e) {
-    console.error('[cron] loyalty maintenance failed (continuing):', (e as Error)?.message);
+    failures++; console.error('[cron] loyalty maintenance failed (continuing):', (e as Error)?.message);
   }
 
   // Membership: recompute tiers from rolling 12-month spend so members move up
@@ -47,7 +50,7 @@ export async function GET(req: Request) {
     const { recomputeActiveTiers } = await import('@/lib/membership');
     membership = { recomputed: await recomputeActiveTiers() };
   } catch (e) {
-    console.error('[cron] membership recompute failed (continuing):', (e as Error)?.message);
+    failures++; console.error('[cron] membership recompute failed (continuing):', (e as Error)?.message);
   }
 
   // Pull ad spend from any connected platforms into campaign ROI (no-op if
@@ -58,7 +61,7 @@ export async function GET(req: Request) {
     const r = await syncAdSpend(30);
     adSpend = { updated: r.updated, totalPence: r.totalPence };
   } catch (e) {
-    console.error('[cron] ad-spend sync failed (continuing):', (e as Error)?.message);
+    failures++; console.error('[cron] ad-spend sync failed (continuing):', (e as Error)?.message);
   }
 
   // Refresh Google Calendar busy-times for connected clinicians (no-op if Google
@@ -97,7 +100,7 @@ export async function GET(req: Request) {
     ]);
     retention = { replays: r.count, heatmap: h.count };
   } catch (e) {
-    console.error('[cron] analytics retention failed (continuing):', (e as Error)?.message);
+    failures++; console.error('[cron] analytics retention failed (continuing):', (e as Error)?.message);
   }
 
   // Build board: keep it populated from Claude's backlog server-side, and assign
@@ -114,7 +117,7 @@ export async function GET(req: Request) {
     await ensureBuildRefs(board.created > 0);
     await ensureTaskRefs();
   } catch (e) {
-    console.error('[cron] build-board seed failed (continuing):', (e as Error)?.message);
+    failures++; console.error('[cron] build-board seed failed (continuing):', (e as Error)?.message);
   }
 
   // Record the run so the status page can show job freshness.
@@ -123,5 +126,9 @@ export async function GET(req: Request) {
     await db.setting.upsert({ where: { key: 'cron_daily_last' }, update: { value: new Date().toISOString() }, create: { key: 'cron_daily_last', value: new Date().toISOString() } });
   } catch { /* non-fatal */ }
 
-  return NextResponse.json({ ok: true, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend, board });
+  // BLD-153: surface failure to the scheduler — non-200 when anything failed.
+  return NextResponse.json(
+    { ok: failures === 0, failures, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend, board },
+    { status: failures === 0 ? 200 : 500 },
+  );
 }
