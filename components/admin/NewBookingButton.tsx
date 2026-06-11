@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import { createManualBooking, searchClientsForBooking } from '@/app/admin/bookings/create-action';
 
-type Treatment = { slug: string; title: string; group: string };
+type Variant = { id: string; name: string; durationMin: number; pricePence: number };
+type Treatment = { slug: string; title: string; group: string; variants?: Variant[] };
 type Found = { id: string; firstName: string; lastName: string | null; email: string; phone: string | null; hasDob: boolean; hasCard: boolean };
 type Result = { bookingId: string; manageToken?: string; hasCard?: boolean; clientFirstName?: string; clientEmail?: string; clientHasEmail?: boolean };
 
 const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-gold)]';
+const priceLabel = (p: number) => (p > 0 ? `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}` : 'On consultation');
 
 export function NewBookingButton({ treatments }: { treatments: Treatment[] }) {
   const [open, setOpen] = useState(false);
@@ -44,15 +46,19 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
   const [matches, setMatches] = useState<Found[]>([]);
   const [selected, setSelected] = useState<Found | null>(null);
   const [selectedGroup, setSelectedGroup] = useState(firstGroup);
-  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', treatmentSlug: firstSlug, date: '', time: '10:00', notes: '' });
+  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', treatmentSlug: firstSlug, variantId: treatments.find((t) => t.slug === firstSlug)?.variants?.[0]?.id ?? '', date: '', time: '10:00', notes: '' });
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD((p) => ({ ...p, [k]: v }));
 
   const groupTreatments = treatments.filter((t) => t.group === selectedGroup);
+  // The chosen category's specific service variants/areas (each its own price + time).
+  const variants = treatments.find((t) => t.slug === d.treatmentSlug)?.variants ?? [];
+  // Changing the treatment (directly or via its group) resets to that treatment's first area.
+  const setTreatment = (slug: string) => setD((p) => ({ ...p, treatmentSlug: slug, variantId: treatments.find((t) => t.slug === slug)?.variants?.[0]?.id ?? '' }));
 
   function handleGroupChange(group: string) {
     setSelectedGroup(group);
     const first = treatments.find((t) => t.group === group);
-    if (first) set('treatmentSlug', first.slug);
+    if (first) setTreatment(first.slug);
   }
 
   useEffect(() => {
@@ -61,7 +67,9 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
     return () => clearTimeout(t);
   }, [q, tab, selected]);
 
-  const treatmentTitle = treatments.find((t) => t.slug === d.treatmentSlug)?.title || 'your treatment';
+  const baseTitle = treatments.find((t) => t.slug === d.treatmentSlug)?.title || 'your treatment';
+  const variantName = variants.find((v) => v.id === d.variantId)?.name;
+  const treatmentTitle = variantName ? `${baseTitle} — ${variantName}` : baseTitle;
   const whenLabel = d.date ? new Date(`${d.date}T${d.time}`).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '—';
 
   function submit(override = false) {
@@ -77,7 +85,7 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
         lastName: selected?.lastName || d.lastName,
         email: selected?.email || d.email,
         phone: selected?.phone || d.phone,
-        treatmentSlug: d.treatmentSlug, startISO, notes: d.notes, override,
+        treatmentSlug: d.treatmentSlug, variantId: d.variantId || undefined, startISO, notes: d.notes, override,
       });
       if (r.ok) setResult(r as Result);
       else { setError(r.error || 'Could not create booking.'); setClash(Boolean(r.clash)); }
@@ -136,13 +144,18 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
               </div>
             )}
 
-            {/* Appointment: group then specific treatment */}
+            {/* Appointment: group → treatment → specific service/area (its own price + time) */}
             <select className={f} value={selectedGroup} onChange={(e) => handleGroupChange(e.target.value)}>
               {groups.map((g) => <option key={g} value={g}>{g}</option>)}
             </select>
             {groupTreatments.length > 1 && (
-              <select className={f} value={d.treatmentSlug} onChange={(e) => set('treatmentSlug', e.target.value)}>
+              <select className={f} value={d.treatmentSlug} onChange={(e) => setTreatment(e.target.value)}>
                 {groupTreatments.map((t) => <option key={t.slug} value={t.slug}>{t.title}</option>)}
+              </select>
+            )}
+            {variants.length > 0 && (
+              <select className={f} value={d.variantId} onChange={(e) => set('variantId', e.target.value)} aria-label="Specific service / area">
+                {variants.map((v) => <option key={v.id} value={v.id}>{v.name} — {priceLabel(v.pricePence)} · {v.durationMin} min</option>)}
               </select>
             )}
             <div className="grid grid-cols-2 gap-3">
