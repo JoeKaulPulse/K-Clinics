@@ -120,7 +120,18 @@ async function roomPool(roomTag: string | null, equipSlug: string | undefined, d
     },
     select: { id: true, capacity: true },
   });
-  return loadPool(resources, dayStart, dayEnd); // may be empty → blocks the slot
+  const pool = await loadPool(resources, dayStart, dayEnd); // may be empty → blocks the slot
+  // BLD-198: a scheduled room closure occupies the room like a booking, so a
+  // blocked room drops out of availability for any overlapping slot.
+  const closures = await db.roomClosure.findMany({
+    where: { roomId: { in: resources.map((r) => r.id) }, startAt: { lt: dayEnd }, endAt: { gt: dayStart } },
+    select: { roomId: true, startAt: true, endAt: true, endedEarlyAt: true },
+  });
+  for (const c of closures) {
+    const effEnd = c.endedEarlyAt && c.endedEarlyAt < c.endAt ? c.endedEarlyAt : c.endAt;
+    if (effEnd.getTime() > dayStart.getTime()) pool.bookings.push({ startAt: c.startAt, endAt: effEnd, bufferMin: 0, resIds: [c.roomId] });
+  }
+  return pool;
 }
 
 /** Equipment slug to require inside the room, only when binding is on. */

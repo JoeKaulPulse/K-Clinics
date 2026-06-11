@@ -1221,6 +1221,9 @@ model Resource {
   // Daily prep/turnover state for this room (ROOM kind only). One row per day.
   roomPreps  RoomPrep[]
 
+  // Scheduled block-outs (e.g. a contractor on site) — BLD-198.
+  roomClosures RoomClosure[]
+
   // Which equipment is physically placed in a ROOM. Self-relation: a room holds
   // many equipment; a piece of equipment can sit in many rooms. Owner-managed and
   // changeable over time. (Informational today; available to drive assignment.)
@@ -3029,4 +3032,25 @@ model QuestionnaireVersion {
   createdBy String?
 
   @@index([key, version])
+}
+
+// ── Scheduled per-room block-outs (BLD-198) ─────────────────────────────────
+// A room can be blocked from availability in advance (e.g. a contractor on
+// site) and reactivated afterwards. Availability treats an active closure like a
+// booking occupying the room for [startAt, effectiveEnd]; ending it (early or at
+// endAt) marks the room's RoomPrep DIRTY so a cleaning is required before the
+// next client session. New table — additive.
+model RoomClosure {
+  id           String    @id @default(cuid())
+  room         Resource  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId       String
+  startAt      DateTime
+  endAt        DateTime
+  reason       String?
+  createdBy    String?
+  endedEarlyAt DateTime?
+  endedEarlyBy String?
+  createdAt    DateTime  @default(now())
+
+  @@index([roomId, startAt, endAt])
 }

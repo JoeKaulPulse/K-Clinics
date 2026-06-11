@@ -6,6 +6,7 @@ import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { ScheduleManager } from '@/components/admin/ScheduleManager';
 import { ClosuresManager } from '@/components/admin/ClosuresManager';
 import { ResourcesManager } from '@/components/admin/ResourcesManager';
+import { RoomClosures, type ClosureRow, type RoomOpt } from '@/components/admin/RoomClosures';
 import { bookableTreatments } from '@/lib/treatments';
 import { getLocale } from '@/lib/locale';
 
@@ -52,6 +53,14 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   const closures = closuresRaw.map((c) => ({ id: c.id, startAt: c.startAt.toISOString(), endAt: c.endAt.toISOString(), reason: c.reason, locationId: c.locationId }));
   const roomsAndEquipment = resources.map(({ equipment, ...r }) => ({ ...r, equipmentIds: equipment.map((e) => e.id) }));
 
+  // BLD-198 — per-room block-outs (rooms only; future/active or recently ended).
+  const roomOpts: RoomOpt[] = resources.filter((r) => r.kind === 'ROOM' && r.active).map((r) => ({ id: r.id, name: r.name, floor: r.floor }));
+  const roomNameById = new Map(roomOpts.map((r) => [r.id, r.name]));
+  const roomClosuresRaw = roomOpts.length
+    ? await db.roomClosure.findMany({ where: { roomId: { in: roomOpts.map((r) => r.id) }, endAt: { gte: new Date() }, endedEarlyAt: null }, orderBy: { startAt: 'asc' }, select: { id: true, roomId: true, startAt: true, endAt: true, reason: true, endedEarlyAt: true } })
+    : [];
+  const roomClosures: ClosureRow[] = roomClosuresRaw.map((c) => ({ id: c.id, roomId: c.roomId, roomName: roomNameById.get(c.roomId) || 'Room', startAt: c.startAt.toISOString(), endAt: c.endAt.toISOString(), reason: c.reason, endedEarlyAt: c.endedEarlyAt ? c.endedEarlyAt.toISOString() : null }));
+
   // Room layout & equipment placement are owner/admin-only configuration.
   const { sessionIsAdmin } = await import('@/lib/auth');
   const isAdmin = sessionIsAdmin(session);
@@ -71,6 +80,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
 
       <div className="mt-10 space-y-8">
         <ClosuresManager closures={closures} locations={locations} multiLocation={multiLocation} />
+        <RoomClosures rooms={roomOpts} closures={roomClosures} />
         {isAdmin && <ResourcesManager resources={roomsAndEquipment} locations={locations} multiLocation={multiLocation} />}
       </div>
     </AdminShell>
