@@ -35,16 +35,27 @@ export default async function QrPage() {
     svg: await qrSvg(qrUrl(c.code)),
   })));
 
-  // ── Skin & Smile kiosk funnel (KioskEvent counts) ─────────────────────────
-  const kioskCounts = await db.kioskEvent.groupBy({ by: ['event'], _count: { _all: true } }).catch(() => []);
+  // ── Skin & Smile kiosk analytics — funnel + sessions (BLD-135) ────────────
+  const [kioskCounts, sessionStatus] = await Promise.all([
+    db.kioskEvent.groupBy({ by: ['event'], _count: { _all: true } }).catch(() => [] as { event: string; _count: { _all: number } }[]),
+    db.kioskSession.groupBy({ by: ['status'], _count: { _all: true } }).catch(() => [] as { status: string; _count: { _all: number } }[]),
+  ]);
   const kiosk = Object.fromEntries(kioskCounts.map((k) => [k.event, k._count._all])) as Record<string, number>;
-  const funnel: { label: string; value: number }[] = [
+  const byStatus = Object.fromEntries(sessionStatus.map((s) => [s.status, s._count._all])) as Record<string, number>;
+  const totalSessions = Object.values(byStatus).reduce((a, b) => a + b, 0);
+  const steps = [
     { label: 'Scans', value: kiosk.scan ?? 0 },
-    { label: 'Photos taken', value: kiosk.photo ?? 0 },
-    { label: 'Analyses done', value: kiosk.analyzed ?? 0 },
+    { label: 'Consent', value: kiosk.consent ?? 0 },
+    { label: 'Photos', value: kiosk.photo ?? 0 },
+    { label: 'Analyses', value: kiosk.analyzed ?? 0 },
     { label: 'Shares', value: kiosk.shared ?? 0 },
     { label: 'Claims', value: kiosk.claimed ?? 0 },
   ];
+  const top = steps[0].value || 0;
+  // Each card: % of scans (overall) + step-over-step conversion from the prior stage.
+  const funnel = steps.map((s, i) => ({ ...s, pct: top ? Math.round((s.value / top) * 100) : 0, step: i > 0 && steps[i - 1].value ? Math.round((s.value / steps[i - 1].value) * 100) : null }));
+  const ageDeclined = byStatus.AGE_DECLINED ?? 0;
+  const reachedAnalysis = top ? Math.round(((kiosk.analyzed ?? 0) / top) * 100) : 0;
 
   const can = await sessionPermissions();
   const locale = await getLocale();
@@ -74,14 +85,23 @@ export default async function QrPage() {
             Open storefront display ↗
           </a>
         </div>
-        <dl className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-5">
+        <dl className="mt-5 grid grid-cols-3 gap-3 sm:grid-cols-6">
           {funnel.map((f) => (
             <div key={f.label} className="rounded-[var(--radius-md)] bg-[var(--color-porcelain)] p-4 text-center">
               <dt className="text-xs uppercase tracking-wide text-[var(--color-stone)]">{f.label}</dt>
               <dd className="mt-1 font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">{f.value}</dd>
+              <dd className="mt-0.5 text-[0.65rem] text-[var(--color-stone-soft)]">{f.pct}% of scans{f.step !== null ? ` · ${f.step}% prior` : ''}</dd>
             </div>
           ))}
         </dl>
+        {/* Sessions summary */}
+        <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-sm text-[var(--color-stone)]">
+          <span><strong className="text-[var(--color-ink)]">{totalSessions}</strong> sessions</span>
+          <span><strong className="text-[var(--color-ink)]">{reachedAnalysis}%</strong> reached analysis</span>
+          <span><strong className="text-[var(--color-ink)]">{byStatus.SHARED ?? 0}</strong> shared · <strong className="text-[var(--color-ink)]">{byStatus.EXPIRED ?? 0}</strong> expired</span>
+          {ageDeclined > 0 && <span className="text-[var(--color-stone-soft)]">{ageDeclined} age-declined (photos purged)</span>}
+        </div>
+        <p className="mt-2 text-[0.65rem] text-[var(--color-stone-soft)]">Campaign attribution needs a campaign tag captured at the kiosk entry point — a small follow-up once per-campaign QR/links drive the kiosk.</p>
       </section>
 
       <div className="mt-8">
