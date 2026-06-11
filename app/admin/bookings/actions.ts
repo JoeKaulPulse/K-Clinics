@@ -271,3 +271,17 @@ export async function reassignPractitioner(bookingId: string, practitionerId: st
   revalidatePath('/admin/bookings');
   return { ok: true };
 }
+
+// BLD-105 — staff reschedule an appointment (change date/time) without
+// cancel-and-rebook. Reuses rescheduleBooking with the admin override (no 48h
+// notice / window / fee rules), but keeps the slot-availability + future-time
+// guards, the client confirmation email, calendar re-push and audit.
+export async function rescheduleBookingAction(bookingId: string, newStartISO: string): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to reschedule appointments.' };
+  if (!newStartISO) return { ok: false, error: 'Pick a new date and time.' };
+  const { rescheduleBooking } = await import('@/lib/booking-actions');
+  const r = await rescheduleBooking(bookingId, newStartISO, { by: session.email, admin: true });
+  return r.ok ? { ok: true } : { ok: false, error: r.error || 'Could not reschedule.' };
+}
