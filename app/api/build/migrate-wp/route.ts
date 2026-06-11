@@ -25,10 +25,11 @@ export const maxDuration = 300;
 // like the rest of the app — a spawned child has no node_modules to resolve
 // against in a bundled function).
 //
-// Auth: BOARD_QUEUE_TOKEN — the same shared secret as /api/build/queue (the
-// established channel for unattended routine operations). The importers print
-// counts only (no PII) and are idempotent/repair-safe by design; every commit
-// run is written to the audit log.
+// Auth: MIGRATE_TOKEN — a DEDICATED secret (BLD-213), not the shared
+// BOARD_QUEUE_TOKEN that routine sessions hold, and the endpoint is hard-disabled
+// when VERCEL_ENV === 'production'. Set MIGRATE_TOKEN only when running the
+// one-off import. The importers print counts only (no PII), are idempotent/
+// repair-safe, and every commit run is written to the audit log.
 
 const STEPS: Record<string, (o: { file: string; commit?: boolean; repair?: boolean; log?: (...a: unknown[]) => void }) => Promise<unknown>> = {
   clients: runClients,
@@ -41,7 +42,10 @@ const DUMP_ZIP = '127_0_0_1.sql.zip';
 const TMP_SQL = '/tmp/migrate-wp/dump.sql';
 
 function tokenOk(req: Request): boolean {
-  const secret = process.env.BOARD_QUEUE_TOKEN;
+  // BLD-213: a DEDICATED token, distinct from BOARD_QUEUE_TOKEN (which every
+  // routine Claude session holds). If MIGRATE_TOKEN isn't set the endpoint is
+  // disabled — so a routine board-token call can never trigger a DB overwrite.
+  const secret = process.env.MIGRATE_TOKEN;
   if (!secret) return false;
   const provided = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
   if (!provided || provided.length !== secret.length) return false;
@@ -68,15 +72,13 @@ export async function GET(req: Request) {
     steps: Object.keys(STEPS),
     dumpZipBundled: fs.existsSync(zip),
     dumpExtracted: fs.existsSync(TMP_SQL),
-    hasDatabaseUrl: Boolean(process.env.DATABASE_URL || process.env.PRISMA_DATABASE_URL || process.env.POSTGRES_URL),
-    hasHealthKey: Boolean(process.env.HEALTH_ENCRYPTION_KEY),
   });
 }
 
 export async function POST(req: Request) {
   if (process.env.VERCEL_ENV === 'production') return NextResponse.json({ ok: false, error: 'Migration endpoint disabled in production.' }, { status: 403 });
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'CRM disabled' }, { status: 503 });
-  if (!process.env.BOARD_QUEUE_TOKEN) return NextResponse.json({ ok: false, error: 'Queue token not configured.' }, { status: 503 });
+  if (!process.env.MIGRATE_TOKEN) return NextResponse.json({ ok: false, error: 'Migration endpoint is disabled (MIGRATE_TOKEN not set).' }, { status: 503 });
   if (!tokenOk(req)) return NextResponse.json({ ok: false, error: 'Unauthorised' }, { status: 401 });
 
   const b = await req.json().catch(() => ({}));
