@@ -108,3 +108,32 @@ export async function editClient(clientId: string, input: EditClientInput) {
   revalidatePath(`/admin/clients/${clientId}`);
   return { ok: true as const, changed: changes.length };
 }
+
+// BLD-140 — staff manage a client's public loyalty-leaderboard presence
+// (opt-in, photo, display name). Default off; only switch on with the client's
+// written agreement. Every change is audit-logged.
+export async function setLeaderboard(clientId: string, input: { optIn?: boolean; photoUrl?: string | null; displayName?: string | null }) {
+  if (!crmEnabled) return { ok: false as const, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'clients.edit')) return { ok: false as const, error: 'You don’t have permission to edit clients.' };
+
+  const { db } = await import('@/lib/db');
+  const current = await db.client.findUnique({ where: { id: clientId }, select: { leaderboardOptIn: true, leaderboardPhotoUrl: true, leaderboardDisplayName: true } });
+  if (!current) return { ok: false as const, error: 'Client not found.' };
+
+  const data: Record<string, unknown> = {};
+  const changes: string[] = [];
+  if (input.optIn !== undefined && !!input.optIn !== current.leaderboardOptIn) { data.leaderboardOptIn = !!input.optIn; changes.push(`opt-in ${input.optIn ? 'on' : 'off'}`); }
+  if (input.photoUrl !== undefined) { const to = input.photoUrl || null; if (to !== current.leaderboardPhotoUrl) { data.leaderboardPhotoUrl = to; changes.push(to ? 'photo set' : 'photo cleared'); } }
+  if (input.displayName !== undefined) { const to = (input.displayName || '').trim() || null; if (to !== current.leaderboardDisplayName) { data.leaderboardDisplayName = to; changes.push('display name'); } }
+
+  if (changes.length === 0) return { ok: true as const };
+  await db.client.update({ where: { id: clientId }, data });
+
+  try {
+    const { logAudit } = await import('@/lib/audit');
+    await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, clientId, summary: `Leaderboard: ${changes.join(', ')}`, meta: { changes } });
+  } catch { /* non-fatal */ }
+  revalidatePath(`/admin/clients/${clientId}`);
+  return { ok: true as const };
+}

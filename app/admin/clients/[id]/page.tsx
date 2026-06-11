@@ -6,6 +6,7 @@ import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { AddNote, PinToggle, SendEmail, StatusSelect } from '@/components/admin/ClientActions';
 import { EditClientDetails } from '@/components/admin/EditClientDetails';
+import { LeaderboardCard } from '@/components/admin/LeaderboardCard';
 import { DiscountAction } from '@/components/admin/DiscountActions';
 import { AdjustClientPoints } from '@/components/admin/AdjustClientPoints';
 
@@ -512,6 +513,10 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                 ))}
               </ol>
             </section>
+          )}
+
+          {sessionCan(session, 'clients.edit') && (
+            <LeaderboardCard client={{ id: c.id, optIn: c.leaderboardOptIn, photoUrl: c.leaderboardPhotoUrl, displayName: c.leaderboardDisplayName, firstName: c.firstName }} />
           )}
 
           {sessionCan(session, 'clients.export') && <DataPrivacy clientId={c.id} canDelete={sessionCan(session, 'clients.delete')} />}
