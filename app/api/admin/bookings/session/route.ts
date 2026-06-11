@@ -156,6 +156,54 @@ export async function POST(req: Request) {
       return ok();
     }
 
+    // Take payment by link (BLD-196): a Stripe Checkout Session the client pays
+    // on their own phone (returned as a URL + QR). The existing webhook
+    // (payment_intent.succeeded carrying metadata.bookingId) finalises the
+    // booking charge, which bumps booking.updatedAt so the SSE snapshot flips
+    // checkout to "Paid" automatically — no reconciliation needed here.
+    case 'paylink': {
+      const { sessionCan } = await import('@/lib/auth');
+      if (!sessionCan(session, 'bookings.charge')) return bad('You don’t have permission to take payments.', 403);
+      const amountPence = Math.round(Number(body.amountPence) || 0);
+      if (amountPence <= 0) return bad('Enter an amount to take.');
+      const b = await db.booking.findUnique({ where: { id: bookingId }, select: { treatmentTitle: true, chargedAt: true } });
+      if (b?.chargedAt) return bad('This booking is already paid.');
+      const { stripe } = await import('@/lib/stripe');
+      const base = (process.env.NEXT_PUBLIC_SITE_URL || (await import('@/lib/site')).site.url).replace(/\/$/, '');
+      const checkout = await stripe().checkout.sessions.create({
+        mode: 'payment',
+        line_items: [{ quantity: 1, price_data: { currency: 'gbp', unit_amount: amountPence, product_data: { name: b?.treatmentTitle || 'Treatment' } } }],
+        payment_intent_data: { metadata: { bookingId, kind: 'booking_balance' } },
+        success_url: `${base}/pos-paid?booking=1`,
+        cancel_url: `${base}/pos-paid?cancelled=1`,
+      });
+      const QR = (await import('qrcode')).default;
+      const qr = await QR.toDataURL(checkout.url || '', { margin: 1, width: 320 });
+      return ok({ url: checkout.url, qr });
+    }
+
+    // Take payment on a registered card terminal (BLD-195/196). Routed through
+    // lib/terminal.ts; Tyl is stubbed (reports unavailable) until its credentials
+    // are set, so this returns a clear message and checkout falls back to a
+    // payment link or the card on file.
+    case 'terminal': {
+      const { sessionCan } = await import('@/lib/auth');
+      if (!sessionCan(session, 'bookings.charge')) return bad('You don’t have permission to take payments.', 403);
+      const amountPence = Math.round(Number(body.amountPence) || 0);
+      if (amountPence <= 0) return bad('Enter an amount to take.');
+      const paid = await db.booking.findUnique({ where: { id: bookingId }, select: { chargedAt: true } });
+      if (paid?.chargedAt) return bad('This booking is already paid.');
+      const deviceId = String(body.deviceId || '');
+      const device = deviceId ? await db.device.findUnique({ where: { id: deviceId }, select: { provider: true, externalId: true } }) : null;
+      const { captureOnTerminal } = await import('@/lib/terminal');
+      const res = await captureOnTerminal(device, { amountPence, bookingId });
+      if (!res.ok) return bad(res.message || 'Terminal payment is unavailable.');
+      // Live capture succeeded (only once a terminal provider is wired) — record it.
+      const { finalizeBookingCharge } = await import('@/lib/booking-actions');
+      await finalizeBookingCharge(bookingId, res.reference || `terminal_${Date.now()}`, amountPence);
+      return ok();
+    }
+
     // Next visit: create the follow-on booking for the same treatment, card
     // already on file. Availability, practitioner/room assignment and the
     // overlap re-check go through the same engine + Serializable transaction
