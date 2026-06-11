@@ -307,6 +307,9 @@ export async function cancelBooking(
   await db.interaction.create({
     data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Cancelled ${booking.treatmentTitle}${late ? ' (within 24h)' : ''}${charged ? ` — charged £${(charged / 100).toFixed(2)}` : feeFailed ? ' — LATE FEE FAILED (follow up)' : opts.waiveFee && late ? ' — fee waived' : ''}`, author: opts.by },
   });
+
+  // BLD-133: the slot just freed — offer it to the first matching waitlister.
+  import('@/lib/waitlist').then((m) => m.notifyOnFreedSlot(booking.treatmentSlug, booking.startAt)).catch(() => {});
   if (feeFailed) {
     await logAudit({ action: 'PAYMENT_FAILED', actor: opts.by, bookingId: booking.id, clientId: booking.clientId, summary: `Late-cancellation fee (£${(booking.pricePence / 100).toFixed(2)}) failed — follow up.` }).catch(() => {});
   }

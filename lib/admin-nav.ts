@@ -33,6 +33,7 @@ export const navGroups: NavGroup[] = [
   // below so this group stays focused on records and front-desk work.
   { heading: 'nav.group.clients', icon: 'clients', items: [
     { href: '/admin/bookings', key: 'nav.bookings', perm: 'bookings.view', keywords: 'appointments treatments diary' },
+    { href: '/admin/waitlist', key: 'nav.waitlist', perm: 'bookings.view', keywords: 'waitlist cancellation slot opened notify queue' },
     { href: '/admin/consultations', key: 'nav.consultations', perm: 'consultations.view', keywords: 'enquiries assessment' },
     { href: '/admin/chat', key: 'nav.chat', perm: 'clients.view', badge: 'chat', keywords: 'messages whatsapp inbox conversations' },
     { href: '/admin/calls', key: 'nav.calls', perm: 'calls.view', keywords: 'phone call log telephone' },

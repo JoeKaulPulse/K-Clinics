@@ -347,6 +347,7 @@ model Client {
   reviews         Review[]
   npsResponses    NpsResponse[]
   points          ClientPoints[]
+  waitlist        WaitlistEntry[]
   referralsMade   Referral[]     @relation("ReferralsMade")
   referredVia     Referral?      @relation("ReferralReceived")
   callRecords     CallRecord[]
@@ -3060,4 +3061,36 @@ model RoomClosure {
   createdAt    DateTime  @default(now())
 
   @@index([roomId, startAt, endAt])
+}
+
+// ── Cancellation waitlist (BLD-133) ─────────────────────────────────────────
+// A client asks to be told if a slot for a treatment frees up within a date
+// window. On cancellation we notify the first matching ACTIVE entry with a
+// time-boxed one-click claim link (phase 2); it then rolls to the next.
+enum WaitlistStatus {
+  ACTIVE    // waiting
+  NOTIFIED  // emailed a freed slot; claim link live until expiresAt
+  CLAIMED   // booked the freed slot
+  EXPIRED   // claim window passed
+  CANCELLED // withdrawn
+}
+
+model WaitlistEntry {
+  id             String         @id @default(cuid())
+  client         Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId       String
+  treatmentSlug  String
+  treatmentTitle String
+  fromDate       DateTime       // window start (inclusive, date)
+  toDate         DateTime       // window end (inclusive, date)
+  status         WaitlistStatus @default(ACTIVE)
+  claimToken     String?        // secures the one-click claim link (phase 2)
+  offeredStart   DateTime?      // the freed slot offered on notify
+  notifiedAt     DateTime?
+  expiresAt      DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([treatmentSlug, status])
+  @@index([clientId])
 }
