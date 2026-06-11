@@ -60,6 +60,10 @@ export async function eraseClientData(clientId: string) {
     db.beforePhoto.deleteMany({ where: { clientId } }),
     db.aiAnalysis.deleteMany({ where: { clientId } }),
     db.signedConsent.deleteMany({ where: { clientId } }),
+    // BLD-152: the live-session record holds the client's session answers + the
+    // aftercare confirmer name in `data`. Bookings are retained (pseudonymised),
+    // so the cascade won't fire — delete the sessions explicitly.
+    db.appointmentSession.deleteMany({ where: { booking: { clientId } } }),
     db.review.deleteMany({ where: { clientId } }),
     db.npsResponse.deleteMany({ where: { clientId } }),
     db.followUp.deleteMany({ where: { clientId } }),

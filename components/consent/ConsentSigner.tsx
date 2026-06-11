@@ -225,9 +225,25 @@ function SignaturePad({ handleRef, hasSig, onInk }: { handleRef: Ref<SignaturePa
     onInk(false); // fresh (blank) canvas on every mount
     const c = canvas.current; if (!c) return;
     const ctx = c.getContext('2d'); if (!ctx) return;
-    const ratio = window.devicePixelRatio || 1;
-    c.width = c.offsetWidth * ratio; c.height = c.offsetHeight * ratio; ctx.scale(ratio, ratio);
-    ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#2a2420';
+    // Size the backing store to the displayed size × DPR, and (re)apply the
+    // stroke style. Resizing a canvas clears it, so this also resets the pad.
+    const sizeCanvas = () => {
+      const ratio = window.devicePixelRatio || 1;
+      c.width = c.offsetWidth * ratio; c.height = c.offsetHeight * ratio;
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(ratio, ratio);
+      ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#2a2420';
+    };
+    sizeCanvas();
+    // BLD-149: on resize / orientation change the displayed size changes but the
+    // backing store didn't — strokes drew at the wrong scale/offset. Re-size the
+    // canvas (which clears it) and reset the ink flag so the signer re-signs on a
+    // correctly-mapped pad. Debounced to coalesce the rotation burst.
+    let resizeTimer: ReturnType<typeof setTimeout>;
+    const onResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => { drawing.current = false; lastPoint.current = null; sizeCanvas(); onInk(false); }, 150);
+    };
+    window.addEventListener('resize', onResize);
     const pos = (e: PointerEvent) => { const r = c.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
     const down = (e: PointerEvent) => {
       drawing.current = true; const p = pos(e); lastPoint.current = p;
@@ -245,7 +261,7 @@ function SignaturePad({ handleRef, hasSig, onInk }: { handleRef: Ref<SignaturePa
     };
     const up = () => { drawing.current = false; lastPoint.current = null; };
     c.addEventListener('pointerdown', down); c.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
-    return () => { c.removeEventListener('pointerdown', down); c.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    return () => { clearTimeout(resizeTimer); window.removeEventListener('resize', onResize); c.removeEventListener('pointerdown', down); c.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
