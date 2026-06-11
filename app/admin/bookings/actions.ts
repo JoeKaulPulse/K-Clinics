@@ -235,3 +235,35 @@ export async function cancelBookingAction(bookingId: string, opts: { reason?: st
   revalidatePath('/admin/bookings');
   return res;
 }
+
+// BLD-211 — reassign the practitioner/specialist on a booking. Admins/managers
+// only; the new clinician must be bookable and competent for the treatment.
+export async function reassignPractitioner(bookingId: string, practitionerId: string | null): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to reassign appointments.' };
+  const { db } = await import('@/lib/db');
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { treatmentSlug: true } });
+  if (!booking) return { ok: false, error: 'Booking not found.' };
+
+  let label = 'unassigned';
+  if (practitionerId) {
+    const clin = await db.adminUser.findFirst({ where: { id: practitionerId, active: true, isClinician: true }, select: { name: true, email: true, competencies: true } });
+    if (!clin) return { ok: false, error: 'That person isn’t a bookable clinician.' };
+    // A clinician with explicit competencies must list this treatment; an empty
+    // list means a generalist (no restriction).
+    if (clin.competencies.length && !clin.competencies.includes(booking.treatmentSlug)) {
+      return { ok: false, error: 'That clinician isn’t set up to perform this treatment.' };
+    }
+    label = clin.name || clin.email;
+  }
+
+  await db.booking.update({ where: { id: bookingId }, data: { practitionerId: practitionerId || null } });
+  try {
+    const { logAudit } = await import('@/lib/audit');
+    await logAudit({ action: 'PRACTITIONER_ASSIGNED', actor: session.email, actorRole: session.role, bookingId, summary: `Practitioner ${practitionerId ? `changed to ${label}` : 'unassigned'}` });
+  } catch { /* non-fatal */ }
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath('/admin/bookings');
+  return { ok: true };
+}
