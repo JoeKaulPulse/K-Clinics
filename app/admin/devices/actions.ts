@@ -6,7 +6,7 @@ import { getSession, sessionCan } from '@/lib/auth';
 // BLD-195 — manage the clinic's device registry (card terminals, displays,
 // kiosks, printers). Settings-managers only.
 
-const KINDS = ['TERMINAL', 'DISPLAY', 'KIOSK', 'PRINTER', 'OTHER'];
+const KINDS = ['TERMINAL', 'DISPLAY', 'KIOSK', 'SCANNER', 'PRINTER', 'OTHER'];
 
 async function guard() {
   const session = await getSession();
