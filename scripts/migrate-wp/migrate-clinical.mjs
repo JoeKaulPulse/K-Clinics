@@ -5,6 +5,7 @@
 //   Commit (needs DATABASE_URL + HEALTH_ENCRYPTION_KEY [+ HEALTH_HMAC_KEY]):
 //     DATABASE_URL=... HEALTH_ENCRYPTION_KEY=... node scripts/migrate-wp/migrate-clinical.mjs \
 //        --file data/full-dump.sql --commit [--repair]
+//   In-process: await run({ file, commit, repair, log })
 //
 //   sign_table   → SignedConsent (the e-signature system: visible on the client
 //                  record + printable certificate). Signature image decoded from
@@ -29,58 +30,16 @@
 
 import './lib-env.mjs';
 import crypto from 'node:crypto';
+import { pathToFileURL } from 'node:url';
 import { streamDump, normEmail, parseDate } from './lib-dump.mjs';
 import { phpUnserialize } from './lib-php.mjs';
 import { londonToUtc, ensureQuarantineClient } from './lib-import-shared.mjs';
+import { openDb } from './lib-db.mjs';
 
-const args = process.argv.slice(2);
-const opt = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : null; };
-const file = opt('--file') || args.find((a) => a.endsWith('.sql'));
-const commit = args.includes('--commit');
-const repair = args.includes('--repair');
-if (!file) { console.error('Provide --file <dump.sql>'); process.exit(1); }
-const num = (n) => n.toLocaleString('en-GB');
 const yn = (v) => (String(v) === '1' || String(v).toLowerCase() === 'yes' ? 'yes' : 'no');
 // Tidy free text WITHOUT collapsing it: normalise NBSP, trim. (A previous
 // version removed every space — "Improve skin tone" → "Improveskintone".)
 const clean = (v) => (v == null ? null : String(v).replace(/\u00A0/g, ' ').trim() || null);
-
-// ── gather ──────────────────────────────────────────────────────────────────
-const userEmail = new Map();    // wp user id (String) -> email
-const userName = new Map();     // wp user id (String) -> display name
-const userRegistered = new Map(); // wp user id (String) -> Date
-const firstBooking = new Map(); // wp user id (String) -> earliest grafik date 'YYYY-MM-DD'
-const staff = new Map();        // "table:id" -> name
-const sign = [], skviz = [], care = [], recs = [], db7 = [], eVals = new Map(), eSubs = new Map();
-
-const want = (t) => /(^|_)users$/i.test(t) || ['sotrudniki', 'sotrudniki_dent', 'sign_table', 'skviz', 'care_plan', 'care_plan_dent', 'recommendation', 'wp_db7_forms', 'wp_e_submissions', 'wp_e_submissions_values', 'grafik', 'grafik_dent'].includes(t);
-
-await streamDump(file, {
-  wantRows: want,
-  onRows: (t, rows) => {
-    if (/(^|_)users$/i.test(t)) for (const r of rows) {
-      const id = String(r.ID ?? r.id);
-      userEmail.set(id, normEmail(r.user_email));
-      userName.set(id, String(r.display_name || '').trim());
-      userRegistered.set(id, parseDate(r.user_registered));
-    }
-    else if (t === 'sotrudniki' || t === 'sotrudniki_dent') for (const r of rows) staff.set(`${t}:${r.id}`, `${r.fname || ''} ${r.lname || ''}`.trim());
-    else if (t === 'grafik' || t === 'grafik_dent') for (const r of rows) {
-      const id = String(r.id_user); const d = String(r.dat || '').slice(0, 10);
-      if (/^\d{4}-\d{2}-\d{2}$/.test(d) && !d.startsWith('0000') && (!firstBooking.has(id) || d < firstBooking.get(id))) firstBooking.set(id, d);
-    }
-    else if (t === 'sign_table') for (const r of rows) sign.push(r);
-    else if (t === 'skviz') for (const r of rows) skviz.push(r);
-    else if (t === 'care_plan') for (const r of rows) care.push({ ...r, dent: false });
-    else if (t === 'care_plan_dent') for (const r of rows) care.push({ ...r, dent: true });
-    else if (t === 'recommendation') for (const r of rows) recs.push(r);
-    else if (t === 'wp_db7_forms') for (const r of rows) db7.push(r);
-    else if (t === 'wp_e_submissions') for (const r of rows) eSubs.set(r.id, r);
-    else if (t === 'wp_e_submissions_values') for (const r of rows) { const a = eVals.get(r.submission_id) || []; a.push(r); eVals.set(r.submission_id, a); }
-  },
-});
-
-const doctor = (id, dent) => staff.get(`${dent ? 'sotrudniki_dent' : 'sotrudniki'}:${id}`) || staff.get(`sotrudniki:${id}`) || null;
 
 // ── consents → SignedConsent ─────────────────────────────────────────────────
 // The legacy system stored a hand-drawn signature image + three agreement
@@ -100,116 +59,6 @@ The legacy system stored the client's hand-drawn signature and three agreement c
 Source: WordPress \`sign_table\` row ${srcRow}.`;
 }
 
-const consents = [];
-let sigBad = 0;
-for (const r of sign) {
-  const idUser = String(r.id_user ?? '0');
-  const email = userEmail.get(idUser) || '';
-  const linked = idUser !== '0' && userEmail.has(idUser);
-  const sig = String(r.podp || '').trim();
-  const sigOk = sig.startsWith('data:image/');
-  if (sig && !sigOk) sigBad++;
-  // Best-evidence signing date: the client's first appointment (consents were
-  // signed at treatment) → their registration → unknown (import time).
-  let signedAt = null, dateBasis = 'not recorded by the old system (shows the migration date)';
-  const fb = firstBooking.get(idUser);
-  if (linked && fb) { signedAt = londonToUtc(fb, 12, 0); dateBasis = 'estimated from the client’s first appointment on the old system'; }
-  else if (linked && userRegistered.get(idUser)) { signedAt = userRegistered.get(idUser); dateBasis = 'estimated from the client’s sign-up date on the old system'; }
-  consents.push({
-    src: `sign_table#${r.id}`,
-    stableId: `wpsign${String(r.id).padStart(4, '0')}`,
-    email: linked ? email : null,
-    signerName: (linked && userName.get(idUser)) || 'Unidentified (legacy import)',
-    acknowledgements: [
-      { label: 'Agreement checkbox 1 — recorded as ' + (yn(r.chek1) === 'yes' ? 'ticked' : 'not ticked') + ' on the old system', checked: yn(r.chek1) === 'yes' },
-      { label: 'Agreement checkbox 2 — recorded as ' + (yn(r.chek2) === 'yes' ? 'ticked' : 'not ticked') + ' on the old system', checked: yn(r.chek2) === 'yes' },
-      { label: 'Agreement checkbox 3 — recorded as ' + (yn(r.chek3) === 'yes' ? 'ticked' : 'not ticked') + ' on the old system', checked: yn(r.chek3) === 'yes' },
-    ],
-    signatureDataUrl: sigOk ? sig : '',
-    signedAt, dateBasis,
-    quarantine: !linked,
-  });
-}
-
-// ── assessments (no encryption yet — that happens at commit) ─────────────────
-const assessments = [];   // { wpUserId?, email?, name?, type, key, answers, submittedAt, src, leadTag? }
-for (const r of skviz) {
-  const a = {}; for (const k of ['level1', 'level2', 'level3', 'level4', 'level5', 'level6', 'level7', 'level8']) a[k] = clean(r[k]);
-  a.name = clean(r.name); a.about = clean(r.about);
-  assessments.push({ email: normEmail(r.email), name: clean(r.name), type: 'SKIN_PROFILE', key: 'imported-skin-quiz', answers: a, submittedAt: null, src: `skviz#${r.id}`, leadTag: 'lead:skin-quiz' });
-}
-for (const r of care) {
-  assessments.push({ wpUserId: String(r.id_user), type: 'MEDICAL_HISTORY', key: 'imported-care-plan',
-    answers: { goal: clean(r.goal), duration: clean(r.duration), recommendations: clean(r.recomend), description: clean(r.opis), timeline: clean(r.timeline), doctor: doctor(r.id_doctor, r.dent), photo: clean(r.foto) },
-    submittedAt: parseDate(r.dat), src: `${r.dent ? 'care_plan_dent' : 'care_plan'}#${r.id}` });
-}
-for (const r of recs) {
-  assessments.push({ wpUserId: String(r.id_user), type: 'MEDICAL_HISTORY', key: 'imported-recommendation',
-    answers: { name: clean(r.name), details: clean(r.opis), doctor: doctor(r.id_doctor, false) },
-    submittedAt: parseDate(r.dat), src: `recommendation#${r.id}` });
-}
-
-// Enquiry forms → consultations
-const enquiries = [];
-function fieldsToEnquiry(fields, src, createdAt) {
-  let email = null, name = null, phone = null;
-  const lines = [];
-  for (const [k, v] of Object.entries(fields)) {
-    if (v == null || String(v).trim() === '' || k.startsWith('_')) continue;
-    const val = String(Array.isArray(v) ? v.join(', ') : v).slice(0, 1000);
-    const lk = k.toLowerCase();
-    if (!email && /@/.test(val) && /email|mail|e-mail/.test(lk)) email = normEmail(val);
-    else if (!email && /^\S+@\S+\.\S+$/.test(val)) email = normEmail(val);
-    if (!name && /name/.test(lk)) name = val;
-    if (!phone && /phone|tel|mobile/.test(lk)) phone = val;
-    lines.push(`${k}: ${val}`);
-  }
-  enquiries.push({ email, name, phone, message: lines.join('\n').slice(0, 4000), createdAt, src });
-}
-for (const r of db7) {
-  const data = phpUnserialize(r.form_value);
-  if (data && typeof data === 'object') fieldsToEnquiry(data, `db7#${r.form_id}`, parseDate(r.form_date));
-}
-for (const [sid, vals] of eVals) {
-  const fields = {}; for (const v of vals) fields[v.key] = v.value;
-  const sub = eSubs.get(sid);
-  fieldsToEnquiry(fields, `elementor#${sid}`, parseDate(sub?.created_at));
-}
-
-// ── report ────────────────────────────────────────────────────────────────
-const byType = (k) => assessments.filter((a) => a.key === k).length;
-console.log('\n=== WordPress clinical → encrypted records ===');
-console.log(`Consents (sign_table) → SignedConsent : ${num(consents.length)}  (linked ${num(consents.filter((c) => !c.quarantine).length)}; → quarantine client ${num(consents.filter((c) => c.quarantine).length)})`);
-console.log(`  signatures decoded                  : ${num(consents.filter((c) => c.signatureDataUrl).length)} of ${num(consents.length)}${sigBad ? `  (⚠ unreadable: ${num(sigBad)})` : ''}`);
-console.log(`Skin quiz (skviz)            : ${num(byType('imported-skin-quiz'))}  (with email ${num(assessments.filter((a) => a.key === 'imported-skin-quiz' && a.email).length)})`);
-console.log(`Care plans                   : ${num(byType('imported-care-plan'))}`);
-console.log(`Recommendations              : ${num(byType('imported-recommendation'))}`);
-console.log(`Enquiry forms → consultations: ${num(enquiries.length)}  (with email ${num(enquiries.filter((e) => e.email).length)})`);
-const sigBytes = consents.reduce((s, c) => s + c.signatureDataUrl.length, 0);
-console.log(`Signature images total       : ~${(sigBytes / 1048576).toFixed(1)} MB (encrypted on the consent records)`);
-if (repair) console.log('REPAIR mode: previously imported clinical rows (hex signatures / de-spaced text) are replaced.');
-
-if (!commit) { console.log('\nDRY RUN — nothing written, nothing encrypted. Re-run with --commit (+ keys) to import.\n'); process.exit(0); }
-
-// ── commit ──────────────────────────────────────────────────────────────────
-const { PrismaClient } = await import('@prisma/client');
-const { encryptJson, integrityHash } = await import('./lib-crypto.mjs');
-const db = new PrismaClient();
-const byEmail = new Map();
-for (const c of await db.client.findMany({ select: { id: true, email: true, firstName: true, lastName: true } })) byEmail.set(c.email, { id: c.id, name: [c.firstName, c.lastName].filter(Boolean).join(' ') });
-
-async function ensureClient(email, name, tag) {
-  if (!email) return null;
-  if (byEmail.has(email)) return byEmail.get(email).id;
-  const [firstName, ...rest] = String(name || email.split('@')[0]).trim().split(/\s+/);
-  const c = await db.client.upsert({
-    where: { email }, update: {},
-    create: { email, firstName: (firstName || email.split('@')[0]).slice(0, 120), lastName: rest.join(' ').slice(0, 120) || null, source: 'wordpress', tags: ['migrated:wordpress', tag] },
-  });
-  byEmail.set(email, { id: c.id, name: [c.firstName, c.lastName].filter(Boolean).join(' ') });
-  return c.id;
-}
-
 // Canonical content hash — must mirror contentHashOf() in lib/consent.ts so
 // imported certificates verify exactly like in-app signings.
 function contentHashOf(p) {
@@ -221,72 +70,233 @@ function contentHashOf(p) {
   return crypto.createHash('sha256').update(canonical).digest('hex');
 }
 
-let cCreated = 0, cRepaired = 0, aCreated = 0, aSkip = 0, eCreated = 0, eSkip = 0, purged = 0;
-try {
-  // ── repair: remove rows the OLD importer wrote badly (migration-owned only) ──
-  if (repair) {
-    // Consents that went into HealthAssessment (wrong home, hex signatures).
-    const r1 = await db.healthAssessment.deleteMany({ where: { questionnaireKey: { startsWith: 'imported-consent' }, summary: { path: ['imported'], equals: true } } });
-    // Care plans / recommendations / skin quizzes with all spaces stripped.
-    const r2 = await db.healthAssessment.deleteMany({ where: { questionnaireKey: { in: ['imported-care-plan@1', 'imported-recommendation@1', 'imported-skin-quiz@1'] }, summary: { path: ['imported'], equals: true } } });
-    // Legacy SignedConsents from a previous run of THIS importer (stable wpsign ids).
-    const r3 = await db.signedConsent.deleteMany({ where: { id: { startsWith: 'wpsign' }, templateKey: LEGACY_TEMPLATE_KEY } });
-    purged = r1.count + r2.count + r3.count;
-  }
+export async function run({ file, commit = false, repair = false, log = console.log } = {}) {
+  if (!file) throw new Error('Provide a dump file.');
+  const num = (n) => n.toLocaleString('en-GB');
 
-  // ── consents → SignedConsent ──
-  let quarantineId = null;
-  for (const c of consents) {
-    let clientId = c.email ? byEmail.get(c.email)?.id : null;
-    if (!clientId) { quarantineId = quarantineId || (await ensureQuarantineClient(db)); clientId = quarantineId; }
-    const exists = await db.signedConsent.findUnique({ where: { id: c.stableId }, select: { id: true } });
-    if (exists) continue;
-    const signerName = (c.email && byEmail.get(c.email)?.name) || c.signerName;
-    const signedAt = c.signedAt || new Date();
-    const bodyMd = legacyBodyMd(c.src, c.dateBasis);
-    const contentHash = contentHashOf({ templateKey: LEGACY_TEMPLATE_KEY, templateVersion: 1, bodyMd, acknowledgements: c.acknowledgements, signerName, signedAt: signedAt.toISOString(), declined: false });
-    const cipher = encryptJson({
-      bodyMd, acknowledgements: c.acknowledgements, signatureDataUrl: c.signatureDataUrl,
-      signerName, signedAt: signedAt.toISOString(), openedAt: null, ip: null,
-      userAgent: 'wordpress-import', contentHash, importedFrom: c.src, dateBasis: c.dateBasis,
+  // ── gather ────────────────────────────────────────────────────────────────
+  const userEmail = new Map();    // wp user id (String) -> email
+  const userName = new Map();     // wp user id (String) -> display name
+  const userRegistered = new Map(); // wp user id (String) -> Date
+  const firstBooking = new Map(); // wp user id (String) -> earliest grafik date 'YYYY-MM-DD'
+  const staff = new Map();        // "table:id" -> name
+  const sign = [], skviz = [], care = [], recs = [], db7 = [], eVals = new Map(), eSubs = new Map();
+
+  const want = (t) => /(^|_)users$/i.test(t) || ['sotrudniki', 'sotrudniki_dent', 'sign_table', 'skviz', 'care_plan', 'care_plan_dent', 'recommendation', 'wp_db7_forms', 'wp_e_submissions', 'wp_e_submissions_values', 'grafik', 'grafik_dent'].includes(t);
+
+  await streamDump(file, {
+    wantRows: want,
+    onRows: (t, rows) => {
+      if (/(^|_)users$/i.test(t)) for (const r of rows) {
+        const id = String(r.ID ?? r.id);
+        userEmail.set(id, normEmail(r.user_email));
+        userName.set(id, String(r.display_name || '').trim());
+        userRegistered.set(id, parseDate(r.user_registered));
+      }
+      else if (t === 'sotrudniki' || t === 'sotrudniki_dent') for (const r of rows) staff.set(`${t}:${r.id}`, `${r.fname || ''} ${r.lname || ''}`.trim());
+      else if (t === 'grafik' || t === 'grafik_dent') for (const r of rows) {
+        const id = String(r.id_user); const d = String(r.dat || '').slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(d) && !d.startsWith('0000') && (!firstBooking.has(id) || d < firstBooking.get(id))) firstBooking.set(id, d);
+      }
+      else if (t === 'sign_table') for (const r of rows) sign.push(r);
+      else if (t === 'skviz') for (const r of rows) skviz.push(r);
+      else if (t === 'care_plan') for (const r of rows) care.push({ ...r, dent: false });
+      else if (t === 'care_plan_dent') for (const r of rows) care.push({ ...r, dent: true });
+      else if (t === 'recommendation') for (const r of rows) recs.push(r);
+      else if (t === 'wp_db7_forms') for (const r of rows) db7.push(r);
+      else if (t === 'wp_e_submissions') for (const r of rows) eSubs.set(r.id, r);
+      else if (t === 'wp_e_submissions_values') for (const r of rows) { const a = eVals.get(r.submission_id) || []; a.push(r); eVals.set(r.submission_id, a); }
+    },
+  });
+
+  const doctor = (id, dent) => staff.get(`${dent ? 'sotrudniki_dent' : 'sotrudniki'}:${id}`) || staff.get(`sotrudniki:${id}`) || null;
+
+  const consents = [];
+  let sigBad = 0;
+  for (const r of sign) {
+    const idUser = String(r.id_user ?? '0');
+    const email = userEmail.get(idUser) || '';
+    const linked = idUser !== '0' && userEmail.has(idUser);
+    const sig = String(r.podp || '').trim();
+    const sigOk = sig.startsWith('data:image/');
+    if (sig && !sigOk) sigBad++;
+    // Best-evidence signing date: the client's first appointment (consents were
+    // signed at treatment) → their registration → unknown (import time).
+    let signedAt = null, dateBasis = 'not recorded by the old system (shows the migration date)';
+    const fb = firstBooking.get(idUser);
+    if (linked && fb) { signedAt = londonToUtc(fb, 12, 0); dateBasis = 'estimated from the client’s first appointment on the old system'; }
+    else if (linked && userRegistered.get(idUser)) { signedAt = userRegistered.get(idUser); dateBasis = 'estimated from the client’s sign-up date on the old system'; }
+    consents.push({
+      src: `sign_table#${r.id}`,
+      stableId: `wpsign${String(r.id).padStart(4, '0')}`,
+      email: linked ? email : null,
+      signerName: (linked && userName.get(idUser)) || 'Unidentified (legacy import)',
+      acknowledgements: [
+        { label: 'Agreement checkbox 1 — recorded as ' + (yn(r.chek1) === 'yes' ? 'ticked' : 'not ticked') + ' on the old system', checked: yn(r.chek1) === 'yes' },
+        { label: 'Agreement checkbox 2 — recorded as ' + (yn(r.chek2) === 'yes' ? 'ticked' : 'not ticked') + ' on the old system', checked: yn(r.chek2) === 'yes' },
+        { label: 'Agreement checkbox 3 — recorded as ' + (yn(r.chek3) === 'yes' ? 'ticked' : 'not ticked') + ' on the old system', checked: yn(r.chek3) === 'yes' },
+      ],
+      signatureDataUrl: sigOk ? sig : '',
+      signedAt, dateBasis,
+      quarantine: !linked,
     });
-    const ih = integrityHash(cipher, { clientId, templateKey: LEGACY_TEMPLATE_KEY, contentHash });
-    await db.signedConsent.create({
-      data: {
-        id: c.stableId, clientId, bookingId: null, templateKey: LEGACY_TEMPLATE_KEY, templateVersion: 1,
-        title: LEGACY_TITLE, kind: 'treatment', declined: false, signerName: signerName.slice(0, 120),
-        cipher, integrityHash: ih, contentHash, signedAt, ip: null,
-      },
+  }
+
+  // ── assessments (no encryption yet — that happens at commit) ───────────────
+  const assessments = [];   // { wpUserId?, email?, name?, type, key, answers, submittedAt, src, leadTag? }
+  for (const r of skviz) {
+    const a = {}; for (const k of ['level1', 'level2', 'level3', 'level4', 'level5', 'level6', 'level7', 'level8']) a[k] = clean(r[k]);
+    a.name = clean(r.name); a.about = clean(r.about);
+    assessments.push({ email: normEmail(r.email), name: clean(r.name), type: 'SKIN_PROFILE', key: 'imported-skin-quiz', answers: a, submittedAt: null, src: `skviz#${r.id}`, leadTag: 'lead:skin-quiz' });
+  }
+  for (const r of care) {
+    assessments.push({ wpUserId: String(r.id_user), type: 'MEDICAL_HISTORY', key: 'imported-care-plan',
+      answers: { goal: clean(r.goal), duration: clean(r.duration), recommendations: clean(r.recomend), description: clean(r.opis), timeline: clean(r.timeline), doctor: doctor(r.id_doctor, r.dent), photo: clean(r.foto) },
+      submittedAt: parseDate(r.dat), src: `${r.dent ? 'care_plan_dent' : 'care_plan'}#${r.id}` });
+  }
+  for (const r of recs) {
+    assessments.push({ wpUserId: String(r.id_user), type: 'MEDICAL_HISTORY', key: 'imported-recommendation',
+      answers: { name: clean(r.name), details: clean(r.opis), doctor: doctor(r.id_doctor, false) },
+      submittedAt: parseDate(r.dat), src: `recommendation#${r.id}` });
+  }
+
+  // Enquiry forms → consultations
+  const enquiries = [];
+  function fieldsToEnquiry(fields, src, createdAt) {
+    let email = null, name = null, phone = null;
+    const lines = [];
+    for (const [k, v] of Object.entries(fields)) {
+      if (v == null || String(v).trim() === '' || k.startsWith('_')) continue;
+      const val = String(Array.isArray(v) ? v.join(', ') : v).slice(0, 1000);
+      const lk = k.toLowerCase();
+      if (!email && /@/.test(val) && /email|mail|e-mail/.test(lk)) email = normEmail(val);
+      else if (!email && /^\S+@\S+\.\S+$/.test(val)) email = normEmail(val);
+      if (!name && /name/.test(lk)) name = val;
+      if (!phone && /phone|tel|mobile/.test(lk)) phone = val;
+      lines.push(`${k}: ${val}`);
+    }
+    enquiries.push({ email, name, phone, message: lines.join('\n').slice(0, 4000), createdAt, src });
+  }
+  for (const r of db7) {
+    const data = phpUnserialize(r.form_value);
+    if (data && typeof data === 'object') fieldsToEnquiry(data, `db7#${r.form_id}`, parseDate(r.form_date));
+  }
+  for (const [sid, vals] of eVals) {
+    const fields = {}; for (const v of vals) fields[v.key] = v.value;
+    const sub = eSubs.get(sid);
+    fieldsToEnquiry(fields, `elementor#${sid}`, parseDate(sub?.created_at));
+  }
+
+  // ── report ────────────────────────────────────────────────────────────────
+  const byType = (k) => assessments.filter((a) => a.key === k).length;
+  log('\n=== WordPress clinical → encrypted records ===');
+  log(`Consents (sign_table) → SignedConsent : ${num(consents.length)}  (linked ${num(consents.filter((c) => !c.quarantine).length)}; → quarantine client ${num(consents.filter((c) => c.quarantine).length)})`);
+  log(`  signatures decoded                  : ${num(consents.filter((c) => c.signatureDataUrl).length)} of ${num(consents.length)}${sigBad ? `  (⚠ unreadable: ${num(sigBad)})` : ''}`);
+  log(`Skin quiz (skviz)            : ${num(byType('imported-skin-quiz'))}  (with email ${num(assessments.filter((a) => a.key === 'imported-skin-quiz' && a.email).length)})`);
+  log(`Care plans                   : ${num(byType('imported-care-plan'))}`);
+  log(`Recommendations              : ${num(byType('imported-recommendation'))}`);
+  log(`Enquiry forms → consultations: ${num(enquiries.length)}  (with email ${num(enquiries.filter((e) => e.email).length)})`);
+  const sigBytes = consents.reduce((s, c) => s + c.signatureDataUrl.length, 0);
+  log(`Signature images total       : ~${(sigBytes / 1048576).toFixed(1)} MB (encrypted on the consent records)`);
+  if (repair) log('REPAIR mode: previously imported clinical rows (hex signatures / de-spaced text) are replaced.');
+
+  if (!commit) { log('\nDRY RUN — nothing written, nothing encrypted. Re-run with --commit (+ keys) to import.\n'); return { consents: consents.length, written: 0 }; }
+
+  // ── commit ────────────────────────────────────────────────────────────────
+  const db = await openDb();
+  const { encryptJson, integrityHash } = await import('./lib-crypto.mjs');
+  const byEmail = new Map();
+  for (const c of await db.client.findMany({ select: { id: true, email: true, firstName: true, lastName: true } })) byEmail.set(c.email, { id: c.id, name: [c.firstName, c.lastName].filter(Boolean).join(' ') });
+
+  async function ensureClient(email, name, tag) {
+    if (!email) return null;
+    if (byEmail.has(email)) return byEmail.get(email).id;
+    const [firstName, ...rest] = String(name || email.split('@')[0]).trim().split(/\s+/);
+    const c = await db.client.upsert({
+      where: { email }, update: {},
+      create: { email, firstName: (firstName || email.split('@')[0]).slice(0, 120), lastName: rest.join(' ').slice(0, 120) || null, source: 'wordpress', tags: ['migrated:wordpress', tag] },
     });
-    if (repair) cRepaired++; else cCreated++;
+    byEmail.set(email, { id: c.id, name: [c.firstName, c.lastName].filter(Boolean).join(' ') });
+    return c.id;
   }
 
-  // ── assessments ──
-  for (const a of assessments) {
-    let clientId = a.wpUserId != null ? byEmail.get(userEmail.get(a.wpUserId))?.id : await ensureClient(a.email, a.name, a.leadTag);
-    // Unlinkable (deleted user / no contact details) → quarantine, not dropped.
-    if (!clientId) { aSkip++; quarantineId = quarantineId || (await ensureQuarantineClient(db)); clientId = quarantineId; }
-    const dup = await db.healthAssessment.findFirst({ where: { clientId, summary: { path: ['src'], equals: a.src } }, select: { id: true } });
-    if (dup) continue;
-    const version = 1;
-    const questionnaireKey = `${a.key}@${version}`;
-    const cipher = encryptJson({ questionnaire: { key: a.key, version }, answers: a.answers, capturedAt: new Date().toISOString() });
-    const hash = integrityHash(cipher, { clientId, type: a.type, version, questionnaireKey });
-    await db.healthAssessment.create({ data: { clientId, type: a.type, version, cipher, integrityHash: hash, questionnaireKey, summary: { imported: true, src: a.src }, sourceLocale: 'en', submittedAt: a.submittedAt || undefined } });
-    aCreated++;
-  }
+  let cCreated = 0, cRepaired = 0, aCreated = 0, aSkip = 0, eCreated = 0, eSkip = 0, purged = 0;
+  try {
+    // ── repair: remove rows the OLD importer wrote badly (migration-owned only) ──
+    if (repair) {
+      // Consents that went into HealthAssessment (wrong home, hex signatures).
+      const r1 = await db.healthAssessment.deleteMany({ where: { questionnaireKey: { startsWith: 'imported-consent' }, summary: { path: ['imported'], equals: true } } });
+      // Care plans / recommendations / skin quizzes with all spaces stripped.
+      const r2 = await db.healthAssessment.deleteMany({ where: { questionnaireKey: { in: ['imported-care-plan@1', 'imported-recommendation@1', 'imported-skin-quiz@1'] }, summary: { path: ['imported'], equals: true } } });
+      // Legacy SignedConsents from a previous run of THIS importer (stable wpsign ids).
+      const r3 = await db.signedConsent.deleteMany({ where: { id: { startsWith: 'wpsign' }, templateKey: LEGACY_TEMPLATE_KEY } });
+      purged = r1.count + r2.count + r3.count;
+    }
 
-  // ── enquiries → consultations ──
-  for (const e of enquiries) {
-    const clientId = await ensureClient(e.email, e.name, 'lead:enquiry');
-    if (!clientId) { eSkip++; continue; }
-    const marker = `[wp:${e.src}]`;
-    const dup = await db.consultation.findFirst({ where: { clientId, medicalNotes: { contains: marker } }, select: { id: true } });
-    if (dup) continue;
-    await db.consultation.create({ data: { clientId, category: 'aesthetics', message: e.message || null, preferredContact: e.phone ? 'phone' : 'email', status: 'CLOSED', medicalNotes: marker, createdAt: e.createdAt || undefined } });
-    eCreated++;
+    // ── consents → SignedConsent ──
+    let quarantineId = null;
+    for (const c of consents) {
+      let clientId = c.email ? byEmail.get(c.email)?.id : null;
+      if (!clientId) { quarantineId = quarantineId || (await ensureQuarantineClient(db)); clientId = quarantineId; }
+      const exists = await db.signedConsent.findUnique({ where: { id: c.stableId }, select: { id: true } });
+      if (exists) continue;
+      const signerName = (c.email && byEmail.get(c.email)?.name) || c.signerName;
+      const signedAt = c.signedAt || new Date();
+      const bodyMd = legacyBodyMd(c.src, c.dateBasis);
+      const contentHash = contentHashOf({ templateKey: LEGACY_TEMPLATE_KEY, templateVersion: 1, bodyMd, acknowledgements: c.acknowledgements, signerName, signedAt: signedAt.toISOString(), declined: false });
+      const cipher = encryptJson({
+        bodyMd, acknowledgements: c.acknowledgements, signatureDataUrl: c.signatureDataUrl,
+        signerName, signedAt: signedAt.toISOString(), openedAt: null, ip: null,
+        userAgent: 'wordpress-import', contentHash, importedFrom: c.src, dateBasis: c.dateBasis,
+      });
+      const ih = integrityHash(cipher, { clientId, templateKey: LEGACY_TEMPLATE_KEY, contentHash });
+      await db.signedConsent.create({
+        data: {
+          id: c.stableId, clientId, bookingId: null, templateKey: LEGACY_TEMPLATE_KEY, templateVersion: 1,
+          title: LEGACY_TITLE, kind: 'treatment', declined: false, signerName: signerName.slice(0, 120),
+          cipher, integrityHash: ih, contentHash, signedAt, ip: null,
+        },
+      });
+      if (repair) cRepaired++; else cCreated++;
+    }
+
+    // ── assessments ──
+    for (const a of assessments) {
+      let clientId = a.wpUserId != null ? byEmail.get(userEmail.get(a.wpUserId))?.id : await ensureClient(a.email, a.name, a.leadTag);
+      // Unlinkable (deleted user / no contact details) → quarantine, not dropped.
+      if (!clientId) { aSkip++; quarantineId = quarantineId || (await ensureQuarantineClient(db)); clientId = quarantineId; }
+      const dup = await db.healthAssessment.findFirst({ where: { clientId, summary: { path: ['src'], equals: a.src } }, select: { id: true } });
+      if (dup) continue;
+      const version = 1;
+      const questionnaireKey = `${a.key}@${version}`;
+      const cipher = encryptJson({ questionnaire: { key: a.key, version }, answers: a.answers, capturedAt: new Date().toISOString() });
+      const hash = integrityHash(cipher, { clientId, type: a.type, version, questionnaireKey });
+      await db.healthAssessment.create({ data: { clientId, type: a.type, version, cipher, integrityHash: hash, questionnaireKey, summary: { imported: true, src: a.src }, sourceLocale: 'en', submittedAt: a.submittedAt || undefined } });
+      aCreated++;
+    }
+
+    // ── enquiries → consultations ──
+    for (const e of enquiries) {
+      const clientId = await ensureClient(e.email, e.name, 'lead:enquiry');
+      if (!clientId) { eSkip++; continue; }
+      const marker = `[wp:${e.src}]`;
+      const dup = await db.consultation.findFirst({ where: { clientId, medicalNotes: { contains: marker } }, select: { id: true } });
+      if (dup) continue;
+      await db.consultation.create({ data: { clientId, category: 'aesthetics', message: e.message || null, preferredContact: e.phone ? 'phone' : 'email', status: 'CLOSED', medicalNotes: marker, createdAt: e.createdAt || undefined } });
+      eCreated++;
+    }
+    log(`\n✓ Consents: ${num(cCreated + cRepaired)} SignedConsent records${repair ? ` (repair purged ${num(purged)} old rows)` : ''}. Encrypted assessments: ${num(aCreated)} (no matching person → quarantine: ${num(aSkip)}). Consultations: ${num(eCreated)} (skipped ${num(eSkip)}).\n`);
+    return { consents: cCreated + cRepaired, purged, assessments: aCreated, consultations: eCreated };
+  } finally {
+    await db.$disconnect();
   }
-  console.log(`\n✓ Consents: ${num(cCreated + cRepaired)} SignedConsent records${repair ? ` (repair purged ${num(purged)} old rows)` : ''}. Encrypted assessments: ${num(aCreated)} (no matching person → quarantine: ${num(aSkip)}). Consultations: ${num(eCreated)} (skipped ${num(eSkip)}).\n`);
-} finally {
-  await db.$disconnect();
+}
+
+// ── CLI ─────────────────────────────────────────────────────────────────────
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const args = process.argv.slice(2);
+  const opt = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : null; };
+  const file = opt('--file') || args.find((a) => a.endsWith('.sql'));
+  if (!file) { console.error('Provide --file <dump.sql>'); process.exit(1); }
+  await run({ file, commit: args.includes('--commit'), repair: args.includes('--repair') });
 }
