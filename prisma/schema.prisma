@@ -945,6 +945,30 @@ model AdminUser {
   points       StaffPoints[]
   redemptions  RewardRedemption[]
   notifications StaffNotification[]
+  timeEntries  TimeEntry[]
+}
+
+// PRJ-63 — staff time tracking. A TimeEntry is an open/closed interval of either
+// a SHIFT (clocked in) or a BREAK (incl. the dashboard lunch break). Net worked
+// time = sum(SHIFT) − sum(BREAK). Drives clock in/out, the lunch-break action and
+// the contractor timesheet. Additive: new enum + new table.
+enum TimeEntryKind {
+  SHIFT
+  BREAK
+}
+
+model TimeEntry {
+  id        String        @id @default(cuid())
+  user      AdminUser     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  kind      TimeEntryKind @default(SHIFT)
+  startedAt DateTime      @default(now())
+  endedAt   DateTime?     // null = still open (on shift / on break)
+  note      String?       // e.g. "Lunch" for a break
+  createdAt DateTime      @default(now())
+
+  @@index([userId, startedAt])
+  @@index([userId, endedAt])
 }
 
 // WebAuthn passkeys (platform authenticators — Face ID / Touch ID / Windows

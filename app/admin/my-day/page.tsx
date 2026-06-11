@@ -9,6 +9,7 @@ import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { getLocale } from '@/lib/locale';
 import { translator } from '@/lib/i18n';
 import { fmtClinicTime } from '@/lib/clinic-time';
+import { ClockInOut } from '@/components/admin/ClockInOut';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,6 +96,12 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
   const t = translator(locale);
   const uk = locale === 'uk';
 
+  // Time tracking — clock status + this week's worked total (own record).
+  const { timeStatus, timesheet, fmtDuration } = await import('@/lib/time-tracking');
+  const clock = await timeStatus(session.sub).catch(() => null);
+  const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7)); weekStart.setHours(0, 0, 0, 0);
+  const week = await timesheet(session.sub, weekStart, new Date()).catch(() => ({ days: [], totalWorkedMin: 0 }));
+
   const totalMin = mine.reduce((s, b) => s + b.durationMin, 0);
   const completed = mine.filter((b) => b.status === 'COMPLETED').length;
 
@@ -160,6 +167,23 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
           </div>
         ))}
       </div>
+
+      {/* Time clock — clock in/out, breaks, and this week's worked total */}
+      {clock && (
+        <div className="mt-6 grid gap-3 sm:max-w-md sm:grid-cols-[1fr_auto] sm:items-stretch">
+          <ClockInOut
+            onShift={clock.onShift}
+            onBreak={clock.onBreak}
+            shiftStartIso={clock.shiftStart ? clock.shiftStart.toISOString() : null}
+            workedTodayMin={clock.workedTodayMin}
+            breakTodayMin={clock.breakTodayMin}
+          />
+          <div className="flex flex-col justify-center rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 text-center">
+            <div className="font-[family-name:var(--font-display)] text-2xl">{fmtDuration(week.totalWorkedMin)}</div>
+            <div className="mt-1 text-xs text-[var(--color-stone)]">{uk ? 'Цього тижня' : 'This week'}</div>
+          </div>
+        </div>
+      )}
 
       {/* My appointments */}
       <section className="mt-8">
