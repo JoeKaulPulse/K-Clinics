@@ -36,6 +36,9 @@ export async function chargeBooking(
   if (!booking.stripeCustomerId || !booking.stripePaymentMethodId) {
     return { ok: false, error: 'No saved card for this booking.' };
   }
+  // BLD-147: idempotency. A staff retry racing an in-flight webhook could create
+  // two PaymentIntents and double-charge. Cheap early-out if already recorded…
+  if (booking.chargedAt) return { ok: true };
 
   try {
     const pi = await stripe().paymentIntents.create({
@@ -47,6 +50,10 @@ export async function chargeBooking(
       confirm: true,
       description: `${opts.late ? 'Late cancellation' : 'Treatment'} — ${booking.treatmentTitle}`,
       metadata: { bookingId: booking.id, late: String(Boolean(opts.late)) },
+    }, {
+      // …and a stable idempotency key so concurrent creates collapse to ONE
+      // PaymentIntent at Stripe (one charge per booking, treatment vs late-fee).
+      idempotencyKey: `booking-charge-${booking.id}-${opts.late ? 'late' : 'treatment'}`,
     });
 
     if (pi.status === 'succeeded') {

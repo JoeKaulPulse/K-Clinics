@@ -43,8 +43,8 @@ console.log(`\n  KClinics health check → ${site}\n`);
 
 let res, h;
 try {
-  const u = `${site}/api/health${secret ? `?secret=${encodeURIComponent(secret)}` : ''}`;
-  res = await fetch(u, { headers: secret ? { authorization: `Bearer ${secret}` } : {} });
+  // BLD-160: pass the secret via the Authorization header only (never ?secret=).
+  res = await fetch(`${site}/api/health`, { headers: secret ? { authorization: `Bearer ${secret}` } : {} });
   h = await res.json();
 } catch (e) {
   line(false, 'Site reachable', e.message);
