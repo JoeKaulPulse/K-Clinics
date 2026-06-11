@@ -4,7 +4,9 @@ import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { questionnaires } from '@/lib/questionnaires';
+import { getEffectiveQuestionnaire } from '@/lib/questionnaire-versions';
 import { HealthFormManager, type CustomQ } from '@/components/admin/HealthFormManager';
+import { CoreQuestionEditor, type CoreQ } from '@/components/admin/CoreQuestionEditor';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +19,9 @@ export default async function HealthFormsPage() {
   if (!sessionCan(session, 'settings.manage')) redirect('/admin');
   const can = await sessionPermissions();
 
-  const forms = Object.values(questionnaires).filter((q, i, arr) => arr.findIndex((x) => x.key === q.key) === i);
+  const codeForms = Object.values(questionnaires).filter((q, i, arr) => arr.findIndex((x) => x.key === q.key) === i);
+  // Resolve each form to its effective (latest published) version (BLD-209).
+  const forms = await Promise.all(codeForms.map((q) => getEffectiveQuestionnaire(q.key).then((e) => e ?? q)));
   const { db } = await import('@/lib/db');
   const customRows = await db.formQuestion.findMany({ orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] }).catch(() => []);
   const customByKey = new Map<string, CustomQ[]>();
@@ -48,11 +52,14 @@ export default async function HealthFormsPage() {
             <p className="mt-1 text-sm text-[var(--color-stone)]">{q.intro}</p>
 
             <details className="mt-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 px-3 py-2">
-              <summary className="cursor-pointer text-sm font-medium text-[var(--color-stone)]">View core questions (read-only)</summary>
+              <summary className="cursor-pointer text-sm font-medium text-[var(--color-stone)]">View core questions</summary>
               <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-[var(--color-ink-soft)]">
                 {q.questions.map((qq) => <li key={qq.id}>{qq.prompt}</li>)}
               </ol>
             </details>
+
+            {/* BLD-209 — edit the core questions (publishes a new version). */}
+            <CoreQuestionEditor formKey={q.key} version={q.version} questions={q.questions as CoreQ[]} />
 
             <div className="mt-4">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-stone-soft)]">Your extra questions</p>
