@@ -23,6 +23,45 @@ export function isWithin24h(b: Pick<Booking, 'startAt'>): boolean {
 }
 
 /**
+ * Gather the rich detail for a stylised, itemised receipt: line items (primary
+ * treatment + any add-ons), clinician, clinic-local date, a short reference and
+ * the card used. All best-effort — the receipt still sends if any part fails.
+ */
+async function receiptDetail(bookingId: string, paymentMethodId?: string | null): Promise<{
+  items: { label: string; pricePence: number }[];
+  clinician: string | null;
+  dateLabel: string | null;
+  reference: string;
+  paymentMethod: string | null;
+}> {
+  const [items, bk] = await Promise.all([
+    db.bookingItem.findMany({ where: { bookingId }, orderBy: { createdAt: 'asc' }, select: { label: true, pricePence: true, discountPence: true } }).catch(() => []),
+    db.booking.findUnique({ where: { id: bookingId }, select: { startAt: true, practitioner: { select: { name: true } } } }).catch(() => null),
+  ]);
+  let paymentMethod: string | null = null;
+  if (paymentMethodId) {
+    try {
+      const pm = await stripe().paymentMethods.retrieve(paymentMethodId);
+      if (pm.card) { const b = pm.card.brand || 'card'; paymentMethod = `${b.charAt(0).toUpperCase()}${b.slice(1)} •••• ${pm.card.last4}`; }
+    } catch { /* payment-method line is optional */ }
+  }
+  let dateLabel: string | null = null;
+  if (bk) {
+    try {
+      const { fmtClinicDate, fmtClinicTime } = await import('./clinic-time');
+      dateLabel = `${fmtClinicDate(bk.startAt, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · ${fmtClinicTime(bk.startAt)}`;
+    } catch { /* date line is optional */ }
+  }
+  return {
+    items: items.map((i) => ({ label: i.label, pricePence: i.pricePence - (i.discountPence || 0) })),
+    clinician: bk?.practitioner?.name ?? null,
+    dateLabel,
+    reference: bookingId.slice(-6).toUpperCase(),
+    paymentMethod,
+  };
+}
+
+/**
  * Charge the saved card off-session. Handles SCA: if the bank requires action,
  * the booking is left flagged and the client is emailed a confirm link.
  * Returns { ok, requiresAction?, error? }.
@@ -74,10 +113,11 @@ export async function chargeBooking(
           if (b.applied) vat = { netPence: b.netPence, vatPence: b.vatPence, ratePct: b.ratePct };
         }
       } catch { /* receipt still sends without the VAT line */ }
+      const detail = opts.late ? null : await receiptDetail(booking.id, booking.stripePaymentMethodId);
       await sendEmail({
         to: booking.client.email,
         subject: opts.late ? 'Late-cancellation fee — KClinics' : `Receipt — ${booking.treatmentTitle}`,
-        html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountPence, late: opts.late, vat }),
+        html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountPence, late: opts.late, vat, ...(detail ?? {}) }),
       });
       // Books: raise the Xero invoice (+ payment). Idempotent vs the webhook path.
       try { const { pushBookingSaleToXero } = await import('@/lib/xero'); await pushBookingSaleToXero(booking.id); } catch (e) { console.error('[charge] xero push failed:', (e as Error)?.message); }
@@ -197,10 +237,11 @@ export async function finalizeBookingCharge(
   if (!booking) return true;
 
   try {
+    const detail = opts.late ? null : await receiptDetail(booking.id, booking.stripePaymentMethodId);
     await sendEmail({
       to: booking.client.email,
       subject: opts.late ? 'Late-cancellation fee — KClinics' : `Receipt — ${booking.treatmentTitle}`,
-      html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountReceivedPence, late: opts.late }),
+      html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountReceivedPence, late: opts.late, ...(detail ?? {}) }),
     });
     await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment receipt', status: 'SENT' } });
   } catch (e) { console.error('[charge] receipt failed:', (e as Error)?.message); }
