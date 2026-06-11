@@ -28,7 +28,7 @@ export async function ClinicianView({ session }: { session: Session }) {
 
   const select = {
     id: true, startAt: true, endAt: true, status: true, treatmentTitle: true, treatmentSlug: true,
-    startedAt: true, finishedAt: true, practitionerId: true,
+    arrivedAt: true, startedAt: true, finishedAt: true, practitionerId: true,
     client: { select: { id: true, firstName: true, lastName: true, allergies: true, medicalFlag: true } },
     practitioner: { select: { name: true } },
   } as const;
@@ -55,7 +55,9 @@ export async function ClinicianView({ session }: { session: Session }) {
         ? <span className="rounded-full bg-[color-mix(in_oklab,#c0392b_12%,transparent)] px-2.5 py-1 text-xs font-medium text-[#b23b3b]">Running late</span>
         : b.status === 'COMPLETED'
           ? <span className="rounded-full bg-[var(--color-ink)] px-2.5 py-1 text-xs font-medium text-[var(--color-porcelain)]">Done</span>
-          : <span className="rounded-full bg-[var(--color-bone)] px-2.5 py-1 text-xs text-[var(--color-stone)]">{fmtTime(b.startAt)}</span>,
+          : b.arrivedAt
+            ? <span className="rounded-full bg-[color-mix(in_oklab,var(--color-jade)_14%,transparent)] px-2.5 py-1 text-xs font-medium text-[var(--color-jade)]">✓ Arrived</span>
+            : <span className="rounded-full bg-[var(--color-bone)] px-2.5 py-1 text-xs text-[var(--color-stone)]">{fmtTime(b.startAt)}</span>,
   });
 
   // The client to prep for: an in-progress one first, else the next upcoming (mine, then clinic).
@@ -98,6 +100,7 @@ export async function ClinicianView({ session }: { session: Session }) {
               </p>
             )}
             <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              {focus.arrivedAt && <span className="rounded-full bg-[color-mix(in_oklab,var(--color-jade)_14%,transparent)] px-2.5 py-1 font-medium text-[var(--color-jade)]">✓ Arrived</span>}
               <span className={`rounded-full px-2.5 py-1 font-medium ${focusConsent ? 'bg-[color-mix(in_oklab,var(--color-jade)_14%,transparent)] text-[var(--color-jade)]' : 'bg-amber-100 text-amber-800'}`}>
                 {focusConsent ? 'Consent signed' : 'Consent outstanding'}
               </span>

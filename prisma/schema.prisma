@@ -534,6 +534,11 @@ model Booking {
   // machine). Auto-assigned at booking from what's free and capable.
   resources      Resource[]
 
+  // Front-of-house check-in: when reception marked the client as arrived (PRJ-63).
+  // Distinct from startedAt (clinician beginning the treatment); surfaced to the
+  // clinician view as an "Arrived" cue. Additive nullable column.
+  arrivedAt      DateTime?
+
   // Time tracking — actuals vs the scheduled duration.
   startedAt      DateTime?
   finishedAt     DateTime?
