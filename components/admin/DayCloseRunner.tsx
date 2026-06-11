@@ -211,6 +211,21 @@ export function DayCloseRunner({
                     </div>
                   )}
 
+                  {/* BLD-191: the day's full takings = card + cash, not card alone. */}
+                  {(() => {
+                    const cardPart = countedCard.trim() ? poundsToPence(countedCard) : expected.cardPence;
+                    const cashPart = config.cashHandling ? poundsToPence(cashTakings) : 0;
+                    return (
+                      <div className="mt-6 flex items-baseline justify-between rounded-[var(--radius-md)] border border-[var(--color-gold)]/40 bg-[var(--color-porcelain)] px-5 py-4">
+                        <div>
+                          <span className="font-medium">Total takings today</span>
+                          <span className="block text-xs text-[var(--color-stone)]">Card {money(cardPart)}{config.cashHandling ? ` + cash ${money(cashPart)}` : ''}</span>
+                        </div>
+                        <span className="font-[family-name:var(--font-display)] text-3xl tabular-nums">{money(cardPart + cashPart)}</span>
+                      </div>
+                    );
+                  })()}
+
                   <label className="mt-6 flex items-start gap-2.5 text-sm">
                     <input type="checkbox" checked={moneyConfirmed} onChange={() => setMoneyConfirmed((v) => !v)} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-gold)]" />
                     <span>I&apos;ve counted the takings and double-checked these figures against the terminal and drawer.</span>
