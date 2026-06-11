@@ -1427,6 +1427,26 @@ model AuditEvent {
 // prior one. Answer payloads are encrypted at rest (AES-256-GCM) via the app
 // key; `integrityHash` (HMAC-SHA256) lets us detect any tampering. Access is
 // restricted to the owning client and clinical staff.
+// BLD-190 — admin-managed EXTRA questions appended to a code-defined health form.
+// The base (clinically-reviewed) questions stay versioned in code; these add-on
+// questions are merged in at render + clinician display. Additive table only.
+model FormQuestion {
+  id               String   @id @default(cuid())
+  questionnaireKey String   // e.g. 'medical-history' (matches Questionnaire.key)
+  prompt           String
+  fieldType        String   @default("text") // single | multi | boolean | text | longtext | scale | date
+  help             String?
+  required         Boolean  @default(false)
+  options          Json?    // [{ value, label }] for single/multi
+  order            Int      @default(0)
+  active           Boolean  @default(true)
+  createdBy        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([questionnaireKey, active, order])
+}
+
 model HealthAssessment {
   id            String         @id @default(cuid())
   client        Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)

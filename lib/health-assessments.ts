@@ -80,8 +80,12 @@ export async function formatAssessment(id: string) {
   const answers = (a.answers || {}) as Record<string, unknown>;
   const sourceLocale = (a as { sourceLocale?: string }).sourceLocale || 'en';
 
+  // Include any admin-managed extra questions (BLD-190) so their answers display.
+  const { customQuestionsFor } = await import('@/lib/health-forms');
+  const allQuestions = [...(def?.questions ?? []), ...(await customQuestionsFor(key))];
+
   const items: { id: string; prompt: string; value: string; freeText: boolean; original?: string }[] =
-    (def?.questions ?? []).map((q) => {
+    allQuestions.map((q) => {
       const raw = answers[q.id];
       let value = '—';
       let freeText = false;
