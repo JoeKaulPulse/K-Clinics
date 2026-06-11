@@ -88,3 +88,28 @@ export async function moveCustomQuestion(id: string, dir: 'up' | 'down') {
   revalidatePath('/admin/health-forms');
   return { ok: true };
 }
+
+// BLD-209 — edit the CORE questions of a health form. Publishing snapshots the
+// edited set as a new immutable version (lib/questionnaire-versions.ts); past
+// submissions keep rendering against the version they were captured under.
+export async function publishCoreQuestions(input: {
+  questionnaireKey: string;
+  questions: { id: string; prompt: string; required?: boolean; type: string; options?: { value: string; label: string }[]; help?: string; showIf?: unknown }[];
+}) {
+  const g = await guard(); if ('error' in g) return { ok: false as const, error: g.error };
+  const key = String(input.questionnaireKey || '');
+  const code = getQuestionnaire(key);
+  if (!code) return { ok: false as const, error: 'Unknown form.' };
+  const questions = (input.questions || [])
+    .map((q) => ({ ...q, prompt: (q.prompt || '').trim() }))
+    .filter((q) => q.id && q.prompt);
+  if (questions.length === 0) return { ok: false as const, error: 'Keep at least one question.' };
+  const { publishQuestionnaireVersion } = await import('@/lib/questionnaire-versions');
+  const version = await publishQuestionnaireVersion(key, { questions: questions as never }, g.session.email);
+  try {
+    const { logAudit } = await import('@/lib/audit');
+    await logAudit({ action: 'SETTINGS_UPDATED', actor: g.session.email, actorRole: g.session.role, summary: `Health form “${key}” edited — published v${version} (${questions.length} questions)`, meta: { key, version } });
+  } catch { /* non-fatal */ }
+  revalidatePath('/admin/health-forms');
+  return { ok: true as const, version };
+}

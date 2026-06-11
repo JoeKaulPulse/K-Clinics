@@ -3008,3 +3008,25 @@ model Device {
 
   @@index([kind, active])
 }
+
+// ── Editable, versioned health questionnaires (BLD-209) ─────────────────────
+// Admins can edit the core Medical History questions. Each publish writes a new
+// immutable snapshot here (version = max existing + 1). The live portal form uses
+// the latest version; a saved HealthAssessment records key@version, and the
+// clinician view resolves the snapshot for THAT version so every past form always
+// renders with the exact wording the client was shown (audit / insurer requests).
+// New table — additive; uniqueness of (key,version) is enforced structurally
+// (publish allocates max+1), not via a @unique constraint (deploy-gate safe).
+model QuestionnaireVersion {
+  id        String   @id @default(cuid())
+  key       String                  // questionnaire key, e.g. "medical-history"
+  version   Int                     // monotonically increasing per key
+  type      String
+  title     String
+  intro     String?
+  questions Json                    // full Question[] snapshot
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  @@index([key, version])
+}
