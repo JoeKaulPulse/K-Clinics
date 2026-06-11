@@ -5,6 +5,7 @@ import { getSession, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { BookingActions } from '@/components/admin/BookingActions';
+import { PractitionerReassign } from '@/components/admin/PractitionerReassign';
 import { RequestCardButton } from '@/components/admin/RequestCardButton';
 import { ClinicalWorkflow } from '@/components/admin/ClinicalWorkflow';
 import { ConsumablesPanel } from '@/components/admin/ConsumablesPanel';
@@ -78,6 +79,23 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const visitPrefs = await db.booking.findUnique({ where: { id }, select: { refreshments: true, allergyNote: true, aftercareAckAt: true, treatmentSlug: true, startAt: true, clientId: true } });
   if (visitPrefs?.allergyNote) { const { decClinical } = await import('@/lib/clinical-crypto'); visitPrefs.allergyNote = decClinical(visitPrefs.allergyNote); }
   const { refreshmentLabel } = await import('@/lib/hospitality');
+
+  // BLD-211 — clinicians eligible to perform this treatment (competent or generalist),
+  // for the practitioner-reassign control. The currently-assigned clinician is always
+  // included so they remain visible even if competencies later changed.
+  const canManageBooking = sessionCan(session, 'bookings.manage');
+  const clinicians: { id: string; name: string }[] = [];
+  if (canManageBooking) {
+    const rows = await db.adminUser.findMany({
+      where: { isClinician: true, active: true, OR: [{ competencies: { has: b.treatmentSlug } }, { competencies: { isEmpty: true } }] },
+      orderBy: { name: 'asc' }, select: { id: true, name: true, email: true },
+    });
+    for (const r of rows) clinicians.push({ id: r.id, name: r.name || r.email });
+    if (b.practitionerId && b.practitioner && !clinicians.some((c) => c.id === b.practitionerId)) {
+      clinicians.unshift({ id: b.practitionerId, name: b.practitioner.name || b.practitioner.email });
+    }
+  }
+
   let nextRec: string | null = null;
   if (visitPrefs) {
     const { recommendedNext, formatInterval } = await import('@/lib/treatment-intervals');
@@ -303,9 +321,11 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
         </ol>
       </section>
 
-      {b.practitioner && (
+      {canManageBooking ? (
+        <PractitionerReassign bookingId={b.id} current={b.practitionerId ?? null} clinicians={clinicians} />
+      ) : b.practitioner ? (
         <p className="mt-6 text-sm text-[var(--color-stone)]">Assigned clinician: <span className="font-medium text-[var(--color-ink)]">{b.practitioner.name || b.practitioner.email}</span></p>
-      )}
+      ) : null}
       {heldResources.length > 0 && (
         <p className="mt-2 text-sm text-[var(--color-stone)]">
           {heldResources.map((r) => `${r.name}${r.floor ? ` (${r.floor})` : ''}`).join(' · ')}
