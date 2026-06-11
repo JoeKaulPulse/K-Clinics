@@ -2337,6 +2337,11 @@ model ConsentTemplate {
   bodyMd           String   // consent wording (markdown)
   acknowledgements String[] @default([]) // required tick statements
   active           Boolean  @default(true)
+  // Assignment: which treatments this form applies to. A service slug match wins
+  // over a group match; if a treatment matches nothing, the engine falls back to
+  // the built-in category logic. Both default empty (additive, non-destructive).
+  serviceSlugs     String[] @default([]) // specific treatment slugs (most specific)
+  serviceGroups    String[] @default([]) // marketing groups, e.g. "Laser & Skin"
   updatedBy        String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

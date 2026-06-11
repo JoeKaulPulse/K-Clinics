@@ -37,9 +37,9 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
 
   // Consent: the form mapped to this treatment + any signed/pending records.
   const { db } = await import('@/lib/db');
-  const { categoryForTreatment, ensureDefaultTemplates, isLaserTreatment } = await import('@/lib/consent');
+  const { templateKeyForTreatment, ensureDefaultTemplates, isLaserTreatment } = await import('@/lib/consent');
   await ensureDefaultTemplates();
-  const consentKey = await categoryForTreatment(b.treatmentSlug);
+  const consentKey = await templateKeyForTreatment(b.treatmentSlug);
   const isLaser = isLaserTreatment(b.treatmentSlug);
   const [consentTemplate, signedConsents, pendingConsents, beforePhotos] = await Promise.all([
     db.consentTemplate.findUnique({ where: { key: consentKey } }),
