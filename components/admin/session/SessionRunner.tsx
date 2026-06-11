@@ -756,6 +756,18 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
   const [payErr, setPayErr] = useState('');
   const [payBusy, setPayBusy] = useState(false);
   const amountPence = Math.round(parseFloat(amount || '0') * 100);
+  // BLD-207 — ad-hoc discount / price adjustment at checkout (reason required).
+  const [discOpen, setDiscOpen] = useState(false);
+  const [discType, setDiscType] = useState<'percent' | 'amount'>('percent');
+  const [discVal, setDiscVal] = useState('');
+  const [discReason, setDiscReason] = useState('');
+  const discParams = discReason.trim() ? { discountReason: discReason.trim(), originalPence: p.booking.pricePence } : {};
+  function applyDiscount() {
+    const base = p.booking.pricePence;
+    const v = parseFloat(discVal || '0') || 0;
+    const newPence = discType === 'percent' ? Math.max(0, Math.round(base * (1 - v / 100))) : Math.max(0, base - Math.round(v * 100));
+    setAmount((newPence / 100).toFixed(2));
+  }
 
   async function makeLink() {
     setPayErr(''); setPayBusy(true);
@@ -772,13 +784,13 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
   }
   async function takeTreatwell() {
     setPayErr(''); setPayBusy(true);
-    const res = await api({ op: 'external', channel: 'treatwell', amountPence });
+    const res = await api({ op: 'external', channel: 'treatwell', amountPence, ...discParams });
     setPayBusy(false);
     if (!res.ok) setPayErr(res.error || 'Could not record the payment.');
   }
   async function takeCash() {
     setPayErr(''); setPayBusy(true);
-    const res = await api({ op: 'external', channel: 'cash', amountPence });
+    const res = await api({ op: 'external', channel: 'cash', amountPence, ...discParams });
     setPayBusy(false);
     if (!res.ok) setPayErr(res.error || 'Could not record the payment.');
   }
@@ -814,11 +826,29 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
               </div>
             </div>
 
+            {/* BLD-207: ad-hoc discount / price adjustment (applies to the amount taken by any method) */}
+            <div className="mt-3">
+              {!discOpen ? (
+                <button type="button" onClick={() => setDiscOpen(true)} className="text-xs text-[var(--color-gold)] underline-offset-2 hover:underline">Apply a discount / adjust price</button>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3 text-sm">
+                  <div className="flex items-center rounded-full border border-[var(--color-line)] bg-white p-0.5 text-xs">
+                    <button type="button" onClick={() => setDiscType('percent')} aria-pressed={discType === 'percent'} className={`rounded-full px-2.5 py-1 ${discType === 'percent' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)]'}`}>% off</button>
+                    <button type="button" onClick={() => setDiscType('amount')} aria-pressed={discType === 'amount'} className={`rounded-full px-2.5 py-1 ${discType === 'amount' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)]'}`}>£ off</button>
+                  </div>
+                  <input inputMode="decimal" value={discVal} onChange={(e) => setDiscVal(e.target.value)} placeholder={discType === 'percent' ? '10' : '5.00'} aria-label="Discount value" className="w-16 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 tabular-nums outline-none focus:border-[var(--color-gold)]" />
+                  <input value={discReason} onChange={(e) => setDiscReason(e.target.value)} placeholder="Reason (required)" aria-label="Discount reason" className="min-w-[10rem] flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 outline-none focus:border-[var(--color-gold)]" />
+                  <button type="button" disabled={!discReason.trim() || !discVal.trim()} onClick={applyDiscount} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-40">Apply</button>
+                  {discReason.trim() && <span className="text-xs text-[var(--color-stone)]">was {money(p.booking.pricePence)} → {money(amountPence)}</span>}
+                </div>
+              )}
+            </div>
+
             {/* The action for the chosen method */}
             <div className="mt-3">
               {method === 'card' && (
                 <button type="button" disabled={pending || !live.finishedAt}
-                  onClick={() => run(() => api({ op: 'charge', amountPence }))}
+                  onClick={() => run(() => api({ op: 'charge', amountPence, ...discParams }))}
                   className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
                   Charge the saved card
                 </button>
