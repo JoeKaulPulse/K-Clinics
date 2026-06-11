@@ -971,6 +971,38 @@ model TimeEntry {
   @@index([userId, endedAt])
 }
 
+// PRJ-63 — facility knowledge base. Floor/electrical/plumbing plans, equipment
+// locations, where-to-find-things and instructions. Powers the contractor view
+// and is useful to all staff. fileUrl is a Vercel Blob URL (image or PDF).
+// Additive: new enum + new table; locationId is a plain scope tag (no FK) so it
+// doesn't require touching the Location model.
+enum FacilityDocType {
+  FLOOR_PLAN
+  ELECTRICAL
+  PLUMBING
+  EQUIPMENT
+  INSTRUCTION
+  OTHER
+}
+
+model FacilityDoc {
+  id          String          @id @default(cuid())
+  title       String
+  type        FacilityDocType @default(OTHER)
+  fileUrl     String          // Vercel Blob URL (image or PDF)
+  isPdf       Boolean         @default(false)
+  description String?
+  locationId  String?         // optional scope tag (Location.id)
+  tags        String[]        @default([])
+  order       Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  createdBy   String?
+
+  @@index([type, order])
+  @@index([locationId])
+}
+
 // WebAuthn passkeys (platform authenticators — Face ID / Touch ID / Windows
 // Hello). Used as a strong step-up before the full data export.
 model WebAuthnCredential {

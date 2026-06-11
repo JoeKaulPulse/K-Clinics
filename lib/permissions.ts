@@ -109,6 +109,10 @@ export const PERMISSIONS: Permission[] = [
 
   // Platform
   { key: 'platform.status', group: 'Administration', label: 'View platform status', description: 'See the Owner/Admin status & health audit page and schedule maintenance windows.', sensitive: true },
+
+  // Facility (PRJ-63)
+  { key: 'facility.view', group: 'Facility', label: 'View facility info', description: 'See floor/electrical/plumbing plans, equipment locations and where-to-find-things guides.' },
+  { key: 'facility.manage', group: 'Facility', label: 'Manage facility info', description: 'Upload and organise facility plans, equipment guides and instructions.' },
 ];
 
 export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
@@ -135,6 +139,7 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     'calls.view',
     'dayclose.run',
     'build.view',
+    'facility.view',
   ],
   FRONT_DESK: [
     'dashboard.view',
@@ -160,13 +165,14 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     'pos.use',
     'dayclose.run',
     'build.view',
+    'facility.view',
   ],
   // PRJ-63: build/platform only — deliberately no client or clinical access.
   DEVELOPER: ['dashboard.view', 'build.view', 'platform.status'],
   // PRJ-63: minimal for now; contractor task / time-tracking / facility keys are
   // added with those features (PRJ-63.6–63.9).
-  CONTRACTOR: ['dashboard.view'],
-  STAFF: ['dashboard.view', 'bookings.view', 'consultations.view', 'clients.view', 'calendar.view', 'inventory.view', 'dayclose.run', 'build.view'],
+  CONTRACTOR: ['dashboard.view', 'facility.view'],
+  STAFF: ['dashboard.view', 'bookings.view', 'consultations.view', 'clients.view', 'calendar.view', 'inventory.view', 'dayclose.run', 'build.view', 'facility.view'],
 };
 
 export function roleDefaults(role: string): string[] {
