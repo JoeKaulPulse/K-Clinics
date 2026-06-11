@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { chargeBookingAction, refundBookingAction, setBookingStatus, cancelBookingAction } from '@/app/admin/bookings/actions';
+import { chargeBookingAction, refundBookingAction, setBookingStatus, cancelBookingAction, rescheduleBookingAction } from '@/app/admin/bookings/actions';
 
 const money = (p: number) => `£${(p / 100).toFixed(2)}`;
 
@@ -40,6 +40,7 @@ export function BookingActions({
   const [refundAmt, setRefundAmt] = useState('');
   const [refundReason, setRefundReason] = useState('');
   const [confirmRefund, setConfirmRefund] = useState(false);
+  const [newWhen, setNewWhen] = useState('');
 
   const active = status === 'CONFIRMED' || status === 'PENDING';
   const completed = status === 'COMPLETED';
@@ -144,6 +145,23 @@ export function BookingActions({
             </div>
           )}
           {remainingRefund > 0 && !windowOpen && <p className="mt-2 text-xs text-[var(--color-stone-soft)]">The refund window for this payment has passed — refund in Stripe directly if still possible.</p>}
+        </div>
+      )}
+
+      {/* Reschedule (change date/time) — staff override, no notice/fee rules (BLD-105) */}
+      {canManage && active && (
+        <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] p-4">
+          <p className="mb-2 text-sm font-medium">Reschedule (change date &amp; time)</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input type="datetime-local" value={newWhen} onChange={(e) => setNewWhen(e.target.value)}
+              className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+            <button disabled={pending || !newWhen} onClick={() => start(async () => {
+              const r = await rescheduleBookingAction(bookingId, new Date(newWhen).toISOString());
+              setMsg(r.ok ? 'Rescheduled — the client has been emailed the new time.' : r.error || 'Could not reschedule.');
+              if (r.ok) setNewWhen('');
+            })} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">{pending ? 'Moving…' : 'Reschedule'}</button>
+          </div>
+          <p className="mt-2 text-xs text-[var(--color-stone)]">Moves this appointment without cancel-and-rebook. The slot must be free; the client gets a confirmation email. No late-change fee is applied.</p>
         </div>
       )}
 

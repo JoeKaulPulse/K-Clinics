@@ -346,21 +346,22 @@ export function isWithin48h(b: Pick<Booking, 'startAt'>): boolean {
 export async function rescheduleBooking(
   bookingId: string,
   newStartISO: string,
-  opts: { by: string; reason?: string },
+  opts: { by: string; reason?: string; admin?: boolean },
 ): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; error?: string }> {
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
   if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(booking.status)) {
     return { ok: false, error: 'This booking can no longer be rescheduled.' };
   }
-  if (isWithin48h(booking)) {
+  // Client self-service must give >=48h notice; staff (admin) can move any time.
+  if (!opts.admin && isWithin48h(booking)) {
     return { ok: false, error: "Reschedules require at least 48 hours' notice. Please call us on 020 8050 0750 if you need to make a late change." };
   }
 
   const newStart = new Date(newStartISO);
   if (isNaN(newStart.getTime())) return { ok: false, error: 'Invalid date.' };
   if (newStart.getTime() <= Date.now()) return { ok: false, error: 'The new appointment time must be in the future.' };
-  if (newStart.getTime() - Date.now() < RESCHEDULE_WINDOW_MS) {
+  if (!opts.admin && newStart.getTime() - Date.now() < RESCHEDULE_WINDOW_MS) {
     return { ok: false, error: 'The new appointment must be at least 48 hours from now.' };
   }
 
@@ -378,8 +379,9 @@ export async function rescheduleBooking(
   let charged = 0;
   let requiresAction = false;
 
-  // 4th+ reschedule incurs the full booking price.
-  if (booking.rescheduleCount >= MAX_FREE_RESCHEDULES && booking.pricePence > 0) {
+  // 4th+ reschedule incurs the full booking price — client self-service only;
+  // a staff/admin reschedule never charges a fee.
+  if (!opts.admin && booking.rescheduleCount >= MAX_FREE_RESCHEDULES && booking.pricePence > 0) {
     const res = await chargeBooking(booking, booking.pricePence, { late: false });
     if (!res.ok) {
       if (res.requiresAction) requiresAction = true;
