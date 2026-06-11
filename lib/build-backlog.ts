@@ -51,6 +51,12 @@ export const PROJECTS: ProjectDef[] = [
     summary: 'Fix every Critical + High finding from the 10-area codebase audit (audit/ on the branch): 3 Critical (booking race, GDPR erasure completeness, encrypt health/PII at rest) + 14 High (auth, payments, data races, XSS, consent, secrets, email). Each finding is one tracked item; the epic gates on all of them. Full detail per finding in audit/SUMMARY.md and the per-area reports.',
     originIdeaTitle: 'Full-codebase audit (10 parallel area passes)',
   },
+  {
+    slug: 'role-based-views',
+    name: 'Role-based My Day & Dashboards',
+    summary: 'Make the admin landing experience role-shaped: each user type lands on a daily view built around their job (developer → build/CI; clinician → appointments, rooms, prep, client info, appointment flow; receptionist → front-of-house; contractor → contracted tasks, time tracking, facility plans), and admins/owners can switch between views. Introduces two new roles (DEVELOPER, CONTRACTOR), new data (RoomPrep, TimeEntry, ContractorTask, FacilityDoc, AdminUser.preferredDashboardView), new cross-user interactions (prep handoff, room turnover, task assignment, time visibility) and a reusable view/widget set. Full spec: docs/projects/role-based-views.md.',
+    originIdeaTitle: 'Role-based My Day & Dashboards — epic',
+  },
 ];
 
 // Who can unblock an input-required task. Resolved to an actual user from the
@@ -900,6 +906,191 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     value: 8, effort: 3,
     detail: 'lib/email-builder.ts + lib/email-campaigns.ts + lib/automations.ts interpolate client name/email into HTML email bodies without escaping (HTML/CSS/link injection → in-domain phishing). Fix: HTML-escape all interpolated user/client values in email templates. (audit/09-email-notifications.md)',
     notes: ['Shipped: applyMergeTags gained an { html } mode that HTML-escapes client values when spliced into HTML (campaign body/preheader, test send, composer preview) while leaving plain-text subjects untouched; automations.ts inline ${firstName} bodies now escape via escapeHtml. Confirmed the tmpl* templates in lib/email.ts already escape() their inputs.'],
+  },
+
+  // ── PROJECT: Role-based My Day & Dashboards (slug: role-based-views) ─────────
+  // Full spec: docs/projects/role-based-views.md. Epic + 12 work items below;
+  // dependencies wire foundation → shell → views → services → interactions → QA.
+  {
+    title: 'Role-based My Day & Dashboards — epic', type: 'IDEA', urgency: 'P2', status: 'TRIAGE', project: 'role-based-views',
+    value: 9, effort: 9,
+    detail: 'EPIC / project root. Make the admin landing experience role-shaped: developer, admin (with view switching), clinician, receptionist and contractor each land on a daily view built around their job. Adds two new roles (DEVELOPER, CONTRACTOR), new data (RoomPrep, TimeEntry, ContractorTask, FacilityDoc, AdminUser.preferredDashboardView), new cross-user interactions and a reusable view/widget set. Gates on all child items. Full plan, data model, components and acceptance: docs/projects/role-based-views.md.',
+    dependsOn: [
+      'Role views — Clinician dashboard & My Day',
+      'Role views — Receptionist (front-of-house) dashboard & My Day',
+      'Role views — Developer dashboard & My Day',
+      'Role views — Contractor dashboard & My Day + data model',
+      'Role views — QA, permission-leakage hardening, demo seeding & rollout',
+    ],
+    notes: ['Planning artifact: docs/projects/role-based-views.md. Build behind a role_views_enabled flag; roll out view-by-view.'],
+    subtasks: [
+      { title: 'Owner sign-off on the two new roles (DEVELOPER, CONTRACTOR) and each role default view', ownerInput: true },
+      { title: 'Confirm what data a contractor may NOT see (no client / clinical / financial) — written scope', ownerInput: true },
+      { title: 'Agree staged rollout order and the feature-flag gate' },
+    ],
+  },
+  {
+    title: 'Role views — foundation: roles, permissions & view resolution', type: 'TASK', urgency: 'P1', status: 'TRIAGE', project: 'role-based-views',
+    value: 8, effort: 4,
+    detail: 'Foundation everything else builds on. Add DEVELOPER + CONTRACTOR to enum Role (additive db push, verify on a Neon branch first). Define permission defaults for the new roles in lib/permissions.ts (Record<Role> makes this compile-enforced). Add new permission keys (contractor.tasks.view/manage, timetracking.use/manage, facility.view/manage, rooms.prep.manage). Add AdminUser.preferredDashboardView (nullable). Build lib/dashboard-views.ts (role to default view, view registry, resolveView()). Reference: docs/projects/role-based-views.md §2,§4,§5.',
+    subtasks: [
+      { title: 'Add DEVELOPER + CONTRACTOR to enum Role; dry-run prisma db push on a Neon branch (additive, no data loss)' },
+      { title: 'Add ROLE_DEFAULTS entries + new permission keys in lib/permissions.ts' },
+      { title: 'Add AdminUser.preferredDashboardView (String?) + optional contractor metadata fields' },
+      { title: 'POST /api/admin/preferences to set preferredDashboardView' },
+      { title: 'lib/dashboard-views.ts: role to default view map + resolveView(session) helper' },
+      { title: 'Update staff editor UI to offer the two new roles' },
+      { title: 'tsc + build green; no permission regressions for existing roles' },
+    ],
+  },
+  {
+    title: 'Role views — view-aware dashboard shell & widget registry', type: 'TASK', urgency: 'P2', status: 'TRIAGE', project: 'role-based-views',
+    value: 7, effort: 3,
+    detail: 'A view-aware shell that renders the right widget set for the resolved view, plus reusable widget primitives so views compose rather than fork. Includes the admin/owner ViewSwitcher (segmented control, persists preferredDashboardView). Reference: docs/projects/role-based-views.md §5.',
+    dependsOn: ['Role views — foundation: roles, permissions & view resolution'],
+    subtasks: [
+      { title: 'Widget primitives: DashWidget, StatTile, TimelineList, EmptyWidget (responsive, reduced-motion, a11y)' },
+      { title: 'DashboardShell: resolve active view, render its widget registry, permission-gate each widget' },
+      { title: 'ViewSwitcher (OWNER/ADMIN only) — switch + persist; reflect on dashboard and My Day' },
+      { title: 'Refactor the current Overview into the Admin/Owner view bundle' },
+      { title: 'Mobile 360/390 pass for the shell + switcher' },
+    ],
+  },
+  {
+    title: 'Role views — Clinician dashboard & My Day', type: 'TASK', urgency: 'P2', status: 'TRIAGE', project: 'role-based-views',
+    value: 9, effort: 5,
+    detail: 'Clinician view: today appointments (own first, then clinic) with status + running-late flags; room availability board; room prep status for next clients; client info quick-cards (allergies, medical flag, consent state — clinical-gated); appointment-flow entry into the BLD-138 guided session. Reference: docs/projects/role-based-views.md §3.3.',
+    dependsOn: ['Role views — view-aware dashboard shell & widget registry', 'Role views — Room availability & prep-status service'],
+    subtasks: [
+      { title: 'Today appointment list widget (own + clinic, status, running-late)' },
+      { title: 'Embed RoomAvailabilityBoard + RoomPrepStatus for the clinician location' },
+      { title: 'Client info quick-card (clinical-gated: allergies, medical flag, consent state)' },
+      { title: 'Appointment-flow entry: jump to the current/next client guided session' },
+      { title: 'Clinician My Day: clinical checklist, consult follow-ups, today earnings (if permitted)' },
+      { title: 'Verify no clinical data renders for non-clinical roles reusing these widgets' },
+    ],
+  },
+  {
+    title: 'Role views — Receptionist (front-of-house) dashboard & My Day', type: 'TASK', urgency: 'P2', status: 'TRIAGE', project: 'role-based-views',
+    value: 9, effort: 5,
+    detail: 'Receptionist view (no clinical health data): arrivals timeline + one-tap check-in; prepare-for-arrival prep (drinks, room) handed off to the clinician; payments due / cards to capture; daily takings snapshot; calls + chat needing a reply; new booking quick action; walk-in capture. Reuses the dashboard ArrivalPrep building blocks. Reference: docs/projects/role-based-views.md §3.4.',
+    dependsOn: ['Role views — view-aware dashboard shell & widget registry', 'Role views — Room availability & prep-status service'],
+    subtasks: [
+      { title: 'ArrivalsBoard widget + one-tap check-in action' },
+      { title: 'Prep handoff: set room READY / drinks prepared, surfaced to the clinician view' },
+      { title: 'Payments due / capture-card widget + daily takings snapshot' },
+      { title: 'Calls + chat needing reply widget; new booking + walk-in quick actions' },
+      { title: 'Receptionist My Day: front-desk task list, callbacks, follow-ups' },
+      { title: 'Confirm zero clinical fields reach this view' },
+    ],
+  },
+  {
+    title: 'Role views — Developer dashboard & My Day', type: 'TASK', urgency: 'P2', status: 'TRIAGE', project: 'role-based-views',
+    value: 6, effort: 3,
+    detail: 'Developer view: build board snapshot (Open/In-review/Blocked/Not-on-GitHub + top items); recent Vercel deployments with state + inspector/log links; error reports (BuildItem.type ERROR) newest first; quick links (GitHub, runtime logs, platform status, token usage). No client/clinical data by default. Reference: docs/projects/role-based-views.md §3.1.',
+    dependsOn: ['Role views — view-aware dashboard shell & widget registry'],
+    subtasks: [
+      { title: 'Build-board snapshot widget (counts + top actionable items)' },
+      { title: 'Recent deployments widget (Vercel state + inspector/logs links)' },
+      { title: 'Error-reports widget (type ERROR, newest first)' },
+      { title: 'Quick links + token/usage stats; Developer My Day = assigned build items + PRs/reviews' },
+    ],
+  },
+  {
+    title: 'Role views — Contractor dashboard & My Day + data model', type: 'TASK', urgency: 'P2', status: 'TRIAGE', project: 'role-based-views',
+    value: 7, effort: 6,
+    detail: 'Contractor view (no client/clinical/financial data): contracted tasks / work to complete (assigned, due dates, status); time tracking (clock in/out, breaks, hours today/week); facility knowledge (floor + electrical plans, equipment locations, where-to-find-things, instructions). Adds the ContractorTask model + assignment flow. Reference: docs/projects/role-based-views.md §3.5,§4.',
+    dependsOn: ['Role views — view-aware dashboard shell & widget registry', 'Role views — Time-tracking service (clock, breaks, timesheets)', 'Role views — Facility knowledge base (plans & where-to-find-things)'],
+    subtasks: [
+      { title: 'ContractorTask model (additive) + admin assignment UI' },
+      { title: 'ContractorTaskList widget: today jobs, complete + notes, status' },
+      { title: 'Embed TimeClock (clock in/out, break) prominently' },
+      { title: 'Embed FacilityDocs viewer scoped to the contractor location' },
+      { title: 'Contractor My Day layout (jobs + clock + docs); lock out all client/clinical/finance routes' },
+      { title: 'Provide initial floor / electrical plans and site instructions to seed', ownerInput: true },
+    ],
+  },
+  {
+    title: 'Role views — Room availability & prep-status service', type: 'TASK', urgency: 'P2', status: 'TRIAGE', project: 'role-based-views',
+    value: 7, effort: 4,
+    detail: 'Shared service powering the clinician + receptionist views. RoomPrep model (roomId, date, status DIRTY/CLEANING/READY, cleanedAt/by, note; one row per room per day via upsert, no DB unique constraint per the gate). API to read/set prep status; realtime via the existing kiosk/session SSE+poll pattern so a receptionist setting READY updates the clinician live. Reference: docs/projects/role-based-views.md §4,§6.',
+    dependsOn: ['Role views — foundation: roles, permissions & view resolution'],
+    subtasks: [
+      { title: 'RoomPrep model + upsert-by-(roomId,date) service' },
+      { title: 'GET/POST room prep status API (permission: rooms.prep.manage)' },
+      { title: 'RoomAvailabilityBoard (free/occupied now + next) from Resource + bookings' },
+      { title: 'RoomPrepStatus widget with live updates (SSE/poll)' },
+      { title: 'Link prep state to the dashboard arrival-prep checklist' },
+    ],
+  },
+  {
+    title: 'Role views — Time-tracking service (clock, breaks, timesheets)', type: 'TASK', urgency: 'P2', status: 'TRIAGE', project: 'role-based-views',
+    value: 6, effort: 5,
+    detail: 'Shared time tracking used by contractors (and optionally staff) and by the dashboard lunch-break action. TimeEntry model (userId, kind SHIFT/BREAK, startedAt, endedAt?, note?, taskId?). Clock in/out + break component; open entry = endedAt null. Admin timesheet rollup + export. Reference: docs/projects/role-based-views.md §4,§6.',
+    dependsOn: ['Role views — foundation: roles, permissions & view resolution'],
+    subtasks: [
+      { title: 'TimeEntry model (additive) + start/stop/break service with single-open-entry guard' },
+      { title: 'TimeClock component (clock in/out, break) + today/this-week totals' },
+      { title: 'Admin timesheet view (per user, per week) + CSV export' },
+      { title: 'Permission keys timetracking.use / timetracking.manage' },
+    ],
+  },
+  {
+    title: 'Role views — Facility knowledge base (plans & where-to-find-things)', type: 'TASK', urgency: 'P3', status: 'TRIAGE', project: 'role-based-views',
+    value: 5, effort: 3,
+    detail: 'FacilityDoc model (title, type FLOOR_PLAN/ELECTRICAL/PLUMBING/EQUIPMENT/INSTRUCTION/OTHER, fileUrl Blob, description?, locationId?, tags[], order) + an image/PDF viewer. Powers the contractor view and is useful to all staff. Admin upload/manage UI. Reference: docs/projects/role-based-views.md §4.',
+    dependsOn: ['Role views — foundation: roles, permissions & view resolution'],
+    subtasks: [
+      { title: 'FacilityDoc model (additive) + Blob upload + admin manage UI' },
+      { title: 'FacilityDocs viewer (image/PDF, grouped by type, location-scoped)' },
+      { title: 'Permission keys facility.view / facility.manage' },
+    ],
+  },
+  {
+    title: 'Role views — Cross-role interactions & notifications', type: 'TASK', urgency: 'P3', status: 'TRIAGE', project: 'role-based-views',
+    value: 6, effort: 5,
+    detail: 'New interactions between users: prep handoff (reception sets room READY to clinician), room turnover request (clinician finishes to reception/cleaner), contractor task assignment (admin to contractor; DONE notifies admin), time-tracking visibility (contractor entries roll up to admin). All emit activity-log entries and respect permission scope. Reuse the existing notification + SSE/poll patterns. Reference: docs/projects/role-based-views.md §6.',
+    dependsOn: ['Role views — Clinician dashboard & My Day', 'Role views — Receptionist (front-of-house) dashboard & My Day', 'Role views — Contractor dashboard & My Day + data model'],
+    subtasks: [
+      { title: 'Notification types for handoff / turnover / task-assignment' },
+      { title: 'Clinician room-turnover request to reception/cleaner' },
+      { title: 'Admin task-assignment ping to contractor; DONE ping back to admin' },
+      { title: 'Activity-log entries for all interactions; permission-scoped visibility' },
+    ],
+  },
+  {
+    title: 'Role views — Lunch-break & per-role day actions wiring', type: 'TASK', urgency: 'P3', status: 'TRIAGE', project: 'role-based-views',
+    value: 5, effort: 3,
+    detail: 'Connect the dashboard Lunch & breaks action to the time-tracking break (TimeEntry kind BREAK) and to schedule/availability so a break blocks the calendar. Define per-role quick-action sets (clinician vs receptionist vs contractor vs developer). Reference: docs/projects/role-based-views.md §3,§11.',
+    dependsOn: ['Role views — Time-tracking service (clock, breaks, timesheets)'],
+    subtasks: [
+      { title: 'Lunch break starts a BREAK TimeEntry + reflects in calendar availability' },
+      { title: 'Per-role quick-action registry (which day actions show per view)' },
+    ],
+  },
+  {
+    title: 'Role views — My Day per-role rebuild', type: 'TASK', urgency: 'P2', status: 'TRIAGE', project: 'role-based-views',
+    value: 7, effort: 5,
+    detail: 'Rebuild /admin/my-day as the role-tailored daily planner counterpart of the dashboards, reusing the same view widgets in a day-planner layout (timeline, tasks, personal stats). Reference: docs/projects/role-based-views.md §11.',
+    dependsOn: ['Role views — Clinician dashboard & My Day', 'Role views — Receptionist (front-of-house) dashboard & My Day', 'Role views — Developer dashboard & My Day', 'Role views — Contractor dashboard & My Day + data model'],
+    subtasks: [
+      { title: 'My Day day-planner layout that resolves the active view' },
+      { title: 'Per-role My Day content reusing the view widgets' },
+      { title: 'Mobile 360/390 pass' },
+    ],
+  },
+  {
+    title: 'Role views — QA, permission-leakage hardening, demo seeding & rollout', type: 'REVIEW', urgency: 'P2', status: 'TRIAGE', project: 'role-based-views',
+    value: 8, effort: 4,
+    detail: 'Final hardening + rollout. Role x view test matrix; automated assertion that FRONT_DESK / CONTRACTOR / DEVELOPER never receive clinical health fields; mobile 360/390 across every view; seed one demo user per role for QA; docs/runbook; ship behind role_views_enabled and roll out view-by-view. Reference: docs/projects/role-based-views.md §8,§9.',
+    dependsOn: ['Role views — Cross-role interactions & notifications', 'Role views — My Day per-role rebuild', 'Role views — Lunch-break & per-role day actions wiring'],
+    subtasks: [
+      { title: 'Role x view rendering + permission matrix tests' },
+      { title: 'Clinical-data leakage test for non-clinical views' },
+      { title: 'Demo user per role seeded for QA' },
+      { title: 'Feature flag role_views_enabled + staged rollout plan' },
+      { title: 'tsc + next build green; visual QA at 360/390/desktop' },
+    ],
   },
 ];
 
