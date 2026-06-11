@@ -151,7 +151,9 @@ export async function POST(req: Request) {
       const amountPence = Math.round(Number(body.amountPence) || 0);
       if (amountPence <= 0) return bad('Enter an amount to charge.');
       const { chargeBookingAction } = await import('@/app/admin/bookings/actions');
-      const r = await chargeBookingAction(bookingId, amountPence);
+      const discountReason = body.discountReason ? String(body.discountReason).slice(0, 120) : undefined;
+      const originalPence = body.originalPence ? Math.round(Number(body.originalPence)) : undefined;
+      const r = await chargeBookingAction(bookingId, amountPence, { discountReason, originalPence });
       if (!r.ok) return bad(r.error || 'Charge failed.');
       return ok();
     }
@@ -223,8 +225,12 @@ export async function POST(req: Request) {
       try { const { awardClientSpend } = await import('@/lib/client-loyalty'); await awardClientSpend(bookingId); } catch { /* non-fatal */ }
       try {
         const { logAudit } = await import('@/lib/audit');
-        const label = channel === 'treatwell' ? 'Treatwell' : channel;
-        await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, summary: `Paid via ${label} (£${(amountPence / 100).toFixed(2)}) — recorded externally, no card charged`, bookingId, clientId: booking.clientId, meta: { channel, external: true } });
+        const label = channel === 'treatwell' ? 'Treatwell' : channel === 'cash' ? 'cash' : channel;
+        // BLD-207: record any ad-hoc price adjustment + reason.
+        const dr = body.discountReason ? String(body.discountReason).slice(0, 120) : '';
+        const op = body.originalPence ? Math.round(Number(body.originalPence)) : 0;
+        const disc = dr ? ` (price adjustment — ${dr}${op > amountPence ? `; was £${(op / 100).toFixed(2)}` : ''})` : '';
+        await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, summary: `Paid via ${label} (£${(amountPence / 100).toFixed(2)})${disc} — recorded externally, no card charged`, bookingId, clientId: booking.clientId, meta: { channel, external: true, discountReason: dr || undefined } });
       } catch { /* non-fatal */ }
       return ok();
     }
