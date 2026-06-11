@@ -19,12 +19,17 @@ export default async function DevicesPage() {
   const can = await sessionPermissions();
 
   const { db } = await import('@/lib/db');
-  const rows = await db.device.findMany({ orderBy: [{ kind: 'asc' }, { createdAt: 'asc' }] }).catch(() => []);
+  const [rows, roomRows] = await Promise.all([
+    db.device.findMany({ orderBy: [{ kind: 'asc' }, { createdAt: 'asc' }] }).catch(() => []),
+    db.resource.findMany({ where: { kind: 'ROOM', active: true }, orderBy: { name: 'asc' }, select: { id: true, name: true } }).catch(() => []),
+  ]);
   const devices: DeviceRow[] = rows.map((d) => ({
     id: d.id, name: d.name, kind: d.kind, provider: d.provider, externalId: d.externalId,
     location: d.location, station: d.station, active: d.active,
     lastSeenAt: d.lastSeenAt ? d.lastSeenAt.toISOString() : null, notes: d.notes,
+    roomId: d.roomId, token: d.token,
   }));
+  const rooms = roomRows.map((r) => ({ id: r.id, name: r.name }));
 
   return (
     <AdminShell user={session.email} can={can}>
@@ -39,7 +44,7 @@ export default async function DevicesPage() {
       </div>
 
       <div className="mt-7">
-        <DeviceManager devices={devices} providers={terminalProviderIds()} />
+        <DeviceManager devices={devices} providers={terminalProviderIds()} rooms={rooms} />
       </div>
     </AdminShell>
   );
