@@ -97,6 +97,10 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
   // Seed the runner with a server-rendered snapshot (no first-paint flash).
   const initialSnapshot = b.liveSession ? await sessionSnapshot(b.id) : null;
 
+  // Unified payment capture (BLD-196): the card already on file, plus any
+  // active registered card terminals (BLD-195) for in-person taps.
+  const terminals = await db.device.findMany({ where: { kind: 'TERMINAL', active: true }, orderBy: { name: 'asc' }, select: { id: true, name: true } }).catch(() => []);
+
   const { refreshmentLabel } = await import('@/lib/hospitality');
 
   return (
@@ -104,6 +108,8 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
       <SessionRunner
         me={me}
         canCharge={sessionCan(session, 'bookings.charge')}
+        hasCardOnFile={!!b.stripePaymentMethodId}
+        terminals={terminals}
         canPos={canPos}
         canClinical={canClinical}
         baseUrl={baseUrl}

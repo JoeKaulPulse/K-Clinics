@@ -20,6 +20,8 @@ type Product = { id: string; name: string; pricePence: number; stockQty: number;
 type Props = {
   me: { email: string; name: string; title: string | null; photo: string | null };
   canCharge: boolean;
+  hasCardOnFile: boolean;
+  terminals: { id: string; name: string }[];
   canPos: boolean;
   canClinical: boolean;
   baseUrl: string;
@@ -746,6 +748,27 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
 }) {
   const [amount, setAmount] = useState(() => (p.booking.pricePence / 100).toFixed(2));
   const charged = !!live.chargedAt;
+  // Unified payment capture (BLD-196): card on file / payment link / terminal.
+  const [method, setMethod] = useState<'card' | 'link' | 'terminal'>(p.hasCardOnFile ? 'card' : 'link');
+  const [deviceId, setDeviceId] = useState(p.terminals[0]?.id ?? '');
+  const [linkQr, setLinkQr] = useState<{ url: string; qr: string } | null>(null);
+  const [payErr, setPayErr] = useState('');
+  const [payBusy, setPayBusy] = useState(false);
+  const amountPence = Math.round(parseFloat(amount || '0') * 100);
+
+  async function makeLink() {
+    setPayErr(''); setPayBusy(true);
+    const res = (await api({ op: 'paylink', amountPence })) as { ok: boolean; error?: string; url?: string; qr?: string };
+    setPayBusy(false);
+    if (res.ok && res.qr) setLinkQr({ url: res.url || '', qr: res.qr });
+    else setPayErr(res.error || 'Could not create a payment link.');
+  }
+  async function takeTerminal() {
+    setPayErr(''); setPayBusy(true);
+    const res = await api({ op: 'terminal', amountPence, deviceId });
+    setPayBusy(false);
+    if (!res.ok) setPayErr(res.error || 'Terminal payment is unavailable.');
+  }
 
   return (
     <>
@@ -762,17 +785,62 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
             Paid {new Date(live.chargedAt!).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} — no card needed, it’s already on file.
           </p>
         ) : !presenting && p.canCharge ? (
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <label htmlFor="charge-amount" className="sr-only">Amount in pounds</label>
-            <span className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm">
-              £<input id="charge-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-24 outline-none tabular-nums" />
-            </span>
-            <button type="button" disabled={pending || !live.finishedAt}
-              onClick={() => run(() => api({ op: 'charge', amountPence: Math.round(parseFloat(amount || '0') * 100) }))}
-              className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
-              Charge the saved card
-            </button>
-            {!live.finishedAt && <p className="w-full text-xs text-[var(--color-stone)]">Finish the treatment first — charging unlocks once the clock stops.</p>}
+          <div className="mt-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <label htmlFor="charge-amount" className="sr-only">Amount in pounds</label>
+              <span className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm">
+                £<input id="charge-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-24 outline-none tabular-nums" />
+              </span>
+              {/* How to take payment */}
+              <div className="flex items-center rounded-full border border-[var(--color-line)] p-0.5 text-sm" role="group" aria-label="Payment method">
+                {p.hasCardOnFile && <button type="button" onClick={() => { setMethod('card'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'card'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'card' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Card on file</button>}
+                <button type="button" onClick={() => { setMethod('link'); setPayErr(''); }} aria-pressed={method === 'link'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'link' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Payment link</button>
+                <button type="button" onClick={() => { setMethod('terminal'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'terminal'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'terminal' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Terminal</button>
+              </div>
+            </div>
+
+            {/* The action for the chosen method */}
+            <div className="mt-3">
+              {method === 'card' && (
+                <button type="button" disabled={pending || !live.finishedAt}
+                  onClick={() => run(() => api({ op: 'charge', amountPence }))}
+                  className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+                  Charge the saved card
+                </button>
+              )}
+              {method === 'link' && (linkQr ? (
+                <div className="flex items-center gap-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={linkQr.qr} alt="Payment QR code" width={120} height={120} className="rounded-[var(--radius-sm)]" />
+                  <div className="min-w-0 text-sm">
+                    <p className="font-medium">Scan to pay {money(amountPence)}</p>
+                    <p className="mt-1 text-[var(--color-stone)]">The client scans this with their phone camera. This screen updates to “Paid” automatically once it goes through.</p>
+                    {linkQr.url && <a href={linkQr.url} target="_blank" rel="noreferrer" className="mt-1 inline-block break-all text-xs text-[var(--color-gold)] underline">Open the payment page</a>}
+                  </div>
+                </div>
+              ) : (
+                <button type="button" disabled={payBusy || !live.finishedAt} onClick={makeLink}
+                  className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+                  {payBusy ? 'Creating link…' : 'Create a payment link'}
+                </button>
+              ))}
+              {method === 'terminal' && (
+                <div className="flex flex-wrap items-center gap-3">
+                  {p.terminals.length > 0 ? (
+                    <select value={deviceId} onChange={(e) => setDeviceId(e.target.value)} aria-label="Card terminal" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm">
+                      {p.terminals.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </select>
+                  ) : <p className="text-sm text-[var(--color-stone)]">No card terminal is registered — add one under Devices.</p>}
+                  <button type="button" disabled={payBusy || !live.finishedAt || p.terminals.length === 0} onClick={takeTerminal}
+                    className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+                    {payBusy ? 'Sending to terminal…' : 'Take payment on terminal'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {payErr && <p className="mt-3 text-sm text-[var(--color-blush-deep)]">{payErr}</p>}
+            {!live.finishedAt && <p className="mt-3 text-xs text-[var(--color-stone)]">Finish the treatment first — taking payment unlocks once the clock stops.</p>}
           </div>
         ) : !presenting ? (
           <p className="mt-3 text-sm text-[var(--color-stone)]">Awaiting payment — a team member with charging permission completes this.</p>
