@@ -71,6 +71,7 @@ export const navGroups: NavGroup[] = [
     { href: '/admin/sops', key: 'nav.sops', perm: 'sop.manage', keywords: 'procedures protocols policies standards' },
     { href: '/admin/consent', key: 'nav.consent', perm: 'settings.manage', keywords: 'forms agreement gdpr signature' },
     { href: '/admin/day-close', key: 'nav.dayclose', perm: 'dayclose.run', keywords: 'cash up end of day reconciliation till' },
+    { href: '/admin/facility', key: 'nav.facility', perm: 'facility.view', keywords: 'floor plan electrical plumbing equipment where things are maintenance knowledge base' },
   ] },
   { heading: 'nav.group.marketing', icon: 'marketing', items: [
     { href: '/admin/marketing', key: 'nav.marketing', exact: true, perm: 'campaigns.view', keywords: 'hub overview' },
