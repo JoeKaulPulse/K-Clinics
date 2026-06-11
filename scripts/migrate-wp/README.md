@@ -44,6 +44,26 @@ ever touches migration-owned rows (source-marked); hand-entered records are
 never modified. The manual, step-by-step commands below are for when you want
 to run one piece at a time.
 
+## If `vercel env pull` gives you blank values
+
+The production secrets are marked **sensitive** in Vercel — `env pull` writes
+them as empty strings and the dashboard can't reveal them either. In that case
+don't run the import locally at all: use the server-side runner, where the
+secrets exist at runtime. It's the same importers, spawned inside the deployed
+app against the committed dump (`/api/build/migrate-wp`, authed with
+`BOARD_QUEUE_TOKEN` like the build queue):
+
+```bash
+# preview a step (writes nothing) / commit + repair a step
+curl -X POST "$BASE_URL/api/build/migrate-wp" -H "Authorization: Bearer $BOARD_QUEUE_TOKEN" \
+  -H "Content-Type: application/json" -d '{"step":"clients"}'
+curl -X POST "$BASE_URL/api/build/migrate-wp" -H "Authorization: Bearer $BOARD_QUEUE_TOKEN" \
+  -H "Content-Type: application/json" -d '{"step":"clients","commit":true,"repair":true}'
+# steps, in order: clients → history → staff → clinical
+```
+
+Each commit run is recorded in the audit log (`DATA_IMPORTED`).
+
 ## Ground rules
 
 1. **WordPress is read-only.** Nothing is written to or deleted from the old site.

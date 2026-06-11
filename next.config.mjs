@@ -101,6 +101,17 @@ const nextConfig = {
       './*.tsbuildinfo',
     ],
   },
+  // The migration runner is the one function that DOES need the WordPress dump
+  // + import scripts at runtime (it spawns them against /tmp; see the route).
+  // bcryptjs is required by the spawned migrate-staff.mjs, not the route itself,
+  // so tracing can't discover it.
+  outputFileTracingIncludes: {
+    '/api/build/migrate-wp': [
+      './scripts/migrate-wp/*.mjs',
+      './scripts/migrate-wp/127_0_0_1.sql.zip',
+      './node_modules/bcryptjs/**/*',
+    ],
+  },
   // Exposed to client + server so image paths from /public can be prefixed with
   // the Pages sub-path. next/image does NOT prepend basePath to unoptimized
   // /public images in a static export, so we do it ourselves (see treatment-images).
