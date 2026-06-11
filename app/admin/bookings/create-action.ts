@@ -43,8 +43,12 @@ export async function createManualBooking(input: {
   if (!session || !sessionCan(session, 'bookings.manage')) {
     return { ok: false, error: 'You don’t have permission to create bookings.' };
   }
-  const treatment = getTreatment(input.treatmentSlug);
-  if (!treatment) return { ok: false, error: 'Unknown treatment.' };
+  // "Consultation" is a reserved pseudo-treatment (not in the marketing catalogue)
+  // so staff can book an in-clinic consultation appointment for a new client
+  // (BLD-203): 30 minutes, on-consultation (£0), any free room/clinician.
+  const isConsultation = input.treatmentSlug === 'consultation';
+  const treatment = isConsultation ? null : getTreatment(input.treatmentSlug);
+  if (!isConsultation && !treatment) return { ok: false, error: 'Unknown treatment.' };
   if (!input.startISO) return { ok: false, error: 'Choose a time.' };
   if (!input.clientId && (!input.email || !input.firstName)) return { ok: false, error: 'Name and email are required for a new client.' };
   const start = new Date(input.startISO);
@@ -55,21 +59,21 @@ export async function createManualBooking(input: {
   // When the booker picks one, use ITS duration/price and record a billing line
   // item; otherwise fall back to the category's generic duration + "from" price.
   const { durationMin: baseDuration, bufferMin } = bookingFor(input.treatmentSlug);
-  let durationMin = baseDuration;
+  let durationMin = isConsultation ? 30 : baseDuration;
   let pricePence: number | null = null;
-  let bookingTitle = treatment.title;
-  let itemLabel = treatment.title;
+  let bookingTitle = treatment?.title ?? 'Consultation';
+  let itemLabel = treatment?.title ?? 'Consultation';
   let chosenVariantId: string | null = null;
   const { getVariant, lowestPenceForTreatment } = await import('@/lib/services');
-  const variant = input.variantId ? await getVariant(input.variantId) : null;
-  if (variant && variant.service.treatmentSlug === input.treatmentSlug) {
+  const variant = !isConsultation && input.variantId ? await getVariant(input.variantId) : null;
+  if (variant && treatment && variant.service.treatmentSlug === input.treatmentSlug) {
     durationMin = variant.variant.durationMin || baseDuration;
     pricePence = variant.variant.pricePence;
     bookingTitle = `${treatment.title} — ${variant.variant.name}`;
     itemLabel = bookingTitle;
     chosenVariantId = variant.variant.id;
   } else {
-    pricePence = await lowestPenceForTreatment(input.treatmentSlug);
+    pricePence = isConsultation ? 0 : await lowestPenceForTreatment(input.treatmentSlug);
   }
   const end = new Date(start.getTime() + durationMin * 60000);
 

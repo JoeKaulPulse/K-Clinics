@@ -53,7 +53,12 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
       variantsBySlug.set(s.treatmentSlug, arr);
     }
   }
-  const treatmentsForBooking = bookableTreatments.map((tr) => ({ slug: tr.slug, title: tr.title, group: tr.group, variants: variantsBySlug.get(tr.slug) ?? [] }));
+  // "Consultation" — a bookable in-clinic consultation appointment for new clients
+  // (BLD-203). First group so it's the obvious default for new-client phone calls.
+  const treatmentsForBooking = [
+    { slug: 'consultation', title: 'Consultation', group: 'Consultation', variants: [] as { id: string; name: string; durationMin: number; pricePence: number }[] },
+    ...bookableTreatments.map((tr) => ({ slug: tr.slug, title: tr.title, group: tr.group, variants: variantsBySlug.get(tr.slug) ?? [] })),
+  ];
 
   const tabHref = (k: string) => {
     const p = new URLSearchParams();
