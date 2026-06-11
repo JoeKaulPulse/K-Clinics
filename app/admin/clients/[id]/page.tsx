@@ -31,6 +31,15 @@ import { MedicalFlagEditor } from '@/components/admin/MedicalFlagEditor';
 import { ClientTasks } from '@/components/admin/ClientTasks';
 import { DataPrivacy } from '@/components/admin/DataPrivacy';
 import { sessionCan } from '@/lib/auth';
+import { fmtClinicTime, fmtClinicDate } from '@/lib/clinic-time';
+
+const BK_BADGE: Record<string, string> = {
+  PENDING: 'bg-amber-100 text-amber-800',
+  CONFIRMED: 'bg-[color-mix(in_oklab,var(--color-jade)_14%,transparent)] text-[var(--color-jade)]',
+  COMPLETED: 'bg-[var(--color-ink)] text-[var(--color-porcelain)]',
+  CANCELLED: 'bg-[var(--color-bone)] text-[var(--color-stone-soft)]',
+  NO_SHOW: 'bg-[var(--color-blush)]/25 text-[var(--color-ink)]',
+};
 
 export const dynamic = 'force-dynamic';
 
@@ -72,6 +81,25 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
   }
 
   const can = await sessionPermissions();
+
+  // Appointments + per-client activity log. Consent state is summarised per
+  // booking (signed treatment consent on file?) so the team can drill back
+  // through a client's history from one place.
+  const bookingIds = c.bookings.map((b) => b.id);
+  const { db: dbc } = await import('@/lib/db');
+  const [consentRows, auditRows] = await Promise.all([
+    bookingIds.length
+      ? dbc.signedConsent.findMany({ where: { bookingId: { in: bookingIds }, kind: 'treatment', declined: false }, select: { bookingId: true } }).catch(() => [])
+      : Promise.resolve([]),
+    dbc.auditEvent.findMany({ where: { clientId: c.id }, orderBy: { createdAt: 'desc' }, take: 18, select: { id: true, action: true, actor: true, actorRole: true, summary: true, createdAt: true } }).catch(() => []),
+  ]);
+  const consentSet = new Set(consentRows.map((r) => r.bookingId));
+  const nowTs = new Date();
+  const inProgress = c.bookings.filter((b) => b.startedAt && !b.finishedAt);
+  const upcoming = c.bookings
+    .filter((b) => !(b.startedAt && !b.finishedAt) && b.startAt >= nowTs && (b.status === 'PENDING' || b.status === 'CONFIRMED'))
+    .sort((a, b) => +a.startAt - +b.startAt);
+  const pastBookings = c.bookings.filter((b) => !inProgress.includes(b) && !upcoming.includes(b)); // already desc by startAt
 
   // K Vision AI consultations (clinical — decrypt findings + photos for the clinician).
   const aiAnalyses: { id: string; createdAt: Date; summary: string | null; treatments: string[]; findings: { label: string; note: string; severity: string }[]; images: string[] }[] = [];
@@ -137,6 +165,61 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-10">
+        {/* Appointments — past / current / upcoming, with consent + insights */}
+        <section>
+          <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Appointments</h2>
+          {(() => {
+            const fmtPence = (p: number) => formatPrice(p);
+            const Row = ({ b }: { b: (typeof c.bookings)[number] }) => {
+              const cancelled = b.status === 'CANCELLED' || b.status === 'NO_SHOW';
+              const consentOk = consentSet.has(b.id);
+              return (
+                <Link href={`/admin/bookings/${b.id}`} className="block rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3.5 transition-colors hover:border-[var(--color-gold)]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{b.treatmentTitle}</p>
+                      <p className="mt-0.5 text-xs text-[var(--color-stone)]">
+                        {fmtClinicDate(b.startAt, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })} · {fmtClinicTime(b.startAt)}
+                        {b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}
+                      </p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide ${BK_BADGE[b.status] ?? 'bg-[var(--color-bone)]'}`}>{b.status.toLowerCase().replace('_', ' ')}</span>
+                  </div>
+                  {/* Per-appointment insights */}
+                  <div className="mt-2 flex flex-wrap gap-1.5 text-[0.65rem]">
+                    {b.arrivedAt && !b.finishedAt && <span className="rounded-full bg-[color-mix(in_oklab,var(--color-jade)_14%,transparent)] px-2 py-0.5 text-[var(--color-jade)]">✓ Arrived</span>}
+                    {b.startedAt && !b.finishedAt && <span className="rounded-full bg-[color-mix(in_oklab,var(--color-jade)_14%,transparent)] px-2 py-0.5 text-[var(--color-jade)]">In progress</span>}
+                    {!cancelled && (
+                      <span className={`rounded-full px-2 py-0.5 ${consentOk ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : 'bg-amber-100 text-amber-800'}`}>{consentOk ? 'Consent on file' : 'Consent outstanding'}</span>
+                    )}
+                    {b.status === 'COMPLETED' && b.actualMinutes != null && (
+                      <span className="rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-[var(--color-stone)]">{b.actualMinutes}m actual{b.durationMin ? ` · ${b.durationMin}m booked` : ''}</span>
+                    )}
+                    {b.status === 'COMPLETED' && b.pricePence > 0 && (
+                      <span className={`rounded-full px-2 py-0.5 ${b.chargedAt ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : 'bg-amber-100 text-amber-800'}`}>{b.chargedAt ? 'Charged' : 'Not charged'}</span>
+                    )}
+                  </div>
+                </Link>
+              );
+            };
+            const Group = ({ title, items, accent }: { title: string; items: typeof c.bookings; accent?: boolean }) =>
+              items.length === 0 ? null : (
+                <div>
+                  <p className={`mb-2 text-xs font-semibold uppercase tracking-[0.12em] ${accent ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-stone-soft)]'}`}>{title}</p>
+                  <div className="space-y-2">{items.map((b) => <Row key={b.id} b={b} />)}</div>
+                </div>
+              );
+            if (c.bookings.length === 0) return <p className="text-sm text-[var(--color-stone)]">No appointments yet.</p>;
+            return (
+              <div className="space-y-5">
+                <Group title="In progress now" items={inProgress} accent />
+                <Group title="Upcoming" items={upcoming} accent />
+                <Group title="Past" items={pastBookings} />
+              </div>
+            );
+          })()}
+        </section>
+
         <section>
           <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Timeline</h2>
           <div className="mb-4"><AddNote clientId={c.id} clinical={clinical} /></div>
@@ -370,6 +453,25 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
               ))}
             </div>
           </section>
+
+          {/* Activity log — audited actions on this client's record */}
+          {auditRows.length > 0 && (
+            <section>
+              <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Activity log</h2>
+              <ol className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
+                {auditRows.map((ev) => (
+                  <li key={ev.id} className="border-b border-[var(--color-line)] px-4 py-2.5 last:border-0">
+                    <p className="text-sm">{ev.summary}</p>
+                    <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">
+                      <span className="uppercase tracking-wide">{ev.action.toLowerCase().replace(/_/g, ' ')}</span>
+                      {' · '}{ev.actor}{ev.actorRole ? ` (${ev.actorRole.toLowerCase()})` : ''}
+                      {' · '}{new Date(ev.createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
 
           {sessionCan(session, 'clients.export') && <DataPrivacy clientId={c.id} canDelete={sessionCan(session, 'clients.delete')} />}
         </aside>
