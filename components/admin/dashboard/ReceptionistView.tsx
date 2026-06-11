@@ -4,6 +4,7 @@ import { sessionCan, type Session } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { bookableTreatments } from '@/lib/treatments';
 import { getRoomsForDay, getRoomPrepFor, clinicDay } from '@/lib/room-prep';
+import { fmtClinicTime } from '@/lib/clinic-time';
 import { DashWidget, StatTile } from './Widgets';
 import { ArrivalPrep, type NextArrival } from '@/components/admin/ArrivalPrep';
 import { ArrivalsBoard, type ArrivalRow } from '@/components/admin/rooms/ArrivalsBoard';
@@ -16,7 +17,7 @@ import { NewBookingButton } from '@/components/admin/NewBookingButton';
 // handoff, the live rooms board (set READY → clinician sees it), payments to take,
 // and new-booking / walk-in quick actions. Self-contained async server bundle.
 
-const fmtTime = (d: Date) => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+const fmtTime = fmtClinicTime;
 const fullName = (c: { firstName: string | null; lastName: string | null }) => [c.firstName, c.lastName].filter(Boolean).join(' ') || 'Client';
 
 export async function ReceptionistView({ session }: { session: Session }) {
