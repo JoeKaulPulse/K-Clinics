@@ -9,8 +9,9 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   // Detailed diagnostics (schema probes, secret presence, error messages) are
   // reconnaissance — only expose them to a caller holding the CRON_SECRET.
-  const reqUrl = new URL(req.url);
-  const provided = reqUrl.searchParams.get('secret') || (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+  // BLD-160: accept the secret ONLY via headers, never a ?secret= query param
+  // (query strings leak into Vercel function logs, CDN access logs and history).
+  const provided = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '') || req.headers.get('x-cron-secret') || '';
   const authed = Boolean(process.env.CRON_SECRET) && provided === process.env.CRON_SECRET;
 
   const report: Record<string, unknown> = {
