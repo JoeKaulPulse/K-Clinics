@@ -17,9 +17,9 @@ export default async function PosPage() {
   const rows = await db.product.findMany({
     where: { status: 'ACTIVE' },
     orderBy: [{ category: 'asc' }, { name: 'asc' }],
-    select: { id: true, name: true, pricePence: true, stockQty: true, trackInventory: true, ageRestricted: true, images: true, category: true },
+    select: { id: true, name: true, pricePence: true, stockQty: true, trackInventory: true, ageRestricted: true, images: true, category: true, barcode: true, sku: true },
   });
-  const products = rows.map((p) => ({ ...p, image: p.images[0] ?? null }));
+  const products = rows.map(({ images, ...p }) => ({ ...p, image: images[0] ?? null }));
 
   const can = await sessionPermissions();
   const locale = await getLocale();
