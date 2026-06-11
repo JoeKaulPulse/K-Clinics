@@ -13,11 +13,16 @@ later step) health/consent forms and history.
 
 ```bash
 # 0) one-time: pull, unzip the dump, and put your secrets in
-#    scripts/migrate-wp/.env (git-ignored). Easiest way:
+#    scripts/migrate-wp/.env (git-ignored). Easiest way (no install needed —
+#    npx fetches the Vercel CLI on the fly; note --environment=production,
+#    plain `env pull` would fetch development values):
 git pull
 unzip -o scripts/migrate-wp/127_0_0_1.sql.zip -d scripts/migrate-wp/data/
-vercel env pull scripts/migrate-wp/.env          # fills DATABASE_URL + keys
+npx vercel login <your-vercel-email>             # sends a verification email
+npx vercel link --yes --scope kaul-joe --project k-clinics
+npx vercel env pull --environment=production scripts/migrate-wp/.env
 #    …or create that .env by hand with DATABASE_URL=… and HEALTH_ENCRYPTION_KEY=…
+#    (values: vercel.com → k-clinics → Settings → Environment Variables)
 
 # 1) PREVIEW — writes nothing, shows the counts for all steps
 node scripts/migrate-wp/import-all.mjs
