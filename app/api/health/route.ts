@@ -9,8 +9,10 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   // Detailed diagnostics (schema probes, secret presence, error messages) are
   // reconnaissance — only expose them to a caller holding the CRON_SECRET.
-  const reqUrl = new URL(req.url);
-  const provided = reqUrl.searchParams.get('secret') || (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+  // BLD-160: accept the CRON_SECRET only via the Authorization header so it
+  // never appears in Vercel, CDN or browser logs. The ?secret= query-param path
+  // was removed — use `curl -H "Authorization: Bearer $CRON_SECRET" /api/health`.
+  const provided = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
   const authed = Boolean(process.env.CRON_SECRET) && provided === process.env.CRON_SECRET;
 
   const report: Record<string, unknown> = {

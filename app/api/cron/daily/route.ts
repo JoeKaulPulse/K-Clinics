@@ -123,5 +123,8 @@ export async function GET(req: Request) {
     await db.setting.upsert({ where: { key: 'cron_daily_last' }, update: { value: new Date().toISOString() }, create: { key: 'cron_daily_last', value: new Date().toISOString() } });
   } catch { /* non-fatal */ }
 
-  return NextResponse.json({ ok: true, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend, board });
+  // BLD-153: surface automation failures to monitoring — return ok:false when
+  // any automation failed so Vercel Cron and external monitors see a non-200
+  // signal rather than silently treating a broken run as successful.
+  return NextResponse.json({ ok: result.errors === 0, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend, board }, { status: result.errors === 0 ? 200 : 207 });
 }

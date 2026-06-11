@@ -25,13 +25,12 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== 'object') return NextResponse.json({ ok: false, error: 'Bad payload.' }, { status: 400 });
 
-  // yay's webhook offers an "Auth Token" field but doesn't pin its transport, so
-  // accept the token from the URL, the Authorization / X-Auth-Token headers, or
-  // the JSON body — whichever yay uses. Constant-time compared to the secret.
-  const url = new URL(req.url);
+  // BLD-160: accept the webhook secret only from the Authorization / X-Auth-Token
+  // headers or the JSON body — never the URL, so it never appears in Vercel or
+  // CDN logs. Configure yay's "Auth Token" as an X-Auth-Token header or send it
+  // in the JSON body as auth_token.
   const b = body as Record<string, unknown>;
-  const token = url.searchParams.get('token')
-    || (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')
+  const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')
     || req.headers.get('x-auth-token')
     || (typeof b.auth_token === 'string' ? b.auth_token : '')
     || (typeof b.token === 'string' ? b.token : '');

@@ -145,7 +145,7 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0,
           <p className="mt-1 text-sm text-[var(--color-stone)]">Your card is charged now for the voucher value.</p>
           <div className="mt-5">
             <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#a98a6d', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
-              <PayStep voucherId={voucherId} onDone={(c) => { setCode(c); setStage('done'); }} onError={setError} />
+              <PayStep voucherId={voucherId} clientSecret={clientSecret} onDone={(c) => { setCode(c); setStage('done'); }} onError={setError} />
             </Elements>
           </div>
           {error && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
@@ -155,7 +155,7 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0,
   );
 }
 
-function PayStep({ voucherId, onDone, onError }: { voucherId: string; onDone: (code: string) => void; onError: (e: string) => void }) {
+function PayStep({ voucherId, clientSecret, onDone, onError }: { voucherId: string; clientSecret: string; onDone: (code: string) => void; onError: (e: string) => void }) {
   const stripe = useStripe();
   const elements = useElements();
   const [busy, setBusy] = useState(false);
@@ -164,7 +164,7 @@ function PayStep({ voucherId, onDone, onError }: { voucherId: string; onDone: (c
     setBusy(true); onError('');
     const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
     if (error) { onError(error.message || 'Payment failed.'); setBusy(false); return; }
-    const res = await fetch('/api/gift-vouchers/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ voucherId }) });
+    const res = await fetch('/api/gift-vouchers/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ voucherId, clientSecret }) });
     const j = await res.json();
     if (j.ok) onDone(j.code || ''); else { onError(j.error || 'Could not confirm.'); setBusy(false); }
   }

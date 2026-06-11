@@ -64,6 +64,10 @@ export async function eraseClientData(clientId: string) {
     db.npsResponse.deleteMany({ where: { clientId } }),
     db.followUp.deleteMany({ where: { clientId } }),
     db.emailEvent.deleteMany({ where: { clientId } }),
+    // BLD-152: AppointmentSession stores session answers (aftercare_confirmed_by
+    // contains the client's typed name; startedBy stores staff email). Must be
+    // erased under Art. 17 — no financial retention basis for the session data.
+    db.appointmentSession.deleteMany({ where: { booking: { clientId } } }),
   ]);
   await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
   revalidatePath(`/admin/clients/${clientId}`);

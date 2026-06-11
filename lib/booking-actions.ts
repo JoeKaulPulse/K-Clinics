@@ -33,6 +33,9 @@ export async function chargeBooking(
   opts: { late?: boolean } = {},
 ): Promise<{ ok: boolean; requiresAction?: boolean; error?: string }> {
   if (amountPence <= 0) return { ok: true }; // nothing to charge (on-consultation £0)
+  // BLD-147: idempotency guard — two concurrent callers (staff retry + webhook)
+  // must not each create a PaymentIntent and double-charge the client.
+  if (booking.chargedAt) return { ok: true };
   if (!booking.stripeCustomerId || !booking.stripePaymentMethodId) {
     return { ok: false, error: 'No saved card for this booking.' };
   }

@@ -312,9 +312,11 @@ export function KioskSessionFlow({
                   {POSES[s.poseIdx]?.title ?? `Pose ${s.poseIdx + 1}`}
                 </figcaption>
                 {uploads < MAX_UPLOADS && (
+                  // BLD-150: min-h-9 + padding gives a WCAG 44px-equivalent tap
+                  // target on the kiosk handset (was ~16px underline-only text).
                   <button
                     onClick={() => { setRetakePose(s.poseIdx); setError(null); setStep('camera'); }}
-                    className="mt-1 text-xs text-[var(--color-gold-soft)] underline underline-offset-2"
+                    className="mt-1 inline-flex min-h-9 items-center rounded-full px-3 py-2 text-xs text-[var(--color-gold-soft)] underline underline-offset-2"
                   >
                     Retake
                   </button>
