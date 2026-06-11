@@ -9,13 +9,15 @@
 // Pure data + helpers — safe to import on client and server.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type Role = 'OWNER' | 'ADMIN' | 'PRACTITIONER' | 'FRONT_DESK' | 'STAFF';
+export type Role = 'OWNER' | 'ADMIN' | 'PRACTITIONER' | 'FRONT_DESK' | 'DEVELOPER' | 'CONTRACTOR' | 'STAFF';
 
 export const ROLES: { value: Role; label: string; description: string }[] = [
   { value: 'OWNER', label: 'Owner', description: 'Unrestricted access, including staff & access control.' },
   { value: 'ADMIN', label: 'Administrator', description: 'Full clinic operations and clinical records.' },
   { value: 'PRACTITIONER', label: 'Practitioner / Doctor', description: 'Clinical access — clients, bookings, health records.' },
   { value: 'FRONT_DESK', label: 'Front desk', description: 'Scheduling and client contact; no clinical health data.' },
+  { value: 'DEVELOPER', label: 'Developer', description: 'Build board, deploys and platform status only — no client or clinical data.' },
+  { value: 'CONTRACTOR', label: 'Contractor', description: 'Contracted tasks, time tracking and facility docs only — no client data.' },
   { value: 'STAFF', label: 'General staff', description: 'Limited read access to day-to-day operations.' },
 ];
 
@@ -156,6 +158,11 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     'dayclose.run',
     'build.view',
   ],
+  // PRJ-63: build/platform only — deliberately no client or clinical access.
+  DEVELOPER: ['dashboard.view', 'build.view', 'platform.status'],
+  // PRJ-63: minimal for now; contractor task / time-tracking / facility keys are
+  // added with those features (PRJ-63.6–63.9).
+  CONTRACTOR: ['dashboard.view'],
   STAFF: ['dashboard.view', 'bookings.view', 'consultations.view', 'clients.view', 'calendar.view', 'inventory.view', 'dayclose.run', 'build.view'],
 };
 
