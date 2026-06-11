@@ -16,8 +16,13 @@ export default async function ConsentPage() {
   const { ensureDefaultTemplates } = await import('@/lib/consent');
   await ensureDefaultTemplates();
   const { db } = await import('@/lib/db');
+  const { bookableTreatments } = await import('@/lib/treatments');
   const templates = await db.consentTemplate.findMany({ orderBy: { category: 'asc' } });
-  const rows: TemplateRow[] = templates.map((t) => ({ key: t.key, title: t.title, category: t.category, version: t.version, bodyMd: t.bodyMd, acknowledgements: t.acknowledgements, active: t.active }));
+  const rows: TemplateRow[] = templates.map((t) => ({ key: t.key, title: t.title, category: t.category, version: t.version, bodyMd: t.bodyMd, acknowledgements: t.acknowledgements ?? [], active: t.active, serviceSlugs: t.serviceSlugs ?? [], serviceGroups: t.serviceGroups ?? [] }));
+
+  // Services + their marketing groups, for the assignment pickers.
+  const services = bookableTreatments.map((t) => ({ slug: t.slug, title: t.title, group: t.group })).sort((a, b) => a.group.localeCompare(b.group) || a.title.localeCompare(b.title));
+  const groups = Array.from(new Set(services.map((s) => s.group))).sort();
 
   const can = await sessionPermissions();
   const locale = await getLocale();
@@ -30,7 +35,7 @@ export default async function ConsentPage() {
         <strong> Review the wording with your clinical lead and insurer before going live.</strong>
       </p>
       <div className="mt-8">
-        <ConsentTemplatesManager rows={rows} />
+        <ConsentTemplatesManager rows={rows} services={services} groups={groups} />
       </div>
     </AdminShell>
   );

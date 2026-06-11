@@ -33,9 +33,9 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
   const sop = await getSop(b.treatmentSlug);
   const sopSteps = parseSopSteps(sop.content);
 
-  const { categoryForTreatment, ensureDefaultTemplates, isLaserTreatment } = await import('@/lib/consent');
+  const { templateKeyForTreatment, ensureDefaultTemplates, isLaserTreatment } = await import('@/lib/consent');
   await ensureDefaultTemplates();
-  const consentKey = await categoryForTreatment(b.treatmentSlug);
+  const consentKey = await templateKeyForTreatment(b.treatmentSlug);
   const isLaser = isLaserTreatment(b.treatmentSlug);
 
   const [consentTemplate, pendingConsents] = await Promise.all([

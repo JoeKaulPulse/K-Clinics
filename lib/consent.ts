@@ -130,6 +130,29 @@ export async function categoryForTreatment(slug: string): Promise<ConsentCategor
   return 'general';
 }
 
+/** The consent template KEY for a treatment, honouring admin assignments first.
+ *  Resolution order: a template explicitly assigned this service slug (most
+ *  specific) → a template assigned the treatment's marketing group → the
+ *  built-in category logic (categoryForTreatment) as a safe fallback. Only
+ *  active templates are considered for assignment. */
+export async function templateKeyForTreatment(slug: string): Promise<string> {
+  try {
+    const { db } = await import('@/lib/db');
+    const { getTreatment } = await import('@/lib/treatments');
+    const group = getTreatment(slug)?.group;
+    const candidates = await db.consentTemplate.findMany({
+      where: { active: true, OR: [{ serviceSlugs: { has: slug } }, ...(group ? [{ serviceGroups: { has: group } }] : [])] },
+      select: { key: true, serviceSlugs: true, serviceGroups: true },
+    });
+    // Service-slug match is more specific than a group match.
+    const bySlug = candidates.find((c) => (c.serviceSlugs ?? []).includes(slug));
+    if (bySlug) return bySlug.key;
+    const byGroup = group ? candidates.find((c) => (c.serviceGroups ?? []).includes(group)) : undefined;
+    if (byGroup) return byGroup.key;
+  } catch { /* fall back below */ }
+  return categoryForTreatment(slug);
+}
+
 export const isLaserTreatment = (slug: string) => /laser|tattoo|ipl/i.test(slug);
 
 /** Canonical string of exactly what was signed → SHA-256 (the certificate id). */
