@@ -21,6 +21,7 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({
     'Aesthetic dentistry coming soon to KClinics, Islington — porcelain veneers, teeth whitening, composite bonding, dental implants and specialist care. Register your interest.',
   path: '/dentistry',
   keywords: ['cosmetic dentist London', 'dental clinic Islington', 'veneers London', 'dental implants London'],
+  noindex: !site.dentistryLive,
 });
 
 export default async function DentistryPage() {

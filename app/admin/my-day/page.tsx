@@ -8,6 +8,8 @@ import { ONBOARDING } from '@/lib/onboarding-steps';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { getLocale } from '@/lib/locale';
 import { translator } from '@/lib/i18n';
+import { getWeather, uvBand } from '@/lib/weather';
+import { LiveClock } from '@/components/admin/DashboardLive';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,10 +96,13 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
   const t = translator(locale);
   const uk = locale === 'uk';
 
+  const weather = await getWeather();
+  const uv = weather?.uvMax != null ? uvBand(weather.uvMax) : null;
+
   const totalMin = mine.reduce((s, b) => s + b.durationMin, 0);
   const completed = mine.filter((b) => b.status === 'COMPLETED').length;
 
-  const fmtTime = (x: Date) => new Date(x).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const fmtTime = (x: Date) => new Date(x).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
   const name = (c: { firstName: string | null; lastName: string | null }) => [c.firstName, c.lastName].filter(Boolean).join(' ') || '—';
 
   const Row = ({ b, showClinician }: { b: (typeof mine)[number]; showClinician?: boolean }) => (
@@ -132,17 +137,32 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
 
   return (
     <AdminShell user={session.email} can={can} locale={locale}>
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="font-[family-name:var(--font-display)] text-3xl">{t('nav.myday')}</h1>
           <p className="mt-1 text-sm text-[var(--color-stone)]">
             {day.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}{isToday ? ` · ${uk ? 'сьогодні' : 'today'}` : ''}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href={`/admin/my-day?d=${iso(prev)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm hover:bg-[var(--color-bone)]">←</Link>
-          <Link href="/admin/my-day" className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:bg-[var(--color-bone)]">{uk ? 'Сьогодні' : 'Today'}</Link>
-          <Link href={`/admin/my-day?d=${iso(next)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm hover:bg-[var(--color-bone)]">→</Link>
+        <div className="flex flex-wrap items-center gap-3">
+          {isToday && (
+            <div className="flex items-center gap-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5">
+              <LiveClock />
+              {weather && (
+                <div className="border-l border-[var(--color-line)] pl-4 leading-tight">
+                  <p className="text-sm font-medium text-[var(--color-ink)]"><span className="tabular-nums">{weather.tempC}°</span> <span className="font-normal text-[var(--color-stone)]">{weather.label}</span></p>
+                  {weather.uvMax != null && uv && (
+                    <p className="text-xs text-[var(--color-stone)]">UV <span className="tabular-nums">{weather.uvMax}</span> · <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{uv.label}</span></p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <Link href={`/admin/my-day?d=${iso(prev)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm hover:bg-[var(--color-bone)]">←</Link>
+            <Link href="/admin/my-day" className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:bg-[var(--color-bone)]">{uk ? 'Сьогодні' : 'Today'}</Link>
+            <Link href={`/admin/my-day?d=${iso(next)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm hover:bg-[var(--color-bone)]">→</Link>
+          </div>
         </div>
       </div>
 

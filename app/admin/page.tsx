@@ -124,7 +124,7 @@ export default async function AdminOverview() {
   // ── Front-of-house essentials: local weather/UV + the next client arrival ──
   const weather = await getWeather();
   const uv = weather?.uvMax != null ? uvBand(weather.uvMax) : null;
-  const treatments = bookableTreatments.map((t) => ({ slug: t.slug, title: t.title }));
+  const treatments = bookableTreatments.map((t) => ({ slug: t.slug, title: t.title, group: t.group }));
   const endOfToday = new Date(now); endOfToday.setHours(23, 59, 59, 999);
   const nextBk = canBookings
     ? await db.booking.findFirst({
@@ -144,7 +144,7 @@ export default async function AdminOverview() {
     clientName: [nextBk.client.firstName, nextBk.client.lastName].filter(Boolean).join(' ') || 'Client',
     treatment: nextBk.treatmentTitle,
     startIso: nextBk.startAt.toISOString(),
-    timeLabel: nextBk.startAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + (nextBk.startAt <= endOfToday ? '' : ` · ${nextBk.startAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`),
+    timeLabel: nextBk.startAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) + (nextBk.startAt <= endOfToday ? '' : ` · ${nextBk.startAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Europe/London' })}`),
     practitioner: nextBk.practitioner?.name ?? null,
     room: nextRoom?.name ?? null,
     drinks: nextBk.refreshments ?? [],
