@@ -31,6 +31,7 @@ export const DICT: Record<string, Entry> = {
   'nav.overview': { en: 'Overview', uk: 'Огляд' },
   'nav.myday': { en: 'My day', uk: 'Мій день' },
   'nav.facility': { en: 'Facility', uk: 'Приміщення' },
+  'nav.healthforms': { en: 'Health forms', uk: 'Медичні форми' },
   'nav.tasks': { en: 'Tasks', uk: 'Завдання' },
   'nav.calendar': { en: 'Calendar', uk: 'Календар' },
   'nav.bookings': { en: 'Bookings', uk: 'Записи' },

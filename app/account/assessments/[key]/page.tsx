@@ -17,7 +17,11 @@ export default async function AssessmentPage({ params }: { params: Promise<{ key
   const client = await getCurrentClient();
   if (!client) redirect('/account/login');
 
+  // Append any admin-managed extra questions (BLD-190) before localising.
+  const { withCustomQuestions } = await import('@/lib/health-forms');
+  const merged = await withCustomQuestions(q);
+
   // Show the form in the client's language; stored answer values stay canonical.
   const locale = client.locale === 'uk' ? 'uk' : 'en';
-  return <AssessmentRunner q={localizeQuestionnaire(q, locale)} locale={locale} />;
+  return <AssessmentRunner q={localizeQuestionnaire(merged, locale)} locale={locale} />;
 }
