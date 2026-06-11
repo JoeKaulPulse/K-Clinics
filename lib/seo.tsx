@@ -86,7 +86,7 @@ export async function pageMeta({
 export function organizationLd() {
   return {
     '@context': 'https://schema.org',
-    '@type': ['MedicalClinic', 'Dentist', 'HealthAndBeautyBusiness'],
+    '@type': ['MedicalClinic', ...(site.dentistryLive ? ['Dentist'] : []), 'HealthAndBeautyBusiness'],
     '@id': `${base}/#clinic`,
     name: site.name,
     legalName: site.legalName,
@@ -124,7 +124,7 @@ export function organizationLd() {
     areaServed: londonAreas(),
     currenciesAccepted: 'GBP',
     paymentAccepted: 'Cash, Credit Card, Debit Card, Apple Pay, Google Pay',
-    medicalSpecialty: ['Dermatology', 'CosmeticDentistry', 'PlasticSurgery'],
+    medicalSpecialty: ['Dermatology', ...(site.dentistryLive ? ['CosmeticDentistry'] : [])],
     availableService: [
       { '@type': 'MedicalProcedure', name: 'Laser Hair Removal' },
       { '@type': 'MedicalProcedure', name: 'Anti-Wrinkle Injections' },

@@ -59,6 +59,7 @@ async function ensureDump(): Promise<{ bytes: number; cached: boolean }> {
 }
 
 export async function GET(req: Request) {
+  if (process.env.VERCEL_ENV === 'production') return NextResponse.json({ ok: false, error: 'Migration endpoint disabled in production.' }, { status: 403 });
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'CRM disabled' }, { status: 503 });
   if (!tokenOk(req)) return NextResponse.json({ ok: false, error: 'Unauthorised' }, { status: 401 });
   const zip = path.join(process.cwd(), 'scripts/migrate-wp', DUMP_ZIP);
@@ -73,6 +74,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  if (process.env.VERCEL_ENV === 'production') return NextResponse.json({ ok: false, error: 'Migration endpoint disabled in production.' }, { status: 403 });
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'CRM disabled' }, { status: 503 });
   if (!process.env.BOARD_QUEUE_TOKEN) return NextResponse.json({ ok: false, error: 'Queue token not configured.' }, { status: 503 });
   if (!tokenOk(req)) return NextResponse.json({ ok: false, error: 'Unauthorised' }, { status: 401 });

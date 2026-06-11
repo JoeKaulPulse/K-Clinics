@@ -59,6 +59,7 @@ export async function exchangeCodeForStaff(code: string, staffId: string): Promi
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    signal: AbortSignal.timeout(10_000),
     body: new URLSearchParams({
       code,
       client_id: process.env.GOOGLE_CLIENT_ID!,
@@ -78,6 +79,7 @@ async function accessToken(refreshToken: string): Promise<string | null> {
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    signal: AbortSignal.timeout(10_000),
     body: new URLSearchParams({
       refresh_token: refreshToken,
       client_id: process.env.GOOGLE_CLIENT_ID!,
@@ -104,7 +106,7 @@ export async function syncStaffCalendar(staffId: string, days = 60): Promise<{ o
   const timeMax = new Date(Date.now() + days * 864e5).toISOString();
   const calId = encodeURIComponent(staff.googleCalendarId || 'primary');
   const url = `https://www.googleapis.com/calendar/v3/calendars/${calId}/events?timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime&maxResults=250`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000) });
   if (!res.ok) return { ok: false, imported: 0, error: `Calendar fetch ${res.status}` };
   const data = (await res.json()) as { items?: { id: string; status?: string; transparency?: string; start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string }; summary?: string }[] };
 

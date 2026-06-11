@@ -113,7 +113,7 @@ function Card({ m }: { m: TeamMember }) {
       </div>
 
       {m.rating != null && <div className="mt-4"><Stars rating={m.rating} count={m.reviewCount} /></div>}
-      {m.credentials && <p className="mt-3 text-xs text-[var(--color-stone-soft)]">{m.credentials}</p>}
+      {m.credentials && <p className="mt-3 text-xs text-[var(--color-stone)]">{m.credentials}</p>}
       {m.bio && <p className="mt-3 flex-1 text-sm text-[var(--color-ink-soft)]">{m.bio}</p>}
 
       {m.services.length > 0 && (

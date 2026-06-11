@@ -121,6 +121,10 @@ export async function POST(req: Request) {
     }
   } catch (e) {
     console.error('webhook handler error', e);
+    // Return 500 for revenue-critical events so Stripe retries rather than
+    // silently dropping the event on a transient DB failure.
+    const critical = event.type === 'payment_intent.succeeded' || event.type === 'charge.refunded';
+    if (critical) return NextResponse.json({ received: false, error: 'Handler failed' }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });

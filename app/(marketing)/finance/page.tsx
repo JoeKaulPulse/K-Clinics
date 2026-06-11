@@ -69,7 +69,7 @@ export default async function FinancePage() {
               <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> Pay in interest-free instalments over a few weeks or months.</li>
               <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> A soft check at sign-up — your treatment plan stays exactly the same.</li>
             </ul>
-            <p className="mt-6 text-xs text-[var(--color-stone-soft)]">
+            <p className="mt-6 text-xs text-[var(--color-stone)]">
               Buy Now, Pay Later is provided by Clearpay and Klarna, not by KClinics. Subject to status and eligibility; 18+, UK residents. Missed payments may affect your ability to use these services and could incur fees charged by the provider. Please review each provider’s terms before you commit.
             </p>
           </Reveal>
@@ -79,7 +79,7 @@ export default async function FinancePage() {
               <p className="mt-2 text-sm text-[var(--color-stone)]">A £400 course of treatment</p>
               <p className="mt-6 font-[family-name:var(--font-display)] text-5xl text-gold-gradient">4 × £100</p>
               <p className="mt-2 text-sm text-[var(--color-stone)]">interest-free, paid fortnightly with Clearpay</p>
-              <p className="mt-6 text-xs text-[var(--color-stone-soft)]">Illustrative only. Actual instalments depend on the provider, your basket and eligibility.</p>
+              <p className="mt-6 text-xs text-[var(--color-stone)]">Illustrative only. Actual instalments depend on the provider, your basket and eligibility.</p>
               <div className="mt-7"><Button href="/book" variant="gold">Book & choose your plan <ArrowIcon /></Button></div>
             </div>
           </Reveal>

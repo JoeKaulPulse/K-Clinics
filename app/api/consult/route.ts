@@ -87,7 +87,7 @@ export async function POST(req: Request) {
         clientId: client.id,
         type: 'SYSTEM',
         summary: 'Consultation request submitted via website',
-        detail: data.message || null,
+        detail: data.message ? encClinical(data.message) : null,
       },
     });
 

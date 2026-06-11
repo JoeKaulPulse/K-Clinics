@@ -180,7 +180,7 @@ export async function refundBooking(
       payment_intent: booking.chargePaymentIntentId,
       amount,
       metadata: { bookingId: booking.id, reason: (opts.reason || '').slice(0, 200) },
-    });
+    }, { idempotencyKey: `refund-${booking.id}-${amount}` });
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Refund failed at Stripe.' };
   }
