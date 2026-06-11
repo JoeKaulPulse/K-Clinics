@@ -204,6 +204,31 @@ export async function POST(req: Request) {
       return ok();
     }
 
+    // Record a sale settled OUTSIDE our card rails — today, Treatwell (BLD-200).
+    // No card is charged; we mark the booking paid (so the session/finance see it
+    // as settled), tag the channel for reconciliation, award loyalty and audit it.
+    // Stripe receipt + Xero are intentionally skipped — the external platform
+    // owns that side. (A migration nudge to book direct is shown at checkout.)
+    case 'external': {
+      const { sessionCan } = await import('@/lib/auth');
+      if (!sessionCan(session, 'bookings.charge')) return bad('You don’t have permission to take payments.', 403);
+      const amountPence = Math.round(Number(body.amountPence) || 0);
+      if (amountPence <= 0) return bad('Enter an amount.');
+      const channel = String(body.channel || 'external').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 24) || 'external';
+      const updated = await db.booking.updateMany({
+        where: { id: bookingId, chargedAt: null },
+        data: { chargedPence: amountPence, chargedAt: new Date(), chargePaymentIntentId: `ext_${channel}` },
+      });
+      if (updated.count === 0) return bad('This booking is already paid.');
+      try { const { awardClientSpend } = await import('@/lib/client-loyalty'); await awardClientSpend(bookingId); } catch { /* non-fatal */ }
+      try {
+        const { logAudit } = await import('@/lib/audit');
+        const label = channel === 'treatwell' ? 'Treatwell' : channel;
+        await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, summary: `Paid via ${label} (£${(amountPence / 100).toFixed(2)}) — recorded externally, no card charged`, bookingId, clientId: booking.clientId, meta: { channel, external: true } });
+      } catch { /* non-fatal */ }
+      return ok();
+    }
+
     // Next visit: create the follow-on booking for the same treatment, card
     // already on file. Availability, practitioner/room assignment and the
     // overlap re-check go through the same engine + Serializable transaction
