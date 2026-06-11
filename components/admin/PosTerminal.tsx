@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 
-type P = { id: string; name: string; pricePence: number; stockQty: number; trackInventory: boolean; ageRestricted: boolean; image: string | null; category: string | null };
+type P = { id: string; name: string; pricePence: number; stockQty: number; trackInventory: boolean; ageRestricted: boolean; image: string | null; category: string | null; barcode: string | null; sku: string | null };
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
 
 export function PosTerminal({ products }: { products: P[] }) {
@@ -15,14 +15,29 @@ export function PosTerminal({ products }: { products: P[] }) {
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return products.filter((p) => !s || p.name.toLowerCase().includes(s) || (p.category || '').toLowerCase().includes(s));
+    return products.filter((p) => !s || p.name.toLowerCase().includes(s) || (p.category || '').toLowerCase().includes(s) || (p.barcode || '').toLowerCase().includes(s) || (p.sku || '').toLowerCase().includes(s));
   }, [products, q]);
   const byId = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
+  // BLD-201: scan-to-sell — barcode scanners type the code + Enter (keyboard
+  // wedge), so an exact barcode/SKU match (or a single search hit) adds to the cart.
+  const byCode = useMemo(() => {
+    const m = new Map<string, P>();
+    for (const p of products) { if (p.barcode) m.set(p.barcode.trim().toLowerCase(), p); if (p.sku) m.set(p.sku.trim().toLowerCase(), p); }
+    return m;
+  }, [products]);
   const lines = Object.entries(cart).map(([id, qty]) => ({ p: byId.get(id)!, qty })).filter((l) => l.p);
   const total = lines.reduce((s, l) => s + l.p.pricePence * l.qty, 0);
   const needAge = lines.some((l) => l.p.ageRestricted);
 
   const add = (id: string) => setCart((c) => ({ ...c, [id]: (c[id] || 0) + 1 }));
+  function onScan(e: { key: string }) {
+    if (e.key !== 'Enter') return;
+    const code = q.trim().toLowerCase();
+    if (!code) return;
+    const hit = byCode.get(code) || (filtered.length === 1 ? filtered[0] : null);
+    if (hit && !(hit.trackInventory && hit.stockQty <= 0)) { add(hit.id); setQ(''); setStatus(`Added ${hit.name}`); }
+    else setStatus('No product matched that scan.');
+  }
   const sub = (id: string) => setCart((c) => { const n = (c[id] || 0) - 1; const next = { ...c }; if (n <= 0) delete next[id]; else next[id] = n; return next; });
   const clear = () => { setCart({}); setStage('shop'); setPay(null); setStatus(''); };
 
@@ -67,7 +82,7 @@ export function PosTerminal({ products }: { products: P[] }) {
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
       {/* Products */}
       <div>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search products…" className="mb-4 w-full rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-5 py-3 outline-none focus:border-[var(--color-gold)]" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onScan} autoFocus placeholder="Scan a barcode, or search products…" aria-label="Scan barcode or search products" className="mb-4 w-full rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-5 py-3 outline-none focus:border-[var(--color-gold)]" />
         {products.length === 0 ? (
           <p className="text-sm text-[var(--color-stone)]">No active products yet. Add them in Catalogue → Products.</p>
         ) : (
