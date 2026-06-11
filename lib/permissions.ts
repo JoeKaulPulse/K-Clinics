@@ -113,6 +113,10 @@ export const PERMISSIONS: Permission[] = [
   // Facility (PRJ-63)
   { key: 'facility.view', group: 'Facility', label: 'View facility info', description: 'See floor/electrical/plumbing plans, equipment locations and where-to-find-things guides.' },
   { key: 'facility.manage', group: 'Facility', label: 'Manage facility info', description: 'Upload and organise facility plans, equipment guides and instructions.' },
+
+  // Contractor tasks (PRJ-63)
+  { key: 'contractor.tasks.view', group: 'Facility', label: 'View contracted tasks', description: 'See contracted work assigned to you (maintenance, fit-out, jobs).' },
+  { key: 'contractor.tasks.manage', group: 'Facility', label: 'Assign contracted tasks', description: 'Create, assign and track contractor tasks.' },
 ];
 
 export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
@@ -171,7 +175,7 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
   DEVELOPER: ['dashboard.view', 'build.view', 'platform.status'],
   // PRJ-63: minimal for now; contractor task / time-tracking / facility keys are
   // added with those features (PRJ-63.6–63.9).
-  CONTRACTOR: ['dashboard.view', 'facility.view'],
+  CONTRACTOR: ['dashboard.view', 'facility.view', 'contractor.tasks.view'],
   STAFF: ['dashboard.view', 'bookings.view', 'consultations.view', 'clients.view', 'calendar.view', 'inventory.view', 'dayclose.run', 'build.view', 'facility.view'],
 };
 

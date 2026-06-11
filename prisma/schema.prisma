@@ -947,6 +947,7 @@ model AdminUser {
   redemptions  RewardRedemption[]
   notifications StaffNotification[]
   timeEntries  TimeEntry[]
+  contractorTasks ContractorTask[] @relation("ContractorTaskAssignee")
 }
 
 // PRJ-63 — staff time tracking. A TimeEntry is an open/closed interval of either
@@ -1002,6 +1003,32 @@ model FacilityDoc {
 
   @@index([type, order])
   @@index([locationId])
+}
+
+// PRJ-63 — contracted work assigned to a contractor (maintenance, fit-out, jobs).
+// No client/clinical/financial data. Additive: new enum + new table.
+enum ContractorTaskStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+}
+
+model ContractorTask {
+  id          String               @id @default(cuid())
+  title       String
+  description String?
+  status      ContractorTaskStatus @default(OPEN)
+  assignee    AdminUser?           @relation("ContractorTaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  assigneeId  String?
+  dueAt       DateTime?
+  locationId  String?              // optional scope tag (Location.id)
+  createdBy   String?              // staff email who assigned it
+  completedAt DateTime?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([assigneeId, status])
+  @@index([status, dueAt])
 }
 
 // WebAuthn passkeys (platform authenticators — Face ID / Touch ID / Windows

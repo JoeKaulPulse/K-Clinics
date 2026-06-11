@@ -88,7 +88,7 @@ export async function ReceptionistView({ session }: { session: Session }) {
     // allergies / medicalFlag intentionally omitted — front-of-house sees no clinical data.
   } : null;
 
-  const treatments = bookableTreatments.map((t) => ({ slug: t.slug, title: t.title }));
+  const treatments = bookableTreatments.map((t) => ({ slug: t.slug, title: t.title, group: t.group }));
   const arrivedCount = arrivals.filter((a) => a.arrived && !a.done).length;
   const toCome = arrivals.filter((a) => !a.done).length;
 

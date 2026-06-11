@@ -9,6 +9,7 @@ import { OnboardingHost } from '@/components/onboarding/OnboardingHost';
 import { ONBOARDING } from '@/lib/onboarding-steps';
 import { getLocale } from '@/lib/locale';
 import { getWeather, uvBand } from '@/lib/weather';
+import { ClockInOut } from '@/components/admin/ClockInOut';
 import { fmtClinicTime, fmtClinicDate } from '@/lib/clinic-time';
 import { LiveClock } from '@/components/admin/DashboardLive';
 import { ArrivalPrep, type NextArrival } from '@/components/admin/ArrivalPrep';
@@ -20,6 +21,7 @@ import { ScaffoldView } from '@/components/admin/dashboard/ScaffoldView';
 import { ClinicianView } from '@/components/admin/dashboard/ClinicianView';
 import { ReceptionistView } from '@/components/admin/dashboard/ReceptionistView';
 import { DeveloperView } from '@/components/admin/dashboard/DeveloperView';
+import { ContractorView } from '@/components/admin/dashboard/ContractorView';
 import { RoomPrepStatus } from '@/components/admin/rooms/RoomPrepStatus';
 
 export const dynamic = 'force-dynamic';
@@ -44,7 +46,7 @@ export default async function AdminOverview() {
   //    unbuilt view lands on its scaffold.
   const role = session?.role ?? 'STAFF';
   const view: DashboardView = resolveView(role, meProf?.preferredDashboardView);
-  const BUILT_VIEWS: DashboardView[] = ['admin', 'clinician', 'reception', 'developer'];
+  const BUILT_VIEWS: DashboardView[] = ['admin', 'clinician', 'reception', 'developer', 'contractor'];
   const renderedView: DashboardView = BUILT_VIEWS.includes(view) ? view : canSwitchViews(role) ? view : 'admin';
 
   // Time-aware greeting in clinic-local (London) time — the server may run in UTC.
@@ -63,16 +65,29 @@ export default async function AdminOverview() {
   // (built once here so the role views below get it too, not just the overview).
   const weather = await getWeather();
   const uv = weather?.uvMax != null ? uvBand(weather.uvMax) : null;
+  // Clock-in / lunch-break is available from every view, not just My day.
+  const clock = session ? await (await import('@/lib/time-tracking')).timeStatus(session.sub).catch(() => null) : null;
   const clockWeather = (
-    <div className="flex items-center gap-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5">
-      <LiveClock />
-      {weather && (
-        <div className="border-l border-[var(--color-line)] pl-4 leading-tight">
-          <p className="text-sm font-medium text-[var(--color-ink)]"><span className="tabular-nums">{weather.tempC}°</span> <span className="font-normal text-[var(--color-stone)]">{weather.label}</span></p>
-          {weather.uvMax != null && uv && (
-            <p className="text-xs text-[var(--color-stone)]">UV <span className="tabular-nums">{weather.uvMax}</span> · <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{uv.label}</span></p>
-          )}
-        </div>
+    <div className="flex flex-col items-stretch gap-2 sm:min-w-[16rem]">
+      <div className="flex items-center gap-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5">
+        <LiveClock />
+        {weather && (
+          <div className="border-l border-[var(--color-line)] pl-4 leading-tight">
+            <p className="text-sm font-medium text-[var(--color-ink)]"><span className="tabular-nums">{weather.tempC}°</span> <span className="font-normal text-[var(--color-stone)]">{weather.label}</span></p>
+            {weather.uvMax != null && uv && (
+              <p className="text-xs text-[var(--color-stone)]">UV <span className="tabular-nums">{weather.uvMax}</span> · <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{uv.label}</span></p>
+            )}
+          </div>
+        )}
+      </div>
+      {clock && (
+        <ClockInOut
+          onShift={clock.onShift}
+          onBreak={clock.onBreak}
+          shiftStartIso={clock.shiftStart ? clock.shiftStart.toISOString() : null}
+          workedTodayMin={clock.workedTodayMin}
+          breakTodayMin={clock.breakTodayMin}
+        />
       )}
     </div>
   );
@@ -88,6 +103,7 @@ export default async function AdminOverview() {
           {renderedView === 'clinician' && session ? <ClinicianView session={session} />
             : renderedView === 'reception' && session ? <ReceptionistView session={session} />
             : renderedView === 'developer' && session ? <DeveloperView session={session} />
+            : renderedView === 'contractor' && session ? <ContractorView session={session} />
             : <ScaffoldView view={renderedView} />}
         </DashboardShell>
         {staffOnb && <OnboardingHost pending={staffOnb.pending} title={ONBOARDING.staff.title} intro={ONBOARDING.staff.intro} steps={ONBOARDING.staff.steps} initial={staffOnb.initial} endpoint={ONBOARDING.staff.endpoint} />}
@@ -179,7 +195,7 @@ export default async function AdminOverview() {
   const locale = await getLocale();
 
   // ── Front-of-house essentials: the next client arrival (clock/weather above) ──
-  const treatments = bookableTreatments.map((t) => ({ slug: t.slug, title: t.title }));
+  const treatments = bookableTreatments.map((t) => ({ slug: t.slug, title: t.title, group: t.group }));
   const endOfToday = new Date(now); endOfToday.setHours(23, 59, 59, 999);
   const nextBk = canBookings
     ? await db.booking.findFirst({
