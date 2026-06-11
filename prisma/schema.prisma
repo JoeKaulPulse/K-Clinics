@@ -2775,6 +2775,7 @@ enum KioskStatus {
 model KioskSession {
   id         String       @id @default(cuid())
   token      String       @unique
+  secret     String?      // BLD-159: capability secret carried in the QR (?s=); required to read/write the live camera feed
   status     KioskStatus  @default(ACTIVE)
   ipHash     String?
   photoUrl   String?      // kept for back-compat with the single-photo v1 flow

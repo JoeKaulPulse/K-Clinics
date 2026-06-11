@@ -30,11 +30,13 @@ const ANALYZING_LINES = [
 // the classic single file-input capture when the camera is unavailable.
 export function KioskSessionFlow({
   token,
+  secret,
   sessionId: _sessionId,
   initialStatus,
   initialResultId,
 }: {
   token: string;
+  secret?: string;
   sessionId: string;
   initialStatus: string;
   initialResultId: string | null;
@@ -277,6 +279,7 @@ export function KioskSessionFlow({
       {step === 'camera' && (
         <CameraCapture
           token={token}
+          secret={secret}
           startPose={retakePose ?? 0}
           singlePose={retakePose != null}
           uploadsUsed={uploads}

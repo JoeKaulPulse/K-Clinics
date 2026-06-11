@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { secretMatches } from '@/lib/kiosk';
 import { FRAME_MAX_CHARS, FRAME_MIN_INTERVAL_MS, FRAME_PREFIX, FRAME_STAGES } from '@/lib/kiosk-live';
 
 export const runtime = 'nodejs';
@@ -27,9 +28,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
 
   const session = await db.kioskSession.findUnique({
     where: { token },
-    select: { id: true, status: true, stage: true, expiresAt: true, liveFrameAt: true },
+    select: { id: true, secret: true, status: true, stage: true, expiresAt: true, liveFrameAt: true },
   });
   if (!session) return NextResponse.json({ ok: false, error: 'not_found' }, { status: 404 });
+  // BLD-159: only the paired phone (which has the QR secret) may write frames.
+  const provided = new URL(req.url).searchParams.get('s') ?? body?.s;
+  if (!secretMatches(session.secret, typeof provided === 'string' ? provided : null)) {
+    return NextResponse.json({ ok: false, error: 'forbidden' }, { status: 403 });
+  }
   if (session.status === 'EXPIRED' || session.status === 'AGE_DECLINED' || session.expiresAt < new Date()) {
     return NextResponse.json({ ok: false, error: 'expired' }, { status: 410 });
   }

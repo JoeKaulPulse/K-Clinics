@@ -12,8 +12,11 @@ export const metadata = {
 
 // Mobile session entry. Validates the token (redirect to the display if it's
 // expired or unknown), logs a `scan` funnel event, then renders the client flow.
-export default async function KioskTokenPage({ params }: { params: Promise<{ token: string }> }) {
+export default async function KioskTokenPage({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ s?: string }> }) {
   const { token } = await params;
+  // BLD-159: the capability secret comes from the QR (?s=) only — never looked
+  // up from the session here, or a token-guesser loading this page would obtain it.
+  const { s: secret } = await searchParams;
 
   const session = await db.kioskSession.findUnique({
     where: { token },
@@ -29,6 +32,7 @@ export default async function KioskTokenPage({ params }: { params: Promise<{ tok
   return (
     <KioskSessionFlow
       token={token}
+      secret={secret}
       sessionId={session.id}
       initialStatus={session.status}
       initialResultId={session.result?.id ?? null}
