@@ -31,6 +31,12 @@ export function marketableClientWhere(): { marketingOptIn: true; unsubscribed: f
   return { marketingOptIn: true, unsubscribed: false, marketingConsentAt: { not: null } };
 }
 
+/** The inverse of marketableClientWhere(): legacy boolean opt-ins with no consent
+ *  evidence — the audience for the BLD-242 double opt-in re-permission campaign. */
+export function legacyOptInWhere(): { marketingOptIn: true; unsubscribed: false; marketingConsentAt: null } {
+  return { marketingOptIn: true, unsubscribed: false, marketingConsentAt: null };
+}
+
 // ── Audited consent wording ──────────────────────────────────────────────────
 // The statements below are the clinic's AUDITED consent language, carried over
 // verbatim from the approved Cosmetology Client Consultation Forms. Do not
