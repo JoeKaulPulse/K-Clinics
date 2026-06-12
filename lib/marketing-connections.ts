@@ -48,8 +48,8 @@ export const PROVIDERS: ProviderDef[] = [
   {
     id: 'meta', name: 'Meta (Facebook & Instagram)', category: 'Ads · Pages',
     blurb: 'Facebook & Instagram ad performance, audiences and page insights.',
-    authUrl: 'https://www.facebook.com/v19.0/dialog/oauth',
-    tokenUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
+    authUrl: 'https://www.facebook.com/v23.0/dialog/oauth',
+    tokenUrl: 'https://graph.facebook.com/v23.0/oauth/access_token',
     // Ads + Pages only. `instagram_basic` is intentionally omitted — it's only
     // grantable once the app has the Instagram Graph product configured, and
     // requesting an unavailable scope makes the whole OAuth dialog fail for app
