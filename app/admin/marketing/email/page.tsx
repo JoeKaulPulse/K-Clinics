@@ -17,13 +17,15 @@ export default async function EmailDashboard() {
   if (!sessionCan(session, 'campaigns.view')) redirect('/admin');
 
   const { db } = await import('@/lib/db');
+  const { marketableClientWhere } = await import('@/lib/consent');
   const since = new Date(Date.now() - 30 * 86400000);
   const [sent30, opened30, clicked30, bounced30, optedIn, campaigns] = await Promise.all([
     db.emailEvent.count({ where: { kind: 'CAMPAIGN', status: 'SENT', createdAt: { gte: since } } }),
     db.emailEvent.count({ where: { kind: 'CAMPAIGN', openedAt: { not: null }, createdAt: { gte: since } } }),
     db.emailEvent.count({ where: { kind: 'CAMPAIGN', clickedAt: { not: null }, createdAt: { gte: since } } }),
     db.emailEvent.count({ where: { kind: 'CAMPAIGN', bouncedAt: { not: null }, createdAt: { gte: since } } }),
-    db.client.count({ where: { marketingOptIn: true, unsubscribed: false } }),
+    // Reachable audience = lawful marketing recipients only (BLD-242).
+    db.client.count({ where: marketableClientWhere() }),
     db.campaign.findMany({ where: { status: 'SENT' }, orderBy: { sentAt: 'desc' }, take: 12 }),
   ]);
 
