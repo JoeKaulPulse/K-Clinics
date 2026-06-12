@@ -258,7 +258,9 @@ export async function POST(req: Request) {
       const nextPrice = current.items[0]?.pricePence ?? current.pricePence;
 
       const { isSlotFree, pickPractitioner, assignResources } = await import('@/lib/availability');
-      if (!(await isSlotFree(startISO, current.durationMin, current.treatmentSlug))) {
+      // BLD-192: staff rebook of a follow-on visit is already guarded to a future
+      // time above — it must not also inherit the public 2-hour online lead window.
+      if (!(await isSlotFree(startISO, current.durationMin, current.treatmentSlug, current.locationId, { leadMinutes: 0 }))) {
         return bad('That time has just been taken — pick another.');
       }
       const { getSetting } = await import('@/lib/settings');

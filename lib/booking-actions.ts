@@ -378,7 +378,10 @@ export async function rescheduleBooking(
   // outside opening hours or on top of another appointment (the UI only offers
   // valid slots, but the API must not trust the client).
   const { isSlotFree } = await import('@/lib/availability');
-  if (!(await isSlotFree(newStartISO, booking.durationMin, booking.treatmentSlug))) {
+  // BLD-192: an admin reschedule may move an appointment to any free time (the
+  // 48h-notice gate above already governs client self-service); a staff move must
+  // not be blocked by the public 2-hour online lead window.
+  if (!(await isSlotFree(newStartISO, booking.durationMin, booking.treatmentSlug, null, opts.admin ? { leadMinutes: 0 } : undefined))) {
     return { ok: false, error: 'That time is no longer available. Please choose another slot.' };
   }
 

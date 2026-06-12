@@ -55,6 +55,14 @@ export async function createManualBooking(input: {
   if (!input.clientId && (!input.email || !input.firstName)) return { ok: false, error: 'Name and email are required for a new client.' };
   const start = new Date(input.startISO);
   if (isNaN(+start)) return { ok: false, error: 'Invalid date/time.' };
+  // BLD-192: staff bookings must NOT inherit the public 2-hour online lead window
+  // — reception books same-day and just-arrived clients all the time. We only
+  // block times more than 15 minutes in the past (unless "book anyway" is ticked),
+  // with a clear message instead of the misleading "clash" error.
+  const STAFF_PAST_GRACE_MIN = 15;
+  if (!input.override && start.getTime() < Date.now() - STAFF_PAST_GRACE_MIN * 60_000) {
+    return { ok: false, error: 'That time has already passed. Choose a current or future time, or tick “book anyway” to log a past appointment.' };
+  }
 
   // A treatment category (e.g. "Laser Hair Removal") has specific service
   // variants/areas (Underarms, Full Legs…), each with its own duration + price.
@@ -90,7 +98,9 @@ export async function createManualBooking(input: {
   const { db } = await import('@/lib/db');
   const { isSlotFree, assignResources, pickPractitioner } = await import('@/lib/availability');
   // Guard against double-booking a room/clinician (unless explicitly overridden).
-  if (!input.override && !(await isSlotFree(input.startISO, durationMin, input.treatmentSlug))) {
+  // Staff get the 15-minute past grace (negative lead) — the real clash, closure
+  // and room/clinician checks below are unchanged.
+  if (!input.override && !(await isSlotFree(input.startISO, durationMin, input.treatmentSlug, null, { leadMinutes: -STAFF_PAST_GRACE_MIN }))) {
     return { ok: false, error: 'That slot clashes with an existing appointment, closure, or has no free room/clinician. Tick “book anyway” to override.', clash: true };
   }
   // Assign a competent, available clinician (so it shows in their day) + hold resources.
