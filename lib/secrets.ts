@@ -38,9 +38,11 @@ export const SECRET_DEFS: SecretDef[] = [
   { name: 'XERO_CLIENT_SECRET', label: 'Xero client secret', group: 'OAuth · Xero' },
   { name: 'TRUELAYER_CLIENT_ID', label: 'TrueLayer client ID', group: 'OAuth · Bank', help: 'console.truelayer.com' },
   { name: 'TRUELAYER_CLIENT_SECRET', label: 'TrueLayer client secret', group: 'OAuth · Bank' },
-  // Payments (read-only here — Stripe SDK initialises at boot from env)
-  { name: 'STRIPE_SECRET_KEY', label: 'Stripe secret key', group: 'Payments', envOnly: true, help: 'Set in hosting env (loaded at startup).' },
-  { name: 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY', label: 'Stripe publishable key', group: 'Payments', envOnly: true, help: 'Public key — set in hosting env (build-time).' },
+  // Payments — hosting-managed by design: the publishable key is baked into the
+  // browser bundle at BUILD TIME and can't be served from the DB, so payments
+  // always need both keys in env + a redeploy. Shown read-only for reference.
+  { name: 'STRIPE_SECRET_KEY', label: 'Stripe secret key', group: 'Payments', envOnly: true, help: 'Set in hosting env — payments need both keys + a redeploy.' },
+  { name: 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY', label: 'Stripe publishable key', group: 'Payments', envOnly: true, help: 'Build-time browser key — must be in hosting env (cannot be set in-app).' },
 ];
 
 const MANAGEABLE = new Set(SECRET_DEFS.filter((d) => !d.envOnly).map((d) => d.name));
