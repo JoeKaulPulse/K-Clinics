@@ -68,12 +68,12 @@ export default async function AdminOverview() {
   // Clock-in / lunch-break is available from every view, not just My day.
   const clock = session ? await (await import('@/lib/time-tracking')).timeStatus(session.sub).catch(() => null) : null;
   const clockWeather = (
-    <div className="flex flex-col items-stretch gap-2 sm:min-w-[16rem]">
+    <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-end">
       <div className="flex items-center gap-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5">
         <LiveClock />
         {weather && (
-          <div className="border-l border-[var(--color-line)] pl-4 leading-tight">
-            <p className="text-sm font-medium text-[var(--color-ink)]"><span className="tabular-nums">{weather.tempC}°</span> <span className="font-normal text-[var(--color-stone)]">{weather.label}</span></p>
+          <div className="min-w-0 border-l border-[var(--color-line)] pl-4 leading-tight">
+            <p className="text-sm font-medium text-[var(--color-ink)]"><span className="tabular-nums">{weather.tempC}°</span> <span className="ml-0.5 inline-block max-w-[8rem] truncate align-bottom font-normal text-[var(--color-stone)]">{weather.label}</span></p>
             {weather.uvMax != null && uv && (
               <p className="text-xs text-[var(--color-stone)]">UV <span className="tabular-nums">{weather.uvMax}</span> · <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{uv.label}</span></p>
             )}
@@ -81,13 +81,15 @@ export default async function AdminOverview() {
         )}
       </div>
       {clock && (
-        <ClockInOut
-          onShift={clock.onShift}
-          onBreak={clock.onBreak}
-          shiftStartIso={clock.shiftStart ? clock.shiftStart.toISOString() : null}
-          workedTodayMin={clock.workedTodayMin}
-          breakTodayMin={clock.breakTodayMin}
-        />
+        <div className="sm:min-w-[15rem] sm:max-w-xs">
+          <ClockInOut
+            onShift={clock.onShift}
+            onBreak={clock.onBreak}
+            shiftStartIso={clock.shiftStart ? clock.shiftStart.toISOString() : null}
+            workedTodayMin={clock.workedTodayMin}
+            breakTodayMin={clock.breakTodayMin}
+          />
+        </div>
       )}
     </div>
   );

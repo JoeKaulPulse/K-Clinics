@@ -114,6 +114,17 @@ export async function GET(req: Request) {
     failures++; console.error('[cron] analytics retention failed (continuing):', (e as Error)?.message);
   }
 
+  // BLD-248: self-healing clinical-encryption backfill. Encrypts any historic
+  // plaintext health rows automatically (no manual trigger), then flags itself
+  // complete after a clean pass so it stops scanning. Best-effort.
+  let clinicalBackfill = { ran: false, total: 0, complete: false };
+  try {
+    const { backfillClinicalEncryptionIfNeeded } = await import('@/lib/clinical-crypto-backfill');
+    clinicalBackfill = await backfillClinicalEncryptionIfNeeded();
+  } catch (e) {
+    failures++; console.error('[cron] clinical-encryption backfill failed (continuing):', (e as Error)?.message);
+  }
+
   // Build board: keep it populated from Claude's backlog server-side, and assign
   // input-required tasks to the best-placed user — so the audit board is reliable
   // even if nobody opens it after a deploy (it used to seed only on first view).
@@ -139,7 +150,7 @@ export async function GET(req: Request) {
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend, board },
+    { ok: failures === 0, failures, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend, board, clinicalBackfill },
     { status: failures === 0 ? 200 : 500 },
   );
 }

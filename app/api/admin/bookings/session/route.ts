@@ -335,6 +335,8 @@ export async function POST(req: Request) {
         where: { bookingId },
         data: { status: 'COMPLETED', completedAt: new Date(), steps: closeTimings(normalizeTimings((row.steps ?? {}) as Record<string, Timings[keyof Timings]>)) as object },
       });
+      // PRJ-63.11: clinician finished — hand the room over to reception/cleaners.
+      import('@/lib/cross-role').then((m) => m.handleSessionTurnover(bookingId, session.email)).catch(() => {});
       return ok();
     }
 

@@ -18,6 +18,25 @@ export function marketingConsentFields(source: string) {
   return { marketingConsentAt: new Date(), marketingConsentSource: source.slice(0, 60), marketingConsentVersion: MARKETING_CONSENT_VERSION };
 }
 
+/**
+ * Base Prisma where-clause for a client who may LAWFULLY receive marketing email
+ * (BLD-242): opted in, not unsubscribed, AND with recorded consent evidence
+ * (`marketingConsentAt`). Legacy boolean-only opt-ins captured before the consent
+ * evidence fields existed have no demonstrable lawful basis under UK GDPR Art.7,
+ * so they are excluded from every bulk send until re-permissioned. Use this for
+ * ALL marketing audiences (campaigns + marketing automations) so a new send path
+ * can't silently reintroduce the gap. Spread it, then add segment/tag conditions.
+ */
+export function marketableClientWhere(): { marketingOptIn: true; unsubscribed: false; marketingConsentAt: { not: null } } {
+  return { marketingOptIn: true, unsubscribed: false, marketingConsentAt: { not: null } };
+}
+
+/** The inverse of marketableClientWhere(): legacy boolean opt-ins with no consent
+ *  evidence — the audience for the BLD-242 double opt-in re-permission campaign. */
+export function legacyOptInWhere(): { marketingOptIn: true; unsubscribed: false; marketingConsentAt: null } {
+  return { marketingOptIn: true, unsubscribed: false, marketingConsentAt: null };
+}
+
 // ── Audited consent wording ──────────────────────────────────────────────────
 // The statements below are the clinic's AUDITED consent language, carried over
 // verbatim from the approved Cosmetology Client Consultation Forms. Do not

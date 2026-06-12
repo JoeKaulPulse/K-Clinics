@@ -27,9 +27,11 @@ export async function sendCampaign(formData: FormData) {
 
   const { db } = await import('@/lib/db');
   const { sendEmail, tmplManual } = await import('@/lib/email');
+  const { marketableClientWhere } = await import('@/lib/consent');
 
+  // BLD-242: only clients with recorded marketing-consent evidence (UK GDPR Art.7).
   const recipients = await db.client.findMany({
-    where: { marketingOptIn: true, unsubscribed: false, ...(tag ? { tags: { has: tag } } : {}) },
+    where: { ...marketableClientWhere(), ...(tag ? { tags: { has: tag } } : {}) },
   });
 
   const campaign = await db.campaign.create({ data: { name, subject, body, segment: tag || null } });
