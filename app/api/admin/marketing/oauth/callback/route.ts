@@ -30,12 +30,13 @@ export async function GET(req: Request) {
 
   const { getProvider, isConfigured, REDIRECT_URI } = await import('@/lib/marketing-connections');
   const p = getProvider(providerId);
-  if (!p || !isConfigured(p)) return to(`error=${providerId}_not_configured`);
+  if (!p || !(await isConfigured(p))) return to(`error=${providerId}_not_configured`);
 
   try {
+    const { getSecret } = await import('@/lib/secrets');
     const form = new URLSearchParams({
-      client_id: process.env[p.envClientId] || '',
-      client_secret: process.env[p.envClientSecret] || '',
+      client_id: (await getSecret(p.envClientId)) || '',
+      client_secret: (await getSecret(p.envClientSecret)) || '',
       redirect_uri: `${REDIRECT_URI}?provider=${p.id}`,
       grant_type: 'authorization_code',
       code,
