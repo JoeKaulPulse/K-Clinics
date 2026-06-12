@@ -56,6 +56,11 @@ export async function eraseClientData(clientId: string) {
     // identifying + special-category free-text from them.
     db.booking.updateMany({ where: { clientId }, data: { notes: null, allergyNote: null, cancelReason: null, clinicalNoteEnc: null, clinicalNoteBy: null, clinicalNoteAt: null } }),
     db.consultation.updateMany({ where: { clientId }, data: { concerns: null, message: null, medicalNotes: null } }),
+    // Consultation rows are retained (clinical-audit basis) but their staff team-notes
+    // (ConsultationNote.body — free-text, can hold personal/clinical detail) have no
+    // retention basis and are keyed via the consultation, so the Client-cascade never
+    // reaches them. Delete them explicitly for a complete Art. 17 erasure.
+    db.consultationNote.deleteMany({ where: { consultation: { clientId } } }),
     // Hard-delete the records that exist only to serve the data subject.
     db.interaction.deleteMany({ where: { clientId } }),
     db.healthAssessment.deleteMany({ where: { clientId } }),
