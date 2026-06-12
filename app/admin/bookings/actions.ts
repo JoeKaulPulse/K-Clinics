@@ -89,7 +89,7 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
     // Report the sale to GA4 + Meta server-side (best-effort; hashed email only).
     try {
       const { sendPurchase } = await import('@/lib/conversions');
-      await sendPurchase({ bookingId, valuePence: amountPence, clientId: booking.clientId, email: booking.client?.email ?? null, campaign: booking.attribCampaign });
+      await sendPurchase({ bookingId, valuePence: amountPence, clientId: booking.clientId, email: booking.client?.marketingOptIn ? (booking.client?.email ?? null) : null, campaign: booking.attribCampaign });
     } catch (e) {
       console.error('[bookings] conversion send failed:', (e as Error)?.message);
     }

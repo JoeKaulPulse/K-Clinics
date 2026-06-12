@@ -83,7 +83,7 @@ export async function POST(req: Request) {
     const pi = await stripe().paymentIntents.create({
       amount: totalPence, currency: 'gbp', automatic_payment_methods: { enabled: true },
       description: `KClinics order ${order.number}`, receipt_email: email, metadata: { orderId: order.id, kind: 'shop_order' },
-    });
+    }, { idempotencyKey: `shop-order-${order.id}` });
     await db.order.update({ where: { id: order.id }, data: { stripePaymentIntentId: pi.id } });
     return NextResponse.json({ ok: true, clientSecret: pi.client_secret, orderId: order.id, totalPence, issues: cart.issues });
   } catch (e) {

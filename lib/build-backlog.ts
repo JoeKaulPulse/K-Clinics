@@ -1092,6 +1092,61 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       { title: 'tsc + next build green; visual QA at 360/390/desktop' },
     ],
   },
+  {
+    title: 'Retail order Mark-refunded skips Stripe API -- customers remain charged (BLD-227)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 2,
+    detail: 'Fixed: app/api/admin/orders/route.ts now calls stripe().refunds.create() before updating DB status when marking REFUNDED. Includes idempotency key and only updates DB on Stripe success.',
+  },
+  {
+    title: 'Add idempotency keys to shop checkout and gift-voucher PaymentIntents (BLD-228)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 2,
+    detail: 'Fixed: shop-order-{id} key on shop checkout PaymentIntent; gift-voucher-{id} key on gift voucher PaymentIntent. Mirrors booking-actions pattern.',
+  },
+  {
+    title: 'Admin password change does not bump sessionEpoch -- stolen sessions remain valid (BLD-229)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 1,
+    detail: 'Fixed: app/api/admin/profile/route.ts changePassword op now includes sessionEpoch: { increment: 1 } in the update, mirroring the staff route pattern.',
+  },
+  {
+    title: 'Booking upsell shows hardcoded 0.00 as Total today (BLD-230)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 1,
+    detail: 'Fixed: components/booking/BookingFlow.tsx "Total today" row renamed to "Due today" with text "Nothing charged until after your visit" -- accurate for the card-save model.',
+  },
+  {
+    title: 'Tracking IDs have no env fallback -- analytics dark when unconfigured (BLD-231)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 10, effort: 2,
+    detail: 'Fixed: lib/tracking.ts getTrackingConfig() now reads NEXT_PUBLIC_GA4_ID / NEXT_PUBLIC_GOOGLE_ADS_ID / NEXT_PUBLIC_META_PIXEL_ID env vars as fallbacks when the DB setting is absent or empty.',
+  },
+  {
+    title: 'Stripe SDK has no maxRetries or timeout -- payment network blips silently fail (BLD-239)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 9, effort: 2,
+    detail: 'Fixed: lib/stripe.ts Stripe constructor now includes maxNetworkRetries: 3, timeout: 20000. Also added idempotencyKey setup-{bookingId} to setupIntents.create in booking/create/route.ts.',
+  },
+  {
+    title: 'Server-side GA4/Meta conversions fire without checking marketing consent (BLD-240)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 2,
+    detail: 'Fixed: app/admin/bookings/actions.ts sendPurchase() call now passes email only when booking.client.marketingOptIn is true; passes null otherwise so hashed identity is excluded from ad platforms.',
+  },
+  {
+    title: 'Follow-up & review automations query wrong Prisma model -- emails never sent (BLD-245)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 9, effort: 3,
+    detail: 'Fixed: lib/automations.ts followUps() and reviews() now query db.booking (status COMPLETED, followUpSent/reviewSent false, startAt window) instead of the non-existent db.appointment. Field mapping updated (scheduledAt -> startAt, treatment -> treatmentTitle).',
+  },
+  {
+    title: 'chargeBooking double-charge guard reads stale data (BLD-246)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 9, effort: 3,
+    detail: 'Fixed: lib/booking-actions.ts chargeBooking() re-fetches booking.chargedAt from DB immediately before the Stripe call so concurrent staff actions both reading chargedAt:null cannot both reach paymentIntents.create.',
+  },
+  {
+    title: 'Refund idempotency key collision -- two equal partial refunds collapse to one (BLD-247)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 9, effort: 2,
+    detail: 'Fixed: lib/booking-actions.ts refundBooking() idempotency key changed from refund-{id}-{amount} to refund-{id}-from-{refundedPence}-{amount}, making each partial refund unique at Stripe.',
+  },
+  {
+    title: '2FA self-disable has no TOTP re-verification -- hijacked session silently removes 2FA (BLD-249)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 2,
+    detail: 'Fixed: app/api/admin/2fa/route.ts disable op now requires a valid current TOTP code when 2FA is enabled; verified via verifySecondFactor before calling disable2fa().',
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

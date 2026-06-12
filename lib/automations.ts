@@ -206,17 +206,18 @@ async function followUps(t: Tally) {
   const target = new Date(Date.now() - FOLLOW_UP_DAYS * 864e5);
   const start = new Date(target); start.setHours(0, 0, 0, 0);
   const end = new Date(target); end.setHours(23, 59, 59, 999);
-  const appts = await db.appointment.findMany({
-    where: { status: 'COMPLETED', followUpSent: false, scheduledAt: { gte: start, lte: end } },
+  // Deduplicate via emailEvent (Booking has no followUpSent flag; Appointment is the legacy model).
+  const bookings = await db.booking.findMany({
+    where: { status: 'COMPLETED', startAt: { gte: start, lte: end } },
     include: { client: true },
   });
-  for (const a of appts) {
-    if (canEmail(a.client)) {
-      const res = await sendEmail({ to: a.client.email, subject: `How are you after your ${a.treatment}?`, html: tmplFollowUp(a.client.firstName, a.treatment, unsub(a.client.unsubToken)) });
-      await logEvent(a.clientId, 'FOLLOW_UP', a.client.email, 'Post-treatment follow-up', res);
-      res.ok ? t.followUps++ : t.errors++;
-    }
-    await db.appointment.update({ where: { id: a.id }, data: { followUpSent: true } });
+  for (const a of bookings) {
+    if (!canEmail(a.client)) continue;
+    const already = await db.emailEvent.findFirst({ where: { clientId: a.clientId, kind: 'FOLLOW_UP', status: 'SENT', createdAt: { gte: start } } });
+    if (already) continue;
+    const res = await sendEmail({ to: a.client.email, subject: `How are you after your ${a.treatmentTitle}?`, html: tmplFollowUp(a.client.firstName, a.treatmentTitle, unsub(a.client.unsubToken)) });
+    await logEvent(a.clientId, 'FOLLOW_UP', a.client.email, 'Post-treatment follow-up', res);
+    res.ok ? t.followUps++ : t.errors++;
   }
 }
 
@@ -224,17 +225,18 @@ async function reviews(t: Tally) {
   const target = new Date(Date.now() - REVIEW_DAYS * 864e5);
   const start = new Date(target); start.setHours(0, 0, 0, 0);
   const end = new Date(target); end.setHours(23, 59, 59, 999);
-  const appts = await db.appointment.findMany({
-    where: { status: 'COMPLETED', reviewSent: false, scheduledAt: { gte: start, lte: end } },
+  // Deduplicate via emailEvent (Booking has no reviewSent flag; Appointment is the legacy model).
+  const bookings = await db.booking.findMany({
+    where: { status: 'COMPLETED', startAt: { gte: start, lte: end } },
     include: { client: true },
   });
-  for (const a of appts) {
-    if (canEmail(a.client)) {
-      const res = await sendEmail({ to: a.client.email, subject: 'We’d love your thoughts', html: tmplReviewRequest(a.client.firstName, unsub(a.client.unsubToken)) });
-      await logEvent(a.clientId, 'REVIEW_REQUEST', a.client.email, 'Review request', res);
-      res.ok ? t.reviews++ : t.errors++;
-    }
-    await db.appointment.update({ where: { id: a.id }, data: { reviewSent: true } });
+  for (const a of bookings) {
+    if (!canEmail(a.client)) continue;
+    const already = await db.emailEvent.findFirst({ where: { clientId: a.clientId, kind: 'REVIEW_REQUEST', status: 'SENT', createdAt: { gte: start } } });
+    if (already) continue;
+    const res = await sendEmail({ to: a.client.email, subject: "We'd love your thoughts", html: tmplReviewRequest(a.client.firstName, unsub(a.client.unsubToken)) });
+    await logEvent(a.clientId, 'REVIEW_REQUEST', a.client.email, 'Review request', res);
+    res.ok ? t.reviews++ : t.errors++;
   }
 }
 
@@ -246,7 +248,7 @@ async function winBacks(t: Tally) {
   for (const c of clients) {
     if (!canEmail(c)) continue;
     if (await sentRecently(c.id, 'WIN_BACK', 90)) continue;
-    const res = await sendEmail({ to: c.email, subject: `We’ve missed you, ${c.firstName}`, html: tmplWinBack(c.firstName, unsub(c.unsubToken)) });
+    const res = await sendEmail({ to: c.email, subject: `We've missed you, ${c.firstName}`, html: tmplWinBack(c.firstName, unsub(c.unsubToken)) });
     await logEvent(c.id, 'WIN_BACK', c.email, 'Win-back', res);
     res.ok ? t.winBacks++ : t.errors++;
   }

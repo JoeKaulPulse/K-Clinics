@@ -193,7 +193,7 @@ export async function POST(req: Request) {
     usage: 'off_session',
     payment_method_types: ['card'],
     metadata: { bookingId: booking.id, clientId: client.id },
-  });
+  }, { idempotencyKey: `setup-${booking.id}` });
 
   await db.booking.update({ where: { id: booking.id }, data: { stripeSetupIntentId: setupIntent.id } });
 

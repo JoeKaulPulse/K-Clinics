@@ -11,7 +11,7 @@ let _stripe: Stripe | null = null;
 export function stripe(): Stripe {
   if (!_stripe) {
     if (!key) throw new Error('STRIPE_SECRET_KEY is not configured.');
-    _stripe = new Stripe(key, { apiVersion: '2026-05-27.dahlia' });
+    _stripe = new Stripe(key, { apiVersion: '2026-05-27.dahlia', maxNetworkRetries: 3, timeout: 20000 });
   }
   return _stripe;
 }

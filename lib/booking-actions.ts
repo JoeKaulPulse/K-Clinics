@@ -75,9 +75,12 @@ export async function chargeBooking(
   if (!booking.stripeCustomerId || !booking.stripePaymentMethodId) {
     return { ok: false, error: 'No saved card for this booking.' };
   }
-  // BLD-147: idempotency. A staff retry racing an in-flight webhook could create
-  // two PaymentIntents and double-charge. Cheap early-out if already recorded…
+  // BLD-147/246: idempotency. Cheap early-out on caller-supplied data; then re-fetch
+  // from DB so two concurrent staff actions that both read chargedAt:null don't both
+  // reach Stripe and create two PaymentIntents.
   if (booking.chargedAt) return { ok: true };
+  const fresh = await db.booking.findUnique({ where: { id: booking.id }, select: { chargedAt: true } });
+  if (fresh?.chargedAt) return { ok: true };
 
   try {
     const pi = await stripe().paymentIntents.create({
@@ -180,7 +183,7 @@ export async function refundBooking(
       payment_intent: booking.chargePaymentIntentId,
       amount,
       metadata: { bookingId: booking.id, reason: (opts.reason || '').slice(0, 200) },
-    }, { idempotencyKey: `refund-${booking.id}-${amount}` });
+    }, { idempotencyKey: `refund-${booking.id}-from-${booking.refundedPence ?? 0}-${amount}` });
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Refund failed at Stripe.' };
   }
