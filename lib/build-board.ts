@@ -659,6 +659,16 @@ export async function signoffItem(id: string, actor: string) {
   return out;
 }
 
+// Permanently remove a board item (e.g. a duplicate, test, or noise card). The
+// schema cascades subtasks, the event log and dependency edges; any item that
+// depended on this one is structurally freed. Admin-gated at the route.
+export async function deleteBuildItem(id: string, _actor: string): Promise<{ ok: boolean; ref: string | null }> {
+  const prev = await db.buildItem.findUnique({ where: { id }, select: { ref: true } });
+  if (!prev) return { ok: true, ref: null }; // already gone — treat as success
+  await db.buildItem.delete({ where: { id } }); // onDelete: Cascade clears subtasks/events/deps
+  return { ok: true, ref: prev.ref };
+}
+
 export async function reopenItem(id: string, reason: string | undefined, actor: string) {
   const prev = await db.buildItem.findUnique({ where: { id } });
   if (!prev) return null;
@@ -833,7 +843,7 @@ export async function pushToGithub(id: string, actor: string) {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
     body: JSON.stringify({ title: `${item.ref ? `[${item.ref}] ` : ''}[${item.urgency}] ${item.title}`, body, labels: ['claude', item.type.toLowerCase()] }),
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(15_000),
   });
   await noteGhResponse(res);
   if (!res.ok) return item;
@@ -928,7 +938,7 @@ async function ghComment(issueNumber: number, body: string): Promise<boolean> {
     method: 'POST',
     headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
     body: JSON.stringify({ body }),
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(15_000),
   });
   await noteGhResponse(res);
   return res.ok;
@@ -1069,13 +1079,13 @@ export async function requestClaudeContinue(actor: string): Promise<{ ok: boolea
   await setRaw('build_continue_last_wake_at', String(Date.now()), actor);
 
   if (existing) {
-    const patch = await fetch(`https://api.github.com/repos/${cfg.repo}/issues/${existing}`, { method: 'PATCH', headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' }, body: JSON.stringify({ state: 'open' }), signal: AbortSignal.timeout(10_000) }).catch(() => null);
+    const patch = await fetch(`https://api.github.com/repos/${cfg.repo}/issues/${existing}`, { method: 'PATCH', headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' }, body: JSON.stringify({ state: 'open' }), signal: AbortSignal.timeout(15_000) }).catch(() => null);
     if (patch) await noteGhResponse(patch);
     const woke = await ghComment(existing, msg);
     return { ok: true, queued: true, woke, via: woke ? 'github' : 'queue', mirror, githubUrl: `https://github.com/${cfg.repo}/issues/${existing}`, note: woke ? 'Claude prompted via GitHub — a session will pick it up shortly.' : 'Saved to the queue (GitHub was busy) — Claude will still pick it up from the board.' };
   }
 
-  const res = await fetch(`https://api.github.com/repos/${cfg.repo}/issues`, { method: 'POST', headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' }, body: JSON.stringify({ title: TITLE, body: msg, labels: ['claude', 'continue'] }), signal: AbortSignal.timeout(10_000) });
+  const res = await fetch(`https://api.github.com/repos/${cfg.repo}/issues`, { method: 'POST', headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' }, body: JSON.stringify({ title: TITLE, body: msg, labels: ['claude', 'continue'] }), signal: AbortSignal.timeout(15_000) });
   await noteGhResponse(res);
   if (!res.ok) return { ok: true, queued: true, woke: false, via: 'queue', mirror, note: 'Saved to the queue (GitHub was busy) — Claude will still pick it up from the board.' };
   const issue = (await res.json()) as { html_url?: string; number?: number };

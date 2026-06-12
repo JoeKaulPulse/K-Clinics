@@ -7,6 +7,23 @@ import { encryptJson, decryptJson } from '@/lib/crypto';
 
 export type Tokens = { access: string; refresh?: string; expiresAt: number | null };
 
+// BLD-278: providers return tokens as { access_token, refresh_token, expires_in }.
+// Some callers used to persist that raw shape, leaving `tokens.access` undefined
+// (so every read failed silently). Normalise to our Tokens shape — accepting both
+// the raw provider form and the already-normalised form — on write AND on read,
+// so existing rows self-heal without a migration.
+export function normalizeTokens(raw: unknown): Tokens {
+  let t = (raw ?? {}) as Record<string, unknown>;
+  // TikTok wraps its token response in an envelope: { code, message, data: {…} }.
+  if (!t.access && !t.access_token && t.data && typeof t.data === 'object') t = t.data as Record<string, unknown>;
+  const access = String(t.access ?? t.access_token ?? '');
+  const refresh = (t.refresh ?? t.refresh_token) as string | undefined;
+  let expiresAt: number | null = null;
+  if (typeof t.expiresAt === 'number') expiresAt = t.expiresAt;
+  else if (t.expires_in != null && !Number.isNaN(Number(t.expires_in))) expiresAt = Date.now() + Number(t.expires_in) * 1000;
+  return { access, refresh: refresh || undefined, expiresAt };
+}
+
 export async function saveConnection(provider: string, tokens: Tokens, accountRef?: string | null, label?: string | null) {
   const tokensEnc = encryptJson(tokens);
   await db.externalConnection.upsert({
@@ -16,32 +33,12 @@ export async function saveConnection(provider: string, tokens: Tokens, accountRe
   });
 }
 
-/** Tolerate rows saved before the marketing OAuth callback normalised token
- *  shapes: a raw provider response ({access_token, expires_in, …}, sometimes
- *  nested under `data` for TikTok) is mapped onto the canonical Tokens shape
- *  so existing connections keep working without a forced reconnect. */
-function normalizeTokens(stored: unknown): Tokens | null {
-  if (!stored || typeof stored !== 'object') return null;
-  const t = stored as Record<string, unknown>;
-  if (typeof t.access === 'string') return t as unknown as Tokens;
-  const raw = (t.data && typeof t.data === 'object' ? t.data : t) as Record<string, unknown>;
-  if (typeof raw.access_token !== 'string') return null;
-  return {
-    access: raw.access_token,
-    refresh: typeof raw.refresh_token === 'string' ? raw.refresh_token : undefined,
-    // expires_in was relative to issue time, which we no longer know — treat as
-    // unknown expiry; a failing call then surfaces as "reconnect" in the UI.
-    expiresAt: null,
-  };
-}
-
 export async function getConnection(provider: string): Promise<{ tokens: Tokens; accountRef: string | null; label: string | null } | null> {
   const row = await db.externalConnection.findUnique({ where: { provider } });
   if (!row) return null;
   try {
-    const tokens = normalizeTokens(decryptJson<unknown>(row.tokensEnc));
-    if (!tokens) return null;
-    return { tokens, accountRef: row.accountRef, label: row.label };
+    // Tolerant read: normalise so any legacy raw-provider rows still resolve.
+    return { tokens: normalizeTokens(decryptJson<unknown>(row.tokensEnc)), accountRef: row.accountRef, label: row.label };
   } catch {
     return null;
   }

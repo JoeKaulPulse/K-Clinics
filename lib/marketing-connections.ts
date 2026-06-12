@@ -48,8 +48,6 @@ export const PROVIDERS: ProviderDef[] = [
   {
     id: 'meta', name: 'Meta (Facebook & Instagram)', category: 'Ads · Pages',
     blurb: 'Facebook & Instagram ad performance, audiences and page insights.',
-    // Keep in step with META_GRAPH_VERSION in lib/ad-spend.ts (Meta retires
-    // Graph versions ~2 years after release; v19.0 sunset 21 May 2026).
     authUrl: 'https://www.facebook.com/v23.0/dialog/oauth',
     tokenUrl: 'https://graph.facebook.com/v23.0/oauth/access_token',
     // Ads + Pages only. `instagram_basic` is intentionally omitted — it's only

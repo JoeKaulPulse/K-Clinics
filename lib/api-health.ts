@@ -297,10 +297,13 @@ async function checkYay(): Promise<Outcome> {
   } catch (e) { return { light: 'grey', detail: `Could not read call log — ${(e as Error)?.message?.slice(0, 60)}` }; }
 }
 
+// Keep in step with the Graph version pinned in lib/ad-spend.ts /
+// lib/conversions.ts / lib/marketing-connections.ts (currently v23.0).
+const META_GRAPH_VERSION = 'v23.0';
+
 async function checkMeta(): Promise<Outcome> {
   try {
     const { getConnection } = await import('@/lib/oauth-connections');
-    const { META_GRAPH_VERSION } = await import('@/lib/ad-spend');
     const conn = await getConnection('meta');
     if (!conn?.tokens.access) return { light: 'grey', detail: 'Not connected — ad spend & CAPI off' };
     const { res, ms } = await timed(`https://graph.facebook.com/${META_GRAPH_VERSION}/me?fields=id`, { headers: { Authorization: `Bearer ${conn.tokens.access}` } });
@@ -311,10 +314,29 @@ async function checkMeta(): Promise<Outcome> {
   } catch (e) { return netFail(e); }
 }
 
+/** Refresh-token grant for the marketing Google connection — mirrors the
+ *  closure in lib/ad-spend.ts googleSpend(). */
+async function refreshGoogleTokens(refreshToken: string): Promise<{ access: string; refresh?: string; expiresAt: number | null } | null> {
+  const id = process.env.GOOGLE_CLIENT_ID, secret = process.env.GOOGLE_CLIENT_SECRET;
+  if (!id || !secret) return null;
+  try {
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ client_id: id, client_secret: secret, refresh_token: refreshToken, grant_type: 'refresh_token' }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return null;
+    const j = await res.json().catch(() => null);
+    if (!j?.access_token) return null;
+    // Google doesn't return a new refresh_token on refresh — keep the existing one.
+    return { access: String(j.access_token), refresh: refreshToken, expiresAt: j.expires_in ? Date.now() + Number(j.expires_in) * 1000 : null };
+  } catch { return null; }
+}
+
 async function checkGoogleAds(): Promise<Outcome> {
   try {
     const { getConnection, validAccessToken } = await import('@/lib/oauth-connections');
-    const { refreshGoogleTokens } = await import('@/lib/ad-spend');
     const conn = await getConnection('google');
     if (!conn) return { light: 'grey', detail: 'Not connected — Google ad spend off' };
     const t = Date.now();

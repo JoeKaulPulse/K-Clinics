@@ -171,12 +171,14 @@ GET-probed all 192 routes on https://kclinics.co.uk with dummy params: **zero 5x
 
 ### Broken connections found & FIXED (this review)
 
+_Note: the integration fixes below were independently implemented and merged as PR #753 (from this review's BLD-278 board item) while the review branch was in flight; the table reflects the final merged state. The review branch (PR #749) additionally contributes the TikTok `data`-envelope handling in `normalizeTokens()` and the /admin/api-health page._
+
 | Severity | Finding | Fix |
 |---|---|---|
-| HIGH | **Meta Graph API pinned to v19.0 — sunset 21 May 2026.** Ad-spend sync (`lib/ad-spend.ts`), Conversions API (`lib/conversions.ts`) and the Meta OAuth dialog/token URLs (`lib/marketing-connections.ts`) were all calling a retired version; every failure is swallowed to `[]`, so it broke silently. | Bumped to v23.0 (sunset ~May 2027), centralised as `META_GRAPH_VERSION` in `lib/ad-spend.ts`. |
-| HIGH | **Google Ads API pinned to v17 — sunset 4 Jun 2025** (verified live: v17–v19 now 404). Spend sync dead for a year, silently. | Bumped to v22 (`GOOGLE_ADS_API_VERSION`). |
-| HIGH | **Google Ads calls never refreshed the OAuth access token** (1-hour lifetime, used raw) — sync failed after the first hour even on a live API version. | Added `refreshGoogleTokens()` + `validAccessToken()` wiring in `lib/ad-spend.ts`. |
-| HIGH | **Marketing OAuth callback persisted the raw provider token JSON** (`{access_token,…}`, TikTok's nested under `data`) while every consumer reads `tokens.access` — so Meta/Google/TikTok connections never produced a usable token (also flagged in the 2026-06-09 findings above — now resolved). | Callback normalises to `{access, refresh, expiresAt}`; `lib/oauth-connections.ts getConnection()` tolerantly maps legacy raw rows so existing connections work without reconnecting. |
+| HIGH | **Meta Graph API pinned to v19.0 — sunset 21 May 2026.** Ad-spend sync (`lib/ad-spend.ts`), Conversions API (`lib/conversions.ts`) and the Meta OAuth dialog/token URLs (`lib/marketing-connections.ts`) were all calling a retired version; every failure is swallowed to `[]`, so it broke silently. | Bumped to v23.0 (sunset ~May 2027) across all three libs. |
+| HIGH | **Google Ads API pinned to v17 — sunset 4 Jun 2025** (verified live: v17–v19 now 404). Spend sync dead for a year, silently. | Bumped to v22. |
+| HIGH | **Google Ads calls never refreshed the OAuth access token** (1-hour lifetime, used raw) — sync failed after the first hour even on a live API version. | Refresh-token grant wired through `validAccessToken()` in `lib/ad-spend.ts`. |
+| HIGH | **Marketing OAuth callback persisted the raw provider token JSON** (`{access_token,…}`, TikTok's nested under `data`) while every consumer reads `tokens.access` — so Meta/Google/TikTok connections never produced a usable token (also flagged in the 2026-06-09 findings above — now resolved). | `normalizeTokens()` in `lib/oauth-connections.ts` (handles the TikTok `data` envelope) applied on write AND as a tolerant read, so existing rows self-heal without reconnecting. |
 | LOW | Missing fetch timeouts: CalDAV PUT/DELETE (`lib/hostinger-calendar.ts`), IndexNow submit, GitHub mirror POST/PATCH (`lib/build-board.ts`), GA4 + Meta conversion sends. | `AbortSignal.timeout(8–10s)` added to all. |
 
 ### Verified healthy (no action)
