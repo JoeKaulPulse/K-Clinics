@@ -560,6 +560,12 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
 
   async function signoff() { if (!confirm('Sign off and close this task? This marks the work reviewed & complete.')) return; const r = await post({ op: 'signoff', id: item.id }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
   async function reopen() { const reason = prompt('Reopen this task — add a note for Claude (what still needs doing):') || undefined; const r = await post({ op: 'reopen', id: item.id, reason }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
+  async function del() {
+    const sub = item.subtasks.length ? ` and its ${item.subtasks.length} subtask${item.subtasks.length === 1 ? '' : 's'}` : '';
+    if (!confirm(`Delete ${item.ref ? item.ref + ' · ' : ''}“${item.title}”${sub}? This permanently removes it and cannot be undone.`)) return;
+    const r = await post({ op: 'delete', id: item.id });
+    if (r.ok) { onClose(); onChange(); } else alert(r.error || 'Failed');
+  }
 
   const lbl = 'text-[0.6rem] uppercase tracking-wide text-[var(--color-stone-soft)]';
   return (
@@ -648,6 +654,19 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
           <div className="mt-3 flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3 text-xs">
             <span className="text-[var(--color-stone)]">Closed by {item.closedBy?.split('@')[0] || '—'}{item.closedAt ? ` · ${day(item.closedAt)}` : ''}.</span>
             <button onClick={reopen} className="ml-auto rounded-full border border-[var(--color-line)] px-3 py-1.5 hover:bg-[var(--color-bone)]">Reopen</button>
+          </div>
+        )}
+
+        {/* Delete — admins only; destructive, kept separate from other actions */}
+        {isAdmin && (
+          <div className="mt-3 flex items-center justify-end border-t border-[var(--color-line)] pt-3">
+            <button
+              onClick={del}
+              title="Permanently delete this task and its subtasks"
+              className="rounded-full border border-[var(--color-blush)]/50 px-3 py-1.5 text-xs text-[#b23b3b] transition-colors hover:bg-[color-mix(in_oklab,#c0392b_10%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b23b3b]/40"
+            >
+              Delete task
+            </button>
           </div>
         )}
 

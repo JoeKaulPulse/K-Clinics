@@ -85,6 +85,13 @@ export async function POST(req: Request) {
         const item = await board.reopenItem(String(b.id), b.reason, session.email);
         return NextResponse.json({ ok: true, item });
       }
+      case 'delete': {
+        // Permanently delete a card (duplicate / test / noise) — admins only.
+        if (!sessionIsAdmin(session)) return NextResponse.json({ ok: false, error: 'Only an admin can delete a task.' }, { status: 403 });
+        if (!b.id) return NextResponse.json({ ok: false, error: 'Missing id.' }, { status: 400 });
+        const r = await board.deleteBuildItem(String(b.id), session.email);
+        return NextResponse.json(r);
+      }
       case 'continue': {
         if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
         const r = await board.requestClaudeContinue(session.email);
