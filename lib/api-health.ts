@@ -219,7 +219,7 @@ async function checkXero(): Promise<Outcome> {
   try {
     const { xeroConfigured, getXeroCashPence } = await import('@/lib/xero');
     const { isConnected } = await import('@/lib/oauth-connections');
-    if (!xeroConfigured()) return { light: 'grey', detail: 'Not configured — add Xero OAuth credentials' };
+    if (!(await xeroConfigured())) return { light: 'grey', detail: 'Not configured — add Xero OAuth credentials' };
     if (!(await isConnected('xero'))) return { light: 'amber', detail: 'Credentials present — not connected yet', info: ['Connect via Finance → Controls (OAuth).'] };
     const t = Date.now();
     const r = await getXeroCashPence();
@@ -233,7 +233,7 @@ async function checkTrueLayer(): Promise<Outcome> {
   try {
     const { trueLayerConfigured, getBankCashPence } = await import('@/lib/truelayer');
     const { isConnected } = await import('@/lib/oauth-connections');
-    if (!trueLayerConfigured()) return { light: 'grey', detail: 'Not configured — add TrueLayer credentials' };
+    if (!(await trueLayerConfigured())) return { light: 'grey', detail: 'Not configured — add TrueLayer credentials' };
     if (!(await isConnected('truelayer'))) return { light: 'amber', detail: 'Credentials present — bank not linked yet' };
     const t = Date.now();
     const r = await getBankCashPence();
@@ -261,7 +261,7 @@ async function checkGoogleBusiness(): Promise<Outcome> {
 async function checkGoogleCalendar(): Promise<Outcome> {
   try {
     const { googleConfigured, googleEnabled } = await import('@/lib/google-calendar');
-    if (!googleEnabled()) return { light: 'grey', detail: googleConfigured() ? 'Parked — GOOGLE_INTEGRATION_ENABLED is off (clinic on Hostinger)' : 'Parked — not configured' };
+    if (!googleEnabled()) return { light: 'grey', detail: (await googleConfigured()) ? 'Parked — GOOGLE_INTEGRATION_ENABLED is off (clinic on Hostinger)' : 'Parked — not configured' };
     const staff = await db.adminUser.count({ where: { googleRefreshToken: { not: null }, active: true } });
     return { light: staff > 0 ? 'green' : 'amber', detail: staff > 0 ? `${staff} staff calendar${staff === 1 ? '' : 's'} connected` : 'Enabled but no staff connected yet' };
   } catch (e) { return { light: 'grey', detail: `Could not read — ${(e as Error)?.message?.slice(0, 60)}` }; }

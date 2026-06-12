@@ -1,6 +1,7 @@
 import 'server-only';
 import { site } from '@/lib/site';
 import { isConnected } from '@/lib/oauth-connections';
+import { getSecret } from '@/lib/secrets';
 
 // Registry of marketing platform connections. The OAuth framework is generic
 // (standard OAuth2 authorization-code); each platform plugs in its endpoints +
@@ -84,7 +85,9 @@ export const PROVIDERS: ProviderDef[] = [
 ];
 
 export const getProvider = (id: string) => PROVIDERS.find((p) => p.id === id) ?? null;
-export const isConfigured = (p: ProviderDef) => Boolean(process.env[p.envClientId] && process.env[p.envClientSecret]);
+// Credentials resolve from owner-managed values first, then env (getSecret falls
+// back to process.env, so providers whose creds aren't catalogued still work).
+export const isConfigured = async (p: ProviderDef) => Boolean((await getSecret(p.envClientId)) && (await getSecret(p.envClientSecret)));
 
 export type ConnectionState = 'connected' | 'ready' | 'setup';
 export type ProviderStatus = { id: ProviderId; name: string; category: string; blurb: string; state: ConnectionState; setupSteps: string[]; docsUrl: string; redirectUri: string };
@@ -92,15 +95,15 @@ export type ProviderStatus = { id: ProviderId; name: string; category: string; b
 export async function connectionStatuses(): Promise<ProviderStatus[]> {
   return Promise.all(PROVIDERS.map(async (p) => ({
     id: p.id, name: p.name, category: p.category, blurb: p.blurb,
-    state: (await isConnected(p.id)) ? 'connected' : isConfigured(p) ? 'ready' : 'setup',
+    state: (await isConnected(p.id)) ? 'connected' : (await isConfigured(p)) ? 'ready' : 'setup',
     setupSteps: p.setupSteps, docsUrl: p.docsUrl, redirectUri: `${REDIRECT_URI}?provider=${p.id}`,
   } as ProviderStatus)));
 }
 
 /** Build the provider's OAuth authorization URL. */
-export function authUrlFor(p: ProviderDef, state: string): string {
+export async function authUrlFor(p: ProviderDef, state: string): Promise<string> {
   const u = new URL(p.authUrl);
-  u.searchParams.set('client_id', process.env[p.envClientId] || '');
+  u.searchParams.set('client_id', (await getSecret(p.envClientId)) || '');
   u.searchParams.set('redirect_uri', `${REDIRECT_URI}?provider=${p.id}`);
   u.searchParams.set('response_type', 'code');
   if (p.scopes.length) u.searchParams.set('scope', p.scopes.join(p.scopeSeparator));
