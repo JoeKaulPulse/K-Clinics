@@ -5,16 +5,16 @@ import { useEffect, useState } from 'react';
 // Live wall-clock for the dashboard header — clinic-local time, minute-resolution
 // (updates every 30s so it never lags by more than that). Renders nothing until
 // mounted to avoid a server/client hydration mismatch on the time string.
-export function LiveClock() {
+export function LiveClock({ className }: { className?: string }) {
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
     setNow(new Date());
     const t = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(t);
   }, []);
-  if (!now) return <span className="inline-block h-6 w-16" aria-hidden />;
+  if (!now) return <span className="inline-block h-5 w-12" aria-hidden />;
   return (
-    <time className="font-[family-name:var(--font-display)] text-2xl tabular-nums leading-none text-[var(--color-ink)]">
+    <time className={className ?? 'font-[family-name:var(--font-display)] text-2xl tabular-nums leading-none text-[var(--color-ink)]'}>
       {now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
     </time>
   );

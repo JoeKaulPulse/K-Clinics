@@ -119,7 +119,7 @@ export async function formatAssessment(id: string) {
         freeIdx.forEach((i, k) => { items[i].original = items[i].value; items[i].value = translated[k]; });
         translatedNote = `Translated from ${localeName(sourceLocale)}`;
       } else {
-        translatedNote = translationConfigured()
+        translatedNote = (await translationConfigured())
           ? `Filled in ${localeName(sourceLocale)} — translation temporarily unavailable`
           : `Filled in ${localeName(sourceLocale)} — translation not configured`;
       }

@@ -12,11 +12,13 @@ type Props = {
   shiftStartIso: string | null;
   workedTodayMin: number;
   breakTodayMin: number;
+  /** BLD-226: slim single-line pill for the dashboard header (vs the full card). */
+  compact?: boolean;
 };
 
 const fmt = (min: number) => { const h = Math.floor(min / 60); const m = min % 60; return h > 0 ? `${h}h ${m}m` : `${m}m`; };
 
-export function ClockInOut({ onShift, onBreak, shiftStartIso, workedTodayMin, breakTodayMin }: Props) {
+export function ClockInOut({ onShift, onBreak, shiftStartIso, workedTodayMin, breakTodayMin, compact = false }: Props) {
   const [pending, start] = useTransition();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +47,38 @@ export function ClockInOut({ onShift, onBreak, shiftStartIso, workedTodayMin, br
 
   const dot = onBreak ? 'bg-amber-400' : onShift ? 'bg-[var(--color-jade)]' : 'bg-[var(--color-stone-soft)]';
   const label = onBreak ? 'On break' : onShift ? 'On shift' : 'Off the clock';
+
+  // Compact pill: a single-line control for the dashboard header cluster.
+  if (compact) {
+    return (
+      <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] py-1 pl-3 pr-1">
+        <span className={`h-2 w-2 shrink-0 rounded-full ${dot} ${onShift && !onBreak ? 'animate-pulse' : ''}`} />
+        <span className="text-xs font-medium text-[var(--color-ink)]">{label}</span>
+        {onShift && <span className="hidden text-xs tabular-nums text-[var(--color-stone)] sm:inline">· {fmt(liveWorked)}</span>}
+        {!onShift ? (
+          <button type="button" onClick={() => run(() => clockInOutAction('in'))} disabled={pending}
+            className="rounded-full bg-[var(--color-ink)] px-3 py-1 text-xs font-medium text-[var(--color-porcelain)] transition-opacity hover:opacity-90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">
+            {pending ? '…' : 'Clock in'}
+          </button>
+        ) : (
+          <>
+            {!onBreak ? (
+              <button type="button" onClick={() => run(() => breakAction('start', 'Lunch'))} disabled={pending} title="Take a break"
+                className="rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1 text-xs hover:bg-[var(--color-bone)] disabled:opacity-50">Break</button>
+            ) : (
+              <button type="button" onClick={() => run(() => breakAction('end'))} disabled={pending}
+                className="rounded-full bg-amber-400/90 px-2.5 py-1 text-xs font-medium text-[var(--color-ink)] hover:bg-amber-400 disabled:opacity-50">End break</button>
+            )}
+            <button type="button" onClick={() => run(() => clockInOutAction('out'))} disabled={pending}
+              className="rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1 text-xs font-medium hover:bg-[var(--color-bone)] disabled:opacity-50">
+              {pending ? '…' : 'Clock out'}
+            </button>
+          </>
+        )}
+        {error && <span className="sr-only">{error}</span>}
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">

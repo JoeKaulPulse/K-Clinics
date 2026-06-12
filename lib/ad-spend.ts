@@ -1,6 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db';
 import { getConnection, validAccessToken } from '@/lib/oauth-connections';
+import { getSecret } from '@/lib/secrets';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Ad-spend sync. Pulls campaign-level spend from connected ad platforms and
@@ -59,14 +60,14 @@ async function metaSpend(days: number): Promise<ProviderSpend[]> {
 // ── Google Ads — REST searchStream (needs a developer token) ──────────────────
 async function googleSpend(days: number): Promise<ProviderSpend[]> {
   try {
-    const devToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
+    const devToken = await getSecret('GOOGLE_ADS_DEVELOPER_TOKEN');
     const conn = await getConnection('google');
-    const customerId = (conn?.accountRef || process.env.GOOGLE_ADS_CUSTOMER_ID || '').replace(/-/g, '');
+    const customerId = (conn?.accountRef || (await getSecret('GOOGLE_ADS_CUSTOMER_ID')) || '').replace(/-/g, '');
     if (!devToken || !conn?.tokens.access || !customerId) return []; // prerequisites not set up
     // BLD-278: refresh the access token when expired (Google access tokens last
     // ~1h). Returns the live token, persisting the refreshed one.
     const accessToken = await validAccessToken('google', async (refreshToken) => {
-      const id = process.env.GOOGLE_CLIENT_ID, secret = process.env.GOOGLE_CLIENT_SECRET;
+      const id = await getSecret('GOOGLE_CLIENT_ID'), secret = await getSecret('GOOGLE_CLIENT_SECRET');
       if (!id || !secret) return null;
       const res = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
@@ -81,13 +82,14 @@ async function googleSpend(days: number): Promise<ProviderSpend[]> {
       return { access: String(j.access_token), refresh: refreshToken, expiresAt: j.expires_in ? Date.now() + Number(j.expires_in) * 1000 : null };
     });
     if (!accessToken) return [];
+    const loginCustomerId = await getSecret('GOOGLE_ADS_LOGIN_CUSTOMER_ID');
     const query = `SELECT campaign.name, metrics.cost_micros FROM campaign WHERE segments.date DURING LAST_${days === 7 ? '7' : '30'}_DAYS`;
     const r = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/googleAds:searchStream`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'developer-token': devToken,
-        ...(process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID ? { 'login-customer-id': process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID.replace(/-/g, '') } : {}),
+        ...(loginCustomerId ? { 'login-customer-id': loginCustomerId.replace(/-/g, '') } : {}),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ query }),

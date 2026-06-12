@@ -1401,6 +1401,19 @@ model Setting {
   updatedBy String?
 }
 
+// Owner-managed integration credentials (API keys / secrets) entered in the
+// admin instead of hosting env vars. Encrypted at rest (encryptJson); the
+// resolver in lib/secrets.ts prefers these over process.env, so they take
+// effect without a redeploy. `name` is the env-var name (e.g. RESEND_API_KEY);
+// @id avoids @unique so the no-data-loss deploy gate accepts the new table.
+model ManagedSecret {
+  name      String   @id
+  valueEnc  String   @db.Text
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
 // ── SOP documents per treatment type ────────────────────────────────────────
 model TreatmentSop {
   id            String   @id @default(cuid())

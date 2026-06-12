@@ -1,24 +1,19 @@
 import 'server-only';
 import { Resend } from 'resend';
 import { site } from './site';
+import { getSecret } from './secrets';
 import { K_MARK_LIGHT_B64, K_BADGE_B64, K_WORDMARK_LIGHT_B64 } from './brand-email-assets';
 import { EMAIL_HEROES } from './email-heroes';
 import { giftCardTheme } from './gift-card-themes';
 
-const apiKey = process.env.RESEND_API_KEY;
-const resend = apiKey ? new Resend(apiKey) : null;
-
 // Resend sends from the verified `mail.<domain>` subdomain; replies (and reply
-// tracking) route to `reply.mail.<domain>` via Resend Inbound. Env overrides win.
+// tracking) route to `reply.mail.<domain>` via Resend Inbound. Credentials and
+// addresses resolve from owner-managed values first, then hosting env, then a
+// sensible default — so a key entered in /admin/settings/credentials works
+// without a redeploy.
 const MAIL_HOST = (() => { try { return new URL(site.url).hostname.replace(/^www\./, ''); } catch { return 'kclinics.co.uk'; } })();
-const FROM = process.env.EMAIL_FROM || `KClinics <hello@mail.${MAIL_HOST}>`;
-const REPLY_TO = process.env.EMAIL_REPLY_TO || `KClinics <replies@reply.mail.${MAIL_HOST}>`;
 
 export type SendResult = { ok: boolean; id?: string; error?: string };
-
-// Default sender address (the part inside <…>), used to rebuild the From header
-// when a campaign overrides just the display name.
-const FROM_ADDRESS = (FROM.match(/<([^>]+)>/)?.[1] || FROM).trim();
 
 export async function sendEmail(opts: {
   to: string;
@@ -34,19 +29,33 @@ export async function sendEmail(opts: {
   /** Extra file attachments (e.g. an .ics calendar invite). */
   attachments?: { filename: string; content: Buffer | string; contentType?: string }[];
 }): Promise<SendResult> {
-  if (!resend) return { ok: false, error: 'RESEND_API_KEY not configured' };
+  const apiKey = await getSecret('RESEND_API_KEY');
+  if (!apiKey) return { ok: false, error: 'RESEND_API_KEY not configured' };
+  const resend = new Resend(apiKey);
+  const FROM = (await getSecret('EMAIL_FROM')) || `KClinics <hello@mail.${MAIL_HOST}>`;
+  const REPLY_TO = (await getSecret('EMAIL_REPLY_TO')) || `KClinics <replies@reply.mail.${MAIL_HOST}>`;
+  const FROM_ADDRESS = (FROM.match(/<([^>]+)>/)?.[1] || FROM).trim();
   try {
     const from = opts.from?.trim() ? opts.from.trim() : opts.fromName?.trim() ? `${opts.fromName.trim()} <${FROM_ADDRESS}>` : FROM;
     const attachments = [...(brandAttachments(opts.html).attachments || []), ...(opts.attachments || [])];
-    const { data, error } = await resend.emails.send({
-      from,
-      to: opts.to,
-      subject: opts.subject,
-      html: opts.html,
-      replyTo: opts.replyTo || REPLY_TO,
-      ...(attachments.length ? { attachments } : {}),
-      ...(opts.headers ? { headers: opts.headers } : {}),
-    });
+    // BLD-281: cap the Resend call so a hanging API can't pin the serverless
+    // function to its maxDuration — booking/notify flows degrade fast instead.
+    const TIMEOUT = Symbol('timeout');
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const result = await Promise.race([
+      resend.emails.send({
+        from,
+        to: opts.to,
+        subject: opts.subject,
+        html: opts.html,
+        replyTo: opts.replyTo || REPLY_TO,
+        ...(attachments.length ? { attachments } : {}),
+        ...(opts.headers ? { headers: opts.headers } : {}),
+      }),
+      new Promise<typeof TIMEOUT>((resolve) => { timer = setTimeout(() => resolve(TIMEOUT), 10_000); }),
+    ]).finally(() => { if (timer) clearTimeout(timer); });
+    if (result === TIMEOUT) return { ok: false, error: 'Email send timed out after 10s' };
+    const { data, error } = result;
     if (error) return { ok: false, error: String(error.message || error) };
     return { ok: true, id: data?.id };
   } catch (e) {
