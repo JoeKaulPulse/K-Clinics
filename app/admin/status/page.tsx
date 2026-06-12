@@ -4,6 +4,7 @@ import { getSession, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { MaintenanceScheduler } from '@/components/admin/MaintenanceScheduler';
+import { ClinicalEncryptionBackfill } from '@/components/admin/ClinicalEncryptionBackfill';
 import { getPlatformStatus, type Light } from '@/lib/platform-status';
 import { listMaintenance } from '@/lib/maintenance';
 import { getLocale } from '@/lib/locale';
@@ -59,6 +60,15 @@ export default async function StatusPage() {
           </span>
         ))}
       </div>
+
+      {/* Data protection — one-click clinical-encryption backfill + verification.
+          The route needs the export-grade clinical permission, so only render
+          the card for holders (OWNER always; ADMIN only if granted). */}
+      {can.includes('clients.export') && (
+        <div className="mt-8">
+          <ClinicalEncryptionBackfill />
+        </div>
+      )}
 
       {/* Planned maintenance */}
       <div className="mt-8">
