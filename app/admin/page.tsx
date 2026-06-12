@@ -60,46 +60,47 @@ export default async function AdminOverview() {
   const weather = await getWeather();
   const uv = weather?.uvMax != null ? uvBand(weather.uvMax) : null;
 
+  // Greeting only — the live clock/weather + clock-in live in the header control
+  // cluster (built below) so the top row stays one tidy, anchored band.
   const heading = (
-    <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-      <div>
-        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-stone-soft)]">Overview · {todayLabel}</p>
-        <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl">{greeting}{session?.name ? `, ${session.name}` : ''}</h1>
-      </div>
-      <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5 shrink-0">
-        <LiveClock />
-        {weather && (
-          <div className="min-w-0 border-l border-[var(--color-line)] pl-3 leading-tight">
-            <p className="text-sm font-medium text-[var(--color-ink)]">
-              <span className="tabular-nums">{weather.tempC}°</span>
-              <span className="ml-1 inline-block max-w-[9rem] truncate align-bottom font-normal text-[var(--color-stone)]">{weather.label}</span>
-            </p>
-            {weather.uvMax != null && uv && (
-              <p className="text-xs text-[var(--color-stone)]">
-                UV <span className="tabular-nums">{weather.uvMax}</span> ·{' '}
-                <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{uv.label}</span>
-              </p>
-            )}
-          </div>
-        )}
-      </div>
+    <div>
+      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-stone-soft)]">Overview · {todayLabel}</p>
+      <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl">{greeting}{session?.name ? `, ${session.name}` : ''}</h1>
     </div>
   );
 
-  // Clock-in / lunch-break available from every view; sits in the right-column
-  // aside (below the ViewSwitcher) — compact since the clock is now in the heading.
+  // BLD-226: one compact, right-aligned control cluster for every view —
+  // [live clock + weather] · [clock-in pill] · (Viewing-as ▾ added by the shell).
+  // Replaces the floaty stacked card so real content sits higher above the fold.
   const clock = session ? await (await import('@/lib/time-tracking')).timeStatus(session.sub).catch(() => null) : null;
-  const clockWeather = clock ? (
-    <div className="w-full sm:min-w-[15rem] sm:max-w-xs">
-      <ClockInOut
-        onShift={clock.onShift}
-        onBreak={clock.onBreak}
-        shiftStartIso={clock.shiftStart ? clock.shiftStart.toISOString() : null}
-        workedTodayMin={clock.workedTodayMin}
-        breakTodayMin={clock.breakTodayMin}
-      />
-    </div>
-  ) : null;
+  const clockWeather = (
+    <>
+      <div className="flex items-center gap-2.5 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3.5 py-1.5">
+        <LiveClock className="font-[family-name:var(--font-display)] text-base font-medium tabular-nums leading-none text-[var(--color-ink)]" />
+        {weather && (
+          <div className="min-w-0 border-l border-[var(--color-line)] pl-2.5 leading-tight">
+            <p className="text-xs font-medium text-[var(--color-ink)]">
+              <span className="tabular-nums">{weather.tempC}°</span>
+              <span className="ml-1 inline-block max-w-[7rem] truncate align-bottom font-normal text-[var(--color-stone)]">{weather.label}</span>
+              {weather.uvMax != null && uv && (
+                <span className="ml-1.5 text-[var(--color-stone-soft)]">· UV <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{weather.uvMax}</span></span>
+              )}
+            </p>
+          </div>
+        )}
+      </div>
+      {clock && (
+        <ClockInOut
+          compact
+          onShift={clock.onShift}
+          onBreak={clock.onBreak}
+          shiftStartIso={clock.shiftStart ? clock.shiftStart.toISOString() : null}
+          workedTodayMin={clock.workedTodayMin}
+          breakTodayMin={clock.breakTodayMin}
+        />
+      )}
+    </>
+  );
 
   // Preview branch: an OWNER/ADMIN is viewing a role whose dashboard is still
   // being built — skip the heavy overview queries and show its planned widgets.
