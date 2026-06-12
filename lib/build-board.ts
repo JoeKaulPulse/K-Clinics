@@ -659,6 +659,16 @@ export async function signoffItem(id: string, actor: string) {
   return out;
 }
 
+// Permanently remove a board item (e.g. a duplicate, test, or noise card). The
+// schema cascades subtasks, the event log and dependency edges; any item that
+// depended on this one is structurally freed. Admin-gated at the route.
+export async function deleteBuildItem(id: string, _actor: string): Promise<{ ok: boolean; ref: string | null }> {
+  const prev = await db.buildItem.findUnique({ where: { id }, select: { ref: true } });
+  if (!prev) return { ok: true, ref: null }; // already gone — treat as success
+  await db.buildItem.delete({ where: { id } }); // onDelete: Cascade clears subtasks/events/deps
+  return { ok: true, ref: prev.ref };
+}
+
 export async function reopenItem(id: string, reason: string | undefined, actor: string) {
   const prev = await db.buildItem.findUnique({ where: { id } });
   if (!prev) return null;
