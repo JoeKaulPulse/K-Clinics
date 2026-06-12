@@ -56,7 +56,7 @@ export async function sendRefund(input: { bookingId: string; valuePence: number;
       events: [{ name: 'refund', params: { currency: 'GBP', value: input.valuePence / 100, transaction_id: input.bookingId } }],
     };
     await fetch(`https://www.google-analytics.com/mp/collect?measurement_id=${encodeURIComponent(ids.ga4Id)}&api_secret=${encodeURIComponent(secrets.ga4ApiSecret)}`, {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(8000),
     });
   } catch (e) {
     console.error('[conversions] refund send failed:', (e as Error)?.message);
@@ -69,7 +69,7 @@ async function ga4Purchase(measurementId: string, apiSecret: string, clientId: s
     events: [{ name: 'purchase', params: { currency: 'GBP', value, transaction_id: input.bookingId, ...(input.campaign ? { campaign: input.campaign } : {}) } }],
   };
   await fetch(`https://www.google-analytics.com/mp/collect?measurement_id=${encodeURIComponent(measurementId)}&api_secret=${encodeURIComponent(apiSecret)}`, {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(8000),
   });
 }
 
@@ -86,7 +86,8 @@ async function metaPurchase(pixelId: string, token: string, value: number, input
       custom_data: { currency: 'GBP', value },
     }],
   };
-  await fetch(`https://graph.facebook.com/v19.0/${encodeURIComponent(pixelId)}/events?access_token=${encodeURIComponent(token)}`, {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+  const { META_GRAPH_VERSION } = await import('@/lib/ad-spend');
+  await fetch(`https://graph.facebook.com/${META_GRAPH_VERSION}/${encodeURIComponent(pixelId)}/events?access_token=${encodeURIComponent(token)}`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(8000),
   });
 }

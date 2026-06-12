@@ -16,11 +16,32 @@ export async function saveConnection(provider: string, tokens: Tokens, accountRe
   });
 }
 
+/** Tolerate rows saved before the marketing OAuth callback normalised token
+ *  shapes: a raw provider response ({access_token, expires_in, …}, sometimes
+ *  nested under `data` for TikTok) is mapped onto the canonical Tokens shape
+ *  so existing connections keep working without a forced reconnect. */
+function normalizeTokens(stored: unknown): Tokens | null {
+  if (!stored || typeof stored !== 'object') return null;
+  const t = stored as Record<string, unknown>;
+  if (typeof t.access === 'string') return t as unknown as Tokens;
+  const raw = (t.data && typeof t.data === 'object' ? t.data : t) as Record<string, unknown>;
+  if (typeof raw.access_token !== 'string') return null;
+  return {
+    access: raw.access_token,
+    refresh: typeof raw.refresh_token === 'string' ? raw.refresh_token : undefined,
+    // expires_in was relative to issue time, which we no longer know — treat as
+    // unknown expiry; a failing call then surfaces as "reconnect" in the UI.
+    expiresAt: null,
+  };
+}
+
 export async function getConnection(provider: string): Promise<{ tokens: Tokens; accountRef: string | null; label: string | null } | null> {
   const row = await db.externalConnection.findUnique({ where: { provider } });
   if (!row) return null;
   try {
-    return { tokens: decryptJson<Tokens>(row.tokensEnc), accountRef: row.accountRef, label: row.label };
+    const tokens = normalizeTokens(decryptJson<unknown>(row.tokensEnc));
+    if (!tokens) return null;
+    return { tokens, accountRef: row.accountRef, label: row.label };
   } catch {
     return null;
   }

@@ -31,6 +31,7 @@ export async function indexNow(paths: string[]): Promise<void> {
         keyLocation: `${site.url.replace(/\/$/, '')}/indexnow-key.txt`,
         urlList,
       }),
+      signal: AbortSignal.timeout(8000),
     });
   } catch (e) {
     console.error('[indexnow] submit failed:', (e as Error)?.message);

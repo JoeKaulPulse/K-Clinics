@@ -1,6 +1,6 @@
 import 'server-only';
 import { db } from '@/lib/db';
-import { getConnection } from '@/lib/oauth-connections';
+import { getConnection, validAccessToken } from '@/lib/oauth-connections';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Ad-spend sync. Pulls campaign-level spend from connected ad platforms and
@@ -17,6 +17,14 @@ import { getConnection } from '@/lib/oauth-connections';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type ProviderSpend = { provider: string; campaignName: string; spendPence: number };
+
+// Pinned platform API versions. Meta retires Graph versions ~2 years after
+// release and Google Ads ~12 months, so these need a periodic bump — the
+// /admin/api-health page probes them and goes red when a pinned version dies.
+// (v19.0 sunset 21 May 2026 and v17 sunset 4 Jun 2025 — both previously broke
+// spend sync silently because every fetcher swallows errors to [].)
+export const META_GRAPH_VERSION = 'v23.0';
+export const GOOGLE_ADS_API_VERSION = 'v22';
 
 const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 const toPence = (amount: number) => Math.max(0, Math.round(amount * 100));
@@ -37,14 +45,14 @@ async function metaSpend(days: number): Promise<ProviderSpend[]> {
     // Ad accounts: from the stored accountRef, else discovered from the token.
     let accountIds = (conn.accountRef ? [conn.accountRef] : []).map((a) => a.replace(/^act_/, ''));
     if (accountIds.length === 0) {
-      const r = await fetch(`https://graph.facebook.com/v19.0/me/adaccounts?fields=account_id&limit=50&access_token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(10_000) });
+      const r = await fetch(`https://graph.facebook.com/${META_GRAPH_VERSION}/me/adaccounts?fields=account_id&limit=50&access_token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(10_000) });
       const j = await r.json().catch(() => ({}));
       accountIds = (j?.data ?? []).map((a: { account_id: string }) => a.account_id).filter(Boolean);
     }
     const out: ProviderSpend[] = [];
     for (const acct of accountIds) {
       const tr = encodeURIComponent(JSON.stringify({ since, until }));
-      const url = `https://graph.facebook.com/v19.0/act_${acct}/insights?level=campaign&fields=campaign_name,spend&time_range=${tr}&limit=200&access_token=${encodeURIComponent(token)}`;
+      const url = `https://graph.facebook.com/${META_GRAPH_VERSION}/act_${acct}/insights?level=campaign&fields=campaign_name,spend&time_range=${tr}&limit=200&access_token=${encodeURIComponent(token)}`;
       const r = await fetch(url, { signal: AbortSignal.timeout(10_000) });
       const j = await r.json().catch(() => ({}));
       for (const row of j?.data ?? []) {
@@ -57,17 +65,44 @@ async function metaSpend(days: number): Promise<ProviderSpend[]> {
 }
 
 // ── Google Ads — REST searchStream (needs a developer token) ──────────────────
+
+/** Refresh-token grant for the marketing Google connection. Google access
+ *  tokens expire after ~1h, so the stored one is nearly always stale by the
+ *  time a sync runs — exchange the refresh token for a fresh access token. */
+export async function refreshGoogleTokens(refreshToken: string): Promise<{ access: string; refresh?: string; expiresAt: number | null } | null> {
+  try {
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        client_id: process.env.GOOGLE_CLIENT_ID || '',
+        client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return null;
+    const j = await res.json();
+    if (!j.access_token) return null;
+    // Google does not return a new refresh token on refresh — keep the old one.
+    return { access: j.access_token, refresh: refreshToken, expiresAt: j.expires_in ? Date.now() + j.expires_in * 1000 : null };
+  } catch { return null; }
+}
+
 async function googleSpend(days: number): Promise<ProviderSpend[]> {
   try {
     const devToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
     const conn = await getConnection('google');
     const customerId = (conn?.accountRef || process.env.GOOGLE_ADS_CUSTOMER_ID || '').replace(/-/g, '');
     if (!devToken || !conn?.tokens.access || !customerId) return []; // prerequisites not set up
+    const access = await validAccessToken('google', refreshGoogleTokens);
+    if (!access) return [];
     const query = `SELECT campaign.name, metrics.cost_micros FROM campaign WHERE segments.date DURING LAST_${days === 7 ? '7' : '30'}_DAYS`;
-    const r = await fetch(`https://googleads.googleapis.com/v17/customers/${customerId}/googleAds:searchStream`, {
+    const r = await fetch(`https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}/customers/${customerId}/googleAds:searchStream`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${conn.tokens.access}`,
+        Authorization: `Bearer ${access}`,
         'developer-token': devToken,
         ...(process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID ? { 'login-customer-id': process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID.replace(/-/g, '') } : {}),
         'Content-Type': 'application/json',

@@ -41,6 +41,7 @@ export default async function StatusPage() {
           <h1 className="font-[family-name:var(--font-display)] text-3xl">Platform status</h1>
           <p className="mt-1 max-w-2xl text-sm text-[var(--color-stone)]">
             A live, compartmentalised audit of every service, tool, database and security control. Owner/Admin only.
+            For live probes of each external API (real calls, not config checks) see <a href="/admin/api-health" className="underline">API health</a>.
           </p>
         </div>
         <div className="flex items-center gap-3 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm">
