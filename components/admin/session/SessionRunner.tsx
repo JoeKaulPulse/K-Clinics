@@ -7,6 +7,7 @@ import { SESSION_STEPS, STEP_STATION, STATION_LABEL, stepActiveAtStation, type S
 import type { SessionSnapshot } from '@/lib/appointment-session-server';
 import { reviewMedicalFlag, saveSopChecklist, startAppointment, finishAppointment, saveClinicalNote } from '@/app/admin/bookings/clinical-actions';
 import { useSessionChannel } from '@/components/admin/session/useSessionChannel';
+import { CheckIcon } from '@/components/ui/session-icons';
 
 // BLD-138 v2 — the realtime appointment session runner. Every open device
 // (front desk, host, clinician, checkout) follows the same session over SSE:
@@ -1244,10 +1245,6 @@ function ArrowIcon() {
   return <svg aria-hidden width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 8h11m0 0L9 4m4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
-function CheckIcon({ large = false }: { large?: boolean }) {
-  const s = large ? 22 : 12;
-  return <svg aria-hidden width={s} height={s} viewBox="0 0 12 12" fill="none"><path d="M2 6.2 4.8 9 10 3.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-}
 
 function AftercareIcon({ name }: { name: string }) {
   const common = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true };

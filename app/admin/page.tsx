@@ -54,45 +54,52 @@ export default async function AdminOverview() {
   const londonHour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: 'numeric', hour12: false }).format(now));
   const greeting = londonHour < 12 ? 'Good morning' : londonHour < 18 ? 'Good afternoon' : 'Good evening';
   const todayLabel = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'long', day: 'numeric', month: 'long' }).format(now);
-  const heading = (
-    <>
-      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-stone-soft)]">Overview · {todayLabel}</p>
-      <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl">{greeting}{session?.name ? `, ${session.name}` : ''}</h1>
-    </>
-  );
 
-  // Live clock + local weather/UV — front-of-house essentials shown on every view
-  // (built once here so the role views below get it too, not just the overview).
+  // Live clock + local weather/UV — shown in the greeting header so it is the
+  // first thing visible on every view (not buried below the ViewSwitcher).
   const weather = await getWeather();
   const uv = weather?.uvMax != null ? uvBand(weather.uvMax) : null;
-  // Clock-in / lunch-break is available from every view, not just My day.
-  const clock = session ? await (await import('@/lib/time-tracking')).timeStatus(session.sub).catch(() => null) : null;
-  const clockWeather = (
-    <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-end">
-      <div className="flex items-center gap-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5">
+
+  const heading = (
+    <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+      <div>
+        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-stone-soft)]">Overview · {todayLabel}</p>
+        <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl">{greeting}{session?.name ? `, ${session.name}` : ''}</h1>
+      </div>
+      <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5 shrink-0">
         <LiveClock />
         {weather && (
-          <div className="min-w-0 border-l border-[var(--color-line)] pl-4 leading-tight">
-            <p className="text-sm font-medium text-[var(--color-ink)]"><span className="tabular-nums">{weather.tempC}°</span> <span className="ml-0.5 inline-block max-w-[8rem] truncate align-bottom font-normal text-[var(--color-stone)]">{weather.label}</span></p>
+          <div className="min-w-0 border-l border-[var(--color-line)] pl-3 leading-tight">
+            <p className="text-sm font-medium text-[var(--color-ink)]">
+              <span className="tabular-nums">{weather.tempC}°</span>
+              <span className="ml-1 inline-block max-w-[9rem] truncate align-bottom font-normal text-[var(--color-stone)]">{weather.label}</span>
+            </p>
             {weather.uvMax != null && uv && (
-              <p className="text-xs text-[var(--color-stone)]">UV <span className="tabular-nums">{weather.uvMax}</span> · <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{uv.label}</span></p>
+              <p className="text-xs text-[var(--color-stone)]">
+                UV <span className="tabular-nums">{weather.uvMax}</span> ·{' '}
+                <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{uv.label}</span>
+              </p>
             )}
           </div>
         )}
       </div>
-      {clock && (
-        <div className="sm:min-w-[15rem] sm:max-w-xs">
-          <ClockInOut
-            onShift={clock.onShift}
-            onBreak={clock.onBreak}
-            shiftStartIso={clock.shiftStart ? clock.shiftStart.toISOString() : null}
-            workedTodayMin={clock.workedTodayMin}
-            breakTodayMin={clock.breakTodayMin}
-          />
-        </div>
-      )}
     </div>
   );
+
+  // Clock-in / lunch-break available from every view; sits in the right-column
+  // aside (below the ViewSwitcher) — compact since the clock is now in the heading.
+  const clock = session ? await (await import('@/lib/time-tracking')).timeStatus(session.sub).catch(() => null) : null;
+  const clockWeather = clock ? (
+    <div className="w-full sm:min-w-[15rem] sm:max-w-xs">
+      <ClockInOut
+        onShift={clock.onShift}
+        onBreak={clock.onBreak}
+        shiftStartIso={clock.shiftStart ? clock.shiftStart.toISOString() : null}
+        workedTodayMin={clock.workedTodayMin}
+        breakTodayMin={clock.breakTodayMin}
+      />
+    </div>
+  ) : null;
 
   // Preview branch: an OWNER/ADMIN is viewing a role whose dashboard is still
   // being built — skip the heavy overview queries and show its planned widgets.
