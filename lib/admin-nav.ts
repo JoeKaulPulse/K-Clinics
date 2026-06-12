@@ -66,6 +66,7 @@ export const navGroups: NavGroup[] = [
   ] },
   { heading: 'nav.group.operations', icon: 'operations', items: [
     { href: '/admin/schedule', key: 'nav.schedule', perm: 'schedule.manage', keywords: 'rota shifts staff hours rooms' },
+    { href: '/admin/reports/sessions', key: 'nav.sessionInsights', perm: 'bookings.view', keywords: 'appointment session timing analytics steps skipped revisited efficiency' },
     { href: '/admin/inventory', key: 'nav.inventory', perm: 'inventory.view', keywords: 'stock supplies consumables' },
     { href: '/admin/reorder', key: 'nav.reorder', perm: 'inventory.view', keywords: 'purchase order restock low stock' },
     { href: '/admin/suppliers', key: 'nav.suppliers', perm: 'suppliers.view', keywords: 'vendors purchasing contacts' },
