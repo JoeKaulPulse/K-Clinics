@@ -1,34 +1,39 @@
 import 'server-only';
 import { saveConnection, getConnection, validAccessToken, type Tokens } from '@/lib/oauth-connections';
+import { getSecret } from '@/lib/secrets';
 
-// TrueLayer (Open Banking) OAuth 2.0 + live balance. Activates with credentials.
+// TrueLayer (Open Banking) OAuth 2.0 + live balance. Activates with credentials
+// (owner-managed or env).
 //   TRUELAYER_CLIENT_ID, TRUELAYER_CLIENT_SECRET, [TRUELAYER_REDIRECT_URI]
 
 const PROVIDER = 'truelayer';
 const SCOPE = 'info accounts balance offline_access';
 
-export function trueLayerConfigured(): boolean {
-  return Boolean(process.env.TRUELAYER_CLIENT_ID && process.env.TRUELAYER_CLIENT_SECRET);
+export async function trueLayerConfigured(): Promise<boolean> {
+  return Boolean((await getSecret('TRUELAYER_CLIENT_ID')) && (await getSecret('TRUELAYER_CLIENT_SECRET')));
 }
 
 function redirectUri(): string {
   return process.env.TRUELAYER_REDIRECT_URI || `${process.env.NEXT_PUBLIC_SITE_URL || ''}/api/admin/integrations/truelayer/callback`;
 }
 
-export function trueLayerAuthUrl(state: string): string | null {
-  if (!trueLayerConfigured()) return null;
+export async function trueLayerAuthUrl(state: string): Promise<string | null> {
+  const clientId = await getSecret('TRUELAYER_CLIENT_ID');
+  if (!clientId || !(await getSecret('TRUELAYER_CLIENT_SECRET'))) return null;
   const p = new URLSearchParams({
-    response_type: 'code', client_id: process.env.TRUELAYER_CLIENT_ID!, redirect_uri: redirectUri(),
+    response_type: 'code', client_id: clientId, redirect_uri: redirectUri(),
     scope: SCOPE, providers: 'uk-ob-all uk-oauth-all', state,
   });
   return `https://auth.truelayer.com/?${p}`;
 }
 
 async function tokenRequest(body: Record<string, string>): Promise<Tokens | null> {
+  const clientId = await getSecret('TRUELAYER_CLIENT_ID'), clientSecret = await getSecret('TRUELAYER_CLIENT_SECRET');
+  if (!clientId || !clientSecret) return null;
   const res = await fetch('https://auth.truelayer.com/connect/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ client_id: process.env.TRUELAYER_CLIENT_ID!, client_secret: process.env.TRUELAYER_CLIENT_SECRET!, ...body }),
+    body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, ...body }),
     signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) return null;
@@ -38,7 +43,7 @@ async function tokenRequest(body: Record<string, string>): Promise<Tokens | null
 }
 
 export async function exchangeTrueLayerCode(code: string): Promise<boolean> {
-  if (!trueLayerConfigured()) return false;
+  if (!(await trueLayerConfigured())) return false;
   const tokens = await tokenRequest({ grant_type: 'authorization_code', redirect_uri: redirectUri(), code });
   if (!tokens) return false;
   await saveConnection(PROVIDER, tokens, null, 'Business bank');

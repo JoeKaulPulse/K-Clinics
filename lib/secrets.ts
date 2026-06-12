@@ -31,16 +31,18 @@ export const SECRET_DEFS: SecretDef[] = [
   { name: 'GOOGLE_ADS_DEVELOPER_TOKEN', label: 'Google Ads developer token', group: 'Ads' },
   { name: 'GOOGLE_ADS_CUSTOMER_ID', label: 'Google Ads customer ID', group: 'Ads' },
   { name: 'GOOGLE_ADS_LOGIN_CUSTOMER_ID', label: 'Google Ads login customer ID', group: 'Ads' },
-  // OAuth client credentials (set once at hosting; read at boot / during Connect)
-  { name: 'GOOGLE_CLIENT_ID', label: 'Google OAuth client ID', group: 'OAuth · Google', envOnly: true, help: 'Set in hosting env.' },
-  { name: 'GOOGLE_CLIENT_SECRET', label: 'Google OAuth client secret', group: 'OAuth · Google', envOnly: true },
-  { name: 'XERO_CLIENT_ID', label: 'Xero client ID', group: 'OAuth · Xero', envOnly: true, help: 'developer.xero.com/app/manage · set in hosting env.' },
-  { name: 'XERO_CLIENT_SECRET', label: 'Xero client secret', group: 'OAuth · Xero', envOnly: true },
-  { name: 'TRUELAYER_CLIENT_ID', label: 'TrueLayer client ID', group: 'OAuth · Bank', envOnly: true, help: 'console.truelayer.com · set in hosting env.' },
-  { name: 'TRUELAYER_CLIENT_SECRET', label: 'TrueLayer client secret', group: 'OAuth · Bank', envOnly: true },
-  // Payments (read-only here — Stripe SDK initialises at boot from env)
-  { name: 'STRIPE_SECRET_KEY', label: 'Stripe secret key', group: 'Payments', envOnly: true, help: 'Set in hosting env (loaded at startup).' },
-  { name: 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY', label: 'Stripe publishable key', group: 'Payments', envOnly: true, help: 'Public key — set in hosting env (build-time).' },
+  // OAuth client credentials — set here, then click Connect on the relevant page.
+  { name: 'GOOGLE_CLIENT_ID', label: 'Google OAuth client ID', group: 'OAuth · Google', help: 'console.cloud.google.com → Credentials. Powers Google Ads/Analytics/Search. (Calendar/Business still read hosting env.)' },
+  { name: 'GOOGLE_CLIENT_SECRET', label: 'Google OAuth client secret', group: 'OAuth · Google' },
+  { name: 'XERO_CLIENT_ID', label: 'Xero client ID', group: 'OAuth · Xero', help: 'developer.xero.com/app/manage' },
+  { name: 'XERO_CLIENT_SECRET', label: 'Xero client secret', group: 'OAuth · Xero' },
+  { name: 'TRUELAYER_CLIENT_ID', label: 'TrueLayer client ID', group: 'OAuth · Bank', help: 'console.truelayer.com' },
+  { name: 'TRUELAYER_CLIENT_SECRET', label: 'TrueLayer client secret', group: 'OAuth · Bank' },
+  // Payments — hosting-managed by design: the publishable key is baked into the
+  // browser bundle at BUILD TIME and can't be served from the DB, so payments
+  // always need both keys in env + a redeploy. Shown read-only for reference.
+  { name: 'STRIPE_SECRET_KEY', label: 'Stripe secret key', group: 'Payments', envOnly: true, help: 'Set in hosting env — payments need both keys + a redeploy.' },
+  { name: 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY', label: 'Stripe publishable key', group: 'Payments', envOnly: true, help: 'Build-time browser key — must be in hosting env (cannot be set in-app).' },
 ];
 
 const MANAGEABLE = new Set(SECRET_DEFS.filter((d) => !d.envOnly).map((d) => d.name));

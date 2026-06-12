@@ -13,7 +13,7 @@ export async function GET() {
   const { newOAuthState, attachOAuthState } = await import('@/lib/oauth-state');
   const state = newOAuthState('truelayer');
   const { trueLayerAuthUrl } = await import('@/lib/truelayer');
-  const url = trueLayerAuthUrl(state);
+  const url = await trueLayerAuthUrl(state);
   if (!url) return NextResponse.json({ ok: false, error: 'Bank feed is not configured.' }, { status: 503 });
   return attachOAuthState(NextResponse.redirect(url), 'truelayer', state);
 }

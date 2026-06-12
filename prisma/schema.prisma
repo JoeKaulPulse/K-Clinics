@@ -63,13 +63,13 @@ enum AppointmentStatus {
 }
 
 enum Role {
-  OWNER         // full access incl. settings & staff management
-  ADMIN         // full CRM access
-  PRACTITIONER  // clinician / doctor — full client + clinical (health) access
-  FRONT_DESK    // scheduling & client contact; no clinical health data
-  DEVELOPER     // build/CI/platform only — no client or clinical data (PRJ-63)
-  CONTRACTOR    // contracted tasks, time tracking, facility docs — no client data (PRJ-63)
-  STAFF         // legacy / general staff
+  OWNER // full access incl. settings & staff management
+  ADMIN // full CRM access
+  PRACTITIONER // clinician / doctor — full client + clinical (health) access
+  FRONT_DESK // scheduling & client contact; no clinical health data
+  DEVELOPER // build/CI/platform only — no client or clinical data (PRJ-63)
+  CONTRACTOR // contracted tasks, time tracking, facility docs — no client data (PRJ-63)
+  STAFF // legacy / general staff
 }
 
 enum AssessmentType {
@@ -81,10 +81,10 @@ enum AssessmentType {
 }
 
 enum DiscountStatus {
-  ACTIVE     // claimed, not yet redeemed
-  REDEEMED   // applied to a booking/treatment
-  REVOKED    // staff revoked (e.g. abuse)
-  BLOCKED    // signup matched an existing claim — no discount granted
+  ACTIVE // claimed, not yet redeemed
+  REDEEMED // applied to a booking/treatment
+  REVOKED // staff revoked (e.g. abuse)
+  BLOCKED // signup matched an existing claim — no discount granted
 }
 
 // Client loyalty: append-only points ledger. A client's balance is the sum of
@@ -92,20 +92,20 @@ enum DiscountStatus {
 // bonuses (reviews, birthday) and referral credit. Spending writes a negative
 // REDEMPTION row. Tune values in lib/client-loyalty.ts.
 enum ClientPointsCategory {
-  SPEND       // earned from a completed/charged booking (1 pt per £1)
-  REVIEW      // left a review
-  BIRTHDAY    // annual birthday bonus
-  REFERRAL    // referral credit (referrer or referred friend)
-  REDEMPTION  // spent against a booking (negative) / refunded (positive)
-  MANUAL      // staff adjustment
-  EXPIRY      // points expired after 12 months (negative)
+  SPEND // earned from a completed/charged booking (1 pt per £1)
+  REVIEW // left a review
+  BIRTHDAY // annual birthday bonus
+  REFERRAL // referral credit (referrer or referred friend)
+  REDEMPTION // spent against a booking (negative) / refunded (positive)
+  MANUAL // staff adjustment
+  EXPIRY // points expired after 12 months (negative)
 }
 
 enum ReferralStatus {
-  PENDING     // code generated, no friend linked yet
-  JOINED      // a new client signed up via the code
-  QUALIFIED   // friend's first treatment ≥ £100 completed → both rewarded
-  EXPIRED     // friend's first treatment was < £100 (didn't qualify)
+  PENDING // code generated, no friend linked yet
+  JOINED // a new client signed up via the code
+  QUALIFIED // friend's first treatment ≥ £100 completed → both rewarded
+  EXPIRED // friend's first treatment was < £100 (didn't qualify)
 }
 
 // Inclusive gender identity. Used to tailor treatment recommendations (and never
@@ -120,9 +120,9 @@ enum Gender {
 }
 
 enum BookingStatus {
-  PENDING      // created, awaiting card setup confirmation
-  CONFIRMED    // card on file, slot held
-  COMPLETED    // service delivered (may or may not be charged)
+  PENDING // created, awaiting card setup confirmation
+  CONFIRMED // card on file, slot held
+  COMPLETED // service delivered (may or may not be charged)
   CANCELLED
   NO_SHOW
 }
@@ -175,11 +175,11 @@ enum AuditAction {
 }
 
 enum ReviewStatus {
-  PENDING      // request sent, awaiting the client's response
-  SUBMITTED    // client left a review — awaiting staff moderation
-  APPROVED     // approved for display / eligible to push to Google
-  PUBLISHED    // surfaced publicly / synced to Google Business
-  HIDDEN       // moderated out (spam, abusive, off-topic)
+  PENDING // request sent, awaiting the client's response
+  SUBMITTED // client left a review — awaiting staff moderation
+  APPROVED // approved for display / eligible to push to Google
+  PUBLISHED // surfaced publicly / synced to Google Business
+  HIDDEN // moderated out (spam, abusive, off-topic)
 }
 
 enum ReviewChannel {
@@ -191,16 +191,16 @@ enum TimeOffKind {
   HOLIDAY
   SICK
   TRAINING
-  PERSONAL       // appointment / personal time
-  BLOCKED        // manual block
-  GCAL_BUSY      // synced from Google Calendar
+  PERSONAL // appointment / personal time
+  BLOCKED // manual block
+  GCAL_BUSY // synced from Google Calendar
 }
 
 enum TimeOffStatus {
-  PENDING        // awaiting manager approval
+  PENDING // awaiting manager approval
   APPROVED
   DECLINED
-  CANCELLED      // withdrawn by the requester
+  CANCELLED // withdrawn by the requester
 }
 
 enum TaskStatus {
@@ -215,11 +215,11 @@ enum TaskPriority {
 }
 
 enum StockMoveReason {
-  RECEIVED      // stock in
-  USED          // consumed in a treatment
-  WASTED        // expired / damaged / spilled
-  RETURNED      // returned to supplier
-  ADJUSTMENT    // manual correction / stock-take
+  RECEIVED // stock in
+  USED // consumed in a treatment
+  WASTED // expired / damaged / spilled
+  RETURNED // returned to supplier
+  ADJUSTMENT // manual correction / stock-take
 }
 
 enum CashflowType {
@@ -237,18 +237,18 @@ enum CashCadence {
 
 // Projected income/expense lines used by the cashflow forecast.
 model CashflowEntry {
-  id          String      @id @default(cuid())
+  id          String       @id @default(cuid())
   type        CashflowType
-  category    String      // Treatments, Retail, Rent, Salaries, Consumables, Marketing…
+  category    String // Treatments, Retail, Rent, Salaries, Consumables, Marketing…
   label       String
   amountPence Int
-  cadence     CashCadence @default(MONTHLY)
+  cadence     CashCadence  @default(MONTHLY)
   startDate   DateTime?
   endDate     DateTime?
-  active      Boolean     @default(true)
+  active      Boolean      @default(true)
   createdBy   String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   @@index([active])
 }
@@ -259,9 +259,9 @@ model CashflowEntry {
 model CashReserve {
   id                       String   @id @default(cuid())
   name                     String
-  targetPence              Int      @default(0)  // 0 = no cap
-  balancePence             Int      @default(0)  // current ring-fenced balance
-  monthlyContributionPence Int      @default(0)  // planned monthly top-up
+  targetPence              Int      @default(0) // 0 = no cap
+  balancePence             Int      @default(0) // current ring-fenced balance
+  monthlyContributionPence Int      @default(0) // planned monthly top-up
   color                    String?
   sortOrder                Int      @default(0)
   createdAt                DateTime @default(now())
@@ -269,93 +269,93 @@ model CashReserve {
 }
 
 model Client {
-  id              String         @id @default(cuid())
-  firstName       String
-  lastName        String?
-  email           String         @unique
-  phone           String?
-  dob             DateTime?      // drives birthday automation
-  ageDeclaredAt   DateTime?      // confirmed 18+ at signup
-  gender          Gender?        // tailors treatment recommendations (inclusive)
-  genderSelfDescribe String?     // free-text identity when gender = OTHER
-  source          String?        // website, treatwell, fresha, referral…
-  tags            String[]       @default([])
-  notes           String?
-  allergies       String?        // client-stated allergies / dietary notes (hospitality + safety)
-  marketingOptIn  Boolean        @default(false)
+  id                      String    @id @default(cuid())
+  firstName               String
+  lastName                String?
+  email                   String    @unique
+  phone                   String?
+  dob                     DateTime? // drives birthday automation
+  ageDeclaredAt           DateTime? // confirmed 18+ at signup
+  gender                  Gender? // tailors treatment recommendations (inclusive)
+  genderSelfDescribe      String? // free-text identity when gender = OTHER
+  source                  String? // website, treatwell, fresha, referral…
+  tags                    String[]  @default([])
+  notes                   String?
+  allergies               String? // client-stated allergies / dietary notes (hospitality + safety)
+  marketingOptIn          Boolean   @default(false)
   // Demonstrable marketing consent (UK GDPR Art. 7 / PECR reg. 22): what wording
   // version, when, and how/where consent was captured — not just the boolean above.
   marketingConsentAt      DateTime?
   marketingConsentSource  String?
   marketingConsentVersion String?
-  repermissionSentAt      DateTime?  // BLD-242: re-permission (double opt-in) email sent to a legacy opt-in
-  smsReminders    Boolean        @default(false) // client opted in to SMS confirmations & reminders
-  concerns        String[]       @default([]) // skin/treatment goals & concerns (onboarding)
-  onboardedAt     DateTime?      // completed the welcome onboarding
-  unsubscribed    Boolean        @default(false)
-  unsubToken      String         @unique @default(cuid())
-  lastVisitAt     DateTime?
-  stripeCustomerId String?       @unique
+  repermissionSentAt      DateTime? // BLD-242: re-permission (double opt-in) email sent to a legacy opt-in
+  smsReminders            Boolean   @default(false) // client opted in to SMS confirmations & reminders
+  concerns                String[]  @default([]) // skin/treatment goals & concerns (onboarding)
+  onboardedAt             DateTime? // completed the welcome onboarding
+  unsubscribed            Boolean   @default(false)
+  unsubToken              String    @unique @default(cuid())
+  lastVisitAt             DateTime?
+  stripeCustomerId        String?   @unique
 
   // ── Membership (K Circle) — cached from rolling 12-month spend ──
-  membershipTier      String?    // current tier key (e.g. silver/gold/platinum); null = base member
-  membership12moPence Int        @default(0) // realised spend over the trailing 12 months
+  membershipTier      String? // current tier key (e.g. silver/gold/platinum); null = base member
+  membership12moPence Int       @default(0) // realised spend over the trailing 12 months
   membershipUpdatedAt DateTime?
 
   // ── Client portal account ────────────────────────────────────────────────
-  passwordHash    String?        // set when the client creates a portal account
-  emailVerified   DateTime?
-  portalActive    Boolean        @default(false)
-  sessionEpoch    Int            @default(0) // BLD-161: bump to revoke all outstanding portal JWTs (e.g. on password reset)
-  locale          String         @default("en") // preferred portal language (en | uk)
-  lastLoginAt     DateTime?
+  passwordHash   String? // set when the client creates a portal account
+  emailVerified  DateTime?
+  portalActive   Boolean   @default(false)
+  sessionEpoch   Int       @default(0) // BLD-161: bump to revoke all outstanding portal JWTs (e.g. on password reset)
+  locale         String    @default("en") // preferred portal language (en | uk)
+  lastLoginAt    DateTime?
   // Password reset (hashed token + expiry).
-  resetTokenHash  String?
-  resetTokenExp   DateTime?
+  resetTokenHash String?
+  resetTokenExp  DateTime?
 
   // ── First-visit discount (one-time, guardrailed) ─────────────────────────
-  firstDiscountClaimed Boolean   @default(false)
-  signupIp        String?
+  firstDiscountClaimed Boolean @default(false)
+  signupIp             String?
 
   // ── Loyalty / referrals ──────────────────────────────────────────────────
-  referralCode    String?        @unique // this client's own shareable code
-  referredById    String?        // the Referral they joined through (if any)
+  referralCode String? @unique // this client's own shareable code
+  referredById String? // the Referral they joined through (if any)
 
   // ── Clinical safety flag ─────────────────────────────────────────────────
   // A concise, non-clinical alert (e.g. "Diabetes — see medical history") that
   // staff must review at the start of each appointment. Detailed health data
   // stays in the encrypted HealthAssessment records.
-  medicalFlag     String?
+  medicalFlag      String?
   medicalFlagSetBy String?
-  medicalFlagAt   DateTime?
+  medicalFlagAt    DateTime?
 
   // ── Public loyalty leaderboard (PRJ-1.11) ────────────────────────────────
   // Only clients who explicitly opt in appear on the public leaderboard.
   // leaderboardPhotoUrl is staff-set after the client's written permission.
-  leaderboardOptIn       Boolean  @default(false)
+  leaderboardOptIn       Boolean @default(false)
   leaderboardPhotoUrl    String?
-  leaderboardDisplayName String?  // preferred display name (first name by default)
+  leaderboardDisplayName String? // preferred display name (first name by default)
 
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  consultations   Consultation[]
-  interactions    Interaction[]
-  appointments    Appointment[]
-  bookings        Booking[]
-  followUps       FollowUp[]
-  aiAnalyses      AiAnalysis[]
-  emails          EmailEvent[]
-  assessments     HealthAssessment[]
-  discountClaims  DiscountClaim[]
-  tasks           Task[]
-  reviews         Review[]
-  npsResponses    NpsResponse[]
-  points          ClientPoints[]
-  waitlist        WaitlistEntry[]
-  referralsMade   Referral[]     @relation("ReferralsMade")
-  referredVia     Referral?      @relation("ReferralReceived")
-  callRecords     CallRecord[]
+  consultations  Consultation[]
+  interactions   Interaction[]
+  appointments   Appointment[]
+  bookings       Booking[]
+  followUps      FollowUp[]
+  aiAnalyses     AiAnalysis[]
+  emails         EmailEvent[]
+  assessments    HealthAssessment[]
+  discountClaims DiscountClaim[]
+  tasks          Task[]
+  reviews        Review[]
+  npsResponses   NpsResponse[]
+  points         ClientPoints[]
+  waitlist       WaitlistEntry[]
+  referralsMade  Referral[]         @relation("ReferralsMade")
+  referredVia    Referral?          @relation("ReferralReceived")
+  callRecords    CallRecord[]
 
   @@index([createdAt])
   @@index([dob])
@@ -383,7 +383,7 @@ enum CallMatchType {
 model Supplier {
   id            String       @id @default(cuid())
   name          String
-  category      String?                       // e.g. Consumables, Equipment, Utilities, Marketing
+  category      String? // e.g. Consumables, Equipment, Utilities, Marketing
   contactName   String?
   email         String?
   phone         String?
@@ -392,9 +392,9 @@ model Supplier {
   city          String?
   postcode      String?
   country       String?      @default("GB")
-  accountNumber String?                       // our account reference with them
+  accountNumber String? // our account reference with them
   notes         String?
-  xeroContactId String?      @unique          // link to the Xero contact for bills/invoices
+  xeroContactId String?      @unique // link to the Xero contact for bills/invoices
   active        Boolean      @default(true)
   createdBy     String?
   createdAt     DateTime     @default(now())
@@ -406,31 +406,31 @@ model Supplier {
 }
 
 model CallRecord {
-  id               String        @id @default(cuid())
-  yayId            String        @unique          // yay.com call/CDR id → idempotent ingest
-  direction        CallDirection
-  fromNumber       String
-  toNumber         String
-  status           String?                        // answered | missed | busy | failed | voicemail
-  startedAt        DateTime
-  answeredAt       DateTime?
-  endedAt          DateTime?
-  durationSec      Int           @default(0)
-  agentExtension   String?                        // yay extension that handled the call
-  agentEmail       String?
-  recordingUrl     String?                        // yay-hosted recording
-  recordingMime    String?
-  transcript       String?       @db.Text
-  transcriptStatus String        @default("pending") // pending | ready | unavailable
-  matchType        CallMatchType @default(UNKNOWN)
-  matchedClientId  String?
-  matchedClient    Client?       @relation(fields: [matchedClientId], references: [id], onDelete: SetNull)
+  id                String        @id @default(cuid())
+  yayId             String        @unique // yay.com call/CDR id → idempotent ingest
+  direction         CallDirection
+  fromNumber        String
+  toNumber          String
+  status            String? // answered | missed | busy | failed | voicemail
+  startedAt         DateTime
+  answeredAt        DateTime?
+  endedAt           DateTime?
+  durationSec       Int           @default(0)
+  agentExtension    String? // yay extension that handled the call
+  agentEmail        String?
+  recordingUrl      String? // yay-hosted recording
+  recordingMime     String?
+  transcript        String?       @db.Text
+  transcriptStatus  String        @default("pending") // pending | ready | unavailable
+  matchType         CallMatchType @default(UNKNOWN)
+  matchedClientId   String?
+  matchedClient     Client?       @relation(fields: [matchedClientId], references: [id], onDelete: SetNull)
   matchedSupplierId String?
-  matchedSupplier  Supplier?     @relation(fields: [matchedSupplierId], references: [id], onDelete: SetNull)
-  matchedLabel     String?                        // display label when neither client nor supplier
-  notes            String?                        // free-text staff note (the only mutable field)
-  raw              Json?                          // original webhook payload, for audit
-  createdAt        DateTime      @default(now())
+  matchedSupplier   Supplier?     @relation(fields: [matchedSupplierId], references: [id], onDelete: SetNull)
+  matchedLabel      String? // display label when neither client nor supplier
+  notes             String? // free-text staff note (the only mutable field)
+  raw               Json? // original webhook payload, for audit
+  createdAt         DateTime      @default(now())
 
   @@index([startedAt])
   @@index([direction])
@@ -438,21 +438,21 @@ model CallRecord {
 }
 
 model Consultation {
-  id              String        @id @default(cuid())
-  client          Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  clientId        String
-  category        String        // aesthetics | dentistry | both
-  treatments      String[]      @default([])
-  concerns        String?
-  message         String?
-  preferredTime   String?
-  preferredContact String?      // email | phone | whatsapp
-  medicalNotes    String?
-  status          ConsultStatus @default(NEW)
-  assignedTo      String?
-  notes           ConsultationNote[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id               String             @id @default(cuid())
+  client           Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId         String
+  category         String // aesthetics | dentistry | both
+  treatments       String[]           @default([])
+  concerns         String?
+  message          String?
+  preferredTime    String?
+  preferredContact String? // email | phone | whatsapp
+  medicalNotes     String?
+  status           ConsultStatus      @default(NEW)
+  assignedTo       String?
+  notes            ConsultationNote[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
 
   @@index([status])
   @@index([createdAt])
@@ -463,7 +463,7 @@ model ConsultationNote {
   consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
   consultationId String
   body           String       @db.Text
-  author         String       // staff email
+  author         String // staff email
   createdAt      DateTime     @default(now())
 
   @@index([consultationId, createdAt])
@@ -485,78 +485,78 @@ model Interaction {
 }
 
 model Appointment {
-  id         String            @id @default(cuid())
-  client     Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  clientId   String
-  treatment  String
-  scheduledAt DateTime
-  status     AppointmentStatus @default(SCHEDULED)
-  followUpSent Boolean         @default(false)
-  reviewSent Boolean           @default(false)
-  createdAt  DateTime          @default(now())
+  id           String            @id @default(cuid())
+  client       Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId     String
+  treatment    String
+  scheduledAt  DateTime
+  status       AppointmentStatus @default(SCHEDULED)
+  followUpSent Boolean           @default(false)
+  reviewSent   Boolean           @default(false)
+  createdAt    DateTime          @default(now())
 
   @@index([scheduledAt])
 }
 
 model Booking {
-  id            String        @id @default(cuid())
-  client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  clientId      String
+  id       String @id @default(cuid())
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String
 
-  treatmentSlug String
+  treatmentSlug  String
   treatmentTitle String
-  startAt       DateTime
-  endAt         DateTime
-  durationMin   Int
+  startAt        DateTime
+  endAt          DateTime
+  durationMin    Int
   // Turnaround/cleanup minutes blocked AFTER the appointment (not client-facing,
   // not charged). The effective busy window is [startAt, endAt + bufferMin].
-  bufferMin     Int           @default(0)
-  pricePence    Int           // 0 = on-consultation (amount set at charge time)
+  bufferMin      Int      @default(0)
+  pricePence     Int // 0 = on-consultation (amount set at charge time)
 
-  status        BookingStatus @default(PENDING)
-  notes         String?
+  status BookingStatus @default(PENDING)
+  notes  String?
 
   // Hospitality: what the client would like prepared for their visit, plus any
   // allergy/dietary note. Aftercare acknowledgement: when the client confirmed
   // they have read & agreed to follow the aftercare instructions.
-  refreshments  String[]      @default([])
-  allergyNote   String?
+  refreshments   String[]  @default([])
+  allergyNote    String?
   aftercareAckAt DateTime?
 
   // Loyalty points applied to this booking (money off). pointsRedeemed is the
   // ledger amount spent; pointsRedeemedPence is the £ value deducted (capped at
   // 50% of pricePence). Refunded if the booking is cancelled.
-  pointsRedeemed      Int       @default(0)
-  pointsRedeemedPence Int       @default(0)
+  pointsRedeemed      Int @default(0)
+  pointsRedeemedPence Int @default(0)
 
   // Assigned clinician. Always usable internally; only offered to clients when
   // the 'allow_clinician_choice' setting is enabled.
-  practitioner   AdminUser?   @relation("PractitionerBookings", fields: [practitionerId], references: [id], onDelete: SetNull)
+  practitioner   AdminUser? @relation("PractitionerBookings", fields: [practitionerId], references: [id], onDelete: SetNull)
   practitionerId String?
 
   // Which site this appointment takes place at (multi-location).
-  location       Location?    @relation(fields: [locationId], references: [id], onDelete: SetNull)
-  locationId     String?
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  locationId String?
 
   // Rooms/equipment held for this appointment (e.g. a treatment room + the laser
   // machine). Auto-assigned at booking from what's free and capable.
-  resources      Resource[]
+  resources Resource[]
 
   // Front-of-house check-in: when reception marked the client as arrived (PRJ-63).
   // Distinct from startedAt (clinician beginning the treatment); surfaced to the
   // clinician view as an "Arrived" cue. Additive nullable column.
-  arrivedAt      DateTime?
+  arrivedAt DateTime?
 
   // Time tracking — actuals vs the scheduled duration.
-  startedAt      DateTime?
-  finishedAt     DateTime?
-  actualMinutes  Int?
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  actualMinutes Int?
 
   // Clinician's treatment note for this session (clinical record). Encrypted at
   // rest via the same app-level crypto used for health assessments.
-  clinicalNoteEnc   String?
-  clinicalNoteBy    String?
-  clinicalNoteAt    DateTime?
+  clinicalNoteEnc String?
+  clinicalNoteBy  String?
+  clinicalNoteAt  DateTime?
 
   // Pre-appointment safety checks the clinician confirms before starting.
   sopAcknowledgedAt     DateTime?
@@ -568,41 +568,41 @@ model Booking {
   medicalFlagReviewedBy String?
 
   // Stripe: card saved at booking (no charge), charged later.
-  stripeCustomerId       String?
-  stripeSetupIntentId    String?
-  stripePaymentMethodId  String?
+  stripeCustomerId      String?
+  stripeSetupIntentId   String?
+  stripePaymentMethodId String?
 
   // Service / late-cancel charge.
-  chargePaymentIntentId  String?
-  chargedPence           Int?
-  chargedAt              DateTime?
+  chargePaymentIntentId String?
+  chargedPence          Int?
+  chargedAt             DateTime?
   // Refund (full or partial) of a charge, within the allowed window.
-  refundedPence          Int?
-  refundedAt             DateTime?
-  refundReason           String?
+  refundedPence         Int?
+  refundedAt            DateTime?
+  refundReason          String?
   // Xero sales push (lib/xero.ts): the ACCREC invoice raised for the charge
   // ('PENDING' while a push is in flight — doubles as the idempotency claim),
   // and the credit note raised for each refund.
-  xeroInvoiceId          String?
-  xeroCreditNoteIds      String[]      @default([])
+  xeroInvoiceId         String?
+  xeroCreditNoteIds     String[]  @default([])
 
   // Cancellation.
-  cancelledAt   DateTime?
-  cancelReason  String?
-  cancelledBy   String?       // 'client' | staff email
-  lateCancel    Boolean       @default(false)
-  feeWaived     Boolean       @default(false)
+  cancelledAt  DateTime?
+  cancelReason String?
+  cancelledBy  String? // 'client' | staff email
+  lateCancel   Boolean   @default(false)
+  feeWaived    Boolean   @default(false)
 
   // Client self-service link token.
-  manageToken   String        @unique @default(cuid())
+  manageToken String @unique @default(cuid())
 
-  remindersSent   Boolean       @default(false)
+  remindersSent   Boolean  @default(false)
   // BLD-126: additional reminder windows (72h/48h) — additive, default false.
-  reminder72hSent Boolean       @default(false)
-  reminder48hSent Boolean       @default(false)
-  rescheduleCount Int           @default(0)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  reminder72hSent Boolean  @default(false)
+  reminder48hSent Boolean  @default(false)
+  rescheduleCount Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Marketing attribution (first-touch, captured from UTM/campaign params).
   attribSource        String?
@@ -612,11 +612,11 @@ model Booking {
   marketingCampaign   MarketingCampaign? @relation(fields: [marketingCampaignId], references: [id], onDelete: SetNull)
   marketingCampaignId String?
 
-  auditEvents   AuditEvent[]
-  reviews       Review[]
-  items         BookingItem[] // line items: primary treatment + any upsell add-ons
-  followUp      FollowUp?     // post-treatment follow-up questionnaire
-  liveSession   AppointmentSession? // BLD-138 interactive in-clinic session
+  auditEvents AuditEvent[]
+  reviews     Review[]
+  items       BookingItem[] // line items: primary treatment + any upsell add-ons
+  followUp    FollowUp? // post-treatment follow-up questionnaire
+  liveSession AppointmentSession? // BLD-138 interactive in-clinic session
 
   @@index([startAt])
   @@index([status])
@@ -639,7 +639,7 @@ model AppointmentSession {
   bookingId   String    @unique
   status      String    @default("ACTIVE") // ACTIVE | COMPLETED
   currentStep String    @default("arrival")
-  startedBy   String    // staff email driving the session
+  startedBy   String // staff email driving the session
   startedAt   DateTime  @default(now())
   completedAt DateTime?
   // Per-step timing: { [stepKey]: { enteredAt: ISO|null, seconds: number, visits: number, skipped?: boolean } }
@@ -674,26 +674,26 @@ model MarketingCampaign {
   name               String
   slug               String         @unique // also the ?c= attribution token
   status             CampaignStatus @default(DRAFT)
-  goal               String?        // bookings | leads | revenue | awareness
-  audience           String?        // target segment / notes
+  goal               String? // bookings | leads | revenue | awareness
+  audience           String? // target segment / notes
   description        String?
   heroImage          String?
   startAt            DateTime?
   endAt              DateTime?
-  budgetPence        Int?           // planned spend (for ROI)
+  budgetPence        Int? // planned spend (for ROI)
   spendPence         Int            @default(0) // recorded/synced ad spend
-  spendSyncedAt      DateTime?      // last time ad spend was pulled from a platform
+  spendSyncedAt      DateTime? // last time ad spend was pulled from a platform
   targetRevenuePence Int?
   targetBookings     Int?
-  utmCampaign        String?        // utm_campaign value used across channels
+  utmCampaign        String? // utm_campaign value used across channels
   channels           String[]       @default([]) // email | google_ads | meta | tiktok | seo | landing
-  brief              String?        // creative brief (feeds the AI assistant)
-  aiDraft            Json?          // last AI-generated content pack (owner reviews before use)
+  brief              String? // creative brief (feeds the AI assistant)
+  aiDraft            Json? // last AI-generated content pack (owner reviews before use)
   createdBy          String?
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 
-  bookings           Booking[]
+  bookings Booking[]
 
   @@index([status])
 }
@@ -716,72 +716,72 @@ enum ServiceStatus {
 }
 
 model Service {
-  id            String          @id @default(cuid())
-  slug          String          @unique
-  treatmentSlug String          // links to a marketing Treatment (lib/treatments.ts)
+  id            String        @id @default(cuid())
+  slug          String        @unique
+  treatmentSlug String // links to a marketing Treatment (lib/treatments.ts)
   name          String
-  category      String          @default("aesthetics") // aesthetics | dentistry
-  vatClass      String?         // STANDARD | REDUCED | ZERO | EXEMPT (null → derived: dentistry EXEMPT, else STANDARD)
-  order         Int             @default(0)
-  active        Boolean         @default(true)
-  status        ServiceStatus   @default(NORMAL) // service-level public state
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  category      String        @default("aesthetics") // aesthetics | dentistry
+  vatClass      String? // STANDARD | REDUCED | ZERO | EXEMPT (null → derived: dentistry EXEMPT, else STANDARD)
+  order         Int           @default(0)
+  active        Boolean       @default(true)
+  status        ServiceStatus @default(NORMAL) // service-level public state
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
-  variants      ServiceVariant[]
-  offers        ServiceOffer[]
+  variants ServiceVariant[]
+  offers   ServiceOffer[]
 
   @@index([treatmentSlug])
   @@index([active])
 }
 
 model ServiceVariant {
-  id          String          @id @default(cuid())
-  service     Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  id          String         @id @default(cuid())
+  service     Service        @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   serviceId   String
-  name        String          // e.g. "Full Face", "Signature Express (30 min)"
-  durationMin Int             @default(30)
-  pricePence  Int             // single-session retail price (0 = on consultation)
-  costPence   Int?            // cost of goods/service, for margin tracking
+  name        String // e.g. "Full Face", "Signature Express (30 min)"
+  durationMin Int            @default(30)
+  pricePence  Int // single-session retail price (0 = on consultation)
+  costPence   Int? // cost of goods/service, for margin tracking
   // Course/package options as [{ sessions, totalPence }], cheaper per-session.
   courses     Json?
-  order       Int             @default(0)
-  active      Boolean         @default(true)
-  status      ServiceStatus?  // optional per-option override of the service status
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  order       Int            @default(0)
+  active      Boolean        @default(true)
+  status      ServiceStatus? // optional per-option override of the service status
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
-  offers      ServiceOffer[]
+  offers       ServiceOffer[]
   bookingItems BookingItem[]
 
   @@index([serviceId, active])
 }
 
 enum OfferScope {
-  ALL       // every service
-  SERVICE   // one service (all its variants)
-  VARIANT   // a single variant
+  ALL // every service
+  SERVICE // one service (all its variants)
+  VARIANT // a single variant
 }
 
 // Special offers / discounts. Promoted ones surface on the marketing site and
 // in client portals. Applied automatically to matching booking line items.
 model ServiceOffer {
-  id            String      @id @default(cuid())
-  name          String      // shown to clients, e.g. "Summer Skin — 20% off"
-  scope         OfferScope  @default(ALL)
-  service       Service?    @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  serviceId     String?
-  variant       ServiceVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
-  variantId     String?
-  percentOff    Int?        // 0–100
-  amountOffPence Int?       // fixed amount off (alternative to percent)
-  startAt       DateTime?
-  endAt         DateTime?
-  promoted      Boolean     @default(true)  // surface on site + portal
-  active        Boolean     @default(true)
-  createdBy     String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id             String          @id @default(cuid())
+  name           String // shown to clients, e.g. "Summer Skin — 20% off"
+  scope          OfferScope      @default(ALL)
+  service        Service?        @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId      String?
+  variant        ServiceVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  variantId      String?
+  percentOff     Int? // 0–100
+  amountOffPence Int? // fixed amount off (alternative to percent)
+  startAt        DateTime?
+  endAt          DateTime?
+  promoted       Boolean         @default(true) // surface on site + portal
+  active         Boolean         @default(true)
+  createdBy      String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   @@index([active, promoted])
   @@index([serviceId])
@@ -791,42 +791,42 @@ model ServiceOffer {
 // A booking is one or more line items: the primary treatment plus any upsell
 // add-ons taken in the same slot (often at a discount).
 model BookingItem {
-  id              String          @id @default(cuid())
-  booking         Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  bookingId       String
-  variant         ServiceVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
-  variantId       String?
-  treatmentSlug   String
-  label           String          // e.g. "Laser Hair Removal — Full Face"
-  sessions        Int             @default(1) // 1 = single; >1 = course booked
-  durationMin     Int             @default(0)
-  pricePence      Int             @default(0) // retail before discount
-  discountPence   Int             @default(0) // welcome/offer/upsell discount applied
-  isAddon         Boolean         @default(false)
-  createdAt       DateTime        @default(now())
+  id            String          @id @default(cuid())
+  booking       Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId     String
+  variant       ServiceVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  variantId     String?
+  treatmentSlug String
+  label         String // e.g. "Laser Hair Removal — Full Face"
+  sessions      Int             @default(1) // 1 = single; >1 = course booked
+  durationMin   Int             @default(0)
+  pricePence    Int             @default(0) // retail before discount
+  discountPence Int             @default(0) // welcome/offer/upsell discount applied
+  isAddon       Boolean         @default(false)
+  createdAt     DateTime        @default(now())
 
   @@index([bookingId])
 }
 
 model EmailEvent {
-  id         String      @id @default(cuid())
-  client     Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  clientId   String?
-  kind       EmailKind
-  to         String
-  subject    String
-  status     EmailStatus @default(QUEUED)
-  providerId String?
-  campaignId String?
-  error      String?
-  meta       Json?
-  openedAt   DateTime?
-  clickedAt  DateTime?
-  bouncedAt  DateTime?
+  id           String      @id @default(cuid())
+  client       Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId     String?
+  kind         EmailKind
+  to           String
+  subject      String
+  status       EmailStatus @default(QUEUED)
+  providerId   String?
+  campaignId   String?
+  error        String?
+  meta         Json?
+  openedAt     DateTime?
+  clickedAt    DateTime?
+  bouncedAt    DateTime?
   complainedAt DateTime?
-  opens      Int         @default(0)
-  clicks     Int         @default(0)
-  createdAt  DateTime    @default(now())
+  opens        Int         @default(0)
+  clicks       Int         @default(0)
+  createdAt    DateTime    @default(now())
 
   @@index([clientId])
   @@index([kind, createdAt])
@@ -835,33 +835,33 @@ model EmailEvent {
 }
 
 model Campaign {
-  id          String   @id @default(cuid())
-  name        String
-  subject     String
-  body        String
-  segment     String?  // tag or rule used to select recipients
+  id            String    @id @default(cuid())
+  name          String
+  subject       String
+  body          String
+  segment       String? // tag or rule used to select recipients
   // Lifecycle: DRAFT (work in progress) → SCHEDULED (queued for scheduledAt) →
   // SENDING (cron picked it up) → SENT. Defaults to SENT so existing rows,
   // which were all sent immediately, keep their meaning.
-  status      String   @default("SENT")
-  scheduledAt DateTime?
+  status        String    @default("SENT")
+  scheduledAt   DateTime?
   // Sender + audience captured so a draft/scheduled send can be re-sent later.
-  fromName     String?
-  replyTo      String?
-  preheader    String?
-  audienceType String?  // all | segment | tag
+  fromName      String?
+  replyTo       String?
+  preheader     String?
+  audienceType  String? // all | segment | tag
   audienceValue String?
-  createdBy    String?
+  createdBy     String?
   // A/B subject test: variant B subject, % of the audience used per variant in
   // the test, when to pick a winner, and the winner ('A'|'B') once decided.
-  subjectB     String?
-  abSamplePct  Int?
-  abDecideAt   DateTime?
-  abWinner     String?
-  sentAt      DateTime?
-  recipients  Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now()) @updatedAt
+  subjectB      String?
+  abSamplePct   Int?
+  abDecideAt    DateTime?
+  abWinner      String?
+  sentAt        DateTime?
+  recipients    Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now()) @updatedAt
 
   @@index([status, scheduledAt])
 }
@@ -888,73 +888,73 @@ model EmailTemplate {
   subject   String?
   preheader String?
   fromName  String?
-  body      String   // JSON EmailBlock[]
+  body      String // JSON EmailBlock[]
   createdBy String?
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 }
 
 model AdminUser {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String    @id @default(cuid())
+  email        String    @unique
   name         String?
-  onboardedAt  DateTime?  // completed the staff welcome onboarding
+  onboardedAt  DateTime? // completed the staff welcome onboarding
   passwordHash String
-  role         Role     @default(STAFF)
-  active       Boolean  @default(true)
+  role         Role      @default(STAFF)
+  active       Boolean   @default(true)
 
   // Per-user permission overrides on top of the role defaults.
   // grant = always allow these keys; revoke = always deny these keys.
-  permGrant    String[] @default([])
-  permRevoke   String[] @default([])
+  permGrant  String[] @default([])
+  permRevoke String[] @default([])
 
   // ── Scheduling & clinical capability ──────────────────────────────────────
-  isClinician   Boolean   @default(false) // bookable as a practitioner
-  title         String?                    // e.g. "Aesthetic Doctor"
-  color         String?                    // calendar colour (hex)
+  isClinician  Boolean  @default(false) // bookable as a practitioner
+  title        String? // e.g. "Aesthetic Doctor"
+  color        String? // calendar colour (hex)
   // Treatment slugs this person is competent to deliver (empty = all).
-  competencies  String[]  @default([])
+  competencies String[] @default([])
 
   // ── Public team-page profile (single source of truth → /team) ──
-  publicProfile   Boolean  @default(false)  // show on the public team page
-  photoUrl        String?                   // headshot URL
-  publicPhone     String?                   // shown on the team card (optional)
-  bio             String?                   // public bio
+  publicProfile   Boolean @default(false) // show on the public team page
+  photoUrl        String? // headshot URL
+  publicPhone     String? // shown on the team card (optional)
+  bio             String? // public bio
   yearsExperience Int?
-  credentials     String?                   // e.g. "GMC reg. · Aesthetic Medicine"
-  profileOrder    Int      @default(0)      // ordering within their group
+  credentials     String? // e.g. "GMC reg. · Aesthetic Medicine"
+  profileOrder    Int     @default(0) // ordering within their group
 
   // Google Calendar integration (busy-time sync + event push).
-  googleCalendarId String?
+  googleCalendarId   String?
   googleRefreshToken String?
 
-  locale       String   @default("en") // CRM UI language (en | uk)
+  locale                 String  @default("en") // CRM UI language (en | uk)
   preferredDashboardView String? // PRJ-63: OWNER/ADMIN can pin a role-view to land on (null = role default)
 
   // ── Two-factor authentication (TOTP) ────────────────────────────────────
-  totpSecret    String?    // encrypted base32 secret (lib/crypto keyring)
-  totpEnabledAt DateTime?  // set once enrolment is confirmed with a valid code
-  recoveryCodes String[]  @default([]) // bcrypt-hashed single-use recovery codes
-  sessionEpoch  Int       @default(0)  // bump to revoke all existing sessions
-  financePinHash String?  // bcrypt-hashed 6-digit PIN to unlock financial data
-  passkeys      WebAuthnCredential[]
+  totpSecret     String? // encrypted base32 secret (lib/crypto keyring)
+  totpEnabledAt  DateTime? // set once enrolment is confirmed with a valid code
+  recoveryCodes  String[]             @default([]) // bcrypt-hashed single-use recovery codes
+  sessionEpoch   Int                  @default(0) // bump to revoke all existing sessions
+  financePinHash String? // bcrypt-hashed 6-digit PIN to unlock financial data
+  passkeys       WebAuthnCredential[]
 
-  lastLoginAt  DateTime?
-  createdBy    String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  lastLoginAt DateTime?
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  schedules    StaffSchedule[]
-  timeOff      StaffTimeOff[]
-  bookings     Booking[]       @relation("PractitionerBookings")
-  assignedTasks Task[]         @relation("TaskAssignee")
-  locations    Location[]      @relation("StaffLocations")
-  reviews      Review[]        @relation("ClinicianReviews")
-  points       StaffPoints[]
-  redemptions  RewardRedemption[]
-  notifications StaffNotification[]
-  timeEntries  TimeEntry[]
-  contractorTasks ContractorTask[] @relation("ContractorTaskAssignee")
+  schedules       StaffSchedule[]
+  timeOff         StaffTimeOff[]
+  bookings        Booking[]           @relation("PractitionerBookings")
+  assignedTasks   Task[]              @relation("TaskAssignee")
+  locations       Location[]          @relation("StaffLocations")
+  reviews         Review[]            @relation("ClinicianReviews")
+  points          StaffPoints[]
+  redemptions     RewardRedemption[]
+  notifications   StaffNotification[]
+  timeEntries     TimeEntry[]
+  contractorTasks ContractorTask[]    @relation("ContractorTaskAssignee")
 }
 
 // PRJ-63 — staff time tracking. A TimeEntry is an open/closed interval of either
@@ -972,8 +972,8 @@ model TimeEntry {
   userId    String
   kind      TimeEntryKind @default(SHIFT)
   startedAt DateTime      @default(now())
-  endedAt   DateTime?     // null = still open (on shift / on break)
-  note      String?       // e.g. "Lunch" for a break
+  endedAt   DateTime? // null = still open (on shift / on break)
+  note      String? // e.g. "Lunch" for a break
   createdAt DateTime      @default(now())
 
   @@index([userId, startedAt])
@@ -998,10 +998,10 @@ model FacilityDoc {
   id          String          @id @default(cuid())
   title       String
   type        FacilityDocType @default(OTHER)
-  fileUrl     String          // Vercel Blob URL (image or PDF)
+  fileUrl     String // Vercel Blob URL (image or PDF)
   isPdf       Boolean         @default(false)
   description String?
-  locationId  String?         // optional scope tag (Location.id)
+  locationId  String? // optional scope tag (Location.id)
   tags        String[]        @default([])
   order       Int             @default(0)
   createdAt   DateTime        @default(now())
@@ -1021,21 +1021,76 @@ enum ContractorTaskStatus {
 }
 
 model ContractorTask {
-  id          String               @id @default(cuid())
-  title       String
-  description String?
-  status      ContractorTaskStatus @default(OPEN)
-  assignee    AdminUser?           @relation("ContractorTaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-  assigneeId  String?
-  dueAt       DateTime?
-  locationId  String?              // optional scope tag (Location.id)
-  createdBy   String?              // staff email who assigned it
-  completedAt DateTime?
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
+  id           String               @id @default(cuid())
+  title        String
+  description  String?
+  status       ContractorTaskStatus @default(OPEN)
+  assignee     AdminUser?           @relation("ContractorTaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  assigneeId   String?
+  // PRJ-63: optionally assign to a self-onboarded Contractor (reception check-in)
+  // instead of/as well as a staff AdminUser. Both are nullable; either may hold it.
+  contractor   Contractor?          @relation("ContractorTaskContractor", fields: [contractorId], references: [id], onDelete: SetNull)
+  contractorId String?
+  dueAt        DateTime?
+  locationId   String? // optional scope tag (Location.id)
+  createdBy    String? // staff email who assigned it
+  completedAt  DateTime?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 
   @@index([assigneeId, status])
+  @@index([contractorId, status])
   @@index([status, dueAt])
+}
+
+// PRJ-63 — contractors sign in at reception like clients, NOT as admin staff.
+// A Contractor is a lightweight self-onboarded profile deliberately isolated from
+// AdminUser so the PUBLIC check-in endpoint never creates or touches a privileged
+// account (no login, no session, no permissions). An admin approves new profiles.
+// Additive: new enum + new tables + a nullable FK on ContractorTask only.
+enum ContractorStatus {
+  PENDING // self-registered at reception, awaiting admin approval
+  APPROVED // verified by an admin
+  BLOCKED // barred from site
+}
+
+model Contractor {
+  id         String           @id @default(cuid())
+  name       String
+  email      String?
+  phone      String?
+  company    String?
+  tradeType  String?
+  status     ContractorStatus @default(PENDING)
+  note       String?
+  approvedAt DateTime?
+  approvedBy String? // staff email who approved
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  visits ContractorVisit[]
+  tasks  ContractorTask[]  @relation("ContractorTaskContractor")
+
+  @@index([status])
+  @@index([email])
+}
+
+// One on-site visit (checked in -> checked out). The on-site task view is served
+// via the visit's high-entropy `secret` capability (httpOnly cookie) — there is no
+// password or admin session. Looked up by `id` (findUnique on the PK), with the
+// secret compared in timing-safe fashion (mirrors the kiosk session pattern).
+model ContractorVisit {
+  id           String     @id @default(cuid())
+  contractor   Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  contractorId String
+  secret       String // high-entropy capability secret; required to read the visit
+  checkedInAt  DateTime   @default(now())
+  checkedOutAt DateTime?
+  locationId   String? // optional scope tag (Location.id)
+  note         String?
+  createdAt    DateTime   @default(now())
+
+  @@index([contractorId, checkedInAt])
 }
 
 // WebAuthn passkeys (platform authenticators — Face ID / Touch ID / Windows
@@ -1044,8 +1099,8 @@ model WebAuthnCredential {
   id           String    @id @default(cuid())
   adminUser    AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
   adminUserId  String
-  credentialId String    @unique          // base64url
-  publicKey    Bytes                       // COSE public key
+  credentialId String    @unique // base64url
+  publicKey    Bytes // COSE public key
   counter      Int       @default(0)
   transports   String[]  @default([])
   deviceName   String?
@@ -1060,30 +1115,30 @@ model WebAuthnCredential {
 // entries — fully auditable. Driven by commercial signals (efficiency, waste)
 // and, most importantly, client reviews.
 enum PointsCategory {
-  REVIEW          // client review rating
-  EFFICIENCY      // on/under booked treatment time
-  CONSUMABLES     // minimal waste
-  PUNCTUALITY     // started on time
-  PERFORMANCE     // manager-awarded (reviews, KPIs)
-  FRIENDLINESS    // manager/feedback-awarded
+  REVIEW // client review rating
+  EFFICIENCY // on/under booked treatment time
+  CONSUMABLES // minimal waste
+  PUNCTUALITY // started on time
+  PERFORMANCE // manager-awarded (reviews, KPIs)
+  FRIENDLINESS // manager/feedback-awarded
   TEAMWORK
-  MANUAL          // ad-hoc manager adjustment
-  REDEMPTION      // points spent on a reward
-  REVENUE         // revenue delivered (charged treatments)
-  UPSELL          // add-ons / enhancements sold
-  REBOOK          // secured a repeat booking
+  MANUAL // ad-hoc manager adjustment
+  REDEMPTION // points spent on a reward
+  REVENUE // revenue delivered (charged treatments)
+  UPSELL // add-ons / enhancements sold
+  REBOOK // secured a repeat booking
 }
 
 model StaffPoints {
   id        String         @id @default(cuid())
   staff     AdminUser      @relation(fields: [staffId], references: [id], onDelete: Cascade)
   staffId   String
-  points    Int            // may be negative (waste, redemption)
+  points    Int // may be negative (waste, redemption)
   category  PointsCategory
   reason    String
-  bookingId String?        // optional source booking
-  reviewId  String?        // optional source review
-  awardedBy String?        // staff email, or 'system'
+  bookingId String? // optional source booking
+  reviewId  String? // optional source review
+  awardedBy String? // staff email, or 'system'
   createdAt DateTime       @default(now())
 
   @@index([staffId, createdAt])
@@ -1094,16 +1149,16 @@ model StaffPoints {
 // Manager-curated perks. A redemption deducts points via a REDEMPTION ledger row
 // (so balances stay a pure sum), and is tracked here through to fulfilment.
 model Reward {
-  id          String              @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
   description String?
   costPoints  Int
-  emoji       String?             // small visual marker in the catalogue
-  active      Boolean             @default(true)
-  stock       Int?                // null = unlimited
-  sortOrder   Int                 @default(0)
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  emoji       String? // small visual marker in the catalogue
+  active      Boolean  @default(true)
+  stock       Int? // null = unlimited
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   redemptions RewardRedemption[]
 
@@ -1111,9 +1166,9 @@ model Reward {
 }
 
 enum RedemptionStatus {
-  PENDING     // requested, awaiting manager fulfilment
-  FULFILLED   // perk granted
-  DECLINED    // rejected (points refunded)
+  PENDING // requested, awaiting manager fulfilment
+  FULFILLED // perk granted
+  DECLINED // rejected (points refunded)
 }
 
 model RewardRedemption {
@@ -1122,10 +1177,10 @@ model RewardRedemption {
   rewardId   String
   staff      AdminUser        @relation(fields: [staffId], references: [id], onDelete: Cascade)
   staffId    String
-  costPoints Int              // snapshot of cost at redemption time
+  costPoints Int // snapshot of cost at redemption time
   status     RedemptionStatus @default(PENDING)
   note       String?
-  decidedBy  String?          // manager email
+  decidedBy  String? // manager email
   decidedAt  DateTime?
   createdAt  DateTime         @default(now())
 
@@ -1139,46 +1194,46 @@ model RewardRedemption {
 // day comes from their weekly schedule (one block per weekday → one location
 // per day), so they're never in two places at once.
 model Location {
-  id          String          @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
-  slug        String          @unique
+  slug        String   @unique
   addressLine String?
   city        String?
   postcode    String?
   phone       String?
   email       String?
-  color       String?         // calendar colour
-  active      Boolean         @default(true)
-  isPrimary   Boolean         @default(false)
-  sortOrder   Int             @default(0)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  color       String? // calendar colour
+  active      Boolean  @default(true)
+  isPrimary   Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  staff       AdminUser[]     @relation("StaffLocations")
-  schedules   StaffSchedule[]
-  bookings    Booking[]
-  closures    ClinicClosure[]
-  resources   Resource[]
-  dayCloses   DayClose[]
+  staff     AdminUser[]     @relation("StaffLocations")
+  schedules StaffSchedule[]
+  bookings  Booking[]
+  closures  ClinicClosure[]
+  resources Resource[]
+  dayCloses DayClose[]
 
   @@index([active])
 }
 
 // ── Weekly working pattern per staff member ──────────────────────────────────
 model StaffSchedule {
-  id         String    @id @default(cuid())
-  staff      AdminUser @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  staffId    String
-  dayOfWeek  Int        // 0=Sun … 6=Sat
-  startMin   Int        // minutes from midnight
-  endMin     Int
+  id            String    @id @default(cuid())
+  staff         AdminUser @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  staffId       String
+  dayOfWeek     Int // 0=Sun … 6=Sat
+  startMin      Int // minutes from midnight
+  endMin        Int
   // Optional daily break (e.g. lunch), as minutes from midnight. When set, the
   // window [breakStartMin, breakEndMin] is unavailable within the working day.
   breakStartMin Int?
   breakEndMin   Int?
-  location   Location?  @relation(fields: [locationId], references: [id], onDelete: SetNull)
-  locationId String?
-  createdAt  DateTime   @default(now())
+  location      Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  locationId    String?
+  createdAt     DateTime  @default(now())
 
   @@index([staffId, dayOfWeek])
 }
@@ -1192,7 +1247,7 @@ model ClinicClosure {
   allDay     Boolean   @default(true)
   reason     String?
   location   Location? @relation(fields: [locationId], references: [id], onDelete: Cascade)
-  locationId String?   // null = applies to all locations
+  locationId String? // null = applies to all locations
   createdBy  String?
   createdAt  DateTime  @default(now())
 
@@ -1209,23 +1264,23 @@ model ClinicClosure {
 // If nothing matching exists, the requirement isn't enforced (clinics that haven't
 // configured rooms/equipment aren't blocked).
 model Resource {
-  id         String    @id @default(cuid())
-  slug       String    // EQUIPMENT: e.g. 'laser'. ROOM: a short code e.g. 'g1'.
+  id         String       @id @default(cuid())
+  slug       String // EQUIPMENT: e.g. 'laser'. ROOM: a short code e.g. 'g1'.
   name       String
   kind       ResourceKind @default(EQUIPMENT)
-  tags       String[]  @default([]) // ROOM capabilities, e.g. ['aesthetics','laser']
-  floor      String?   // e.g. 'G' / 'LG' — for display/grouping
-  capacity   Int       @default(1) // EQUIPMENT: concurrent uses. ROOM: 1.
-  active     Boolean   @default(true)
-  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  tags       String[]     @default([]) // ROOM capabilities, e.g. ['aesthetics','laser']
+  floor      String? // e.g. 'G' / 'LG' — for display/grouping
+  capacity   Int          @default(1) // EQUIPMENT: concurrent uses. ROOM: 1.
+  active     Boolean      @default(true)
+  location   Location?    @relation(fields: [locationId], references: [id], onDelete: SetNull)
   locationId String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 
-  bookings   Booking[]
+  bookings Booking[]
 
   // Daily prep/turnover state for this room (ROOM kind only). One row per day.
-  roomPreps  RoomPrep[]
+  roomPreps RoomPrep[]
 
   // Scheduled block-outs (e.g. a contractor on site) — BLD-198.
   roomClosures RoomClosure[]
@@ -1233,8 +1288,8 @@ model Resource {
   // Which equipment is physically placed in a ROOM. Self-relation: a room holds
   // many equipment; a piece of equipment can sit in many rooms. Owner-managed and
   // changeable over time. (Informational today; available to drive assignment.)
-  equipment  Resource[] @relation("RoomEquipment")
-  inRooms    Resource[] @relation("RoomEquipment")
+  equipment Resource[] @relation("RoomEquipment")
+  inRooms   Resource[] @relation("RoomEquipment")
 
   @@index([slug, active])
   @@index([kind, active])
@@ -1276,21 +1331,21 @@ enum RoomPrepStatus {
 
 // ── Time off / busy blocks (manual or Google-Calendar-synced) ───────────────
 model StaffTimeOff {
-  id         String        @id @default(cuid())
-  staff      AdminUser     @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  staffId    String
-  kind       TimeOffKind   @default(BLOCKED)
-  status     TimeOffStatus @default(APPROVED)   // self-service requests start PENDING
-  startAt    DateTime
-  endAt      DateTime
-  allDay     Boolean       @default(false)
-  reason     String?
-  requestedBy String?      // email of the person who created it
-  reviewedBy String?       // email of the manager who approved/declined
-  reviewedAt DateTime?
-  reviewNote String?
-  gcalEventId String?      @unique   // dedupe Google-synced busy blocks
-  createdAt  DateTime      @default(now())
+  id          String        @id @default(cuid())
+  staff       AdminUser     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  staffId     String
+  kind        TimeOffKind   @default(BLOCKED)
+  status      TimeOffStatus @default(APPROVED) // self-service requests start PENDING
+  startAt     DateTime
+  endAt       DateTime
+  allDay      Boolean       @default(false)
+  reason      String?
+  requestedBy String? // email of the person who created it
+  reviewedBy  String? // email of the manager who approved/declined
+  reviewedAt  DateTime?
+  reviewNote  String?
+  gcalEventId String?       @unique // dedupe Google-synced busy blocks
+  createdAt   DateTime      @default(now())
 
   @@index([staffId, startAt])
   @@index([startAt, endAt])
@@ -1340,26 +1395,26 @@ model Task {
 
 // ── Inventory: consumables & stock control ──────────────────────────────────
 model StockItem {
-  id          String          @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
-  category    String?         // e.g. "Injectables", "Consumables", "PPE"
-  brand       String?         // product brand (e.g. "iS Clinical")
-  size        String?         // pack size (e.g. "180ml", "15ml")
-  unit        String          @default("unit") // vial, ml, syringe, unit, pack
+  category    String? // e.g. "Injectables", "Consumables", "PPE"
+  brand       String? // product brand (e.g. "iS Clinical")
+  size        String? // pack size (e.g. "180ml", "15ml")
+  unit        String   @default("unit") // vial, ml, syringe, unit, pack
   sku         String?
   supplier    String?
-  moq         Int             @default(1)       // minimum order quantity honoured at reorder
-  currentQty  Float           @default(0)
-  lowStockAt  Float           @default(0)       // alert threshold
-  costPence   Int?            // unit cost for valuation (wholesale, ex VAT)
-  retailPence Int?            // retail price (RRP inc VAT) when sold to clients
-  isRetail    Boolean         @default(false)   // sold to clients (vs professional-use)
-  active      Boolean         @default(true)
+  moq         Int      @default(1) // minimum order quantity honoured at reorder
+  currentQty  Float    @default(0)
+  lowStockAt  Float    @default(0) // alert threshold
+  costPence   Int? // unit cost for valuation (wholesale, ex VAT)
+  retailPence Int? // retail price (RRP inc VAT) when sold to clients
+  isRetail    Boolean  @default(false) // sold to clients (vs professional-use)
+  active      Boolean  @default(true)
   notes       String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  movements   StockMovement[]
+  movements StockMovement[]
 
   @@index([active])
 }
@@ -1368,13 +1423,13 @@ model StockMovement {
   id        String          @id @default(cuid())
   item      StockItem       @relation(fields: [itemId], references: [id], onDelete: Cascade)
   itemId    String
-  delta     Float           // + in, − out
+  delta     Float // + in, − out
   reason    StockMoveReason
-  batchNo   String?         // lot/batch number (compliance)
-  expiry    DateTime?       // batch expiry (on receipt)
-  bookingId String?         // optional link to the treatment that used it
+  batchNo   String? // lot/batch number (compliance)
+  expiry    DateTime? // batch expiry (on receipt)
+  bookingId String? // optional link to the treatment that used it
   note      String?
-  by        String?         // staff email
+  by        String? // staff email
   createdAt DateTime        @default(now())
 
   @@index([itemId, createdAt])
@@ -1385,10 +1440,10 @@ model StockMovement {
 // Tokens are stored encrypted (AES-256-GCM) in `tokensEnc`, never in clear.
 model ExternalConnection {
   id         String   @id @default(cuid())
-  provider   String   @unique   // 'xero' | 'truelayer'
-  tokensEnc  String              // encrypted JSON { access, refresh, expiresAt }
-  accountRef String?             // Xero tenantId / bank account id
-  label      String?             // org / account name for display
+  provider   String   @unique // 'xero' | 'truelayer'
+  tokensEnc  String // encrypted JSON { access, refresh, expiresAt }
+  accountRef String? // Xero tenantId / bank account id
+  label      String? // org / account name for display
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
@@ -1396,7 +1451,7 @@ model ExternalConnection {
 // ── Settings: key/value toggles & config, editable in admin ─────────────────
 model Setting {
   key       String   @id
-  value     String           // JSON or scalar string
+  value     String // JSON or scalar string
   updatedAt DateTime @updatedAt
   updatedBy String?
 }
@@ -1419,7 +1474,7 @@ model TreatmentSop {
   id            String   @id @default(cuid())
   treatmentSlug String   @unique
   title         String
-  content       String           // markdown-ish steps; rendered read-only
+  content       String // markdown-ish steps; rendered read-only
   version       Int      @default(1)
   updatedAt     DateTime @updatedAt
   updatedBy     String?
@@ -1428,16 +1483,16 @@ model TreatmentSop {
 // ── Immutable audit log — every action across the booking→treatment→payment
 // lifecycle. Append-only: never updated or deleted. ─────────────────────────
 model AuditEvent {
-  id          String      @id @default(cuid())
-  action      AuditAction
-  booking     Booking?    @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-  bookingId   String?
-  clientId    String?
-  actor       String      // staff email or 'client' / 'system'
-  actorRole   String?
-  summary     String
-  meta        Json?
-  createdAt   DateTime    @default(now())
+  id        String      @id @default(cuid())
+  action    AuditAction
+  booking   Booking?    @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  bookingId String?
+  clientId  String?
+  actor     String // staff email or 'client' / 'system'
+  actorRole String?
+  summary   String
+  meta      Json?
+  createdAt DateTime    @default(now())
 
   @@index([bookingId, createdAt])
   @@index([clientId, createdAt])
@@ -1455,12 +1510,12 @@ model AuditEvent {
 // questions are merged in at render + clinician display. Additive table only.
 model FormQuestion {
   id               String   @id @default(cuid())
-  questionnaireKey String   // e.g. 'medical-history' (matches Questionnaire.key)
+  questionnaireKey String // e.g. 'medical-history' (matches Questionnaire.key)
   prompt           String
   fieldType        String   @default("text") // single | multi | boolean | text | longtext | scale | date
   help             String?
   required         Boolean  @default(false)
-  options          Json?    // [{ value, label }] for single/multi
+  options          Json? // [{ value, label }] for single/multi
   order            Int      @default(0)
   active           Boolean  @default(true)
   createdBy        String?
@@ -1471,27 +1526,27 @@ model FormQuestion {
 }
 
 model HealthAssessment {
-  id            String         @id @default(cuid())
-  client        Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  clientId      String
+  id       String @id @default(cuid())
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String
 
-  type          AssessmentType
-  version       Int            @default(1)
-  supersedesId  String?        @unique // points to the prior version, if a correction
+  type         AssessmentType
+  version      Int            @default(1)
+  supersedesId String?        @unique // points to the prior version, if a correction
 
   // Encrypted answer blob (base64: iv.tag.ciphertext) — never stored in plain.
-  cipher        String
+  cipher           String
   // HMAC-SHA256 over the ciphertext + metadata, for tamper detection.
-  integrityHash String
+  integrityHash    String
   // Non-sensitive metadata kept in clear for listing/filtering.
-  questionnaireKey String       // which questionnaire definition + version
-  summary       Json?          // redacted, non-clinical summary (e.g. {complete:true})
-  sourceLocale  String         @default("en") // language the client filled this in
+  questionnaireKey String // which questionnaire definition + version
+  summary          Json? // redacted, non-clinical summary (e.g. {complete:true})
+  sourceLocale     String @default("en") // language the client filled this in
 
-  submittedAt   DateTime       @default(now())
-  submittedIp   String?
+  submittedAt DateTime @default(now())
+  submittedIp String?
   // Snapshot of who/what the assessment was for (e.g. an upcoming booking).
-  bookingId     String?
+  bookingId   String?
 
   @@index([clientId, type])
   @@index([submittedAt])
@@ -1502,25 +1557,25 @@ model HealthAssessment {
 // name+DOB key; a new signup matching any prior ACTIVE/REDEEMED claim is
 // BLOCKED (no discount) and flagged for staff, who can override.
 model DiscountClaim {
-  id          String         @id @default(cuid())
-  client      Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  clientId    String
+  id       String @id @default(cuid())
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String
 
-  code        String         @unique
-  status      DiscountStatus @default(ACTIVE)
-  percent     Int            @default(15)
+  code    String         @unique
+  status  DiscountStatus @default(ACTIVE)
+  percent Int            @default(15)
 
   // Normalised identity fingerprints used to detect repeat claims.
-  emailNorm   String
-  phoneNorm   String?
-  nameDobKey  String?
-  ip          String?
+  emailNorm  String
+  phoneNorm  String?
+  nameDobKey String?
+  ip         String?
 
-  flagged     Boolean        @default(false) // matched a prior claim / looks suspicious
-  reviewedBy  String?        // staff email if overridden
+  flagged           Boolean  @default(false) // matched a prior claim / looks suspicious
+  reviewedBy        String? // staff email if overridden
   redeemedBookingId String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@index([emailNorm])
   @@index([phoneNorm])
@@ -1535,14 +1590,14 @@ model ClientPoints {
   id         String               @id @default(cuid())
   client     Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
   clientId   String
-  points     Int                  // may be negative (redemption, expiry)
+  points     Int // may be negative (redemption, expiry)
   category   ClientPointsCategory
   reason     String
-  bookingId  String?              // source booking (SPEND / REDEMPTION)
-  reviewId   String?              // source review (REVIEW — idempotency)
-  referralId String?              // source referral (REFERRAL)
+  bookingId  String? // source booking (SPEND / REDEMPTION)
+  reviewId   String? // source review (REVIEW — idempotency)
+  referralId String? // source referral (REFERRAL)
   awardedBy  String               @default("system") // 'system' | staff email
-  expiresAt  DateTime?            // when this earned lot expires (null = never)
+  expiresAt  DateTime? // when this earned lot expires (null = never)
   createdAt  DateTime             @default(now())
 
   @@index([clientId])
@@ -1559,13 +1614,13 @@ model MembershipTier {
   id                  String   @id @default(cuid())
   key                 String   @unique // stable: member | silver | gold | platinum
   name                String
-  minSpendPence       Int      @default(0)   // rolling 12-month spend to reach this tier
+  minSpendPence       Int      @default(0) // rolling 12-month spend to reach this tier
   pointsMultiplierBps Int      @default(100) // 100 = 1.0×, 150 = 1.5×, 200 = 2.0×
   birthdayBonusPoints Int      @default(0)
-  earlyAccessHours    Int      @default(0)   // priority booking window (future use)
-  retailDiscountPct   Int      @default(0)   // optional member retail discount (kept 0 by default)
-  perks               String[] @default([])  // marketing bullet points
-  color               String?  // hex for the tier badge
+  earlyAccessHours    Int      @default(0) // priority booking window (future use)
+  retailDiscountPct   Int      @default(0) // optional member retail discount (kept 0 by default)
+  perks               String[] @default([]) // marketing bullet points
+  color               String? // hex for the tier badge
   sortOrder           Int      @default(0)
   active              Boolean  @default(true)
   createdAt           DateTime @default(now())
@@ -1576,20 +1631,20 @@ model MembershipTier {
 // One row per referred friend. Rewards (both sides get £25 / 2500 pts) fire
 // when the friend's FIRST treatment of ≥ £100 completes.
 model Referral {
-  id            String         @id @default(cuid())
-  referrer      Client         @relation("ReferralsMade", fields: [referrerId], references: [id], onDelete: Cascade)
+  id            String  @id @default(cuid())
+  referrer      Client  @relation("ReferralsMade", fields: [referrerId], references: [id], onDelete: Cascade)
   referrerId    String
   // The referred friend, linked when they sign up via the code.
-  referred      Client?        @relation("ReferralReceived", fields: [referredId], references: [id], onDelete: SetNull)
-  referredId    String?        @unique // a client can only be referred once
-  referredEmail String?        // captured at sign-up for visibility
+  referred      Client? @relation("ReferralReceived", fields: [referredId], references: [id], onDelete: SetNull)
+  referredId    String? @unique // a client can only be referred once
+  referredEmail String? // captured at sign-up for visibility
 
-  status        ReferralStatus @default(JOINED)
-  qualifiedAt   DateTime?      // friend's first ≥£100 treatment completed
-  rewardedAt    DateTime?      // both sides credited
+  status      ReferralStatus @default(JOINED)
+  qualifiedAt DateTime? // friend's first ≥£100 treatment completed
+  rewardedAt  DateTime? // both sides credited
 
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([referrerId])
   @@index([status])
@@ -1597,42 +1652,42 @@ model Referral {
 
 // ── Client reviews (own architecture; optional sync to Google Business) ──────
 model Review {
-  id          String        @id @default(cuid())
-  client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id          String     @id @default(cuid())
+  client      Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
   clientId    String
-  booking     Booking?      @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  booking     Booking?   @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   bookingId   String?
   // The clinician the review is about (for staff gamification later).
-  clinician   AdminUser?    @relation("ClinicianReviews", fields: [clinicianId], references: [id], onDelete: SetNull)
+  clinician   AdminUser? @relation("ClinicianReviews", fields: [clinicianId], references: [id], onDelete: SetNull)
   clinicianId String?
 
-  status      ReviewStatus  @default(PENDING)
-  channel     ReviewChannel @default(EMAIL)
+  status  ReviewStatus  @default(PENDING)
+  channel ReviewChannel @default(EMAIL)
   // Unguessable token for the public "leave a review" link.
-  token       String        @unique @default(cuid())
+  token   String        @unique @default(cuid())
 
-  rating      Int?          // 1–5, set when the client submits
-  title       String?
-  body        String?
-  treatmentTitle String?    // snapshot of what was treated
+  rating         Int? // 1–5, set when the client submits
+  title          String?
+  body           String?
+  treatmentTitle String? // snapshot of what was treated
   // Explicit client consent to feature this review publicly with their first
   // name. Without it we never show the name (reviews still need to be 5★ with a
   // written response to appear on the site at all).
-  displayConsent Boolean    @default(false)
+  displayConsent Boolean @default(false)
 
   // Moderation + publication.
-  moderatedBy String?
-  moderatedAt DateTime?
+  moderatedBy        String?
+  moderatedAt        DateTime?
   // Google Business sync (dummy/inert until credentials supplied).
-  googleReviewId String?
-  pushedToGoogleAt DateTime?
+  googleReviewId     String?
+  pushedToGoogleAt   DateTime?
   // If they clicked through to leave it directly on Google instead.
-  redirectedToGoogle Boolean @default(false)
+  redirectedToGoogle Boolean   @default(false)
 
   requestedAt DateTime?
   submittedAt DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([status])
   @@index([clientId])
@@ -1649,7 +1704,7 @@ model GoogleReview {
   googleName      String    @unique
   reviewerName    String?
   reviewerPhoto   String?
-  starRating      Int       // 1–5 (mapped from Google's ONE..FIVE enum)
+  starRating      Int // 1–5 (mapped from Google's ONE..FIVE enum)
   comment         String?
   createTime      DateTime?
   updateTime      DateTime?
@@ -1666,18 +1721,18 @@ model GoogleReview {
 // ── SEO command centre ──────────────────────────────────────────────────────
 // Per-path SEO overrides, editable in the admin and merged over code defaults.
 model PageSeo {
-  id            String   @id @default(cuid())
-  path          String   @unique // e.g. "/laser-hair-removal"
-  title         String?
-  description   String?
-  canonical     String?
-  focusKeyword  String?
-  ogImage       String?
-  noindex       Boolean  @default(false)
-  jsonLd        Json?    // optional custom JSON-LD injected on the page
-  updatedBy     String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  path         String   @unique // e.g. "/laser-hair-removal"
+  title        String?
+  description  String?
+  canonical    String?
+  focusKeyword String?
+  ogImage      String?
+  noindex      Boolean  @default(false)
+  jsonLd       Json? // optional custom JSON-LD injected on the page
+  updatedBy    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 // ── K Clinics Academy (training sub-brand) ──────────────────────────────────
@@ -1686,57 +1741,57 @@ model PageSeo {
 // CRM-managed; trainees use a separate account/portal.
 
 model AcademyStudent {
-  id           String       @id @default(cuid())
-  firstName    String
-  lastName     String?
-  email        String       @unique
-  dob          DateTime?
-  ageDeclaredAt DateTime?  // confirmed 16+ at signup
-  goals        String?
-  onboardedAt  DateTime?
-  phone        String?
-  passwordHash String?
-  portalActive Boolean      @default(false)
-  lastLoginAt  DateTime?
+  id             String    @id @default(cuid())
+  firstName      String
+  lastName       String?
+  email          String    @unique
+  dob            DateTime?
+  ageDeclaredAt  DateTime? // confirmed 16+ at signup
+  goals          String?
+  onboardedAt    DateTime?
+  phone          String?
+  passwordHash   String?
+  portalActive   Boolean   @default(false)
+  lastLoginAt    DateTime?
   resetTokenHash String?
   resetTokenExp  DateTime?
-  notes        String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  enrolments   Enrolment[]
+  enrolments     Enrolment[]
   lessonProgress LessonProgress[]
-  quizAttempts QuizAttempt[]
+  quizAttempts   QuizAttempt[]
 
   @@index([createdAt])
 }
 
 model Course {
-  id             String       @id @default(cuid())
-  slug           String       @unique
+  id             String   @id @default(cuid())
+  slug           String   @unique
   title          String
-  level          String?      // e.g. "Level 4"
-  summary        String?      // one-liner for cards
-  description    String?      // long form (markdown-ish)
-  pricePence     Int          @default(0)
-  depositPence   Int?         // optional deposit to reserve a place
-  durationText   String?      // e.g. "2 practical days + online theory + exam"
-  format         String?      // e.g. "Blended: Thinkific theory + practical + VTCT exam"
-  accreditations String[]     @default([]) // OFQUAL | VTCT | CPD
-  outcomes       String[]     @default([]) // "what you'll learn" bullets
+  level          String? // e.g. "Level 4"
+  summary        String? // one-liner for cards
+  description    String? // long form (markdown-ish)
+  pricePence     Int      @default(0)
+  depositPence   Int? // optional deposit to reserve a place
+  durationText   String? // e.g. "2 practical days + online theory + exam"
+  format         String? // e.g. "Blended: Thinkific theory + practical + VTCT exam"
+  accreditations String[] @default([]) // OFQUAL | VTCT | CPD
+  outcomes       String[] @default([]) // "what you'll learn" bullets
   prerequisites  String?
-  thinkificUrl   String?      // theory platform link (shown in trainee portal)
+  thinkificUrl   String? // theory platform link (shown in trainee portal)
   heroImage      String?
-  featured       Boolean      @default(false)
-  active         Boolean      @default(true)
-  order          Int          @default(0)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  featured       Boolean  @default(false)
+  active         Boolean  @default(true)
+  order          Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  cohorts        Cohort[]
-  enrolments     Enrolment[]
-  modules        CourseModule[]
-  liveClasses    LiveClass[]
+  cohorts     Cohort[]
+  enrolments  Enrolment[]
+  modules     CourseModule[]
+  liveClasses LiveClass[]
 
   @@index([active, order])
 }
@@ -1759,90 +1814,90 @@ model CourseModule {
 }
 
 model Lesson {
-  id          String   @id @default(cuid())
-  module      CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  id          String           @id @default(cuid())
+  module      CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   moduleId    String
   title       String
-  order       Int      @default(0)
+  order       Int              @default(0)
   durationMin Int?
-  videoUrl    String?  // YouTube watch/embed URL, or a search link (pre-test explainer)
+  videoUrl    String? // YouTube watch/embed URL, or a search link (pre-test explainer)
   imageUrl    String?
-  body        String   @db.Text // markdown-ish lesson content
-  keyPoints   String[] @default([])
-  citations   Json?    // [{ label, url }]
-  resources   Json?    // [{ label, url }]
+  body        String           @db.Text // markdown-ish lesson content
+  keyPoints   String[]         @default([])
+  citations   Json? // [{ label, url }]
+  resources   Json? // [{ label, url }]
   progress    LessonProgress[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
   @@index([moduleId, order])
 }
 
 model Quiz {
-  id        String   @id @default(cuid())
-  module    CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  moduleId  String   @unique
+  id        String         @id @default(cuid())
+  module    CourseModule   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  moduleId  String         @unique
   title     String
-  passMark  Int      @default(70) // percentage required to pass
+  passMark  Int            @default(70) // percentage required to pass
   questions QuizQuestion[]
   attempts  QuizAttempt[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
 }
 
 model QuizQuestion {
-  id          String   @id @default(cuid())
-  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  id          String  @id @default(cuid())
+  quiz        Quiz    @relation(fields: [quizId], references: [id], onDelete: Cascade)
   quizId      String
-  order       Int      @default(0)
-  prompt      String   @db.Text
-  type        String   @default("SINGLE") // SINGLE | MULTI | TRUEFALSE
-  options     Json     // [string]
-  correct     Json     // [number] (0-based indices)
-  explanation String?  @db.Text
+  order       Int     @default(0)
+  prompt      String  @db.Text
+  type        String  @default("SINGLE") // SINGLE | MULTI | TRUEFALSE
+  options     Json // [string]
+  correct     Json // [number] (0-based indices)
+  explanation String? @db.Text
   imageUrl    String?
 
   @@index([quizId, order])
 }
 
 model LessonProgress {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   student     AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
   studentId   String
-  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lesson      Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   lessonId    String
-  completedAt DateTime @default(now())
+  completedAt DateTime       @default(now())
 
   @@unique([studentId, lessonId])
   @@index([studentId])
 }
 
 model QuizAttempt {
-  id        String   @id @default(cuid())
+  id        String         @id @default(cuid())
   student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
   studentId String
-  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quiz      Quiz           @relation(fields: [quizId], references: [id], onDelete: Cascade)
   quizId    String
   scorePct  Int
   passed    Boolean
   answers   Json?
-  createdAt DateTime @default(now())
+  createdAt DateTime       @default(now())
 
   @@index([studentId, quizId])
 }
 
 model LiveClass {
-  id          String   @id @default(cuid())
-  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  id          String    @id @default(cuid())
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
   courseId    String
   title       String
   startAt     DateTime
   endAt       DateTime?
-  joinUrl     String?  // Google Meet link
+  joinUrl     String? // Google Meet link
   trainer     String?
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([courseId, startAt])
 }
@@ -1854,18 +1909,18 @@ enum CohortStatus {
 }
 
 model Cohort {
-  id         String       @id @default(cuid())
-  course     Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  courseId   String
-  startAt    DateTime
-  endAt      DateTime?
-  capacity   Int          @default(8)
-  location   String?
-  trainer    String?
-  status     CohortStatus @default(OPEN)
-  notes      String?
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
+  id        String       @id @default(cuid())
+  course    Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId  String
+  startAt   DateTime
+  endAt     DateTime?
+  capacity  Int          @default(8)
+  location  String?
+  trainer   String?
+  status    CohortStatus @default(OPEN)
+  notes     String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   enrolments Enrolment[]
 
@@ -1873,36 +1928,36 @@ model Cohort {
 }
 
 enum EnrolmentStatus {
-  APPLIED    // applied/enquired — awaiting staff review
-  OFFERED    // place offered, awaiting payment
-  PAID       // paid (full or deposit)
-  ENROLLED   // confirmed on a cohort
-  COMPLETED  // course + exam completed
+  APPLIED // applied/enquired — awaiting staff review
+  OFFERED // place offered, awaiting payment
+  PAID // paid (full or deposit)
+  ENROLLED // confirmed on a cohort
+  COMPLETED // course + exam completed
   CANCELLED
 }
 
 model Enrolment {
-  id            String          @id @default(cuid())
-  course        Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  courseId      String
-  cohort        Cohort?         @relation(fields: [cohortId], references: [id], onDelete: SetNull)
-  cohortId      String?
-  student       AcademyStudent? @relation(fields: [studentId], references: [id], onDelete: SetNull)
-  studentId     String?
+  id        String          @id @default(cuid())
+  course    Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId  String
+  cohort    Cohort?         @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  cohortId  String?
+  student   AcademyStudent? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  studentId String?
 
   // Applicant details captured at enquiry (before an account may exist).
-  applicantName  String
-  applicantEmail String
-  applicantPhone String?
-  experience     String?        // free-text background / qualifications
-  financeInterest Boolean       @default(false) // interested in Clearpay financing
+  applicantName   String
+  applicantEmail  String
+  applicantPhone  String?
+  experience      String? // free-text background / qualifications
+  financeInterest Boolean @default(false) // interested in Clearpay financing
 
-  status        EnrolmentStatus @default(APPLIED)
-  pricePence    Int             @default(0)
-  paidPence     Int             @default(0)
-  notes         String?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  status     EnrolmentStatus @default(APPLIED)
+  pricePence Int             @default(0)
+  paidPence  Int             @default(0)
+  notes      String?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
 
   @@index([status])
   @@index([courseId])
@@ -1922,10 +1977,10 @@ model FollowUp {
   token          String    @unique @default(cuid())
   sentAt         DateTime  @default(now())
   respondedAt    DateTime?
-  sentiment      String?   // 'great' | 'ok' | 'concerned'
+  sentiment      String? // 'great' | 'ok' | 'concerned'
   concern        Boolean   @default(false)
   comment        String?
-  taskId         String?   // the admin task created when a concern is reported
+  taskId         String? // the admin task created when a concern is reported
   createdAt      DateTime  @default(now())
 
   @@index([clientId])
@@ -1937,37 +1992,37 @@ model FollowUp {
 // special-category data (encrypted with the keyring). Recommendations only ever
 // reference real, priced catalogue items so a plan is always margin-positive.
 model AiAnalysis {
-  id              String   @id @default(cuid())
-  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  clientId        String
-  areas           String[] @default([]) // skin | teeth | hair | body
-  model           String?               // which Claude model produced it
-  status          String   @default("complete") // complete | refused | error
-  confidence      Float?
-  needsExpert     Boolean  @default(false)
-  budgetPence     Int?
-  findingsEnc     String?               // encrypted JSON: [{area,label,note,severity}]
-  planJson        Json?                 // resolved plan: [{slug,title,price,reason}] (non-clinical)
-  recommendedSlugs String[] @default([])
-  summary         String?               // short, non-clinical headline for cards
-  tokensIn        Int?
-  tokensOut       Int?
-  consentAt       DateTime?
-  storeImages     Boolean  @default(true)
-  createdAt       DateTime @default(now())
+  id               String    @id @default(cuid())
+  client           Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId         String
+  areas            String[]  @default([]) // skin | teeth | hair | body
+  model            String? // which Claude model produced it
+  status           String    @default("complete") // complete | refused | error
+  confidence       Float?
+  needsExpert      Boolean   @default(false)
+  budgetPence      Int?
+  findingsEnc      String? // encrypted JSON: [{area,label,note,severity}]
+  planJson         Json? // resolved plan: [{slug,title,price,reason}] (non-clinical)
+  recommendedSlugs String[]  @default([])
+  summary          String? // short, non-clinical headline for cards
+  tokensIn         Int?
+  tokensOut        Int?
+  consentAt        DateTime?
+  storeImages      Boolean   @default(true)
+  createdAt        DateTime  @default(now())
 
-  images          AiAnalysisImage[]
+  images AiAnalysisImage[]
 
   @@index([clientId, createdAt])
 }
 
 model AiAnalysisImage {
-  id          String     @id @default(cuid())
-  analysis    AiAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
-  analysisId  String
-  area        String?
-  dataEnc     String     // encrypted, downscaled image data URL
-  createdAt   DateTime   @default(now())
+  id         String     @id @default(cuid())
+  analysis   AiAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  analysisId String
+  area       String?
+  dataEnc    String // encrypted, downscaled image data URL
+  createdAt  DateTime   @default(now())
 
   @@index([analysisId])
 }
@@ -1977,11 +2032,11 @@ model Vacancy {
   id          String   @id @default(cuid())
   slug        String   @unique
   title       String
-  department  String?  // Clinical · Front of house · Management …
-  location    String?  // defaults to the clinic locality
-  type        String?  // Full-time · Part-time · Contract · Bank
-  summary     String?  // one-line for the list
-  description String?  // long form (markdown-ish)
+  department  String? // Clinical · Front of house · Management …
+  location    String? // defaults to the clinic locality
+  type        String? // Full-time · Part-time · Contract · Bank
+  summary     String? // one-line for the list
+  description String? // long form (markdown-ish)
   active      Boolean  @default(true)
   order       Int      @default(0)
   createdBy   String?
@@ -1994,17 +2049,17 @@ model Vacancy {
 }
 
 model JobApplication {
-  id         String   @id @default(cuid())
-  vacancy    Vacancy? @relation(fields: [vacancyId], references: [id], onDelete: SetNull)
-  vacancyId  String?
-  roleTitle  String   // snapshot (so it survives a deleted vacancy)
-  name       String
-  email      String
-  phone      String?
-  coverNote  String?
-  cvUrl      String?
-  status     String   @default("NEW") // NEW · REVIEWING · INTERVIEW · OFFERED · REJECTED · HIRED
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  vacancy   Vacancy? @relation(fields: [vacancyId], references: [id], onDelete: SetNull)
+  vacancyId String?
+  roleTitle String // snapshot (so it survives a deleted vacancy)
+  name      String
+  email     String
+  phone     String?
+  coverNote String?
+  cvUrl     String?
+  status    String   @default("NEW") // NEW · REVIEWING · INTERVIEW · OFFERED · REJECTED · HIRED
+  createdAt DateTime @default(now())
 
   @@index([status])
   @@index([vacancyId])
@@ -2012,37 +2067,37 @@ model JobApplication {
 
 // ── Gift vouchers (e-gift cards) ─────────────────────────────────────────────
 model GiftVoucher {
-  id             String   @id @default(cuid())
-  code           String   @unique
-  amountPence    Int
-  balancePence   Int
-  purchaserName  String
-  purchaserEmail String
-  recipientName  String?
-  recipientEmail String?
-  message        String?
-  design         String?             // chosen card theme id (lib/gift-card-themes)
-  packageSlug    String?             // earmarked giftable package (Product slug); null = open-value card
-  packageName    String?             // package name snapshot for the card/receipt
-  deliverAt      DateTime?            // scheduled delivery date (null = immediate)
-  delivered      Boolean  @default(false)
-  status         String   @default("PENDING") // PENDING | ACTIVE | REDEEMED | CANCELLED
+  id                    String    @id @default(cuid())
+  code                  String    @unique
+  amountPence           Int
+  balancePence          Int
+  purchaserName         String
+  purchaserEmail        String
+  recipientName         String?
+  recipientEmail        String?
+  message               String?
+  design                String? // chosen card theme id (lib/gift-card-themes)
+  packageSlug           String? // earmarked giftable package (Product slug); null = open-value card
+  packageName           String? // package name snapshot for the card/receipt
+  deliverAt             DateTime? // scheduled delivery date (null = immediate)
+  delivered             Boolean   @default(false)
+  status                String    @default("PENDING") // PENDING | ACTIVE | REDEEMED | CANCELLED
   // Optional paid physical-card upgrade — a printed card posted to the recipient.
-  physical         Boolean   @default(false)
-  physicalFeePence Int       @default(0)       // extra charged for the printed card
-  fulfillment      String    @default("none")  // none | unfulfilled | posted
-  shipName         String?
-  shipLine1        String?
-  shipLine2        String?
-  shipCity         String?
-  shipPostcode     String?
-  postedAt         DateTime?
-  stripePaymentIntentId String? @unique
-  expiresAt      DateTime?
-  claimedByClientId String?
-  claimedAt      DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  physical              Boolean   @default(false)
+  physicalFeePence      Int       @default(0) // extra charged for the printed card
+  fulfillment           String    @default("none") // none | unfulfilled | posted
+  shipName              String?
+  shipLine1             String?
+  shipLine2             String?
+  shipCity              String?
+  shipPostcode          String?
+  postedAt              DateTime?
+  stripePaymentIntentId String?   @unique
+  expiresAt             DateTime?
+  claimedByClientId     String?
+  claimedAt             DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   @@index([status])
   @@index([delivered, deliverAt])
@@ -2056,7 +2111,7 @@ model NewsletterSubscriber {
   id          String   @id @default(cuid())
   email       String   @unique
   active      Boolean  @default(true)
-  source      String?  // e.g. "footer"
+  source      String? // e.g. "footer"
   consentedAt DateTime @default(now())
   unsubToken  String   @unique @default(cuid())
   createdAt   DateTime @default(now())
@@ -2070,15 +2125,15 @@ model NewsletterSubscriber {
 // Only shown publicly when `published` is true AND consent is confirmed.
 model GalleryItem {
   id            String   @id @default(cuid())
-  category      String                         // e.g. "Veneers", "Botox"
-  treatmentSlug String?                        // optional link target on the site
+  category      String // e.g. "Veneers", "Botox"
+  treatmentSlug String? // optional link target on the site
   caption       String?
   beforeImage   Bytes
   beforeType    String   @default("image/jpeg")
   afterImage    Bytes
   afterType     String   @default("image/jpeg")
-  published     Boolean  @default(false)       // "show on the website" toggle
-  consent       Boolean  @default(false)       // client gave written consent to publish
+  published     Boolean  @default(false) // "show on the website" toggle
+  consent       Boolean  @default(false) // client gave written consent to publish
   order         Int      @default(0)
   createdBy     String?
   createdAt     DateTime @default(now())
@@ -2092,9 +2147,9 @@ model GalleryItem {
 // counter layered on top via lib/security/rate-limit).
 model SecurityEvent {
   id         String   @id @default(cuid())
-  type       String   // LOGIN_OK | LOGIN_FAIL | LOCKOUT | RATE_LIMITED | CAPTCHA_FAIL | TWOFA_FAIL | TWOFA_OK | TWOFA_ENABLED | TWOFA_DISABLED | UNLOCK
-  portal     String   // admin | client | academy
-  identifier String?  // attempted email (lowercased)
+  type       String // LOGIN_OK | LOGIN_FAIL | LOCKOUT | RATE_LIMITED | CAPTCHA_FAIL | TWOFA_FAIL | TWOFA_OK | TWOFA_ENABLED | TWOFA_DISABLED | UNLOCK
+  portal     String // admin | client | academy
+  identifier String? // attempted email (lowercased)
   ip         String?
   userAgent  String?
   meta       Json?
@@ -2110,28 +2165,28 @@ model SecurityEvent {
 //  • UNIVERSAL: one code anyone can use (e.g. "K10SUMMERREADY", 10% off in June)
 //  • PERSONAL:  a unique code generated per campaign recipient, tied to their email
 model PromoCode {
-  id             String   @id @default(cuid())
-  code           String   @unique               // stored uppercased
-  kind           String   @default("UNIVERSAL") // UNIVERSAL | PERSONAL
-  discountType   String   @default("PERCENT")   // PERCENT | FIXED
-  percent        Int?                            // when PERCENT (1–100)
-  amountPence    Int?                            // when FIXED
-  treatmentSlugs String[] @default([])           // empty = all treatments
+  id             String    @id @default(cuid())
+  code           String    @unique // stored uppercased
+  kind           String    @default("UNIVERSAL") // UNIVERSAL | PERSONAL
+  discountType   String    @default("PERCENT") // PERCENT | FIXED
+  percent        Int? // when PERCENT (1–100)
+  amountPence    Int? // when FIXED
+  treatmentSlugs String[]  @default([]) // empty = all treatments
   minSpendPence  Int?
-  maxRedemptions Int?                            // null = unlimited (per code)
-  redeemedCount  Int      @default(0)
-  oncePerClient  Boolean  @default(true)
-  assignedEmail  String?                         // PERSONAL: locks the code to a recipient
-  campaignId     String?                         // links to the Campaign that generated it
-  label          String?                         // internal promo name
+  maxRedemptions Int? // null = unlimited (per code)
+  redeemedCount  Int       @default(0)
+  oncePerClient  Boolean   @default(true)
+  assignedEmail  String? // PERSONAL: locks the code to a recipient
+  campaignId     String? // links to the Campaign that generated it
+  label          String? // internal promo name
   startsAt       DateTime?
   expiresAt      DateTime?
-  active         Boolean  @default(true)
+  active         Boolean   @default(true)
   createdBy      String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  redemptions    PromoRedemption[]
+  redemptions PromoRedemption[]
 
   @@index([active, expiresAt])
   @@index([campaignId])
@@ -2156,49 +2211,49 @@ model PromoRedemption {
 // processor — everything stays in our database. Visitors are identified by an
 // unguessable token stored in their browser; staff reply from the CRM.
 model ChatConversation {
-  id            String   @id @default(cuid())
-  token         String   @unique @default(cuid())
-  visitorName   String?
-  visitorEmail  String?
-  clientId      String?               // if a signed-in client started it
-  status        String   @default("OPEN") // OPEN | CLOSED
-  mode          String   @default("AI")    // AI | STAFF — who is answering
-  staffUnread   Int      @default(0)   // messages awaiting staff
-  page          String?               // path the chat was opened from
-  lastMessageAt DateTime @default(now())
+  id                String    @id @default(cuid())
+  token             String    @unique @default(cuid())
+  visitorName       String?
+  visitorEmail      String?
+  clientId          String? // if a signed-in client started it
+  status            String    @default("OPEN") // OPEN | CLOSED
+  mode              String    @default("AI") // AI | STAFF — who is answering
+  staffUnread       Int       @default(0) // messages awaiting staff
+  page              String? // path the chat was opened from
+  lastMessageAt     DateTime  @default(now())
   // Presence: when the visitor was last active (each poll/send refreshes it).
   // Drives the "email the reply only once they've left" follow-up logic.
   lastVisitorSeenAt DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  messages      ChatMessage[]
+  messages ChatMessage[]
 
   @@index([status, lastMessageAt])
 }
 
 model ChatMessage {
-  id             String   @id @default(cuid())
+  id             String           @id @default(cuid())
   conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   conversationId String
-  sender         String   // VISITOR | STAFF | AI
-  author         String?  // staff email, when sender = STAFF (internal)
+  sender         String // VISITOR | STAFF | AI
+  author         String? // staff email, when sender = STAFF (internal)
   // Visitor-facing identity for a staff reply, sourced from the responder's own
   // logged-in account (AdminUser). Null name = show as "KClinics" (OWNER/ADMIN,
   // who are presented as the clinic, not by name).
-  authorName     String?  // first name from their account
-  authorTitle    String?  // their account title, e.g. "Aesthetic Doctor"
-  authorId       String?  // their AdminUser id — deep-links to /team#m-<id>
+  authorName     String? // first name from their account
+  authorTitle    String? // their account title, e.g. "Aesthetic Doctor"
+  authorId       String? // their AdminUser id — deep-links to /team#m-<id>
   // Whether they've opted into a public team profile (so we link the name).
-  authorPublic   Boolean  @default(false)
-  body           String   @db.Text
+  authorPublic   Boolean          @default(false)
+  body           String           @db.Text
   // 'chat' (web widget) or 'email' (sent to / received from the visitor by email).
-  via            String   @default("chat")
+  via            String           @default("chat")
   // When a staff/AI reply was emailed to the visitor (null = not emailed).
   emailedAt      DateTime?
   // Inbound email Message-ID, to thread replies & de-duplicate webhook deliveries.
   externalId     String?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime         @default(now())
 
   @@index([conversationId, createdAt])
   @@index([externalId])
@@ -2218,16 +2273,16 @@ model Post {
   title           String
   excerpt         String?
   metaDescription String?
-  content         String     // HTML body (rendered from `blocks`; kept for public render + SEO)
-  blocks          Json?      // structured block-editor content (source of truth when present)
-  category        String?    // Skin | Laser | Injectables | Dentistry | Wellbeing
+  content         String // HTML body (rendered from `blocks`; kept for public render + SEO)
+  blocks          Json? // structured block-editor content (source of truth when present)
+  category        String? // Skin | Laser | Injectables | Dentistry | Wellbeing
   tags            String[]   @default([])
   keywords        String[]   @default([])
   related         String[]   @default([]) // treatment slugs mentioned (for CTAs)
-  coverImage      String?    // image URL/path (optional → generative art fallback)
+  coverImage      String? // image URL/path (optional → generative art fallback)
   readMinutes     Int        @default(5)
   status          PostStatus @default(DRAFT)
-  source          String?    // 'wordpress' | 'native' | null (admin-authored)
+  source          String? // 'wordpress' | 'native' | null (admin-authored)
   authorName      String?    @default("The KClinics team")
   publishedAt     DateTime?
   createdAt       DateTime   @default(now())
@@ -2242,7 +2297,7 @@ model Post {
 // defaults. Edited from Admin → Site. One singleton row (id = "singleton").
 model SiteConfig {
   id        String   @id @default("singleton")
-  data      Json     // full SiteConfig shape (see lib/site-config.ts)
+  data      Json // full SiteConfig shape (see lib/site-config.ts)
   updatedAt DateTime @updatedAt
   updatedBy String?
 
@@ -2253,15 +2308,15 @@ model SiteConfig {
 // can override an existing editorial route by `path`, or create a brand-new one.
 // draft = work in progress; published = live (null until first publish).
 model Page {
-  id        String   @id @default(cuid())
-  path      String   @unique
-  title     String?
-  draft       Json     // Section[]
-  published   Json?    // Section[] (null = route shows its coded default)
-  status      String   @default("DRAFT") // DRAFT | PUBLISHED
+  id          String    @id @default(cuid())
+  path        String    @unique
+  title       String?
+  draft       Json // Section[]
+  published   Json? // Section[] (null = route shows its coded default)
+  status      String    @default("DRAFT") // DRAFT | PUBLISHED
   publishAt   DateTime? // scheduled go-live (null = immediate)
   unpublishAt DateTime? // scheduled take-down (null = never)
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime  @updatedAt
   updatedBy   String?
 
   revisions PageRevision[]
@@ -2274,7 +2329,7 @@ model Page {
 model GlobalSection {
   id        String   @id @default(cuid())
   name      String
-  type      String   // a section type from lib/sections.ts
+  type      String // a section type from lib/sections.ts
   data      Json
   updatedAt DateTime @updatedAt
   updatedBy String?
@@ -2284,7 +2339,7 @@ model PageRevision {
   id        String   @id @default(cuid())
   pageId    String
   page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  data      Json     // Section[] snapshot
+  data      Json // Section[] snapshot
   label     String?
   createdAt DateTime @default(now())
   createdBy String?
@@ -2305,10 +2360,10 @@ model TreatmentContent {
   metaDescription String?
   keywords        String[] @default([])
   priceFrom       String?
-  benefits        Json?    // { title, text }[]
-  process         Json?    // { title, text }[]
-  faqs            Json?    // { q, a }[]
-  facts           Json?    // { label, value }[]
+  benefits        Json? // { title, text }[]
+  process         Json? // { title, text }[]
+  faqs            Json? // { q, a }[]
+  facts           Json? // { label, value }[]
   related         String[] @default([])
   updatedAt       DateTime @updatedAt
   updatedBy       String?
@@ -2318,8 +2373,8 @@ model TreatmentContent {
 // admin (journal covers, page builder sections, etc.).
 model MediaAsset {
   id        String   @id @default(cuid())
-  url       String                 // public Blob URL
-  pathname  String                 // Blob pathname (for deletion)
+  url       String // public Blob URL
+  pathname  String // Blob pathname (for deletion)
   filename  String
   alt       String?
   mime      String?
@@ -2337,7 +2392,7 @@ model SiteConfigRevision {
   id        String     @id @default(cuid())
   configId  String
   config    SiteConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  data      Json       // snapshot taken at each save (for rollback)
+  data      Json // snapshot taken at each save (for rollback)
   label     String?
   createdAt DateTime   @default(now())
   createdBy String?
@@ -2352,9 +2407,9 @@ model SiteConfigRevision {
 // (coarse device/referer/country only — no IP or personal data stored).
 model QrCode {
   id          String   @id @default(cuid())
-  code        String   @unique  // slug used in the public /qr/{code} URL
-  label       String            // internal name, e.g. "Reception poster"
-  destination String            // current redirect target (editable any time)
+  code        String   @unique // slug used in the public /qr/{code} URL
+  label       String // internal name, e.g. "Reception poster"
+  destination String // current redirect target (editable any time)
   active      Boolean  @default(true)
   notes       String?
   scanCount   Int      @default(0) // denormalised running total for quick display
@@ -2362,7 +2417,7 @@ model QrCode {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  scans       QrScan[]
+  scans QrScan[]
 
   @@index([active])
 }
@@ -2372,9 +2427,9 @@ model QrScan {
   qr        QrCode   @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
   qrCodeId  String
   at        DateTime @default(now())
-  device    String?  // mobile | tablet | desktop
+  device    String? // mobile | tablet | desktop
   referer   String?
-  country   String?  // coarse, from edge header when available
+  country   String? // coarse, from edge header when available
   userAgent String?
 
   @@index([qrCodeId, at])
@@ -2386,8 +2441,8 @@ model QrScan {
 // Read by the edge middleware via /api/redirects (cached).
 model Redirect {
   id        String   @id @default(cuid())
-  fromPath  String   @unique  // site-relative path, e.g. "/old-page"
-  toUrl     String            // destination (relative path or absolute URL)
+  fromPath  String   @unique // site-relative path, e.g. "/old-page"
+  toUrl     String // destination (relative path or absolute URL)
   code      Int      @default(301) // 301 permanent | 302 temporary
   active    Boolean  @default(true)
   note      String?
@@ -2409,23 +2464,23 @@ enum AbStatus {
 }
 
 model AbTest {
-  id        String      @id @default(cuid())
+  id        String   @id @default(cuid())
   name      String
-  slug      String      @unique // used by the page section + cookie key
-  status    AbStatus    @default(DRAFT)
-  goal      String      @default("cta_click")
+  slug      String   @unique // used by the page section + cookie key
+  status    AbStatus @default(DRAFT)
+  goal      String   @default("cta_click")
   createdBy String?
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  variants  AbVariant[]
+  variants AbVariant[]
 }
 
 model AbVariant {
   id          String  @id @default(cuid())
   test        AbTest  @relation(fields: [testId], references: [id], onDelete: Cascade)
   testId      String
-  key         String  // A | B | C …
+  key         String // A | B | C …
   label       String
   weight      Int     @default(1)
   headline    String?
@@ -2444,7 +2499,7 @@ model AbVariant {
 model ReplaySession {
   id         String        @id @default(cuid())
   sessionKey String        @unique // client-generated per visit
-  path       String        // entry path
+  path       String // entry path
   device     String?
   durationMs Int           @default(0)
   eventCount Int           @default(0)
@@ -2460,7 +2515,7 @@ model ReplayChunk {
   session   ReplaySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   sessionId String
   seq       Int
-  events    Json          // batch of rrweb events
+  events    Json // batch of rrweb events
   createdAt DateTime      @default(now())
 
   @@index([sessionId, seq])
@@ -2469,7 +2524,7 @@ model ReplayChunk {
 model HeatmapEvent {
   id        String   @id @default(cuid())
   path      String
-  type      String   // click | rage | scroll
+  type      String // click | rage | scroll
   xPct      Int      @default(0) // 0–1000 (tenths of a %) of viewport width
   yPct      Int      @default(0) // 0–1000 of full page height
   scrollPct Int      @default(0) // max scroll depth for 'scroll' rows
@@ -2486,7 +2541,7 @@ model Segment {
   id          String   @id @default(cuid())
   name        String
   description String?
-  rules       Json     // { gender?, source?, tag?, lapsedDays?, optInOnly?, visited? }
+  rules       Json // { gender?, source?, tag?, lapsedDays?, optInOnly?, visited? }
   createdBy   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -2502,7 +2557,7 @@ model ConsentTemplate {
   title            String
   category         String   @default("general")
   version          Int      @default(1)
-  bodyMd           String   // consent wording (markdown)
+  bodyMd           String // consent wording (markdown)
   acknowledgements String[] @default([]) // required tick statements
   active           Boolean  @default(true)
   // Assignment: which treatments this form applies to. A service slug match wins
@@ -2553,9 +2608,9 @@ model SignedConsent {
   kind            String   @default("treatment")
   declined        Boolean  @default(false)
   signerName      String
-  cipher          String   // encrypted JSON: body, ticks, signature image, timestamps, IP, UA
-  integrityHash   String   // HMAC binding cipher to metadata
-  contentHash     String   // SHA-256 of the canonical signed payload (certificate id)
+  cipher          String // encrypted JSON: body, ticks, signature image, timestamps, IP, UA
+  integrityHash   String // HMAC binding cipher to metadata
+  contentHash     String // SHA-256 of the canonical signed payload (certificate id)
   signedAt        DateTime @default(now())
   ip              String?
   createdAt       DateTime @default(now())
@@ -2572,9 +2627,9 @@ model BeforePhoto {
   id          String   @id @default(cuid())
   bookingId   String
   clientId    String
-  area        String?  // non-intimate treatment area label
-  dataEnc     String   // encrypted, downscaled image data URL
-  capturedBy  String   // clinician email
+  area        String? // non-intimate treatment area label
+  dataEnc     String // encrypted, downscaled image data URL
+  capturedBy  String // clinician email
   attestation Boolean  @default(false) // confirmed: non-intimate area, consented
   createdAt   DateTime @default(now())
 
@@ -2599,8 +2654,8 @@ model Product {
   brand             String?
   category          String?
   pricePence        Int           @default(0)
-  compareAtPence    Int?          // "was" price for sale display
-  costPence         Int?          // cost of goods (margin)
+  compareAtPence    Int? // "was" price for sale display
+  costPence         Int? // cost of goods (margin)
   sku               String?
   barcode           String?
   images            String[]      @default([])
@@ -2653,7 +2708,7 @@ model Order {
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
 
-  items                 OrderItem[]
+  items OrderItem[]
 
   @@index([status])
   @@index([createdAt])
@@ -2681,30 +2736,30 @@ model OrderItem {
 // template + reminder schedule live in the Setting key-value store, not here.
 // ─────────────────────────────────────────────────────────────────────────────
 model DayClose {
-  id            String         @id @default(cuid())
-  location      Location?      @relation(fields: [locationId], references: [id], onDelete: SetNull)
-  locationId    String?
-  businessDate  DateTime       // the day being closed (local midnight)
-  status        DayCloseStatus @default(IN_PROGRESS)
+  id           String         @id @default(cuid())
+  location     Location?      @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  locationId   String?
+  businessDate DateTime // the day being closed (local midnight)
+  status       DayCloseStatus @default(IN_PROGRESS)
 
   // Financial reconciliation — all amounts in pence.
-  expectedCardPence Int        @default(0) // card takings computed from charges & paid orders
-  countedCardPence  Int?                   // operator-confirmed card total (terminal Z-report)
-  floatOpenPence    Int        @default(0) // opening cash float
-  cashCountedPence  Int?                   // cash counted in the drawer at close
-  cashTakingsPence  Int?                   // cash takings recorded for the day
-  variancePence     Int?                   // (counted card + cash takings) − expected
+  expectedCardPence Int  @default(0) // card takings computed from charges & paid orders
+  countedCardPence  Int? // operator-confirmed card total (terminal Z-report)
+  floatOpenPence    Int  @default(0) // opening cash float
+  cashCountedPence  Int? // cash counted in the drawer at close
+  cashTakingsPence  Int? // cash takings recorded for the day
+  variancePence     Int? // (counted card + cash takings) − expected
 
   // Completeness of the closedown checklist (0–100) and full answer snapshot.
-  checklistDone Int            @default(0) // items completed
-  checklistTotal Int           @default(0) // items required
-  payload       Json?
+  checklistDone  Int   @default(0) // items completed
+  checklistTotal Int   @default(0) // items required
+  payload        Json?
 
-  notes         String?
-  startedBy     String         // staff email
-  startedAt     DateTime       @default(now())
-  completedBy   String?
-  completedAt   DateTime?
+  notes       String?
+  startedBy   String // staff email
+  startedAt   DateTime  @default(now())
+  completedBy String?
+  completedAt DateTime?
 
   @@index([businessDate])
   @@index([locationId, businessDate])
@@ -2729,6 +2784,7 @@ enum BuildType {
   REVIEW
   AUDIT
 }
+
 enum BuildStatus {
   TRIAGE
   IN_PROGRESS
@@ -2738,6 +2794,7 @@ enum BuildStatus {
   CLOSED
   CANCELLED
 }
+
 enum BuildUrgency {
   P0
   P1
@@ -2746,51 +2803,51 @@ enum BuildUrgency {
 }
 
 model BuildItem {
-  id           String       @id @default(cuid())
+  id              String            @id @default(cuid())
   // Stable human-readable reference for tracing/search: standalone items are
   // BLD-<seq>; items created/seeded inside a project branch from the project's
   // ref (PRJ-3 → PRJ-3.1). Immutable once assigned (an item moved into a
   // project later keeps its BLD ref). No @unique — the no-data-loss deploy gate
   // can't add unique constraints; uniqueness is structural (lib/task-refs.ts).
-  seq          Int          @default(autoincrement())
-  ref          String?
-  type         BuildType    @default(TASK)
-  title        String
-  detail       String?      @db.Text
-  status       BuildStatus  @default(TRIAGE)
-  urgency      BuildUrgency @default(P2)
-  assignee     String       @default("claude") // 'claude' or a staff email
-  reportedBy   String?      // staff email who logged it
-  pageUrl      String?      // where the problem was found
-  screenshots  String[]     @default([])
-  attachments  String[]     @default([]) // images + videos attached to the task (Vercel Blob URLs)
-  blocker      String?      // current blocker note (when status = BLOCKED)
-  githubUrl    String?
-  githubNumber Int?
-  isPublic     Boolean      @default(false) // surfaces on a future public roadmap
+  seq             Int               @default(autoincrement())
+  ref             String?
+  type            BuildType         @default(TASK)
+  title           String
+  detail          String?           @db.Text
+  status          BuildStatus       @default(TRIAGE)
+  urgency         BuildUrgency      @default(P2)
+  assignee        String            @default("claude") // 'claude' or a staff email
+  reportedBy      String? // staff email who logged it
+  pageUrl         String? // where the problem was found
+  screenshots     String[]          @default([])
+  attachments     String[]          @default([]) // images + videos attached to the task (Vercel Blob URLs)
+  blocker         String? // current blocker note (when status = BLOCKED)
+  githubUrl       String?
+  githubNumber    Int?
+  isPublic        Boolean           @default(false) // surfaces on a future public roadmap
   // Prioritisation (persisted so ideas can be scored/triaged in-app, not just in code).
-  value        Int?         // business worth 1–10
-  effort       Int?         // build cost 1–10
+  value           Int? // business worth 1–10
+  effort          Int? // build cost 1–10
   // Effort/usage telemetry: time is auto-derived (startedAt → shippedAt); tokens
   // are Claude's best-effort self-report. estCompleteAt is an ETA Claude/admin set.
-  startedAt    DateTime?    // first time it moved to IN_PROGRESS
-  estCompleteAt DateTime?
-  estTokens    Int?
-  actualTokens Int?
+  startedAt       DateTime? // first time it moved to IN_PROGRESS
+  estCompleteAt   DateTime?
+  estTokens       Int?
+  actualTokens    Int?
   // Post-ship lifecycle: SHIPPED ≠ done. An admin reviews and signs off to CLOSE.
-  signoffRequired Boolean   @default(true)
-  shippedAt    DateTime?
-  closedAt     DateTime?
-  closedBy     String?      // admin email who signed off
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  signoffRequired Boolean           @default(true)
+  shippedAt       DateTime?
+  closedAt        DateTime?
+  closedBy        String? // admin email who signed off
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
   // A Project groups an epic + its sub-tasks (e.g. the QR kiosk), formed from an idea.
-  project      BuildProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  projectId    String?
-  events       BuildEvent[]
-  subtasks     BuildSubtask[]
-  dependencies BuildDependency[] @relation("dependent")  // edges: this item depends on others
-  dependents   BuildDependency[] @relation("dependency") // edges: others depend on this item
+  project         BuildProject?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  projectId       String?
+  events          BuildEvent[]
+  subtasks        BuildSubtask[]
+  dependencies    BuildDependency[] @relation("dependent") // edges: this item depends on others
+  dependents      BuildDependency[] @relation("dependency") // edges: others depend on this item
 
   @@index([status])
   @@index([assignee, status])
@@ -2813,7 +2870,7 @@ model BuildProject {
   name            String
   summary         String?     @db.Text
   status          String      @default("ACTIVE") // ACTIVE | PAUSED | DONE
-  originIdeaTitle String?     // the idea this project was formed from
+  originIdeaTitle String? // the idea this project was formed from
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   items           BuildItem[]
@@ -2846,7 +2903,7 @@ model BuildSubtask {
   title       String
   status      String    @default("TODO") // TODO | DOING | DONE
   assignee    String    @default("claude")
-  ownerInput  Boolean   @default(false)   // true → completing it pings Claude to action the parent
+  ownerInput  Boolean   @default(false) // true → completing it pings Claude to action the parent
   order       Int       @default(0)
   completedAt DateTime?
   completedBy String?
@@ -2860,9 +2917,9 @@ model BuildEvent {
   id        String    @id @default(cuid())
   item      BuildItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
   itemId    String
-  kind      String    // created | status | urgency | assign | comment | blocker | github | shipped
+  kind      String // created | status | urgency | assign | comment | blocker | github | shipped
   body      String?   @db.Text
-  actor     String    // staff email or 'claude'
+  actor     String // staff email or 'claude'
   createdAt DateTime  @default(now())
 
   @@index([itemId, createdAt])
@@ -2877,7 +2934,7 @@ model NpsResponse {
   clientId    String?
   bookingId   String?
   treatment   String?
-  score       Int?      // 0–10
+  score       Int? // 0–10
   comment     String?   @db.Text
   sentAt      DateTime  @default(now())
   respondedAt DateTime?
@@ -2897,9 +2954,9 @@ model MaintenanceWindow {
   startAt   DateTime
   endAt     DateTime
   services  String[] @default([]) // affected compartments/services (status-page ids)
-  impact    String?  // e.g. "No expected downtime", "Booking briefly read-only"
+  impact    String? // e.g. "No expected downtime", "Booking briefly read-only"
   status    String   @default("SCHEDULED") // SCHEDULED | ACTIVE | DONE | CANCELLED
-  createdBy String?  // staff email or 'claude'
+  createdBy String? // staff email or 'claude'
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -2913,10 +2970,10 @@ model StaffNotification {
   id        String    @id @default(cuid())
   user      AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
-  kind      String    // assigned | comment | status | idea_feedback | mention | system
+  kind      String // assigned | comment | status | idea_feedback | mention | system
   title     String
   body      String?   @db.Text
-  href      String?   // where clicking takes you (e.g. /admin/build)
+  href      String? // where clicking takes you (e.g. /admin/build)
   readAt    DateTime?
   createdAt DateTime  @default(now())
 
@@ -2941,24 +2998,24 @@ enum KioskStatus {
 }
 
 model KioskSession {
-  id         String       @id @default(cuid())
-  token      String       @unique
-  secret     String?      // BLD-159: capability secret carried in the QR (?s=); required to read/write the live camera feed
-  status     KioskStatus  @default(ACTIVE)
-  ipHash     String?
-  photoUrl   String?      // kept for back-compat with the single-photo v1 flow
-  consentAt  DateTime?
-  result     KioskResult?
-  createdAt  DateTime     @default(now())
-  expiresAt  DateTime
+  id        String       @id @default(cuid())
+  token     String       @unique
+  secret    String? // BLD-159: capability secret carried in the QR (?s=); required to read/write the live camera feed
+  status    KioskStatus  @default(ACTIVE)
+  ipHash    String?
+  photoUrl  String? // kept for back-compat with the single-photo v1 flow
+  consentAt DateTime?
+  result    KioskResult?
+  createdAt DateTime     @default(now())
+  expiresAt DateTime
 
   // ── Kiosk v2 live session (phone ↔ storefront display) ──
   stage         String    @default("idle") // live stage machine (lib/kiosk-live.ts)
-  poseIdx       Int       @default(0)      // current pose in the capture sequence
-  photoUrls     String[]  @default([])     // multi-capture (max 4)
-  liveFrame     String?   @db.Text         // latest mirror frame as data-URL jpeg ≤120KB
+  poseIdx       Int       @default(0) // current pose in the capture sequence
+  photoUrls     String[]  @default([]) // multi-capture (max 4)
+  liveFrame     String?   @db.Text // latest mirror frame as data-URL jpeg ≤120KB
   liveFrameAt   DateTime?
-  ageDeclaredAt DateTime?                  // when the explicit 18+ tap happened
+  ageDeclaredAt DateTime? // when the explicit 18+ tap happened
   updatedAt     DateTime  @default(now()) @updatedAt
 
   @@index([token])
@@ -2966,33 +3023,33 @@ model KioskSession {
 }
 
 model KioskResult {
-  id         String       @id @default(cuid())
-  session    KioskSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  sessionId  String       @unique
-  headline   String
-  skinScore  Int
-  smileScore Int
-  insights   String[]
-  treatments String[]
-  photoUrl   String?
-  shareSlug  String       @unique
-  shareCount Int          @default(0)
+  id           String       @id @default(cuid())
+  session      KioskSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId    String       @unique
+  headline     String
+  skinScore    Int
+  smileScore   Int
+  insights     String[]
+  treatments   String[]
+  photoUrl     String?
+  shareSlug    String       @unique
+  shareCount   Int          @default(0)
   // ── Kiosk v2 ──
-  annotations  Json?      // AI observations (KioskObservation[] — lib/kiosk-ai.ts)
-  shareCaption String?    // first-person caption for the share sheet
-  bestPhotoUrl String?    // chosen photo (session-scoped use only; NEVER on the public share page)
+  annotations  Json? // AI observations (KioskObservation[] — lib/kiosk-ai.ts)
+  shareCaption String? // first-person caption for the share sheet
+  bestPhotoUrl String? // chosen photo (session-scoped use only; NEVER on the public share page)
   // Share-to-claim reward: the single-use discount code issued to the visitor.
-  claimCode  String?
-  claimEmail String?
-  claimedAt  DateTime?
-  createdAt  DateTime     @default(now())
+  claimCode    String?
+  claimEmail   String?
+  claimedAt    DateTime?
+  createdAt    DateTime     @default(now())
 
   @@index([shareSlug])
 }
 
 model KioskEvent {
   id        String   @id @default(cuid())
-  event     String   // scan | consent | photo | analyzed | shared | claimed
+  event     String // scan | consent | photo | analyzed | shared | claimed
   sessionId String?
   ipHash    String?
   createdAt DateTime @default(now())
@@ -3008,21 +3065,21 @@ model KioskEvent {
 // in-person capture to the right reader. New table only — additive, no @unique.
 enum DeviceKind {
   TERMINAL // card payment terminal (e.g. Tyl by NatWest)
-  DISPLAY  // storefront / waiting-room / treatment-room screen (e.g. iiyama TW1023ASC)
-  KIOSK    // self-service sign-in kiosk
-  SCANNER  // barcode scanner (e.g. Zebra DS2278 keyboard-wedge)
-  PRINTER  // receipt / label printer
+  DISPLAY // storefront / waiting-room / treatment-room screen (e.g. iiyama TW1023ASC)
+  KIOSK // self-service sign-in kiosk
+  SCANNER // barcode scanner (e.g. Zebra DS2278 keyboard-wedge)
+  PRINTER // receipt / label printer
   OTHER
 }
 
 model Device {
   id         String     @id @default(cuid())
-  name       String                          // friendly label ("Reception terminal")
+  name       String // friendly label ("Reception terminal")
   kind       DeviceKind @default(TERMINAL)
-  provider   String?                         // e.g. "tyl" for card terminals
-  externalId String?                         // the provider's device / POI id
-  location   String?                         // "Reception", "Room 1"
-  station    String?                         // reception | room (mirrors BLD-202)
+  provider   String? // e.g. "tyl" for card terminals
+  externalId String? // the provider's device / POI id
+  location   String? // "Reception", "Room 1"
+  station    String? // reception | room (mirrors BLD-202)
   // BLD-225 — a DISPLAY mounted outside a treatment room shows that room's live
   // status. roomId references a Resource (ROOM) by id; token secures the public
   // /room-display/[token] URL the panel loads. No @unique (deploy-gate safe) —
@@ -3048,12 +3105,12 @@ model Device {
 // (publish allocates max+1), not via a @unique constraint (deploy-gate safe).
 model QuestionnaireVersion {
   id        String   @id @default(cuid())
-  key       String                  // questionnaire key, e.g. "medical-history"
-  version   Int                     // monotonically increasing per key
+  key       String // questionnaire key, e.g. "medical-history"
+  version   Int // monotonically increasing per key
   type      String
   title     String
   intro     String?
-  questions Json                    // full Question[] snapshot
+  questions Json // full Question[] snapshot
   createdAt DateTime @default(now())
   createdBy String?
 
@@ -3086,10 +3143,10 @@ model RoomClosure {
 // window. On cancellation we notify the first matching ACTIVE entry with a
 // time-boxed one-click claim link (phase 2); it then rolls to the next.
 enum WaitlistStatus {
-  ACTIVE    // waiting
-  NOTIFIED  // emailed a freed slot; claim link live until expiresAt
-  CLAIMED   // booked the freed slot
-  EXPIRED   // claim window passed
+  ACTIVE // waiting
+  NOTIFIED // emailed a freed slot; claim link live until expiresAt
+  CLAIMED // booked the freed slot
+  EXPIRED // claim window passed
   CANCELLED // withdrawn
 }
 
@@ -3099,14 +3156,14 @@ model WaitlistEntry {
   clientId       String
   treatmentSlug  String
   treatmentTitle String
-  fromDate       DateTime       // window start (inclusive, date)
-  toDate         DateTime       // window end (inclusive, date)
+  fromDate       DateTime // window start (inclusive, date)
+  toDate         DateTime // window end (inclusive, date)
   status         WaitlistStatus @default(ACTIVE)
-  claimToken     String?        // secures the one-click claim link (phase 2)
-  offeredStart   DateTime?      // the freed slot offered on notify
+  claimToken     String? // secures the one-click claim link (phase 2)
+  offeredStart   DateTime? // the freed slot offered on notify
   notifiedAt     DateTime?
   expiresAt      DateTime?
-  claimedAt      DateTime?      // when the offered slot was booked (phase 2)
+  claimedAt      DateTime? // when the offered slot was booked (phase 2)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
