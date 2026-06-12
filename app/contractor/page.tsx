@@ -22,6 +22,7 @@ export default async function ContractorLanding({
     e === 'name' ? 'Please enter your full name.'
     : e === 'email' ? 'That email doesn’t look right — check it or leave it blank.'
     : e === 'blocked' ? 'We can’t sign you in. Please speak to reception.'
+    : e === 'busy' ? 'Too many attempts just now. Please wait a moment and try again.'
     : null;
 
   return (

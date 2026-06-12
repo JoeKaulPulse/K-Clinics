@@ -1,10 +1,11 @@
 'use server';
 
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { getSetting } from '@/lib/settings';
 import { randomSecret, secretMatches } from '@/lib/kiosk';
+import { rateLimit } from '@/lib/security/rate-limit';
 
 // PRJ-63 — PUBLIC contractor reception self-onboarding.
 //
@@ -25,6 +26,14 @@ const VISIT_COOKIE_MAX_AGE = 60 * 60 * 16; // 16h
 const MAX_FIELD = 120;
 const cap = (s: unknown, n = MAX_FIELD) => String(s ?? '').trim().slice(0, n);
 const emailOk = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+
+/** Best-effort client IP for abuse rate-limiting only. Never stored. */
+async function clientIpKey(): Promise<string> {
+  const h = await headers();
+  const xff = h.get('x-forwarded-for');
+  if (xff) return xff.split(',')[0].trim() || 'unknown';
+  return h.get('x-real-ip') || 'unknown';
+}
 
 export type ContractorMatch = { id: string; name: string; company: string | null };
 
@@ -83,6 +92,9 @@ export async function currentVisit(): Promise<
  *  ONLY { id, name, company } — never email/phone. */
 export async function searchContractors(query: string): Promise<ContractorMatch[]> {
   if (!(await getSetting('contractor_checkin_enabled'))) return [];
+  // Anti-enumeration / scraping: cap public searches per IP (fails open).
+  const rl = await rateLimit(`contractor-search:${await clientIpKey()}`, 30, 60);
+  if (!rl.allowed) return [];
   const q = cap(query, 80);
   if (q.length < 2) return [];
   const rows = await db.contractor.findMany({
@@ -112,6 +124,9 @@ async function openVisit(contractorId: string): Promise<{ id: string; secret: st
 /** Check in an existing (PENDING or APPROVED) contractor by id. BLOCKED may not. */
 export async function checkInExisting(contractorId: string): Promise<void> {
   if (!(await getSetting('contractor_checkin_enabled'))) redirect('/contractor');
+  // Cap visit creation per IP so the public QR can't be used to flood visits.
+  const rl = await rateLimit(`contractor-checkin:${await clientIpKey()}`, 20, 60);
+  if (!rl.allowed) redirect('/contractor?e=busy');
   const id = cap(contractorId, 60);
   const contractor = await db.contractor.findUnique({ where: { id }, select: { id: true, status: true } });
   if (!contractor || contractor.status === 'BLOCKED') redirect('/contractor?e=blocked');
@@ -123,6 +138,9 @@ export async function checkInExisting(contractorId: string): Promise<void> {
 /** Register a brand-new contractor (status PENDING) and check them in. */
 export async function registerAndCheckIn(formData: FormData): Promise<void> {
   if (!(await getSetting('contractor_checkin_enabled'))) redirect('/contractor');
+  // Cap new-profile creation per IP so registration can't be used to spam rows.
+  const rl = await rateLimit(`contractor-register:${await clientIpKey()}`, 8, 60 * 60);
+  if (!rl.allowed) redirect('/contractor?e=busy');
 
   const name = cap(formData.get('name'));
   const emailRaw = cap(formData.get('email'));
@@ -175,6 +193,7 @@ export async function checkOut(): Promise<void> {
  *  reassignment or any other field. The task must belong to the verified visit's
  *  contractor (checked against the row, not the client). */
 export async function setMyTaskStatus(taskId: string, status: 'OPEN' | 'IN_PROGRESS' | 'DONE'): Promise<{ ok: boolean }> {
+  if (!(await getSetting('contractor_checkin_enabled'))) return { ok: false };
   const session = await currentVisit();
   if (!session) return { ok: false };
   if (!['OPEN', 'IN_PROGRESS', 'DONE'].includes(status)) return { ok: false };
