@@ -102,6 +102,80 @@ export async function getSessionTimingStats(opts: { since?: Date } = {}): Promis
   };
 }
 
+export type ClinicianTimingStat = {
+  clinicianId: string;
+  name: string;
+  sessions: number;          // completed sessions this clinician drove
+  avgSessionSeconds: number; // their mean total session length
+  medianSessionSeconds: number;
+  slowestStep: string | null;   // the section they spend most time on (avg)
+  mostRevisitedStep: string | null; // section they most often go back to
+};
+
+// BLD-138 (slice 2) — same per-step timing, grouped by the clinician who ran
+// the session, so managers can see who runs long/short and where. Identity comes
+// from the booking's practitioner; sessions with no practitioner are skipped.
+export async function getClinicianTimingStats(opts: { since?: Date } = {}): Promise<ClinicianTimingStat[]> {
+  const since = opts.since ?? new Date(0);
+  const rows = await db.appointmentSession.findMany({
+    where: { status: 'COMPLETED', completedAt: { gte: since } },
+    select: { steps: true, booking: { select: { practitionerId: true, practitioner: { select: { name: true, email: true } } } } },
+    take: 5000,
+  }).catch(() => [] as { steps: unknown; booking: { practitionerId: string | null; practitioner: { name: string | null; email: string } | null } | null }[]);
+
+  type Acc = { name: string; totals: number[]; stepSeconds: Record<string, number[]>; revisits: Record<string, number> };
+  const byClin = new Map<string, Acc>();
+
+  for (const row of rows) {
+    const pid = row.booking?.practitionerId;
+    if (!pid) continue; // can't attribute without a practitioner
+    const name = row.booking?.practitioner?.name || row.booking?.practitioner?.email || 'Unknown';
+    let timings: Partial<Record<SessionStepKey, StepTiming>>;
+    try { timings = normalizeTimings((row.steps ?? {}) as Record<string, StepTiming | undefined>); }
+    catch { continue; }
+    const acc = byClin.get(pid) ?? { name, totals: [], stepSeconds: {}, revisits: {} };
+    let total = 0;
+    for (const def of SESSION_STEPS) {
+      const t = timings[def.key];
+      if (!t) continue;
+      const secs = Math.max(0, t.seconds || 0);
+      (acc.stepSeconds[def.key] ??= []).push(secs);
+      total += secs;
+      if ((t.visits || 0) > 1) acc.revisits[def.key] = (acc.revisits[def.key] ?? 0) + 1;
+    }
+    if (total > 0) acc.totals.push(total);
+    byClin.set(pid, acc);
+  }
+
+  const labelOf = (key: string) => SESSION_STEPS.find((s) => s.key === key)?.label ?? key;
+
+  const out: ClinicianTimingStat[] = [];
+  for (const [clinicianId, acc] of byClin) {
+    if (!acc.totals.length) continue;
+    // Slowest section by this clinician's average time on it.
+    let slowestStep: string | null = null; let slowestAvg = -1;
+    for (const [key, arr] of Object.entries(acc.stepSeconds)) {
+      const avg = arr.reduce((s, n) => s + n, 0) / arr.length;
+      if (avg > slowestAvg) { slowestAvg = avg; slowestStep = labelOf(key); }
+    }
+    let mostRevisitedStep: string | null = null; let topRev = 0;
+    for (const [key, n] of Object.entries(acc.revisits)) {
+      if (n > topRev) { topRev = n; mostRevisitedStep = labelOf(key); }
+    }
+    out.push({
+      clinicianId,
+      name: acc.name,
+      sessions: acc.totals.length,
+      avgSessionSeconds: Math.round(acc.totals.reduce((s, n) => s + n, 0) / acc.totals.length),
+      medianSessionSeconds: median(acc.totals),
+      slowestStep,
+      mostRevisitedStep,
+    });
+  }
+  // Busiest clinicians first.
+  return out.sort((a, b) => b.sessions - a.sessions);
+}
+
 /** Format seconds as a compact human duration (e.g. "2m 05s", "48s"). */
 export function fmtDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
