@@ -53,7 +53,7 @@ export function EditClientDetails({ client }: { client: EditableClient }) {
       <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-[var(--radius-xl)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)] sm:rounded-[var(--radius-xl)] md:p-7" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-[family-name:var(--font-display)] text-2xl">Edit client details</h2>
-          <button onClick={() => setOpen(false)} className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">✕</button>
+          <button onClick={() => setOpen(false)} aria-label="Close" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>
         </div>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
