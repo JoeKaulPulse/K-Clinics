@@ -68,7 +68,7 @@ export function ReportProblem() {
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between"><h2 className="font-[family-name:var(--font-display)] text-xl">Report a problem</h2><button onClick={() => setOpen(false)} className="text-sm text-[var(--color-stone)]">✕</button></div>
+                <div className="flex items-center justify-between"><h2 className="font-[family-name:var(--font-display)] text-xl">Report a problem</h2><button onClick={() => setOpen(false)} aria-label="Close" className="text-sm text-[var(--color-stone)]"><span aria-hidden="true">✕</span></button></div>
                 <p className="mt-1 text-xs text-[var(--color-stone)]">On <span className="font-mono">{pathname}</span>. Add a screenshot and as much detail as you can.</p>
 
                 <div className="mt-4 flex gap-3">

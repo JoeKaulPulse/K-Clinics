@@ -577,7 +577,7 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
             <h2 className="font-[family-name:var(--font-display)] text-xl">{item.title}</h2>
             <p className="mt-0.5 text-xs text-[var(--color-stone)]">Reported by {item.reportedBy || '—'} · {fmt(item.createdAt)}{item.pageUrl ? ` · ${item.pageUrl}` : ''}</p>
           </div>
-          <button onClick={onClose} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">✕</button>
+          <button onClick={onClose} aria-label="Close" className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>
         </div>
 
         {item.detail && <p className="mt-3 whitespace-pre-wrap text-sm text-[var(--color-ink-soft)]">{item.detail}</p>}
