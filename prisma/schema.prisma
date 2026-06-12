@@ -169,6 +169,9 @@ enum AuditAction {
   DATA_IMPORTED // a data-migration step wrote records (e.g. WordPress import, BLD-187)
   SESSION_EDITED // a captured in-session answer was changed after first save (BLD-138)
   EMAIL_SENT // a bulk/transactional email batch was dispatched (e.g. BLD-242 re-permission)
+  TASK_ASSIGNED // an internal task was assigned to a colleague (PRJ-63.11)
+  TASK_COMPLETED // an assigned task was marked done (PRJ-63.11)
+  ROOM_TURNOVER // a room was handed over for cleaning after a session (PRJ-63.11)
 }
 
 enum ReviewStatus {

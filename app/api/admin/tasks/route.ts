@@ -66,6 +66,13 @@ export async function POST(req: Request) {
       select: { id: true },
     });
     const ref = await assignTaskRef(created.id).catch(() => null); // task exists even if ref assignment hiccups; backfill self-heals
+    // PRJ-63.11: ping the assignee (e.g. admin → contractor) + activity log.
+    if (assigneeId && assigneeId !== session.sub) {
+      const { notifyStaffById } = await import('@/lib/notifications');
+      await notifyStaffById(assigneeId, { kind: 'assigned', title: 'New task assigned to you', body: title.trim().slice(0, 200), href: '/admin/tasks' }, session.sub);
+      const { logAudit } = await import('@/lib/audit');
+      await logAudit({ action: 'TASK_ASSIGNED', actor: session.email, summary: `Assigned task “${title.trim().slice(0, 120)}”`, meta: { taskId: created.id, ref } }).catch(() => {});
+    }
     return NextResponse.json({ ok: true, id: created.id, ref });
   }
 
@@ -73,10 +80,19 @@ export async function POST(req: Request) {
     const { id } = body as { id?: string };
     if (!id) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
     const done = body.op === 'complete';
+    const task = await db.task.findUnique({ where: { id }, select: { title: true, createdBy: true, ref: true } });
     await db.task.update({
       where: { id },
       data: { status: done ? 'DONE' : 'OPEN', completedAt: done ? new Date() : null, completedBy: done ? session.email : null },
     });
+    // PRJ-63.11: on completion, ping the task's creator (e.g. contractor done →
+    // admin) and log it. Only when someone other than the creator finishes it.
+    if (done && task?.createdBy && task.createdBy.trim().toLowerCase() !== session.email.trim().toLowerCase()) {
+      const { notifyStaff } = await import('@/lib/notifications');
+      await notifyStaff(task.createdBy, { kind: 'status', title: 'A task you created is done', body: task.title.slice(0, 200), href: '/admin/tasks' }, session.email);
+      const { logAudit } = await import('@/lib/audit');
+      await logAudit({ action: 'TASK_COMPLETED', actor: session.email, summary: `Completed task “${task.title.slice(0, 120)}”`, meta: { taskId: id, ref: task.ref } }).catch(() => {});
+    }
     return NextResponse.json({ ok: true });
   }
 
@@ -84,6 +100,14 @@ export async function POST(req: Request) {
     const { id, assigneeId } = body as { id?: string; assigneeId?: string };
     if (!id) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
     await db.task.update({ where: { id }, data: { assigneeId: assigneeId || null } });
+    // PRJ-63.11: ping the newly-assigned colleague + activity log.
+    if (assigneeId && assigneeId !== session.sub) {
+      const t = await db.task.findUnique({ where: { id }, select: { title: true, ref: true } });
+      const { notifyStaffById } = await import('@/lib/notifications');
+      await notifyStaffById(assigneeId, { kind: 'assigned', title: 'A task was assigned to you', body: t?.title?.slice(0, 200), href: '/admin/tasks' }, session.sub);
+      const { logAudit } = await import('@/lib/audit');
+      await logAudit({ action: 'TASK_ASSIGNED', actor: session.email, summary: `Assigned task “${(t?.title || '').slice(0, 120)}”`, meta: { taskId: id, ref: t?.ref } }).catch(() => {});
+    }
     return NextResponse.json({ ok: true });
   }
 

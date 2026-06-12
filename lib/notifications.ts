@@ -27,6 +27,53 @@ export async function notifyStaff(
   }
 }
 
+/** Notify a staff member by AdminUser id (used where we hold ids, not emails —
+ *  e.g. task assignment). No-ops if the recipient is the actor or inactive. */
+export async function notifyStaffById(
+  userId: string | null | undefined,
+  n: { kind: NotifyKind; title: string; body?: string; href?: string },
+  actorUserId?: string,
+): Promise<void> {
+  try {
+    if (!userId || (actorUserId && userId === actorUserId)) return;
+    const user = await db.adminUser.findUnique({ where: { id: userId }, select: { id: true, active: true } });
+    if (!user || !user.active) return;
+    await db.staffNotification.create({
+      data: { userId: user.id, kind: n.kind, title: n.title.slice(0, 200), body: n.body?.slice(0, 1000) || null, href: n.href?.slice(0, 300) || null },
+    });
+  } catch (e) {
+    console.error('[notifications] notifyStaffById failed (non-fatal)', (e as Error)?.message);
+  }
+}
+
+/** Notify every active staff member whose role (plus per-user overrides) grants
+ *  `permission` — e.g. ping all front-of-house/cleaners (rooms.prep.manage) that
+ *  a room needs turning over. Skips the actor. Best-effort; returns the count. */
+export async function notifyStaffByPermission(
+  permission: string,
+  n: { kind: NotifyKind; title: string; body?: string; href?: string },
+  actorEmail?: string,
+): Promise<number> {
+  try {
+    const { effectivePermissions } = await import('@/lib/permissions');
+    const actor = (actorEmail || '').trim().toLowerCase();
+    const users = await db.adminUser.findMany({ where: { active: true }, select: { id: true, email: true, role: true, permGrant: true, permRevoke: true } });
+    const recipients = users.filter((u) => {
+      if (u.email.trim().toLowerCase() === actor) return false; // don't ping yourself
+      if (u.role === 'OWNER') return true; // owner implicitly has every permission
+      return effectivePermissions({ role: u.role, permGrant: u.permGrant, permRevoke: u.permRevoke }).has(permission);
+    });
+    if (!recipients.length) return 0;
+    await db.staffNotification.createMany({
+      data: recipients.map((u) => ({ userId: u.id, kind: n.kind, title: n.title.slice(0, 200), body: n.body?.slice(0, 1000) || null, href: n.href?.slice(0, 300) || null })),
+    });
+    return recipients.length;
+  } catch (e) {
+    console.error('[notifications] notifyStaffByPermission failed (non-fatal)', (e as Error)?.message);
+    return 0;
+  }
+}
+
 export async function unreadCount(userId: string): Promise<number> {
   try { return await withDbRetry(() => db.staffNotification.count({ where: { userId, readAt: null } }), 2); }
   catch { return 0; }
