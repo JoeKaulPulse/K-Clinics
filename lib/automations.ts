@@ -290,7 +290,7 @@ async function keyReencryption(t: Tally) {
 // settings so the owner can enable them progressively.
 async function reminders(t: Tally) {
   const { smsConfigured, sendSms } = await import('@/lib/sms');
-  const smsOn = smsConfigured();
+  const smsOn = await smsConfigured();
   const { getSetting } = await import('@/lib/settings');
   const [r72, r48] = await Promise.all([getSetting('reminder_72h'), getSetting('reminder_48h')]);
 

@@ -109,7 +109,7 @@ export async function notifyBookingConfirmed(bookingId: string): Promise<void> {
   // SMS confirmation — only when the client opted in and SMS is configured.
   if (c.smsReminders && c.phone) {
     const { smsConfigured, sendSms } = await import('@/lib/sms');
-    if (smsConfigured()) {
+    if (await smsConfigured()) {
       const when = booking.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
       const arrive = firstVisit ? ' Please arrive 15 mins early for your first visit.' : '';
       tasks.push(sendSms(c.phone, `KClinics: your ${booking.treatmentTitle} is booked for ${when}.${arrive} Manage: ${manageUrl}`));

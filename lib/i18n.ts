@@ -87,6 +87,7 @@ export const DICT: Record<string, Entry> = {
   'nav.seo': { en: 'SEO & AI search', uk: 'SEO та AI-пошук' },
   'nav.redirects': { en: 'Redirects', uk: 'Перенаправлення' },
   'nav.integrations': { en: 'Integrations', uk: 'Інтеграції' },
+  'nav.credentials': { en: 'Credentials & keys', uk: 'Облікові дані та ключі' },
   'nav.settings': { en: 'Settings', uk: 'Налаштування' },
 
   // ── Shell / common ──
