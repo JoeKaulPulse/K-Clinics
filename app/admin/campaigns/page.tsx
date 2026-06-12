@@ -12,10 +12,12 @@ export const dynamic = 'force-dynamic';
 export default async function CampaignsPage() {
   if (!crmEnabled) return <CrmDisabled />;
   const { db } = await import('@/lib/db');
+  const { marketableClientWhere } = await import('@/lib/consent');
   const session = await getSession();
   if (!sessionCan(session, 'campaigns.view')) redirect('/admin');
   const [audience, past] = await Promise.all([
-    db.client.count({ where: { marketingOptIn: true, unsubscribed: false } }),
+    // Reachable audience = lawful marketing recipients only (BLD-242).
+    db.client.count({ where: marketableClientWhere() }),
     db.campaign.findMany({ orderBy: { createdAt: 'desc' }, take: 20 }),
   ]);
 

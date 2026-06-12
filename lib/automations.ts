@@ -3,6 +3,7 @@ import { db } from './db';
 import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking } from './email';
 import { site } from './site';
 import { escapeHtml } from './sanitize';
+import { marketableClientWhere } from './consent';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || site.url;
 const unsub = (token: string) => `${SITE_URL}/api/unsubscribe?t=${token}`;
@@ -35,7 +36,7 @@ async function tierNudges(t: Tally) {
     const tiers = await getTiers();
     const since = new Date(Date.now() - 30 * 864e5);
     const base = (SITE_URL || '').replace(/\/$/, '');
-    const clients = await db.client.findMany({ where: { marketingOptIn: true, unsubscribed: false, membership12moPence: { gt: 0 } }, take: 3000 });
+    const clients = await db.client.findMany({ where: { ...marketableClientWhere(), membership12moPence: { gt: 0 } }, take: 3000 });
     for (const c of clients) {
       if (!canEmail(c)) continue;
       const next = nextTier(tiers, c.membership12moPence);
@@ -76,7 +77,7 @@ async function membershipRenewal(t: Tally) {
     const hi = new Date(now - 120 * 864e5); // ~4 months ago
     const since = new Date(now - 120 * 864e5);
     const clients = await db.client.findMany({
-      where: { marketingOptIn: true, unsubscribed: false, membership12moPence: { gte: paidFloor }, lastVisitAt: { gte: lo, lte: hi } },
+      where: { ...marketableClientWhere(), membership12moPence: { gte: paidFloor }, lastVisitAt: { gte: lo, lte: hi } },
       take: 3000,
     });
     for (const c of clients) {
@@ -106,7 +107,7 @@ async function anniversaries(t: Tally) {
     const today = new Date();
     const since = new Date(Date.now() - 60 * 864e5);
     const base = (SITE_URL || '').replace(/\/$/, '');
-    const clients = await db.client.findMany({ where: { marketingOptIn: true, unsubscribed: false }, take: 5000 });
+    const clients = await db.client.findMany({ where: marketableClientWhere(), take: 5000 });
     for (const c of clients) {
       if (!canEmail(c) || !c.createdAt) continue;
       if (c.createdAt.getMonth() !== today.getMonth() || c.createdAt.getDate() !== today.getDate()) continue;
@@ -171,8 +172,11 @@ async function scheduledGiftVouchers(t: Tally) {
   }
 }
 
-function canEmail(c: { email: string; marketingOptIn: boolean; unsubscribed: boolean }) {
-  return c.email && c.marketingOptIn && !c.unsubscribed;
+function canEmail(c: { email: string; marketingOptIn: boolean; unsubscribed: boolean; marketingConsentAt?: Date | null }) {
+  // BLD-242: a lawful marketing send needs recorded consent evidence, not just
+  // the boolean — legacy opt-ins with no `marketingConsentAt` are suppressed
+  // until re-permissioned (UK GDPR Art.7). Defence-in-depth alongside the query.
+  return Boolean(c.email) && c.marketingOptIn && !c.unsubscribed && !!c.marketingConsentAt;
 }
 // Care-related (transactional) mail — sent regardless of marketing opt-in, but
 // still suppressed for a hard unsubscribe.
