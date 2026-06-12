@@ -371,7 +371,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
               </div>
 
               <div className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] p-4 text-sm">
-                <div className="flex justify-between"><span className="text-[var(--color-stone)]">Due today</span><span className="font-medium text-[var(--color-stone-soft)]">Nothing charged until after your visit</span></div>
+                <div className="flex justify-between"><span className="text-[var(--color-stone)]">Due today</span><span className="font-medium text-[var(--color-stone)]">Nothing charged until after your visit</span></div>
                 <div className="flex justify-between"><span className="text-[var(--color-stone)]">Total at your visit</span><span className="font-medium text-[var(--color-ink)]">{money(orderTotal)}</span></div>
                 {promo?.ok && <div className="mt-1 flex justify-between text-[var(--color-jade,#3f7a5a)]"><span>Promo {promo.code}</span><span>−{money(promo.discountPence || 0)} applied</span></div>}
                 <p className="mt-2 text-xs text-[var(--color-stone-soft)]">{totalDuration} min · {[service.name, ...[...addOns].map((id) => catalogue.flatMap((s) => s.variants).find((v) => v.id === id)?.name).filter(Boolean)].join(' + ')}</p>
