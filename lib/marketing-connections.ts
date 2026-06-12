@@ -7,7 +7,7 @@ import { isConnected } from '@/lib/oauth-connections';
 // scopes. "One-click" Connect works as soon as the platform's app credentials
 // are present in the environment; until then the UI shows a guided setup.
 
-export type ProviderId = 'google' | 'meta' | 'tiktok' | 'mailchimp';
+export type ProviderId = 'google' | 'meta' | 'tiktok';
 
 export type ProviderDef = {
   id: ProviderId;
@@ -79,21 +79,6 @@ export const PROVIDERS: ProviderDef[] = [
       'Create an app in the TikTok for Business developer portal.',
       `Set this redirect URI: ${REDIRECT_URI}?provider=tiktok`,
       'Add TIKTOK_CLIENT_ID and TIKTOK_CLIENT_SECRET to the environment, then click Connect.',
-    ],
-  },
-  {
-    id: 'mailchimp', name: 'Mailchimp', category: 'Email',
-    blurb: 'Optional: sync audiences & campaign stats from Mailchimp.',
-    authUrl: 'https://login.mailchimp.com/oauth2/authorize',
-    tokenUrl: 'https://login.mailchimp.com/oauth2/token',
-    scopes: [],
-    scopeSeparator: ' ',
-    envClientId: 'MAILCHIMP_CLIENT_ID', envClientSecret: 'MAILCHIMP_CLIENT_SECRET',
-    docsUrl: 'https://admin.mailchimp.com/account/oauth2/',
-    setupSteps: [
-      'Register an app under Mailchimp → Account → Extras → API & OAuth apps.',
-      `Set this redirect URI: ${REDIRECT_URI}?provider=mailchimp`,
-      'Add MAILCHIMP_CLIENT_ID and MAILCHIMP_CLIENT_SECRET to the environment, then click Connect.',
     ],
   },
 ];
