@@ -1147,6 +1147,46 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     value: 8, effort: 2,
     detail: 'Fixed: app/api/admin/2fa/route.ts disable op now requires a valid current TOTP code when 2FA is enabled; verified via verifySecondFactor before calling disable2fa().',
   },
+  {
+    title: 'REDUCED VAT class maps to wrong Xero tax code OUTPUT2 (20%) instead of REDUCEDOUTPUT (5%) (BLD-252)', type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 1,
+    detail: 'Fixed: lib/xero.ts xeroTaxType() now returns REDUCEDOUTPUT for REDUCED VAT class; OUTPUT2 is now STANDARD-only. Prevents 5% services being invoiced at 20% in Xero.',
+  },
+  {
+    title: 'AI and TrueLayer fetch calls missing AbortSignal timeout -- hung connection blocks serverless slot (BLD-254)', type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 1,
+    detail: 'Fixed: AbortSignal.timeout(25_000) added to Anthropic fetch calls in lib/chat-ai.ts and lib/ai-consultation.ts; AbortSignal.timeout(10_000) added to all TrueLayer fetch calls in lib/truelayer.ts and GitHub App token fetch in lib/github-app.ts.',
+  },
+  {
+    title: 'CMS theme CSS values injected into <style> without sanitisation -- CSS injection risk (BLD-232)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'Fixed: lib/theme.ts themeToCss() now validates each color token against a CSS color regex and strips dangerous characters (}, <, >, quotes) before injection. Invalid values fall back to transparent.',
+  },
+  {
+    title: 'Add robots.txt -- admin, kiosk and POS routes currently crawlable by all bots (BLD-253)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 1,
+    detail: 'Fixed: app/robots.ts disallow list extended with /kiosk, /pos-paid, /live, /nps, /follow-up. All staff-facing and transactional paths are now blocked from crawlers.',
+  },
+  {
+    title: 'Replace force-dynamic with revalidate on journal, shop and academy pages to restore edge caching (BLD-233)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 9, effort: 2,
+    detail: 'Fixed: journal/page.tsx, shop/page.tsx, academy/page.tsx, journal/[slug]/page.tsx, shop/[slug]/page.tsx, academy/[slug]/page.tsx -- replaced force-dynamic with revalidate = 3600. Transactional pages (booking, checkout, account, portal) remain force-dynamic.',
+  },
+  {
+    title: 'Cart quantity -/+ buttons have no accessible name or minimum 44px touch target (BLD-236)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 9, effort: 1,
+    detail: 'Fixed: app/(marketing)/shop/cart/page.tsx -- quantity buttons enlarged to h-11 w-11 (44px), aria-label added to each (Decrease/Increase quantity of {name}); Remove button gets aria-label="Remove {name} from cart". WCAG 2.5.5 and SC 4.1.2 compliant.',
+  },
+  {
+    title: 'Post-booking confirmation screen has no referral prompt or loyalty points summary (BLD-234)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 9, effort: 2,
+    detail: 'Fixed: components/booking/BookingFlow.tsx Done component now shows a gold-bordered referral card with the PS25/PS25 offer and a Beauty Points credit note, linking to /refer-a-friend. Added at the highest-intent post-conversion moment.',
+  },
+  {
+    title: 'Consultation form fires no conversion event -- ad campaigns cannot optimise for leads (BLD-255)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 9, effort: 2,
+    detail: 'Fixed: components/consult/ConsultForm.tsx now fires gtag(event, generate_lead, {value:0}) and fbq(track, Lead) on successful submission, enabling Google Ads and Meta to optimise for consultation leads.',
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
