@@ -42,7 +42,7 @@ export const defaultTheme: ThemeTokens = {
   gold: '#a98a6d',
   goldSoft: '#c2a589',
   goldBright: '#dcc4a8',
-  jade: '#7b6a5d',
+  jade: '#2f7152', // jade green — positive / success / active / healthy accent
   blush: '#cdb4a3',
 };
 

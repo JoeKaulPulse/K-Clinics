@@ -4,7 +4,9 @@
 export function Aurora({ className = '' }: { className?: string }) {
   const blobs = [
     { c: 'var(--color-gold)', x: '15%', y: '20%', s: 520 },
-    { c: 'var(--color-jade)', x: '78%', y: '30%', s: 560 },
+    // Decorative warm taupe (not the semantic jade-green status accent) — keeps
+    // the champagne/rose aurora warm rather than tinting it green.
+    { c: '#7b6a5d', x: '78%', y: '30%', s: 560 },
     { c: 'var(--color-blush)', x: '55%', y: '85%', s: 460 },
   ];
   return (
