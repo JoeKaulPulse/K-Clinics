@@ -54,7 +54,7 @@ export function ViewSwitcher({ active }: { active: DashboardView }) {
       </button>
 
       {open && (
-        <div role="menu" className="absolute right-0 z-40 mt-2 w-64 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-soft)]">
+        <div role="menu" className="kc-pop absolute right-0 z-40 mt-2 w-64 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-soft)]">
           {VIEWS.map((v) => {
             const on = v.id === active;
             return (

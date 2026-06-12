@@ -117,7 +117,7 @@ export async function ReceptionistView({ session }: { session: Session }) {
             ]
               .filter((t) => sessionCan(session, t.perm))
               .map((t) => (
-                <Link key={t.href} href={t.href} className="flex items-center justify-center rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-3 text-center text-sm text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)]">
+                <Link key={t.href} href={t.href} className="flex items-center justify-center rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-3 text-center text-sm text-[var(--color-ink-soft)] transition-colors duration-150 ease-out hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)] active:bg-[var(--color-sand)]">
                   {t.label}
                 </Link>
               ))}
