@@ -1,6 +1,6 @@
 # K Clinics → ClinicOS — Platform Decomposition & Multi‑Tenant SaaS Plan
 
-> **Status:** DRAFT for review · **Mode:** planning only — *nothing in this document is to be executed without explicit sign‑off* · **Version:** 0.2 (leadership decisions logged in §17, 2026‑06‑08) · **Owner:** Joe Kaul / engineering leadership
+> **Status:** DRAFT for review · **Mode:** planning only — *nothing in this document is to be executed without explicit sign‑off* · **Version:** 0.3 (phase‑1 scoping addendum appended 2026‑06‑12, BLD‑35; leadership decisions logged in §17, 2026‑06‑08) · **Owner:** Joe Kaul / engineering leadership
 >
 > This is the canonical reference for evolving the K Clinics monolith into a containerised, independently‑deployable, **multi‑tenant platform that K Clinics will operate for itself and licence to other clinics.** It is deliberately conservative: the live booking environment and its revenue must never be put at risk by this programme.
 
@@ -342,4 +342,103 @@ Captured 2026‑06‑08 (J. Kaul). These are now baseline; downstream sections/A
 
 ---
 
-*End of plan v0.2 — a living document. All subsequent decisions append to §15 (ADRs) and update §13 (risks).*
+---
+
+## Phase 1 scoping (v0.3 addendum — BLD-35)
+
+> **Status:** scoping deliverable for BLD-35 · planning only — nothing here is to be built without the §17-style sign-off in 5.2 below · extends plan v0.2; ADR/risk numbering continues from §15/§13. Evidence below is from direct inspection of `prisma/schema.prisma` (117 models), `lib/platform-status.ts`, `lib/secrets.ts`, `lib/auth-edge.ts` and the `app/` route tree on 2026-06-12.
+
+### 1. Extraction candidate ranking
+
+Scoring: **coupling** = hard Prisma relations (`@relation` FKs) from the context's models into core identity/booking models (`Client`, `AdminUser`, `Booking`, `Location`, `Resource`); soft string references (no FK) noted separately. **Revenue criticality** = proximity to live booking/payment flow (highest risk). **Licensing value** = credibility as a standalone, separately sellable ClinicOS module.
+
+| Rank | Context | Models | Hard FKs into core | Revenue criticality | Standalone licensing value | Verdict |
+|---|---|---|---|---|---|---|
+| **1** | **Academy / Learning** (+careers) | 13 (`AcademyStudent`, `Course`, `CourseModule`, `Lesson`, `Quiz`, `QuizQuestion`, `LessonProgress`, `QuizAttempt`, `LiveClass`, `Cohort`, `Enrolment`; `Vacancy`, `JobApplication`) | **0** | **None** — no Stripe code anywhere under `app/api/academy` or `lib/academy*`; `Enrolment.paidPence` is recorded manually | **High** — a sellable LMS for clinics that run training academies | **Extract first** |
+| 2 | Content / CMS & public site | ~14 (`Page`, `PageRevision`, `GlobalSection`, `SiteConfig`, `SiteConfigRevision`, `Post`, `TreatmentContent`, `MediaAsset`, `PageSeo`, `Redirect`, `QrCode`, `QrScan`, `AbTest`, `AbVariant`) | **0** (soft slug refs only: `TreatmentContent.slug`, `GalleryItem.treatmentSlug`, `Post.related[]`) | **Medium-high by adjacency** — it *renders the booking funnel* (`app/(marketing)`, SEO, redirects); a regression hits conversion on kclinics.co.uk | Medium — white-label sites are a tier feature (ADR-009), not a standalone product | Runner-up |
+| 3 | Kiosk | 3 (`KioskSession`, `KioskResult`, `KioskEvent`) | **0** (claim flow writes only `KioskResult.claimCode`; `Device.roomId` is a soft string to `Resource`) | None | Low alone — lead-gen gadget; bundle into Marketing or ship as a demo module | Cheap, but not worth a seam of its own |
+| 4 | Commerce | 8 (`Product`, `Order`, `OrderItem`, `GiftVoucher`, `StockItem`, `StockMovement`, `Supplier`, `DayClose`) | 2 (`DayClose.locationId` → `Location`; `Supplier.calls` ← CRM `CallRecord`); soft: `Order.clientId`, `GiftVoucher.claimedByClientId`, `StockMovement.bookingId` | **High** — live card revenue through the *same* Stripe account (`Order.stripePaymentIntentId`, `GiftVoucher.stripePaymentIntentId`); `DayClose` reconciles booking charges + paid orders together | Medium | Mid-programme (per §8.1) |
+| 5 | Marketing / comms | ~17 | **≥8 FK edges**: `EmailEvent.clientId`, `Review` → `Client`+`Booking`+`AdminUser`, `Referral` → `Client` (×2), `DiscountClaim.clientId`, `ClientPoints.clientId`, `NpsResponse.clientId`, `MarketingCampaign.bookings` | Medium (consent/PECR risk, not direct revenue) | Medium-high, but inseparable from CRM identity | After commerce |
+| 6 | Booking & scheduling | ~16 | **Hub** — `Booking` alone holds 10 relations (`Client`, `AdminUser` practitioner, `Location`, `Resource[]`, `MarketingCampaign`, `AuditEvent`, `Review`, `BookingItem`, `FollowUp`, `AppointmentSession`) plus inline Stripe (`stripeSetupIntentId`, `chargePaymentIntentId`) and Xero (`xeroInvoiceId`) fields | **Critical** | High, but only as the core product | Late (per §8.1) |
+| 7 | CRM / clinical | ~17 | **Hub of hubs** — `Client` carries 17 back-relations spanning every domain; clinical PHI lives *on the booking row* (`Booking.clinicalNoteEnc`, `Booking.sopChecklistEnc`) | **Critical (PHI)** | High, but last by design | Last (per §8.1) |
+
+**Recommendation (proposed ADR-014): extract Academy/Learning first; Content/CMS is the runner-up.** Plan v0.2 left this open (§11 Phase 3: "Content/CMS (or Learning)"); the schema evidence resolves it:
+
+1. **Zero schema coupling, verified.** Every Learning FK is internal to the cluster; `AcademyStudent` is a *separate identity* with its own `passwordHash` and portal — no relation to `Client` or `AdminUser`. App-layer touchpoints are minimal and clean: `lib/academy-auth.ts` borrows session helpers from `lib/auth` (own `ACADEMY_JWT_SECRET` + own `aud` claim), plus `crmEnabled` gating and notification email (`ACADEMY_NOTIFY_EMAIL`).
+2. **Zero live-revenue risk.** No payment code; if the extracted academy falls over, bookings and the shop are untouched — the only first extraction with a genuinely empty blast radius.
+3. **Real standalone licensing value.** Aesthetics clinics commonly run training academies; "ClinicOS Academy" is sellable to a pilot tenant *before* the booking core is multi-tenant — earliest possible commercial validation, consistent with ADR-013 (bootstrapped, value first).
+4. **Continuity.** §18.2 already nominated Learning as the Phase-0 domain-package spike; extraction continues the same seam rather than opening a second one.
+
+Content/CMS is runner-up rather than first despite equally clean schema coupling because it *is* the public face of the live booking funnel — extracting it moves SEO, redirects and the booking entry pages, which violates the spirit of "live revenue never at risk" for a first attempt. Kiosk should be folded into whichever module hosts lead-gen rather than ranked as a seam.
+
+### 2. Tenancy model decision
+
+**Decision (proposed ADR-015, confirming ADR-003 against this codebase): shared database + `tenantId` column, pooled, with RLS as the backstop — not schema-per-tenant, not DB-per-tenant.**
+
+| Option | Why it fails *here* |
+|---|---|
+| Schema-per-tenant | Prisma 7's `multiSchema` is **static** (schemas listed in the datasource at generate time); per-request schema switching needs a `PrismaClient` per tenant → a connection pool per tenant per warm lambda on Vercel — re-creating the connection-cap incident §1 cites, by design. |
+| DB-per-tenant | Worse on serverless (client + pool per DB), and `scripts/db-sync.mjs` would have to run `prisma db push` N times per deploy — N chances to trip the additive-only gate. Neon branches are a dev/audit tool (see `DATABASE_URL` guidance in CLAUDE.md), not fleet management. |
+| **Shared DB + `tenantId`** | One `PrismaClient`, one Accelerate pool (`PRISMA_DATABASE_URL`, already preferred by `lib/platform-status.ts`); adding **nullable** `tenantId` columns is additive and passes the deploy gate; lowest COGS per §14. |
+
+**The one hard constraint this codebase adds:** the deploy gate refuses new `@unique` on existing tables (CLAUDE.md; `lib/task-refs.ts` exists because of it). Tenancy eventually needs per-tenant uniqueness — today `Client.email`, `AcademyStudent.email`, `Service.slug`, `Page.path`, `Product.slug` are *globally* unique, which is wrong the moment tenant #2 arrives, and `@@unique([tenantId, email])` cannot be added through `db push`. **Therefore the tenancy phase is the trigger to flip the platform track to versioned migrations (`USE_MIGRATIONS=true`) — exactly what ADR-004 already mandates.** Until that flip, any interim uniqueness follows the structural pattern in `lib/task-refs.ts` (sequences + lock-serialised allocation + self-healing dedupe).
+
+**Migration path for tenant #1 (K Clinics), all expand-only per §6.3:**
+1. Add a `Tenant` model and **nullable** `tenantId String?` to every tenant-owned table (additive; `db push`-safe; no new `@unique`).
+2. Backfill every row to the K Clinics tenant id — batched, idempotent, checksum-verified (§6.3 step 2). Zero behaviour change; live code ignores the column.
+3. Scope reads/writes via a Prisma client extension (`$extends` query hooks injecting `tenantId` from the resolved tenant context, per §7.1) in the platform track only.
+4. Flip the platform track to versioned migrations (ADR-004), then add `NOT NULL`, composite per-tenant uniques, and **RLS policies** as reviewed SQL. Note the pooler caveat: the RLS tenant GUC (`SET LOCAL app.tenant_id`) must be set per-transaction through Accelerate/PgBouncer, so tenant-scoped work wraps in `$transaction`.
+5. Singletons become per-tenant rows: `SiteConfig` (`id = "singleton"`), `Setting` (global `key` PK) and `ManagedSecret` (`name` is the `@id`) all need a tenant dimension — see R15/R19.
+
+### 3. Cost estimate — 3-tenant pilot (monthly)
+
+Assumptions: pooled tenancy on the existing topology (Vercel + managed Postgres behind Accelerate, London/`lhr1`); pilot volumes per tenant ≤1,000 bookings/mo, ≤15k emails, ~500 SMS (opt-in fraction, `Client.smsReminders`), AI capped via the existing `AI_MONTHLY_CAP`; Stripe fees excluded (pass-through on each tenant's own account, see R14); GBP, rounded, mid-2026 list prices — to be firmed up in the §14 COGS model.
+
+| Line | Service (as wired today) | Est. £/mo |
+|---|---|---|
+| Compute/hosting | Vercel Pro, 2 seats + modest usage overage | 32–50 |
+| Database | Managed Postgres (Neon/Prisma Postgres) + Accelerate pooling | 15–40 |
+| Rate limiting | Upstash Redis, pay-as-you-go (`UPSTASH_REDIS_REST_URL`) | 0–8 |
+| File storage | Vercel Blob (`BLOB_READ_WRITE_TOKEN`) — media library + kiosk photos (auto-purged) | ~5 |
+| Email | Resend Pro tier (~50k emails) covers all 3 tenants | ~16 |
+| SMS | Twilio UK ~£0.04/msg × ~1,500 | ~60 |
+| AI | Anthropic (chat assistant, kiosk AI, marketing copy) ~£10–25/tenant | 30–75 |
+| **Total** | | **~£160–250** |
+
+Read: fixed platform cost ≈ £70–100; the rest is per-tenant usage (SMS + AI dominate) that ADR-012's metering should pass through. Marginal cost ≈ **£55–80/tenant/mo** — comfortably inside a £150–300/mo licence, supporting §2.2's lower-TCO positioning. A silo tenant adds its own DB (~£15–40) + Blob store.
+
+### 4. Migration risk register (append to §13; numbering continues from R11)
+
+| # | Risk | L | I | Mitigation |
+|---|---|---|---|---|
+| R12 | **Cross-tenant data isolation** — no `tenantId` exists on any of the 117 models; one missed `where` clause leaks another clinic's data | High (pre-RLS) | Critical | Backfill + client-extension scoping + RLS backstop + CI isolation fuzzing (§7.4) before any tenant #2 row exists |
+| R13 | **Auth/session audience confusion** — `lib/auth-edge.ts:98` falls back `ACADEMY_JWT_SECRET → CLIENT_JWT_SECRET → ADMIN_JWT_SECRET` (one signing key across portals); passkey `rpID` is bound to the registrable domain, so per-tenant custom domains fracture WebAuthn | Med | High | Mandatory distinct secrets per audience+tenant at provisioning; keep `aud` claims (already present); per-tenant `rpID` registered at domain onboarding (§5.2) |
+| R14 | **Stripe account separation** — single `STRIPE_SECRET_KEY` (env-only by design in `lib/secrets.ts`), `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` baked into the browser bundle at build time, and one webhook at `app/api/stripe/webhook` with one `STRIPE_WEBHOOK_SECRET` | High | Critical | Per-tenant Stripe accounts; publishable key moves to runtime tenant config (not build env); webhook route resolves tenant from account id and verifies per-tenant signing secrets |
+| R15 | **Env/secret scoping** — `ManagedSecret.name` is the `@id` (no tenant column), so one global row per key; `lib/secrets.ts` resolves with a process-wide 30s cache → tenant B would send email/SMS/AI on tenant A's credentials | High | Critical | Additive `tenantId` on `ManagedSecret` + tenant-keyed cache before any second tenant; per-tenant `EMAIL_FROM`/`TWILIO_FROM` entries |
+| R16 | **File-storage isolation** — one Blob store; `MediaAsset` has no tenant dimension; Blob URLs are public-by-obscurity. (Clinical images are safer: `BeforePhoto.dataEnc` and `GalleryItem` bytes live encrypted/in-DB) | Med | High | Tenant-prefixed Blob pathnames + tenant column on `MediaAsset`; per-tenant store for silo tier; keep clinical images in-DB encrypted |
+| R17 | **Cron fan-out** — `app/api/cron/{daily,dispatch,kiosk-cleanup}` are single-tenant singletons (last-run in `Setting` keys `cron_daily_last`/`cron_dispatch_last`); naive per-tenant loops will overrun serverless limits and Vercel cron is per-project | Med | Med | Runner iterates tenants with per-tenant time-boxing, checkpoints and per-tenant last-run keys; move to queue-fanned jobs at >10 tenants (§8.2 event bus) |
+| R18 | **GDPR/clinical data** — one global `HEALTH_ENCRYPTION_KEY` for all tenants' PHI; DSAR/export/erasure are clinic-wide today; licensing makes K Clinics a *processor* for other controllers | Med | Critical | Per-tenant envelope keys (KMS) per §7.4/§10; per-tenant export/erasure (generalise the existing full export, §6.4); DPA + sub-processor register before the first external tenant |
+| R19 | **Brand/theme per tenant** — `SiteConfig` is a singleton row (`id = "singleton"`), defaults in `lib/site.ts`, one verified Resend sending domain; ADR-009 promises full white-label | High | Med | Per-tenant `SiteConfig` rows resolved by hostname (§7.1); per-tenant sender-domain verification at onboarding; theming applied in the BFF shell (§8.5) |
+
+### 5. Go/no-go checkpoint
+
+**5.1 Questions the owner must answer before any build starts** (log answers in §17):
+
+1. **Stripe topology:** does each licensed clinic hold its **own Stripe account** (we never touch their money flow; simplest compliance) or do we platform the payments (Stripe Connect — revenue share but heavier obligations)? Determines R14's mitigation and the Payments seam.
+2. **First module & first customer:** is **Academy** confirmed as the first extraction (ADR-014), and can we name **one pilot clinic** with a letter of intent to license it? (No pilot demand → re-rank toward Content/CMS for internal value only.)
+3. **Data roles & compliance:** is the controller/processor split, DPA template and sub-processor register (R18) commissioned now, and does Cyber Essentials (ADR-011) start in parallel with phase 1?
+4. **Migration regime:** is flipping the platform track to versioned migrations (`USE_MIGRATIONS=true`, ADR-004) approved as a hard precondition of the tenancy backfill — accepting that the live track keeps additive-only `db push` until cutover?
+5. **Budget envelope:** are the pilot run-rate (~£200/mo, §3), the in-house platform hire (ADR-008) and one-off compliance/pen-test costs confirmed as affordable within bootstrapped funding (ADR-013)?
+
+**5.2 Definition of phase-1 "done":**
+
+- This addendum is reviewed and merged into `docs/PLATFORM_SAAS_PLAN.md` as v0.3; ADR-014 (first extraction = Academy) and ADR-015 (pooled `tenantId` tenancy, migration-regime trigger) are logged in §15; R12–R19 merged into §13.
+- All five questions in 5.1 are answered and recorded in §17.
+- The §3 cost table is accepted as the input to the §14 COGS model (decision #5 remains deferred until that model exists at 10/100/500 tenants).
+- **No code, schema or infrastructure has changed** — `npx tsc --noEmit` clean, zero deploys attributable to BLD-35 — and the next step (the Phase-0 Learning domain-package spike, §18.2) has a named owner and a start date.
+
+*Done when: the owner signs off v0.3, and BLD-35 moves to Shipped with this section linked.*
+
+---
+
+*End of plan v0.3 — a living document. All subsequent decisions append to §15 (ADRs) and update §13 (risks).*
