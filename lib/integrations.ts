@@ -209,6 +209,23 @@ export async function getIntegrations(): Promise<Integration[]> {
     docsHref: 'https://www.deepl.com/pro-api',
   });
 
+  // ── Speech-to-text (Deepgram) — BLD-138 clinical voice notes ──
+  const dgKey = has(process.env.DEEPGRAM_API_KEY);
+  const aiKey = has(process.env.ANTHROPIC_API_KEY);
+  items.push({
+    id: 'transcription',
+    name: 'Voice transcription (Deepgram)',
+    category: 'Communications',
+    description: 'Transcribes dictated appointment notes; Claude then structures the transcript into draft notes & checklist answers for the clinician to review and the client to sign.',
+    status: dgKey && aiKey ? 'connected' : dgKey || aiKey ? 'partial' : 'not_configured',
+    detail: dgKey && aiKey ? 'Transcription + structuring ready.' : dgKey ? 'Deepgram set — add ANTHROPIC_API_KEY for note structuring.' : aiKey ? 'Claude set — add DEEPGRAM_API_KEY to transcribe audio.' : 'Add a Deepgram key to transcribe clinical voice notes.',
+    envVars: [
+      { name: 'DEEPGRAM_API_KEY', set: dgKey },
+      { name: 'ANTHROPIC_API_KEY', set: aiKey },
+    ],
+    docsHref: 'https://console.deepgram.com',
+  });
+
   // ── Security & encryption ──
   const jwt = has(process.env.ADMIN_JWT_SECRET);
   const enc = has(process.env.HEALTH_ENCRYPTION_KEY);

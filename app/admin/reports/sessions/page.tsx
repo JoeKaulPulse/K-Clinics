@@ -5,7 +5,7 @@ import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { getLocale } from '@/lib/locale';
-import { getSessionTimingStats, fmtDuration } from '@/lib/session-analytics';
+import { getSessionTimingStats, getClinicianTimingStats, fmtDuration } from '@/lib/session-analytics';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +25,10 @@ export default async function SessionInsightsPage({ searchParams }: { searchPara
   const days = all ? 0 : (RANGES.includes(Number(range)) ? Number(range) : 90);
   const since = all ? new Date(0) : new Date(Date.now() - days * 864e5);
 
-  const stats = await getSessionTimingStats({ since });
+  const [stats, clinicians] = await Promise.all([
+    getSessionTimingStats({ since }),
+    getClinicianTimingStats({ since }),
+  ]);
   const can = await sessionPermissions();
   const locale = await getLocale();
 
@@ -99,6 +102,41 @@ export default async function SessionInsightsPage({ searchParams }: { searchPara
             </table>
           </section>
           <p className="mt-3 text-xs text-[var(--color-stone)]">“Revisited” = the clinician returned to a section after moving on (often a sign it needs more room in the flow). “Skipped” = the section was passed without recording time. Headline callouts use a minimum sample so one unusual session can’t skew them.</p>
+
+          {/* By clinician */}
+          {clinicians.length > 0 && (
+            <section className="mt-9">
+              <h2 className="mb-1 font-[family-name:var(--font-display)] text-xl">By clinician</h2>
+              <p className="mb-3 text-sm text-[var(--color-stone)]">How long each clinician’s sessions run, and where their time goes — busiest first.</p>
+              <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">
+                      <th className="p-3">Clinician</th>
+                      <th className="p-3">Sessions</th>
+                      <th className="p-3">Avg length</th>
+                      <th className="p-3 hidden sm:table-cell">Median</th>
+                      <th className="p-3 hidden sm:table-cell">Longest section</th>
+                      <th className="p-3 hidden md:table-cell">Most revisited</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clinicians.map((c) => (
+                      <tr key={c.clinicianId} className="border-t border-[var(--color-line)]">
+                        <td className="p-3 font-medium">{c.name}</td>
+                        <td className="p-3 tabular-nums">{c.sessions}</td>
+                        <td className="p-3 tabular-nums">{fmtDuration(c.avgSessionSeconds)}</td>
+                        <td className="p-3 hidden sm:table-cell tabular-nums text-[var(--color-stone)]">{fmtDuration(c.medianSessionSeconds)}</td>
+                        <td className="p-3 hidden sm:table-cell text-[var(--color-stone)]">{c.slowestStep ?? '—'}</td>
+                        <td className="p-3 hidden md:table-cell text-[var(--color-stone)]">{c.mostRevisitedStep ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-3 text-xs text-[var(--color-stone)]">Sessions are attributed to the appointment’s practitioner. Use this to spot training opportunities or steps that consistently need more time — not as a productivity league table.</p>
+            </section>
+          )}
         </>
       )}
     </AdminShell>
