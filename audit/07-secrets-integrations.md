@@ -158,3 +158,39 @@ The notable gaps are: (1) the staff **Google Calendar refresh token is stored in
 - `prisma/schema.prisma` (`AdminUser`, `ExternalConnection`), `prisma/seed.mjs`
 - `.env.example`, `.gitignore`
 - Whole-repo greps: `process.env`, `NEXT_PUBLIC_`, `apiKey`/`secret`/`token`/`password`/`Bearer`, `BEGIN PRIVATE KEY`, live key formats (Stripe/AWS/Google/GitHub/SendGrid/Resend), `Math.random`, CSPRNG usage, `console.*` token logging, user-supplied-URL `fetch` (SSRF).
+
+---
+
+## Addendum — API-connections review & live health monitoring (2026-06-12, BLD-278)
+
+_Scope: every outbound API integration (versions, auth, token lifecycle, timeouts) plus a live probe of all 192 `app/api/**` routes on production._
+
+### Endpoint sweep (production)
+
+GET-probed all 192 routes on https://kclinics.co.uk with dummy params: **zero 5xx**. Distribution: 140×405 (POST-only), 19×403 + 9×401 (auth-gated), 7×404 (dummy IDs), 5×307 (OAuth redirects), 2×400, 10×200. The unauthenticated 200s (`/api/admin/badges`, `/api/admin/notifications`, `/api/admin/whoami`, `/api/account/me`) return empty/boolean payloads only — no data exposure.
+
+### Broken connections found & FIXED (this review)
+
+_Note: the integration fixes below were independently implemented and merged as PR #753 (from this review's BLD-278 board item) while the review branch was in flight; the table reflects the final merged state. The review branch (PR #749) additionally contributes the TikTok `data`-envelope handling in `normalizeTokens()` and the /admin/api-health page._
+
+| Severity | Finding | Fix |
+|---|---|---|
+| HIGH | **Meta Graph API pinned to v19.0 — sunset 21 May 2026.** Ad-spend sync (`lib/ad-spend.ts`), Conversions API (`lib/conversions.ts`) and the Meta OAuth dialog/token URLs (`lib/marketing-connections.ts`) were all calling a retired version; every failure is swallowed to `[]`, so it broke silently. | Bumped to v23.0 (sunset ~May 2027) across all three libs. |
+| HIGH | **Google Ads API pinned to v17 — sunset 4 Jun 2025** (verified live: v17–v19 now 404). Spend sync dead for a year, silently. | Bumped to v22. |
+| HIGH | **Google Ads calls never refreshed the OAuth access token** (1-hour lifetime, used raw) — sync failed after the first hour even on a live API version. | Refresh-token grant wired through `validAccessToken()` in `lib/ad-spend.ts`. |
+| HIGH | **Marketing OAuth callback persisted the raw provider token JSON** (`{access_token,…}`, TikTok's nested under `data`) while every consumer reads `tokens.access` — so Meta/Google/TikTok connections never produced a usable token (also flagged in the 2026-06-09 findings above — now resolved). | `normalizeTokens()` in `lib/oauth-connections.ts` (handles the TikTok `data` envelope) applied on write AND as a tolerant read, so existing rows self-heal without reconnecting. |
+| LOW | Missing fetch timeouts: CalDAV PUT/DELETE (`lib/hostinger-calendar.ts`), IndexNow submit, GitHub mirror POST/PATCH (`lib/build-board.ts`), GA4 + Meta conversion sends. | `AbortSignal.timeout(8–10s)` added to all. |
+
+### Verified healthy (no action)
+
+Stripe (SDK pinned `2026-05-27.dahlia`, 20s timeout + 3 retries, webhook signature on raw body), Resend (SDK v6), Twilio (stable 2010-04-01 API), Anthropic (current model IDs `claude-haiku-4-5-20251001` / `claude-sonnet-4-6`), Xero/TrueLayer (10s timeouts, encrypted tokens, 60s-early refresh), Google Business Profile (v4 reviews API still live), DeepL/Google Translate, yay.com webhook (timing-safe compare), HIBP, Open-Meteo, IndexNow key. TikTok Business API v1.3 remains current.
+
+### Logged as follow-ups (open)
+
+- **BLD-279** — Resend/chat-inbound webhooks fail open outside production (unsigned payloads processed in dev/preview).
+- **BLD-280** — Mailchimp connection is a stub (empty scopes, no API usage) — implement or hide.
+- **BLD-281** — `sendEmail()` has no explicit timeout on the Resend SDK call.
+
+### New standing control — /admin/api-health (BLD-278)
+
+`lib/api-health.ts` + `/admin/api-health` (perm `platform.status`): a traffic-light page where **every light is a real, read-only API call** made server-side at view time — Stripe balance, Resend domain list, Anthropic models, Twilio account, DeepL usage, Xero/TrueLayer OAuth-refresh + read, Meta/TikTok stored-token checks, Google Ads refresh grant, GA4 `/debug/mp/collect` (validates without recording), CalDAV OPTIONS, Upstash `PING`, Vercel Blob list, GitHub repo read, cron heartbeats, public `/api/health`, IndexNow key match, HIBP, Open-Meteo. A retired API version or revoked key now turns a light red within one page view instead of failing silently; `GET /api/admin/api-health` also accepts the `CRON_SECRET` bearer for external uptime monitors. Reports persist to `Setting('api_health_last')` with per-check "light held since" tracking.
