@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import type { SiteConfig } from '@/lib/site-config';
@@ -23,12 +23,46 @@ export function Header({ config }: { config: SiteConfig }) {
   const [preview, setPreview] = useState<string | null>(null);
   const pathname = usePathname();
 
+  // BLD-237 — keyboard + screen-reader access to the desktop mega-menu. The
+  // chevron is a real toggle button (aria-haspopup/expanded/controls); opening
+  // from it moves focus into the panel, Escape closes and restores focus to the
+  // trigger, and Tab-ing out of the header closes the menu.
+  const triggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const panelRef = useRef<HTMLDivElement>(null);
+  const focusPanelOnOpen = useRef(false);
+  const menuId = (label: string) => `mega-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  function toggleMenu(label: string) {
+    setOpen((prev) => {
+      const next = prev === label ? null : label;
+      focusPanelOnOpen.current = Boolean(next);
+      return next;
+    });
+  }
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  // When opened via the toggle, move focus to the first link in the panel.
+  useEffect(() => {
+    if (open && focusPanelOnOpen.current) {
+      focusPanelOnOpen.current = false;
+      panelRef.current?.querySelector<HTMLAnchorElement>('a')?.focus();
+    }
+  }, [open]);
+
+  // Escape closes the open mega-menu and returns focus to its trigger.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { const t = triggerRefs.current[open]; setOpen(null); t?.focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
 
   useEffect(() => {
     setMobile(false);
@@ -52,6 +86,7 @@ export function Header({ config }: { config: SiteConfig }) {
           : 'border-b border-transparent'
       }`}
       onMouseLeave={() => setOpen(null)}
+      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(null); }}
     >
       <div className="container-lux flex h-[var(--header-h,5.25rem)] items-center justify-between">
         <Link href="/" className="relative z-10 shrink-0" aria-label={`${name} home`}>
@@ -62,23 +97,19 @@ export function Header({ config }: { config: SiteConfig }) {
         <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary">
           {primaryNav.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const hasMenu = !!item.columns;
+            const isOpen = open === item.label;
+            const linkColour = light
+              ? 'text-[color-mix(in_oklab,var(--color-porcelain)_88%,transparent)] hover:text-[var(--color-porcelain)]'
+              : 'text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]';
             return (
-              <div key={item.label} onMouseEnter={() => setOpen(item.columns ? item.label : null)}>
+              <div key={item.label} className="inline-flex items-center" onMouseEnter={() => setOpen(hasMenu ? item.label : null)}>
                 <Link
                   href={item.href}
                   aria-current={active ? 'page' : undefined}
-                  className={`relative inline-flex items-center gap-1 rounded-full px-4 py-2 text-[0.95rem] font-medium transition-colors ${
-                    light
-                      ? 'text-[color-mix(in_oklab,var(--color-porcelain)_88%,transparent)] hover:text-[var(--color-porcelain)]'
-                      : 'text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]'
-                  }`}
+                  className={`relative inline-flex items-center gap-1 rounded-full px-4 py-2 text-[0.95rem] font-medium transition-colors ${linkColour} ${hasMenu ? 'pr-2' : ''}`}
                 >
                   {item.label}
-                  {item.columns && (
-                    <svg viewBox="0 0 10 6" className={`h-1.5 w-2.5 transition-transform duration-300 ${open === item.label ? 'rotate-180' : ''}`} aria-hidden>
-                      <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                    </svg>
-                  )}
                   {active && (
                     <motion.span
                       layoutId="nav-active"
@@ -87,6 +118,22 @@ export function Header({ config }: { config: SiteConfig }) {
                     />
                   )}
                 </Link>
+                {hasMenu && (
+                  <button
+                    type="button"
+                    ref={(el) => { triggerRefs.current[item.label] = el; }}
+                    onClick={() => toggleMenu(item.label)}
+                    aria-haspopup="true"
+                    aria-expanded={isOpen}
+                    aria-controls={menuId(item.label)}
+                    aria-label={`${isOpen ? 'Close' : 'Open'} ${item.label} menu`}
+                    className={`-ml-1.5 grid h-8 w-8 place-items-center rounded-full transition-colors ${linkColour} hover:bg-[color-mix(in_oklab,var(--color-stone)_16%,transparent)]`}
+                  >
+                    <svg viewBox="0 0 10 6" className={`h-1.5 w-2.5 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} aria-hidden>
+                      <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                )}
               </div>
             );
           })}
@@ -123,6 +170,9 @@ export function Header({ config }: { config: SiteConfig }) {
         {open && (
           <motion.div
             key={open}
+            ref={panelRef}
+            id={menuId(open)}
+            aria-label={`${open} menu`}
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
