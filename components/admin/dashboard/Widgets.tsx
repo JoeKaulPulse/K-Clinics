@@ -3,8 +3,19 @@ import type { ReactNode } from 'react';
 
 // PRJ-63.3 — reusable dashboard widget primitives. View bundles (Admin, Clinician,
 // Reception, Developer, Contractor) compose these rather than forking bespoke
-// layouts, so every view shares one visual language. Server-safe (no client
-// hooks); transitions are colour/shadow only, so they're reduced-motion friendly.
+// layouts, so every view shares one visual language. Server-safe (no client hooks).
+// Interaction is hover/press only — a small lift + shadow on clickable cards
+// (BLD-226 slice 2); under prefers-reduced-motion the global reset in globals.css
+// collapses every transition to instant, so no motion remains.
+
+// Shared interactive treatment for clickable cards/rows: unified 150ms ease-out
+// transition with a gentle hover lift, warmed border, soft shadow, and a press
+// settle. Transform/shadow only, so nothing reflows. Matches the nav-link feedback
+// established in slice 1.
+const CLICKABLE_CARD =
+  'transition-[transform,box-shadow,border-color] duration-150 ease-out ' +
+  'hover:-translate-y-0.5 hover:border-[var(--color-stone-soft)] hover:shadow-[var(--shadow-soft)] ' +
+  'active:translate-y-0 active:shadow-none';
 
 /** A titled panel. The standard container for a dashboard widget. */
 export function DashWidget({
@@ -52,13 +63,21 @@ export function StatTile({
   href?: string;
   trend?: number;
 }) {
+  const up = (trend ?? 0) >= 0;
   const body = (
     <>
       <div className="flex items-baseline justify-between gap-2">
         <p className="font-[family-name:var(--font-display)] text-3xl tabular-nums text-[var(--color-ink)]">{value}</p>
         {typeof trend === 'number' && (
-          <span className={`text-xs font-medium tabular-nums ${trend >= 0 ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush)]'}`}>
-            {trend >= 0 ? '▲' : '▼'} {Math.abs(trend)}%
+          <span
+            role="img"
+            aria-label={`${up ? 'Up' : 'Down'} ${Math.abs(trend)} percent`}
+            className={`inline-flex items-center gap-1 text-xs font-medium tabular-nums ${up ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush)]'}`}
+          >
+            <svg width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden className={up ? '' : 'rotate-180'}>
+              <path d="M6 2.5 10 9 2 9Z" fill="currentColor" />
+            </svg>
+            {Math.abs(trend)}%
           </span>
         )}
       </div>
@@ -67,7 +86,7 @@ export function StatTile({
   );
   const cls = 'block rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6';
   return href ? (
-    <Link href={href} className={`${cls} transition-shadow hover:shadow-[var(--shadow-soft)]`}>{body}</Link>
+    <Link href={href} className={`${cls} ${CLICKABLE_CARD}`}>{body}</Link>
   ) : (
     <div className={cls}>{body}</div>
   );
@@ -106,7 +125,13 @@ export function TimelineList({ items, empty }: { items: TimelineItem[]; empty?: 
         );
         const rowCls = 'flex items-center gap-4 border-b border-[var(--color-line)] px-5 py-3.5 last:border-0';
         return it.href ? (
-          <Link key={it.id} href={it.href} className={`${rowCls} hover:bg-[var(--color-bone)]`}>{inner}</Link>
+          <Link
+            key={it.id}
+            href={it.href}
+            className={`${rowCls} transition-colors duration-150 ease-out hover:bg-[var(--color-bone)] active:bg-[var(--color-sand)]`}
+          >
+            {inner}
+          </Link>
         ) : (
           <div key={it.id} className={rowCls}>{inner}</div>
         );

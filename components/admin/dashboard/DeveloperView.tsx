@@ -91,7 +91,7 @@ export async function DeveloperView({ session }: { session: Session }) {
                 key={l.href}
                 href={l.href}
                 {...(l.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-4 py-3 text-sm text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)]"
+                className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-4 py-3 text-sm text-[var(--color-ink-soft)] transition-colors duration-150 ease-out hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)] active:bg-[var(--color-sand)]"
               >
                 <span>{l.label}</span>
                 <span aria-hidden className="text-[var(--color-stone-soft)]">{l.external ? '↗' : '→'}</span>
