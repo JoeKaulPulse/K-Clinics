@@ -55,9 +55,15 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
   // Clinical context — decrypted only for staff with clinical access.
   const canClinical = sessionCan(session, 'clients.clinical.view');
   let allergyNote: string | null = null;
+  let medicalFlag: string | null = null;
   let clinicalNote = '';
   if (canClinical) {
-    if (b.allergyNote) { try { const { decClinical } = await import('@/lib/clinical-crypto'); allergyNote = decClinical(b.allergyNote); } catch { /* ignore */ } }
+    // allergyNote + medicalFlag are at-rest encrypted (lib/clinical-crypto); decClinical
+    // tolerates legacy plaintext and never throws. Decrypt here so the live-session canvas
+    // shows the real value, not a ciphertext blob, to the clinician running the appointment.
+    const { decClinical } = await import('@/lib/clinical-crypto');
+    allergyNote = b.allergyNote ? decClinical(b.allergyNote) : null;
+    medicalFlag = b.client.medicalFlag ? decClinical(b.client.medicalFlag) : null;
     if (b.clinicalNoteEnc) { try { const { decryptJson } = await import('@/lib/crypto'); clinicalNote = decryptJson<{ note: string }>(b.clinicalNoteEnc).note; } catch { /* ignore */ } }
   }
 
@@ -132,7 +138,7 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
           firstName: b.client.firstName,
           fullName: [b.client.firstName, b.client.lastName].filter(Boolean).join(' '),
           email: b.client.email,
-          medicalFlag: canClinical ? b.client.medicalFlag : (b.client.medicalFlag ? 'Flag on file — see client record' : null),
+          medicalFlag: canClinical ? medicalFlag : (b.client.medicalFlag ? 'Flag on file — see client record' : null),
           allergyNote,
         }}
         practitionerName={b.practitioner?.name || null}
