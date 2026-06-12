@@ -68,13 +68,18 @@ export async function getTheme(): Promise<ThemeTokens> {
   return defaultTheme;
 }
 
+const CSS_COLOR_RE = /^#[0-9a-fA-F]{3,8}$|^(rgb|rgba|hsl|hsla)\(/;
+
+function sanitizeColorValue(v: string): string {
+  const s = v.trim();
+  if (!CSS_COLOR_RE.test(s)) return 'transparent';
+  return s.replace(/[}<>"'`]/g, '');
+}
+
 /** Renders the active theme as a CSS variable override on :root. */
 export function themeToCss(theme: ThemeTokens): string {
-  // BLD-232: strip characters that could break out of the <style> block if a
-  // future DB-driven theme path is activated with a malicious value.
-  const safe = (v: string) => v.replace(/[{}<>"'\\]/g, '');
   const decls = (Object.keys(theme) as (keyof ThemeTokens)[])
-    .map((k) => `${cssVar[k]}:${safe(String(theme[k]))};`)
+    .map((k) => `${cssVar[k]}:${sanitizeColorValue(String(theme[k]))};`)
     .join('');
   return `:root{${decls}}`;
 }

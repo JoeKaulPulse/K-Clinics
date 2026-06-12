@@ -535,6 +535,11 @@ function Done({ firstName, treatment, slot, orderTotal, variantId, category }: {
         Please <a href="/account/assessments" className="link-underline font-medium text-[var(--color-ink)]">complete your pre-treatment forms</a> before your visit, and arrive 15 minutes early for your first appointment.
       </p>
       <p className="mt-6"><a href="/account/appointments" className="link-underline text-sm font-medium text-[var(--color-ink)]">View my appointments →</a></p>
+      <div className="mx-auto mt-8 max-w-sm rounded-[var(--radius-lg)] border border-[var(--color-gold)]/40 bg-[var(--color-porcelain)] p-6 text-left">
+        <p className="text-sm font-medium text-[var(--color-ink)]">Know someone who'd love KClinics?</p>
+        <p className="mt-1 text-sm text-[var(--color-stone)]">Refer a friend — you both receive <strong className="font-semibold text-[var(--color-ink)]">£25 credit</strong> towards any treatment, and your Beauty Points for today&apos;s booking have been credited to <a href="/account" className="link-underline font-medium text-[var(--color-ink)]">your account</a>.</p>
+        <a href="/refer-a-friend" className="mt-4 inline-block rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white">Share your referral link →</a>
+      </div>
     </motion.div>
   );
 }

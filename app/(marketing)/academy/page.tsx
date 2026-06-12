@@ -15,7 +15,7 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({
   keywords: ['aesthetics training London', 'Level 4 aesthetics course', 'VTCT aesthetics qualification', 'botox filler training', 'accredited aesthetics academy'],
 });
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
 
 const PILLARS = [
   { t: 'Regulated & recognised', d: 'Ofqual-regulated qualifications equivalent to college awards — plus VTCT certification and CPD accreditation employers trust.' },
@@ -25,7 +25,7 @@ const PILLARS = [
 
 export default async function AcademyPage() {
   const { listCourses } = await import('@/lib/academy');
-  const courses = await listCourses();
+  const courses = await listCourses().catch(() => []);
 
   return (
     <>

@@ -64,10 +64,9 @@ export function ConsultForm() {
       });
       const json = await res.json();
       if (json.ok) {
-        setStatus('done');
-        // BLD-255: fire lead events so ad campaigns can optimise for consultations.
         try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'generate_lead', { currency: 'GBP', value: 0 }); } catch { /* analytics best-effort */ }
         try { (window as Window & { fbq?: (...a: unknown[]) => void }).fbq?.('track', 'Lead'); } catch { /* analytics best-effort */ }
+        setStatus('done');
         return;
       }
       if (json.fallback === 'mailto') {

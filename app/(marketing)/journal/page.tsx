@@ -4,7 +4,7 @@ import { JournalBrowser } from '@/components/journal/JournalBrowser';
 import { listBlogCards } from '@/lib/blog';
 import { pageMeta, JsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'The Journal — Expert Skin, Laser & Dentistry Guides | KClinics London',
@@ -15,7 +15,7 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({
 });
 
 export default async function JournalPage() {
-  const cards = await listBlogCards();
+  const cards = await listBlogCards().catch(() => []);
 
   return (
     <>
