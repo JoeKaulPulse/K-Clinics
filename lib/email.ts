@@ -38,15 +38,24 @@ export async function sendEmail(opts: {
   try {
     const from = opts.from?.trim() ? opts.from.trim() : opts.fromName?.trim() ? `${opts.fromName.trim()} <${FROM_ADDRESS}>` : FROM;
     const attachments = [...(brandAttachments(opts.html).attachments || []), ...(opts.attachments || [])];
-    const { data, error } = await resend.emails.send({
-      from,
-      to: opts.to,
-      subject: opts.subject,
-      html: opts.html,
-      replyTo: opts.replyTo || REPLY_TO,
-      ...(attachments.length ? { attachments } : {}),
-      ...(opts.headers ? { headers: opts.headers } : {}),
-    });
+    // BLD-281: cap the Resend call so a hanging API can't pin the serverless
+    // function to its maxDuration — booking/notify flows degrade fast instead.
+    const TIMEOUT = Symbol('timeout');
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const result = await Promise.race([
+      resend.emails.send({
+        from,
+        to: opts.to,
+        subject: opts.subject,
+        html: opts.html,
+        replyTo: opts.replyTo || REPLY_TO,
+        ...(attachments.length ? { attachments } : {}),
+        ...(opts.headers ? { headers: opts.headers } : {}),
+      }),
+      new Promise<typeof TIMEOUT>((resolve) => { timer = setTimeout(() => resolve(TIMEOUT), 10_000); }),
+    ]).finally(() => { if (timer) clearTimeout(timer); });
+    if (result === TIMEOUT) return { ok: false, error: 'Email send timed out after 10s' };
+    const { data, error } = result;
     if (error) return { ok: false, error: String(error.message || error) };
     return { ok: true, id: data?.id };
   } catch (e) {
