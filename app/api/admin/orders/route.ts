@@ -56,12 +56,14 @@ export async function POST(req: Request) {
       (body.fulfillment === 'shipped' || body.fulfillment === 'collected')) {
     try {
       const { sendEmail, emailShell } = await import('@/lib/email');
-      const tracking = body.trackingNote || prevOrder.trackingNote || '';
+      const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+      const tracking = esc(String(body.trackingNote || prevOrder.trackingNote || ''));
+      const num = esc(prevOrder.number);
       const isCollect = body.fulfillment === 'collected';
       const subject = isCollect ? `Your KClinics order ${prevOrder.number} is ready to collect` : `Your KClinics order ${prevOrder.number} has been dispatched`;
       const body2 = isCollect
-        ? `<h1 style="font-size:22px;margin:0 0 10px;">Ready to collect</h1><p>Order <strong>${prevOrder.number}</strong> is ready for you at the clinic.${tracking ? ` <em>${tracking}</em>` : ''}</p><p style="font-size:14px;color:#91766e;">Pop in at your convenience — we're looking forward to seeing you.</p>`
-        : `<h1 style="font-size:22px;margin:0 0 10px;">On its way</h1><p>Order <strong>${prevOrder.number}</strong> has been dispatched.${tracking ? ` ${tracking}` : ''}</p><p style="font-size:14px;color:#91766e;">If you have any questions about your delivery please reply to this email.</p>`;
+        ? `<h1 style="font-size:22px;margin:0 0 10px;">Ready to collect</h1><p>Order <strong>${num}</strong> is ready for you at the clinic.${tracking ? ` <em>${tracking}</em>` : ''}</p><p style="font-size:14px;color:#91766e;">Pop in at your convenience — we're looking forward to seeing you.</p>`
+        : `<h1 style="font-size:22px;margin:0 0 10px;">On its way</h1><p>Order <strong>${num}</strong> has been dispatched.${tracking ? ` ${tracking}` : ''}</p><p style="font-size:14px;color:#91766e;">If you have any questions about your delivery please reply to this email.</p>`;
       await sendEmail({ to: prevOrder.email, subject, html: emailShell({ body: body2, preheader: subject }) });
     } catch { /* non-fatal */ }
   }

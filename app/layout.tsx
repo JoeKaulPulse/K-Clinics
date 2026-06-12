@@ -4,7 +4,12 @@ import { GeistMono } from 'geist/font/mono';
 import { Fraunces } from 'next/font/google';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
-const fraunces = Fraunces({ subsets: ['latin'], variable: '--font-display', display: 'swap' });
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  variable: '--font-fraunces',
+  display: 'swap',
+  axes: ['SOFT', 'WONK', 'opsz'],
+});
 import './globals.css';
 import { site } from '@/lib/site';
 import { getTheme, themeToCss } from '@/lib/theme';
