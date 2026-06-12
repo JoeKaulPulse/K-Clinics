@@ -168,6 +168,7 @@ enum AuditAction {
   DATA_EXPORTED
   DATA_IMPORTED // a data-migration step wrote records (e.g. WordPress import, BLD-187)
   SESSION_EDITED // a captured in-session answer was changed after first save (BLD-138)
+  EMAIL_SENT // a bulk/transactional email batch was dispatched (e.g. BLD-242 re-permission)
 }
 
 enum ReviewStatus {
@@ -284,6 +285,7 @@ model Client {
   marketingConsentAt      DateTime?
   marketingConsentSource  String?
   marketingConsentVersion String?
+  repermissionSentAt      DateTime?  // BLD-242: re-permission (double opt-in) email sent to a legacy opt-in
   smsReminders    Boolean        @default(false) // client opted in to SMS confirmations & reminders
   concerns        String[]       @default([]) // skin/treatment goals & concerns (onboarding)
   onboardedAt     DateTime?      // completed the welcome onboarding
