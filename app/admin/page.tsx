@@ -61,18 +61,24 @@ export default async function AdminOverview() {
   const uv = weather?.uvMax != null ? uvBand(weather.uvMax) : null;
 
   const heading = (
-    <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-      <div>
-        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-stone-soft)]">Overview · {todayLabel}</p>
-        <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl">{greeting}{session?.name ? `, ${session.name}` : ''}</h1>
-      </div>
-      <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5 shrink-0">
+    <div>
+      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-stone-soft)]">Overview · {todayLabel}</p>
+      <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl">{greeting}{session?.name ? `, ${session.name}` : ''}</h1>
+    </div>
+  );
+
+  // Clock/weather pill + clock-in widget sit side-by-side in the right-column aside.
+  // On mobile (aside is full-width) they sit on the same row with flex-wrap fallback.
+  const clock = session ? await (await import('@/lib/time-tracking')).timeStatus(session.sub).catch(() => null) : null;
+  const clockWeather = (
+    <div className="flex flex-wrap items-stretch gap-3">
+      <div className="flex shrink-0 items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5">
         <LiveClock />
         {weather && (
           <div className="min-w-0 border-l border-[var(--color-line)] pl-3 leading-tight">
             <p className="text-sm font-medium text-[var(--color-ink)]">
               <span className="tabular-nums">{weather.tempC}°</span>
-              <span className="ml-1 inline-block max-w-[9rem] truncate align-bottom font-normal text-[var(--color-stone)]">{weather.label}</span>
+              <span className="ml-1 inline-block max-w-[7rem] truncate align-bottom font-normal text-[var(--color-stone)]">{weather.label}</span>
             </p>
             {weather.uvMax != null && uv && (
               <p className="text-xs text-[var(--color-stone)]">
@@ -83,23 +89,17 @@ export default async function AdminOverview() {
           </div>
         )}
       </div>
+      {clock && (
+        <ClockInOut
+          onShift={clock.onShift}
+          onBreak={clock.onBreak}
+          shiftStartIso={clock.shiftStart ? clock.shiftStart.toISOString() : null}
+          workedTodayMin={clock.workedTodayMin}
+          breakTodayMin={clock.breakTodayMin}
+        />
+      )}
     </div>
   );
-
-  // Clock-in / lunch-break available from every view; sits in the right-column
-  // aside (below the ViewSwitcher) — compact since the clock is now in the heading.
-  const clock = session ? await (await import('@/lib/time-tracking')).timeStatus(session.sub).catch(() => null) : null;
-  const clockWeather = clock ? (
-    <div className="w-full sm:min-w-[15rem] sm:max-w-xs">
-      <ClockInOut
-        onShift={clock.onShift}
-        onBreak={clock.onBreak}
-        shiftStartIso={clock.shiftStart ? clock.shiftStart.toISOString() : null}
-        workedTodayMin={clock.workedTodayMin}
-        breakTodayMin={clock.breakTodayMin}
-      />
-    </div>
-  ) : null;
 
   // Preview branch: an OWNER/ADMIN is viewing a role whose dashboard is still
   // being built — skip the heavy overview queries and show its planned widgets.
