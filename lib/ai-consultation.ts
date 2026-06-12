@@ -200,6 +200,7 @@ async function callClaude(key: string, model: string, system: string, content: o
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({ model, max_tokens: 1100, system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content }] }),
+      signal: AbortSignal.timeout(25_000),
     });
     if (!res.ok) { console.error('[get-my-plan] anthropic', res.status, await res.text().catch(() => '')); return null; }
     const j = await res.json();
