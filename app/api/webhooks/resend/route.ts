@@ -21,10 +21,12 @@ export async function POST(req: Request) {
   if (!crmEnabled) return new Response('ok');
   const body = await req.text();
   const secret = process.env.RESEND_WEBHOOK_SECRET;
-  // Fail closed in production: an unsigned webhook could otherwise mark clients
-  // bounced/complained (→ unsubscribed) or skew metrics.
+  // Fail closed whenever a real database is attached (prod AND previews): an
+  // unsigned webhook could otherwise mark clients bounced/complained (→
+  // unsubscribed) or skew metrics on a live or preview DB (BLD-279).
   if (!secret) {
-    if (process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production') return new Response('webhook secret not configured', { status: 503 });
+    const { hasDatabase } = await import('@/lib/crm');
+    if (hasDatabase) return new Response('webhook secret not configured', { status: 503 });
   } else if (!verify(secret, req.headers, body)) {
     return new Response('bad signature', { status: 401 });
   }
