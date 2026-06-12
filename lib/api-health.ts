@@ -1,6 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db';
 import { site } from '@/lib/site';
+import { getSecret } from '@/lib/secrets';
 
 // API health — live, read-only probes of every external API and the key
 // internal endpoints, for the /admin/api-health traffic-light page. Unlike
@@ -140,7 +141,9 @@ async function checkStripe(): Promise<Outcome> {
 }
 
 async function checkResend(): Promise<Outcome> {
-  const key = process.env.RESEND_API_KEY;
+  // Owner-manageable secret (Credentials manager) — resolve via getSecret, not
+  // bare env, or a DB-stored key would show a false "not set" here.
+  const key = await getSecret('RESEND_API_KEY');
   if (!has(key)) return { light: 'red', detail: 'RESEND_API_KEY not set — no email can send' };
   try {
     const { res, ms } = await timed('https://api.resend.com/domains', { headers: { Authorization: `Bearer ${key}` } });
@@ -161,8 +164,8 @@ async function checkResend(): Promise<Outcome> {
 }
 
 async function checkTwilio(): Promise<Outcome> {
-  const sid = process.env.TWILIO_ACCOUNT_SID;
-  const tok = process.env.TWILIO_AUTH_TOKEN;
+  const sid = await getSecret('TWILIO_ACCOUNT_SID');
+  const tok = await getSecret('TWILIO_AUTH_TOKEN');
   if (!has(sid) || !has(tok)) return { light: 'grey', detail: 'Not configured — SMS reminders off (email-only)' };
   try {
     const auth = Buffer.from(`${sid}:${tok}`).toString('base64');
@@ -170,15 +173,15 @@ async function checkTwilio(): Promise<Outcome> {
     const j = await res.json().catch(() => ({}));
     if (res.ok) {
       const active = j.status === 'active';
-      return { light: active ? 'green' : 'amber', detail: active ? `Account active${has(process.env.TWILIO_FROM) ? '' : ' — but TWILIO_FROM missing'}` : `Account status: ${j.status}`, latencyMs: ms };
+      return { light: active ? 'green' : 'amber', detail: active ? `Account active${has(await getSecret('TWILIO_FROM')) ? '' : ' — but TWILIO_FROM missing'}` : `Account status: ${j.status}`, latencyMs: ms };
     }
     return { light: 'red', detail: res.status === 401 ? 'Credentials rejected (401)' : `Twilio answered HTTP ${res.status}`, latencyMs: ms };
   } catch (e) { return netFail(e); }
 }
 
 async function checkTranslation(): Promise<Outcome> {
-  const deeplKey = process.env.DEEPL_API_KEY;
-  const gKey = process.env.GOOGLE_TRANSLATE_KEY;
+  const deeplKey = await getSecret('DEEPL_API_KEY');
+  const gKey = await getSecret('GOOGLE_TRANSLATE_KEY');
   if (!has(deeplKey) && !has(gKey)) return { light: 'grey', detail: 'Not configured — health-form answers stay untranslated' };
   if (has(deeplKey)) {
     const host = process.env.DEEPL_API_FREE === 'true' ? 'api-free.deepl.com' : 'api.deepl.com';
@@ -202,7 +205,7 @@ async function checkTranslation(): Promise<Outcome> {
 }
 
 async function checkAnthropic(): Promise<Outcome> {
-  const key = process.env.ANTHROPIC_API_KEY;
+  const key = await getSecret('ANTHROPIC_API_KEY');
   if (!has(key)) return { light: 'amber', detail: 'ANTHROPIC_API_KEY not set — kiosk AI, K Vision, chat assist & marketing AI are off' };
   try {
     const { res, ms } = await timed('https://api.anthropic.com/v1/models?limit=1', {
@@ -212,6 +215,17 @@ async function checkAnthropic(): Promise<Outcome> {
     if (res.status === 401) return { light: 'red', detail: 'API key rejected (401) — AI features are failing', latencyMs: ms };
     if (res.status === 429) return { light: 'amber', detail: 'Rate-limited (429) — key valid but throttled', latencyMs: ms };
     return { light: res.status >= 500 ? 'amber' : 'red', detail: `Anthropic answered HTTP ${res.status}`, latencyMs: ms };
+  } catch (e) { return netFail(e); }
+}
+
+async function checkDeepgram(): Promise<Outcome> {
+  const key = await getSecret('DEEPGRAM_API_KEY');
+  if (!has(key)) return { light: 'grey', detail: 'Not configured — clinical voice-note transcription off' };
+  try {
+    const { res, ms } = await timed('https://api.deepgram.com/v1/projects', { headers: { Authorization: `Token ${key}` } });
+    if (res.ok) return { light: 'green', detail: 'API key valid · projects endpoint OK', latencyMs: ms };
+    if (res.status === 401 || res.status === 403) return { light: 'red', detail: `API key rejected (${res.status}) — voice transcription failing`, latencyMs: ms };
+    return { light: 'amber', detail: `Deepgram answered HTTP ${res.status}`, latencyMs: ms };
   } catch (e) { return netFail(e); }
 }
 
@@ -346,8 +360,8 @@ async function checkGoogleAds(): Promise<Outcome> {
     const ms = Date.now() - t;
     if (fresh) {
       await validAccessToken('google', async () => fresh); // persists if expired
-      const devToken = has(process.env.GOOGLE_ADS_DEVELOPER_TOKEN);
-      const customer = has(process.env.GOOGLE_ADS_CUSTOMER_ID) || has(conn.accountRef);
+      const devToken = has(await getSecret('GOOGLE_ADS_DEVELOPER_TOKEN'));
+      const customer = has(await getSecret('GOOGLE_ADS_CUSTOMER_ID')) || has(conn.accountRef);
       const missing = [!devToken && 'GOOGLE_ADS_DEVELOPER_TOKEN', !customer && 'GOOGLE_ADS_CUSTOMER_ID'].filter(Boolean) as string[];
       return { light: missing.length ? 'amber' : 'green', detail: missing.length ? `OAuth healthy but missing ${missing.join(' + ')}` : 'OAuth refresh OK · spend sync ready', latencyMs: ms };
     }
@@ -472,6 +486,7 @@ const CHECKS: Def[] = [
   { id: 'yay', label: 'Telephony (yay.com)', category: 'Communications', probe: 'Webhook freshness — latest CallRecord', run: checkYay },
 
   { id: 'anthropic', label: 'AI (Anthropic Claude)', category: 'AI', probe: 'GET api.anthropic.com/v1/models', run: checkAnthropic },
+  { id: 'deepgram', label: 'Voice transcription (Deepgram)', category: 'AI', probe: 'GET api.deepgram.com/v1/projects', run: checkDeepgram },
 
   { id: 'xero', label: 'Accounting (Xero)', category: 'Finance', probe: 'OAuth refresh + BankSummary report', run: checkXero },
   { id: 'truelayer', label: 'Bank feed (TrueLayer)', category: 'Finance', probe: 'OAuth refresh + accounts list', run: checkTrueLayer },
