@@ -87,6 +87,7 @@ export const DICT: Record<string, Entry> = {
   'nav.seo': { en: 'SEO & AI search', uk: 'SEO та AI-пошук' },
   'nav.redirects': { en: 'Redirects', uk: 'Перенаправлення' },
   'nav.integrations': { en: 'Integrations', uk: 'Інтеграції' },
+  'nav.credentials': { en: 'Credentials & keys', uk: 'Облікові дані та ключі' },
   'nav.settings': { en: 'Settings', uk: 'Налаштування' },
 
   // ── Shell / common ──
@@ -101,6 +102,7 @@ export const DICT: Record<string, Entry> = {
   'nav.security': { en: 'Security centre', uk: 'Безпека' },
   'nav.golive': { en: 'Go live', uk: 'Запуск' },
   'nav.status': { en: 'Platform status', uk: 'Статус платформи' },
+  'nav.apihealth': { en: 'API health', uk: 'Стан API' },
   'nav.financeControls': { en: 'Financial controls', uk: 'Фінансовий контроль' },
   'nav.promotions': { en: 'Promotions', uk: 'Промокоди' },
   'nav.chat': { en: 'Live chat', uk: 'Онлайн-чат' },

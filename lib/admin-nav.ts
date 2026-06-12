@@ -101,6 +101,7 @@ export const navGroups: NavGroup[] = [
   { heading: 'nav.group.admin', icon: 'admin', items: [
     { href: '/admin/go-live', key: 'nav.golive', perm: 'settings.manage', keywords: 'launch checklist publish' },
     { href: '/admin/status', key: 'nav.status', perm: 'platform.status', keywords: 'health uptime monitoring system' },
+    { href: '/admin/api-health', key: 'nav.apihealth', perm: 'platform.status', keywords: 'api health live checks endpoints stripe resend anthropic claude xero probes traffic light connections broken' },
     { href: '/admin/build', key: 'nav.build', perm: 'build.view', keywords: 'issues bugs tickets backlog development' },
     { href: '/admin/staff', key: 'nav.staff', perm: 'staff.view', keywords: 'team users access roles permissions employees' },
     { href: '/admin/security', key: 'nav.security', perm: 'security.manage', keywords: 'login 2fa sessions audit centre' },
@@ -110,6 +111,7 @@ export const navGroups: NavGroup[] = [
     { href: '/admin/seo', key: 'nav.seo', perm: 'settings.manage', keywords: 'search engine meta ai sitemap' },
     { href: '/admin/redirects', key: 'nav.redirects', perm: 'settings.manage', keywords: 'url forwarding 301' },
     { href: '/admin/integrations', key: 'nav.integrations', perm: 'settings.manage', keywords: 'api connections stripe xero webhooks' },
+    { href: '/admin/settings/credentials', key: 'nav.credentials', perm: 'settings.manage', keywords: 'api keys secrets credentials env vars passwords tokens stripe resend twilio' },
     { href: '/admin/settings', key: 'nav.settings', perm: 'settings.manage', keywords: 'preferences configuration options' },
   ] },
 ];

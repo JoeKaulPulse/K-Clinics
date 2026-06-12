@@ -1,4 +1,5 @@
 import 'server-only';
+import { getSecret } from '@/lib/secrets';
 
 // Kiosk Skin & Smile AI analysis — lightweight, friendly, non-clinical.
 // Uses the same Claude API as K Vision (lib/ai-consultation.ts) but with a
@@ -68,7 +69,7 @@ function clampScore(n: unknown): number {
  * calls Claude with the campaign prompt. Returns null on any failure.
  */
 export async function analyzeKioskPhoto(photoUrl: string): Promise<KioskAiResult | null> {
-  const key = process.env.ANTHROPIC_API_KEY;
+  const key = await getSecret('ANTHROPIC_API_KEY');
   if (!key) {
     console.error('[kiosk-ai] ANTHROPIC_API_KEY not set');
     return null;
@@ -270,7 +271,7 @@ function sanitiseObservation(raw: unknown, photoCount: number): KioskObservation
  * Returns null on any failure (caller marks ANALYSIS_FAILED).
  */
 export async function analyzeKioskPhotosV2(photoUrls: string[]): Promise<KioskAiV2Result | null> {
-  const key = process.env.ANTHROPIC_API_KEY;
+  const key = await getSecret('ANTHROPIC_API_KEY');
   if (!key) {
     console.error('[kiosk-ai] ANTHROPIC_API_KEY not set');
     return null;

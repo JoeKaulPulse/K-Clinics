@@ -71,6 +71,7 @@ export async function pushBooking(bookingId: string): Promise<{ ok: boolean; err
       method: 'PUT',
       headers: { 'content-type': 'text/calendar; charset=utf-8', authorization: cfg.auth },
       body: ics,
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok && res.status !== 204 && res.status !== 201) return { ok: false, error: `CalDAV PUT ${res.status}` };
     return { ok: true };
@@ -85,7 +86,7 @@ export async function removeBooking(bookingId: string): Promise<{ ok: boolean }>
   const cfg = config();
   if (!cfg) return { ok: false };
   try {
-    await fetch(`${cfg.base}${uidFor(bookingId)}.ics`, { method: 'DELETE', headers: { authorization: cfg.auth } });
+    await fetch(`${cfg.base}${uidFor(bookingId)}.ics`, { method: 'DELETE', headers: { authorization: cfg.auth }, signal: AbortSignal.timeout(10_000) });
     return { ok: true };
   } catch (e) {
     console.error('[hostinger-calendar] remove failed:', (e as Error)?.message);
