@@ -208,7 +208,8 @@ async function xeroTaxType(treatmentSlug: string): Promise<string> {
     switch (cls) {
       case 'EXEMPT': return 'EXEMPTOUTPUT';
       case 'ZERO': return 'ZERORATEDOUTPUT';
-      default: return 'OUTPUT2'; // STANDARD / REDUCED
+      case 'REDUCED': return 'REDUCEDOUTPUT'; // BLD-252: 5% rate, not 20%
+      default: return 'OUTPUT2'; // STANDARD
     }
   } catch { return 'NONE'; }
 }

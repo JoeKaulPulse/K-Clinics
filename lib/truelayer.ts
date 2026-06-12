@@ -29,6 +29,7 @@ async function tokenRequest(body: Record<string, string>): Promise<Tokens | null
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ client_id: process.env.TRUELAYER_CLIENT_ID!, client_secret: process.env.TRUELAYER_CLIENT_SECRET!, ...body }),
+    signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) return null;
   const d = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number };
@@ -53,12 +54,12 @@ export async function getBankCashPence(): Promise<{ ok: boolean; availablePence:
   const token = await validAccessToken(PROVIDER, refresh);
   if (!token) return { ok: false, availablePence: 0, pendingPence: 0, label: conn.label };
   try {
-    const accRes = await fetch('https://api.truelayer.com/data/v1/accounts', { headers: { Authorization: `Bearer ${token}` } });
+    const accRes = await fetch('https://api.truelayer.com/data/v1/accounts', { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000) });
     if (!accRes.ok) return { ok: false, availablePence: 0, pendingPence: 0, label: conn.label };
     const accounts = ((await accRes.json()) as { results?: { account_id: string }[] }).results ?? [];
     let available = 0, current = 0;
     for (const a of accounts) {
-      const balRes = await fetch(`https://api.truelayer.com/data/v1/accounts/${a.account_id}/balance`, { headers: { Authorization: `Bearer ${token}` } });
+      const balRes = await fetch(`https://api.truelayer.com/data/v1/accounts/${a.account_id}/balance`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000) });
       if (!balRes.ok) continue;
       const bal = ((await balRes.json()) as { results?: { available?: number; current?: number }[] }).results?.[0];
       if (bal) { available += bal.available ?? 0; current += bal.current ?? 0; }

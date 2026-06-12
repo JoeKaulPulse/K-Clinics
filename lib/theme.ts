@@ -70,8 +70,11 @@ export async function getTheme(): Promise<ThemeTokens> {
 
 /** Renders the active theme as a CSS variable override on :root. */
 export function themeToCss(theme: ThemeTokens): string {
+  // BLD-232: strip characters that could break out of the <style> block if a
+  // future DB-driven theme path is activated with a malicious value.
+  const safe = (v: string) => v.replace(/[{}<>"'\\]/g, '');
   const decls = (Object.keys(theme) as (keyof ThemeTokens)[])
-    .map((k) => `${cssVar[k]}:${theme[k]};`)
+    .map((k) => `${cssVar[k]}:${safe(String(theme[k]))};`)
     .join('');
   return `:root{${decls}}`;
 }

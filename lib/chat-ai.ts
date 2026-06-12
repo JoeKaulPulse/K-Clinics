@@ -130,6 +130,7 @@ async function callHaiku(key: string, system: string, messages: { role: 'user' |
         system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
         messages,
       }),
+      signal: AbortSignal.timeout(25_000),
     });
     if (!res.ok) { console.error('[chat-ai] anthropic', res.status, await res.text().catch(() => '')); return null; }
     const j = await res.json();

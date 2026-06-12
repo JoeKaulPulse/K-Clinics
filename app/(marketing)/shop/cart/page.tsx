@@ -28,11 +28,11 @@ export default function CartPage() {
                   <p className="text-sm text-[var(--color-stone)]">{money(i.pricePence)}</p>
                 </div>
                 <div className="flex items-center rounded-full border border-[var(--color-line)] text-sm">
-                  <button onClick={() => setQty(i.productId, i.qty - 1)} className="h-8 w-8">−</button>
-                  <span className="w-7 text-center">{i.qty}</span>
-                  <button onClick={() => setQty(i.productId, i.qty + 1)} className="h-8 w-8">+</button>
+                  <button onClick={() => setQty(i.productId, i.qty - 1)} aria-label={`Decrease quantity of ${i.name}`} className="h-11 w-11">−</button>
+                  <span className="w-7 text-center" aria-live="polite" aria-label={`${i.name} quantity`}>{i.qty}</span>
+                  <button onClick={() => setQty(i.productId, i.qty + 1)} aria-label={`Increase quantity of ${i.name}`} className="h-11 w-11">+</button>
                 </div>
-                <button onClick={() => remove(i.productId)} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
+                <button onClick={() => remove(i.productId)} aria-label={`Remove ${i.name} from bag`} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
               </li>
             ))}
           </ul>

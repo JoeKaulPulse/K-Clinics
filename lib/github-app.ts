@@ -55,6 +55,7 @@ export async function githubAppToken(): Promise<string | null> {
         'User-Agent': 'kclinics-build-board',
         'X-GitHub-Api-Version': '2022-11-28',
       },
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
       console.error('[github-app] installation token request failed:', res.status, (await res.text().catch(() => '')).slice(0, 200));
