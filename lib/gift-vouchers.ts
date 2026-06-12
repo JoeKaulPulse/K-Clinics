@@ -91,7 +91,7 @@ export async function createVoucherIntent(input: VoucherInput): Promise<{ ok: bo
       description: `${packageName ? `KClinics gift — ${packageName}` : `KClinics gift card ${money(amount)}`}${physical ? ` + printed card ${money(feePence)}` : ''}`,
       receipt_email: input.purchaserEmail.trim().toLowerCase(),
       metadata: { voucherId: voucher.id, kind: packageSlug ? 'gift_package' : 'gift_voucher', ...(packageSlug ? { packageSlug } : {}) },
-    });
+    }, { idempotencyKey: `gift-voucher-${voucher.id}` });
     await db.giftVoucher.update({ where: { id: voucher.id }, data: { stripePaymentIntentId: pi.id } });
     return { ok: true, voucherId: voucher.id, clientSecret: pi.client_secret || undefined };
   } catch (e) {

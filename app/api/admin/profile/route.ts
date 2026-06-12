@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     if (!user || !(await verifyPassword(current, user.passwordHash))) {
       return NextResponse.json({ ok: false, error: 'Your current password is incorrect.' }, { status: 403 });
     }
-    await db.adminUser.update({ where: { id: session.sub }, data: { passwordHash: await hashPassword(next) } });
+    await db.adminUser.update({ where: { id: session.sub }, data: { passwordHash: await hashPassword(next), sessionEpoch: { increment: 1 } } });
     return NextResponse.json({ ok: true });
   }
 

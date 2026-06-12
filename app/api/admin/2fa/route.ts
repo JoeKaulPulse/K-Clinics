@@ -40,6 +40,15 @@ export async function POST(req: Request) {
       return NextResponse.json(res, { status: res.ok ? 200 : 400 });
     }
     case 'disable': {
+      const { db } = await import('@/lib/db');
+      const { verifySecondFactor } = await import('@/lib/security/twofa');
+      const u = await db.adminUser.findUnique({ where: { id: session.sub }, select: { id: true, totpSecret: true, totpEnabledAt: true, recoveryCodes: true } });
+      if (u?.totpEnabledAt) {
+        const code = String(body.code || '').trim();
+        if (!code) return NextResponse.json({ ok: false, error: 'Enter your current authenticator code to confirm.' }, { status: 400 });
+        const check = await verifySecondFactor(u, code);
+        if (!check.ok) return NextResponse.json({ ok: false, error: "That code didn't match. Check your authenticator." }, { status: 403 });
+      }
       await disable2fa(session.sub);
       await recordSecurity('TWOFA_DISABLED', 'admin', session.email, req);
       return NextResponse.json({ ok: true });

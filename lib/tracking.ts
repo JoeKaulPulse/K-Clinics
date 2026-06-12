@@ -16,16 +16,26 @@ const EMPTY: TrackingConfig = { ga4Id: '', googleAdsId: '', metaPixelId: '' };
 
 const clean = (v: unknown) => (typeof v === 'string' ? v.trim().slice(0, 40) : '');
 
+const ENV_FALLBACK: TrackingConfig = {
+  ga4Id: clean(process.env.NEXT_PUBLIC_GA4_ID),
+  googleAdsId: clean(process.env.NEXT_PUBLIC_GOOGLE_ADS_ID),
+  metaPixelId: clean(process.env.NEXT_PUBLIC_META_PIXEL_ID),
+};
+
 export const getTrackingConfig = cache(async (): Promise<TrackingConfig> => {
-  if (!crmEnabled) return EMPTY;
+  if (!crmEnabled) return ENV_FALLBACK;
   try {
     const { db } = await import('@/lib/db');
     const row = await db.setting.findUnique({ where: { key: SETTING_KEY } });
-    if (!row?.value) return EMPTY;
+    if (!row?.value) return ENV_FALLBACK;
     const j = JSON.parse(row.value) as Partial<TrackingConfig>;
-    return { ga4Id: clean(j.ga4Id), googleAdsId: clean(j.googleAdsId), metaPixelId: clean(j.metaPixelId) };
+    return {
+      ga4Id: clean(j.ga4Id) || ENV_FALLBACK.ga4Id,
+      googleAdsId: clean(j.googleAdsId) || ENV_FALLBACK.googleAdsId,
+      metaPixelId: clean(j.metaPixelId) || ENV_FALLBACK.metaPixelId,
+    };
   } catch {
-    return EMPTY;
+    return ENV_FALLBACK;
   }
 });
 
