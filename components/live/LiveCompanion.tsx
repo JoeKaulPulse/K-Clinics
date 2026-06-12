@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { SESSION_STEPS, CLIENT_STAGE_COPY, type SessionStepKey } from '@/lib/appointment-session';
 import type { ClientLiveView } from '@/lib/appointment-session-server';
+import { CheckIcon } from '@/components/ui/session-icons';
 
 // BLD-138 v2 — the client's phone companion. A dark, jewel-box page that
 // mirrors the in-clinic session in real time: the current stage breathes at
@@ -216,6 +217,3 @@ function StaffAvatar({ name, photo, size }: { name: string; photo: string | null
   );
 }
 
-function CheckIcon() {
-  return <svg aria-hidden width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6.2 4.8 9 10 3.4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-}
