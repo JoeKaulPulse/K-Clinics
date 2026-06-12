@@ -29,7 +29,8 @@ export type SettingKey =
   | 'prices_vat_inclusive'       // prices are entered/shown VAT-inclusive (vs exclusive)
   | 'kiosk_discount_enabled'     // the storefront kiosk issues a share-to-claim discount code
   | 'reminder_72h'               // send a 3-day-ahead appointment reminder (BLD-126)
-  | 'reminder_48h';              // send a 2-day-ahead appointment reminder (BLD-126)
+  | 'reminder_48h'               // send a 2-day-ahead appointment reminder (BLD-126)
+  | 'contractor_checkin_enabled'; // PRJ-63: contractors self-sign-in at reception via QR
 
 export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   allow_clinician_choice: false,
@@ -57,6 +58,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   kiosk_discount_enabled: true,
   reminder_72h: false,
   reminder_48h: false,
+  contractor_checkin_enabled: false, // PRJ-63: ships dark; owner enables after review
 };
 
 export const SETTING_META: Record<SettingKey, { label: string; description: string }> = {
@@ -159,6 +161,10 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   reminder_48h: {
     label: '48-hour appointment reminder',
     description: 'Send a reminder email (and SMS if configured) 2 days before a confirmed appointment, in addition to the standard 24-hour reminder. Off by default.',
+  },
+  contractor_checkin_enabled: {
+    label: 'Contractor reception check-in',
+    description: 'When on, contractors can scan a QR at reception to sign in for their visit — finding their existing profile by name/email or registering a new one (which staff then approve). They see only their assigned jobs, facility plans and a visit timer — never client, clinical or financial data. Off by default.',
   },
 };
 
