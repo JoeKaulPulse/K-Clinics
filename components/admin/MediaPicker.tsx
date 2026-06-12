@@ -153,7 +153,7 @@ export function MediaField({ value, onChange, label }: { value: string; onChange
           <div className="max-h-[85vh] w-full max-w-3xl overflow-auto rounded-[var(--radius-xl)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-[family-name:var(--font-display)] text-xl">Media library</h3>
-              <button onClick={() => setOpen(false)} className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">✕</button>
+              <button onClick={() => setOpen(false)} aria-label="Close" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>
             </div>
             <MediaGrid compact onPick={(a) => { onChange(a.url); setOpen(false); }} />
           </div>

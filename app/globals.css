@@ -1,5 +1,4 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/fraunces';
 
 /* ════════════════════════════════════════════════════════════════════════════
    K CLINICS — DESIGN SYSTEM
@@ -40,7 +39,7 @@
   /* ── Typography ─────────────────────────────────────────────────────────────
      Display: Fraunces (variable, optical) — editorial luxe serif.
      Text:    Geist (loaded via next/font) — precise modern grotesque. */
-  --font-display: 'Fraunces Variable', 'Fraunces', ui-serif, Georgia, serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 

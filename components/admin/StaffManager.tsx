@@ -179,7 +179,7 @@ function Editor({ staff, actorRole, onClose, onSaved }: { staff: Staff | null; a
       >
         <div className="mb-6 flex items-start justify-between gap-4">
           <h2 className="font-[family-name:var(--font-display)] text-2xl">{staff ? 'Edit staff member' : 'Add staff member'}</h2>
-          <button onClick={onClose} className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">✕</button>
+          <button onClick={onClose} aria-label="Close" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -311,7 +311,7 @@ function ProfileEditor({ staff, onClose, onSaved }: { staff: Staff; onClose: () 
             <h2 className="font-[family-name:var(--font-display)] text-xl">Public team profile</h2>
             <p className="text-sm text-[var(--color-stone)]">{staff.name || staff.email} · shows on the /team page{p?.isClinician ? ' (clinical)' : ' (support)'}</p>
           </div>
-          <button onClick={onClose} className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">✕</button>
+          <button onClick={onClose} aria-label="Close" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>
         </div>
         <label className="mb-4 flex items-center gap-3 text-sm">
           <input type="checkbox" checked={f.publicProfile} onChange={(e) => set('publicProfile', e.target.checked)} className="h-4 w-4 accent-[var(--color-gold)]" />

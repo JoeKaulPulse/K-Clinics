@@ -101,7 +101,7 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
         className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-[var(--radius-xl)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)] sm:rounded-[var(--radius-xl)] md:p-8">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="font-[family-name:var(--font-display)] text-2xl">{result ? 'Booking created' : 'New phone booking'}</h2>
-          <button onClick={onClose} className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">✕</button>
+          <button onClick={onClose} aria-label="Close" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>
         </div>
 
         {result ? (
