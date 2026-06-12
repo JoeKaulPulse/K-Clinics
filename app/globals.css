@@ -26,7 +26,7 @@
   --color-gold-soft: #c2a589;  /* lighter taupe (eyebrows on dark surfaces) */
   --color-gold-bright: #dcc4a8;/* soft champagne */
   --color-gold-deep: #856a4a;  /* darker gold for interactive surfaces — white text clears AA */
-  --color-jade: #7b6a5d;       /* deep taupe — secondary accent */
+  --color-jade: #2f7152;       /* jade green — positive / success / active / healthy accent */
   --color-blush: #cdb4a3;      /* warm sand highlight */
 
   /* Semantic surface tokens */
