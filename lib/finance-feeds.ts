@@ -44,7 +44,7 @@ export async function getStripeBalance(): Promise<LiveBalance> {
 export async function getBankBalance(): Promise<LiveBalance> {
   const base: LiveBalance = { source: 'bank', label: 'Business bank', connected: false, availablePence: 0, pendingPence: 0, currency: 'GBP' };
   const { trueLayerConfigured, getBankCashPence } = await import('@/lib/truelayer');
-  if (!trueLayerConfigured()) return { ...base, detail: 'Add TrueLayer credentials to enable.' };
+  if (!(await trueLayerConfigured())) return { ...base, detail: 'Add TrueLayer credentials to enable.' };
   const { isConnected } = await import('@/lib/oauth-connections');
   if (!(await isConnected('truelayer'))) return { ...base, detail: 'Configured — connect your bank in Integrations.' };
   const r = await getBankCashPence();
@@ -56,7 +56,7 @@ export async function getBankBalance(): Promise<LiveBalance> {
 export async function getXeroBalance(): Promise<LiveBalance> {
   const base: LiveBalance = { source: 'xero', label: 'Xero', connected: false, availablePence: 0, pendingPence: 0, currency: 'GBP' };
   const { xeroConfigured, getXeroCashPence } = await import('@/lib/xero');
-  if (!xeroConfigured()) return { ...base, detail: 'Add Xero credentials to enable.' };
+  if (!(await xeroConfigured())) return { ...base, detail: 'Add Xero credentials to enable.' };
   const { isConnected } = await import('@/lib/oauth-connections');
   if (!(await isConnected('xero'))) return { ...base, detail: 'Configured — connect Xero in Integrations.' };
   const r = await getXeroCashPence();

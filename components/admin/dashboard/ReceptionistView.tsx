@@ -132,7 +132,26 @@ export async function ReceptionistView({ session }: { session: Session }) {
         {canCharge && <StatTile label="Payments to take" value={paymentsToTake} href="/admin/bookings" />}
       </div>
 
-      {/* Upsell opportunities — after an appointment finishes, with the reason why */}
+      {/* Arrivals + rooms — the core front-of-house working area, kept high:
+          check people in as they walk in, and set rooms ready to hand off. */}
+      <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr] [&>*]:min-w-0">
+        {/* Arrivals timeline + one-tap check-in */}
+        <DashWidget title="Arrivals" eyebrow={`${toCome} still to come`}>
+          <ArrivalsBoard initialArrivals={arrivals} canManage={canManageBookings} />
+        </DashWidget>
+
+        {/* Rooms — set READY to hand off to the clinician */}
+        <DashWidget title="Rooms" eyebrow="Set ready to hand off">
+          {canRooms ? (
+            <RoomPrepStatus initialRooms={rooms} initialCanManage={canRooms} />
+          ) : (
+            <p className="text-sm text-[var(--color-stone)]">You don’t have permission to set room readiness.</p>
+          )}
+        </DashWidget>
+      </div>
+
+      {/* Upsell opportunities — opportunistic, so it sits below the live work:
+          after an appointment finishes, with the reason why */}
       {upsells.length > 0 && (
         <DashWidget title="Upsell opportunities" eyebrow="After today’s appointments">
           <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
@@ -162,22 +181,6 @@ export async function ReceptionistView({ session }: { session: Session }) {
           </div>
         </DashWidget>
       )}
-
-      <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr] [&>*]:min-w-0">
-        {/* Arrivals timeline + one-tap check-in */}
-        <DashWidget title="Arrivals" eyebrow={`${toCome} still to come`}>
-          <ArrivalsBoard initialArrivals={arrivals} canManage={canManageBookings} />
-        </DashWidget>
-
-        {/* Rooms — set READY to hand off to the clinician */}
-        <DashWidget title="Rooms" eyebrow="Set ready to hand off">
-          {canRooms ? (
-            <RoomPrepStatus initialRooms={rooms} initialCanManage={canRooms} />
-          ) : (
-            <p className="text-sm text-[var(--color-stone)]">You don’t have permission to set room readiness.</p>
-          )}
-        </DashWidget>
-      </div>
     </div>
   );
 }
