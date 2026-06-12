@@ -1,4 +1,5 @@
 import 'server-only';
+import { getSecret } from '@/lib/secrets';
 
 // Machine translation for staff readability. Client free-text answers are
 // stored exactly as typed (source language preserved in the encrypted blob);
@@ -10,15 +11,15 @@ import 'server-only';
 //   DEEPL_API_KEY        — DeepL (preferred; set DEEPL_API_FREE=true for the free tier)
 //   GOOGLE_TRANSLATE_KEY — Google Cloud Translation v2 (fallback)
 
-export function translationConfigured(): boolean {
-  return Boolean(process.env.DEEPL_API_KEY || process.env.GOOGLE_TRANSLATE_KEY);
+export async function translationConfigured(): Promise<boolean> {
+  return Boolean((await getSecret('DEEPL_API_KEY')) || (await getSecret('GOOGLE_TRANSLATE_KEY')));
 }
 
 const LOCALE_NAMES: Record<string, string> = { en: 'English', uk: 'Ukrainian' };
 export const localeName = (l: string) => LOCALE_NAMES[l] || l;
 
 async function deepl(texts: string[]): Promise<string[] | null> {
-  const key = process.env.DEEPL_API_KEY;
+  const key = await getSecret('DEEPL_API_KEY');
   if (!key) return null;
   const host = process.env.DEEPL_API_FREE === 'true' ? 'api-free.deepl.com' : 'api.deepl.com';
   try {
@@ -37,7 +38,7 @@ async function deepl(texts: string[]): Promise<string[] | null> {
 }
 
 async function googleTranslate(texts: string[]): Promise<string[] | null> {
-  const key = process.env.GOOGLE_TRANSLATE_KEY;
+  const key = await getSecret('GOOGLE_TRANSLATE_KEY');
   if (!key) return null;
   try {
     const res = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${key}`, {
