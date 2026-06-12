@@ -7,6 +7,21 @@ import { encryptJson, decryptJson } from '@/lib/crypto';
 
 export type Tokens = { access: string; refresh?: string; expiresAt: number | null };
 
+// BLD-278: providers return tokens as { access_token, refresh_token, expires_in }.
+// Some callers used to persist that raw shape, leaving `tokens.access` undefined
+// (so every read failed silently). Normalise to our Tokens shape — accepting both
+// the raw provider form and the already-normalised form — on write AND on read,
+// so existing rows self-heal without a migration.
+export function normalizeTokens(raw: unknown): Tokens {
+  const t = (raw ?? {}) as Record<string, unknown>;
+  const access = String(t.access ?? t.access_token ?? '');
+  const refresh = (t.refresh ?? t.refresh_token) as string | undefined;
+  let expiresAt: number | null = null;
+  if (typeof t.expiresAt === 'number') expiresAt = t.expiresAt;
+  else if (t.expires_in != null && !Number.isNaN(Number(t.expires_in))) expiresAt = Date.now() + Number(t.expires_in) * 1000;
+  return { access, refresh: refresh || undefined, expiresAt };
+}
+
 export async function saveConnection(provider: string, tokens: Tokens, accountRef?: string | null, label?: string | null) {
   const tokensEnc = encryptJson(tokens);
   await db.externalConnection.upsert({
@@ -20,7 +35,8 @@ export async function getConnection(provider: string): Promise<{ tokens: Tokens;
   const row = await db.externalConnection.findUnique({ where: { provider } });
   if (!row) return null;
   try {
-    return { tokens: decryptJson<Tokens>(row.tokensEnc), accountRef: row.accountRef, label: row.label };
+    // Tolerant read: normalise so any legacy raw-provider rows still resolve.
+    return { tokens: normalizeTokens(decryptJson<unknown>(row.tokensEnc)), accountRef: row.accountRef, label: row.label };
   } catch {
     return null;
   }
