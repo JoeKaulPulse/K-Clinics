@@ -25,7 +25,7 @@ export function ViewSwitcher({ active }: { active: DashboardView }) {
   }
 
   return (
-    <div role="group" aria-label="Dashboard view" className="inline-flex flex-wrap items-center gap-1 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] p-1">
+    <div role="group" aria-label="Dashboard view" className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {VIEWS.map((v) => {
         const on = v.id === active;
         return (
@@ -35,7 +35,7 @@ export function ViewSwitcher({ active }: { active: DashboardView }) {
             onClick={() => pick(v.id)}
             aria-pressed={on}
             title={v.blurb}
-            className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] ${
+            className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] ${
               on ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'
             } ${busy === v.id ? 'opacity-60' : ''}`}
           >
