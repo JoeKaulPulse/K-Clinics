@@ -13,7 +13,9 @@ export type Tokens = { access: string; refresh?: string; expiresAt: number | nul
 // the raw provider form and the already-normalised form — on write AND on read,
 // so existing rows self-heal without a migration.
 export function normalizeTokens(raw: unknown): Tokens {
-  const t = (raw ?? {}) as Record<string, unknown>;
+  let t = (raw ?? {}) as Record<string, unknown>;
+  // TikTok wraps its token response in an envelope: { code, message, data: {…} }.
+  if (!t.access && !t.access_token && t.data && typeof t.data === 'object') t = t.data as Record<string, unknown>;
   const access = String(t.access ?? t.access_token ?? '');
   const refresh = (t.refresh ?? t.refresh_token) as string | undefined;
   let expiresAt: number | null = null;
