@@ -28,9 +28,9 @@ export function DashboardShell({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">{heading}</div>
         {(canSwitch || aside) && (
-          <div className="flex flex-col items-start gap-3 sm:items-end">
+          <div className="flex w-full flex-col items-start gap-3 sm:w-auto sm:items-end">
             {canSwitch && (
-              <div className="flex flex-col items-start gap-1 sm:items-end">
+              <div className="flex w-full flex-col items-start gap-1 sm:w-auto sm:items-end">
                 <p className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-stone-soft)]">Viewing as</p>
                 <ViewSwitcher active={view} />
               </div>
