@@ -222,6 +222,35 @@
   /* Hairline divider */
   .hairline { height: 1px; background: var(--color-line); }
 
+  /* Shell micro-motion (BLD-226) — fast (150-280ms), transform/opacity only so
+     nothing reflows, and fully disabled under prefers-reduced-motion. */
+  .kc-pop {
+    animation: kc-pop 150ms cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: top right;
+  }
+  .kc-fade-in { animation: kc-fade 200ms ease-out; }
+  .kc-slide-in-left { animation: kc-slide-in-left 240ms cubic-bezier(0.16, 1, 0.3, 1); }
+  .kc-page-enter { animation: kc-page 280ms cubic-bezier(0.16, 1, 0.3, 1); }
+  @keyframes kc-pop {
+    from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes kc-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes kc-slide-in-left {
+    from { transform: translateX(-100%); }
+    to { transform: none; }
+  }
+  @keyframes kc-page {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .kc-pop, .kc-fade-in, .kc-slide-in-left, .kc-page-enter { animation: none; }
+  }
+
   /* Subtle film grain overlay for premium depth */
   .grain::after {
     content: '';

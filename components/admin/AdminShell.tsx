@@ -128,6 +128,12 @@ export function AdminShell({
   // Mobile menu drawer (the desktop sidebar is hidden on small screens).
   const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => { setMobileOpen(false); }, [pathname]); // close on navigation
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [mobileOpen]);
 
   // Top-bar profile dropdown (account · language · sign out).
   const [profileOpen, setProfileOpen] = useState(false);
@@ -149,7 +155,7 @@ export function AdminShell({
       href={n.href}
       data-tour={n.key}
       aria-current={isActive(n) ? 'page' : undefined}
-      className={`flex min-h-[2.75rem] items-center justify-between gap-2 whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] lg:min-h-0 ${
+      className={`flex min-h-[2.75rem] items-center justify-between gap-2 whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-2.5 text-sm transition-[background-color,color,transform] duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] motion-reduce:transition-none motion-reduce:active:scale-100 lg:min-h-0 ${
         isActive(n)
           ? 'bg-[var(--color-ink)] font-medium text-[var(--color-porcelain)]'
           : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)]'
@@ -200,16 +206,25 @@ export function AdminShell({
             <button
               onClick={() => toggleGroup(key)}
               aria-expanded={open}
-              className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-4 pb-1 pt-4 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)] transition-colors hover:text-[var(--color-stone)]"
+              className="flex w-full cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-4 pb-1 pt-4 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)] transition-colors hover:text-[var(--color-stone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
             >
-              <span className="text-[0.7rem] leading-none text-[var(--color-stone)]">{open ? '▾' : '▸'}</span>
+              <svg
+                viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden
+                className={`shrink-0 text-[var(--color-stone)] transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-90' : ''}`}
+              >
+                <path d="m6 3.5 4.5 4.5L6 12.5" />
+              </svg>
               <GroupIcon name={g.icon} />
               <span className="flex-1 text-left">{g.heading ? t(g.heading) : ''}</span>
               {!open && pending > 0 && (
                 <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[0.6rem] font-semibold text-amber-950">{pending}</span>
               )}
             </button>
-            {open && <div className="flex flex-col gap-0.5">{g.items.map(renderLink)}</div>}
+            {/* Animated accordion: grid-rows 0fr→1fr is transform-safe (no JS
+                measuring, no layout thrash) and collapses both ways smoothly. */}
+            <div className={`grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`} inert={open ? undefined : true}>
+              <div className="flex flex-col gap-0.5 overflow-hidden">{g.items.map(renderLink)}</div>
+            </div>
           </div>
         );
       })}
@@ -228,8 +243,8 @@ export function AdminShell({
         {/* Mobile drawer — off-canvas, opened from the top-bar hamburger. */}
         {mobileOpen && (
           <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
-            <div className="absolute inset-0 bg-[var(--color-ink)]/45 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-            <aside className="absolute inset-y-0 left-0 flex w-[82%] max-w-xs flex-col bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)]">
+            <div className="kc-fade-in absolute inset-0 bg-[var(--color-ink)]/45 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
+            <aside className="kc-slide-in-left absolute inset-y-0 left-0 flex w-[82%] max-w-xs flex-col bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)]">
               <div className="flex items-center justify-between border-b border-[var(--color-line)] px-5 py-4">
                 {brand}
                 <button onClick={() => setMobileOpen(false)} aria-label="Close menu" className="flex h-10 w-10 items-center justify-center rounded-full text-[var(--color-stone)] transition-colors hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)]">
@@ -268,7 +283,7 @@ export function AdminShell({
                   <svg className={`hidden text-[var(--color-stone)] transition-transform md:block ${profileOpen ? 'rotate-180' : ''}`} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m4 6 4 4 4-4" /></svg>
                 </button>
                 {profileOpen && (
-                  <div role="menu" className="absolute right-0 z-40 mt-2 w-64 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white shadow-[var(--shadow-lift)]">
+                  <div role="menu" className="kc-pop absolute right-0 z-40 mt-2 w-64 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white shadow-[var(--shadow-lift)]">
                     <div className="border-b border-[var(--color-line)] bg-[var(--color-bone)]/60 px-4 py-3">
                       <p className="text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)]">Signed in as</p>
                       {user && <p className="mt-0.5 truncate text-sm font-medium text-[var(--color-ink)]">{user}</p>}
@@ -292,7 +307,9 @@ export function AdminShell({
               </div>
             </div>
           </header>
-          <main className="flex-1 p-5 md:p-8 lg:p-10">
+          {/* key={pathname} restarts the entrance on every navigation — a short
+              fade-up that makes page changes feel composed rather than abrupt. */}
+          <main key={pathname} className="kc-page-enter flex-1 p-5 md:p-8 lg:p-10">
             {allowed.has('dayclose.run') && <CloseDownReminder />}
             {children}
           </main>
