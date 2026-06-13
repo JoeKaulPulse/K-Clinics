@@ -99,11 +99,16 @@ export async function completeLesson(studentId: string, lessonId: string, second
   if (!lesson) return { ok: false };
   if (!(await studentCanAccess(studentId, lesson.module.courseId))) return { ok: false };
   const secs = Math.max(0, Math.min(Math.round(secondsSpent) || 0, 6 * 60 * 60)); // cap at 6h to ignore idle tabs
+  const firstTime = !(await db.lessonProgress.findUnique({ where: { studentId_lessonId: { studentId, lessonId } }, select: { id: true } }));
   await db.lessonProgress.upsert({
     where: { studentId_lessonId: { studentId, lessonId } },
     update: secs > 0 ? { secondsSpent: { increment: secs } } : {},
     create: { studentId, lessonId, secondsSpent: secs },
   });
+  if (firstTime) {
+    const { scoreAndBadge, XP } = await import('@/lib/academy-gamification');
+    await scoreAndBadge(studentId, 'LESSON', XP.LESSON, lesson.module.courseId);
+  }
   return { ok: true };
 }
 
@@ -134,7 +139,12 @@ export async function gradeQuiz(studentId: string, quizId: string, answers: Reco
 
   const scorePct = Math.round((correctCount / quiz.questions.length) * 100);
   const passed = scorePct >= quiz.passMark;
+  const priorPass = passed ? await db.quizAttempt.findFirst({ where: { studentId, quizId, passed: true }, select: { id: true } }) : null;
   await db.quizAttempt.create({ data: { studentId, quizId, scorePct, passed, answers: answers as object } });
+  if (passed && !priorPass) {
+    const { scoreAndBadge, XP } = await import('@/lib/academy-gamification');
+    await scoreAndBadge(studentId, 'QUIZ', XP.QUIZ_PASS + (scorePct === 100 ? XP.QUIZ_PERFECT_BONUS : 0), quiz.module.courseId);
+  }
   return { ok: true, scorePct, passed, passMark: quiz.passMark, results };
 }
 

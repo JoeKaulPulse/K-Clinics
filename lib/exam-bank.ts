@@ -53,6 +53,10 @@ export async function recordPractice(studentId: string, { courseId, topic, total
   const c = Math.max(0, Math.min(Math.round(correct) || 0, t));
   const scorePct = t > 0 ? Math.round((c / t) * 100) : 0;
   await db.practiceAttempt.create({ data: { studentId, courseId: courseId || null, topic: topic || null, total: t, correct: c, scorePct } });
+  if (c > 0) {
+    const { scoreAndBadge, XP } = await import('@/lib/academy-gamification');
+    await scoreAndBadge(studentId, 'PRACTICE', c * XP.PRACTICE_PER_CORRECT, courseId || null);
+  }
   return { scorePct };
 }
 

@@ -53,6 +53,7 @@ export default async function AcademyPortalPage() {
         <div className="mb-6 flex items-center justify-between gap-3">
           <h2 className="text-title">Your courses</h2>
           <div className="flex items-center gap-3">
+            <Link href="/academy/leaderboard" className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Leaderboard</Link>
             <Link href="/academy/practice" className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Practice &amp; papers</Link>
             <AcademyLogout />
           </div>

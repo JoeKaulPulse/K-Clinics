@@ -1773,6 +1773,7 @@ model AcademyStudent {
   resetTokenHash String?
   resetTokenExp  DateTime?
   notes          String?
+  xp             Int       @default(0) // gamification points (earned across the academy)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -1780,8 +1781,11 @@ model AcademyStudent {
   lessonProgress   LessonProgress[]
   quizAttempts     QuizAttempt[]
   practiceAttempts PracticeAttempt[]
+  pointEvents      PointEvent[]
+  badges           StudentBadge[]
 
   @@index([createdAt])
+  @@index([xp])
   @@index([tenantId])
 }
 
@@ -1989,6 +1993,36 @@ model PracticeAttempt {
 
   @@index([studentId])
   @@index([courseId])
+  @@index([tenantId])
+}
+
+// ── Gamification (XP ledger + badges) ────────────────────────────────────────
+
+model PointEvent {
+  id        String         @id @default(cuid())
+  tenantId  String? // ClinicOS multi-tenant (Ring 0)
+  student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  kind      String // LESSON | QUIZ | PRACTICE | BADGE | BONUS
+  points    Int
+  courseId  String?
+  note      String?
+  createdAt DateTime       @default(now())
+
+  @@index([studentId, createdAt])
+  @@index([tenantId])
+}
+
+model StudentBadge {
+  id        String         @id @default(cuid())
+  tenantId  String? // ClinicOS multi-tenant (Ring 0)
+  student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  badgeKey  String // matches a key in lib/gamification BADGES
+  awardedAt DateTime       @default(now())
+
+  @@unique([studentId, badgeKey])
+  @@index([studentId])
   @@index([tenantId])
 }
 

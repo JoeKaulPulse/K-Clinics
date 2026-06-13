@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 export type StudentRow = {
   id: string; firstName: string; lastName: string | null; email: string; phone: string | null;
   createdAt: string; lastLoginAt: string | null; portalActive: boolean; onboardedAt: string | null; notes: string | null;
-  lessonsCompleted: number; quizAttempts: number;
+  lessonsCompleted: number; quizAttempts: number; xp: number; badges: number;
   enrolments: { courseTitle: string; status: string }[];
 };
 
@@ -28,15 +28,17 @@ export function StudentsManager({ students }: { students: StudentRow[] }) {
   const router = useRouter();
   const [q, setQ] = useState('');
   const [onlyActive, setOnlyActive] = useState(false);
+  const [sort, setSort] = useState<'recent' | 'xp'>('recent');
 
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return students.filter((s) => {
+    const filtered = students.filter((s) => {
       if (onlyActive && !s.portalActive) return false;
       if (!needle) return true;
       return `${s.firstName} ${s.lastName ?? ''} ${s.email} ${s.phone ?? ''}`.toLowerCase().includes(needle);
     });
-  }, [students, q, onlyActive]);
+    return sort === 'xp' ? [...filtered].sort((a, b) => b.xp - a.xp) : filtered;
+  }, [students, q, onlyActive, sort]);
 
   async function act(payload: object) { await post(payload); router.refresh(); }
 
@@ -49,6 +51,10 @@ export function StudentsManager({ students }: { students: StudentRow[] }) {
         </div>
         <div className="flex items-center gap-2">
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email…" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm" />
+          <select value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'xp')} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm" title="Sort">
+            <option value="recent">Newest first</option>
+            <option value="xp">Top XP (best performers)</option>
+          </select>
           <label className="flex items-center gap-1.5 text-xs text-[var(--color-stone)]"><input type="checkbox" checked={onlyActive} onChange={(e) => setOnlyActive(e.target.checked)} className="h-4 w-4 accent-[var(--color-gold)]" />Active only</label>
         </div>
       </div>
@@ -59,7 +65,7 @@ export function StudentsManager({ students }: { students: StudentRow[] }) {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[860px] text-sm">
             <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">
-              <th className="py-1 pr-2">Trainee</th><th className="px-2">Enrolments</th><th className="px-2">Progress</th><th className="px-2">Joined</th><th className="px-2">Last login</th><th className="px-2">Access</th>
+              <th className="py-1 pr-2">Trainee</th><th className="px-2">Enrolments</th><th className="px-2">Progress</th><th className="px-2">XP</th><th className="px-2">Joined</th><th className="px-2">Last login</th><th className="px-2">Access</th>
             </tr></thead>
             <tbody>
               {rows.map((s) => (
@@ -82,6 +88,7 @@ export function StudentsManager({ students }: { students: StudentRow[] }) {
                     )}
                   </td>
                   <td className="px-2 text-xs text-[var(--color-stone)]">{s.lessonsCompleted} lesson{s.lessonsCompleted === 1 ? '' : 's'}<br />{s.quizAttempts} quiz attempt{s.quizAttempts === 1 ? '' : 's'}</td>
+                  <td className="px-2"><span className="font-medium text-[var(--color-ink)]">{s.xp.toLocaleString()}</span>{s.badges > 0 && <span className="block text-xs text-[var(--color-stone-soft)]">🏅 {s.badges}</span>}</td>
                   <td className="px-2 text-xs text-[var(--color-stone)]">{fmtDate(s.createdAt)}</td>
                   <td className="px-2 text-xs text-[var(--color-stone)]">{fmtDate(s.lastLoginAt)}</td>
                   <td className="px-2">
