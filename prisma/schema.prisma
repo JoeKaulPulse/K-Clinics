@@ -1742,8 +1742,23 @@ model PageSeo {
 // VTCT exam administered in-house. Ofqual-regulated + CPD. Catalogue is fully
 // CRM-managed; trainees use a separate account/portal.
 
+// ── ClinicOS multi-tenancy (Ring 0) ──────────────────────────────────────────
+// A licensed clinic on the platform. K Clinics is tenant #1. Academy tables carry
+// a nullable tenantId, backfilled to the default tenant; query scoping + RLS land
+// in Ring 1. See docs/PLATFORM_SAAS_PLAN.md (v0.4, BLD-35).
+model Tenant {
+  id        String   @id @default(cuid())
+  slug      String   @unique // url-safe key, e.g. "kclinics"
+  name      String
+  host      String?  @unique // primary hostname for resolution (e.g. kclinics.co.uk)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model AcademyStudent {
   id             String    @id @default(cuid())
+  tenantId       String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   firstName      String
   lastName       String?
   email          String    @unique
@@ -1766,10 +1781,12 @@ model AcademyStudent {
   quizAttempts   QuizAttempt[]
 
   @@index([createdAt])
+  @@index([tenantId])
 }
 
 model Course {
   id             String   @id @default(cuid())
+  tenantId       String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   slug           String   @unique
   title          String
   level          String? // e.g. "Level 4"
@@ -1796,12 +1813,14 @@ model Course {
   liveClasses LiveClass[]
 
   @@index([active, order])
+  @@index([tenantId])
 }
 
 // ── Native LMS (replaces external Thinkific theory) ──────────────────────────
 
 model CourseModule {
   id        String   @id @default(cuid())
+  tenantId  String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   courseId  String
   title     String
@@ -1813,10 +1832,12 @@ model CourseModule {
   updatedAt DateTime @updatedAt
 
   @@index([courseId, order])
+  @@index([tenantId])
 }
 
 model Lesson {
   id          String           @id @default(cuid())
+  tenantId    String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   module      CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   moduleId    String
   title       String
@@ -1833,10 +1854,12 @@ model Lesson {
   updatedAt   DateTime         @updatedAt
 
   @@index([moduleId, order])
+  @@index([tenantId])
 }
 
 model Quiz {
   id        String         @id @default(cuid())
+  tenantId  String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   module    CourseModule   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   moduleId  String         @unique
   title     String
@@ -1845,10 +1868,13 @@ model Quiz {
   attempts  QuizAttempt[]
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
+
+  @@index([tenantId])
 }
 
 model QuizQuestion {
   id          String  @id @default(cuid())
+  tenantId    String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   quiz        Quiz    @relation(fields: [quizId], references: [id], onDelete: Cascade)
   quizId      String
   order       Int     @default(0)
@@ -1860,10 +1886,12 @@ model QuizQuestion {
   imageUrl    String?
 
   @@index([quizId, order])
+  @@index([tenantId])
 }
 
 model LessonProgress {
   id          String         @id @default(cuid())
+  tenantId    String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   student     AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
   studentId   String
   lesson      Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
@@ -1872,10 +1900,12 @@ model LessonProgress {
 
   @@unique([studentId, lessonId])
   @@index([studentId])
+  @@index([tenantId])
 }
 
 model QuizAttempt {
   id        String         @id @default(cuid())
+  tenantId  String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
   studentId String
   quiz      Quiz           @relation(fields: [quizId], references: [id], onDelete: Cascade)
@@ -1886,10 +1916,12 @@ model QuizAttempt {
   createdAt DateTime       @default(now())
 
   @@index([studentId, quizId])
+  @@index([tenantId])
 }
 
 model LiveClass {
   id          String    @id @default(cuid())
+  tenantId    String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
   courseId    String
   title       String
@@ -1902,6 +1934,7 @@ model LiveClass {
   updatedAt   DateTime  @updatedAt
 
   @@index([courseId, startAt])
+  @@index([tenantId])
 }
 
 enum CohortStatus {
@@ -1912,6 +1945,7 @@ enum CohortStatus {
 
 model Cohort {
   id        String       @id @default(cuid())
+  tenantId  String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   course    Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
   courseId  String
   startAt   DateTime
@@ -1927,6 +1961,7 @@ model Cohort {
   enrolments Enrolment[]
 
   @@index([courseId, startAt])
+  @@index([tenantId])
 }
 
 enum EnrolmentStatus {
@@ -1940,6 +1975,7 @@ enum EnrolmentStatus {
 
 model Enrolment {
   id        String          @id @default(cuid())
+  tenantId  String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   course    Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
   courseId  String
   cohort    Cohort?         @relation(fields: [cohortId], references: [id], onDelete: SetNull)
@@ -1964,6 +2000,7 @@ model Enrolment {
   @@index([status])
   @@index([courseId])
   @@index([applicantEmail])
+  @@index([tenantId])
 }
 
 // ── Post-treatment follow-up questionnaire ──────────────────────────────────
@@ -2032,6 +2069,7 @@ model AiAnalysisImage {
 // ── Careers — live vacancies (admin-managed) + applications ──────────────────
 model Vacancy {
   id          String   @id @default(cuid())
+  tenantId    String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   slug        String   @unique
   title       String
   department  String? // Clinical · Front of house · Management …
@@ -2048,10 +2086,12 @@ model Vacancy {
   applications JobApplication[]
 
   @@index([active, order])
+  @@index([tenantId])
 }
 
 model JobApplication {
   id        String   @id @default(cuid())
+  tenantId  String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   vacancy   Vacancy? @relation(fields: [vacancyId], references: [id], onDelete: SetNull)
   vacancyId String?
   roleTitle String // snapshot (so it survives a deleted vacancy)
@@ -2065,6 +2105,7 @@ model JobApplication {
 
   @@index([status])
   @@index([vacancyId])
+  @@index([tenantId])
 }
 
 // ── Gift vouchers (e-gift cards) ─────────────────────────────────────────────

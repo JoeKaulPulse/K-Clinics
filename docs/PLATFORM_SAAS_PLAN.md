@@ -441,4 +441,69 @@ Read: fixed platform cost ≈ £70–100; the rest is per-tenant usage (SMS + AI
 
 ---
 
-*End of plan v0.3 — a living document. All subsequent decisions append to §15 (ADRs) and update §13 (risks).*
+## Phase 1 decisions + Academy extraction design (v0.4 addendum — BLD-35)
+
+> Owner go/no-go answered 13 Jun. Four decisions locked; ADRs updated; the Academy
+> extraction design (Phase 0 spike) follows. Still planning — Ring 0 below is the first
+> thing to build, on sign-off of the task list.
+
+### Decisions now accepted (update §15)
+- **ADR-014 — First extraction = Academy/Learning. ACCEPTED** (was proposed in v0.3). Zero hard FKs into core, no card code, sellable standalone; earliest commercial validation.
+- **ADR-015 — Tenancy = shared DB + nullable `tenantId`, pooled, RLS backstop. ACCEPTED.** Not schema- or DB-per-tenant (both break on Prisma static multi-schema + Vercel connection caps).
+- **ADR-016 — Payments = each licensed clinic uses its OWN Stripe account; we never touch their funds. ACCEPTED.** No Stripe Connect. Note: Academy takes no card today (`Enrolment.paidPence` is staff-entered), so this ADR bites at the booking/commerce seam, not Academy.
+- **ADR-004 — Migration regime = versioned migrations for the platform track. CONFIRMED approved.** `USE_MIGRATIONS=true` on the platform track; the live track keeps additive `db push` until cutover, so production is unaffected now.
+
+§17 rows added: 8 first-module = Academy (→ADR-014); 9 tenancy = pooled `tenantId` (→ADR-015); 10 payments = own Stripe (→ADR-016); 11 migrations flip approved (→ADR-004).
+
+### Academy extraction design (Phase 0)
+
+Grounded in a full map of the context (file:line verified).
+
+**The boundary is clean.** 13 Prisma models with **zero foreign keys into core** (`Client`/`AdminUser`/`Booking`/`Location`): `AcademyStudent`, `Course`, `CourseModule`, `Lesson`, `Quiz`, `QuizQuestion`, `LessonProgress`, `QuizAttempt`, `LiveClass`, `Cohort`, `Enrolment` (+ careers `Vacancy`, `JobApplication`). `Cohort.location` is free text, not a `Location` FK. Identity is already separate (`ACADEMY_JWT_SECRET`, `kc-academy` aud, `kc_academy` cookie). No Stripe, no Blob, no AI. So the only ties to the monolith are **infrastructure, not data**.
+
+**The only couplings (ranked, with how to sever):**
+1. Shared Postgres + single `PrismaClient` (`lib/db.ts`) — the real one. Sever via `tenantId` now; injectable client at Ring 2.
+2. Shared `hashPassword`/`verifyPassword` (`lib/auth.ts`) — keep shared (common crypto util), or copy into the module at extraction. Low.
+3. Dev-only JWT-secret fallback (`lib/auth-edge.ts:98`: `ACADEMY_JWT_SECRET → CLIENT → ADMIN`) — must become mandatory per tenant; drop the fallback on the platform track.
+4. Shared `lib/email`, `crmEnabled` gate, rate-limit guard, `AdminShell` — keep as the platform's common services (the point of monolith-as-tenant-1).
+
+**Approach — strangler-fig in three rings.**
+
+*Ring 0 — make Academy tenant-aware, non-breaking, no code/data move (build first):*
+- Add a `Tenant` model + nullable `tenantId String?` to all 13 Academy tables (additive, `db push`-safe). Backfill every row to the K Clinics tenant id (expand-only, §6.3). Live code ignores the column.
+- Resolve the current tenant from the request (host/subdomain → `Tenant`, or a tenant claim in the academy JWT) and scope **every** Academy query (`where: { tenantId }`) through the thin data layer (`lib/lms.ts`, `lib/academy.ts`, `lib/academy-auth.ts` → `findFirst({ email, tenantId })`).
+- Zero behaviour change for K Clinics (single tenant).
+
+*Ring 1 — the migrations flip + per-tenant uniqueness (needs ADR-004):*
+- `@@unique([tenantId, email])` on `AcademyStudent` (email is globally unique today — wrong for tenant #2); `@@unique([tenantId, slug])` on `Course`; same for `Cohort` etc. These cannot go through `db push`, hence the flip.
+- `NOT NULL` on `tenantId` once backfilled. RLS policies on the Academy tables as reviewed SQL (tenant GUC set per-transaction through the pooler).
+
+*Ring 2 — extract to a deployable module (when a pilot tenant signs):*
+- Move Academy into a domain package with an explicit interface: db **injected** not imported; JWT secret from tenant config not the env fallback; email via the platform notification service.
+- Repo topology: domain-package-in-monorepo first (cheapest), separate service later.
+- Per-tenant config (sender domain, JWT secret, theme) from the `Tenant` record, not globals.
+
+**Out of scope for Phase 0:** public multi-tenant sign-up, billing/metering, white-label theming, separate deployment. Phase 0 = Academy is tenant-aware, runs as tenant #1 with a clean data boundary, ready to onboard tenant #2 behind a flag.
+
+**Sequenced tasks (the spike):**
+1. `Tenant` model + `tenantId String?` on the 13 Academy tables (additive); backfill K Clinics.
+2. Tenant resolver (host/JWT → `tenantId`) + scope every Academy query through it; CI isolation-fuzz test.
+3. Flip the platform track to versioned migrations; add `@@unique([tenantId, …])`, `NOT NULL`, RLS as reviewed SQL.
+4. Drop the JWT-secret fallback on the platform track; per-tenant secret source (needs `tenantId` on `ManagedSecret`, R15).
+5. Injectable db client for the Academy package (interface seam); no behaviour change.
+6. Onboarding behind a flag: create a test tenant #2, verify isolation end-to-end.
+
+**Risk callouts:** R12 (isolation) is the headline — every Academy query tenant-scoped before tenant #2 exists, RLS as backstop. R13 — keep the `kc-academy` aud, drop the secret fallback. R15 — `ManagedSecret` needs an additive `tenantId` before the module holds per-tenant secrets.
+
+### Next decision round (doesn't block the Phase 0 spike)
+1. **Pilot clinic** — can we name one with a letter of intent to license ClinicOS Academy? (go/no-go Q2)
+2. **Data-protection pack** — commission the DPA template + sub-processor register now? (Q3 / R18)
+3. **Budget** — confirm the ~£200/mo pilot run-rate + the platform hire + one-off compliance/pen-test costs. (Q5)
+4. **Repo topology (Ring 2)** — domain-package-in-monorepo first, or a separate service from the start?
+5. **Academy fees** — when a tenant wants to charge for courses, own-Stripe (ADR-016) or keep manual `paidPence` for the pilot?
+
+*Done when: this addendum is merged as v0.4, ADR-016 + §17 rows logged, and the Phase 0 task list is on the board under BLD-35.*
+
+---
+
+*End of plan v0.4 — a living document. All subsequent decisions append to §15 (ADRs) and update §13 (risks).*
