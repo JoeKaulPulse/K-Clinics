@@ -657,7 +657,10 @@ function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateH
                   <textarea id="session-clinical" rows={4} value={note} onChange={(e) => setNote(e.target.value)}
                     placeholder="Settings, areas treated, observations…"
                     className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--color-gold)]" />
-                  <button type="button" disabled={pending} onClick={() => onSaveNote(note)} className="mt-2 min-h-11 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">Save note</button>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <button type="button" disabled={pending} onClick={() => onSaveNote(note)} className="min-h-11 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">Save note</button>
+                    <VoiceRecorder bookingId={p.booking.id} onTranscript={(t) => setNote((prev) => prev ? `${prev}\n${t}` : t)} />
+                  </div>
                 </div>
               )}
 
@@ -1245,6 +1248,78 @@ function ArrowIcon() {
   return <svg aria-hidden width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 8h11m0 0L9 4m4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
+
+// BLD-138 — in-session voice recorder. Records via browser MediaRecorder,
+// POSTs the audio blob to /api/admin/bookings/transcribe (Deepgram), and
+// appends the transcript to the clinical note textarea. Degrades gracefully
+// when DEEPGRAM_API_KEY is not configured (the button shows a tooltip).
+function VoiceRecorder({ bookingId, onTranscript }: { bookingId: string; onTranscript: (text: string) => void }) {
+  type State = 'idle' | 'recording' | 'transcribing' | 'error';
+  const [state, setState] = useState<State>('idle');
+  const [errMsg, setErrMsg] = useState('');
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<BlobPart[]>([]);
+
+  async function start() {
+    setErrMsg('');
+    let stream: MediaStream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch {
+      setErrMsg('Microphone access denied.'); setState('error'); return;
+    }
+    const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'].find((m) => MediaRecorder.isTypeSupported(m)) || '';
+    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    chunksRef.current = [];
+    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+    recorder.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' });
+      setState('transcribing');
+      try {
+        const res = await fetch('/api/admin/bookings/transcribe', {
+          method: 'POST',
+          headers: { 'Content-Type': blob.type, 'X-Booking-Id': bookingId },
+          body: blob,
+        });
+        const json = await res.json().catch(() => ({ ok: false, error: 'Network error.' }));
+        if (json.ok && json.transcript) { onTranscript(json.transcript); setState('idle'); }
+        else { setErrMsg(json.error || 'Transcription failed.'); setState('error'); }
+      } catch (e) { setErrMsg((e as Error).message || 'Network error.'); setState('error'); }
+    };
+    recorderRef.current = recorder;
+    recorder.start();
+    setState('recording');
+  }
+
+  function stop() { recorderRef.current?.stop(); }
+
+  if (state === 'transcribing') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3 py-2 text-xs text-[var(--color-stone)]">
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--color-gold)]" aria-hidden />
+        Transcribing…
+      </span>
+    );
+  }
+  if (state === 'recording') {
+    return (
+      <button type="button" onClick={stop}
+        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--color-blush)] bg-[color-mix(in_oklab,var(--color-blush)_15%,white)] px-4 py-2 text-sm text-[var(--color-ink)] transition-colors hover:bg-[color-mix(in_oklab,var(--color-blush)_30%,white)]">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" aria-hidden />
+        Stop recording
+      </button>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-1">
+      <button type="button" onClick={start}
+        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--color-line)] bg-white px-4 py-2 text-sm text-[var(--color-ink)] transition-colors hover:border-[var(--color-gold)] hover:bg-[var(--color-bone)]">
+        <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="9" y="2" width="6" height="13" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6" /></svg>
+        Record voice note
+      </button>
+      {state === 'error' && <p className="text-xs text-red-500">{errMsg}</p>}
+    </div>
+  );
+}
 
 function AftercareIcon({ name }: { name: string }) {
   const common = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true };
