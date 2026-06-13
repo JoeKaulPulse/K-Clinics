@@ -504,6 +504,8 @@ Grounded in a full map of the context (file:line verified).
 
 *Done when: this addendum is merged as v0.4, ADR-016 + §17 rows logged, and the Phase 0 task list is on the board under BLD-35.*
 
+**Status (13 Jun):** v0.4 merged; Ring 0.1 (Tenant model + `tenantId` across the 13 Academy tables + self-healing cron backfill) merged to `main`. Ring 0.2 next.
+
 ---
 
 *End of plan v0.4 — a living document. All subsequent decisions append to §15 (ADRs) and update §13 (risks).*
