@@ -90,10 +90,15 @@ export async function checkAndAwardBadges(studentId: string): Promise<string[]> 
   } catch { return []; }
 }
 
-/** Convenience: award XP for an action then re-check badges. Fire-and-forget safe. */
-export async function scoreAndBadge(studentId: string, kind: string, points: number, courseId?: string | null): Promise<void> {
+export type AwardedBadge = { key: string; name: string; icon: string };
+
+/** Convenience: award XP for an action then re-check badges. Returns any badges
+ *  newly earned (so the client can celebrate them). Never throws. */
+export async function scoreAndBadge(studentId: string, kind: string, points: number, courseId?: string | null): Promise<AwardedBadge[]> {
   await awardXp(studentId, kind, points, courseId);
-  await checkAndAwardBadges(studentId);
+  const keys = await checkAndAwardBadges(studentId);
+  const byKey = new Map(BADGES.map((b) => [b.key, b]));
+  return keys.map((k) => byKey.get(k)).filter((b): b is BadgeDef => Boolean(b)).map((b) => ({ key: b.key, name: b.name, icon: b.icon }));
 }
 
 export type LeaderRow = { rank: number; studentId: string; name: string; xp: number; badges: number; isMe?: boolean };
