@@ -175,7 +175,9 @@ export default async function AdminOverview() {
     const photoSet = new Set([...photoRows.map((p) => p.bookingId), ...signedRows.filter((s) => s.kind === 'photo_opt_out').map((s) => s.bookingId)]);
     todayNotReady = todaysBookings.filter((b) => (reqConsent && !consentSet.has(b.id)) || (reqPhoto && isLaserTreatment(b.treatmentSlug) && !photoSet.has(b.id))).length;
   }
+  const sameDayRequests = canBookings ? await db.booking.count({ where: { status: 'REQUESTED' } }).catch(() => 0) : 0;
   const attention = [
+    { show: sameDayRequests > 0, label: 'Same-day requests to action', value: sameDayRequests, href: '/admin/bookings?filter=REQUESTED', tone: 'amber' },
     { show: todayNotReady > 0, label: 'Appointments not ready today', value: todayNotReady, href: '/admin/my-day', tone: 'amber' },
     { show: canFinance && unchargedCompleted > 0, label: 'Completed, not charged', value: unchargedCompleted, href: '/admin/bookings', tone: 'amber' },
     { show: ordersToFulfil > 0, label: 'Orders to fulfil', value: ordersToFulfil, href: '/admin/orders', tone: 'amber' },

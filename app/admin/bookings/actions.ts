@@ -120,6 +120,31 @@ export async function refundBookingAction(bookingId: string, amountPence: number
   return res;
 }
 
+// Approve a same-day appointment request: re-checks availability (the slot may have
+// been taken since the request came in), confirms the booking and notifies the
+// client. Staff only. Decline uses the normal cancelBookingAction.
+export async function approveBookingRequestAction(bookingId: string): Promise<{ ok: boolean; error?: string; clash?: boolean }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to manage bookings.' };
+  const { db } = await import('@/lib/db');
+  const b = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true, clientId: true, startAt: true, durationMin: true, treatmentSlug: true, locationId: true } });
+  if (!b) return { ok: false, error: 'Booking not found.' };
+  if (b.status !== 'REQUESTED') return { ok: false, error: 'This request has already been actioned.' };
+  const { isSlotFree } = await import('@/lib/availability');
+  // Staff are confirming same-day, so no online lead window applies — but the room
+  // and clinician must still be genuinely free right now.
+  const free = await isSlotFree(b.startAt.toISOString(), b.durationMin, b.treatmentSlug, b.locationId, { leadMinutes: 0 });
+  if (!free) return { ok: false, error: 'That time is no longer free. Reschedule with the client, or decline the request.', clash: true };
+  await db.booking.update({ where: { id: bookingId }, data: { status: 'CONFIRMED' } });
+  await db.interaction.create({ data: { clientId: b.clientId, type: 'APPOINTMENT', summary: 'Same-day request approved', author: session.email } });
+  try { const { notifyBookingConfirmed } = await import('@/lib/booking-notify'); await notifyBookingConfirmed(bookingId); } catch { /* best-effort */ }
+  const { logAudit } = await import('@/lib/audit');
+  await logAudit({ action: 'BOOKING_CONFIRMED', actor: session.email, actorRole: session.role, clientId: b.clientId, bookingId, summary: 'Same-day request approved' });
+  revalidatePath(`/admin/bookings/${bookingId}`); revalidatePath('/admin/bookings');
+  return { ok: true };
+}
+
 export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 'NO_SHOW' | 'CONFIRMED'): Promise<{ ok: boolean; error?: string }> {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();

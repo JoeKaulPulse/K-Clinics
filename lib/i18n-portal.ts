@@ -249,6 +249,7 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'appt.none': { en: 'No upcoming appointments.', uk: 'Немає запланованих візитів.' },
   'appt.bookNow': { en: 'Book now', uk: 'Записатися' },
   'appt.noPast': { en: 'No past visits yet.', uk: 'Минулих візитів ще немає.' },
+  'status.REQUESTED': { en: 'Requested — awaiting confirmation', uk: 'Запит — очікує підтвердження' },
   'status.PENDING': { en: 'Awaiting confirmation', uk: 'Очікує підтвердження' },
   'status.CONFIRMED': { en: 'Confirmed', uk: 'Підтверджено' },
   'status.COMPLETED': { en: 'Completed', uk: 'Завершено' },

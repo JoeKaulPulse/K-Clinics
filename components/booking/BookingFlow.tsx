@@ -65,6 +65,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
   const [clientSecret, setClientSecret] = useState('');
   const [bookingId, setBookingId] = useState('');
+  const [requested, setRequested] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -121,7 +122,10 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
       .then((r) => r.json()).then((j) => setPopularDays(j.days || [])).catch(() => setPopularDays([]));
   }, [stage, service, variant, totalDuration]);
 
-  const minDate = useMemo(() => new Date(Date.now() + 864e5).toISOString().slice(0, 10), []);
+  // Today is selectable: same-day appointments go through as a request that staff
+  // confirm. Future dates book as normal. Clinic-local (UK) date.
+  const minDate = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
+  const isSameDay = !!date && date === minDate;
 
   const orderTotal = useMemo(() => {
     if (!variant) return 0;
@@ -140,6 +144,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
       });
       const j = await res.json();
       if (!j.ok) { setError(j.error || 'Could not book.'); setSubmitting(false); return; }
+      if (j.requested) { setRequested(true); setStage('done'); setSubmitting(false); return; }
       if (j.needCard) {
         setClientSecret(j.clientSecret); setBookingId(j.bookingId); setStage('card');
         try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'add_payment_info', { currency: 'GBP', value: orderTotal / 100, items: [{ item_id: variantId, item_name: service?.name, item_category: service?.category }] }); } catch { /* analytics best-effort */ }
@@ -166,7 +171,9 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
   ];
   const stepIndex = Math.max(0, steps.findIndex((s) => s.key === stage));
 
-  if (stage === 'done') return <Done firstName={firstName} treatment={service?.name} slot={slot} orderTotal={orderTotal} variantId={variantId} category={service?.category} bookingId={bookingId} />;
+  if (stage === 'done') return requested
+    ? <RequestReceived firstName={firstName} treatment={service?.name} slot={slot} />
+    : <Done firstName={firstName} treatment={service?.name} slot={slot} orderTotal={orderTotal} variantId={variantId} category={service?.category} bookingId={bookingId} />;
 
   return (
     <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6 md:p-10">
@@ -276,6 +283,11 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
               </div>
               {date && (
                 <div className="mt-6">
+                  {isSameDay && (
+                    <p className="mb-3 rounded-[var(--radius-sm)] bg-[color-mix(in_oklab,var(--color-gold)_12%,transparent)] px-3 py-2 text-sm text-[var(--color-ink)]">
+                      Same-day appointments are by request. Pick a time and we&rsquo;ll confirm with you shortly. Nothing is charged until we do.
+                    </p>
+                  )}
                   <p className={label}>Available times</p>
                   {loadingSlots ? <p className="text-sm text-[var(--color-stone)]">Finding available times…</p>
                     : slots.length === 0 ? (
@@ -413,7 +425,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
           <button type="button" onClick={() => goBack()} className="text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Back</button>
           {stage === 'variant' && <Button onClick={() => variant && setStage('time')} variant={variant ? 'gold' : 'outline'} disabled={!variant}>Continue <ArrowIcon /></Button>}
           {stage === 'time' && <Button onClick={() => { if (!slot) return; setStage('upsell'); try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'begin_checkout', { currency: 'GBP', value: orderTotal / 100, items: [{ item_id: variantId, item_name: service?.name, item_category: service?.category }] }); } catch { /* analytics best-effort */ } }} variant={slot ? 'gold' : 'outline'} disabled={!slot}>Continue <ArrowIcon /></Button>}
-          {stage === 'upsell' && <Button onClick={() => { if (!aftercareAck) { setError('Please confirm you’ve read and agree to the aftercare instructions.'); return; } if (!ageDeclare) { setError('Please confirm you are 18 or over.'); return; } if (!submitting) submitBooking(); }} variant={aftercareAck && ageDeclare ? 'gold' : 'outline'}>{submitting ? 'Securing…' : 'Continue to confirm'} <ArrowIcon /></Button>}
+          {stage === 'upsell' && <Button onClick={() => { if (!aftercareAck) { setError('Please confirm you’ve read and agree to the aftercare instructions.'); return; } if (!ageDeclare) { setError('Please confirm you are 18 or over.'); return; } if (!submitting) submitBooking(); }} variant={aftercareAck && ageDeclare ? 'gold' : 'outline'}>{submitting ? 'Securing…' : isSameDay ? 'Request appointment' : 'Continue to confirm'} <ArrowIcon /></Button>}
           {stage === 'service' && <span />}
         </div>
       )}
@@ -506,6 +518,20 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
         <Button onClick={() => !busy && (mode === 'signup' ? signup() : login())} variant="gold">{busy ? 'Please wait…' : mode === 'signup' ? 'Create account & continue' : 'Sign in'} <ArrowIcon /></Button>
       </div>
     </div>
+  );
+}
+
+function RequestReceived({ firstName, treatment, slot }: { firstName: string; treatment?: string; slot: string }) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-10 text-center md:p-16">
+      <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-full bg-[var(--color-gold)] text-white">
+        <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      </div>
+      <h2 className="text-title">Request received{firstName ? `, ${firstName}` : ''}.</h2>
+      <p className="mx-auto mt-4 max-w-md text-[var(--color-stone)]">
+        We&rsquo;ve asked the team to confirm {treatment || 'your appointment'}{slot ? ` for ${new Date(slot).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}` : ''}. We&rsquo;ll be in touch shortly. Nothing is charged until we confirm. You can see this request in <a href="/account" className="link-underline font-medium text-[var(--color-ink)]">your account</a>.
+      </p>
+    </motion.div>
   );
 }
 

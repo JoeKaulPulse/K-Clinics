@@ -120,6 +120,7 @@ enum Gender {
 }
 
 enum BookingStatus {
+  REQUESTED // same-day request awaiting staff approval (no card, slot not held)
   PENDING // created, awaiting card setup confirmation
   CONFIRMED // card on file, slot held
   COMPLETED // service delivered (may or may not be charged)

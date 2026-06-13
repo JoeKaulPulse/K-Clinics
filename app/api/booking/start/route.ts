@@ -146,6 +146,12 @@ export async function POST(req: Request) {
   const { bookingAttribution } = await import('@/lib/marketing');
   const attribution = await bookingAttribution();
 
+  // Same-day appointments are by request (owner decision): the client picks a
+  // genuinely-free time, but staff approve before anything is held or charged.
+  // "Today" is judged in clinic-local (London) time.
+  const londonDay = (x: Date) => x.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+  const sameDayRequest = londonDay(start) === londonDay(new Date());
+
   const booking = await db.booking.create({
     data: {
       clientId: client.id,
@@ -153,7 +159,7 @@ export async function POST(req: Request) {
       startAt: start, endAt: end, durationMin: totalDuration,
       bufferMin: bookingFor(treatmentSlug).bufferMin ?? 0,
       pricePence: totalPrice,
-      status: 'PENDING',
+      status: sameDayRequest ? 'REQUESTED' : 'PENDING',
       notes: d.notes || null,
       refreshments,
       allergyNote: d.allergyNote?.trim() ? encClinical(d.allergyNote.trim()) : null,
@@ -165,6 +171,23 @@ export async function POST(req: Request) {
       items: { create: items },
     },
   });
+
+  // Same-day request: don't take a card, burn a discount, or hold the slot yet —
+  // a member of staff approves first. Notify the team and return a "requested" state.
+  if (sameDayRequest) {
+    const { logAudit } = await import('@/lib/audit');
+    await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Same-day appointment requested: ${title} on ${start.toLocaleString('en-GB')}`, meta: { totalPence: totalPrice, sameDayRequest: true } });
+    try {
+      const { notifyStaffByPermission } = await import('@/lib/notifications');
+      await notifyStaffByPermission('bookings.manage', {
+        kind: 'status',
+        title: 'Same-day appointment request',
+        body: `${client.firstName || 'A client'} requested ${title} today at ${start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}. Approve or decline.`,
+        href: `/admin/bookings/${booking.id}`,
+      });
+    } catch { /* best-effort */ }
+    return NextResponse.json({ ok: true, requested: true, bookingId: booking.id, manageToken: booking.manageToken });
+  }
 
   // Burn the welcome discount if it was the best offer used.
   if (usedWelcome && welcomeClaim) {
