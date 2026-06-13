@@ -29,7 +29,7 @@ export async function resolveCampaignId(attrib: Attribution | null): Promise<str
  *  resolving the matching campaign. Returns {} when there's nothing to attribute. */
 export async function bookingAttribution(): Promise<{
   attribSource?: string | null; attribMedium?: string | null; attribCampaign?: string | null;
-  attribLanding?: string | null; marketingCampaignId?: string | null;
+  attribLanding?: string | null; gclid?: string | null; marketingCampaignId?: string | null;
 }> {
   try {
     const { cookies } = await import('next/headers');
@@ -42,6 +42,7 @@ export async function bookingAttribution(): Promise<{
       attribMedium: attrib.medium ?? null,
       attribCampaign: attrib.campaign ?? null,
       attribLanding: attrib.landing ?? null,
+      gclid: attrib.gclid ?? null,
       marketingCampaignId: await resolveCampaignId(attrib),
     };
   } catch {

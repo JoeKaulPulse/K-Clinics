@@ -609,6 +609,7 @@ model Booking {
   attribMedium        String?
   attribCampaign      String?
   attribLanding       String?
+  gclid               String? // Google click id — for offline conversion upload to Google Ads
   marketingCampaign   MarketingCampaign? @relation(fields: [marketingCampaignId], references: [id], onDelete: SetNull)
   marketingCampaignId String?
 
