@@ -47,10 +47,18 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   const SortHead = ({ col, label, className = '' }: { col: string; label: string; className?: string }) => {
     const active = sort === col;
     const nextDir = active && dir === 'asc' ? 'desc' : 'asc';
+    // This is a div-based grid, not a semantic <table>, so aria-sort would be invalid
+    // without full grid roles. An aria-label on the link conveys the sort action +
+    // current state to screen readers; the arrow glyph is decorative (aria-hidden).
+    const stateLabel = active ? `, currently sorted ${dir === 'asc' ? 'ascending' : 'descending'}` : '';
     return (
-      <Link href={`/admin/clients${qs({ sort: col, dir: nextDir })}`} className={`group inline-flex items-center gap-1 ${className}`}>
+      <Link
+        href={`/admin/clients${qs({ sort: col, dir: nextDir })}`}
+        aria-label={`Sort by ${label}${stateLabel}`}
+        className={`group inline-flex items-center gap-1 ${className}`}
+      >
         {label}
-        <span className={active ? 'text-[var(--color-gold)]' : 'opacity-0 group-hover:opacity-40'}>{active && dir === 'asc' ? '↑' : '↓'}</span>
+        <span aria-hidden className={active ? 'text-[var(--color-gold)]' : 'opacity-0 group-hover:opacity-40'}>{active && dir === 'asc' ? '↑' : '↓'}</span>
       </Link>
     );
   };
@@ -102,7 +110,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
           const review = c.tags?.includes('needs-name-review');
           const test = c.tags?.includes('likely-test');
           return (
-            <Link key={c.id} href={`/admin/clients/${c.id}`} className={`${rowCls} hover:bg-[var(--color-bone)]`}>
+            <Link key={c.id} href={`/admin/clients/${c.id}`} className={`${rowCls} transition-colors duration-150 ease-out hover:bg-[var(--color-bone)] active:bg-[var(--color-sand)]`}>
               <p className="font-medium">{c.firstName} {c.lastName ?? ''}</p>
               <p className="hidden truncate text-sm text-[var(--color-stone)] sm:block">{c.email}</p>
               <p className="hidden text-sm text-[var(--color-stone)] sm:block">{c.phone ?? '—'}</p>
