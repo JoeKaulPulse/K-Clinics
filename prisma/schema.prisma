@@ -2539,13 +2539,15 @@ model HeatmapEvent {
 // Reusable, rule-based client segments for campaign + email targeting. Rules are
 // evaluated against Client fields (gender, source, tags, opt-in, recency).
 model Segment {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  rules       Json // { gender?, source?, tag?, lapsedDays?, optInOnly?, visited? }
-  createdBy   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String    @id @default(cuid())
+  name           String
+  description    String?
+  rules          Json // { gender?, source?, tag?, lapsedDays?, optInOnly?, visited? }
+  metaAudienceId String? // Meta Custom Audience id once synced (marketing API #3)
+  metaSyncedAt   DateTime? // last successful push to Meta
+  createdBy      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 // ── Consent forms (DocuSign-grade e-signature) ───────────────────────────────

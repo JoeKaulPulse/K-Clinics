@@ -59,6 +59,17 @@ export async function POST(req: Request) {
       revalidatePath('/admin/marketing/audiences');
       return ok();
     }
+    case 'syncMeta': {
+      if (!canManage) return bad('Not permitted.');
+      if (!body.id) return bad();
+      const { syncSegmentToMeta } = await import('@/lib/meta-audiences');
+      const r = await syncSegmentToMeta(String(body.id));
+      if (!r.ok) return NextResponse.json({ ok: false, error: r.error }, { status: 400 });
+      const { logAudit } = await import('@/lib/audit');
+      await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: `Synced segment to a Meta Custom Audience (${r.count} contacts uploaded)` });
+      revalidatePath('/admin/marketing/audiences');
+      return ok({ audienceId: r.audienceId, count: r.count });
+    }
     default:
       return bad('Unknown operation');
   }
