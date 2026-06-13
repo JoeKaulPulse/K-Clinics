@@ -166,7 +166,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
   ];
   const stepIndex = Math.max(0, steps.findIndex((s) => s.key === stage));
 
-  if (stage === 'done') return <Done firstName={firstName} treatment={service?.name} slot={slot} orderTotal={orderTotal} variantId={variantId} category={service?.category} />;
+  if (stage === 'done') return <Done firstName={firstName} treatment={service?.name} slot={slot} orderTotal={orderTotal} variantId={variantId} category={service?.category} bookingId={bookingId} />;
 
   return (
     <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6 md:p-10">
@@ -509,7 +509,7 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
   );
 }
 
-function Done({ firstName, treatment, slot, orderTotal, variantId, category }: { firstName: string; treatment?: string; slot: string; orderTotal: number; variantId: string; category?: string }) {
+function Done({ firstName, treatment, slot, orderTotal, variantId, category, bookingId }: { firstName: string; treatment?: string; slot: string; orderTotal: number; variantId: string; category?: string; bookingId?: string }) {
   useEffect(() => {
     try {
       (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'purchase', {
@@ -518,7 +518,8 @@ function Done({ firstName, treatment, slot, orderTotal, variantId, category }: {
       });
     } catch { /* analytics best-effort */ }
     try {
-      (window as Window & { fbq?: (...a: unknown[]) => void }).fbq?.('track', 'Schedule', { currency: 'GBP', value: orderTotal / 100 });
+      // eventID = booking id so this de-duplicates against the server-side CAPI Schedule.
+      (window as Window & { fbq?: (...a: unknown[]) => void }).fbq?.('track', 'Schedule', { currency: 'GBP', value: orderTotal / 100 }, bookingId ? { eventID: bookingId } : undefined);
     } catch { /* analytics best-effort */ }
   }, []);
   return (

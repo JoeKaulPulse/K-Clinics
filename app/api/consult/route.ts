@@ -91,6 +91,18 @@ export async function POST(req: Request) {
       },
     });
 
+    // Server-side Lead conversion (GA4 + Meta CAPI) — ad-blocker-proof, deduped
+    // with the browser pixel via the shared eventId. Email only on marketing opt-in.
+    try {
+      const { sendLead } = await import('@/lib/conversions');
+      await sendLead({
+        eventId: data.eventId || globalThis.crypto.randomUUID(),
+        clientId: client.id,
+        email: data.marketingOptIn ? data.email : null,
+        sourceUrl: req.headers.get('referer'),
+      });
+    } catch { /* best-effort */ }
+
     // Fire emails (don't block the response on provider latency-failures).
     const notifyTo = process.env.CLINIC_NOTIFY_EMAIL || site.email;
     const [reply, notify] = await Promise.all([
