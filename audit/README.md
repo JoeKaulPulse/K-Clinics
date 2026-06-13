@@ -17,3 +17,10 @@ audit pass. Findings are rated **Critical / High / Medium / Low / Info**.
 | 10 | Build / Deps / Perf / Serverless | `10-build-deps-perf.md` | dep vulns, prebuild fragility, cold-start, caching, security headers |
 
 See `SUMMARY.md` for the consolidated cross-area rollup.
+
+## Standing checks (every audit)
+
+- **Brand compliance** — per `docs/BRAND_GUIDELINES.md`: the logo is the supplied
+  mark files (never typed text), no strap-line under the logo, palette and AA contrast
+  respected, Fraunces for display / Geist for body. Applies to the app and to any
+  exported document (PDFs, decks, reports).
