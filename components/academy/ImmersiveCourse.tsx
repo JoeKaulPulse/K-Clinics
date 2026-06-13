@@ -2,9 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Markdown } from '@/components/academy/Markdown';
-import { Glyph } from '@/components/ui/Glyph';
-import { KMascot, KCelebration, type CelebrationVariant } from '@/components/academy/KMascot';
+import { KMascot, KCelebration, KSpeech, type CelebrationVariant } from '@/components/academy/KMascot';
+import { buildLessonFlow, coerceSteps, type FlowStep, type SayStep, type TeachStep, type AskStep } from '@/components/academy/lessonFlow';
 import type { CourseLearning, LessonView, QuizView } from '@/lib/lms';
 
 type AwardedBadge = { key: string; name: string; icon: string };
@@ -21,10 +20,6 @@ type Step =
   | { kind: 'lesson'; mi: number; li: number }
   | { kind: 'quiz'; mi: number }
   | { kind: 'done' };
-
-/** Default minimum dwell time (seconds) on a lesson before it can be completed —
- *  a gentle anti-skip gate when an author hasn't set a specific minSeconds. */
-const DEFAULT_MIN = 8;
 
 export function ImmersiveCourse({ learning, slug, mode = 'learn', onExit }: { learning: CourseLearning; slug?: string; mode?: 'learn' | 'preview'; onExit?: () => void }) {
   const steps = useMemo<Step[]>(() => {
@@ -92,6 +87,15 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', onExit }: { le
     enqueue(...badgeCelebrations(result.newBadges));
     advance();
   }
+  // One interspersed multiple-choice check per lesson, drawn from the module's
+  // question bank (server-graded in learn mode; answer key present in preview).
+  function formativeFor(st: Step): AskStep | null {
+    if (st.kind !== 'lesson') return null;
+    const m = learning.modules[st.mi];
+    if (!m.quiz || m.quiz.questions.length === 0) return null;
+    const q = m.quiz.questions[st.li % m.quiz.questions.length];
+    return { kind: 'ask', prompt: q.prompt, qtype: q.type as AskStep['qtype'], options: q.options, tip: q.tip ?? undefined, quizId: m.quiz.id, questionId: q.id, ...(q.correct !== undefined ? { correct: q.correct } : {}) };
+  }
 
   const moduleLabel = step.kind === 'lesson' || step.kind === 'quiz' ? learning.modules[step.mi]?.title : null;
   const allComplete = learning.modules.length > 0 && learning.modules.every((m) => m.lessons.every((l) => doneLessons.has(l.id)) && (!m.quiz || quizPassed.has(m.quiz.id)));
@@ -133,6 +137,7 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', onExit }: { le
                 lesson={learning.modules[step.mi].lessons[step.li]}
                 reviewing={idx < maxReached && isStepComplete(step)}
                 preview={mode === 'preview'}
+                formative={formativeFor(step)}
                 onContinue={(secs) => finishLesson(learning.modules[step.mi].lessons[step.li], secs)}
                 onNext={advance}
               />
@@ -187,88 +192,142 @@ function IntroStep({ learning, onBegin, canBegin }: { learning: CourseLearning; 
   );
 }
 
-function LessonStep({ lesson, reviewing, preview, onContinue, onNext }: { lesson: LessonView; reviewing: boolean; preview: boolean; onContinue: (seconds: number) => void; onNext: () => void }) {
-  const required = lesson.minSeconds != null ? lesson.minSeconds : DEFAULT_MIN;
-  const [secs, setSecs] = useState(0);
-  const [busy, setBusy] = useState(false);
+function LessonStep({ lesson, reviewing, preview, formative, onContinue, onNext }: { lesson: LessonView; reviewing: boolean; preview: boolean; formative?: AskStep | null; onContinue: (seconds: number) => void; onNext: () => void }) {
+  const flow = useMemo<FlowStep[]>(() => {
+    const authored = !!coerceSteps(lesson.steps);
+    const base = buildLessonFlow({ title: lesson.title, body: lesson.body, objectives: lesson.objectives, studyTips: lesson.studyTips, homework: lesson.homework, steps: lesson.steps });
+    // Auto-chunked lessons get one interspersed check, just before the closing line.
+    const withAsk = !authored && formative && base.length > 1 ? [...base.slice(0, -1), formative as FlowStep, base[base.length - 1]] : base;
+    const vid = lesson.videoUrl ? ytId(lesson.videoUrl) : null;
+    return vid ? [{ kind: 'teach', title: 'Watch first', text: '', art: `video:${vid}` }, ...withAsk] : withAsk;
+  }, [lesson, formative]);
+
+  const [mi, setMi] = useState(0);
   const startedAt = useRef(Date.now());
+  const cur = flow[Math.min(mi, flow.length - 1)];
+  const last = mi >= flow.length - 1;
 
-  useEffect(() => {
-    if (reviewing) return; // no timer when re-reading completed content
-    const t = setInterval(() => setSecs(Math.round((Date.now() - startedAt.current) / 1000)), 1000);
-    return () => clearInterval(t);
-  }, [reviewing]);
-
-  const remaining = Math.max(0, required - secs);
-  const gated = !reviewing && !preview && remaining > 0;
-  const id = lesson.videoUrl ? ytId(lesson.videoUrl) : null;
+  function advanceMicro() {
+    if (last) { if (reviewing) onNext(); else onContinue(Math.round((Date.now() - startedAt.current) / 1000)); return; }
+    setMi((i) => i + 1);
+  }
+  const pct = flow.length > 1 ? Math.round((mi / (flow.length - 1)) * 100) : 100;
 
   return (
-    <article>
-      <p className="text-xs uppercase tracking-[0.16em] text-white/45">{lesson.durationMin ? `${lesson.durationMin} min lesson` : 'Lesson'}</p>
-      <h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl sm:text-3xl">{lesson.title}</h2>
+    <div>
+      <div className="mb-4 flex items-center gap-3">
+        <span className="text-xs uppercase tracking-[0.16em] text-white/40">{lesson.title}</span>
+        <span className="ml-auto text-xs tabular-nums text-white/30">{Math.min(mi + 1, flow.length)} / {flow.length}</span>
+      </div>
+      <div className="mb-8 h-1 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-[var(--color-gold)]/70 transition-[width] duration-300" style={{ width: `${pct}%` }} /></div>
 
-      {lesson.objectives.length > 0 && (
-        <div className="mt-5 rounded-[var(--radius-lg)] border border-[var(--color-gold)]/25 bg-[var(--color-gold)]/8 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-gold)]">In this lesson you will</p>
-          <ul className="mt-2 space-y-1.5">{lesson.objectives.map((o, i) => <li key={i} className="flex gap-2 text-sm text-white/85"><span className="text-[var(--color-gold)]">›</span>{o}</li>)}</ul>
+      <AnimatePresence mode="wait">
+        <motion.div key={mi} initial={{ opacity: 0, x: 22 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: 0.26, ease: 'easeOut' }}>
+          {cur.kind === 'say' && <SayMicro step={cur} onContinue={advanceMicro} instant={reviewing || preview} />}
+          {cur.kind === 'teach' && <TeachMicro step={cur} onContinue={advanceMicro} gated={!reviewing && !preview} />}
+          {cur.kind === 'ask' && <AskMicro step={cur} onContinue={advanceMicro} />}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function SayMicro({ step, onContinue, instant }: { step: SayStep; onContinue: () => void; instant: boolean }) {
+  const [ready, setReady] = useState(instant);
+  return (
+    <div className="flex flex-col items-center py-4 text-center">
+      <KSpeech text={step.text} mood={step.mood} onTyped={() => setReady(true)} />
+      <button onClick={onContinue} disabled={!ready} className="mt-9 rounded-full bg-[var(--color-gold)] px-8 py-3 text-sm font-semibold text-[var(--color-ink)] transition-all enabled:hover:scale-[1.02] disabled:opacity-0">Continue →</button>
+    </div>
+  );
+}
+
+function TeachMicro({ step, onContinue, gated }: { step: TeachStep; onContinue: () => void; gated: boolean }) {
+  const [waited, setWaited] = useState(!gated);
+  useEffect(() => {
+    if (!gated) { setWaited(true); return; }
+    setWaited(false);
+    const t = setTimeout(() => setWaited(true), 1600);
+    return () => clearTimeout(t);
+  }, [gated, step]);
+  const video = step.art?.startsWith('video:') ? step.art.slice(6) : null;
+  return (
+    <div className="py-2">
+      {step.title && <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-gold)]">{step.title}</p>}
+      {video ? (
+        <div className="aspect-video w-full overflow-hidden rounded-[var(--radius-lg)] border border-white/12"><iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${video}`} title="Lesson video" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
+      ) : (
+        <p className="whitespace-pre-line text-lg leading-relaxed text-white/90">{step.text}</p>
+      )}
+      <div className="mt-8 flex justify-center">
+        <button onClick={onContinue} disabled={!waited} className="rounded-full bg-[var(--color-gold)] px-8 py-3 text-sm font-semibold text-[var(--color-ink)] transition-transform enabled:hover:scale-[1.02] disabled:opacity-50">Continue →</button>
+      </div>
+    </div>
+  );
+}
+
+function AskMicro({ step, onContinue }: { step: AskStep; onContinue: () => void }) {
+  const multi = step.qtype === 'MULTI';
+  const [selected, setSelected] = useState<number[]>([]);
+  const [checked, setChecked] = useState(false);
+  const [correct, setCorrect] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [showTip, setShowTip] = useState(false);
+  const [correctIdx, setCorrectIdx] = useState<number[]>(step.correct ?? []);
+  const [explanation, setExplanation] = useState<string | null>(step.explanation ?? null);
+  const toggle = (oi: number) => { if (checked) return; setSelected((c) => (multi ? (c.includes(oi) ? c.filter((x) => x !== oi) : [...c, oi]) : [oi])); };
+
+  async function check() {
+    if (step.correct) {
+      const a = [...step.correct].sort(), b = [...selected].sort();
+      setCorrect(a.length === b.length && a.every((v, i) => v === b[i]));
+      setChecked(true); return;
+    }
+    if (step.quizId && step.questionId) {
+      setBusy(true);
+      const r = await fetch('/api/academy/quiz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'check', quizId: step.quizId, questionId: step.questionId, answer: selected }) }).then((x) => x.json()).catch(() => ({}));
+      setBusy(false);
+      setCorrect(!!r.correct); setCorrectIdx(r.correctIndices ?? []); setExplanation(r.explanation ?? null);
+      setChecked(true); return;
+    }
+    setCorrect(false); setChecked(true);
+  }
+
+  return (
+    <div className="py-2">
+      <p className="text-xs uppercase tracking-[0.16em] text-white/40">Quick check</p>
+      <h3 className="mt-2 font-[family-name:var(--font-display)] text-2xl leading-snug">{step.prompt}{multi && <span className="ml-2 align-middle text-xs font-normal text-white/45">(select all)</span>}</h3>
+      <div className="mt-5 space-y-2.5">
+        {step.options.map((opt, oi) => {
+          const chosen = selected.includes(oi);
+          const showC = checked && correctIdx.includes(oi);
+          const cls = checked ? (showC ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/15' : chosen ? 'border-red-400/60 bg-red-400/10' : 'border-white/10 opacity-60') : chosen ? 'border-white bg-white/10' : 'border-white/15 hover:border-white/40';
+          return (
+            <button key={oi} onClick={() => toggle(oi)} disabled={checked} className={`flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left text-sm transition-colors ${cls}`}>
+              <span className={`grid h-5 w-5 shrink-0 place-items-center ${multi ? 'rounded-[4px]' : 'rounded-full'} border text-[0.7rem] ${chosen ? 'border-white bg-white text-[var(--color-ink)]' : 'border-white/40'}`}>{chosen ? '✓' : ''}</span>
+              <span className="flex-1">{opt}</span>
+              {checked && showC && <span className="text-xs text-[var(--color-gold)]">✓</span>}
+            </button>
+          );
+        })}
+      </div>
+      {step.tip && !checked && (
+        <div className="mt-3">{showTip ? <p className="rounded-[var(--radius-md)] border border-[var(--color-gold)]/25 bg-[var(--color-gold)]/8 px-4 py-2.5 text-sm text-white/85">💡 {step.tip}</p> : <button onClick={() => setShowTip(true)} className="text-sm text-[var(--color-gold)] hover:underline">Need a hint?</button>}</div>
+      )}
+      {checked && (
+        <div className={`mt-5 rounded-[var(--radius-lg)] border p-4 ${correct ? 'border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10' : 'border-red-400/40 bg-red-400/10'}`}>
+          <p className="font-semibold">{correct ? '✓ Correct' : '✗ Not quite'}</p>
+          {explanation && <p className="mt-1 text-sm text-white/80">{explanation}</p>}
         </div>
       )}
-
-      {lesson.videoUrl && id && (
-        <div className="mt-6 aspect-video w-full overflow-hidden rounded-[var(--radius-lg)] border border-white/12">
-          <iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${id}`} title={lesson.title} loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-        </div>
-      )}
-      {lesson.imageUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={lesson.imageUrl} alt={lesson.title} className="mt-6 w-full rounded-[var(--radius-lg)] border border-white/12" />
-      )}
-
-      <div className="mt-5"><Markdown text={lesson.body} tone="dark" /></div>
-
-      {lesson.keyPoints.length > 0 && (
-        <div className="mt-6 rounded-[var(--radius-lg)] border border-white/12 bg-white/5 p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-white/50">Key points</p>
-          <ul className="mt-3 space-y-2">{lesson.keyPoints.map((p, i) => <li key={i} className="flex gap-2.5 text-sm text-white/85"><span className="mt-0.5 text-[var(--color-gold)]">✦</span>{p}</li>)}</ul>
-        </div>
-      )}
-
-      {lesson.studyTips.length > 0 && (
-        <div className="mt-5 rounded-[var(--radius-lg)] border border-[var(--color-gold)]/30 bg-[var(--color-gold)]/10 p-5">
-          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-gold)]"><Glyph name="sparkle" className="h-3.5 w-3.5" /> Exam &amp; study tips</p>
-          <ul className="mt-3 space-y-2">{lesson.studyTips.map((p, i) => <li key={i} className="flex gap-2.5 text-sm text-white/90"><span className="mt-0.5">💡</span>{p}</li>)}</ul>
-        </div>
-      )}
-
-      {lesson.homework && (
-        <div className="mt-5 rounded-[var(--radius-lg)] border border-white/12 bg-white/5 p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-white/50">Homework</p>
-          <div className="mt-2 text-sm"><Markdown text={lesson.homework} tone="dark" /></div>
-        </div>
-      )}
-
-      {(lesson.citations.length > 0 || lesson.examRefs.length > 0) && (
-        <div className="mt-5 space-y-2 text-xs text-white/45">
-          {lesson.examRefs.length > 0 && <p>Maps to: {lesson.examRefs.join(' · ')}</p>}
-          {lesson.citations.length > 0 && <p>Sources: {lesson.citations.map((c, i) => <span key={i}>{i > 0 && ' · '}<a href={c.url} target="_blank" rel="noopener noreferrer" className="underline decoration-white/30 hover:text-white/80">{c.label}</a></span>)}</p>}
-        </div>
-      )}
-
-      <div className="mt-9 flex items-center justify-center border-t border-white/10 pt-7">
-        {reviewing ? (
-          <button onClick={onNext} className="rounded-full bg-white/15 px-8 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/25">Next →</button>
+      <div className="mt-7 flex justify-center">
+        {checked ? (
+          <button onClick={onContinue} className="rounded-full bg-[var(--color-gold)] px-8 py-3 text-sm font-semibold text-[var(--color-ink)] hover:scale-[1.02]">Continue →</button>
         ) : (
-          <button
-            onClick={() => { if (gated) return; setBusy(true); onContinue(Math.round((Date.now() - startedAt.current) / 1000)); }}
-            disabled={gated || busy}
-            className="rounded-full bg-[var(--color-gold)] px-8 py-3 text-sm font-semibold text-[var(--color-ink)] transition-transform enabled:hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {gated ? `Keep reading… ${remaining}s` : busy ? 'Saving…' : 'Mark complete & continue →'}
-          </button>
+          <button onClick={check} disabled={!selected.length || busy} className="rounded-full bg-[var(--color-gold)] px-8 py-3 text-sm font-semibold text-[var(--color-ink)] enabled:hover:scale-[1.02] disabled:opacity-50">{busy ? 'Checking…' : 'Check'}</button>
         )}
       </div>
-    </article>
+    </div>
   );
 }
 
