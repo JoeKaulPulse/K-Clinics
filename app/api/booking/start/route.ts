@@ -137,7 +137,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Please confirm you are 18 or over to book a treatment.' }, { status: 400 });
   }
   const { isAdultOn } = await import('@/lib/age');
-  const dobRow = await db.client.findUnique({ where: { id: client.id }, select: { dob: true } });
+  const dobRow = await db.client.findUnique({ where: { id: client.id }, select: { dob: true, marketingOptIn: true } });
   if (!dobRow?.dob || !isAdultOn(dobRow.dob, start)) {
     return NextResponse.json({ ok: false, error: 'Clinic treatments are available to clients aged 18 or over. Please check the date of birth on your profile.' }, { status: 403 });
   }
@@ -178,6 +178,14 @@ export async function POST(req: Request) {
 
   const { logAudit } = await import('@/lib/audit');
   await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Booking created: ${title} on ${start.toLocaleString('en-GB')}`, meta: { totalPence: totalPrice, items: items.length } });
+
+  // Server-side Schedule conversion (GA4 begin_checkout + Meta CAPI Schedule),
+  // deduped with the browser pixel via the booking id. The Purchase event fires
+  // later when the card is charged. Email only on marketing opt-in.
+  try {
+    const { sendSchedule } = await import('@/lib/conversions');
+    await sendSchedule({ bookingId: booking.id, valuePence: totalPrice, clientId: client.id, email: dobRow?.marketingOptIn ? client.email : null, campaign: booking.attribCampaign });
+  } catch { /* best-effort */ }
 
   // BLD-133: if this booking came from a waitlist claim link, retire the offer.
   if (d.waitlistToken) { const { claimWaitlist } = await import('@/lib/waitlist'); await claimWaitlist(d.waitlistToken, { clientId: client.id }); }
