@@ -15,6 +15,7 @@ export const dynamic = 'force-dynamic';
 
 const FILTERS = [
   { k: 'upcoming', label: 'Upcoming' },
+  { k: 'REQUESTED', label: 'Requests' },
   { k: 'past', label: 'Past' },
   { k: 'CONFIRMED', label: 'Confirmed' },
   { k: 'COMPLETED', label: 'Completed' },

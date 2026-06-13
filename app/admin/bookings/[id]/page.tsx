@@ -16,6 +16,7 @@ import { BeforePhotoCapture } from '@/components/admin/BeforePhotoCapture';
 import { ReadinessPanel } from '@/components/admin/ReadinessPanel';
 import { AddTreatment } from '@/components/admin/AddTreatment';
 import { ScheduleFollowUp } from '@/components/admin/ScheduleFollowUp';
+import { SameDayRequestActions } from '@/components/admin/SameDayRequestActions';
 import { sessionCan } from '@/lib/auth';
 import { site } from '@/lib/site';
 
@@ -192,6 +193,12 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
           {b.lateCancel && <p className="text-xs text-[var(--color-stone)]">Cancelled within 24h{b.feeWaived ? ' · fee waived' : ''}</p>}
         </div>
       </div>
+
+      {b.status === 'REQUESTED' && canManageBk && (
+        <div className="mt-6">
+          <SameDayRequestActions bookingId={b.id} when={new Date(b.startAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} />
+        </div>
+      )}
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.1fr_1fr] [&>section]:min-w-0">
         <section>
