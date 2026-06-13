@@ -1,10 +1,23 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { KMascot, KCelebration, KSpeech, type CelebrationVariant } from '@/components/academy/KMascot';
 import { buildLessonFlow, coerceSteps, type FlowStep, type SayStep, type TeachStep, type AskStep } from '@/components/academy/lessonFlow';
+import { Illustration, matchIllustration, type IlloKey, type IlloLevel } from '@/components/academy/Illustrations';
 import type { CourseLearning, LessonView, QuizView } from '@/lib/lms';
+
+// Session-scoped illustration exposure: the more a learner sees a concept, the
+// vaguer its illustration (and the less the hint is offered) — guiding early,
+// fading later. Provided by ImmersiveCourse, read by the teach/ask cards.
+const ArtCtx = createContext<{ levelFor: (k: IlloKey) => IlloLevel; seeArt: (k: IlloKey) => void }>({ levelFor: () => 'full', seeArt: () => {} });
+
+const KNOWN_ART: IlloKey[] = ['skin-layers', 'hair-cycle', 'light-spectrum', 'fitzpatrick', 'collagen', 'safety', 'concept'];
+function resolveArt(art: string | undefined, text: string): IlloKey | null {
+  if (art && KNOWN_ART.includes(art as IlloKey)) return art as IlloKey;
+  if (art?.startsWith('video:')) return null;
+  return matchIllustration(text);
+}
 
 type AwardedBadge = { key: string; name: string; icon: string };
 type Celebration = { variant: Exclude<CelebrationVariant, 'idle'>; title: string; subtitle?: string; badgeIcon?: string };
@@ -38,6 +51,11 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', onExit }: { le
   const idRef = useRef(0);
   const enqueue = (...cs: Celebration[]) => { if (mode === 'preview') return; setCelebs((q) => [...q, ...cs.map((c) => ({ ...c, id: ++idRef.current }))]); };
   const completedCelebrated = useRef(false);
+  const lessonsThisSession = useRef(0);
+
+  const [artSeen, setArtSeen] = useState<Record<string, number>>({});
+  const levelFor = (k: IlloKey): IlloLevel => { if (mode === 'preview') return 'full'; const n = artSeen[k] || 0; return n === 0 ? 'full' : n < 3 ? 'reduced' : 'minimal'; };
+  const seeArt = (k: IlloKey) => { if (mode === 'preview') return; setArtSeen((s) => ({ ...s, [k]: (s[k] || 0) + 1 })); };
 
   const isStepComplete = (st: Step): boolean => {
     if (st.kind === 'lesson') return doneLessons.has(learning.modules[st.mi].lessons[st.li].id);
@@ -74,7 +92,9 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', onExit }: { le
 
   async function finishLesson(lesson: LessonView, seconds: number) {
     setDoneLessons((s) => new Set(s).add(lesson.id));
-    const cs: Celebration[] = [{ variant: 'cheer', title: 'Lesson complete' }];
+    lessonsThisSession.current += 1;
+    const pacing = lessonsThisSession.current % 3 === 0 ? 'Great pace — a short break now helps it stick.' : undefined;
+    const cs: Celebration[] = [{ variant: 'cheer', title: 'Lesson complete', subtitle: pacing }];
     if (mode === 'learn') {
       const r = await fetch('/api/academy/lesson', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lessonId: lesson.id, secondsSpent: seconds }) }).then((x) => x.json()).catch(() => null);
       cs.push(...badgeCelebrations(r?.newBadges));
@@ -110,6 +130,7 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', onExit }: { le
   }, [step, allComplete]);
 
   return (
+    <ArtCtx.Provider value={{ levelFor, seeArt }}>
     <div className="fixed inset-0 z-[200] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]">
       {/* Top bar: exit · progress · counter */}
       <header className="flex items-center gap-4 border-b border-white/10 px-4 py-3 sm:px-6">
@@ -165,6 +186,7 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', onExit }: { le
         {celebs[0] && <KCelebration key={celebs[0].id} variant={celebs[0].variant} title={celebs[0].title} subtitle={celebs[0].subtitle} badgeIcon={celebs[0].badgeIcon} onDone={() => setCelebs((q) => q.slice(1))} />}
       </AnimatePresence>
     </div>
+    </ArtCtx.Provider>
   );
 }
 
@@ -243,6 +265,7 @@ function SayMicro({ step, onContinue, instant }: { step: SayStep; onContinue: ()
 }
 
 function TeachMicro({ step, onContinue, gated }: { step: TeachStep; onContinue: () => void; gated: boolean }) {
+  const { levelFor, seeArt } = useContext(ArtCtx);
   const [waited, setWaited] = useState(!gated);
   useEffect(() => {
     if (!gated) { setWaited(true); return; }
@@ -251,13 +274,20 @@ function TeachMicro({ step, onContinue, gated }: { step: TeachStep; onContinue: 
     return () => clearTimeout(t);
   }, [gated, step]);
   const video = step.art?.startsWith('video:') ? step.art.slice(6) : null;
+  const art = video ? null : resolveArt(step.art, `${step.title ?? ''} ${step.text}`);
+  const [lvl] = useState<IlloLevel>(() => (art ? levelFor(art) : 'full'));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (art) seeArt(art); }, []);
   return (
     <div className="py-2">
       {step.title && <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-gold)]">{step.title}</p>}
       {video ? (
         <div className="aspect-video w-full overflow-hidden rounded-[var(--radius-lg)] border border-white/12"><iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${video}`} title="Lesson video" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
       ) : (
-        <p className="whitespace-pre-line text-lg leading-relaxed text-white/90">{step.text}</p>
+        <>
+          {art && <div className="mb-5"><Illustration name={art} level={lvl} /></div>}
+          <p className="whitespace-pre-line text-lg leading-relaxed text-white/90">{step.text}</p>
+        </>
       )}
       <div className="mt-8 flex justify-center">
         <button onClick={onContinue} disabled={!waited} className="rounded-full bg-[var(--color-gold)] px-8 py-3 text-sm font-semibold text-[var(--color-ink)] transition-transform enabled:hover:scale-[1.02] disabled:opacity-50">Continue →</button>
@@ -267,6 +297,7 @@ function TeachMicro({ step, onContinue, gated }: { step: TeachStep; onContinue: 
 }
 
 function AskMicro({ step, onContinue }: { step: AskStep; onContinue: () => void }) {
+  const { levelFor, seeArt } = useContext(ArtCtx);
   const multi = step.qtype === 'MULTI';
   const [selected, setSelected] = useState<number[]>([]);
   const [checked, setChecked] = useState(false);
@@ -275,6 +306,11 @@ function AskMicro({ step, onContinue }: { step: AskStep; onContinue: () => void 
   const [showTip, setShowTip] = useState(false);
   const [correctIdx, setCorrectIdx] = useState<number[]>(step.correct ?? []);
   const [explanation, setExplanation] = useState<string | null>(step.explanation ?? null);
+  const art = resolveArt(step.art, step.prompt);
+  const [lvl] = useState<IlloLevel>(() => (art ? levelFor(art) : 'full'));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (art) seeArt(art); }, []);
+  const hintAllowed = !art || lvl !== 'minimal'; // hints get less freely offered as a topic recurs
   const toggle = (oi: number) => { if (checked) return; setSelected((c) => (multi ? (c.includes(oi) ? c.filter((x) => x !== oi) : [...c, oi]) : [oi])); };
 
   async function check() {
@@ -297,6 +333,7 @@ function AskMicro({ step, onContinue }: { step: AskStep; onContinue: () => void 
     <div className="py-2">
       <p className="text-xs uppercase tracking-[0.16em] text-white/40">Quick check</p>
       <h3 className="mt-2 font-[family-name:var(--font-display)] text-2xl leading-snug">{step.prompt}{multi && <span className="ml-2 align-middle text-xs font-normal text-white/45">(select all)</span>}</h3>
+      {art && <div className="mt-4"><Illustration name={art} level={lvl} /></div>}
       <div className="mt-5 space-y-2.5">
         {step.options.map((opt, oi) => {
           const chosen = selected.includes(oi);
@@ -311,7 +348,7 @@ function AskMicro({ step, onContinue }: { step: AskStep; onContinue: () => void 
           );
         })}
       </div>
-      {step.tip && !checked && (
+      {step.tip && !checked && hintAllowed && (
         <div className="mt-3">{showTip ? <p className="rounded-[var(--radius-md)] border border-[var(--color-gold)]/25 bg-[var(--color-gold)]/8 px-4 py-2.5 text-sm text-white/85">💡 {step.tip}</p> : <button onClick={() => setShowTip(true)} className="text-sm text-[var(--color-gold)] hover:underline">Need a hint?</button>}</div>
       )}
       {checked && (
