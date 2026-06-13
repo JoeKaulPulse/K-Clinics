@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-type Cohort = { id: string; startAt: string; endAt: string | null; capacity: number; location: string | null; trainer: string | null; status: string };
-type Course = { id: string; slug: string; title: string; level: string | null; summary: string | null; description: string | null; pricePence: number; depositPence: number | null; durationText: string | null; format: string | null; accreditations: string[]; outcomes: string[]; prerequisites: string | null; thinkificUrl: string | null; featured: boolean; active: boolean; cohorts: Cohort[] };
-type Enrolment = { id: string; courseId: string; courseTitle: string; cohortId: string | null; applicantName: string; applicantEmail: string; applicantPhone: string | null; experience: string | null; financeInterest: boolean; status: string; pricePence: number; paidPence: number; notes: string | null; createdAt: string };
+export type Cohort = { id: string; startAt: string; endAt: string | null; capacity: number; location: string | null; trainer: string | null; status: string };
+export type Course = { id: string; slug: string; title: string; level: string | null; summary: string | null; description: string | null; pricePence: number; depositPence: number | null; durationText: string | null; format: string | null; accreditations: string[]; outcomes: string[]; prerequisites: string | null; thinkificUrl: string | null; featured: boolean; active: boolean; cohorts: Cohort[] };
+export type Enrolment = { id: string; courseId: string; courseTitle: string; cohortId: string | null; applicantName: string; applicantEmail: string; applicantPhone: string | null; experience: string | null; financeInterest: boolean; status: string; pricePence: number; paidPence: number; notes: string | null; createdAt: string };
 
 const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
 const money = (p: number) => (p > 0 ? `£${(p / 100).toLocaleString('en-GB')}` : '—');
@@ -16,16 +16,7 @@ async function post(payload: object) {
   return fetch('/api/admin/academy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 }
 
-export function AcademyManager({ courses, enrolments }: { courses: Course[]; enrolments: Enrolment[] }) {
-  return (
-    <div className="space-y-8">
-      <Applications enrolments={enrolments} courses={courses} />
-      <Courses courses={courses} />
-    </div>
-  );
-}
-
-function Applications({ enrolments, courses }: { enrolments: Enrolment[]; courses: Course[] }) {
+export function Applications({ enrolments, courses }: { enrolments: Enrolment[]; courses: Course[] }) {
   const router = useRouter();
   async function act(payload: object) { await post(payload); router.refresh(); }
   const cohortsFor = (courseId: string) => courses.find((c) => c.id === courseId)?.cohorts ?? [];
@@ -77,7 +68,7 @@ function Applications({ enrolments, courses }: { enrolments: Enrolment[]; course
   );
 }
 
-function Courses({ courses }: { courses: Course[] }) {
+export function Courses({ courses }: { courses: Course[] }) {
   const [adding, setAdding] = useState(false);
   return (
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">

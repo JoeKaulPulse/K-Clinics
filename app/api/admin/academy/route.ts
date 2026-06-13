@@ -132,6 +132,19 @@ export async function POST(req: Request) {
       await db.liveClass.delete({ where: { id: body.id } });
       return ok();
     }
+    case 'setStudentActive': {
+      // Activate / suspend a trainee's portal access. A suspended trainee loses
+      // access immediately (getCurrentStudent rejects portalActive === false).
+      if (!body.id) return bad();
+      await db.academyStudent.update({ where: { id: String(body.id) }, data: { portalActive: !!body.active } });
+      return ok();
+    }
+    case 'updateStudentNotes': {
+      if (!body.id) return bad();
+      const notes = (body.notes as string | undefined)?.slice(0, 4000) || null;
+      await db.academyStudent.update({ where: { id: String(body.id) }, data: { notes } });
+      return ok();
+    }
   }
   return NextResponse.json({ ok: false, error: 'Unknown op' }, { status: 400 });
 }
