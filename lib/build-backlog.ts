@@ -1187,6 +1187,30 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     value: 9, effort: 2,
     detail: 'Fixed: components/consult/ConsultForm.tsx now fires gtag(event, generate_lead, {value:0}) and fbq(track, Lead) on successful submission, enabling Google Ads and Meta to optimise for consultation leads.',
   },
+  {
+    title: 'Voice note transcription in guided session runner (BLD-138)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(768),
+    value: 8, effort: 4,
+    detail: 'Clinicians can record a voice note during the treatment step of a session and have it transcribed via Deepgram (nova-3, en-GB) directly into the clinical note field. A microphone button sits alongside Save note; on success the transcript is appended (newline-separated) so existing hand-typed text is preserved. POST /api/admin/bookings/transcribe: crmEnabled + bookings.manage + clients.clinical.view gated; 25 MB cap; MIME allowlist; Deepgram error detail truncated.',
+    notes: ['Shipped (#768). Requires DEEPGRAM_API_KEY secret. MIME allowlist: audio/webm, audio/ogg, audio/wav, audio/mp4, audio/mpeg, audio/m4a, audio/aac. Pre-content-length + post-read size guards (413 on overflow).'],
+  },
+  {
+    title: 'Role permissions: timetracking.use + timetracking.manage; contractor task assignment notification (BLD-285)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(768),
+    value: 7, effort: 2,
+    detail: 'Added timetracking.use (clock in/out) and timetracking.manage (view + edit all timesheets) to the permissions catalogue (lib/permissions.ts). CONTRACTOR and STAFF roles receive timetracking.use by default. ContractorTask creation now notifies the assignee via notifyStaffById when an assigneeId is set (skips self-assignment via the actorUserId guard).',
+    notes: ['Shipped (#768). Permission group: Facility. Role defaults: CONTRACTOR = [..., timetracking.use], STAFF = [..., timetracking.use]. Notification: title = "New task assigned: {title}", href = /admin/contractors.'],
+  },
+  {
+    title: 'GDPR erasure: broaden eraseClientData to cover non-special-category PII tables (BLD-286)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(768),
+    value: 8, effort: 2,
+    detail: 'eraseClientData (app/admin/actions.ts) pseudonymises the Client row but never cascade-deletes because Prisma does not auto-cascade through the pseudonymised FK. Added 5 operations to the $transaction: delete Referral rows where referrerId = clientId; nullify referredId/referredEmail on Referral rows where referredBy = clientId; delete ChatConversation, WaitlistEntry, and Appointment rows for the client. UK GDPR Art.17.',
+    notes: ['Shipped (#768). Part of the ongoing GDPR erasure completeness work (AUDIT C2). Referral sender rows deleted; referred-by linkage anonymised rather than deleted to preserve campaign attribution. Appointments deleted (no financial records left -- financial BookingCharge rows are on Booking, not Appointment).'],
+  },
+  {
+    title: 'Kiosk: seasonal scene theming -- Christmas, Valentine\'s, Summer (BLD-137 slice 1)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(769), project: 'skin-smile-kiosk',
+    value: 7, effort: 3,
+    detail: 'The storefront kiosk display now supports 4 seasonal themes (Default / Christmas / Valentine\'s / Summer) switchable from Admin > QR codes with no redeploy. Each theme has unique headline copy, tagline, CTA (AttractScene THEME_COPY map) and CSS colour-variable overrides applied as an inline style on the .kd-stage root (--color-ink, --color-gold-bright, --color-gold, --color-gold-soft, --color-blush). Theme stored as the string setting kiosk_theme using the existing Setting table -- zero schema changes. Admin pill-button selector gated on settings.manage; optimistic selection reverts on server error.',
+    notes: ['Shipped (#769). lib/kiosk-themes.ts (theme catalogue), lib/settings.ts (getStringSetting/setStringSetting), app/admin/qr/kiosk-actions.ts (setKioskTheme server action), KioskThemeSelector.tsx (admin UI), KioskDisplay.tsx (CSS var injection), AttractScene.tsx (copy map). Opus review caught phantom --kd-* variable names -- corrected to --color-* before merge.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
