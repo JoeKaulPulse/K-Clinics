@@ -224,3 +224,22 @@ export async function setSetting(key: SettingKey, value: boolean, updatedBy?: st
     create: { key, value: String(value), updatedBy },
   });
 }
+
+// String settings — arbitrary key/value pairs stored alongside boolean settings.
+// Not typed in SettingKey so they don't interfere with the boolean defaults map.
+export async function getStringSetting(key: string, fallback: string): Promise<string> {
+  try {
+    const row = await withDbRetry(() => db.setting.findUnique({ where: { key } }), 2);
+    return row?.value ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export async function setStringSetting(key: string, value: string, updatedBy?: string) {
+  await db.setting.upsert({
+    where: { key },
+    update: { value, updatedBy },
+    create: { key, value, updatedBy },
+  });
+}
