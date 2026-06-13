@@ -5,6 +5,7 @@ import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { CurriculumManager } from '@/components/admin/CurriculumManager';
+import { CoursePreviewButton } from '@/components/admin/CoursePreviewButton';
 import { getLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
@@ -58,13 +59,21 @@ export default async function CurriculumPage({ params }: { params: Promise<{ cou
     })),
   };
 
+  const { getCoursePreview } = await import('@/lib/lms');
+  const preview = await getCoursePreview(courseId);
+
   const can = await sessionPermissions();
   const locale = await getLocale();
   return (
     <AdminShell user={session?.email} can={can} locale={locale}>
       <Link href="/admin/academy" className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">← K Academy</Link>
-      <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl">Curriculum — {course.title}</h1>
-      <p className="mt-1 max-w-2xl text-sm text-[var(--color-stone)]">Add and edit modules, lessons (video, content, references) and quizzes. Changes are live in the trainee portal immediately and never affect existing trainee progress.</p>
+      <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-[family-name:var(--font-display)] text-3xl">Curriculum — {course.title}</h1>
+          <p className="mt-1 max-w-2xl text-sm text-[var(--color-stone)]">Add and edit modules, lessons (video, content, references) and quizzes. Changes are live in the trainee portal immediately and never affect existing trainee progress.</p>
+        </div>
+        <CoursePreviewButton preview={preview} />
+      </div>
       <div className="mt-8">
         <CurriculumManager course={view} />
       </div>

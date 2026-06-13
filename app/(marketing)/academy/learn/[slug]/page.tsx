@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
-import { CoursePlayer } from '@/components/academy/CoursePlayer';
+import { CourseExperience } from '@/components/academy/CourseExperience';
 import { pageMeta } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: 'Course — K Academy', description: 'Your K Academy course.', path: '/academy/learn' });
@@ -33,7 +33,7 @@ export default async function LearnPage({ params }: { params: Promise<{ slug: st
 
   return (
     <section className="container-lux py-[calc(var(--header-h,5.25rem)+2rem)]">
-      <CoursePlayer learning={learning} slug={slug} />
+      <CourseExperience learning={learning} slug={slug} />
     </section>
   );
 }

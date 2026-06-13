@@ -13,11 +13,11 @@ export type LessonView = {
   keyPoints: string[]; objectives: string[]; studyTips: string[]; homework: string | null;
   examRefs: string[]; citations: LinkRef[]; resources: LinkRef[]; done: boolean;
 };
-export type QuizQuestionView = { id: string; order: number; prompt: string; type: string; options: string[]; tip: string | null; imageUrl: string | null };
+export type QuizQuestionView = { id: string; order: number; prompt: string; type: string; options: string[]; tip: string | null; imageUrl: string | null; correct?: number[]; explanation?: string | null };
 export type QuizView = { id: string; title: string; passMark: number; questionCount: number; bestScore: number | null; passed: boolean; questions: QuizQuestionView[] };
 export type ModuleView = { id: string; title: string; summary: string | null; order: number; lessons: LessonView[]; quiz: QuizView | null; complete: boolean };
 export type CourseLearning = {
-  course: { id: string; slug: string; title: string; level: string | null };
+  course: { id: string; slug: string; title: string; level: string | null; welcome: string | null; objectives: string[] };
   modules: ModuleView[];
   progressPct: number;
   certificateEligible: boolean;
@@ -37,7 +37,7 @@ export async function studentCanAccess(studentId: string, courseId: string): Pro
 
 /** Full learning view for a student: content + progress (no correct answers). */
 export async function getCourseLearning(slug: string, studentId: string): Promise<CourseLearning | null> {
-  const course = await db.course.findUnique({ where: { slug }, select: { id: true, slug: true, title: true, level: true } });
+  const course = await db.course.findUnique({ where: { slug }, select: { id: true, slug: true, title: true, level: true, welcome: true, objectives: true } });
   if (!course) return null;
   if (!(await studentCanAccess(studentId, course.id))) return null;
 
@@ -136,6 +136,53 @@ export async function gradeQuiz(studentId: string, quizId: string, answers: Reco
   const passed = scorePct >= quiz.passMark;
   await db.quizAttempt.create({ data: { studentId, quizId, scorePct, passed, answers: answers as object } });
   return { ok: true, scorePct, passed, passMark: quiz.passMark, results };
+}
+
+/** Grade a SINGLE question for immediate (Duolingo-style) feedback. Verifies
+ *  access. Does not record an attempt — the full quiz is recorded via gradeQuiz
+ *  when the learner finishes. Reveals only this question's answer. */
+export async function checkQuizAnswer(studentId: string, quizId: string, questionId: string, answer: number[]): Promise<{ ok: boolean; correct?: boolean; correctIndices?: number[]; explanation?: string | null; error?: string }> {
+  const quiz = await db.quiz.findUnique({
+    where: { id: quizId },
+    select: { module: { select: { courseId: true } }, questions: { where: { id: questionId }, select: { correct: true, explanation: true } } },
+  });
+  if (!quiz || quiz.questions.length === 0) return { ok: false, error: 'Question not found.' };
+  if (!(await studentCanAccess(studentId, quiz.module.courseId))) return { ok: false, error: 'Not enrolled.' };
+  const q = quiz.questions[0];
+  const correctIndices = (Array.isArray(q.correct) ? (q.correct as number[]) : []).slice().sort();
+  const given = (answer ?? []).slice().sort();
+  const correct = correctIndices.length === given.length && correctIndices.every((v, i) => v === given[i]);
+  return { ok: true, correct, correctIndices, explanation: q.explanation };
+}
+
+/** Admin-only course preview: the full learning view for a course by id, with
+ *  no student/progress and WITH answer keys (so the immersive player can grade
+ *  client-side). Guard the caller with settings.manage — never expose to trainees. */
+export async function getCoursePreview(courseId: string): Promise<CourseLearning | null> {
+  const course = await db.course.findUnique({ where: { id: courseId }, select: { id: true, slug: true, title: true, level: true, welcome: true, objectives: true } });
+  if (!course) return null;
+  const modules = await db.courseModule.findMany({
+    where: { courseId },
+    orderBy: { order: 'asc' },
+    include: { lessons: { orderBy: { order: 'asc' } }, quiz: { include: { questions: { orderBy: { order: 'asc' } } } } },
+  });
+  const moduleViews: ModuleView[] = modules.map((m) => {
+    const lessons: LessonView[] = m.lessons.map((l) => ({
+      id: l.id, title: l.title, order: l.order, durationMin: l.durationMin, minSeconds: l.minSeconds,
+      videoUrl: l.videoUrl, imageUrl: l.imageUrl, body: l.body,
+      keyPoints: strArr(l.keyPoints), objectives: strArr(l.objectives), studyTips: strArr(l.studyTips),
+      homework: l.homework, examRefs: strArr(l.examRefs), citations: arr(l.citations), resources: arr(l.resources), done: false,
+    }));
+    const quiz: QuizView | null = m.quiz ? {
+      id: m.quiz.id, title: m.quiz.title, passMark: m.quiz.passMark, questionCount: m.quiz.questions.length, bestScore: null, passed: false,
+      questions: m.quiz.questions.map((q) => ({
+        id: q.id, order: q.order, prompt: q.prompt, type: q.type, options: strArr(q.options), tip: q.tip, imageUrl: q.imageUrl,
+        correct: (Array.isArray(q.correct) ? (q.correct as number[]) : []), explanation: q.explanation,
+      })),
+    } : null;
+    return { id: m.id, title: m.title, summary: m.summary, order: m.order, lessons, quiz, complete: false };
+  });
+  return { course, modules: moduleViews, progressPct: 0, certificateEligible: false };
 }
 
 /** Lean progress % for one course (for the portal list). 0–100, or null if the
