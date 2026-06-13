@@ -1776,9 +1776,10 @@ model AcademyStudent {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  enrolments     Enrolment[]
-  lessonProgress LessonProgress[]
-  quizAttempts   QuizAttempt[]
+  enrolments       Enrolment[]
+  lessonProgress   LessonProgress[]
+  quizAttempts     QuizAttempt[]
+  practiceAttempts PracticeAttempt[]
 
   @@index([createdAt])
   @@index([tenantId])
@@ -1809,10 +1810,12 @@ model Course {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  cohorts     Cohort[]
-  enrolments  Enrolment[]
-  modules     CourseModule[]
-  liveClasses LiveClass[]
+  cohorts       Cohort[]
+  enrolments    Enrolment[]
+  modules       CourseModule[]
+  liveClasses   LiveClass[]
+  examQuestions ExamQuestion[]
+  pastPapers    PastPaper[]
 
   @@index([active, order])
   @@index([tenantId])
@@ -1925,6 +1928,67 @@ model QuizAttempt {
   createdAt DateTime       @default(now())
 
   @@index([studentId, quizId])
+  @@index([tenantId])
+}
+
+// ── Exam practice (test-anytime question bank + historic papers) ─────────────
+
+model ExamQuestion {
+  id          String   @id @default(cuid())
+  tenantId    String? // ClinicOS multi-tenant (Ring 0)
+  course      Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  courseId    String?
+  topic       String? // e.g. "Anatomy & Physiology"
+  difficulty  String   @default("STANDARD") // FOUNDATION | STANDARD | STRETCH
+  examBoard   String? // VTCT | OFQUAL | CPD …
+  prompt      String   @db.Text
+  type        String   @default("SINGLE") // SINGLE | MULTI | TRUEFALSE
+  options     Json // [string]
+  correct     Json // [number] (0-based indices)
+  explanation String?  @db.Text
+  tip         String? // optional hint (Duolingo-style)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([courseId, active])
+  @@index([topic])
+  @@index([tenantId])
+}
+
+model PastPaper {
+  id          String   @id @default(cuid())
+  tenantId    String? // ClinicOS multi-tenant (Ring 0)
+  course      Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  courseId    String?
+  title       String
+  examBoard   String?
+  year        Int?
+  description String?  @db.Text // what the paper covers / how to use it
+  fileUrl     String? // link to the PDF / specimen paper
+  active      Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([courseId, active, order])
+  @@index([tenantId])
+}
+
+model PracticeAttempt {
+  id        String         @id @default(cuid())
+  tenantId  String? // ClinicOS multi-tenant (Ring 0)
+  student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  courseId  String? // course the practice was drawn from (no FK constraint needed)
+  topic     String?
+  total     Int
+  correct   Int
+  scorePct  Int
+  createdAt DateTime       @default(now())
+
+  @@index([studentId])
+  @@index([courseId])
   @@index([tenantId])
 }
 
