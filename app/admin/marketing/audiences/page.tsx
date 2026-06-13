@@ -19,7 +19,7 @@ export default async function AudiencesPage() {
   const segments = await db.segment.findMany({ orderBy: { createdAt: 'desc' } });
   const rows: SegmentRow[] = await Promise.all(segments.map(async (s) => {
     const rules = (s.rules as SegmentRules) ?? {};
-    return { id: s.id, name: s.name, description: s.description ?? '', rules, summary: describeRules(rules), size: await countSegment(rules) };
+    return { id: s.id, name: s.name, description: s.description ?? '', rules, summary: describeRules(rules), size: await countSegment(rules), metaSyncedAt: s.metaSyncedAt ? s.metaSyncedAt.toISOString() : null };
   }));
 
   // Distinct sources & tags to offer as quick filters.
