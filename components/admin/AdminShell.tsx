@@ -25,6 +25,7 @@ function GroupIcon({ name }: { name?: GroupIconKey }) {
     loyalty: <><path d="M8.5 2.5H13V7l-6 6-4.5-4.5 6-6Z" /><circle cx="10.5" cy="5" r="0.9" /></>,
     catalogue: <><rect x="2.5" y="2.5" width="4.5" height="4.5" rx="0.8" /><rect x="9" y="2.5" width="4.5" height="4.5" rx="0.8" /><rect x="2.5" y="9" width="4.5" height="4.5" rx="0.8" /><rect x="9" y="9" width="4.5" height="4.5" rx="0.8" /></>,
     website: <><rect x="2.5" y="3" width="11" height="10" rx="1.2" /><path d="M2.5 6h11" /><circle cx="4.5" cy="4.5" r="0.4" /></>,
+    academy: <><path d="M8 2.4 14.6 5.4 8 8.4 1.4 5.4 8 2.4Z" /><path d="M4.6 6.6V9.4c0 1 1.5 1.8 3.4 1.8s3.4-.8 3.4-1.8V6.6" /><path d="M14.6 5.4v3.1" /></>,
     operations: <><circle cx="8" cy="8" r="2.2" /><path d="M8 1.8v1.8M8 12.4v1.8M1.8 8h1.8M12.4 8h1.8M3.6 3.6l1.3 1.3M11.1 11.1l1.3 1.3M12.4 3.6l-1.3 1.3M4.9 11.1l-1.3 1.3" /></>,
     marketing: <><path d="M3 6.5 11 3v10L3 9.5V6.5Z" /><path d="M3 6.5H2v3h1M5 10v2.5" /></>,
     finance: <><circle cx="8" cy="8" r="6" /><path d="M9.5 6c-.4-.6-1.1-1-2-1-1.2 0-2 .7-2 1.6 0 2 4 1 4 3 0 .9-.9 1.6-2 1.6-.9 0-1.7-.4-2.1-1" /></>,

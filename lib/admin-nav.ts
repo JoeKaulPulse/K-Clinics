@@ -17,7 +17,7 @@ export type NavItem = {
   keywords?: string;  // extra search synonyms (space-separated, not shown)
 };
 export type GroupIconKey =
-  | 'today' | 'clients' | 'loyalty' | 'catalogue' | 'website'
+  | 'today' | 'clients' | 'loyalty' | 'catalogue' | 'website' | 'academy'
   | 'operations' | 'marketing' | 'finance' | 'admin';
 export type NavGroup = { heading?: string; icon?: GroupIconKey; items: NavItem[] };
 
@@ -60,8 +60,15 @@ export const navGroups: NavGroup[] = [
     { href: '/admin/blocks', key: 'nav.blocks', perm: 'settings.manage', keywords: 'sections components reusable' },
     { href: '/admin/journal', key: 'nav.journal', perm: 'settings.manage', keywords: 'blog posts articles news' },
     { href: '/admin/media', key: 'nav.media', perm: 'settings.manage', keywords: 'images photos uploads files gallery' },
-    { href: '/admin/academy', key: 'nav.academy', perm: 'settings.manage', keywords: 'courses lms training students learning' },
     { href: '/admin/gallery', key: 'nav.gallery', perm: 'settings.manage', keywords: 'before after results photos' },
+  ] },
+  // K Academy: the training arm — courses & curriculum, the applications pipeline,
+  // trainee accounts/progress, live online classes, and clinic recruitment.
+  { heading: 'nav.group.academy', icon: 'academy', items: [
+    { href: '/admin/academy', key: 'nav.academy', exact: true, perm: 'settings.manage', keywords: 'courses curriculum modules lessons quizzes lms training learning catalogue' },
+    { href: '/admin/academy/enrolments', key: 'nav.enrolments', perm: 'settings.manage', keywords: 'applications applicants enrol enrolments pipeline offers payments clearpay trainees' },
+    { href: '/admin/academy/students', key: 'nav.students', perm: 'settings.manage', keywords: 'trainees learners students portal progress accounts lessons quizzes completion' },
+    { href: '/admin/academy/live-classes', key: 'nav.liveClasses', perm: 'settings.manage', keywords: 'live online classes google meet sessions webinar zoom schedule' },
     { href: '/admin/careers', key: 'nav.careers', perm: 'settings.manage', keywords: 'jobs vacancies hiring recruitment applications' },
   ] },
   { heading: 'nav.group.operations', icon: 'operations', items: [
