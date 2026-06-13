@@ -3,6 +3,8 @@ import { db } from '@/lib/db';
 import { qrSvg } from '@/lib/qr';
 import { randomToken, randomSecret, sessionExpiry } from '@/lib/kiosk';
 import { KioskDisplay } from '@/components/kiosk/KioskDisplay';
+import { getStringSetting } from '@/lib/settings';
+import { KIOSK_THEME_DEFAULT, isKioskThemeKey, type KioskThemeKey } from '@/lib/kiosk-themes';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +26,10 @@ async function originFromHeaders(): Promise<string> {
 export default async function KioskDisplayPage() {
   const origin = await originFromHeaders();
 
+  // BLD-137: read the active seasonal theme from settings (falls back to default).
+  const rawTheme = await getStringSetting('kiosk_theme', KIOSK_THEME_DEFAULT);
+  const theme: KioskThemeKey = isKioskThemeKey(rawTheme) ? rawTheme : KIOSK_THEME_DEFAULT;
+
   // Create a fresh session for this display render.
   let token = randomToken();
   for (let i = 0; i < 5; i++) {
@@ -39,5 +45,5 @@ export default async function KioskDisplayPage() {
   const url = `${origin}/kiosk/${token}?s=${secret}`;
   const svg = await qrSvg(url, { dark: '#2a2420', light: '#ffffff' });
 
-  return <KioskDisplay svg={svg} url={url} token={token} secret={secret} />;
+  return <KioskDisplay svg={svg} url={url} token={token} secret={secret} theme={theme} />;
 }
