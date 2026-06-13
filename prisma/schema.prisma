@@ -1860,6 +1860,7 @@ model Lesson {
   studyTips   String[]         @default([]) // exam tips / memory aids surfaced in-lesson
   homework    String? // assignment to complete after the lesson (markdown)
   examRefs    String[]         @default([]) // real exam/syllabus references this maps to
+  steps       Json? // authored bite-size flow [{kind:'teach'|'say'|'ask', …}]; when null the player auto-chunks `body`
   minSeconds  Int? // minimum dwell time before the lesson can be marked complete
   citations   Json? // [{ label, url }]
   resources   Json? // [{ label, url }]

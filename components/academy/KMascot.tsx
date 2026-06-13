@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, type TargetAndTransition, type Transition } from 'motion/react';
 import { KMark } from '@/components/brand/marks';
 
@@ -29,6 +29,60 @@ export function KMascot({ variant = 'idle', size = 88, className = '' }: { varia
     <motion.div style={{ width: size, height: size * (234 / 130) }} className={`text-[var(--color-gold)] ${className}`} animate={a.animate} transition={a.transition}>
       <KMark animated={drawn} />
     </motion.div>
+  );
+}
+
+/** The mascot speaking: a bobbing, gently wandering K with a speech bubble whose
+ *  text types out letter-by-letter. Calls onTyped when the line finishes (so the
+ *  player can let the student continue). High-end and alive, never frantic. */
+export function KSpeech({ text, mood = 'happy', size = 58, onTyped, className = '' }: { text: string; mood?: 'happy' | 'think' | 'cheer'; size?: number; onTyped?: () => void; className?: string }) {
+  const [shown, setShown] = useState('');
+  const [typing, setTyping] = useState(true);
+  const onTypedRef = useRef(onTyped);
+  onTypedRef.current = onTyped;
+
+  useEffect(() => {
+    setShown(''); setTyping(true);
+    const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    if (reduce) { setShown(text); setTyping(false); onTypedRef.current?.(); return; }
+    let i = 0;
+    const id = setInterval(() => {
+      i += 1;
+      setShown(text.slice(0, i));
+      if (i >= text.length) { clearInterval(id); setTyping(false); onTypedRef.current?.(); }
+    }, 24);
+    return () => clearInterval(id);
+  }, [text]);
+
+  const hop = mood === 'cheer' ? -6 : mood === 'think' ? -2 : -4;
+
+  return (
+    <div className={`flex flex-col items-center ${className}`}>
+      {/* Speech bubble */}
+      <motion.div
+        initial={{ opacity: 0, y: 8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.3, ease: 'easeOut' }}
+        className="relative max-w-sm rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] px-5 py-3.5 text-center text-[var(--color-ink)] shadow-lg"
+      >
+        <p className="text-base leading-snug">
+          {shown}
+          {typing && <motion.span aria-hidden className="ml-0.5 inline-block h-[1.05em] w-[2px] translate-y-[2px] bg-[var(--color-gold)]" animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 0.7, repeat: Infinity }} />}
+        </p>
+        {/* downward tail */}
+        <span className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 bg-[var(--color-porcelain)]" />
+      </motion.div>
+
+      {/* The character: slow wander (outer) + talk bob while typing (inner) */}
+      <motion.div className="mt-4" animate={{ x: [-7, 7, -3, 0], rotate: [-2, 2, -1, 0] }} transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}>
+        <motion.div
+          style={{ width: size, height: size * (234 / 130) }}
+          className="text-[var(--color-gold)]"
+          animate={typing ? { y: [0, hop, 0], rotate: [-2.5, 2.5, -2.5] } : { y: [0, -3, 0], rotate: 0 }}
+          transition={typing ? { duration: 0.5, repeat: Infinity, ease: 'easeInOut' } : { duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <KMark />
+        </motion.div>
+      </motion.div>
+    </div>
   );
 }
 
