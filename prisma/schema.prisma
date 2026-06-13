@@ -1798,6 +1798,8 @@ model Course {
   format         String? // e.g. "Blended: Thinkific theory + practical + VTCT exam"
   accreditations String[] @default([]) // OFQUAL | VTCT | CPD
   outcomes       String[] @default([]) // "what you'll learn" bullets
+  objectives     String[] @default([]) // course-level learning goals/objectives
+  welcome        String? // intro shown when a student first opens the course
   prerequisites  String?
   thinkificUrl   String? // theory platform link (shown in trainee portal)
   heroImage      String?
@@ -1847,6 +1849,11 @@ model Lesson {
   imageUrl    String?
   body        String           @db.Text // markdown-ish lesson content
   keyPoints   String[]         @default([])
+  objectives  String[]         @default([]) // "by the end you will…" shown at lesson start
+  studyTips   String[]         @default([]) // exam tips / memory aids surfaced in-lesson
+  homework    String? // assignment to complete after the lesson (markdown)
+  examRefs    String[]         @default([]) // real exam/syllabus references this maps to
+  minSeconds  Int? // minimum dwell time before the lesson can be marked complete
   citations   Json? // [{ label, url }]
   resources   Json? // [{ label, url }]
   progress    LessonProgress[]
@@ -1883,6 +1890,7 @@ model QuizQuestion {
   options     Json // [string]
   correct     Json // [number] (0-based indices)
   explanation String? @db.Text
+  tip         String? // optional hint surfaced to help the learner (Duolingo-style)
   imageUrl    String?
 
   @@index([quizId, order])
@@ -1890,13 +1898,14 @@ model QuizQuestion {
 }
 
 model LessonProgress {
-  id          String         @id @default(cuid())
-  tenantId    String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
-  student     AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  studentId   String
-  lesson      Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  lessonId    String
-  completedAt DateTime       @default(now())
+  id           String         @id @default(cuid())
+  tenantId     String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  student      AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId    String
+  lesson       Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId     String
+  completedAt  DateTime       @default(now())
+  secondsSpent Int            @default(0) // total dwell time recorded for this lesson
 
   @@unique([studentId, lessonId])
   @@index([studentId])

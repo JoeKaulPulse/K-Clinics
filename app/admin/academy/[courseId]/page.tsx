@@ -33,11 +33,16 @@ export default async function CurriculumPage({ params }: { params: Promise<{ cou
   const view = {
     id: course.id,
     title: course.title,
+    objectives: Array.isArray(course.objectives) ? course.objectives : [],
+    welcome: course.welcome,
     modules: course.modules.map((m) => ({
       id: m.id, title: m.title, summary: m.summary,
       lessons: m.lessons.map((l) => ({
-        id: l.id, title: l.title, durationMin: l.durationMin, videoUrl: l.videoUrl, imageUrl: l.imageUrl,
+        id: l.id, title: l.title, durationMin: l.durationMin, minSeconds: l.minSeconds, videoUrl: l.videoUrl, imageUrl: l.imageUrl,
         body: l.body, keyPoints: Array.isArray(l.keyPoints) ? l.keyPoints : [],
+        objectives: Array.isArray(l.objectives) ? l.objectives : [],
+        studyTips: Array.isArray(l.studyTips) ? l.studyTips : [],
+        homework: l.homework, examRefs: Array.isArray(l.examRefs) ? l.examRefs : [],
         citations: (l.citations as { label: string; url: string }[] | null) ?? [],
         resources: (l.resources as { label: string; url: string }[] | null) ?? [],
       })),
@@ -47,7 +52,7 @@ export default async function CurriculumPage({ params }: { params: Promise<{ cou
           id: q.id, prompt: q.prompt, type: q.type,
           options: (q.options as string[] | null) ?? [],
           correct: (q.correct as number[] | null) ?? [],
-          explanation: q.explanation, imageUrl: q.imageUrl,
+          explanation: q.explanation, tip: q.tip, imageUrl: q.imageUrl,
         })),
       } : null,
     })),

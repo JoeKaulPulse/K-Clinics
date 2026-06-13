@@ -10,10 +10,10 @@ export async function POST(req: Request) {
   const student = await getCurrentStudent().catch(() => null);
   if (!student) return NextResponse.json({ ok: false, error: 'Please sign in.' }, { status: 401 });
 
-  const { lessonId } = await req.json().catch(() => ({}));
+  const { lessonId, secondsSpent } = await req.json().catch(() => ({}));
   if (!lessonId) return NextResponse.json({ ok: false, error: 'Missing lesson.' }, { status: 400 });
 
   const { completeLesson } = await import('@/lib/lms');
-  const res = await completeLesson(student.id, String(lessonId));
+  const res = await completeLesson(student.id, String(lessonId), Number(secondsSpent) || 0);
   return NextResponse.json(res, { status: res.ok ? 200 : 400 });
 }

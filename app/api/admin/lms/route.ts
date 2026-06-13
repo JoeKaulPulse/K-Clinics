@@ -24,6 +24,16 @@ export async function POST(req: Request) {
   const bad = (e = 'Bad request') => NextResponse.json({ ok: false, error: e }, { status: 400 });
 
   switch (b.op) {
+    // ── Course learning meta ───────────────────────────────────────────────────
+    case 'updateCourseMeta': {
+      if (!b.courseId) return bad();
+      await db.course.update({
+        where: { id: String(b.courseId) },
+        data: { objectives: strList(b.objectives), welcome: str(b.welcome).slice(0, 2000) || null },
+      });
+      return ok();
+    }
+
     // ── Modules ──────────────────────────────────────────────────────────────
     case 'createModule': {
       if (!b.courseId) return bad();
@@ -61,10 +71,15 @@ export async function POST(req: Request) {
         data: {
           title: str(b.title).slice(0, 160),
           durationMin: b.durationMin === '' || b.durationMin == null ? null : num(b.durationMin),
+          minSeconds: b.minSeconds === '' || b.minSeconds == null ? null : Math.max(0, num(b.minSeconds)),
           videoUrl: str(b.videoUrl).slice(0, 500) || null,
           imageUrl: str(b.imageUrl).slice(0, 500) || null,
           body: str(b.body),
           keyPoints: strList(b.keyPoints),
+          objectives: strList(b.objectives),
+          studyTips: strList(b.studyTips),
+          homework: str(b.homework).slice(0, 4000) || null,
+          examRefs: strList(b.examRefs),
           citations: linkArr(b.citations),
           resources: linkArr(b.resources),
         },
@@ -113,7 +128,7 @@ export async function POST(req: Request) {
       if (options.length < 2) return bad('Add at least two options.');
       if (correct.length < 1) return bad('Mark at least one correct answer.');
       if ((type === 'SINGLE' || type === 'TRUEFALSE') && correct.length !== 1) return bad('Single-answer questions need exactly one correct option.');
-      await db.quizQuestion.update({ where: { id: String(b.id) }, data: { prompt: str(b.prompt).slice(0, 600), type, options, correct, explanation: str(b.explanation).slice(0, 600) || null, imageUrl: str(b.imageUrl).slice(0, 500) || null } });
+      await db.quizQuestion.update({ where: { id: String(b.id) }, data: { prompt: str(b.prompt).slice(0, 600), type, options, correct, explanation: str(b.explanation).slice(0, 600) || null, tip: str(b.tip).slice(0, 400) || null, imageUrl: str(b.imageUrl).slice(0, 500) || null } });
       return ok();
     }
     case 'deleteQuestion': {
