@@ -12,6 +12,13 @@ const BADGE: Record<string, string> = {
 };
 const LABEL: Record<string, string> = { connected: 'Connected', ready: 'Ready to connect', setup: 'Setup required' };
 
+// Native platform dashboards, surfaced once connected for quick ROI verification.
+const DASHBOARD: Record<string, string> = {
+  google: 'https://ads.google.com/aw/overview',
+  meta: 'https://adsmanager.facebook.com/',
+  tiktok: 'https://ads.tiktok.com/i18n/dashboard',
+};
+
 export function ConnectionsManager({ providers, flash }: { providers: Provider[]; flash: { connected?: string; error?: string } }) {
   const router = useRouter();
   const [open, setOpen] = useState<string | null>(null);
@@ -41,7 +48,10 @@ export function ConnectionsManager({ providers, flash }: { providers: Provider[]
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
               {p.state === 'connected' ? (
-                <button onClick={() => disconnect(p.id)} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-blush)]">Disconnect</button>
+                <>
+                  {DASHBOARD[p.id] && <a href={DASHBOARD[p.id]} target="_blank" rel="noopener noreferrer" className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)]">View in {p.name.split(' ')[0]} ↗</a>}
+                  <button onClick={() => disconnect(p.id)} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-blush)]">Disconnect</button>
+                </>
               ) : p.state === 'ready' ? (
                 <a href={`/api/admin/marketing/connect?provider=${p.id}`} className="rounded-full bg-[var(--color-ink)] px-5 py-1.5 text-sm text-[var(--color-porcelain)]">Connect</a>
               ) : (
