@@ -145,6 +145,16 @@ export async function GET(req: Request) {
     failures++; console.error('[cron] exam-bank bootstrap failed (continuing):', (e as Error)?.message);
   }
 
+  // Academy gamification: compute XP + badges from history once, so the
+  // leaderboards are populated from launch. Self-healing, idempotent.
+  let gamification = { ran: false, students: 0 };
+  try {
+    const { backfillGamificationIfNeeded } = await import('@/lib/academy-gamification');
+    gamification = await backfillGamificationIfNeeded();
+  } catch (e) {
+    failures++; console.error('[cron] academy-gamification backfill failed (continuing):', (e as Error)?.message);
+  }
+
   // Build board: keep it populated from Claude's backlog server-side, and assign
   // input-required tasks to the best-placed user — so the audit board is reliable
   // even if nobody opens it after a deploy (it used to seed only on first view).
@@ -170,7 +180,7 @@ export async function GET(req: Request) {
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend, board, clinicalBackfill, academyTenant, examBank },
+    { ok: failures === 0, failures, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend, board, clinicalBackfill, academyTenant, examBank, gamification },
     { status: failures === 0 ? 200 : 500 },
   );
 }

@@ -20,7 +20,7 @@ export default async function AdminAcademyStudentsPage() {
     take: 500,
     include: {
       enrolments: { select: { status: true, course: { select: { title: true } } }, orderBy: { createdAt: 'desc' } },
-      _count: { select: { lessonProgress: true, quizAttempts: true } },
+      _count: { select: { lessonProgress: true, quizAttempts: true, badges: true } },
     },
   });
 
@@ -28,7 +28,7 @@ export default async function AdminAcademyStudentsPage() {
     id: s.id, firstName: s.firstName, lastName: s.lastName, email: s.email, phone: s.phone,
     createdAt: s.createdAt.toISOString(), lastLoginAt: s.lastLoginAt?.toISOString() ?? null,
     portalActive: s.portalActive, onboardedAt: s.onboardedAt?.toISOString() ?? null, notes: s.notes,
-    lessonsCompleted: s._count.lessonProgress, quizAttempts: s._count.quizAttempts,
+    lessonsCompleted: s._count.lessonProgress, quizAttempts: s._count.quizAttempts, xp: s.xp, badges: s._count.badges,
     enrolments: s.enrolments.map((e) => ({ courseTitle: e.course.title, status: e.status })),
   }));
 
