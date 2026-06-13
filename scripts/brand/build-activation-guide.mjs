@@ -3,10 +3,23 @@
 // Brand rules: docs/BRAND_GUIDELINES.md — logo from the supplied marks (never typed
 // text), no strap-line under the logo, palette + Fraunces/Geist only.
 import { chromium } from 'playwright';
-import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
 import path from 'node:path';
 
 const OUT = process.argv[2] || path.resolve(process.cwd(), 'K Clinics — Marketing activation guide.pdf');
+// Console screenshots are sourced externally (public help articles) and are NOT
+// committed to the repo. Point SHOTS_DIR at a folder of the named files to embed
+// them; without it the guide falls back to text callouts.
+const SHOTS_DIR = process.env.SHOTS_DIR || path.resolve(process.cwd(), 'scripts/brand/shots');
+const MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' };
+function dataUri(file) {
+  try {
+    const p = path.join(SHOTS_DIR, file);
+    if (!fs.existsSync(p)) return null;
+    const ext = path.extname(p).toLowerCase();
+    return `data:${MIME[ext] || 'image/png'};base64,${fs.readFileSync(p).toString('base64')}`;
+  } catch { return null; }
+}
 
 // ── Supplied brand marks (inline SVG paths from components/brand/marks.tsx) ──
 const K_PATH = 'M128.115 113.115C125.458 111.125 125.24 111.219 95.9687 125.833C47.875 149.844 33.4896 155.943 26.1823 155.391C18.5521 154.812 19.7552 142.432 28.9375 126.969C33.0573 120.031 41.0677 108.969 66.7552 74.7187C92.7291 40.1041 105.505 20.802 105.901 15.6093C106.047 13.5885 105.818 13.0416 104.615 12.6406C101.948 11.7447 100.547 12.5156 99.1666 15.6354C96.4479 21.7604 83.7291 39.5572 57.6562 73.7083C28.3125 112.151 21.2239 122.458 16.5521 133.526L14.0521 139.443L14.375 129.479C14.8541 114.875 17.4323 82.3177 18.9843 71.4531C22.2031 48.7812 25.4375 33.2916 30.8698 14.3697C34.2864 2.47912 34.3229 2.27079 33.1771 1.276C31.7916 0.0780791 27.1927 -0.416713 25.4218 0.442662C21.1823 2.48433 12.901 30.552 8.0781 59.2083C7.40101 63.2291 5.78122 69.401 4.40101 73.1822C-0.140655 85.6458 -0.21357 86.4322 3.05205 86.6718C4.4531 86.7812 4.46872 87.0416 4.05205 98.3697C2.6406 136.875 2.88018 186.24 4.60935 210.562C5.78643 227.266 6.74476 230.797 10.4791 232.339C13.151 233.437 15.6823 233.203 16.3281 231.802C16.5677 231.276 16.4271 228.135 16.0052 224.755C15.0833 217.286 14.4375 206.182 14.1458 192.568C13.8906 180.995 13.7968 157.656 13.9896 155.062L14.1198 153.302L15.8125 155.271C21.0364 161.333 32.7552 160.469 51.3385 152.651C60.0156 149.005 125.911 116.344 128 114.656C128.911 113.927 128.927 113.713 128.115 113.115Z';
@@ -50,6 +63,7 @@ const TASKS = [
   {
     n: 1, icon: 'meta', accent: 'gold', title: 'Meta audiences', flag: 'Start this first — Meta’s review takes days',
     where: 'developers.facebook.com, then Admin', time: '15 min to submit',
+    shots: [{ file: 's4_metareview.png', max: 44, boxes: [{ l: 79.5, t: 77, w: 20, h: 21, label: 'Add to App Review' }] }],
     steps: [
       { t: 'Open <b>developers.facebook.com</b> and sign in.' },
       { t: 'Top-left, open the app switcher and pick your <b>K Clinics</b> app.' },
@@ -76,6 +90,7 @@ const TASKS = [
   {
     n: 3, icon: 'chart', accent: 'jade', title: 'GA4 traffic on the dashboard', flag: '',
     where: 'Google Analytics, then Admin', time: '10 min',
+    shots: [{ file: 's1_ga4prop.png', max: 56, boxes: [{ l: 86, t: 19.5, w: 13, h: 9.5, label: 'Property ID' }] }],
     steps: [
       { t: 'Open <b>analytics.google.com</b>.' },
       { t: 'Bottom-left, click <b>Admin</b> (the gear). In the <b>Property</b> column, click <b>Property settings</b>.', box: 'Admin (gear) → Property settings' },
@@ -87,6 +102,7 @@ const TASKS = [
   {
     n: 4, icon: 'search', accent: 'jade', title: 'Organic search panel', flag: '',
     where: 'Search Console, then Admin', time: '10 min',
+    shots: [{ file: 's2_searchconsole.jpg', max: 58, boxes: [{ l: 51.5, t: 25, w: 23.5, h: 54, label: 'URL prefix' }] }],
     steps: [
       { t: 'Open <b>search.google.com/search-console</b> with the same Google account.' },
       { t: 'Check <b>kclinics.co.uk</b> is listed. If not: <b>Add property &rarr; URL prefix</b>, enter https://kclinics.co.uk, and verify.', box: 'Add property → URL prefix' },
@@ -97,6 +113,7 @@ const TASKS = [
   {
     n: 5, icon: 'target', accent: 'jade', title: 'Google Ads value bidding', flag: '',
     where: 'Google Ads, then Admin', time: '15 min',
+    shots: [{ file: 's3_googleads.png', max: 72, boxes: [{ l: 70.5, t: 11.5, w: 26, h: 15.5, label: 'Import' }, { l: 6.5, t: 46, w: 34, h: 5, label: 'Track conversions from clicks' }] }],
     steps: [
       { t: 'In <b>Google Ads</b>, top-right, note your <b>customer ID</b> (the 10-digit number).' },
       { t: 'In Admin &rarr; Credentials, check <b>Google Ads customer ID</b> and <b>Google Ads developer token</b> are set. The developer token comes from Google Ads &rarr; Tools &rarr; <b>API Center</b>.' },
@@ -109,6 +126,10 @@ const TASKS = [
   {
     n: 6, icon: 'check', accent: 'gold', title: 'Confirm the funnel events', flag: 'Already live — just check',
     where: 'Admin → SEO', time: '5 min',
+    shots: [
+      { file: 's6_mpsecret.jpeg', max: 40, boxes: [{ l: 21.5, t: 67, w: 70, h: 17, label: 'Measurement Protocol API secrets' }] },
+      { file: 's5_capitoken.jpg', max: 40, boxes: [{ l: 21.5, t: 43, w: 15, h: 10, label: 'Generate access token' }] },
+    ],
     steps: [
       { t: 'Admin &rarr; <b>SEO</b> &rarr; the <b>Tracking &amp; pixels</b> card.' },
       { t: 'Check <b>GA4 API secret</b> and <b>Meta Conversions API token</b> both show <b>set</b>.', box: 'GA4 API secret  · set ✓' },
@@ -168,6 +189,12 @@ const css = `
   .box{ margin-top:9px; display:inline-flex; align-items:center; gap:8px; background:#fff; border:2px solid var(--gold); border-radius:9px; padding:8px 13px; font-size:9.5pt; color:var(--ink); box-shadow:0 1px 0 rgba(133,106,74,.18); }
   .box::before{ content:""; width:9px; height:9px; border:2px solid var(--gold-deep); border-radius:50%; flex:none; }
   .box .cur{ margin-left:4px; color:var(--gold-deep); }
+  /* Embedded console screenshot with a gold highlight box on the click target */
+  .shot{ margin:12px 0 0 62px; }
+  .shotwrap{ position:relative; display:inline-block; max-width:100%; border:1px solid var(--line); border-radius:8px; overflow:hidden; box-shadow:0 2px 10px -4px rgba(42,36,32,.22); }
+  .shotwrap img{ display:block; max-width:100%; height:auto; }
+  .hl{ position:absolute; border:2.5px solid var(--gold-deep); border-radius:5px; box-shadow:0 0 0 3px color-mix(in oklab,var(--gold) 28%,transparent); }
+  .hl i{ position:absolute; left:50%; top:-6px; transform:translate(-50%,-100%); background:var(--gold-deep); color:#fff; font-size:7.5pt; font-style:normal; padding:2px 7px; border-radius:5px; white-space:nowrap; font-family:'Geist',sans-serif; }
   /* Done */
   .done{ margin:22px 0 0 62px; background:color-mix(in oklab,var(--jade) 8%,transparent); border:1px solid color-mix(in oklab,var(--jade) 30%,transparent); border-radius:11px; padding:13px 16px; font-size:10pt; }
   .done b{ color:var(--jade); }
@@ -186,8 +213,9 @@ const taskPage = (t, i, total) => `
     </div>
     <div class="meta"><span class="mi">${miPin}<b>${t.where}</b></span><span class="mi">${miClock}${t.time}</span></div>
     <ol class="steps">
-      ${t.steps.map((s) => `<li><div class="st">${s.t}</div>${s.box ? `<div class="box">${s.box}<span class="cur">▸ click</span></div>` : ''}</li>`).join('')}
+      ${t.steps.map((s) => `<li><div class="st">${s.t}</div>${s.box && !t.shots ? `<div class="box">${s.box}<span class="cur">▸ click</span></div>` : ''}</li>`).join('')}
     </ol>
+    ${(t.shots || []).map((sh) => { const u = dataUri(sh.file); return u ? `<figure class="shot"><div class="shotwrap"><img src="${u}" style="max-height:${sh.max || 54}mm"${'' /* boxes are % of the displayed image */}>${sh.boxes.map((b) => `<span class="hl" style="left:${b.l}%;top:${b.t}%;width:${b.w}%;height:${b.h}%"><i>${b.label}</i></span>`).join('')}</div></figure>` : ''; }).join('')}
     <div class="done"><b>Done when:</b> ${t.done}</div>
   </section>`;
 
@@ -213,4 +241,3 @@ await page.waitForTimeout(1200); // let web fonts settle
 await page.pdf({ path: OUT, format: 'A4', printBackground: true, preferCSSPageSize: true });
 await browser.close();
 console.log('Wrote', OUT);
-void fileURLToPath; // keep import used if trimmed
