@@ -50,9 +50,12 @@ export default async function AcademyPortalPage() {
     <>
       <PageHero eyebrow="K Academy" title={`Welcome, ${student.firstName}.`} lede="Your training, in one place." gradient={['#2a2420', '#7b6a5d']} />
       <section className="container-lux section" data-tour="academy-courses">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between gap-3">
           <h2 className="text-title">Your courses</h2>
-          <AcademyLogout />
+          <div className="flex items-center gap-3">
+            <Link href="/academy/practice" className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Practice &amp; papers</Link>
+            <AcademyLogout />
+          </div>
         </div>
 
         {enrolments.length === 0 ? (

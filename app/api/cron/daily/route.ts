@@ -135,6 +135,16 @@ export async function GET(req: Request) {
     failures++; console.error('[cron] academy-tenant backfill failed (continuing):', (e as Error)?.message);
   }
 
+  // Exam practice: self-healing bootstrap of the question bank from course
+  // quizzes + a specimen paper per course, once. Best-effort, idempotent.
+  let examBank = { ran: false, created: 0 };
+  try {
+    const { bootstrapExamBankIfNeeded } = await import('@/lib/exam-bank');
+    examBank = await bootstrapExamBankIfNeeded();
+  } catch (e) {
+    failures++; console.error('[cron] exam-bank bootstrap failed (continuing):', (e as Error)?.message);
+  }
+
   // Build board: keep it populated from Claude's backlog server-side, and assign
   // input-required tasks to the best-placed user — so the audit board is reliable
   // even if nobody opens it after a deploy (it used to seed only on first view).
@@ -160,7 +170,7 @@ export async function GET(req: Request) {
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend, board, clinicalBackfill, academyTenant },
+    { ok: failures === 0, failures, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend, board, clinicalBackfill, academyTenant, examBank },
     { status: failures === 0 ? 200 : 500 },
   );
 }
