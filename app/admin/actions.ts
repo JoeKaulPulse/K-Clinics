@@ -77,6 +77,21 @@ export async function eraseClientData(clientId: string) {
     db.appointmentSession.deleteMany({ where: { booking: { clientId } } }),
     // BLD-127: scrub call recordings/transcripts/raw payload for this client.
     db.callRecord.updateMany({ where: { matchedClientId: clientId }, data: { transcript: null, recordingUrl: null, raw: Prisma.DbNull, transcriptStatus: 'unavailable' } }),
+    // BLD-286: broaden Art. 17 to non-special-category personal-data tables.
+    // Referrals made by this client (referrer PII) — hard-delete; the reward
+    // history has no stand-alone retention basis once the referrer is erased.
+    db.referral.deleteMany({ where: { referrerId: clientId } }),
+    // Referral rows where THIS client is the referred person — null the FK and
+    // the captured email so the referrer's record becomes non-identifying.
+    db.referral.updateMany({ where: { referredId: clientId }, data: { referredId: null, referredEmail: null } }),
+    // Chat conversations initiated by this client (free text, contact details).
+    // ChatMessage rows cascade on ChatConversation delete.
+    db.chatConversation.deleteMany({ where: { clientId } }),
+    // Waitlist entries (treatment window, contact details) — no retention basis.
+    db.waitlistEntry.deleteMany({ where: { clientId } }),
+    // Legacy Appointment model (pre-Booking era) — status/schedule data only,
+    // no financial retention basis, safe to hard-delete.
+    db.appointment.deleteMany({ where: { clientId } }),
   ]);
   await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
   revalidatePath(`/admin/clients/${clientId}`);

@@ -14,7 +14,7 @@ export async function createContractorTask(input: { title: string; description?:
   const title = (input.title || '').trim();
   if (!title) return { ok: false, error: 'Give the task a title.' };
   const { db } = await import('@/lib/db');
-  await db.contractorTask.create({
+  const task = await db.contractorTask.create({
     data: {
       title: title.slice(0, 200),
       description: (input.description || '').trim().slice(0, 2000) || null,
@@ -23,7 +23,18 @@ export async function createContractorTask(input: { title: string; description?:
       locationId: input.locationId || null,
       createdBy: session.email,
     },
+    select: { id: true, assigneeId: true },
   });
+  // BLD-285: notify the assignee so they see the task in their notification bell.
+  if (task.assigneeId) {
+    const { notifyStaffById } = await import('@/lib/notifications');
+    await notifyStaffById(task.assigneeId, {
+      kind: 'assigned',
+      title: `New task assigned: ${title.slice(0, 100)}`,
+      body: input.description?.trim().slice(0, 200) || undefined,
+      href: '/admin/contractors',
+    }, session.sub);
+  }
   revalidatePath('/admin');
   revalidatePath('/admin/my-day');
   return { ok: true };

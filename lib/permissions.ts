@@ -117,6 +117,10 @@ export const PERMISSIONS: Permission[] = [
   // Contractor tasks (PRJ-63)
   { key: 'contractor.tasks.view', group: 'Facility', label: 'View contracted tasks', description: 'See contracted work assigned to you (maintenance, fit-out, jobs).' },
   { key: 'contractor.tasks.manage', group: 'Facility', label: 'Assign contracted tasks', description: 'Create, assign and track contractor tasks.' },
+
+  // Time tracking (BLD-285 / PRJ-63.6)
+  { key: 'timetracking.use', group: 'Facility', label: 'Clock in / out', description: 'Clock in and out of shifts and log breaks.' },
+  { key: 'timetracking.manage', group: 'Facility', label: 'Manage timesheets', description: 'View and edit all staff shift records and timesheets.' },
 ];
 
 export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
@@ -173,10 +177,9 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
   ],
   // PRJ-63: build/platform only — deliberately no client or clinical access.
   DEVELOPER: ['dashboard.view', 'build.view', 'platform.status'],
-  // PRJ-63: minimal for now; contractor task / time-tracking / facility keys are
-  // added with those features (PRJ-63.6–63.9).
-  CONTRACTOR: ['dashboard.view', 'facility.view', 'contractor.tasks.view'],
-  STAFF: ['dashboard.view', 'bookings.view', 'consultations.view', 'clients.view', 'calendar.view', 'inventory.view', 'dayclose.run', 'build.view', 'facility.view'],
+  // BLD-285: timetracking.use added (PRJ-63.6). Contractor may clock in/out.
+  CONTRACTOR: ['dashboard.view', 'facility.view', 'contractor.tasks.view', 'timetracking.use'],
+  STAFF: ['dashboard.view', 'bookings.view', 'consultations.view', 'clients.view', 'calendar.view', 'inventory.view', 'dayclose.run', 'build.view', 'facility.view', 'timetracking.use'],
 };
 
 export function roleDefaults(role: string): string[] {
