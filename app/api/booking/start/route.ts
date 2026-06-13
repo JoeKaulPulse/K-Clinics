@@ -177,7 +177,7 @@ export async function POST(req: Request) {
   }
 
   const { logAudit } = await import('@/lib/audit');
-  await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Booking created: ${title} on ${start.toLocaleString('en-GB')}`, meta: { totalPence: totalPrice, items: items.length } });
+  await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Booking created: ${title}${sessions > 1 ? ` (course of ${sessions})` : ''} on ${start.toLocaleString('en-GB')}`, meta: { totalPence: totalPrice, items: items.length, sessions } });
 
   // Server-side Schedule conversion (GA4 begin_checkout + Meta CAPI Schedule),
   // deduped with the browser pixel via the booking id. The Purchase event fires

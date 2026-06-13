@@ -206,7 +206,8 @@ export async function listBookings(opts: { filter?: string; q?: string; from?: s
   return db.booking.findMany({
     where: and.length ? { AND: and } : undefined,
     orderBy: { startAt: filter === 'past' ? 'desc' : 'asc' },
-    include: { client: true },
+    // Include the primary line item's booked session count so the list can flag courses.
+    include: { client: true, items: { where: { isAddon: false }, select: { sessions: true }, take: 1 } },
     take: 300,
   });
 }

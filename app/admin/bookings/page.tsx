@@ -140,7 +140,12 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
           <Link key={b.id} href={`/admin/bookings/${b.id}`} className={`${rowCls} transition-colors duration-150 ease-out hover:bg-[var(--color-bone)] active:bg-[var(--color-sand)]`}>
             <div>
               <p className="font-medium">{b.client.firstName} {b.client.lastName ?? ''}</p>
-              <p className="text-xs text-[var(--color-stone)]">{b.treatmentTitle}</p>
+              <p className="text-xs text-[var(--color-stone)]">
+                {b.treatmentTitle}
+                {(b.items?.[0]?.sessions ?? 1) > 1 && (
+                  <span className="ml-1.5 rounded-full bg-[color-mix(in_oklab,var(--color-gold)_16%,transparent)] px-1.5 py-0.5 text-[0.65rem] font-medium text-[var(--color-ink)]">Course of {b.items[0].sessions}</span>
+                )}
+              </p>
             </div>
             <p className="hidden text-sm text-[var(--color-stone)] sm:block">
               {new Date(b.startAt).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
