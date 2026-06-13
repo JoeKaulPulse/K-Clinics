@@ -1,6 +1,7 @@
 import 'server-only';
 import crypto from 'node:crypto';
 import { crmEnabled } from '@/lib/crm';
+import { uploadGoogleAdsConversion } from '@/lib/google-ads-conversions';
 
 // Server-side conversion events. When a booking is charged we report the sale to
 // GA4 (Measurement Protocol) and Meta (Conversions API) using server-held
@@ -26,9 +27,10 @@ export async function conversionStatus(): Promise<{ ga4: boolean; meta: boolean 
   return { ga4: Boolean(ids.ga4Id && secrets.ga4ApiSecret), meta: Boolean(ids.metaPixelId && secrets.metaCapiToken) };
 }
 
-type PurchaseInput = { bookingId: string; valuePence: number; clientId?: string | null; email?: string | null; campaign?: string | null };
+type PurchaseInput = { bookingId: string; valuePence: number; clientId?: string | null; email?: string | null; campaign?: string | null; gclid?: string | null };
 
-/** Fire a Purchase conversion to GA4 + Meta (best-effort, never throws). */
+/** Fire a Purchase conversion to GA4 + Meta, and (when a GCLID was captured) an
+ *  offline conversion to Google Ads for value-based bidding. Best-effort. */
 export async function sendPurchase(input: PurchaseInput): Promise<void> {
   if (!crmEnabled || input.valuePence <= 0) return;
   try {
@@ -38,6 +40,8 @@ export async function sendPurchase(input: PurchaseInput): Promise<void> {
     await Promise.allSettled([
       ids.ga4Id && secrets.ga4ApiSecret ? ga4Purchase(ids.ga4Id, secrets.ga4ApiSecret, clientId, value, input) : null,
       ids.metaPixelId && secrets.metaCapiToken ? metaPurchase(ids.metaPixelId, secrets.metaCapiToken, value, input) : null,
+      // Google Ads offline conversion (no-ops unless a GCLID + conversion action are present).
+      input.gclid ? uploadGoogleAdsConversion({ gclid: input.gclid, valuePence: input.valuePence, bookingId: input.bookingId }) : null,
     ].filter(Boolean) as Promise<unknown>[]);
   } catch (e) {
     console.error('[conversions] send failed:', (e as Error)?.message);
