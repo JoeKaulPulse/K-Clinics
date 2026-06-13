@@ -17,6 +17,7 @@ import { NewBookingButton } from '@/components/admin/NewBookingButton';
 import { decClinical } from '@/lib/clinical-crypto';
 import { resolveView, canSwitchViews, type DashboardView } from '@/lib/dashboard-views';
 import { DashboardShell } from '@/components/admin/dashboard/DashboardShell';
+import { StatTile, CLICKABLE_CARD } from '@/components/admin/dashboard/Widgets';
 import { ScaffoldView } from '@/components/admin/dashboard/ScaffoldView';
 import { ClinicianView } from '@/components/admin/dashboard/ClinicianView';
 import { ReceptionistView } from '@/components/admin/dashboard/ReceptionistView';
@@ -78,7 +79,9 @@ export default async function AdminOverview() {
       <div className="flex items-center gap-2.5 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3.5 py-1.5">
         <LiveClock className="font-[family-name:var(--font-display)] text-base font-medium tabular-nums leading-none text-[var(--color-ink)]" />
         {weather && (
-          <div className="min-w-0 border-l border-[var(--color-line)] pl-2.5 leading-tight">
+          // Ambient info — fold on phones so the weather can't widen/destabilise
+          // the header cluster on small screens (content-priority); shows from sm up.
+          <div className="hidden min-w-0 border-l border-[var(--color-line)] pl-2.5 leading-tight sm:block">
             <p className="text-xs font-medium text-[var(--color-ink)]">
               <span className="tabular-nums">{weather.tempC}°</span>
               <span className="ml-1 inline-block max-w-[7rem] truncate align-bottom font-normal text-[var(--color-stone)]">{weather.label}</span>
@@ -300,24 +303,12 @@ export default async function AdminOverview() {
         </section>
       )}
 
-      {/* KPI row */}
+      {/* KPI row — shared StatTile primitive (accessible SVG trend, unified
+          hover-lift/press, no dead links on non-clickable tiles) so the dashboard
+          matches every role view's card language (BLD-226 slice 3). */}
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((k) => (
-          <Link
-            key={k.label}
-            href={k.href || '#'}
-            className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 transition-shadow hover:shadow-[var(--shadow-soft)]"
-          >
-            <div className="flex items-baseline justify-between gap-2">
-              <p className="font-[family-name:var(--font-display)] text-3xl tabular-nums text-[var(--color-ink)]">{k.value}</p>
-              {typeof k.trend === 'number' && (
-                <span className={`text-xs font-medium tabular-nums ${k.trend >= 0 ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush)]'}`}>
-                  {k.trend >= 0 ? '▲' : '▼'} {Math.abs(k.trend)}%
-                </span>
-              )}
-            </div>
-            <p className="mt-1 text-sm text-[var(--color-stone)]">{k.label}{k.sub ? ` · ${k.sub}` : ''}</p>
-          </Link>
+          <StatTile key={k.label} label={k.label} value={k.value} sub={k.sub} href={k.href} trend={k.trend ?? undefined} />
         ))}
       </div>
 
@@ -331,7 +322,7 @@ export default async function AdminOverview() {
       {canBuild && (
         <Link
           href="/admin/build"
-          className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 transition-shadow hover:shadow-[var(--shadow-soft)]"
+          className={`mt-6 flex flex-wrap items-center gap-x-8 gap-y-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 ${CLICKABLE_CARD}`}
         >
           <div className="flex-1 min-w-[12rem]">
             <p className="font-[family-name:var(--font-display)] text-xl">Build &amp; issues</p>

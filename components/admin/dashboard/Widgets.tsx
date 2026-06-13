@@ -12,7 +12,7 @@ import type { ReactNode } from 'react';
 // transition with a gentle hover lift, warmed border, soft shadow, and a press
 // settle. Transform/shadow only, so nothing reflows. Matches the nav-link feedback
 // established in slice 1.
-const CLICKABLE_CARD =
+export const CLICKABLE_CARD =
   'transition-[transform,box-shadow,border-color] duration-150 ease-out ' +
   'hover:-translate-y-0.5 hover:border-[var(--color-stone-soft)] hover:shadow-[var(--shadow-soft)] ' +
   'active:translate-y-0 active:shadow-none';

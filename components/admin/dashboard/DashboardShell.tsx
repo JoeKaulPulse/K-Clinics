@@ -27,7 +27,10 @@ export function DashboardShell({
       <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3">
         <div className="min-w-0 flex-1">{heading}</div>
         {(canSwitch || aside) && (
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          // Utility cluster (clock/weather · clock-in · Viewing-as). Full-width on
+          // phones so it sits as one tidy row under the heading instead of crowding
+          // it; right-anchored inline from sm up. Wraps gracefully, never interleaves.
+          <div className="flex w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end">
             {aside}
             {canSwitch && <ViewSwitcher active={view} />}
           </div>
