@@ -13,10 +13,12 @@ export function KioskThemeSelector({ current }: { current: KioskThemeKey }) {
 
   function pick(key: KioskThemeKey) {
     if (key === active || pending) return;
+    const prev = active;
     setActive(key);
     setMsg('');
     startTransition(async () => {
       const r = await setKioskTheme(key);
+      if (!r.ok) setActive(prev);
       setMsg(r.ok ? 'Theme saved — display will update on next page load.' : (r.error || 'Could not save.'));
     });
   }
