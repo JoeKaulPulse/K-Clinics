@@ -125,6 +125,16 @@ export async function GET(req: Request) {
     failures++; console.error('[cron] clinical-encryption backfill failed (continuing):', (e as Error)?.message);
   }
 
+  // ClinicOS Ring 0: stamp the K Clinics tenant onto any Academy rows still NULL,
+  // then flag complete so it stops scanning. Self-healing, idempotent, best-effort.
+  let academyTenant = { ran: false, stamped: 0, complete: false };
+  try {
+    const { backfillAcademyTenantIfNeeded } = await import('@/lib/tenant');
+    academyTenant = await backfillAcademyTenantIfNeeded();
+  } catch (e) {
+    failures++; console.error('[cron] academy-tenant backfill failed (continuing):', (e as Error)?.message);
+  }
+
   // Build board: keep it populated from Claude's backlog server-side, and assign
   // input-required tasks to the best-placed user — so the audit board is reliable
   // even if nobody opens it after a deploy (it used to seed only on first view).
@@ -150,7 +160,7 @@ export async function GET(req: Request) {
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend, board, clinicalBackfill },
+    { ok: failures === 0, failures, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend, board, clinicalBackfill, academyTenant },
     { status: failures === 0 ? 200 : 500 },
   );
 }

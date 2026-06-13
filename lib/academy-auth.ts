@@ -16,10 +16,12 @@ export async function signupStudent(input: AcademySignup): Promise<{ ok: boolean
 
   const passwordHash = await hashPassword(input.password);
   const dob = new Date(input.dob);
+  const { currentTenantId } = await import('@/lib/tenant');
+  const tenantId = await currentTenantId();
   const student = await db.academyStudent.upsert({
     where: { email },
     update: { firstName: input.firstName, lastName: input.lastName || undefined, phone: input.phone || undefined, dob, ageDeclaredAt: new Date(), passwordHash, portalActive: true },
-    create: { email, firstName: input.firstName, lastName: input.lastName || null, phone: input.phone || null, dob, ageDeclaredAt: new Date(), passwordHash, portalActive: true },
+    create: { tenantId, email, firstName: input.firstName, lastName: input.lastName || null, phone: input.phone || null, dob, ageDeclaredAt: new Date(), passwordHash, portalActive: true },
   });
   // Link any prior applications made with this email to the new account.
   await db.enrolment.updateMany({ where: { applicantEmail: email, studentId: null }, data: { studentId: student.id } }).catch(() => {});
