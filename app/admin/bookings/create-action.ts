@@ -145,3 +145,36 @@ export async function createManualBooking(input: {
   revalidatePath('/admin/bookings');
   return { ok: true, bookingId: booking.id, manageToken: booking.manageToken, hasCard, clientFirstName: client.firstName, clientEmail: client.email, clientHasEmail: !!client.email };
 }
+
+// Staff: schedule a follow-up appointment for the same client + treatment as an
+// existing booking (e.g. the next session of a course). It reuses createManualBooking,
+// so the slot is availability-checked, a clinician + room are assigned, and the
+// booking flows to Google Calendar sync once that integration is enabled. Staff-only
+// (bookings.manage) — not exposed to clients.
+export async function scheduleFollowUpAction(input: { fromBookingId: string; startISO: string; override?: boolean }) {
+  if (!crmEnabled) return { ok: false as const, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.manage')) {
+    return { ok: false as const, error: 'You don’t have permission to schedule appointments.' };
+  }
+  if (!input.startISO || isNaN(+new Date(input.startISO))) return { ok: false as const, error: 'Choose a date and time.' };
+  const { db } = await import('@/lib/db');
+  const from = await db.booking.findUnique({
+    where: { id: input.fromBookingId },
+    select: { treatmentSlug: true, client: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } }, items: { where: { isAddon: false }, select: { variantId: true }, take: 1 } },
+  });
+  const c = from?.client;
+  if (!c?.email) return { ok: false as const, error: 'Original booking or client not found.' };
+  return createManualBooking({
+    clientId: c.id,
+    firstName: c.firstName,
+    lastName: c.lastName ?? undefined,
+    email: c.email,
+    phone: c.phone ?? undefined,
+    treatmentSlug: from!.treatmentSlug,
+    variantId: from!.items[0]?.variantId ?? undefined,
+    startISO: input.startISO,
+    notes: 'Follow-up appointment booked by staff',
+    override: input.override,
+  });
+}

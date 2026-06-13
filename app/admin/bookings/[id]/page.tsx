@@ -15,6 +15,7 @@ import { ConsentPanel } from '@/components/admin/ConsentPanel';
 import { BeforePhotoCapture } from '@/components/admin/BeforePhotoCapture';
 import { ReadinessPanel } from '@/components/admin/ReadinessPanel';
 import { AddTreatment } from '@/components/admin/AddTreatment';
+import { ScheduleFollowUp } from '@/components/admin/ScheduleFollowUp';
 import { sessionCan } from '@/lib/auth';
 import { site } from '@/lib/site';
 
@@ -97,11 +98,20 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   }
 
   let nextRec: string | null = null;
+  // Recommended next-session date, also used to pre-fill the staff follow-up scheduler.
+  let followUpRecDate: string | null = null;
+  let followUpRecTime: string | null = null;
+  let followUpRecLabel: string | null = null;
   if (visitPrefs) {
     const { recommendedNext, formatInterval } = await import('@/lib/treatment-intervals');
     const completed = await db.booking.count({ where: { clientId: visitPrefs.clientId, treatmentSlug: visitPrefs.treatmentSlug, status: 'COMPLETED' } });
     const rec = recommendedNext(visitPrefs.treatmentSlug, completed + 1, visitPrefs.startAt);
-    if (rec) nextRec = `${formatInterval(rec.weeks)} (≈ ${rec.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})`;
+    if (rec) {
+      nextRec = `${formatInterval(rec.weeks)} (≈ ${rec.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})`;
+      followUpRecDate = rec.date.toLocaleDateString('en-CA', { timeZone: 'Europe/London' }); // YYYY-MM-DD
+      followUpRecTime = rec.date.toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour12: false, hour: '2-digit', minute: '2-digit' });
+      followUpRecLabel = formatInterval(rec.weeks);
+    }
   }
   const stockItems = canConsumables
     ? await db.stockItem.findMany({ where: { active: true }, orderBy: [{ category: 'asc' }, { name: 'asc' }], select: { id: true, name: true, unit: true, currentQty: true } })
@@ -219,6 +229,12 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             )}
             <Link href={`/admin/clients/${b.clientId}`} className="mt-3 inline-block text-xs text-[var(--color-gold)] hover:underline">View full health records →</Link>
           </div>
+
+          {/* Staff: book the client's next appointment (fills this column + delivers
+              the requested follow-up scheduling). Hidden for cancelled/no-show. */}
+          {!['CANCELLED', 'NO_SHOW'].includes(b.status) && canManageBk && (
+            <ScheduleFollowUp fromBookingId={b.id} recommendedDate={followUpRecDate} recommendedTime={followUpRecTime} recommendedLabel={followUpRecLabel} />
+          )}
         </section>
 
         <section className="space-y-6">
