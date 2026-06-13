@@ -4,7 +4,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Markdown } from '@/components/academy/Markdown';
 import { Glyph } from '@/components/ui/Glyph';
+import { KMascot, KCelebration, type CelebrationVariant } from '@/components/academy/KMascot';
 import type { CourseLearning, LessonView, QuizView } from '@/lib/lms';
+
+type AwardedBadge = { key: string; name: string; icon: string };
+type Celebration = { variant: Exclude<CelebrationVariant, 'idle'>; title: string; subtitle?: string; badgeIcon?: string };
+const badgeCelebrations = (badges: AwardedBadge[] = []): Celebration[] => badges.map((b) => ({ variant: 'badge', title: 'Badge unlocked', subtitle: b.name, badgeIcon: b.icon }));
 
 function ytId(url: string): string | null {
   const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{11})/);
@@ -34,6 +39,10 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', onExit }: { le
 
   const [doneLessons, setDoneLessons] = useState<Set<string>>(() => new Set(learning.modules.flatMap((m) => m.lessons.filter((l) => l.done).map((l) => l.id))));
   const [quizPassed, setQuizPassed] = useState<Set<string>>(() => new Set(learning.modules.filter((m) => m.quiz?.passed).map((m) => m.quiz!.id)));
+  const [celebs, setCelebs] = useState<(Celebration & { id: number })[]>([]);
+  const idRef = useRef(0);
+  const enqueue = (...cs: Celebration[]) => { if (mode === 'preview') return; setCelebs((q) => [...q, ...cs.map((c) => ({ ...c, id: ++idRef.current }))]); };
+  const completedCelebrated = useRef(false);
 
   const isStepComplete = (st: Step): boolean => {
     if (st.kind === 'lesson') return doneLessons.has(learning.modules[st.mi].lessons[st.li].id);
@@ -70,18 +79,31 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', onExit }: { le
 
   async function finishLesson(lesson: LessonView, seconds: number) {
     setDoneLessons((s) => new Set(s).add(lesson.id));
+    const cs: Celebration[] = [{ variant: 'cheer', title: 'Lesson complete' }];
     if (mode === 'learn') {
-      await fetch('/api/academy/lesson', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lessonId: lesson.id, secondsSpent: seconds }) }).catch(() => {});
+      const r = await fetch('/api/academy/lesson', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lessonId: lesson.id, secondsSpent: seconds }) }).then((x) => x.json()).catch(() => null);
+      cs.push(...badgeCelebrations(r?.newBadges));
     }
+    enqueue(...cs);
     advance();
   }
-  function finishQuiz(quizId: string, passed: boolean) {
-    if (passed) setQuizPassed((s) => new Set(s).add(quizId));
+  function finishQuiz(quizId: string, result: { passed: boolean; scorePct: number; newBadges: AwardedBadge[] }) {
+    if (result.passed) setQuizPassed((s) => new Set(s).add(quizId));
+    enqueue(...badgeCelebrations(result.newBadges));
     advance();
   }
 
   const moduleLabel = step.kind === 'lesson' || step.kind === 'quiz' ? learning.modules[step.mi]?.title : null;
   const allComplete = learning.modules.length > 0 && learning.modules.every((m) => m.lessons.every((l) => doneLessons.has(l.id)) && (!m.quiz || quizPassed.has(m.quiz.id)));
+
+  // Celebrate finishing the whole course, once, when the final step is reached.
+  useEffect(() => {
+    if (step.kind === 'done' && allComplete && !completedCelebrated.current) {
+      completedCelebrated.current = true;
+      enqueue({ variant: 'complete', title: 'Course complete', subtitle: 'Every lesson and assessment done' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, allComplete]);
 
   return (
     <div className="fixed inset-0 z-[200] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]">
@@ -120,7 +142,7 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', onExit }: { le
                 key={learning.modules[step.mi].quiz!.id}
                 quiz={learning.modules[step.mi].quiz!}
                 preview={mode === 'preview'}
-                onFinish={(passed) => finishQuiz(learning.modules[step.mi].quiz!.id, passed)}
+                onFinish={(result) => finishQuiz(learning.modules[step.mi].quiz!.id, result)}
               />
             )}
             {step.kind === 'done' && <DoneStep slug={slug} preview={mode === 'preview'} complete={allComplete} onExit={onExit} />}
@@ -132,6 +154,11 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', onExit }: { le
       {idx > 0 && step.kind !== 'done' && (
         <button onClick={() => go(idx - 1)} className="absolute bottom-4 left-4 text-xs text-white/40 transition-colors hover:text-white/80 sm:bottom-6 sm:left-6">← Back</button>
       )}
+
+      {/* Mascot celebrations */}
+      <AnimatePresence>
+        {celebs[0] && <KCelebration key={celebs[0].id} variant={celebs[0].variant} title={celebs[0].title} subtitle={celebs[0].subtitle} badgeIcon={celebs[0].badgeIcon} onDone={() => setCelebs((q) => q.slice(1))} />}
+      </AnimatePresence>
     </div>
   );
 }
@@ -139,6 +166,7 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', onExit }: { le
 function IntroStep({ learning, onBegin, canBegin }: { learning: CourseLearning; onBegin: () => void; canBegin: boolean }) {
   return (
     <div className="text-center">
+      <KMascot variant="idle" size={60} className="mx-auto mb-3" />
       {learning.course.level && <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-gold)]">{learning.course.level}</p>}
       <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl leading-tight sm:text-4xl">{learning.course.title}</h1>
       {learning.course.welcome && <p className="mx-auto mt-4 max-w-xl text-white/70">{learning.course.welcome}</p>}
@@ -246,7 +274,7 @@ function LessonStep({ lesson, reviewing, preview, onContinue, onNext }: { lesson
 
 type Checked = { correct: boolean; correctIndices: number[]; explanation: string | null };
 
-function QuizStep({ quiz, preview, onFinish }: { quiz: QuizView; preview: boolean; onFinish: (passed: boolean) => void }) {
+function QuizStep({ quiz, preview, onFinish }: { quiz: QuizView; preview: boolean; onFinish: (result: { passed: boolean; scorePct: number; newBadges: AwardedBadge[] }) => void }) {
   const [qi, setQi] = useState(0);
   const [selected, setSelected] = useState<number[]>([]);
   const [checked, setChecked] = useState<Checked | null>(null);
@@ -254,7 +282,7 @@ function QuizStep({ quiz, preview, onFinish }: { quiz: QuizView; preview: boolea
   const [busy, setBusy] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
   const answersRef = useRef<Record<string, number[]>>({});
-  const [done, setDone] = useState<null | { scorePct: number; passed: boolean }>(null);
+  const [done, setDone] = useState<null | { scorePct: number; passed: boolean; newBadges: AwardedBadge[] }>(null);
 
   const q = quiz.questions[qi];
   const multi = q?.type === 'MULTI';
@@ -292,14 +320,15 @@ function QuizStep({ quiz, preview, onFinish }: { quiz: QuizView; preview: boolea
     setBusy(true);
     const localPct = Math.round((correctCount / quiz.questions.length) * 100);
     let scorePct = localPct, passed = localPct >= quiz.passMark;
+    let newBadges: AwardedBadge[] = [];
     if (!preview) {
       try {
         const r = await fetch('/api/academy/quiz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quizId: quiz.id, answers: answersRef.current }) }).then((x) => x.json());
-        if (r.ok) { scorePct = r.scorePct; passed = r.passed; }
+        if (r.ok) { scorePct = r.scorePct; passed = r.passed; newBadges = r.newBadges ?? []; }
       } catch { /* fall back to local */ }
     }
     setBusy(false);
-    setDone({ scorePct, passed });
+    setDone({ scorePct, passed, newBadges });
   }
 
   function retry() { setQi(0); setSelected([]); setChecked(null); setShowTip(false); setCorrectCount(0); answersRef.current = {}; setDone(null); }
@@ -307,14 +336,16 @@ function QuizStep({ quiz, preview, onFinish }: { quiz: QuizView; preview: boolea
   if (done) {
     return (
       <div className="text-center">
-        <div className={`mx-auto grid h-20 w-20 place-items-center rounded-full ${done.passed ? 'bg-[var(--color-gold)]/20' : 'bg-white/10'}`}>
-          <span className="text-3xl">{done.passed ? '🏆' : '📘'}</span>
-        </div>
-        <h2 className="mt-5 font-[family-name:var(--font-display)] text-3xl">{done.passed ? 'Passed!' : 'Not quite yet'}</h2>
+        {done.passed ? (
+          <KMascot variant={done.scorePct === 100 ? 'perfect' : 'pass'} size={78} className="mx-auto" />
+        ) : (
+          <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-white/10"><span className="text-3xl">📘</span></div>
+        )}
+        <h2 className="mt-5 font-[family-name:var(--font-display)] text-3xl">{done.passed ? (done.scorePct === 100 ? 'Flawless!' : 'Passed!') : 'Not quite yet'}</h2>
         <p className="mt-2 text-white/70">You scored <strong className="text-white">{done.scorePct}%</strong> — {quiz.passMark}% needed to pass.</p>
         <div className="mt-8 flex items-center justify-center gap-3">
           {!done.passed && <button onClick={retry} className="rounded-full bg-white/15 px-7 py-3 text-sm font-semibold text-white hover:bg-white/25">Try again</button>}
-          <button onClick={() => onFinish(done.passed)} className="rounded-full bg-[var(--color-gold)] px-7 py-3 text-sm font-semibold text-[var(--color-ink)] hover:scale-[1.02]">Continue →</button>
+          <button onClick={() => onFinish({ passed: done.passed, scorePct: done.scorePct, newBadges: done.newBadges })} className="rounded-full bg-[var(--color-gold)] px-7 py-3 text-sm font-semibold text-[var(--color-ink)] hover:scale-[1.02]">Continue →</button>
         </div>
       </div>
     );
@@ -379,7 +410,7 @@ function QuizStep({ quiz, preview, onFinish }: { quiz: QuizView; preview: boolea
 function DoneStep({ slug, preview, complete, onExit }: { slug?: string; preview: boolean; complete: boolean; onExit?: () => void }) {
   return (
     <div className="text-center">
-      <div className="mx-auto grid h-24 w-24 place-items-center rounded-full bg-[var(--color-gold)]/20"><Glyph name="cap" className="h-10 w-10 text-[var(--color-gold)]" /></div>
+      <KMascot variant={complete && !preview ? 'complete' : 'idle'} size={84} className="mx-auto" />
       <h2 className="mt-6 font-[family-name:var(--font-display)] text-3xl">{preview ? 'End of preview' : complete ? 'Course complete' : 'Great progress'}</h2>
       <p className="mx-auto mt-3 max-w-md text-white/70">
         {preview ? 'You’ve reached the end of the course in preview mode. Nothing was recorded.' : complete ? 'You’ve completed every lesson and passed every assessment. Your certificate is ready.' : 'You’ve reached the end of the available content. Keep going — finish any remaining assessments to unlock your certificate.'}

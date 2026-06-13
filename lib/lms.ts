@@ -94,7 +94,7 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
 
 /** Mark a lesson complete (idempotent). Verifies access. `secondsSpent` (the
  *  dwell time the player measured for this visit) is accumulated, not overwritten. */
-export async function completeLesson(studentId: string, lessonId: string, secondsSpent = 0): Promise<{ ok: boolean }> {
+export async function completeLesson(studentId: string, lessonId: string, secondsSpent = 0): Promise<{ ok: boolean; newBadges?: { key: string; name: string; icon: string }[] }> {
   const lesson = await db.lesson.findUnique({ where: { id: lessonId }, select: { module: { select: { courseId: true } } } });
   if (!lesson) return { ok: false };
   if (!(await studentCanAccess(studentId, lesson.module.courseId))) return { ok: false };
@@ -105,17 +105,19 @@ export async function completeLesson(studentId: string, lessonId: string, second
     update: secs > 0 ? { secondsSpent: { increment: secs } } : {},
     create: { studentId, lessonId, secondsSpent: secs },
   });
+  let newBadges: { key: string; name: string; icon: string }[] = [];
   if (firstTime) {
     const { scoreAndBadge, XP } = await import('@/lib/academy-gamification');
-    await scoreAndBadge(studentId, 'LESSON', XP.LESSON, lesson.module.courseId);
+    newBadges = await scoreAndBadge(studentId, 'LESSON', XP.LESSON, lesson.module.courseId);
   }
-  return { ok: true };
+  return { ok: true, newBadges };
 }
 
 export type GradeResult = {
   ok: boolean; error?: string;
   scorePct?: number; passed?: boolean; passMark?: number;
   results?: { questionId: string; correct: boolean; correctIndices: number[]; explanation: string | null }[];
+  newBadges?: { key: string; name: string; icon: string }[];
 };
 
 /** Grade a quiz submission server-side and record the attempt. */
@@ -141,11 +143,12 @@ export async function gradeQuiz(studentId: string, quizId: string, answers: Reco
   const passed = scorePct >= quiz.passMark;
   const priorPass = passed ? await db.quizAttempt.findFirst({ where: { studentId, quizId, passed: true }, select: { id: true } }) : null;
   await db.quizAttempt.create({ data: { studentId, quizId, scorePct, passed, answers: answers as object } });
+  let newBadges: { key: string; name: string; icon: string }[] = [];
   if (passed && !priorPass) {
     const { scoreAndBadge, XP } = await import('@/lib/academy-gamification');
-    await scoreAndBadge(studentId, 'QUIZ', XP.QUIZ_PASS + (scorePct === 100 ? XP.QUIZ_PERFECT_BONUS : 0), quiz.module.courseId);
+    newBadges = await scoreAndBadge(studentId, 'QUIZ', XP.QUIZ_PASS + (scorePct === 100 ? XP.QUIZ_PERFECT_BONUS : 0), quiz.module.courseId);
   }
-  return { ok: true, scorePct, passed, passMark: quiz.passMark, results };
+  return { ok: true, scorePct, passed, passMark: quiz.passMark, results, newBadges };
 }
 
 /** Grade a SINGLE question for immediate (Duolingo-style) feedback. Verifies

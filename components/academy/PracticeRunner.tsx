@@ -1,8 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { AnimatePresence } from 'motion/react';
+import { KMascot, KCelebration } from '@/components/academy/KMascot';
 
 type Course = { id: string; title: string; questionCount: number };
+type AwardedBadge = { key: string; name: string; icon: string };
 type Q = { id: string; prompt: string; type: string; options: string[]; tip: string | null };
 type Checked = { correct: boolean; correctIndices: number[]; explanation: string | null };
 
@@ -25,6 +28,7 @@ export function PracticeRunner({ courses }: { courses: Course[] }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [scorePct, setScorePct] = useState(0);
+  const [badgeQueue, setBadgeQueue] = useState<AwardedBadge[]>([]);
 
   if (courses.length === 0) {
     return <p className="text-sm text-[var(--color-stone)]">No practice questions are available for your courses yet. Your tutor is adding them — check back soon.</p>;
@@ -59,6 +63,7 @@ export function PracticeRunner({ courses }: { courses: Course[] }) {
     const r = await api({ action: 'submit', courseId, total: questions.length, correct: correctCount });
     setBusy(false);
     setScorePct(typeof r.scorePct === 'number' ? r.scorePct : Math.round((correctCount / questions.length) * 100));
+    setBadgeQueue(Array.isArray(r.newBadges) ? r.newBadges : []);
     setPhase('done');
   }
 
@@ -94,15 +99,20 @@ export function PracticeRunner({ courses }: { courses: Course[] }) {
   if (phase === 'done') {
     const passed = scorePct >= 70;
     return (
-      <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-8 text-center">
-        <div className={`mx-auto grid h-20 w-20 place-items-center rounded-full ${passed ? 'bg-[var(--color-gold)]/15' : 'bg-[var(--color-bone)]'}`}><span className="text-3xl">{passed ? '🎯' : '📈'}</span></div>
-        <p className="mt-4 font-[family-name:var(--font-display)] text-3xl">{scorePct}%</p>
-        <p className="mt-1 text-sm text-[var(--color-stone)]">You got {correctCount} of {questions.length} right.</p>
-        <div className="mt-6 flex justify-center gap-3">
-          <button onClick={() => setPhase('pick')} className="rounded-full border border-[var(--color-line)] px-6 py-2.5 text-sm font-medium hover:border-[var(--color-gold)]">Choose another set</button>
-          <button onClick={start} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-ink)]">Practise again</button>
+      <>
+        <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-8 text-center">
+          {passed ? <KMascot variant={scorePct === 100 ? 'perfect' : 'pass'} size={68} className="mx-auto" /> : <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[var(--color-bone)]"><span className="text-3xl">📈</span></div>}
+          <p className="mt-4 font-[family-name:var(--font-display)] text-3xl">{scorePct}%</p>
+          <p className="mt-1 text-sm text-[var(--color-stone)]">You got {correctCount} of {questions.length} right.</p>
+          <div className="mt-6 flex justify-center gap-3">
+            <button onClick={() => setPhase('pick')} className="rounded-full border border-[var(--color-line)] px-6 py-2.5 text-sm font-medium hover:border-[var(--color-gold)]">Choose another set</button>
+            <button onClick={start} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-ink)]">Practise again</button>
+          </div>
         </div>
-      </div>
+        <AnimatePresence>
+          {badgeQueue[0] && <KCelebration key={badgeQueue[0].key} variant="badge" title="Badge unlocked" subtitle={badgeQueue[0].name} badgeIcon={badgeQueue[0].icon} onDone={() => setBadgeQueue((q) => q.slice(1))} />}
+        </AnimatePresence>
+      </>
     );
   }
 
