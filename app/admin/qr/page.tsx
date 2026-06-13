@@ -4,7 +4,9 @@ import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { QrManager, type QrRow } from '@/components/admin/QrManager';
+import { KioskThemeSelector } from '@/components/admin/KioskThemeSelector';
 import { getLocale } from '@/lib/locale';
+import { KIOSK_THEME_DEFAULT, isKioskThemeKey, type KioskThemeKey } from '@/lib/kiosk-themes';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +36,11 @@ export default async function QrPage() {
     url: qrUrl(c.code),
     svg: await qrSvg(qrUrl(c.code)),
   })));
+
+  // BLD-137: read the active kiosk scene theme for the selector.
+  const { getStringSetting } = await import('@/lib/settings');
+  const rawTheme = await getStringSetting('kiosk_theme', KIOSK_THEME_DEFAULT);
+  const activeTheme: KioskThemeKey = isKioskThemeKey(rawTheme) ? rawTheme : KIOSK_THEME_DEFAULT;
 
   // ── Skin & Smile kiosk analytics — funnel + sessions (BLD-135) ────────────
   const [kioskCounts, sessionStatus] = await Promise.all([
@@ -102,6 +109,7 @@ export default async function QrPage() {
           {ageDeclined > 0 && <span className="text-[var(--color-stone-soft)]">{ageDeclined} age-declined (photos purged)</span>}
         </div>
         <p className="mt-2 text-[0.65rem] text-[var(--color-stone-soft)]">Campaign attribution needs a campaign tag captured at the kiosk entry point — a small follow-up once per-campaign QR/links drive the kiosk.</p>
+        <KioskThemeSelector current={activeTheme} />
       </section>
 
       <div className="mt-8">

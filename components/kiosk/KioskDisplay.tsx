@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useKioskChannel } from './display/useKioskChannel';
 import type { KioskLivePayload } from './display/types';
 import { AttractScene } from './display/AttractScene';
@@ -11,6 +11,7 @@ import { RevealScene } from './display/RevealScene';
 import { ShareScene } from './display/ShareScene';
 import { GoldParticles } from './display/GoldParticles';
 import { BrandCorner, CornerBadge } from './display/CornerBadge';
+import { getKioskThemeMeta, type KioskThemeKey } from '@/lib/kiosk-themes';
 import './display/kiosk-display.css';
 
 // ── Storefront display orchestrator ──────────────────────────────────────────
@@ -50,7 +51,8 @@ function sceneFor(p: KioskLivePayload | null): SceneKind {
   }
 }
 
-export function KioskDisplay({ svg, token, secret }: { svg: string; url?: string; token: string; secret?: string }) {
+export function KioskDisplay({ svg, token, secret, theme = 'default' }: { svg: string; url?: string; token: string; secret?: string; theme?: KioskThemeKey }) {
+  const themeMeta = getKioskThemeMeta(theme);
   const { payload } = useKioskChannel(token, secret);
   const [remaining, setRemaining] = useState(REGEN_MS);
   // The reveal tail is locally paced: reveal → share outro → reload (fresh
@@ -96,7 +98,8 @@ export function KioskDisplay({ svg, token, secret }: { svg: string; url?: string
   const lastPhoto = payload?.photoUrls?.length ? payload.photoUrls[payload.photoUrls.length - 1] : null;
 
   return (
-    <main className="kd-stage" aria-label="K Clinics Skin and Smile kiosk display">
+    <main className="kd-stage" aria-label="K Clinics Skin and Smile kiosk display"
+      style={Object.keys(themeMeta.stageVars).length > 0 ? (themeMeta.stageVars as React.CSSProperties) : undefined}>
       {/* Ambient layer — present in every scene */}
       <div aria-hidden className="kd-shimmer" />
       <GoldParticles />
@@ -104,7 +107,7 @@ export function KioskDisplay({ svg, token, secret }: { svg: string; url?: string
 
       {/* Active scene (keyed so enter animation replays per scene change) */}
       <div key={scene} className="kd-scene kd-scene-enter">
-        {scene === 'attract' && <AttractScene svg={svg} remainingMs={remaining} />}
+        {scene === 'attract' && <AttractScene svg={svg} remainingMs={remaining} theme={theme} />}
         {scene === 'paired' && (
           <PairedScene headline={<>Hello you <span className="text-gold-shimmer">✨</span></>} sub="Your session is live — eyes on your phone." />
         )}
