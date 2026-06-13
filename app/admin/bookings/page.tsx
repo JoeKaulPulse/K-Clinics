@@ -137,7 +137,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
           />
         )}
         {rows.map((b) => (
-          <Link key={b.id} href={`/admin/bookings/${b.id}`} className={`${rowCls} hover:bg-[var(--color-bone)]`}>
+          <Link key={b.id} href={`/admin/bookings/${b.id}`} className={`${rowCls} transition-colors duration-150 ease-out hover:bg-[var(--color-bone)] active:bg-[var(--color-sand)]`}>
             <div>
               <p className="font-medium">{b.client.firstName} {b.client.lastName ?? ''}</p>
               <p className="text-xs text-[var(--color-stone)]">{b.treatmentTitle}</p>
