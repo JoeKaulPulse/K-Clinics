@@ -16,15 +16,6 @@ export const ADMIN_AUDIENCE = 'kc-admin';
 export const CLIENT_AUDIENCE = 'kc-client';
 export const ACADEMY_AUDIENCE = 'kc-academy';
 
-// One-time operator nudge if a portal secret falls back to a shared value in prod.
-const _warnedSecrets = new Set<string>();
-function warnSharedSecret(name: string) {
-  if (process.env.NODE_ENV === 'production' && !_warnedSecrets.has(name)) {
-    _warnedSecrets.add(name);
-    console.warn(`[auth] ${name} is unset; falling back to a shared JWT secret. Set a distinct ${name}. (Portal audience binding still isolates tokens.)`);
-  }
-}
-
 export type Session = {
   sub: string;
   email: string;
@@ -64,12 +55,11 @@ export const adminSecret = (): Uint8Array => {
 };
 
 export const clientSecret = (): Uint8Array => {
-  const s = process.env.CLIENT_JWT_SECRET || process.env.ADMIN_JWT_SECRET;
+  const s = process.env.CLIENT_JWT_SECRET;
   if (!s) {
     if (process.env.NODE_ENV === 'production') throw new Error('CLIENT_JWT_SECRET is required in production.');
     return toKey('dev-insecure-client-secret-change-me');
   }
-  if (!process.env.CLIENT_JWT_SECRET) warnSharedSecret('CLIENT_JWT_SECRET');
   return toKey(s);
 };
 

@@ -80,18 +80,18 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0,
                   {PRESETS.map((p) => (
                     <button key={p} onClick={() => { set('amount', p); set('custom', ''); }} className={`rounded-full border px-4 py-2 text-sm transition-all ${!f.custom && f.amount === p ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>{money(p)}</button>
                   ))}
-                  <input value={f.custom} onChange={(e) => set('custom', e.target.value)} placeholder="Custom £" className={`${field} w-28`} />
+                  <input aria-label="Custom gift amount in pounds" value={f.custom} onChange={(e) => set('custom', e.target.value)} placeholder="Custom £" className={`${field} w-28`} />
                 </div>
               </div>
               )}
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                <div><label className={label}>Recipient name</label><input className={field} value={f.recipientName} onChange={(e) => set('recipientName', e.target.value)} placeholder="Who’s it for?" /></div>
-                <div><label className={label}>Recipient email</label><input type="email" className={field} value={f.recipientEmail} onChange={(e) => set('recipientEmail', e.target.value)} placeholder="We’ll email it to them" /></div>
-                <div className="sm:col-span-2"><label className={label}>Message (optional)</label><textarea rows={2} maxLength={500} className={field} value={f.message} onChange={(e) => set('message', e.target.value)} placeholder="Happy birthday — enjoy! x" /></div>
-                <div><label className={label}>Deliver on (optional)</label><input type="date" className={field} value={f.deliverAt} min={new Date(Date.now() + 864e5).toISOString().slice(0, 10)} onChange={(e) => set('deliverAt', e.target.value)} /></div>
+                <div><label htmlFor="gv-recipientName" className={label}>Recipient name</label><input id="gv-recipientName" className={field} value={f.recipientName} onChange={(e) => set('recipientName', e.target.value)} placeholder="Who’s it for?" /></div>
+                <div><label htmlFor="gv-recipientEmail" className={label}>Recipient email</label><input id="gv-recipientEmail" type="email" className={field} value={f.recipientEmail} onChange={(e) => set('recipientEmail', e.target.value)} placeholder="We’ll email it to them" /></div>
+                <div className="sm:col-span-2"><label htmlFor="gv-message" className={label}>Message (optional)</label><textarea id="gv-message" rows={2} maxLength={500} className={field} value={f.message} onChange={(e) => set('message', e.target.value)} placeholder="Happy birthday — enjoy! x" /></div>
+                <div><label htmlFor="gv-deliverAt" className={label}>Deliver on (optional)</label><input id="gv-deliverAt" type="date" className={field} value={f.deliverAt} min={new Date(Date.now() + 864e5).toISOString().slice(0, 10)} onChange={(e) => set('deliverAt', e.target.value)} /></div>
                 <div />
-                <div><label className={label}>Your name *</label><input className={field} value={f.purchaserName} onChange={(e) => set('purchaserName', e.target.value)} /></div>
-                <div><label className={label}>Your email *</label><input type="email" className={field} value={f.purchaserEmail} onChange={(e) => set('purchaserEmail', e.target.value)} placeholder="For your receipt" /></div>
+                <div><label htmlFor="gv-purchaserName" className={label}>Your name *</label><input id="gv-purchaserName" autoComplete="name" className={field} value={f.purchaserName} onChange={(e) => set('purchaserName', e.target.value)} /></div>
+                <div><label htmlFor="gv-purchaserEmail" className={label}>Your email *</label><input id="gv-purchaserEmail" type="email" autoComplete="email" className={field} value={f.purchaserEmail} onChange={(e) => set('purchaserEmail', e.target.value)} placeholder="For your receipt" /></div>
                 <input type="text" tabIndex={-1} value={f.company} onChange={(e) => set('company', e.target.value)} className="absolute -left-[9999px]" aria-hidden />
               </div>
 
@@ -107,11 +107,11 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0,
                   </label>
                   {f.physical && (
                     <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      <div className="sm:col-span-2"><label className={label}>Deliver to (name)</label><input className={field} value={f.shipName} onChange={(e) => set('shipName', e.target.value)} placeholder="Recipient’s name" /></div>
-                      <div className="sm:col-span-2"><label className={label}>Address line 1</label><input className={field} value={f.shipLine1} onChange={(e) => set('shipLine1', e.target.value)} /></div>
-                      <div className="sm:col-span-2"><label className={label}>Address line 2 (optional)</label><input className={field} value={f.shipLine2} onChange={(e) => set('shipLine2', e.target.value)} /></div>
-                      <div><label className={label}>Town / city</label><input className={field} value={f.shipCity} onChange={(e) => set('shipCity', e.target.value)} /></div>
-                      <div><label className={label}>Postcode</label><input className={field} value={f.shipPostcode} onChange={(e) => set('shipPostcode', e.target.value)} /></div>
+                      <div className="sm:col-span-2"><label htmlFor="gv-shipName" className={label}>Deliver to (name)</label><input id="gv-shipName" autoComplete="shipping name" className={field} value={f.shipName} onChange={(e) => set('shipName', e.target.value)} placeholder="Recipient’s name" /></div>
+                      <div className="sm:col-span-2"><label htmlFor="gv-shipLine1" className={label}>Address line 1</label><input id="gv-shipLine1" autoComplete="shipping address-line1" className={field} value={f.shipLine1} onChange={(e) => set('shipLine1', e.target.value)} /></div>
+                      <div className="sm:col-span-2"><label htmlFor="gv-shipLine2" className={label}>Address line 2 (optional)</label><input id="gv-shipLine2" autoComplete="shipping address-line2" className={field} value={f.shipLine2} onChange={(e) => set('shipLine2', e.target.value)} /></div>
+                      <div><label htmlFor="gv-shipCity" className={label}>Town / city</label><input id="gv-shipCity" autoComplete="shipping address-level2" className={field} value={f.shipCity} onChange={(e) => set('shipCity', e.target.value)} /></div>
+                      <div><label htmlFor="gv-shipPostcode" className={label}>Postcode</label><input id="gv-shipPostcode" autoComplete="shipping postal-code" className={field} value={f.shipPostcode} onChange={(e) => set('shipPostcode', e.target.value)} /></div>
                     </div>
                   )}
                 </div>

@@ -384,9 +384,9 @@ function AuthStep({ onDone, onError, onBack }: { onDone: (firstName?: string) =>
       <Heading kicker="Your plan is ready" title={mode === 'signup' ? 'Create your free account to reveal it' : 'Welcome back — sign in to reveal it'} />
       <p className="mt-3 text-sm text-[#cdbfae]">{mode === 'signup' ? 'Create a free account to see your personalised plan, keep it private, and unlock 15% off your first visit.' : 'Sign in to reveal your personalised plan.'}</p>
       <div className="mt-6 space-y-3">
-        {mode === 'signup' && <input className={input} placeholder="First name" value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} />}
-        <input className={input} type="email" placeholder="Email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
-        <input className={input} type="password" placeholder={mode === 'signup' ? 'Password (8+ characters)' : 'Password'} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />
+        {mode === 'signup' && <input className={input} aria-label="First name" autoComplete="given-name" placeholder="First name" value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} />}
+        <input className={input} type="email" aria-label="Email" autoComplete="email" placeholder="Email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
+        <input className={input} type="password" aria-label="Password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} placeholder={mode === 'signup' ? 'Password (8+ characters)' : 'Password'} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />
         <input type="text" tabIndex={-1} className="absolute -left-[9999px]" value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} aria-hidden />
       </div>
       <div className="mt-6 flex items-center justify-between gap-4">
