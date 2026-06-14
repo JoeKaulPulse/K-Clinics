@@ -6,36 +6,16 @@ import { getSecret } from '@/lib/secrets';
 // when a clinician/admin views them and the source isn't English, we translate
 // to British English on the fly.
 //
-// Provider-agnostic and fault-tolerant: activates when a key is configured,
-// otherwise returns the original text unchanged (clearly marked untranslated).
-//   DEEPL_API_KEY        — DeepL (preferred; set DEEPL_API_FREE=true for the free tier)
-//   GOOGLE_TRANSLATE_KEY — Google Cloud Translation v2 (fallback)
+// Provider: Google Cloud Translation v2 (GOOGLE_TRANSLATE_KEY). Fault-tolerant —
+// activates when the key is configured, otherwise returns the original text
+// unchanged (clearly marked untranslated).
 
 export async function translationConfigured(): Promise<boolean> {
-  return Boolean((await getSecret('DEEPL_API_KEY')) || (await getSecret('GOOGLE_TRANSLATE_KEY')));
+  return Boolean(await getSecret('GOOGLE_TRANSLATE_KEY'));
 }
 
 const LOCALE_NAMES: Record<string, string> = { en: 'English', uk: 'Ukrainian' };
 export const localeName = (l: string) => LOCALE_NAMES[l] || l;
-
-async function deepl(texts: string[]): Promise<string[] | null> {
-  const key = await getSecret('DEEPL_API_KEY');
-  if (!key) return null;
-  const host = process.env.DEEPL_API_FREE === 'true' ? 'api-free.deepl.com' : 'api.deepl.com';
-  try {
-    const res = await fetch(`https://${host}/v2/translate`, {
-      method: 'POST',
-      headers: { Authorization: `DeepL-Auth-Key ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: texts, target_lang: 'EN-GB' }),
-      signal: AbortSignal.timeout(6000),
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { translations?: { text: string }[] };
-    return data.translations?.map((t) => t.text) ?? null;
-  } catch {
-    return null;
-  }
-}
 
 async function googleTranslate(texts: string[]): Promise<string[] | null> {
   const key = await getSecret('GOOGLE_TRANSLATE_KEY');
@@ -55,14 +35,14 @@ async function googleTranslate(texts: string[]): Promise<string[] | null> {
   }
 }
 
-/** Translate a batch of strings to British English. Returns nulls-preserving
- *  array; on any failure returns the originals so display never breaks. */
+/** Translate a batch of strings to British English via Google Translate. Returns
+ *  the originals on any failure so display never breaks. */
 export async function translateToEnglish(texts: string[]): Promise<{ translated: string[]; ok: boolean }> {
   const nonEmpty = texts.map((t) => t?.trim()).filter(Boolean) as string[];
   if (nonEmpty.length === 0) return { translated: texts, ok: true };
-  if (!translationConfigured()) return { translated: texts, ok: false };
+  if (!(await translationConfigured())) return { translated: texts, ok: false };
 
-  const out = (await deepl(texts)) ?? (await googleTranslate(texts));
+  const out = await googleTranslate(texts);
   if (!out || out.length !== texts.length) return { translated: texts, ok: false };
   return { translated: out, ok: true };
 }

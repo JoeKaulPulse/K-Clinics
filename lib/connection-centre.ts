@@ -60,7 +60,7 @@ const DEFS: ConnectionDef[] = [
     powers: 'Appointment reminders and confirmations by text message.',
     keyNames: ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_FROM'],
     console: { label: 'console.twilio.com', url: 'https://console.twilio.com' },
-    steps: ['Add all three. TWILIO_FROM is a number you buy in Twilio (e.g. +44…).'],
+    steps: ['TWILIO_FROM must be a number bought IN Twilio (or a Messaging Service SID) — not your clinic landline. Twilio rejects sends from numbers it doesn’t own.'],
   },
   {
     id: 'anthropic', title: 'AI — Anthropic (Claude)', category: 'AI',
@@ -77,11 +77,11 @@ const DEFS: ConnectionDef[] = [
     steps: ['Needs the Anthropic key above as well, to structure the transcript.'],
   },
   {
-    id: 'translation', title: 'Translation — DeepL / Google', category: 'Communications',
+    id: 'translation', title: 'Translation — Google', category: 'Communications',
     powers: 'Translates client health-form answers into English for staff. Originals are kept.',
-    keyNames: ['DEEPL_API_KEY', 'GOOGLE_TRANSLATE_KEY'],
-    console: { label: 'deepl.com/pro-api', url: 'https://www.deepl.com/pro-api' },
-    steps: ['Either key is enough — DeepL is preferred when both are set.'],
+    keyNames: ['GOOGLE_TRANSLATE_KEY'],
+    console: { label: 'console.cloud.google.com', url: 'https://console.cloud.google.com/apis/credentials' },
+    steps: ['Add a Google Cloud Translation API key. DeepL is no longer used — any DeepL key can be cleared.'],
   },
   {
     id: 'xero', title: 'Accounting — Xero', category: 'Finance',
