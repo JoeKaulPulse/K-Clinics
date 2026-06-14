@@ -1783,6 +1783,7 @@ model AcademyStudent {
   practiceAttempts PracticeAttempt[]
   pointEvents      PointEvent[]
   badges           StudentBadge[]
+  dailyActivity    DailyActivity[]
 
   @@index([createdAt])
   @@index([xp])
@@ -2019,10 +2020,28 @@ model StudentBadge {
   tenantId  String? // ClinicOS multi-tenant (Ring 0)
   student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
   studentId String
-  badgeKey  String // matches a key in lib/gamification BADGES
+  badgeKey  String // matches a key in lib/academy-gamification BADGES
   awardedAt DateTime       @default(now())
 
   @@unique([studentId, badgeKey])
+  @@index([studentId])
+  @@index([tenantId])
+}
+
+// Daily tasks + the "beauty box" (a Duolingo-style chest unlocked by doing a few
+// tasks in a day). One row per student per UTC day.
+model DailyActivity {
+  id        String         @id @default(cuid())
+  tenantId  String? // ClinicOS multi-tenant (Ring 0)
+  student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  day       String // YYYY-MM-DD (UTC)
+  tasks     Int            @default(0)
+  boxOpened Boolean        @default(false)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([studentId, day])
   @@index([studentId])
   @@index([tenantId])
 }

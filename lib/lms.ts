@@ -109,6 +109,7 @@ export async function completeLesson(studentId: string, lessonId: string, second
   if (firstTime) {
     const { scoreAndBadge, XP } = await import('@/lib/academy-gamification');
     newBadges = await scoreAndBadge(studentId, 'LESSON', XP.LESSON, lesson.module.courseId);
+    const { recordDailyTask } = await import('@/lib/academy-daily'); await recordDailyTask(studentId);
   }
   return { ok: true, newBadges };
 }
@@ -147,6 +148,7 @@ export async function gradeQuiz(studentId: string, quizId: string, answers: Reco
   if (passed && !priorPass) {
     const { scoreAndBadge, XP } = await import('@/lib/academy-gamification');
     newBadges = await scoreAndBadge(studentId, 'QUIZ', XP.QUIZ_PASS + (scorePct === 100 ? XP.QUIZ_PERFECT_BONUS : 0), quiz.module.courseId);
+    const { recordDailyTask } = await import('@/lib/academy-daily'); await recordDailyTask(studentId);
   }
   return { ok: true, scorePct, passed, passMark: quiz.passMark, results, newBadges };
 }

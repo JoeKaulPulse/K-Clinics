@@ -57,6 +57,7 @@ export async function recordPractice(studentId: string, { courseId, topic, total
   if (c > 0) {
     const { scoreAndBadge, XP } = await import('@/lib/academy-gamification');
     newBadges = await scoreAndBadge(studentId, 'PRACTICE', c * XP.PRACTICE_PER_CORRECT, courseId || null);
+    const { recordDailyTask } = await import('@/lib/academy-daily'); await recordDailyTask(studentId);
   }
   return { scorePct, newBadges };
 }

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { PageHero } from '@/components/ui/PageHero';
 import { AcademyAuth } from '@/components/academy/AcademyAuth';
 import { AcademyLogout } from '@/components/academy/AcademyLogout';
+import { DailyGoal } from '@/components/academy/DailyGoal';
 import { GuideHost } from '@/components/guide/GuideHost';
 import { OnboardingHost } from '@/components/onboarding/OnboardingHost';
 import { ONBOARDING } from '@/lib/onboarding-steps';
@@ -48,9 +49,11 @@ export default async function AcademyPortalPage() {
 
   const { studentStanding } = await import('@/lib/academy-gamification');
   const { academyLevel } = await import('@/lib/academy-levels');
-  const [standing, timeAgg] = await Promise.all([
+  const { dailyStatus } = await import('@/lib/academy-daily');
+  const [standing, timeAgg, daily] = await Promise.all([
     studentStanding(student.id),
     db.lessonProgress.aggregate({ where: { studentId: student.id }, _sum: { secondsSpent: true } }),
+    dailyStatus(student.id),
   ]);
   const lvl = academyLevel(standing.xp);
   const totalMin = Math.round((timeAgg._sum.secondsSpent ?? 0) / 60);
@@ -59,6 +62,7 @@ export default async function AcademyPortalPage() {
     <>
       <PageHero eyebrow="K Academy" title={`Welcome, ${student.firstName}.`} lede="Your training, in one place." gradient={['#2a2420', '#7b6a5d']} />
       <section className="container-lux pt-8">
+        <div className="grid gap-4 lg:grid-cols-[1fr_360px] lg:items-start">
         <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5 sm:p-6">
           <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
             <div className="flex items-center gap-3">
@@ -76,6 +80,8 @@ export default async function AcademyPortalPage() {
               <div className="h-2 overflow-hidden rounded-full bg-[var(--color-line)]"><div className="h-full rounded-full bg-[var(--color-gold)] transition-[width] duration-500" style={{ width: `${lvl.pct}%` }} /></div>
             </div>
           </div>
+        </div>
+        <DailyGoal status={daily} />
         </div>
       </section>
       <section className="container-lux section" data-tour="academy-courses">
