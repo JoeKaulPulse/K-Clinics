@@ -155,6 +155,15 @@ export async function GET(req: Request) {
     failures++; console.error('[cron] academy-gamification backfill failed (continuing):', (e as Error)?.message);
   }
 
+  // Apply hand-authored bite-size lesson flows to matching lessons (steps null only).
+  let authored = { updated: 0 };
+  try {
+    const { enrichAuthoredStepsIfNeeded } = await import('@/lib/academy-authored');
+    authored = await enrichAuthoredStepsIfNeeded();
+  } catch (e) {
+    failures++; console.error('[cron] authored-steps enrichment failed (continuing):', (e as Error)?.message);
+  }
+
   // Build board: keep it populated from Claude's backlog server-side, and assign
   // input-required tasks to the best-placed user — so the audit board is reliable
   // even if nobody opens it after a deploy (it used to seed only on first view).
@@ -180,7 +189,7 @@ export async function GET(req: Request) {
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend, board, clinicalBackfill, academyTenant, examBank, gamification },
+    { ok: failures === 0, failures, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend, board, clinicalBackfill, academyTenant, examBank, gamification, authored },
     { status: failures === 0 ? 200 : 500 },
   );
 }

@@ -8,7 +8,7 @@
 
 export type TeachStep = { kind: 'teach'; title?: string; text: string; art?: string };
 export type SayStep = { kind: 'say'; text: string; mood?: 'happy' | 'think' | 'cheer' };
-export type AskStep = { kind: 'ask'; prompt: string; qtype?: 'SINGLE' | 'MULTI' | 'TRUEFALSE'; options: string[]; correct?: number[]; explanation?: string; tip?: string; art?: string; quizId?: string; questionId?: string };
+export type AskStep = { kind: 'ask'; prompt: string; qtype?: 'SINGLE' | 'MULTI' | 'TRUEFALSE' | 'WORD'; options: string[]; correct?: number[]; explanation?: string; tip?: string; art?: string; quizId?: string; questionId?: string };
 export type FlowStep = TeachStep | SayStep | AskStep;
 
 export type FlowLesson = {
@@ -36,7 +36,7 @@ export function coerceSteps(raw: unknown): FlowStep[] | null {
     if (kind === 'teach' && typeof r.text === 'string') out.push({ kind: 'teach', title: typeof r.title === 'string' ? r.title : undefined, text: r.text, art: typeof r.art === 'string' ? r.art : undefined });
     else if (kind === 'say' && typeof r.text === 'string') out.push({ kind: 'say', text: r.text, mood: (['happy', 'think', 'cheer'].includes(r.mood as string) ? r.mood : undefined) as SayStep['mood'] });
     else if (kind === 'ask' && typeof r.prompt === 'string' && Array.isArray(r.options) && Array.isArray(r.correct)) {
-      out.push({ kind: 'ask', prompt: r.prompt, qtype: (['SINGLE', 'MULTI', 'TRUEFALSE'].includes(r.qtype as string) ? r.qtype : 'SINGLE') as AskStep['qtype'], options: (r.options as unknown[]).map(String), correct: (r.correct as unknown[]).map(Number).filter((n) => Number.isInteger(n)), explanation: typeof r.explanation === 'string' ? r.explanation : undefined, tip: typeof r.tip === 'string' ? r.tip : undefined, art: typeof r.art === 'string' ? r.art : undefined });
+      out.push({ kind: 'ask', prompt: r.prompt, qtype: (['SINGLE', 'MULTI', 'TRUEFALSE', 'WORD'].includes(r.qtype as string) ? r.qtype : 'SINGLE') as AskStep['qtype'], options: (r.options as unknown[]).map(String), correct: (r.correct as unknown[]).map(Number).filter((n) => Number.isInteger(n)), explanation: typeof r.explanation === 'string' ? r.explanation : undefined, tip: typeof r.tip === 'string' ? r.tip : undefined, art: typeof r.art === 'string' ? r.art : undefined });
     }
   }
   return out.length ? out : null;
