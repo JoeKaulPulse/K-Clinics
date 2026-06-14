@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 import { crmEnabled } from '@/lib/crm';
 
@@ -44,5 +45,7 @@ export async function POST(req: Request) {
     await db.googleReview.upsert({ where: { googleName }, update: row, create: { googleName, ...row } })
       .then(() => { added++; }).catch(() => {});
   }
+  // Refresh the public reviews surfaces immediately (don't wait for ISR).
+  try { revalidatePath('/reviews'); revalidatePath('/'); } catch { /* ignore */ }
   return NextResponse.json({ ok: true, added });
 }
