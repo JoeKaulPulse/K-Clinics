@@ -303,20 +303,30 @@ async function reminders(t: Tally) {
     });
     for (const b of bookings) {
       const manageUrl = `${SITE_URL}/booking/manage?token=${b.manageToken}`;
-      if (canEmailCare(b.client)) {
+      const emailApplicable = canEmailCare(b.client);
+      const smsApplicable = Boolean(smsOn && b.client.smsReminders && b.client.phone);
+      let delivered = false;
+      if (emailApplicable) {
         const res = await sendEmail({
           to: b.client.email,
           subject: `Reminder: your ${b.treatmentTitle} is ${label}`,
           html: tmplAppointmentReminder({ firstName: b.client.firstName, treatment: b.treatmentTitle, start: b.startAt, manageUrl }),
         });
         await logEvent(b.clientId, 'APPOINTMENT_REMINDER', b.client.email, `Appointment reminder (${label})`, res);
-        res.ok ? t.reminders++ : t.errors++;
+        if (res.ok) { t.reminders++; delivered = true; } else { t.errors++; }
       }
-      if (smsOn && b.client.smsReminders && b.client.phone) {
-        const when = b.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-        await sendSms(b.client.phone, `KClinics reminder: your ${b.treatmentTitle} is ${label}, ${when}. Manage: ${manageUrl}`).catch(() => {});
+      if (smsApplicable) {
+        const when = b.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+        const sms = await sendSms(b.client.phone, `KClinics reminder: your ${b.treatmentTitle} is ${label}, ${when}. Manage: ${manageUrl}`).catch(() => null);
+        if (sms?.ok) delivered = true;
       }
-      await db.booking.update({ where: { id: b.id }, data: { [sentFlag]: true } });
+      // Latch the per-window flag only when a channel actually delivered, or when
+      // the client has no contactable channel at all (nothing to retry). A
+      // transient email/SMS failure leaves it unset so the next run retries,
+      // instead of silently burning the reminder window.
+      if (delivered || (!emailApplicable && !smsApplicable)) {
+        await db.booking.update({ where: { id: b.id }, data: { [sentFlag]: true } });
+      }
     }
   }
 
