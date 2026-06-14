@@ -1,5 +1,6 @@
 import 'server-only';
 import { isConnected } from '@/lib/oauth-connections';
+import { secretStatus } from '@/lib/secrets';
 
 // Integration & connection registry for the CRM. Surfaces the live status of
 // every external service the clinic depends on, so an owner can see at a glance
@@ -26,6 +27,14 @@ const has = (v?: string | null) => Boolean(v && v.length > 0);
 
 export async function getIntegrations(): Promise<Integration[]> {
   const items: Integration[] = [];
+
+  // Presence resolver that understands owner-managed credentials (set in
+  // /admin/settings/credentials, stored encrypted) as well as hosting env vars,
+  // so adding a key in-app flips the relevant card to connected — no redeploy.
+  // For keys not in the managed catalogue it falls back to process.env.
+  const statuses = await secretStatus().catch(() => []);
+  const managed = new Map(statuses.map((s) => [s.name, s.source !== 'unset']));
+  const present = (name: string) => (managed.has(name) ? Boolean(managed.get(name)) : Boolean(process.env[name]?.length));
 
   // ── Database ──
   let dbConnected = false;
@@ -72,8 +81,8 @@ export async function getIntegrations(): Promise<Integration[]> {
       : connectedStaff > 0 ? `${connectedStaff} staff calendar${connectedStaff === 1 ? '' : 's'} connected` : 'Configured — no staff connected yet.',
     envVars: [
       { name: 'GOOGLE_INTEGRATION_ENABLED', set: gEnabled, optional: true },
-      { name: 'GOOGLE_CLIENT_ID', set: has(process.env.GOOGLE_CLIENT_ID) },
-      { name: 'GOOGLE_CLIENT_SECRET', set: has(process.env.GOOGLE_CLIENT_SECRET) },
+      { name: 'GOOGLE_CLIENT_ID', set: present('GOOGLE_CLIENT_ID') },
+      { name: 'GOOGLE_CLIENT_SECRET', set: present('GOOGLE_CLIENT_SECRET') },
       { name: 'GOOGLE_REDIRECT_URI', set: has(process.env.GOOGLE_REDIRECT_URI) },
     ],
     manageHref: '/admin/schedule',
@@ -99,8 +108,8 @@ export async function getIntegrations(): Promise<Integration[]> {
   });
 
   // ── Email (Resend) ──
-  const resendSet = has(process.env.RESEND_API_KEY);
-  const fromSet = has(process.env.EMAIL_FROM);
+  const resendSet = present('RESEND_API_KEY');
+  const fromSet = present('EMAIL_FROM');
   items.push({
     id: 'email',
     name: 'Email (Resend)',
@@ -111,7 +120,7 @@ export async function getIntegrations(): Promise<Integration[]> {
     envVars: [
       { name: 'RESEND_API_KEY', set: resendSet },
       { name: 'EMAIL_FROM', set: fromSet },
-      { name: 'EMAIL_REPLY_TO', set: has(process.env.EMAIL_REPLY_TO), optional: true },
+      { name: 'EMAIL_REPLY_TO', set: present('EMAIL_REPLY_TO'), optional: true },
       { name: 'CLINIC_NOTIFY_EMAIL', set: has(process.env.CLINIC_NOTIFY_EMAIL), optional: true },
     ],
     docsHref: 'https://resend.com/api-keys',
@@ -138,8 +147,8 @@ export async function getIntegrations(): Promise<Integration[]> {
   });
 
   // ── Payments (Stripe) ──
-  const stripeSecret = has(process.env.STRIPE_SECRET_KEY);
-  const stripePub = has(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+  const stripeSecret = present('STRIPE_SECRET_KEY');
+  const stripePub = present('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY');
   items.push({
     id: 'payments',
     name: 'Payments (Stripe)',
@@ -155,7 +164,7 @@ export async function getIntegrations(): Promise<Integration[]> {
   });
 
   // ── Accounting (Xero) ──
-  const xeroCreds = has(process.env.XERO_CLIENT_ID) && has(process.env.XERO_CLIENT_SECRET);
+  const xeroCreds = present('XERO_CLIENT_ID') && present('XERO_CLIENT_SECRET');
   const xeroLinked = dbConnected ? await isConnected('xero') : false;
   items.push({
     id: 'xero',
@@ -165,8 +174,8 @@ export async function getIntegrations(): Promise<Integration[]> {
     status: xeroLinked ? 'connected' : xeroCreds ? 'partial' : 'not_configured',
     detail: xeroLinked ? 'Connected — cash position live.' : xeroCreds ? 'Credentials present — connect via OAuth.' : 'Add Xero OAuth credentials to enable.',
     envVars: [
-      { name: 'XERO_CLIENT_ID', set: has(process.env.XERO_CLIENT_ID) },
-      { name: 'XERO_CLIENT_SECRET', set: has(process.env.XERO_CLIENT_SECRET) },
+      { name: 'XERO_CLIENT_ID', set: present('XERO_CLIENT_ID') },
+      { name: 'XERO_CLIENT_SECRET', set: present('XERO_CLIENT_SECRET') },
       { name: 'XERO_REDIRECT_URI', set: has(process.env.XERO_REDIRECT_URI), optional: true },
     ],
     manageHref: xeroCreds ? '/api/admin/integrations/xero/connect' : undefined,
@@ -174,7 +183,7 @@ export async function getIntegrations(): Promise<Integration[]> {
   });
 
   // ── Bank feed (Open Banking via TrueLayer) ──
-  const tlCreds = has(process.env.TRUELAYER_CLIENT_ID) && has(process.env.TRUELAYER_CLIENT_SECRET);
+  const tlCreds = present('TRUELAYER_CLIENT_ID') && present('TRUELAYER_CLIENT_SECRET');
   const bankLinked = dbConnected ? await isConnected('truelayer') : false;
   items.push({
     id: 'bank',
@@ -184,8 +193,8 @@ export async function getIntegrations(): Promise<Integration[]> {
     status: bankLinked ? 'connected' : tlCreds ? 'partial' : 'not_configured',
     detail: bankLinked ? 'Connected — balance live.' : tlCreds ? 'Credentials present — connect your bank.' : 'Add TrueLayer credentials to enable.',
     envVars: [
-      { name: 'TRUELAYER_CLIENT_ID', set: has(process.env.TRUELAYER_CLIENT_ID) },
-      { name: 'TRUELAYER_CLIENT_SECRET', set: has(process.env.TRUELAYER_CLIENT_SECRET) },
+      { name: 'TRUELAYER_CLIENT_ID', set: present('TRUELAYER_CLIENT_ID') },
+      { name: 'TRUELAYER_CLIENT_SECRET', set: present('TRUELAYER_CLIENT_SECRET') },
       { name: 'TRUELAYER_REDIRECT_URI', set: has(process.env.TRUELAYER_REDIRECT_URI), optional: true },
     ],
     manageHref: tlCreds ? '/api/admin/integrations/truelayer/connect' : undefined,
@@ -193,8 +202,8 @@ export async function getIntegrations(): Promise<Integration[]> {
   });
 
   // ── Translation (DeepL / Google) ──
-  const deepl = has(process.env.DEEPL_API_KEY);
-  const gtrans = has(process.env.GOOGLE_TRANSLATE_KEY);
+  const deepl = present('DEEPL_API_KEY');
+  const gtrans = present('GOOGLE_TRANSLATE_KEY');
   items.push({
     id: 'translation',
     name: 'Translation',
@@ -210,8 +219,8 @@ export async function getIntegrations(): Promise<Integration[]> {
   });
 
   // ── Speech-to-text (Deepgram) — BLD-138 clinical voice notes ──
-  const dgKey = has(process.env.DEEPGRAM_API_KEY);
-  const aiKey = has(process.env.ANTHROPIC_API_KEY);
+  const dgKey = present('DEEPGRAM_API_KEY');
+  const aiKey = present('ANTHROPIC_API_KEY');
   items.push({
     id: 'transcription',
     name: 'Voice transcription (Deepgram)',
@@ -256,9 +265,9 @@ export async function getIntegrations(): Promise<Integration[]> {
   });
 
   // ── SMS (Twilio) ──
-  const twSid = has(process.env.TWILIO_ACCOUNT_SID);
-  const twTok = has(process.env.TWILIO_AUTH_TOKEN);
-  const twFrom = has(process.env.TWILIO_FROM);
+  const twSid = present('TWILIO_ACCOUNT_SID');
+  const twTok = present('TWILIO_AUTH_TOKEN');
+  const twFrom = present('TWILIO_FROM');
   items.push({
     id: 'sms',
     name: 'SMS reminders (Twilio)',

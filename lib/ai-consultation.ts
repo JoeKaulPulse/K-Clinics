@@ -1,6 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db';
 import { encryptJson } from '@/lib/crypto';
+import { getSecret } from '@/lib/secrets';
 
 // ── "Get My Plan" — AI consultation engine ──────────────────────────────────
 // Cost-minimal: Claude Haiku by default (escalates to Sonnet only on low
@@ -67,7 +68,7 @@ export async function analysesThisMonth(clientId: string): Promise<number> {
 type Img = { area?: string; dataUrl: string };
 
 export async function analyze(opts: { clientId: string; areas: string[]; images: Img[]; storeImages: boolean; budgetPence: number | null; budgetLabel: string }): Promise<AnalyzeResult> {
-  const key = process.env.ANTHROPIC_API_KEY;
+  const key = await getSecret('ANTHROPIC_API_KEY');
   if (!key) return { ok: false, reason: 'unavailable', message: 'The consultation isn’t available right now.' };
   if ((await analysesThisMonth(opts.clientId)) >= MONTHLY_CAP) return { ok: false, reason: 'limit', message: `You’ve used your ${MONTHLY_CAP} plans this month. Book a visit and we’ll take it from here.` };
 

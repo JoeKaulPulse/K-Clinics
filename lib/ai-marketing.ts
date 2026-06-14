@@ -1,6 +1,7 @@
 import 'server-only';
 import { getBrandKit, brandContextForAI } from '@/lib/brand';
 import { site } from '@/lib/site';
+import { getSecret } from '@/lib/secrets';
 
 // AI marketing assistant (Claude Haiku). Generates on-brand campaign content —
 // email, ad copy, landing page sections and SEO — from a campaign brief. Output
@@ -8,7 +9,7 @@ import { site } from '@/lib/site';
 
 const HAIKU = 'claude-haiku-4-5-20251001';
 
-export const aiAvailable = () => Boolean(process.env.ANTHROPIC_API_KEY);
+export const aiAvailable = async () => Boolean(await getSecret('ANTHROPIC_API_KEY'));
 
 export type CampaignInput = { name: string; goal: string; audience: string; brief: string };
 
@@ -21,7 +22,7 @@ export type CampaignPack = {
 };
 
 async function callHaiku<T>(system: string, user: string, maxTokens = 1600): Promise<T | null> {
-  const key = process.env.ANTHROPIC_API_KEY;
+  const key = await getSecret('ANTHROPIC_API_KEY');
   if (!key) return null;
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {

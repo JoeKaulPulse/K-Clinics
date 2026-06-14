@@ -109,6 +109,7 @@ export const navGroups: NavGroup[] = [
   { heading: 'nav.group.admin', icon: 'admin', items: [
     { href: '/admin/go-live', key: 'nav.golive', perm: 'settings.manage', keywords: 'launch checklist publish' },
     { href: '/admin/status', key: 'nav.status', perm: 'platform.status', keywords: 'health uptime monitoring system' },
+    { href: '/admin/connections', key: 'nav.connectioncentre', perm: 'settings.manage', keywords: 'connection centre control api keys credentials secrets status stripe resend twilio anthropic google xero truelayer webhooks oauth connect integrations one place centralised' },
     { href: '/admin/api-health', key: 'nav.apihealth', perm: 'platform.status', keywords: 'api health live checks endpoints stripe resend anthropic claude xero probes traffic light connections broken' },
     { href: '/admin/build', key: 'nav.build', perm: 'build.view', keywords: 'issues bugs tickets backlog development' },
     { href: '/admin/contractors', key: 'nav.contractors', perm: 'contractor.tasks.manage', keywords: 'contractor check-in reception sign in visitor onsite trades maintenance' },

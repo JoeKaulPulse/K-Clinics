@@ -47,6 +47,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
     googleBusinessConnected(),
   ]);
   const gLocationSet = gConnected ? Boolean(await currentBusinessLocation()) : false;
+  const gConfigured = await googleOAuthConfigured();
   const gRedirectUri = businessRedirectUri();
   const googleReviews = gReviews.map((r) => ({
     id: r.id, googleName: r.googleName, reviewerName: r.reviewerName, starRating: r.starRating,
@@ -119,7 +120,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
         })}
       </div>
 
-      <GoogleReviewsPanel connected={gConnected} configured={googleOAuthConfigured()} locationSet={gLocationSet} reviews={googleReviews} redirectUri={gRedirectUri} />
+      <GoogleReviewsPanel connected={gConnected} configured={gConfigured} locationSet={gLocationSet} reviews={googleReviews} redirectUri={gRedirectUri} />
     </AdminShell>
   );
 }

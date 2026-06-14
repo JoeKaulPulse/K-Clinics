@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
 
   const { aiAvailable } = await import('@/lib/ai-marketing');
-  if (!aiAvailable()) return NextResponse.json({ ok: false, error: 'AI is not configured (missing ANTHROPIC_API_KEY).' }, { status: 503 });
+  if (!(await aiAvailable())) return NextResponse.json({ ok: false, error: 'AI is not configured (missing ANTHROPIC_API_KEY).' }, { status: 503 });
 
   const body = await req.json().catch(() => ({}));
   const { db } = await import('@/lib/db');
