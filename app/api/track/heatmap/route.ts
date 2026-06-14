@@ -6,9 +6,18 @@ export const dynamic = 'force-dynamic';
 const TYPES = new Set(['click', 'rage', 'scroll']);
 
 // Store heatmap interaction points (clicks, rage-clicks, scroll depth). Public +
-// consent-gated client side; coarse coordinates only, no personal data.
+// consent-gated; coarse coordinates only, no personal data.
 export async function POST(req: Request) {
   if (!crmEnabled) return Response.json({ ok: false }, { status: 503 });
+
+  // Require analytics consent (fail-closed) and rate-limit — parity with the
+  // replay ingest route, so a non-consenting or forged client can't seed the
+  // heatmap tables even though the recorder already gates sends client-side.
+  const cookie = req.headers.get('cookie') || '';
+  if (!/(?:^|;\s*)kc_analytics_consent=1(?:;|$)/.test(cookie)) return Response.json({ ok: false }, { status: 403 });
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'heatmap-ingest', 240, 600, 'client'))) return Response.json({ ok: false }, { status: 429 });
+
   try {
     const body = await req.json();
     const path = String(body.path || '/').slice(0, 200);
