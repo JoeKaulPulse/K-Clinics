@@ -152,25 +152,50 @@ export async function POST(req: Request) {
   const londonDay = (x: Date) => x.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
   const sameDayRequest = londonDay(start) === londonDay(new Date());
 
-  const booking = await db.booking.create({
-    data: {
-      clientId: client.id,
-      treatmentSlug, treatmentTitle: title,
-      startAt: start, endAt: end, durationMin: totalDuration,
-      bufferMin: bookingFor(treatmentSlug).bufferMin ?? 0,
-      pricePence: totalPrice,
-      status: sameDayRequest ? 'REQUESTED' : 'PENDING',
-      notes: d.notes || null,
-      refreshments,
-      allergyNote: d.allergyNote?.trim() ? encClinical(d.allergyNote.trim()) : null,
-      aftercareAckAt: d.aftercareAck ? new Date() : null,
-      stripeCustomerId: customerId,
-      practitionerId,
-      ...attribution,
-      resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,
-      items: { create: items },
-    },
+  // Hold the slot ATOMICALLY — re-check overlaps inside a Serializable transaction
+  // so two concurrent portal bookings can't grab the same clinician/room (mirrors
+  // app/api/booking/create). A same-day REQUESTED booking doesn't hold a slot
+  // (staff approve first), so it skips the clash rejection.
+  const bufferMin = bookingFor(treatmentSlug).bufferMin ?? 0;
+  const endBuffered = new Date(end.getTime() + bufferMin * 60_000);
+  const result = await db.$transaction(async (tx) => {
+    if (!sameDayRequest) {
+      const overlapping = await tx.booking.findMany({
+        where: { status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { lt: endBuffered }, endAt: { gt: start } },
+        select: { practitionerId: true, resources: { select: { id: true } } },
+      });
+      const practitionerClash = !!practitionerId && overlapping.some((b) => b.practitionerId === practitionerId);
+      const resourceClash = resourceIds.length > 0 && overlapping.some((b) => b.resources.some((r) => resourceIds.includes(r.id)));
+      if (practitionerClash || resourceClash) return null;
+    }
+    return tx.booking.create({
+      data: {
+        clientId: client.id,
+        treatmentSlug, treatmentTitle: title,
+        startAt: start, endAt: end, durationMin: totalDuration,
+        bufferMin,
+        pricePence: totalPrice,
+        status: sameDayRequest ? 'REQUESTED' : 'PENDING',
+        notes: d.notes || null,
+        refreshments,
+        allergyNote: d.allergyNote?.trim() ? encClinical(d.allergyNote.trim()) : null,
+        aftercareAckAt: d.aftercareAck ? new Date() : null,
+        stripeCustomerId: customerId,
+        practitionerId,
+        ...attribution,
+        resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,
+        items: { create: items },
+      },
+    });
+  }, { isolationLevel: 'Serializable' }).catch((e) => {
+    const err = e as { code?: string; message?: string };
+    if (err.code === 'P2034' || /write conflict|deadlock|could not serialize/i.test(err.message || '')) return 'CONFLICT' as const;
+    throw e;
   });
+  if (result === 'CONFLICT' || !result) {
+    return NextResponse.json({ ok: false, error: 'That time was just taken. Please choose another slot.' }, { status: 409 });
+  }
+  const booking = result;
 
   // Same-day request: don't take a card, burn a discount, or hold the slot yet —
   // a member of staff approves first. Notify the team and return a "requested" state.
