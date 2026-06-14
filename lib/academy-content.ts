@@ -744,6 +744,173 @@ export const NEW_MODULES: CourseContentDef[] = [
       },
     ],
   },
+  {
+    courseSlug: L2,
+    modules: [
+      {
+        title: 'Contraindications & When to Refer',
+        summary: 'Spot when a treatment should wait, adapt, or stop — and when to send the client elsewhere.',
+        lessons: [
+          {
+            title: 'Absolute vs Relative',
+            durationMin: 10,
+            objectives: ['Define a contraindication', 'Tell absolute from relative', 'Know what each means for treatment'],
+            studyTips: ['Absolute = never treat; relative = treat with caution or after advice.'],
+            examRefs: ['Contraindications'],
+            steps: [
+              { kind: 'say', text: 'Knowing when NOT to treat is as skilled as treating. Let’s learn it.', mood: 'think' },
+              { kind: 'teach', title: 'What it means', text: 'A contraindication is a reason a treatment may not be safe. Some are absolute (never treat) and some are relative (proceed with care or advice).', art: 'safety' },
+              { kind: 'ask', prompt: 'An “absolute” contraindication means you…', qtype: 'SINGLE', options: ['Do not treat', 'Treat carefully', 'Treat faster', 'Charge more'], correct: [0], explanation: 'Absolute = do not treat.' },
+              { kind: 'teach', title: 'Relative ones', text: 'A relative contraindication means treat with caution, lower settings, or only after a GP’s advice — not an automatic no.' },
+              { kind: 'ask', prompt: 'A “relative” contraindication means…', qtype: 'WORD', options: ['caution', 'never', 'always'], correct: [0], explanation: 'Proceed with caution or advice.' },
+              { kind: 'say', text: 'Clear line drawn. Now some real examples.', mood: 'cheer' },
+              { kind: 'teach', title: 'Common examples', text: 'Active infection, certain medications, recent sun or fake tan, and some skin conditions are common reasons to pause or adapt.' },
+              { kind: 'ask', prompt: 'Which can be reasons to pause or adapt a treatment?', qtype: 'MULTI', options: ['Active infection', 'Recent sunburn', 'Certain medications', 'Wearing a blue top'], correct: [0, 1, 2], explanation: 'Clothing colour isn’t a contraindication.' },
+              { kind: 'say', text: 'Sharp judgement — that keeps clients safe.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'When to Refer',
+            durationMin: 9,
+            objectives: ['Recognise out-of-scope situations', 'Refer suspicious signs', 'Record the decision'],
+            studyTips: ['Anything you’re not sure is safe or normal → refer.'],
+            examRefs: ['Referral'],
+            steps: [
+              { kind: 'say', text: 'Sometimes the safest treatment is none — and a referral.', mood: 'think' },
+              { kind: 'teach', title: 'Out of your scope', text: 'If something is outside your training, or a sign looks medical, refer to a GP or specialist rather than treating.' },
+              { kind: 'ask', prompt: 'A changing or suspicious mole should be…', qtype: 'SINGLE', options: ['Referred to a doctor', 'Lasered off', 'Ignored', 'Covered up'], correct: [0], explanation: 'Refer suspicious lesions, never treat them.' },
+              { kind: 'teach', title: 'Be honest, be safe', text: 'Explain clearly why you’re referring — clients respect honesty, and it protects them and you.' },
+              { kind: 'ask', prompt: 'Referring a client when unsure protects…', qtype: 'MULTI', options: ['The client', 'You', 'Your insurance position', 'Nobody'], correct: [0, 1, 2], explanation: 'It protects everyone involved.' },
+              { kind: 'teach', title: 'Write it down', text: 'Record what you saw, what you advised and that you referred — your notes show you acted properly.' },
+              { kind: 'say', text: 'Safe, honest, documented. Textbook.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Contraindications Assessment', passMark: 70,
+          questions: [
+            { prompt: 'An absolute contraindication means you…', type: 'SINGLE', options: ['Do not treat', 'Treat with caution', 'Treat faster', 'Refer for fun'], correct: [0], explanation: 'Never treat.' },
+            { prompt: 'A relative contraindication means proceed with…', type: 'WORD', options: ['caution', 'speed', 'pride'], correct: [0], explanation: 'Caution or advice.' },
+            { prompt: 'Which can be reasons to pause or adapt treatment?', type: 'MULTI', options: ['Active infection', 'Recent sunburn', 'Certain medications', 'A blue top'], correct: [0, 1, 2], explanation: 'Clothing isn’t one.' },
+            { prompt: 'A suspicious, changing mole should be…', type: 'SINGLE', options: ['Referred to a doctor', 'Treated at once', 'Ignored', 'Frozen'], correct: [0], explanation: 'Refer, never treat.' },
+            { prompt: 'If something is outside your training, you should refer.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Stay within scope.' },
+            { prompt: 'Referral decisions should be documented.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Notes show you acted properly.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    courseSlug: 'level-3-laser-aesthetic-therapies',
+    modules: [
+      {
+        title: 'Tattoo Removal',
+        summary: 'Understand how lasers fade tattoos and how to run a realistic course.',
+        lessons: [
+          {
+            title: 'How It Works',
+            durationMin: 10,
+            objectives: ['Explain ink shattering', 'Name the laser type used', 'Know the body clears the ink'],
+            studyTips: ['Q-switched / picosecond lasers shatter ink; the body clears the fragments.'],
+            examRefs: ['Tattoo removal'],
+            steps: [
+              { kind: 'say', text: 'Tattoo removal is clever physics. Let’s see how it fades ink.', mood: 'happy' },
+              { kind: 'teach', title: 'Shatter the ink', text: 'A very fast, high-power pulse (Q-switched or picosecond laser) shatters tattoo ink into tiny fragments.', art: 'light-spectrum' },
+              { kind: 'ask', prompt: 'Tattoo-removal lasers work by…', qtype: 'SINGLE', options: ['Shattering ink into fragments', 'Bleaching the skin', 'Cutting it out', 'Sanding the skin'], correct: [0], explanation: 'Ultra-short pulses break the ink apart.' },
+              { kind: 'teach', title: 'The body clears it', text: 'Your immune system then carries the tiny ink fragments away over the following weeks — that’s why fading is gradual.' },
+              { kind: 'ask', prompt: 'After the laser shatters the ink, it’s removed by the body’s…', qtype: 'WORD', options: ['immune', 'digestive', 'nervous'], correct: [0], explanation: 'The immune system clears the fragments.' },
+              { kind: 'say', text: 'Physics plus biology — neat. Now the catches.', mood: 'cheer' },
+              { kind: 'teach', title: 'Colours differ', text: 'Black ink responds best; some colours (greens, light blues, yellows) are stubborn — set expectations honestly.' },
+              { kind: 'ask', prompt: 'Which tattoo ink colour usually responds best?', qtype: 'SINGLE', options: ['Black', 'Yellow', 'Light green', 'White'], correct: [0], explanation: 'Black absorbs across wavelengths.' },
+              { kind: 'say', text: 'You get the science now. Lovely.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Running a Removal Course',
+            durationMin: 9,
+            objectives: ['Explain why many sessions', 'Space sessions safely', 'Set honest timelines'],
+            studyTips: ['Removal takes many sessions, spaced 6–8 weeks, over many months.'],
+            examRefs: ['Tattoo removal'],
+            steps: [
+              { kind: 'say', text: 'Now — managing a real removal journey.', mood: 'think' },
+              { kind: 'teach', title: 'Many sessions', text: 'Removal needs several sessions, because each one only fades part of the ink and the skin must recover between visits.' },
+              { kind: 'ask', prompt: 'Tattoo removal usually needs…', qtype: 'SINGLE', options: ['Several sessions', 'One session', 'No sessions', 'A hundred sessions'], correct: [0], explanation: 'Multiple, spaced sessions.' },
+              { kind: 'teach', title: 'Space them out', text: 'Sessions are spaced several weeks apart to let skin heal and the body clear the last lot of fragments.' },
+              { kind: 'ask', prompt: 'Sessions are spaced several ___ apart to let skin heal.', qtype: 'WORD', options: ['weeks', 'minutes', 'years'], correct: [0], explanation: 'Typically 6–8 weeks.' },
+              { kind: 'teach', title: 'Honest timelines', text: 'Be clear it can take many months and full removal isn’t always possible — manage expectations from session one.' },
+              { kind: 'say', text: 'Realistic, safe, well-paced. Brilliant.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Tattoo Removal Assessment', passMark: 70,
+          questions: [
+            { prompt: 'Tattoo-removal lasers work by…', type: 'SINGLE', options: ['Shattering ink into fragments', 'Bleaching skin', 'Cutting ink out', 'Sanding skin'], correct: [0], explanation: 'Ultra-short pulses break ink apart.' },
+            { prompt: 'The shattered ink is cleared by the body’s…', type: 'WORD', options: ['immune', 'digestive', 'skeletal'], correct: [0], explanation: 'The immune system.' },
+            { prompt: 'Which ink colour usually responds best?', type: 'SINGLE', options: ['Black', 'Yellow', 'Light green', 'White'], correct: [0], explanation: 'Black absorbs best.' },
+            { prompt: 'Tattoo removal usually needs several sessions.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Each fades part of the ink.' },
+            { prompt: 'Sessions are spaced several weeks apart to let skin heal.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Healing and clearance need time.' },
+            { prompt: 'Full removal of every tattoo is always guaranteed.', type: 'TRUEFALSE', options: ['False', 'True'], correct: [0], explanation: 'Some colours/inks never fully clear.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    courseSlug: 'advanced-aesthetics-level-5-7',
+    modules: [
+      {
+        title: 'Professional Practice, Insurance & CPD',
+        summary: 'Run a safe, legal, continually improving practice.',
+        lessons: [
+          {
+            title: 'Insurance & Records',
+            durationMin: 10,
+            objectives: ['Explain why insurance matters', 'Know record-keeping basics', 'Understand retention'],
+            studyTips: ['No valid insurance = don’t treat. Keep records for the required retention period.'],
+            examRefs: ['Professional practice'],
+            steps: [
+              { kind: 'say', text: 'The business side keeps you safe too. Let’s cover the essentials.', mood: 'think' },
+              { kind: 'teach', title: 'Be insured', text: 'You need valid treatment and public liability insurance for every procedure you offer — without it, don’t treat.' },
+              { kind: 'ask', prompt: 'You should treat only when you hold…', qtype: 'SINGLE', options: ['Valid insurance for the procedure', 'A nice room', 'A new machine', 'A busy diary'], correct: [0], explanation: 'Valid, relevant insurance is essential.' },
+              { kind: 'teach', title: 'Good records', text: 'Keep clear records: consent, consultation, settings used, batch numbers and aftercare given — they protect you if questioned.' },
+              { kind: 'ask', prompt: 'Which belong in good treatment records?', qtype: 'MULTI', options: ['Consent', 'Settings used', 'Aftercare given', 'Your horoscope'], correct: [0, 1, 2], explanation: 'Clinical facts, not astrology.' },
+              { kind: 'teach', title: 'Keep them safely', text: 'Records must be stored securely and kept for the required retention period, then disposed of properly.' },
+              { kind: 'ask', prompt: 'Client records must be stored…', qtype: 'WORD', options: ['securely', 'publicly', 'briefly'], correct: [0], explanation: 'Securely, for the retention period.' },
+              { kind: 'say', text: 'Insured and organised — that’s professional.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'CPD & Staying Current',
+            durationMin: 9,
+            objectives: ['Define CPD', 'Know why it matters', 'Plan ongoing learning'],
+            studyTips: ['CPD = Continuing Professional Development — keeping skills and knowledge current.'],
+            examRefs: ['CPD'],
+            steps: [
+              { kind: 'say', text: 'A great practitioner never stops learning. Here’s how.', mood: 'happy' },
+              { kind: 'teach', title: 'What CPD is', text: 'CPD — Continuing Professional Development — means keeping your skills and knowledge up to date through ongoing learning.' },
+              { kind: 'ask', prompt: 'CPD stands for Continuing Professional…', qtype: 'WORD', options: ['development', 'decoration', 'distance'], correct: [0], explanation: 'Development.' },
+              { kind: 'teach', title: 'Why it matters', text: 'Devices, evidence and standards change — CPD keeps you safe, current and credible, and is expected by registers and insurers.' },
+              { kind: 'ask', prompt: 'CPD helps you stay…', qtype: 'MULTI', options: ['Safe', 'Current', 'Credible', 'Out of date'], correct: [0, 1, 2], explanation: 'It does the opposite of going out of date.' },
+              { kind: 'teach', title: 'Keep a record', text: 'Log your courses, reading and reflection — many registers ask to see your CPD record.' },
+              { kind: 'say', text: 'You’ll keep growing for your whole career. Excellent.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Professional Practice Assessment', passMark: 70,
+          questions: [
+            { prompt: 'You should treat only when you hold…', type: 'SINGLE', options: ['Valid insurance for the procedure', 'A new machine', 'A full diary', 'A nice sign'], correct: [0], explanation: 'Valid, relevant insurance.' },
+            { prompt: 'Which belong in good treatment records?', type: 'MULTI', options: ['Consent', 'Settings used', 'Aftercare given', 'Your horoscope'], correct: [0, 1, 2], explanation: 'Clinical facts.' },
+            { prompt: 'Client records must be stored…', type: 'WORD', options: ['securely', 'publicly', 'loosely'], correct: [0], explanation: 'Securely for the retention period.' },
+            { prompt: 'CPD stands for Continuing Professional…', type: 'WORD', options: ['development', 'decoration', 'driving'], correct: [0], explanation: 'Development.' },
+            { prompt: 'CPD helps you stay safe, current and credible.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'It keeps you up to date.' },
+            { prompt: 'You should keep a record of your CPD.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Registers may ask to see it.' },
+          ],
+        },
+      },
+    ],
+  },
 ];
 
 export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
@@ -797,6 +964,15 @@ export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
   { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Consent', prompt: 'For consent to be valid it must be…', type: 'MULTI', options: ['Informed', 'Voluntary', 'Ongoing', 'Secret'], correct: [0, 1, 2], explanation: 'Informed, voluntary and ongoing.' },
   { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Consent', prompt: 'A client may withdraw consent…', options: ['At any time', 'Never', 'Only before paying', 'Only in writing'], correct: [0], explanation: 'They can stop at any point.' },
   { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Capacity', prompt: 'If a client lacks the mental capacity to decide, you should…', options: ['Not proceed', 'Proceed anyway', 'Decide for them', 'Ask a bystander'], correct: [0], explanation: 'No capacity means no treatment.' },
+  { courseSlug: L2, topic: 'Contraindications', prompt: 'An absolute contraindication means you…', options: ['Do not treat', 'Treat with caution', 'Treat faster', 'Charge more'], correct: [0], explanation: 'Absolute = never treat.' },
+  { courseSlug: L2, topic: 'Contraindications', prompt: 'A relative contraindication means proceed with…', type: 'WORD', options: ['caution', 'speed', 'confidence'], correct: [0], explanation: 'Caution or after advice.' },
+  { courseSlug: L2, topic: 'Referral', prompt: 'A suspicious, changing mole should be…', options: ['Referred to a doctor', 'Treated at once', 'Ignored', 'Lasered'], correct: [0], explanation: 'Refer suspicious lesions; never treat them.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Tattoo removal', prompt: 'Tattoo-removal lasers work by…', options: ['Shattering ink into tiny fragments', 'Bleaching the skin', 'Cutting the ink out', 'Sanding the skin'], correct: [0], explanation: 'Ultra-short pulses break the ink apart.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Tattoo removal', prompt: 'After shattering, ink fragments are cleared by the body’s ___ system.', type: 'WORD', options: ['immune', 'digestive', 'nervous'], correct: [0], explanation: 'The immune system carries them away.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Tattoo removal', prompt: 'Which tattoo-ink colour usually responds best to laser?', options: ['Black', 'Yellow', 'Light green', 'White'], correct: [0], explanation: 'Black absorbs across wavelengths.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Professional practice', prompt: 'You should carry out a treatment only when you hold…', options: ['Valid insurance for that procedure', 'A new machine', 'A full diary', 'A nice sign'], correct: [0], explanation: 'Valid, relevant insurance is essential.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Records', prompt: 'Client records must be stored…', type: 'WORD', options: ['securely', 'publicly', 'briefly'], correct: [0], explanation: 'Securely, for the required retention period.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'CPD', prompt: 'CPD stands for Continuing Professional…', type: 'WORD', options: ['development', 'decoration', 'distance'], correct: [0], explanation: 'Continuing Professional Development.' },
 ];
 
 function bodyFromSteps(steps: Step[]): string {
