@@ -18,10 +18,22 @@ keyboard/screen-reader check + a visual-QA screenshot before merge.
 site-wide — including conversion-critical copy: the active booking step
 (`components/booking/BookingFlow.tsx:186`), "from £X" prices (`:212/:239`,
 `pricing/page.tsx:98/112`), the "15% welcome offer" (`:203`), offer CTAs.
-- Fix: for **text**, swap inline `text-[var(--color-gold)]` →
-  `text-[var(--color-gold-deep)]` (#856a4a, 4.34:1 — already the `.eyebrow` fix)
-  and retire `--color-stone-soft` as a text colour (its token comment already
-  says "NOT for text on light"). Decorative `aria-hidden` stars/rules keep gold.
+- **Shipped (#823):** `--color-gold-deep` darkened to **#816748** (4.54:1 on
+  porcelain, 5.29:1 on white) so it is genuinely AA for normal text — this fixes
+  `.eyebrow` site-wide — and the booking conversion path's gold/stone-soft text
+  was routed onto gold-deep/stone.
+- Fix the rest: swap readable `text-[var(--color-gold)]` →
+  `text-[var(--color-gold-deep)]` and `text-[var(--color-stone-soft)]` →
+  `text-[var(--color-stone)]`. Decorative `aria-hidden` marks keep gold.
+- **Surface caveat (measured — important):** these tokens only clear AA on the
+  **light** surfaces (porcelain #f6ece3 / white). On **bone** (#efe3d7)
+  `gold-deep` is **4.00:1** and `stone` is **4.42:1** — both FAIL the 4.5:1
+  normal-text floor. So readable text on bone cards (e.g. `offers/page.tsx` CTAs,
+  any `bg-[var(--color-bone)]` surface) must use an **ink-family** colour
+  (ink / ink-soft / espresso), which changes the accent from gold to brown — a
+  **design decision to confirm**, not a mechanical swap. Do the porcelain/white
+  instances mechanically; flag the bone ones for design review. Verify each
+  instance's actual background before swapping.
 - Approach: codemod the inline utility on text nodes, then visually QA the
   booking flow, pricing, offers, gift pages. Do **not** change the token value
   globally (it is correct as a decorative accent) — change the *usage* on text.
