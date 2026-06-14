@@ -20,12 +20,38 @@ export type FlowLesson = {
   steps?: unknown;
 };
 
-/** Varied encouragement — never the same twice in a row (the caller rotates). */
-export const ENCOURAGEMENTS = [
-  'Nice work!', 'You’ve got this.', 'Look at you go.', 'That’s the one.', 'Keep it up — you’re flying.',
-  'Love that.', 'On a roll!', 'Brilliant.', 'Smashing it.', 'Easy when you know how.', 'Spot on.', 'Great pace.',
-];
-const SEGUES = ['Right, next up…', 'Okay, here’s a good one.', 'Let’s build on that.', 'Now for something useful.', 'Stick with me…', 'Here’s where it clicks.'];
+// K's vernacular adapts to the learner's age band (from their profile): casual /
+// slang for younger trainees, warmer and more measured for older ones.
+export type Register = 'young' | 'mid' | 'mature';
+
+const ENCOURAGEMENTS: Record<Register, string[]> = {
+  young: ['Nice one!', 'Smashing it.', 'Big brain energy 🧠', 'Lowkey acing this.', 'Let’s gooo.', 'Too easy.', 'You’re on fire 🔥', 'Absolute scenes.', 'Vibes.', 'Chef’s kiss.'],
+  mid: ['Nice work!', 'You’ve got this.', 'Spot on.', 'Great pace.', 'Love that.', 'Brilliant.', 'Keep it up — you’re flying.', 'On a roll!', 'Look at you go.'],
+  mature: ['Well done.', 'Excellent.', 'That’s exactly right.', 'Very good indeed.', 'Nicely done.', 'Quite right.', 'Impressive.', 'A pleasure to see.'],
+};
+const SEGUES: Record<Register, string[]> = {
+  young: ['Okay, next bit…', 'Right, check this out.', 'Now for a good one.', 'Stick with me…', 'This one’s class.'],
+  mid: ['Right, next up…', 'Okay, here’s a good one.', 'Let’s build on that.', 'Now for something useful.', 'Stick with me…'],
+  mature: ['Now, moving on…', 'Let’s turn to the next point.', 'Building on that…', 'Here’s an important one.', 'Onward.'],
+};
+const GREETING: Record<Register, string> = {
+  young: 'Right, let’s get into it — bit by bit.',
+  mid: 'Let’s get into it — one step at a time.',
+  mature: 'Let’s begin — we’ll take this step by step.',
+};
+const CLOSING: Record<Register, string> = {
+  young: 'And that’s a wrap — nicely done.',
+  mid: 'That’s the lesson done — nicely paced.',
+  mature: 'That completes the lesson — very good.',
+};
+
+/** Age (years) → vernacular register. */
+export function registerForAge(age: number | null | undefined): Register {
+  if (age == null) return 'mid';
+  if (age < 25) return 'young';
+  if (age >= 45) return 'mature';
+  return 'mid';
+}
 
 /** Validate/coerce an authored steps array from JSON into FlowStep[]. */
 export function coerceSteps(raw: unknown): FlowStep[] | null {
@@ -42,7 +68,7 @@ export function coerceSteps(raw: unknown): FlowStep[] | null {
   return out.length ? out : null;
 }
 
-const CARD_MAX = 280;
+const CARD_MAX = 215;
 
 function splitSentences(p: string): string[] {
   return p.split(/(?<=[.!?])\s+(?=[A-Z(])/).map((s) => s.trim()).filter(Boolean);
@@ -88,13 +114,14 @@ function parseBlocks(body: string): Block[] {
   return blocks;
 }
 
-/** Build the full micro-step flow for a lesson. */
-export function buildLessonFlow(lesson: FlowLesson): FlowStep[] {
+/** Build the full micro-step flow for a lesson. `register` tunes K's vernacular. */
+export function buildLessonFlow(lesson: FlowLesson, register: Register = 'mid'): FlowStep[] {
   const authored = coerceSteps(lesson.steps);
   if (authored) return authored;
+  const encs = ENCOURAGEMENTS[register], segs = SEGUES[register];
 
   const flow: FlowStep[] = [];
-  flow.push({ kind: 'say', text: 'Let’s get into it — one step at a time.', mood: 'happy' });
+  flow.push({ kind: 'say', text: GREETING[register], mood: 'happy' });
   if (lesson.objectives && lesson.objectives.length) {
     flow.push({ kind: 'teach', title: 'Here’s the plan', text: lesson.objectives.slice(0, 4).map((o) => `• ${o}`).join('\n') });
   }
@@ -106,18 +133,25 @@ export function buildLessonFlow(lesson: FlowLesson): FlowStep[] {
   for (const block of blocks) {
     if (block.heading && block.heading !== lastHeading) {
       lastHeading = block.heading;
-      if (flow.length > 2) { flow.push({ kind: 'say', text: SEGUES[segIdx++ % SEGUES.length], mood: 'think' }); sinceSay = 0; }
+      if (flow.length > 2) { flow.push({ kind: 'say', text: segs[segIdx++ % segs.length], mood: 'think' }); sinceSay = 0; }
     }
     if (block.kind === 'list' && block.items) {
-      const chunks: string[][] = [];
-      for (let i = 0; i < block.items.length; i += 4) chunks.push(block.items.slice(i, i + 4));
-      chunks.forEach((items, i) => flow.push({ kind: 'teach', title: i === 0 ? block.heading : undefined, text: items.map((x) => `• ${x}`).join('\n') }));
-      sinceSay += chunks.length;
+      // One short bullet per card pairs up; a long bullet gets its own card —
+      // so a slide never overflows the screen.
+      const groups: string[][] = [];
+      let g: string[] = [], glen = 0;
+      for (const it of block.items) {
+        if (g.length && (glen + it.length > 150 || g.length >= 2 || it.length > 90)) { groups.push(g); g = []; glen = 0; }
+        g.push(it); glen += it.length;
+      }
+      if (g.length) groups.push(g);
+      groups.forEach((items, i) => flow.push({ kind: 'teach', title: i === 0 ? block.heading : undefined, text: items.map((x) => `• ${x}`).join('\n') }));
+      sinceSay += groups.length;
     } else {
       const cards = paragraphCards(block.text);
       cards.forEach((text, i) => { flow.push({ kind: 'teach', title: i === 0 ? block.heading : undefined, text }); sinceSay++; });
     }
-    if (sinceSay >= 3) { flow.push({ kind: 'say', text: ENCOURAGEMENTS[encIdx++ % ENCOURAGEMENTS.length], mood: 'cheer' }); sinceSay = 0; }
+    if (sinceSay >= 3) { flow.push({ kind: 'say', text: encs[encIdx++ % encs.length], mood: 'cheer' }); sinceSay = 0; }
   }
 
   if (lesson.studyTips && lesson.studyTips.length) {
@@ -127,6 +161,6 @@ export function buildLessonFlow(lesson: FlowLesson): FlowStep[] {
     flow.push({ kind: 'say', text: 'One thing to take away and practise:', mood: 'think' });
     flow.push({ kind: 'teach', title: 'Homework', text: lesson.homework });
   }
-  flow.push({ kind: 'say', text: 'That’s the lesson done — nicely paced.', mood: 'cheer' });
+  flow.push({ kind: 'say', text: CLOSING[register], mood: 'cheer' });
   return flow;
 }

@@ -3,11 +3,12 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { KMascot, KCelebration, KSpeech, type CelebrationVariant } from '@/components/academy/KMascot';
-import { buildLessonFlow, coerceSteps, type FlowStep, type SayStep, type TeachStep, type AskStep } from '@/components/academy/lessonFlow';
+import { buildLessonFlow, coerceSteps, type FlowStep, type SayStep, type TeachStep, type AskStep, type Register } from '@/components/academy/lessonFlow';
 import { Illustration, matchIllustration, type IlloKey, type IlloLevel } from '@/components/academy/Illustrations';
 import { AmbientBackdrop } from '@/components/academy/AmbientBackdrop';
 import { ExplainerPlayer } from '@/components/academy/ExplainerPlayer';
 import { academyLevel } from '@/lib/academy-levels';
+import { isMascotMuted, setMascotMuted } from '@/components/academy/mascotVoice';
 import type { CourseLearning, LessonView, QuizView } from '@/lib/lms';
 
 // Session-scoped illustration exposure: the more a learner sees a concept, the
@@ -37,7 +38,7 @@ type Step =
   | { kind: 'quiz'; mi: number }
   | { kind: 'done' };
 
-export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, onExit }: { learning: CourseLearning; slug?: string; mode?: 'learn' | 'preview'; xp?: number; onExit?: () => void }) {
+export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, register = 'mid', onExit }: { learning: CourseLearning; slug?: string; mode?: 'learn' | 'preview'; xp?: number; register?: Register; onExit?: () => void }) {
   const steps = useMemo<Step[]>(() => {
     const s: Step[] = [{ kind: 'intro' }];
     learning.modules.forEach((m, mi) => {
@@ -52,13 +53,13 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, onExit
   const [quizPassed, setQuizPassed] = useState<Set<string>>(() => new Set(learning.modules.filter((m) => m.quiz?.passed).map((m) => m.quiz!.id)));
   const [celebs, setCelebs] = useState<(Celebration & { id: number })[]>([]);
   const idRef = useRef(0);
-  const enqueue = (...cs: Celebration[]) => { if (mode === 'preview') return; setCelebs((q) => [...q, ...cs.map((c) => ({ ...c, id: ++idRef.current }))]); };
+  const enqueue = (...cs: Celebration[]) => { setCelebs((q) => [...q, ...cs.map((c) => ({ ...c, id: ++idRef.current }))]); };
   const completedCelebrated = useRef(false);
   const lessonsThisSession = useRef(0);
 
   const [artSeen, setArtSeen] = useState<Record<string, number>>({});
-  const levelFor = (k: IlloKey): IlloLevel => { if (mode === 'preview') return 'full'; const n = artSeen[k] || 0; return n === 0 ? 'full' : n < 3 ? 'reduced' : 'minimal'; };
-  const seeArt = (k: IlloKey) => { if (mode === 'preview') return; setArtSeen((s) => ({ ...s, [k]: (s[k] || 0) + 1 })); };
+  const levelFor = (k: IlloKey): IlloLevel => { const n = artSeen[k] || 0; return n === 0 ? 'full' : n < 3 ? 'reduced' : 'minimal'; };
+  const seeArt = (k: IlloKey) => { setArtSeen((s) => ({ ...s, [k]: (s[k] || 0) + 1 })); };
 
   // Live HUD: XP/level (base + what's earned this session) and time on task.
   const [sessionXp, setSessionXp] = useState(0);
@@ -156,16 +157,15 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, onExit
           <div className="h-full rounded-full bg-[var(--color-gold)] transition-[width] duration-500" style={{ width: `${pct}%` }} />
         </div>
         <span className="shrink-0 text-xs tabular-nums text-white/70">{pct}%</span>
+        <MuteToggle />
         {mode === 'preview' && <span className="shrink-0 rounded-full bg-[var(--color-gold)]/20 px-2.5 py-1 text-[0.65rem] font-medium uppercase tracking-wide text-[var(--color-gold)]">Preview</span>}
       </header>
 
-      {mode !== 'preview' && (
-        <div className="relative z-10 flex items-center justify-center gap-4 border-b border-white/5 px-4 py-1.5 text-[0.7rem] text-white/55 sm:gap-7">
-          <span className="inline-flex items-center gap-1.5"><span className="grid h-4 w-4 place-items-center rounded-full bg-[var(--color-gold)] text-[0.6rem] font-bold text-[var(--color-ink)]">{lvl.level}</span>{lvl.title}</span>
-          <span className="tabular-nums">{(xp + sessionXp).toLocaleString()} XP{sessionXp > 0 && <span className="text-[var(--color-gold)]"> +{sessionXp}</span>}</span>
-          <span className="tabular-nums">⏱ {Math.floor(sessionSeconds / 60)}:{String(sessionSeconds % 60).padStart(2, '0')}</span>
-        </div>
-      )}
+      <div className="relative z-10 flex items-center justify-center gap-4 border-b border-white/5 px-4 py-1.5 text-[0.7rem] text-white/55 sm:gap-7">
+        <span className="inline-flex items-center gap-1.5"><span className="grid h-4 w-4 place-items-center rounded-full bg-[var(--color-gold)] text-[0.6rem] font-bold text-[var(--color-ink)]">{lvl.level}</span>{lvl.title}</span>
+        <span className="tabular-nums">{(xp + sessionXp).toLocaleString()} XP{sessionXp > 0 && <span className="text-[var(--color-gold)]"> +{sessionXp}</span>}</span>
+        <span className="tabular-nums">⏱ {Math.floor(sessionSeconds / 60)}:{String(sessionSeconds % 60).padStart(2, '0')}</span>
+      </div>
 
       {moduleLabel && (
         <div className="relative z-10 border-b border-white/5 px-4 py-2 text-center text-xs uppercase tracking-[0.16em] text-white/45 sm:px-6">{moduleLabel}</div>
@@ -173,7 +173,7 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, onExit
 
       <div className="relative z-10 flex-1 overflow-y-auto">
         <AnimatePresence mode="wait">
-          <motion.div key={idx} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.32, ease: 'easeOut' }} className="mx-auto w-full max-w-2xl px-5 py-10 sm:py-14">
+          <motion.div key={idx} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.32, ease: 'easeOut' }} className="mx-auto flex min-h-full w-full max-w-2xl flex-col justify-center px-5 py-6">
             {step.kind === 'intro' && <IntroStep learning={learning} onBegin={() => go(Math.min(1, ceiling))} canBegin={ceiling >= 1} />}
             {step.kind === 'lesson' && (
               <LessonStep
@@ -182,6 +182,7 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, onExit
                 reviewing={idx < maxReached && isStepComplete(step)}
                 preview={mode === 'preview'}
                 formative={formativeFor(step)}
+                register={register}
                 onContinue={(secs) => finishLesson(learning.modules[step.mi].lessons[step.li], secs)}
                 onNext={advance}
               />
@@ -213,6 +214,20 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, onExit
   );
 }
 
+function MuteToggle() {
+  const [muted, setMuted] = useState(false);
+  useEffect(() => setMuted(isMascotMuted()), []);
+  return (
+    <button onClick={() => { const m = !muted; setMascotMuted(m); setMuted(m); }} aria-label={muted ? 'Unmute the mascot' : 'Mute the mascot'} title={muted ? 'Unmute K' : 'Mute K'} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-white/60 transition-colors hover:bg-white/10 hover:text-white">
+      {muted ? (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M11 5 6 9H2v6h4l5 4V5Z" /><path d="m23 9-6 6M17 9l6 6" /></svg>
+      ) : (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M11 5 6 9H2v6h4l5 4V5Z" /><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14" /></svg>
+      )}
+    </button>
+  );
+}
+
 function IntroStep({ learning, onBegin, canBegin }: { learning: CourseLearning; onBegin: () => void; canBegin: boolean }) {
   return (
     <div className="text-center">
@@ -237,15 +252,15 @@ function IntroStep({ learning, onBegin, canBegin }: { learning: CourseLearning; 
   );
 }
 
-function LessonStep({ lesson, reviewing, preview, formative, onContinue, onNext }: { lesson: LessonView; reviewing: boolean; preview: boolean; formative?: AskStep | null; onContinue: (seconds: number) => void; onNext: () => void }) {
+function LessonStep({ lesson, reviewing, preview, formative, register, onContinue, onNext }: { lesson: LessonView; reviewing: boolean; preview: boolean; formative?: AskStep | null; register: Register; onContinue: (seconds: number) => void; onNext: () => void }) {
   const flow = useMemo<FlowStep[]>(() => {
     const authored = !!coerceSteps(lesson.steps);
-    const base = buildLessonFlow({ title: lesson.title, body: lesson.body, objectives: lesson.objectives, studyTips: lesson.studyTips, homework: lesson.homework, steps: lesson.steps });
+    const base = buildLessonFlow({ title: lesson.title, body: lesson.body, objectives: lesson.objectives, studyTips: lesson.studyTips, homework: lesson.homework, steps: lesson.steps }, register);
     // Auto-chunked lessons get one interspersed check, just before the closing line.
     const withAsk = !authored && formative && base.length > 1 ? [...base.slice(0, -1), formative as FlowStep, base[base.length - 1]] : base;
     const vid = lesson.videoUrl ? ytId(lesson.videoUrl) : null;
     return vid ? [{ kind: 'teach', title: 'Watch first', text: '', art: `video:${vid}` }, ...withAsk] : withAsk;
-  }, [lesson, formative]);
+  }, [lesson, formative, register]);
 
   const [mi, setMi] = useState(0);
   const [showExplainer, setShowExplainer] = useState(false);
@@ -306,19 +321,18 @@ function TeachMicro({ step, onContinue, gated }: { step: TeachStep; onContinue: 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (art) seeArt(art); }, []);
   return (
-    <div className="py-2">
-      {step.title && <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-gold)]">{step.title}</p>}
+    <div className="flex flex-col items-center text-center">
+      {step.title && <p className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-gold)]">{step.title}</p>}
       {video ? (
-        <div className="aspect-video w-full overflow-hidden rounded-[var(--radius-lg)] border border-white/12"><iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${video}`} title="Lesson video" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
+        <div className="aspect-video w-full max-w-md overflow-hidden rounded-[var(--radius-lg)] border border-white/12"><iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${video}`} title="Lesson video" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
       ) : (
         <>
-          {art && <div className="mb-5"><Illustration name={art} level={lvl} /></div>}
-          <p className="whitespace-pre-line text-lg leading-relaxed text-white/90">{step.text}</p>
+          {art && <div className="mb-5 w-full max-w-[190px]"><Illustration name={art} level={lvl} /></div>}
+          <p className="max-w-md whitespace-pre-line text-lg leading-relaxed text-white/90 sm:text-xl">{step.text}</p>
         </>
       )}
-      <div className="mt-8 flex justify-center">
-        <button onClick={onContinue} disabled={!waited} className="rounded-full bg-[var(--color-gold)] px-8 py-3 text-sm font-semibold text-[var(--color-ink)] transition-transform enabled:hover:scale-[1.02] disabled:opacity-50">Continue →</button>
-      </div>
+      <KMascot variant="idle" size={28} className="mt-7 opacity-70" />
+      <button onClick={onContinue} disabled={!waited} className="mt-5 rounded-full bg-[var(--color-gold)] px-8 py-3 text-sm font-semibold text-[var(--color-ink)] transition-transform enabled:hover:scale-[1.02] disabled:opacity-50">Continue →</button>
     </div>
   );
 }
