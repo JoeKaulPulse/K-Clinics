@@ -59,10 +59,16 @@ export default async function QrPage() {
     { label: 'Claims', value: kiosk.claimed ?? 0 },
   ];
   const top = steps[0].value || 0;
-  // Each card: % of scans (overall) + step-over-step conversion from the prior stage.
   const funnel = steps.map((s, i) => ({ ...s, pct: top ? Math.round((s.value / top) * 100) : 0, step: i > 0 && steps[i - 1].value ? Math.round((s.value / steps[i - 1].value) * 100) : null }));
   const ageDeclined = byStatus.AGE_DECLINED ?? 0;
   const reachedAnalysis = top ? Math.round(((kiosk.analyzed ?? 0) / top) * 100) : 0;
+
+  // BLD-137 slice 2: load active locations for per-screen display links.
+  const locations = await db.location.findMany({
+    where: { active: true },
+    select: { id: true, name: true, slug: true, isPrimary: true },
+    orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }, { name: 'asc' }],
+  }).catch(() => [] as { id: string; name: string; slug: string; isPrimary: boolean }[]);
 
   const can = await sessionPermissions();
   const locale = await getLocale();
@@ -110,6 +116,33 @@ export default async function QrPage() {
         </div>
         <p className="mt-2 text-[0.65rem] text-[var(--color-stone-soft)]">Campaign attribution needs a campaign tag captured at the kiosk entry point — a small follow-up once per-campaign QR/links drive the kiosk.</p>
         <KioskThemeSelector current={activeTheme} />
+
+        {/* BLD-137 slice 2: per-location display links */}
+        {locations.length > 0 && (
+          <div className="mt-5 border-t border-[var(--color-line)] pt-5">
+            <h3 className="text-sm font-medium text-[var(--color-ink)]">Per-location display links</h3>
+            <p className="mt-1 text-xs text-[var(--color-stone)]">
+              Point each site&apos;s storefront screen at its own link — sessions will be attributed to that location for analytics.
+            </p>
+            <ul className="mt-3 space-y-2">
+              {locations.map((loc) => (
+                <li key={loc.id} className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-md)] bg-[var(--color-porcelain)] px-4 py-2.5">
+                  <span className="text-sm font-medium text-[var(--color-ink)]">
+                    {loc.name}{loc.isPrimary && <span className="ml-2 rounded bg-[var(--color-gold-soft)] px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-[var(--color-ink)]">Primary</span>}
+                  </span>
+                  <a
+                    href={`/kiosk/display?location=${loc.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-xs text-[var(--color-stone)] underline underline-offset-2 hover:text-[var(--color-ink)]"
+                  >
+                    /kiosk/display?location={loc.slug} ↗
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
 
       <div className="mt-8">

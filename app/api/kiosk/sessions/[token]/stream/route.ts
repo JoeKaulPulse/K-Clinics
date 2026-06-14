@@ -2,14 +2,15 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { secretMatches } from '@/lib/kiosk';
 import { buildKioskStreamPayload, KIOSK_STREAM_SELECT } from '@/lib/kiosk-live';
+import { sseSnapshotStream, SSE_HEADERS } from '@/lib/sse-snapshot';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-const POLL_MS = 500;        // in-function DB poll cadence
-const HEARTBEAT_MS = 15_000; // SSE comment to keep proxies from closing us
-const LIFETIME_MS = 55_000;  // end cleanly before the 60s function cap
+const POLL_MS = 500;
+const HEARTBEAT_MS = 15_000;
+const LIFETIME_MS = 55_000;
 
 // BLD-159: best-effort per-token concurrent-connection cap (defence-in-depth on
 // top of the required secret). Module-scoped — bounds connections per warm
@@ -18,11 +19,9 @@ const MAX_CONNS_PER_TOKEN = 3;
 const liveConns = new Map<string, number>();
 
 // Public, token-scoped SSE for the storefront display (and the phone, if it
-// wants push instead of polling). Polls the session every 500ms inside the
-// function and emits a `data:` event ONLY when the payload changed (JSON
-// compare), with a heartbeat comment every 15s. The stream ends cleanly at
-// ~55s; `retry: 1000` makes EventSource reconnect fast, so the display sees a
-// continuous feed. The existing GET /sessions/[token] poll stays as fallback.
+// wants push instead of polling). Uses the shared sseSnapshotStream helper
+// (BLD-145) for the loop/heartbeat/lifetime/abort/error policy; this route
+// supplies the load logic and keeps the per-token connection cap.
 export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const provided = new URL(req.url).searchParams.get('s');
@@ -46,69 +45,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
     if (n <= 0) liveConns.delete(token); else liveConns.set(token, n);
   };
 
-  const encoder = new TextEncoder();
-  let closed = false;
-
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      const close = () => {
-        if (closed) return;
-        closed = true;
-        releaseConn();
-        try { controller.close(); } catch { /* already closed */ }
-      };
-      const send = (chunk: string) => {
-        if (closed) return;
-        try { controller.enqueue(encoder.encode(chunk)); } catch { closed = true; }
-      };
-
-      req.signal?.addEventListener('abort', close);
-
-      // Fast reconnect after our deliberate ~55s close.
-      send('retry: 1000\n\n');
-
-      const started = Date.now();
-      let lastJson = '';
-      let lastActivity = Date.now();
-
-      while (!closed && Date.now() - started < LIFETIME_MS) {
-        try {
-          const session = await db.kioskSession.findUnique({
-            where: { token },
-            select: KIOSK_STREAM_SELECT,
-          });
-          if (!session) break; // deleted (e.g. test cleanup) — end the stream
-
-          const payload = buildKioskStreamPayload(session);
-          const json = JSON.stringify(payload);
-          if (json !== lastJson) {
-            send(`data: ${json}\n\n`);
-            lastJson = json;
-            lastActivity = Date.now();
-          } else if (Date.now() - lastActivity >= HEARTBEAT_MS) {
-            send(': hb\n\n');
-            lastActivity = Date.now();
-          }
-        } catch {
-          // Transient DB error — keep the stream alive; next poll retries.
-        }
-        if (closed) break;
-        await new Promise((r) => setTimeout(r, POLL_MS));
-      }
-      close();
+  const inner = sseSnapshotStream({
+    load: async () => {
+      const session = await db.kioskSession.findUnique({ where: { token }, select: KIOSK_STREAM_SELECT });
+      return session ? buildKioskStreamPayload(session) : null;
     },
-    cancel() {
-      closed = true; // reader went away — stop the poll loop
-      releaseConn();
-    },
+    pollMs: POLL_MS,
+    heartbeatMs: HEARTBEAT_MS,
+    lifetimeMs: LIFETIME_MS,
+    signal: req.signal ?? new AbortController().signal,
   });
 
-  return new Response(stream, {
-    headers: {
-      'content-type': 'text/event-stream; charset=utf-8',
-      'cache-control': 'no-cache, no-transform',
-      connection: 'keep-alive',
-      'x-accel-buffering': 'no',
-    },
-  });
+  // Release the connection slot when the stream drains or is cancelled.
+  const passThrough = new TransformStream<Uint8Array, Uint8Array>();
+  inner.pipeTo(passThrough.writable).then(releaseConn, releaseConn);
+
+  return new Response(passThrough.readable, { headers: SSE_HEADERS });
 }

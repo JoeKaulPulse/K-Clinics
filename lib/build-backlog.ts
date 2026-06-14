@@ -1211,6 +1211,36 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'The storefront kiosk display now supports 4 seasonal themes (Default / Christmas / Valentine\'s / Summer) switchable from Admin > QR codes with no redeploy. Each theme has unique headline copy, tagline, CTA (AttractScene THEME_COPY map) and CSS colour-variable overrides applied as an inline style on the .kd-stage root (--color-ink, --color-gold-bright, --color-gold, --color-gold-soft, --color-blush). Theme stored as the string setting kiosk_theme using the existing Setting table -- zero schema changes. Admin pill-button selector gated on settings.manage; optimistic selection reverts on server error.',
     notes: ['Shipped (#769). lib/kiosk-themes.ts (theme catalogue), lib/settings.ts (getStringSetting/setStringSetting), app/admin/qr/kiosk-actions.ts (setKioskTheme server action), KioskThemeSelector.tsx (admin UI), KioskDisplay.tsx (CSS var injection), AttractScene.tsx (copy map). Opus review caught phantom --kd-* variable names -- corrected to --color-* before merge.'],
   },
+  {
+    title: 'Staff-only follow-up appointment scheduler on booking detail (BLD-298)', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude',
+    value: 4, effort: 3,
+    detail: 'Staff-only ScheduleFollowUp widget added to the booking detail left column. Pre-fills the recommended next-session date using recommendedNext() from lib/treatment-intervals for course treatments, checks room/clinician availability via isSlotFree, assigns clinician + room, and books via createManualBooking (flows to Google Calendar sync once enabled). Clash shows a clear message with a book-anyway override. Gated behind bookings.manage. No schema change. Also fixed right-heavy layout imbalance on the booking detail page.',
+    notes: ['Component: components/admin/ScheduleFollowUp.tsx. Action: app/admin/bookings/create-action.ts scheduleFollowUpAction(). Page: app/admin/bookings/[id]/page.tsx. Client-facing UI deferred per BLD-298 brief.'],
+  },
+  {
+    title: 'ClinicOS Ring 0.1: Tenant model + nullable tenantId on 13 Academy tables (BLD-299)', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude',
+    value: 4, effort: 3,
+    detail: 'Added Tenant model (id, slug, name, host, active) to schema.prisma and a nullable tenantId String? with @@index to all 13 Academy tables (AcademyStudent, Course, CourseModule, Lesson, Quiz, QuizQuestion, LessonProgress, QuizAttempt, LiveClass, Cohort, Enrolment, Vacancy, JobApplication) plus bonus models (StudentPasskey, ExamQuestion, PastPaper, PracticeAttempt, PointEvent, StudentBadge, DailyActivity). Additive-only -- db push safe, zero data loss. lib/tenant.ts: ensureDefaultTenant(), currentTenantId(), backfillAcademyTenant() self-healing cron. New Academy writes stamp tenantId. Live code treats tenantId as optional -- K Clinics behaves identically. Ring 0.2 (query scoping) and Ring 1 (RLS) are follow-up cards.',
+    notes: ['schema.prisma: Tenant model at line 1749. lib/tenant.ts: resolver + backfill. lib/academy-auth.ts: stamps tenantId on signupStudent(). app/api/cron/daily: wires backfillAcademyTenantIfNeeded(). ADR-015 pooled-tenantId pattern documented in docs/PLATFORM_SAAS_PLAN.md.'],
+  },
+  {
+    title: 'ClinicOS Ring 0.1: Academy JWT-secret audience hardening -- remove CLIENT/ADMIN fallback (BLD-302)', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude',
+    value: 3, effort: 2,
+    detail: 'academySecret() in lib/auth-edge.ts previously fell back through CLIENT_JWT_SECRET -> ADMIN_JWT_SECRET if ACADEMY_JWT_SECRET was unset (dev convenience that could cause cross-portal token acceptance in production). Removed the two fallbacks: academySecret() now uses ACADEMY_JWT_SECRET exclusively and throws in production if unset, matching the adminSecret() pattern. Dev environments fall back to the insecure placeholder as before.',
+    notes: ['lib/auth-edge.ts lines 97-105. Matches the hardened adminSecret() pattern (no fallback). clientSecret() still has a single ADMIN_JWT_SECRET fallback -- that is a separate card (R13).'],
+  },
+  {
+    title: 'Kiosk SSE stream refactored to shared sseSnapshotStream helper (BLD-145)', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude',
+    value: 4, effort: 2,
+    detail: 'app/api/kiosk/sessions/[token]/stream/route.ts now delegates its poll loop, heartbeat, lifetime, abort signal, cancel handler, and transient-error policy to sseSnapshotStream() from lib/sse-snapshot.ts (BLD-145). The route retains its kiosk-specific layers: auth (token exists + secret matches), per-token concurrent-connection cap (MAX 3), and the load() function (db.kioskSession.findUnique -> buildKioskStreamPayload). Connection slot released via .pipeTo().then(releaseConn, releaseConn) on both normal drain and reader cancel. No behaviour change. useKioskChannel (client hook) deferred: the BLD-145 comment explicitly flagged it for on-device testing before conversion.',
+    notes: ['SSE_HEADERS now imported from lib/sse-snapshot.ts (no duplication). pollMs=500, heartbeatMs=15000, lifetimeMs=55000 unchanged. req.signal ?? new AbortController().signal guard ensures valid AbortSignal in all environments.'],
+  },
+  {
+    title: 'Kiosk slice 2: per-location display links + locationId on KioskSession (BLD-137 slice 2)', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 4,
+    detail: 'Added optional locationId String? to KioskSession (plain scope tag matching the FacilityDoc/ContractorVisit pattern -- no FK, no Location model touch, additive schema change). /kiosk/display accepts a ?location=<slug> search param: it resolves the Location.id by slug and stamps it on the new session at creation. Admin > QR codes page now shows a "Per-location display links" section listing all active locations with their /kiosk/display?location=<slug> URL so staff can point each site\'s storefront screen at the right link without any deploy. Sessions without locationId continue to work as before.',
+    notes: ['schema.prisma: locationId String? + @@index([locationId]) on KioskSession. app/kiosk/display/page.tsx: searchParams.location -> db.location.findUnique({where:{slug}}) -> session.locationId. app/admin/qr/page.tsx: db.location.findMany(active) -> per-location link list. Consistent with FacilityDoc.locationId and ContractorVisit.locationId patterns.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
