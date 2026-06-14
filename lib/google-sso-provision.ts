@@ -64,7 +64,7 @@ export async function resolveOrProvisionSsoUser(identity: GoogleIdentity): Promi
     // 4) No match — provision a disabled account for owner approval. The
     //    password hash is a throwaway random value (unusable) so the account is
     //    Google-only until an owner sets a password.
-    const created = await db.adminUser.create({
+    await db.adminUser.create({
       data: {
         email,
         name: identity.name || null,
