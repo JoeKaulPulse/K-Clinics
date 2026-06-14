@@ -25,6 +25,12 @@ export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
   if (!tokenOk(req)) return NextResponse.json({ ok: false, error: 'Unauthorised' }, { status: 401 });
 
+  // Bound abuse — this publishes to the public "verified" reviews surface.
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'greview-import', 10, 600, 'admin'))) {
+    return NextResponse.json({ ok: false, error: 'Rate limit exceeded.' }, { status: 429 });
+  }
+
   const body = (await req.json().catch(() => ({}))) as { reviews?: In[] };
   const list = Array.isArray(body.reviews) ? body.reviews : [];
   if (!list.length) return NextResponse.json({ ok: false, error: 'No reviews supplied.' }, { status: 400 });
@@ -34,8 +40,8 @@ export async function POST(req: Request) {
   for (const it of list.slice(0, 300)) {
     const stars = Math.max(1, Math.min(5, Math.round(Number(it?.starRating) || 0)));
     if (!stars) continue;
-    const name = (typeof it?.reviewerName === 'string' ? it.reviewerName.trim() : '') || null;
-    const comment = (typeof it?.comment === 'string' ? it.comment.trim() : '') || null;
+    const name = (typeof it?.reviewerName === 'string' ? it.reviewerName.trim().slice(0, 120) : '') || null;
+    const comment = (typeof it?.comment === 'string' ? it.comment.trim().slice(0, 4000) : '') || null;
     const parsed = it?.createTime ? new Date(String(it.createTime)) : new Date();
     const createTime = isNaN(parsed.getTime()) ? new Date() : parsed;
     const slug = (name || 'anon').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40);
