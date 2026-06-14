@@ -911,6 +911,174 @@ export const NEW_MODULES: CourseContentDef[] = [
       },
     ],
   },
+  {
+    courseSlug: L2,
+    modules: [
+      {
+        title: 'Client Care & Communication',
+        summary: 'Make clients feel safe and informed — and handle concerns calmly.',
+        lessons: [
+          {
+            title: 'A Great Consultation',
+            durationMin: 10,
+            objectives: ['Build rapport and trust', 'Listen and check understanding', 'Agree a realistic plan'],
+            studyTips: ['Listen more than you talk; check the client has understood, not just heard.'],
+            examRefs: ['Client care'],
+            steps: [
+              { kind: 'say', text: 'People remember how you made them feel. Let’s nail the consultation.', mood: 'happy' },
+              { kind: 'teach', title: 'Make them comfortable', text: 'A warm welcome, eye contact and a calm tone help a client relax and speak openly about what they want.', art: 'concept' },
+              { kind: 'ask', prompt: 'A good consultation starts by…', qtype: 'SINGLE', options: ['Making the client comfortable', 'Selling hard', 'Rushing', 'Talking over them'], correct: [0], explanation: 'Comfort and trust come first.' },
+              { kind: 'teach', title: 'Listen and check', text: 'Ask open questions, listen carefully, then check the client has understood — don’t assume.' },
+              { kind: 'ask', prompt: 'To be sure a client understands, you should…', qtype: 'SINGLE', options: ['Check their understanding', 'Assume they got it', 'Use jargon', 'Hurry on'], correct: [0], explanation: 'Confirm understanding, don’t assume.' },
+              { kind: 'say', text: 'Now agree the plan together.', mood: 'cheer' },
+              { kind: 'teach', title: 'Agree the plan', text: 'Summarise what you’ll do, the likely results and the cost, and agree it together before starting.' },
+              { kind: 'ask', prompt: 'Before starting, you and the client should agree…', qtype: 'MULTI', options: ['The plan', 'Likely results', 'The cost', 'Their lunch'], correct: [0, 1, 2], explanation: 'Plan, results and cost.' },
+              { kind: 'say', text: 'That’s consultation gold. Lovely.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Handling Concerns',
+            durationMin: 9,
+            objectives: ['Respond calmly to worries', 'Take complaints seriously', 'Know when to escalate'],
+            studyTips: ['Listen, apologise where due, act — never get defensive.'],
+            examRefs: ['Complaints'],
+            steps: [
+              { kind: 'say', text: 'Even great practitioners get concerns. Here’s how to handle them well.', mood: 'think' },
+              { kind: 'teach', title: 'Stay calm', text: 'If a client is worried or unhappy, listen fully and stay calm — don’t get defensive or dismiss them.' },
+              { kind: 'ask', prompt: 'When a client raises a concern, you should first…', qtype: 'SINGLE', options: ['Listen calmly', 'Argue back', 'Ignore it', 'Walk off'], correct: [0], explanation: 'Listen first, always.' },
+              { kind: 'teach', title: 'Act on it', text: 'Acknowledge their concern, apologise where appropriate, and explain what you’ll do about it.' },
+              { kind: 'ask', prompt: 'A good response to a complaint includes…', qtype: 'MULTI', options: ['Acknowledging it', 'A plan to put it right', 'Honesty', 'Blaming the client'], correct: [0, 1, 2], explanation: 'Own it and fix it — don’t blame.' },
+              { kind: 'teach', title: 'Escalate and record', text: 'For anything clinical or serious, escalate to a senior or the client’s GP, and record what happened.' },
+              { kind: 'say', text: 'Calm, fair, recorded — that builds trust for life.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Client Care Assessment', passMark: 70,
+          questions: [
+            { prompt: 'A good consultation starts by…', type: 'SINGLE', options: ['Making the client comfortable', 'Selling hard', 'Rushing through', 'Talking over them'], correct: [0], explanation: 'Comfort and trust first.' },
+            { prompt: 'To be sure a client understands, you should…', type: 'SINGLE', options: ['Check their understanding', 'Assume it', 'Use jargon', 'Hurry'], correct: [0], explanation: 'Confirm, don’t assume.' },
+            { prompt: 'Before starting you should agree the plan, results and…', type: 'WORD', options: ['cost', 'weather', 'menu'], correct: [0], explanation: 'Agree the cost too.' },
+            { prompt: 'When a client raises a concern, first you should…', type: 'SINGLE', options: ['Listen calmly', 'Argue', 'Ignore it', 'Leave'], correct: [0], explanation: 'Listen first.' },
+            { prompt: 'A good complaint response includes…', type: 'MULTI', options: ['Acknowledging it', 'Putting it right', 'Honesty', 'Blaming the client'], correct: [0, 1, 2], explanation: 'Own it, don’t blame.' },
+            { prompt: 'Serious or clinical concerns should be escalated and recorded.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Escalate and document.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    courseSlug: 'level-3-laser-aesthetic-therapies',
+    modules: [
+      {
+        title: 'Acne & Scar Revision',
+        summary: 'How light and laser calm active acne and soften scarring.',
+        lessons: [
+          {
+            title: 'Treating Active Acne',
+            durationMin: 10,
+            objectives: ['Explain how light helps acne', 'Name the bacteria targeted', 'Set realistic expectations'],
+            studyTips: ['Certain light wavelengths target acne bacteria and calm oil glands.'],
+            examRefs: ['Acne treatment'],
+            steps: [
+              { kind: 'say', text: 'Acne is common and treatable — let’s see how light helps.', mood: 'happy' },
+              { kind: 'teach', title: 'Light and bacteria', text: 'Certain wavelengths of light target the bacteria involved in acne and help calm the oil glands.', art: 'light-spectrum' },
+              { kind: 'ask', prompt: 'Light-based acne treatment partly works by targeting…', qtype: 'SINGLE', options: ['Acne bacteria', 'Bone', 'Hair colour', 'Teeth'], correct: [0], explanation: 'It targets acne bacteria and oil glands.' },
+              { kind: 'teach', title: 'Calm, not cure', text: 'It can reduce breakouts and redness, but acne is managed over time, often alongside skincare — not cured in one go.' },
+              { kind: 'ask', prompt: 'Light therapy for acne is best described as…', qtype: 'SINGLE', options: ['Ongoing management', 'A one-session cure', 'Useless', 'Only for scars'], correct: [0], explanation: 'It’s managed over time.' },
+              { kind: 'say', text: 'Honest framing keeps clients on side. Now scars.', mood: 'cheer' },
+              { kind: 'teach', title: 'Set expectations', text: 'Explain it usually takes a course, and results vary — pair it with good skincare and patience.' },
+              { kind: 'ask', prompt: 'Acne light treatment usually needs…', qtype: 'WORD', options: ['a course', 'one visit', 'no visits'], correct: [0], explanation: 'A course of sessions.' },
+              { kind: 'say', text: 'You can guide an acne client well now. Lovely.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Softening Scars',
+            durationMin: 9,
+            objectives: ['Explain resurfacing', 'Link collagen to smoothing', 'Set honest limits'],
+            studyTips: ['Resurfacing stimulates collagen to remodel scar tissue gradually.'],
+            examRefs: ['Scar revision'],
+            steps: [
+              { kind: 'say', text: 'Scars rarely vanish — but we can soften them. Here’s how.', mood: 'think' },
+              { kind: 'teach', title: 'Stimulate collagen', text: 'Resurfacing treatments create controlled micro-injury, prompting new collagen that remodels and smooths scar tissue.', art: 'collagen' },
+              { kind: 'ask', prompt: 'Scar resurfacing works mainly by stimulating new…', qtype: 'WORD', options: ['collagen', 'melanin', 'bone'], correct: [0], explanation: 'Neocollagenesis smooths the scar.' },
+              { kind: 'teach', title: 'Gradual change', text: 'Improvement builds over weeks and several sessions — it’s softening, not erasing.' },
+              { kind: 'ask', prompt: 'Scar treatment aims to ___ scars, not erase them.', qtype: 'WORD', options: ['soften', 'colour', 'deepen'], correct: [0], explanation: 'Soften and smooth.' },
+              { kind: 'teach', title: 'Be honest', text: 'Manage expectations: results vary with scar type and skin, and full removal usually isn’t possible.' },
+              { kind: 'say', text: 'Realistic and skilled — that’s the standard.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Acne & Scars Assessment', passMark: 70,
+          questions: [
+            { prompt: 'Light-based acne treatment partly targets…', type: 'SINGLE', options: ['Acne bacteria', 'Bone', 'Hair colour', 'Teeth'], correct: [0], explanation: 'Bacteria and oil glands.' },
+            { prompt: 'Acne light therapy is best described as…', type: 'SINGLE', options: ['Ongoing management', 'A one-off cure', 'Useless', 'Only for scars'], correct: [0], explanation: 'Managed over time.' },
+            { prompt: 'Acne light treatment usually needs a course of sessions.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Not one visit.' },
+            { prompt: 'Scar resurfacing works mainly by stimulating new…', type: 'WORD', options: ['collagen', 'melanin', 'bone'], correct: [0], explanation: 'Collagen remodels the scar.' },
+            { prompt: 'Scar treatment aims to soften scars, not erase them.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Softening, not erasing.' },
+            { prompt: 'Scar results are the same for everyone regardless of scar type.', type: 'TRUEFALSE', options: ['False', 'True'], correct: [0], explanation: 'Results vary with scar type and skin.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    courseSlug: 'level-4-certificate-aesthetic-practice',
+    modules: [
+      {
+        title: 'Skin Ageing & Photodamage',
+        summary: 'Understand why skin ages and how sun exposure drives most visible change.',
+        lessons: [
+          {
+            title: 'Why Skin Ages',
+            durationMin: 10,
+            objectives: ['Tell intrinsic from extrinsic ageing', 'Link collagen loss to lines', 'Name the biggest external cause'],
+            studyTips: ['Intrinsic = the genetic clock; extrinsic = sun, smoking, lifestyle.'],
+            examRefs: ['Skin ageing'],
+            steps: [
+              { kind: 'say', text: 'Why does skin change with time? Two reasons. Let’s split them.', mood: 'think' },
+              { kind: 'teach', title: 'Two kinds of ageing', text: 'Intrinsic ageing is the natural genetic clock; extrinsic ageing comes from outside factors like sun, smoking and lifestyle.', art: 'collagen' },
+              { kind: 'ask', prompt: 'Ageing from sun and lifestyle is called…', qtype: 'WORD', options: ['extrinsic', 'intrinsic', 'instant'], correct: [0], explanation: 'Extrinsic = external causes.' },
+              { kind: 'teach', title: 'Collagen falls', text: 'Over time collagen and elastin decline, so skin loses firmness and fine lines appear.' },
+              { kind: 'ask', prompt: 'Lines and sagging are largely due to falling…', qtype: 'MULTI', options: ['Collagen', 'Elastin', 'Firmness', 'Bone density only'], correct: [0, 1, 2], explanation: 'Collagen/elastin loss reduces firmness.' },
+              { kind: 'say', text: 'Now the single biggest driver you can control.', mood: 'cheer' },
+              { kind: 'teach', title: 'The sun leads', text: 'The sun (UV) causes the majority of visible ageing — so sun protection is the most powerful anti-ageing step.' },
+              { kind: 'ask', prompt: 'The biggest external cause of visible skin ageing is…', qtype: 'SINGLE', options: ['The sun (UV)', 'Cold weather', 'Reading', 'Water'], correct: [0], explanation: 'UV drives most photoageing.' },
+              { kind: 'say', text: 'You understand ageing now. Brilliant.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Photodamage & Protection',
+            durationMin: 9,
+            objectives: ['Recognise signs of photodamage', 'Explain SPF’s role', 'Advise daily protection'],
+            studyTips: ['Pigmentation, fine lines and rough texture are classic photodamage signs.'],
+            examRefs: ['Photodamage'],
+            steps: [
+              { kind: 'say', text: 'Let’s spot sun damage and stop more of it.', mood: 'happy' },
+              { kind: 'teach', title: 'Signs of photodamage', text: 'Sun damage shows as uneven pigmentation, fine lines, broken vessels and rough texture — often before deeper wrinkles.' },
+              { kind: 'ask', prompt: 'Which are signs of photodamage?', qtype: 'MULTI', options: ['Uneven pigment', 'Fine lines', 'Rough texture', 'Stronger nails'], correct: [0, 1, 2], explanation: 'Nails aren’t a photodamage sign.' },
+              { kind: 'teach', title: 'SPF every day', text: 'Daily broad-spectrum SPF is the simplest, most effective way to prevent further photoageing — even on cloudy days.' },
+              { kind: 'ask', prompt: 'Daily SPF should be worn…', qtype: 'SINGLE', options: ['Even on cloudy days', 'Only on holiday', 'Never', 'Only at night'], correct: [0], explanation: 'UV reaches skin even through cloud.' },
+              { kind: 'teach', title: 'Advise clients', text: 'Whatever treatment you give, reinforce daily SPF — it protects their results and their skin.' },
+              { kind: 'say', text: 'Prevention plus treatment — that’s expert care.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Skin Ageing Assessment', passMark: 70,
+          questions: [
+            { prompt: 'Ageing from sun and lifestyle is called…', type: 'WORD', options: ['extrinsic', 'intrinsic', 'instant'], correct: [0], explanation: 'External causes.' },
+            { prompt: 'The biggest external cause of visible ageing is…', type: 'SINGLE', options: ['The sun (UV)', 'Cold', 'Reading', 'Water'], correct: [0], explanation: 'UV drives photoageing.' },
+            { prompt: 'Lines and sagging are largely due to falling collagen and elastin.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'They give skin firmness.' },
+            { prompt: 'Which are signs of photodamage?', type: 'MULTI', options: ['Uneven pigment', 'Fine lines', 'Rough texture', 'Stronger nails'], correct: [0, 1, 2], explanation: 'Not nails.' },
+            { prompt: 'Daily broad-spectrum SPF should be worn even on cloudy days.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'UV passes through cloud.' },
+            { prompt: 'SPF is the single most effective anti-ageing step you can advise.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Prevention beats correction.' },
+          ],
+        },
+      },
+    ],
+  },
 ];
 
 export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
@@ -973,6 +1141,15 @@ export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Professional practice', prompt: 'You should carry out a treatment only when you hold…', options: ['Valid insurance for that procedure', 'A new machine', 'A full diary', 'A nice sign'], correct: [0], explanation: 'Valid, relevant insurance is essential.' },
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Records', prompt: 'Client records must be stored…', type: 'WORD', options: ['securely', 'publicly', 'briefly'], correct: [0], explanation: 'Securely, for the required retention period.' },
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'CPD', prompt: 'CPD stands for Continuing Professional…', type: 'WORD', options: ['development', 'decoration', 'distance'], correct: [0], explanation: 'Continuing Professional Development.' },
+  { courseSlug: L2, topic: 'Client care', prompt: 'When a client raises a concern, your first step is to…', options: ['Listen calmly', 'Argue back', 'Ignore it', 'Walk away'], correct: [0], explanation: 'Listen first, stay calm.' },
+  { courseSlug: L2, topic: 'Client care', prompt: 'Before starting a treatment you should agree the plan, the likely results and the…', type: 'WORD', options: ['cost', 'weather', 'parking'], correct: [0], explanation: 'Agree the cost up front.' },
+  { courseSlug: L2, topic: 'Complaints', prompt: 'A good response to a complaint includes…', type: 'MULTI', options: ['Acknowledging it', 'A plan to put it right', 'Honesty', 'Blaming the client'], correct: [0, 1, 2], explanation: 'Own it and fix it; never blame.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Acne', prompt: 'Light-based acne treatment partly works by targeting…', options: ['Acne bacteria and oil glands', 'Bone', 'Hair colour', 'Teeth'], correct: [0], explanation: 'It targets the bacteria and calms oil glands.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Acne', prompt: 'Light therapy for acne is best described as ongoing management, not a one-session cure.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Acne is managed over time.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Scars', prompt: 'Scar resurfacing softens scars mainly by stimulating new…', type: 'WORD', options: ['collagen', 'melanin', 'bone'], correct: [0], explanation: 'New collagen remodels the scar.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Ageing', prompt: 'Ageing caused by sun, smoking and lifestyle is called…', type: 'WORD', options: ['extrinsic', 'intrinsic', 'eternal'], correct: [0], explanation: 'Extrinsic = external causes.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Ageing', prompt: 'The biggest external cause of visible skin ageing is…', options: ['The sun (UV)', 'Cold weather', 'Reading', 'Drinking water'], correct: [0], explanation: 'UV drives most photoageing.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Photodamage', prompt: 'Daily broad-spectrum SPF should be worn…', options: ['Even on cloudy days', 'Only on holiday', 'Only at night', 'Never'], correct: [0], explanation: 'UV reaches skin through cloud.' },
 ];
 
 function bodyFromSteps(steps: Step[]): string {
