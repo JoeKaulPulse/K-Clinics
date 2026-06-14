@@ -1,13 +1,15 @@
 import type { Metadata } from 'next';
 import { AuthShell } from '@/components/portal/AuthShell';
 import { AdminLoginForm } from '@/components/admin/AdminLoginForm';
+import { googleSsoEnabled } from '@/lib/google-sso';
 
 export const metadata: Metadata = {
   title: 'Staff sign in | KClinics CRM',
   robots: { index: false, follow: false },
 };
 
-export default function AdminLogin() {
+export default async function AdminLogin() {
+  const ssoEnabled = await googleSsoEnabled();
   return (
     <AuthShell
       eyebrow="Staff & clinicians"
@@ -21,7 +23,7 @@ export default function AdminLogin() {
         'Marketing automations & campaigns',
       ]}
     >
-      <AdminLoginForm />
+      <AdminLoginForm ssoEnabled={ssoEnabled} />
     </AuthShell>
   );
 }

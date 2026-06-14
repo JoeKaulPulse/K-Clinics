@@ -15,6 +15,9 @@ type Staff = {
   permGrant: string[];
   permRevoke: string[];
   lastLoginAt: string | null;
+  googleEmail?: string;
+  googleLinked?: boolean;
+  pendingGoogle?: boolean;
   profile?: Profile;
 };
 
@@ -63,9 +66,10 @@ export function StaffManager({ staff, canManage, actorRole }: { staff: Staff[]; 
                     {custom ? `${custom} override${custom > 1 ? 's' : ''}` : 'Role default'}
                   </td>
                   <td className="px-5 py-3">
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs ${s.active ? 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]' : 'bg-[var(--color-blush)]/25 text-[var(--color-ink)]'}`}>
-                      {s.active ? 'active' : 'deactivated'}
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs ${s.active ? 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]' : s.pendingGoogle ? 'bg-[var(--color-bone)] text-[var(--color-ink)]' : 'bg-[var(--color-blush)]/25 text-[var(--color-ink)]'}`}>
+                      {s.active ? 'active' : s.pendingGoogle ? 'pending approval' : 'deactivated'}
                     </span>
+                    {s.googleLinked && <span className="ml-1.5 rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]" title="Linked to a Google sign-in">Google</span>}
                   </td>
                   <td className="px-5 py-3 text-right">
                     {canManage && (
@@ -113,6 +117,7 @@ function Editor({ staff, actorRole, onClose, onSaved }: { staff: Staff | null; a
   const [role, setRole] = useState<Role>((staff?.role as Role) ?? 'STAFF');
   const [password, setPassword] = useState('');
   const [active, setActive] = useState(staff?.active ?? true);
+  const [googleEmail, setGoogleEmail] = useState(staff?.googleEmail ?? '');
   const [grant, setGrant] = useState<Set<string>>(new Set(staff?.permGrant ?? []));
   const [revoke, setRevoke] = useState<Set<string>>(new Set(staff?.permRevoke ?? []));
   const [error, setError] = useState('');
@@ -158,6 +163,7 @@ function Editor({ staff, actorRole, onClose, onSaved }: { staff: Staff | null; a
           grant: [...grant],
           revoke: [...revoke],
           active,
+          ...(staff ? { googleEmail } : {}),
         }),
       });
       const json = await res.json();
@@ -182,6 +188,12 @@ function Editor({ staff, actorRole, onClose, onSaved }: { staff: Staff | null; a
           <button onClick={onClose} aria-label="Close" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>
         </div>
 
+        {staff?.pendingGoogle && (
+          <p className="mb-5 rounded-[var(--radius-sm)] border border-[var(--color-gold)]/40 bg-[var(--color-bone)] px-4 py-3 text-sm text-[var(--color-ink)]">
+            This account was created from a Google sign-in and is waiting for approval. Set the role below and tick <strong>Account active</strong> to grant access.
+          </p>
+        )}
+
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Name"><input className={field} value={name} onChange={(e) => setName(e.target.value)} /></Field>
           <Field label="Email"><input className={field} type="email" value={email} disabled={!!staff} onChange={(e) => setEmail(e.target.value)} /></Field>
@@ -202,6 +214,15 @@ function Editor({ staff, actorRole, onClose, onSaved }: { staff: Staff | null; a
             <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="h-4 w-4 accent-[var(--color-gold)]" />
             Account active (uncheck to revoke all access)
           </label>
+        )}
+
+        {staff && (
+          <div className="mt-4">
+            <Field label="Google sign-in email (optional)">
+              <input className={field} type="email" value={googleEmail} onChange={(e) => setGoogleEmail(e.target.value)} placeholder="name@kclinics.co.uk" />
+            </Field>
+            <p className="mt-1 text-xs text-[var(--color-stone)]">If this person signs in with Google using a different address than their login email above, enter it here to link the two so their account merges. Clear it to unlink Google sign-in.</p>
+          </div>
         )}
 
         <div className="mt-7">

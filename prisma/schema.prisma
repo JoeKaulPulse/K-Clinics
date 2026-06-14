@@ -602,6 +602,13 @@ model Booking {
   reminder72hSent Boolean  @default(false)
   reminder48hSent Boolean  @default(false)
   rescheduleCount Int      @default(0)
+
+  // Google Calendar: id of the event mirrored onto the assigned clinician's
+  // Workspace calendar, so it can be updated/removed idempotently. Null until
+  // pushed (and when no clinician is connected); cleared on cancellation.
+  // Best-effort — calendar sync never blocks the booking lifecycle.
+  googleEventId String?
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -929,6 +936,15 @@ model AdminUser {
   // Google Calendar integration (busy-time sync + event push).
   googleCalendarId   String?
   googleRefreshToken String?
+
+  // Google Workspace SSO: the linked Google account id (stable `sub` claim) and
+  // the Google email it signs in with. Set on first "Sign in with Google", or
+  // pre-linked by an owner when someone's Workspace email differs from their
+  // existing login email (so their account merges instead of duplicating).
+  // Not @unique — the deploy gate forbids adding unique constraints to existing
+  // tables; uniqueness is enforced in the SSO/link code (lib/google-sso.ts).
+  googleSub   String?
+  googleEmail String?
 
   locale                 String  @default("en") // CRM UI language (en | uk)
   preferredDashboardView String? // PRJ-63: OWNER/ADMIN can pin a role-view to land on (null = role default)

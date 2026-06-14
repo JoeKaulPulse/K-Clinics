@@ -25,6 +25,9 @@ export default async function StaffPage() {
     permGrant: s.permGrant ?? [],
     permRevoke: s.permRevoke ?? [],
     lastLoginAt: s.lastLoginAt ? s.lastLoginAt.toISOString() : null,
+    googleEmail: s.googleEmail ?? '',
+    googleLinked: Boolean(s.googleSub),
+    pendingGoogle: !s.active && s.createdBy === 'google-sso',
     profile: {
       publicProfile: s.publicProfile,
       title: s.title ?? '',

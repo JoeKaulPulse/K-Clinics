@@ -319,6 +319,8 @@ export async function cancelBooking(
 
   // Remove from the shared clinic calendar (Hostinger CalDAV; no-op if unconfigured).
   import('@/lib/hostinger-calendar').then((m) => m.removeBooking(booking.id)).catch(() => {});
+  // Remove from the clinician's Google Calendar too (no-op while parked).
+  import('@/lib/google-calendar').then((m) => m.removeBookingFromClinician(booking.id)).catch(() => {});
 
   // Return any loyalty points the client had applied to this booking.
   try {
@@ -428,6 +430,8 @@ export async function rescheduleBooking(
   // the existing entry — we must NOT remove it (that would drop the appointment
   // from the clinic calendar entirely).
   import('@/lib/hostinger-calendar').then((m) => m.pushBooking(booking.id)).catch(() => {});
+  // Move the clinician's Google Calendar event to the new time (no-op while parked).
+  import('@/lib/google-calendar').then((m) => m.pushBookingToClinician(booking.id)).catch(() => {});
 
   // Confirmation email (best-effort).
   await sendEmail({
