@@ -46,9 +46,38 @@ export default async function AcademyPortalPage() {
     ),
   );
 
+  const { studentStanding } = await import('@/lib/academy-gamification');
+  const { academyLevel } = await import('@/lib/academy-levels');
+  const [standing, timeAgg] = await Promise.all([
+    studentStanding(student.id),
+    db.lessonProgress.aggregate({ where: { studentId: student.id }, _sum: { secondsSpent: true } }),
+  ]);
+  const lvl = academyLevel(standing.xp);
+  const totalMin = Math.round((timeAgg._sum.secondsSpent ?? 0) / 60);
+
   return (
     <>
       <PageHero eyebrow="K Academy" title={`Welcome, ${student.firstName}.`} lede="Your training, in one place." gradient={['#2a2420', '#7b6a5d']} />
+      <section className="container-lux pt-8">
+        <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5 sm:p-6">
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+            <div className="flex items-center gap-3">
+              <span className="grid h-12 w-12 place-items-center rounded-full bg-[var(--color-gold)] font-[family-name:var(--font-display)] text-xl text-white">{lvl.level}</span>
+              <div>
+                <p className="font-medium">{lvl.title}</p>
+                <p className="text-xs text-[var(--color-stone)]">Level {lvl.level}{lvl.nextAt != null ? ` · ${(lvl.nextAt - standing.xp).toLocaleString()} XP to next` : ' · max'}</p>
+              </div>
+            </div>
+            {[['XP', standing.xp.toLocaleString()], ['Badges', String(standing.badges.length)], ['Rank', `#${standing.rank}`], ['Time', totalMin >= 60 ? `${Math.floor(totalMin / 60)}h ${totalMin % 60}m` : `${totalMin}m`]].map(([label, value]) => (
+              <div key={label}><p className="font-[family-name:var(--font-display)] text-2xl">{value}</p><p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">{label}</p></div>
+            ))}
+            <div className="min-w-[160px] flex-1">
+              <div className="mb-1 flex justify-between text-xs text-[var(--color-stone)]"><span>To next level</span><span>{lvl.pct}%</span></div>
+              <div className="h-2 overflow-hidden rounded-full bg-[var(--color-line)]"><div className="h-full rounded-full bg-[var(--color-gold)] transition-[width] duration-500" style={{ width: `${lvl.pct}%` }} /></div>
+            </div>
+          </div>
+        </div>
+      </section>
       <section className="container-lux section" data-tour="academy-courses">
         <div className="mb-6 flex items-center justify-between gap-3">
           <h2 className="text-title">Your courses</h2>
