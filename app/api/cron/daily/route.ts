@@ -164,6 +164,16 @@ export async function GET(req: Request) {
     failures++; console.error('[cron] authored-steps enrichment failed (continuing):', (e as Error)?.message);
   }
 
+  // Grow the catalogue: create any newly-declared modules/lessons/quizzes/exam
+  // questions that don't yet exist (create-only, idempotent).
+  let courseContent = { modules: 0, lessons: 0, questions: 0 };
+  try {
+    const { enrichCourseContentIfNeeded } = await import('@/lib/academy-content');
+    courseContent = await enrichCourseContentIfNeeded();
+  } catch (e) {
+    failures++; console.error('[cron] course-content enrichment failed (continuing):', (e as Error)?.message);
+  }
+
   // Build board: keep it populated from Claude's backlog server-side, and assign
   // input-required tasks to the best-placed user — so the audit board is reliable
   // even if nobody opens it after a deploy (it used to seed only on first view).
@@ -189,7 +199,7 @@ export async function GET(req: Request) {
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend, board, clinicalBackfill, academyTenant, examBank, gamification, authored },
+    { ok: failures === 0, failures, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend, board, clinicalBackfill, academyTenant, examBank, gamification, authored, courseContent },
     { status: failures === 0 ? 200 : 500 },
   );
 }
