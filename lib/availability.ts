@@ -3,6 +3,7 @@ import { db } from './db';
 import { site } from './site';
 import { getSetting } from './settings';
 import { bookingFor, getTreatment } from './treatments';
+import { clinicWallTimeToUTC, clinicMinutesOfDay, clinicDateISO, clinicDayOfWeek, clinicDayBounds } from './clinic-time';
 
 const SLOT_INTERVAL = Number(process.env.SLOT_INTERVAL_MIN || 15);
 const LEAD_MINUTES = 120; // earliest bookable time from now
@@ -59,7 +60,7 @@ async function cliniciansForDay(treatmentSlug: string, dayStart: Date, dayEnd: D
 /** A clinician is free if scheduled (at the location, if any), not on a break,
  *  not on time-off, and with no overlapping booking — all buffer-aware. */
 function clinicianFree(c: Clinician, start: Date, end: Date, dow: number, bufferMin: number, locationId?: string | null): boolean {
-  const startM = start.getHours() * 60 + start.getMinutes();
+  const startM = clinicMinutesOfDay(start); // clinic-local minutes; schedules are wall-clock
   const endM = startM + (end.getTime() - start.getTime()) / 60000;
   const sched = c.schedules.find((sc) =>
     sc.dayOfWeek === dow && sc.startMin <= startM && sc.endMin >= endM &&
@@ -169,17 +170,15 @@ const poolFree = (pool: Pool | null, start: Date, endBufferedMs: number) => !poo
  * break, time-off & clashes, all buffer-aware).
  */
 export async function freeSlots(dateISO: string, durationMin: number, treatmentSlug?: string, locationId?: string | null): Promise<string[]> {
-  const date = new Date(dateISO + 'T00:00:00');
-  if (isNaN(date.getTime())) return [];
-  const dow = date.getDay();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateISO)) return [];
+  const dow = clinicDayOfWeek(dateISO);
   const hours = site.hours.find((h) => h.day === DOW[dow]);
   if (!hours || hours.open === 'Closed') return [];
   const open = parseHM(hours.open);
   const close = parseHM(hours.close);
   if (open == null || close == null) return [];
 
-  const dayStart = new Date(date); dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(date); dayEnd.setHours(23, 59, 59, 999);
+  const { dayStart, dayEnd } = clinicDayBounds(dateISO);
 
   const bufferMin = treatmentSlug ? (bookingFor(treatmentSlug).bufferMin ?? 0) : 0;
   const [enforce, binding] = await Promise.all([
@@ -205,7 +204,7 @@ export async function freeSlots(dateISO: string, durationMin: number, treatmentS
   const slots: string[] = [];
 
   for (let m = open; m + durationMin <= close; m += SLOT_INTERVAL) {
-    const start = new Date(date); start.setHours(0, m, 0, 0);
+    const start = clinicWallTimeToUTC(dateISO, m); // wall-clock minute → correct UTC instant
     const end = new Date(start.getTime() + durationMin * 60_000);
     if (start.getTime() < minStart) continue;
 
@@ -241,10 +240,8 @@ export async function recommendedSlots(dateISO: string, durationMin: number, tre
   const slots = await freeSlots(dateISO, durationMin, treatmentSlug, locationId);
   if (slots.length === 0) return { slots, preferred: [] };
 
-  const date = new Date(dateISO + 'T00:00:00');
-  const dow = date.getDay();
-  const dayStart = new Date(date); dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(date); dayEnd.setHours(23, 59, 59, 999);
+  const dow = clinicDayOfWeek(dateISO);
+  const { dayStart, dayEnd } = clinicDayBounds(dateISO);
   const bufferMin = treatmentSlug ? (bookingFor(treatmentSlug).bufferMin ?? 0) : 0;
   const tolMs = (bufferMin + CLUSTER_GAP_MIN) * 60_000;
 
@@ -278,8 +275,6 @@ export async function recommendedSlots(dateISO: string, durationMin: number, tre
   return { slots, preferred };
 }
 
-const toDateISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
 /** Upcoming dates that already have bookings AND still have availability — used
  *  to nudge new bookings onto days the clinic is already open/staffed for, so
  *  appointments cluster onto fewer days. Returns up to `limit` soonest dates. */
@@ -290,12 +285,15 @@ export async function popularDays(durationMin: number, treatmentSlug?: string, l
     where: { status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { gte: from, lt: to }, ...(locationId ? { locationId } : {}) },
     select: { startAt: true },
   });
-  const days = [...new Set(bookings.map((b) => toDateISO(b.startAt)))].sort();
+  const days = [...new Set(bookings.map((b) => clinicDateISO(b.startAt)))].sort();
   const out: string[] = [];
   // Bound the availability checks for cost; days are already sorted soonest-first.
-  for (const d of days.slice(0, 12)) {
-    if (out.length >= limit) break;
-    if ((await freeSlots(d, durationMin, treatmentSlug, locationId)).length) out.push(d);
+  // Run them concurrently (per-request getSetting cache dedupes the shared reads)
+  // then take the soonest `limit` with availability, preserving order.
+  const candidates = days.slice(0, 12);
+  const have = await Promise.all(candidates.map((d) => freeSlots(d, durationMin, treatmentSlug, locationId)));
+  for (let i = 0; i < candidates.length && out.length < limit; i++) {
+    if (have[i].length) out.push(candidates[i]);
   }
   return out;
 }
@@ -305,11 +303,11 @@ export async function pickPractitioner(startISO: string, durationMin: number, tr
   const start = new Date(startISO);
   if (isNaN(start.getTime())) return null;
   const end = new Date(start.getTime() + durationMin * 60_000);
-  const dayStart = new Date(start); dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(start); dayEnd.setHours(23, 59, 59, 999);
+  const dateISO = clinicDateISO(start);
+  const { dayStart, dayEnd } = clinicDayBounds(dateISO);
   const bufferMin = bookingFor(treatmentSlug).bufferMin ?? 0;
   const clinicians = await cliniciansForDay(treatmentSlug, dayStart, dayEnd);
-  const free = clinicians.find((c) => clinicianFree(c, start, end, start.getDay(), bufferMin, locationId));
+  const free = clinicians.find((c) => clinicianFree(c, start, end, clinicDayOfWeek(dateISO), bufferMin, locationId));
   return free?.id ?? null;
 }
 
@@ -322,8 +320,7 @@ export async function assignResources(startISO: string, durationMin: number, tre
   const end = new Date(start.getTime() + durationMin * 60_000);
   const bufferMin = bookingFor(treatmentSlug).bufferMin ?? 0;
   const endBufferedMs = end.getTime() + bufferMin * 60_000;
-  const dayStart = new Date(start); dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(start); dayEnd.setHours(23, 59, 59, 999);
+  const { dayStart, dayEnd } = clinicDayBounds(clinicDateISO(start));
 
   const binding = await getSetting('room_equipment_binding');
   const [rooms, equip] = await Promise.all([
@@ -351,17 +348,17 @@ export async function isSlotFree(startISO: string, durationMin: number, treatmen
   const start = new Date(startISO);
   if (isNaN(start.getTime())) return false;
   const end = new Date(start.getTime() + durationMin * 60_000);
+  const dateISO = clinicDateISO(start);
 
-  const hours = site.hours.find((h) => h.day === DOW[start.getDay()]);
+  const hours = site.hours.find((h) => h.day === DOW[clinicDayOfWeek(dateISO)]);
   if (!hours || hours.open === 'Closed') return false;
   const open = parseHM(hours.open), close = parseHM(hours.close);
-  const startM = start.getHours() * 60 + start.getMinutes();
+  const startM = clinicMinutesOfDay(start); // clinic-local minutes-of-day
   if (open == null || close == null || startM < open || startM + durationMin > close) return false;
   const leadMinutes = opts?.leadMinutes ?? LEAD_MINUTES;
   if (start.getTime() < Date.now() + leadMinutes * 60_000) return false;
 
-  const dayStart = new Date(start); dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(start); dayEnd.setHours(23, 59, 59, 999);
+  const { dayStart, dayEnd } = clinicDayBounds(dateISO);
   const bufferMin = treatmentSlug ? (bookingFor(treatmentSlug).bufferMin ?? 0) : 0;
   const endBufferedMs = end.getTime() + bufferMin * 60_000;
 
@@ -378,7 +375,7 @@ export async function isSlotFree(startISO: string, durationMin: number, treatmen
   const enforce = treatmentSlug ? await getSetting('enforce_staff_availability') : false;
   if (enforce && treatmentSlug) {
     const clinicians = await cliniciansForDay(treatmentSlug, dayStart, dayEnd);
-    if (clinicians.length) return clinicians.some((c) => clinicianFree(c, start, end, start.getDay(), bufferMin, locationId));
+    if (clinicians.length) return clinicians.some((c) => clinicianFree(c, start, end, clinicDayOfWeek(dateISO), bufferMin, locationId));
   }
 
   // Single-resource fallback — buffer-aware overlap check.

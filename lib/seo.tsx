@@ -74,6 +74,8 @@ export async function pageMeta({
     },
     twitter: {
       card: 'summary_large_image',
+      site: '@kclinics',
+      creator: '@kclinics',
       title: fullTitle,
       description: desc,
       ...(images ? { images: [ogUrl] } : {}),
@@ -130,9 +132,13 @@ export function organizationLd() {
       { '@type': 'MedicalProcedure', name: 'Anti-Wrinkle Injections' },
       { '@type': 'MedicalProcedure', name: 'Dermal Fillers' },
       { '@type': 'MedicalProcedure', name: 'HIFU Non-Surgical Lifting' },
-      { '@type': 'Dentistry', name: 'Porcelain Veneers' },
-      { '@type': 'Dentistry', name: 'Teeth Whitening' },
-      { '@type': 'Dentistry', name: 'Dental Implants' },
+      // Dentistry services are advertised only once live, matching @type /
+      // medicalSpecialty above and the "coming soon" dentistry pages.
+      ...(site.dentistryLive ? [
+        { '@type': 'Dentistry', name: 'Porcelain Veneers' },
+        { '@type': 'Dentistry', name: 'Teeth Whitening' },
+        { '@type': 'Dentistry', name: 'Dental Implants' },
+      ] : []),
     ],
     knowsAbout: [
       'Aesthetic medicine',

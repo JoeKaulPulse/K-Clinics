@@ -183,7 +183,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
             <div className="h-1 overflow-hidden rounded-full bg-[var(--color-sand)]">
               <motion.div className="h-full bg-[var(--color-gold)]" initial={false} animate={{ width: i < stepIndex ? '100%' : i === stepIndex ? '50%' : '0%' }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} />
             </div>
-            <span className={`hidden text-[0.65rem] uppercase tracking-[0.14em] sm:block ${i === stepIndex ? 'text-[var(--color-gold)]' : 'text-[var(--color-stone)]'}`}>{s.label}</span>
+            <span className={`hidden text-[0.65rem] uppercase tracking-[0.14em] sm:block ${i === stepIndex ? 'text-[var(--color-gold-deep)] font-medium' : 'text-[var(--color-stone)]'}`}>{s.label}</span>
           </div>
         ))}
       </div>
@@ -200,7 +200,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
           {stage === 'service' && (
             <div>
               <h3 className="font-[family-name:var(--font-display)] text-2xl">Choose your treatment</h3>
-              {welcome && <p className="mt-2 text-sm text-[var(--color-gold)]">✦ Your 15% welcome offer will be applied automatically.</p>}
+              {welcome && <p className="mt-2 text-sm text-[var(--color-gold-deep)]">✦ Your 15% welcome offer will be applied automatically.</p>}
               <div className="mt-6 grid max-h-[26rem] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
                 {catalogue.map((s) => (
                   <button key={s.id} type="button" onClick={() => { setServiceId(s.id); setVariantId(''); setSessions(1); setAddOns(new Set()); setStage('variant'); }}
@@ -209,7 +209,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                       <span className="block font-[family-name:var(--font-display)] text-base leading-tight">{s.name}</span>
                       <span className="text-xs text-[var(--color-stone)]">{s.variants.length} option{s.variants.length > 1 ? 's' : ''}</span>
                     </span>
-                    <span className="shrink-0 text-sm font-medium text-[var(--color-gold)]">{(() => { const ps = s.variants.map((v) => v.offerPence ?? v.pricePence).filter((p) => p > 0); return ps.length ? `from ${money(Math.min(...ps))}` : 'On consultation'; })()}</span>
+                    <span className="shrink-0 text-sm font-medium text-[var(--color-gold-deep)]">{(() => { const ps = s.variants.map((v) => v.offerPence ?? v.pricePence).filter((p) => p > 0); return ps.length ? `from ${money(Math.min(...ps))}` : 'On consultation'; })()}</span>
                   </button>
                 ))}
               </div>
@@ -236,8 +236,8 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                         <span className="block text-sm font-medium">{v.name}</span>
                         <span className="text-xs text-[var(--color-stone)]">{v.durationMin} min{pp.tag ? ` · ${pp.tag}` : ''}</span>
                       </span>
-                      <span className="shrink-0 text-right text-sm font-medium text-[var(--color-gold)]">
-                        {pp.was && <span className="mr-1 text-xs text-[var(--color-stone-soft)] line-through">{money(pp.was)}</span>}
+                      <span className="shrink-0 text-right text-sm font-medium text-[var(--color-gold-deep)]">
+                        {pp.was && <span className="mr-1 text-xs text-[var(--color-stone)] line-through">{money(pp.was)}</span>}
                         {money(pp.price)}
                       </span>
                     </button>
@@ -486,14 +486,14 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
 
       {mode === 'signup' ? (
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div><label className={label}>First name *</label><input autoComplete="given-name" className={field} value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} /></div>
-          <div><label className={label}>Last name *</label><input autoComplete="family-name" className={field} value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} /></div>
-          <div className="sm:col-span-2"><label className={label}>Email *</label><input type="email" autoComplete="email" className={field} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
-          <div><label className={label}>Mobile *</label><input type="tel" autoComplete="tel" className={field} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
-          <div><label className={label}>Date of birth *</label><input type="date" autoComplete="bday" className={field} value={f.dob} onChange={(e) => setF({ ...f, dob: e.target.value })} /></div>
-          <div className="sm:col-span-2"><label className={label}>Password * (8+)</label><input type="password" autoComplete="new-password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
-          <div className="sm:col-span-2"><label className={label}>Gender (optional — tailors recommendations)</label>
-            <select className={field} value={f.gender} onChange={(e) => setF({ ...f, gender: e.target.value })}>
+          <div><label htmlFor="bf-firstName" className={label}>First name *</label><input id="bf-firstName" autoComplete="given-name" className={field} value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} /></div>
+          <div><label htmlFor="bf-lastName" className={label}>Last name *</label><input id="bf-lastName" autoComplete="family-name" className={field} value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} /></div>
+          <div className="sm:col-span-2"><label htmlFor="bf-email" className={label}>Email *</label><input id="bf-email" type="email" autoComplete="email" className={field} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
+          <div><label htmlFor="bf-phone" className={label}>Mobile *</label><input id="bf-phone" type="tel" autoComplete="tel" className={field} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
+          <div><label htmlFor="bf-dob" className={label}>Date of birth *</label><input id="bf-dob" type="date" autoComplete="bday" className={field} value={f.dob} onChange={(e) => setF({ ...f, dob: e.target.value })} /></div>
+          <div className="sm:col-span-2"><label htmlFor="bf-password" className={label}>Password * (8+)</label><input id="bf-password" type="password" autoComplete="new-password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
+          <div className="sm:col-span-2"><label htmlFor="bf-gender" className={label}>Gender (optional — tailors recommendations)</label>
+            <select id="bf-gender" className={field} value={f.gender} onChange={(e) => setF({ ...f, gender: e.target.value })}>
               <option value="">Prefer not to say</option>
               <option value="FEMALE">Female</option><option value="MALE">Male</option>
               <option value="NON_BINARY">Non-binary</option><option value="OTHER">Other</option>
@@ -506,8 +506,8 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
         </div>
       ) : (
         <div className="mt-6 grid gap-4">
-          <div><label className={label}>Email</label><input type="email" className={field} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
-          <div><label className={label}>Password</label><input type="password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
+          <div><label htmlFor="bf-login-email" className={label}>Email</label><input id="bf-login-email" type="email" autoComplete="email" className={field} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
+          <div><label htmlFor="bf-login-password" className={label}>Password</label><input id="bf-login-password" type="password" autoComplete="current-password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
         </div>
       )}
 

@@ -17,8 +17,8 @@ const fraunces = (f) => path.join(ROOT, 'assets', 'fonts', f);
 // ── Brand palette (lib/theme.ts) ─────────────────────────────────────────────
 const C = {
   ink: '#2a2420', inkSoft: '#3d352f', espresso: '#4a3f37', porcelain: '#f6ece3',
-  bone: '#efe3d7', sand: '#e3d3c4', stone: '#91766e', stoneSoft: '#b7a294',
-  gold: '#a98a6d', goldSoft: '#c2a589', goldBright: '#dcc4a8', goldDeep: '#856a4a', jade: '#7b6a5d', blush: '#cdb4a3', white: '#ffffff',
+  bone: '#efe3d7', sand: '#e3d3c4', stone: '#7d6259', stoneSoft: '#b7a294',
+  gold: '#a98a6d', goldSoft: '#c2a589', goldBright: '#dcc4a8', goldDeep: '#856a4a', jade: '#2f7152', blush: '#cdb4a3', white: '#ffffff',
 };
 
 // ── Logo vectors (read live from components/brand/marks.tsx) ──────────────────
@@ -48,7 +48,7 @@ const toc = [];
 const bg = (c = C.porcelain) => { doc.save(); doc.rect(0, 0, W, H).fill(c); doc.restore(); };
 function header() {
   doc.save();
-  doc.font('semi').fontSize(7).fillColor(C.gold).text('KCLINICS', M, 46, { characterSpacing: 2.5 });
+  kmark(M, 45, 15, C.gold); // brand rule: the K mark, not the name typeset as text
   doc.font('body').fontSize(7.5).fillColor(C.stone).text(currentSection, M, 46, { width: CW, align: 'right' });
   doc.lineWidth(0.5).strokeColor(C.sand).moveTo(M, 64).lineTo(W - M, 64).stroke();
   doc.restore();

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "engines": {
-    "node": ">=20.0.0 <23.0.0"
+    "node": ">=20.9.0 <23.0.0"
   },
   "description": "K Clinics \u2014 premium aesthetics & aesthetic dentistry, Islington London.",
   "scripts": {

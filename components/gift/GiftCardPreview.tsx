@@ -1,6 +1,7 @@
 'use client';
 
 import { giftCardTheme } from '@/lib/gift-card-themes';
+import { KMark } from '@/components/brand/marks';
 
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
 
@@ -23,8 +24,11 @@ export function GiftCardPreview({
       <div className="relative flex h-full flex-col justify-between p-5 sm:p-6">
         <div className="flex items-start justify-between">
           <div>
-            <p className="font-[family-name:var(--font-display)] text-lg leading-none tracking-tight">KClinics</p>
-            <p className="mt-1 text-[0.6rem] uppercase tracking-[0.3em]" style={{ color: soft(t.ink, 65) }}>Aesthetics · Laser · London</p>
+            {/* Brand rule: render the supplied K mark, never the name as text. */}
+            <div className="h-7" style={{ aspectRatio: '130 / 234' }}>
+              <KMark />
+            </div>
+            <p className="mt-1.5 text-[0.6rem] uppercase tracking-[0.3em]" style={{ color: soft(t.ink, 65) }}>Aesthetics · Laser · London</p>
           </div>
           <span className="rounded-full px-2.5 py-1 text-[0.6rem] uppercase tracking-[0.2em]" style={{ border: `1px solid ${soft(t.accent, 70)}`, color: t.accent }}>Gift</span>
         </div>

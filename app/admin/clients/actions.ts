@@ -79,10 +79,21 @@ export async function editClient(clientId: string, input: EditClientInput) {
     if (to !== (current.gender ?? null)) { data.gender = to; changes.push({ field: 'gender', from: current.gender ?? '—', to: to ?? '—' }); }
   }
 
-  // Marketing opt-in (boolean).
+  // Marketing opt-in (boolean). When a staff member opts a client IN, capture the
+  // consent evidence (timestamp/source/version) so the opt-in is demonstrable
+  // (UK GDPR Art. 7) and the client is actually mailable — marketableClientWhere()
+  // requires marketingConsentAt. Without this, the edit form created a silent
+  // "opted-in but unmailable, no consent record" state. Mirrors toggleMarketing.
   if (input.marketingOptIn !== undefined) {
     const to = !!input.marketingOptIn;
-    if (to !== current.marketingOptIn) { data.marketingOptIn = to; changes.push({ field: 'marketingOptIn', from: String(current.marketingOptIn), to: String(to) }); }
+    if (to !== current.marketingOptIn) {
+      data.marketingOptIn = to;
+      if (to) {
+        const { marketingConsentFields } = await import('@/lib/consent');
+        Object.assign(data, marketingConsentFields('admin'));
+      }
+      changes.push({ field: 'marketingOptIn', from: String(current.marketingOptIn), to: String(to) });
+    }
   }
 
   if (changes.length === 0) return { ok: true as const, changed: 0 };

@@ -25,7 +25,7 @@
   --color-gold: #a98a6d;       /* warm taupe-gold — decorative/large-text accent */
   --color-gold-soft: #c2a589;  /* lighter taupe (eyebrows on dark surfaces) */
   --color-gold-bright: #dcc4a8;/* soft champagne */
-  --color-gold-deep: #856a4a;  /* darker gold for interactive surfaces — white text clears AA */
+  --color-gold-deep: #816748;  /* AA gold for text on light (4.5:1 on porcelain) + interactive surfaces */
   --color-jade: #2f7152;       /* jade green — positive / success / active / healthy accent */
   --color-blush: #cdb4a3;      /* warm sand highlight */
 

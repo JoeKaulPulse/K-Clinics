@@ -33,6 +33,9 @@ async function callHaiku<T>(system: string, user: string, maxTokens = 1600): Pro
         system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
         messages: [{ role: 'user', content: user }],
       }),
+      // Bound a hung upstream so the admin marketing request can't hang to the
+      // platform's function limit (consultation/chat/kiosk already cap at 25-30s).
+      signal: AbortSignal.timeout(25_000),
     });
     if (!res.ok) { console.error('[ai-marketing] anthropic', res.status, await res.text().catch(() => '')); return null; }
     const j = await res.json();

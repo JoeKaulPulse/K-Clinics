@@ -42,7 +42,7 @@ export default async function TreatmentPage({ params }: { params: Promise<{ slug
         <JsonLd
           data={[
             serviceLd({ name: t.title, description: t.metaDescription, path: `/${t.slug}`, category: t.category, pricePence: fromPence }),
-            faqLd(t.faqs),
+            ...(t.faqs.length ? [faqLd(t.faqs)] : []), // never emit an empty FAQPage
             breadcrumbLd([{ name: 'Home', path: '/' }, { name: categoryLabel, path: categoryHref }, { name: t.title, path: `/${t.slug}` }]),
           ]}
         />

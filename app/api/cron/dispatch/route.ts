@@ -9,9 +9,8 @@ export const maxDuration = 60;
 // whose scheduled time has arrived. Protected by CRON_SECRET. Idempotent: each
 // campaign is claimed (status → SENDING) before sending so it can't double-fire.
 export async function GET(req: Request) {
-  const expected = process.env.CRON_SECRET;
-  const auth = req.headers.get('authorization');
-  if (!expected || auth !== `Bearer ${expected}`) {
+  const { cronAuthorized } = await import('@/lib/cron-auth');
+  if (!cronAuthorized(req)) {
     return NextResponse.json({ ok: false, error: 'Unauthorised' }, { status: 401 });
   }
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'CRM disabled' }, { status: 503 });
