@@ -14,9 +14,8 @@ const RETENTION_DAYS = 30;
 const MEDIA_SWEEP_BATCH = 500;
 
 export async function GET(req: Request) {
-  const expected = process.env.CRON_SECRET;
-  const auth = req.headers.get('authorization');
-  if (!expected || auth !== `Bearer ${expected}`) {
+  const { cronAuthorized } = await import('@/lib/cron-auth');
+  if (!cronAuthorized(req)) {
     return NextResponse.json({ ok: false, error: 'Unauthorised' }, { status: 401 });
   }
 

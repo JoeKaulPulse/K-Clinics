@@ -10,8 +10,8 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'Not enabled.' }, { status: 503 });
 
-  const auth = req.headers.get('authorization');
-  const viaSecret = process.env.CRON_SECRET && auth === `Bearer ${process.env.CRON_SECRET}`;
+  const { cronAuthorized } = await import('@/lib/cron-auth');
+  const viaSecret = cronAuthorized(req); // constant-time compare
 
   if (!viaSecret) {
     const { getSession, sessionCan } = await import('@/lib/auth');
