@@ -35,6 +35,9 @@ export const SECRET_DEFS: SecretDef[] = [
   // Analytics — GA4 Data API + Search Console reporting
   { name: 'GA4_PROPERTY_ID', label: 'GA4 property ID (numeric)', group: 'Analytics', help: 'GA4 → Admin → Property settings → Property ID. A number like 123456789 — NOT the G-XXXX tag. Powers the Performance "traffic by channel" widget.' },
   { name: 'SEARCH_CONSOLE_SITE', label: 'Search Console property (optional)', group: 'Analytics', help: 'Optional. For a Domain property enter sc-domain:kclinics.co.uk; otherwise it defaults to the site URL.' },
+  // Reviews — public Google rating + recent reviews via the Places API (no OAuth)
+  { name: 'GOOGLE_PLACE_ID', label: 'Google Place ID', group: 'Reviews', help: 'Find it at developers.google.com/maps/documentation/places/web-service/place-id (search your clinic). Shows your live Google rating + recent reviews on the site immediately — no approval needed.' },
+  { name: 'GOOGLE_PLACES_API_KEY', label: 'Google Places API key', group: 'Reviews', help: 'Google Cloud → Credentials → API key, with the “Places API” enabled. Pairs with the Place ID above.' },
   // OAuth client credentials — set here, then click Connect on the relevant page.
   { name: 'GOOGLE_CLIENT_ID', label: 'Google OAuth client ID', group: 'OAuth · Google', help: 'console.cloud.google.com → Credentials. Powers Google Ads/Analytics/Search. (Calendar/Business still read hosting env.)' },
   { name: 'GOOGLE_CLIENT_SECRET', label: 'Google OAuth client secret', group: 'OAuth · Google' },

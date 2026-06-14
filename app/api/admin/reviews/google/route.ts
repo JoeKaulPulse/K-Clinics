@@ -50,6 +50,33 @@ export async function POST(req: Request) {
       await gb.disconnectGoogleBusiness();
       return NextResponse.json({ ok: true });
     }
+    case 'add': {
+      // Manually add a Google review (e.g. to load your existing reviews before
+      // Google grants Business Profile API access). It displays on the site like
+      // any imported review. Uniqueness via a synthetic googleName.
+      const stars = Math.max(1, Math.min(5, Math.round(Number(b.starRating) || 0)));
+      if (!stars) return NextResponse.json({ ok: false, error: 'A star rating (1–5) is required.' }, { status: 400 });
+      const name = typeof b.reviewerName === 'string' ? b.reviewerName.trim() : '';
+      const comment = typeof b.comment === 'string' ? b.comment.trim() : '';
+      const parsed = b.createTime ? new Date(String(b.createTime)) : new Date();
+      const { db } = await import('@/lib/db');
+      await db.googleReview.create({ data: {
+        googleName: `manual:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+        reviewerName: name || null,
+        starRating: stars,
+        comment: comment || null,
+        createTime: isNaN(parsed.getTime()) ? new Date() : parsed,
+      } });
+      const { logAudit } = await import('@/lib/audit');
+      await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: 'Added a Google review manually' }).catch(() => {});
+      return NextResponse.json({ ok: true });
+    }
+    case 'delete': {
+      if (!b.id && !b.googleName) return NextResponse.json({ ok: false, error: 'Bad request.' }, { status: 400 });
+      const { db } = await import('@/lib/db');
+      await db.googleReview.deleteMany({ where: b.id ? { id: String(b.id) } : { googleName: String(b.googleName) } });
+      return NextResponse.json({ ok: true });
+    }
   }
   return NextResponse.json({ ok: false, error: 'Unknown op.' }, { status: 400 });
 }
