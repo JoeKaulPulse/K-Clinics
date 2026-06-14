@@ -412,6 +412,171 @@ export const NEW_MODULES: CourseContentDef[] = [
       },
     ],
   },
+  {
+    courseSlug: L2,
+    modules: [
+      {
+        title: 'Fitzpatrick Skin Typing',
+        summary: 'Place a client on the six-type scale and use it to keep treatments safe.',
+        lessons: [
+          {
+            title: 'The Fitzpatrick Scale',
+            durationMin: 10,
+            objectives: ['Describe the six skin types', 'Link type to sun response', 'Connect type to risk'],
+            studyTips: ['Type I always burns, never tans; Type VI rarely burns.'],
+            examRefs: ['Fitzpatrick skin typing'],
+            steps: [
+              { kind: 'say', text: 'Skin typing underpins safe treatment — let’s get it clear.', mood: 'happy' },
+              { kind: 'teach', title: 'Six types', text: 'The Fitzpatrick scale sorts skin into six types by how it reacts to sun — Type I always burns and never tans, through to Type VI which is deeply pigmented and rarely burns.', art: 'fitzpatrick' },
+              { kind: 'ask', prompt: 'Type I skin…', qtype: 'SINGLE', options: ['Always burns, never tans', 'Never burns', 'Tans deeply', 'Is green'], correct: [0], explanation: 'Type I is the fairest, most sun-sensitive.' },
+              { kind: 'teach', title: 'Based on response', text: 'It’s based on genetics and how skin responds to UV — not just colour at a glance.' },
+              { kind: 'ask', prompt: 'The Fitzpatrick scale has ___ types.', qtype: 'WORD', options: ['six', 'three', 'ten'], correct: [0], explanation: 'Types I–VI.' },
+              { kind: 'say', text: 'Got it. Now why it matters.', mood: 'cheer' },
+              { kind: 'teach', title: 'Type and risk', text: 'Higher types have more melanin throughout, so they’re more prone to pigment changes from heat and light.', art: 'fitzpatrick' },
+              { kind: 'ask', prompt: 'Higher Fitzpatrick types are MORE at risk of…', qtype: 'SINGLE', options: ['Pigment changes', 'Sunburn only', 'Nothing', 'Tanning safely faster'], correct: [0], explanation: 'More background melanin raises pigment-change risk.' },
+              { kind: 'say', text: 'That’s the scale sorted.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Typing in Practice',
+            durationMin: 9,
+            objectives: ['Assess type at consultation', 'Use type to set caution', 'Default to caution when unsure'],
+            examRefs: ['Fitzpatrick skin typing'],
+            steps: [
+              { kind: 'say', text: 'Now to place a real client on the scale.', mood: 'happy' },
+              { kind: 'teach', title: 'Ask the right things', text: 'At consultation, ask about burning, tanning, ethnicity and family background to place the client on the scale.' },
+              { kind: 'ask', prompt: 'Which help you assess skin type?', qtype: 'MULTI', options: ['How easily they burn', 'How they tan', 'Family background', 'Their star sign'], correct: [0, 1, 2], explanation: 'Burning/tanning history and background; not astrology.' },
+              { kind: 'teach', title: 'Type drives settings', text: 'Skin type drives your settings and your patch test — get it right before any energy device.' },
+              { kind: 'ask', prompt: 'Why does skin type matter for laser?', qtype: 'SINGLE', options: ['It guides safe settings', 'It sets the price', 'It’s irrelevant', 'It picks the music'], correct: [0], explanation: 'Type guides fluence and caution.' },
+              { kind: 'teach', title: 'When unsure', text: 'When unsure between two types, choose the more cautious, lower-energy option.' },
+              { kind: 'say', text: 'Cautious and correct — exactly right.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Fitzpatrick Assessment', passMark: 70,
+          questions: [
+            { prompt: 'How many Fitzpatrick skin types are there?', type: 'WORD', options: ['six', 'three', 'ten'], correct: [0], explanation: 'Types I–VI.' },
+            { prompt: 'Type I skin…', type: 'SINGLE', options: ['Always burns, never tans', 'Never burns', 'Tans deeply', 'Is unaffected by sun'], correct: [0], explanation: 'Fairest and most sun-sensitive.' },
+            { prompt: 'Higher Fitzpatrick types are more at risk of pigment changes.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'More background melanin.' },
+            { prompt: 'Which help assess skin type at consultation?', type: 'MULTI', options: ['Burning history', 'Tanning history', 'Family background', 'Star sign'], correct: [0, 1, 2], explanation: 'Not astrology.' },
+            { prompt: 'Unsure between two types, you should pick the…', type: 'SINGLE', options: ['More cautious, lower-energy option', 'Higher-energy option', 'Random one', 'Most expensive option'], correct: [0], explanation: 'Default to caution.' },
+            { prompt: 'Skin type guides laser settings and the patch test.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'It drives safe parameters.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    courseSlug: 'level-4-certificate-aesthetic-practice',
+    modules: [
+      {
+        title: 'Facial Anatomy & Danger Zones',
+        summary: 'Know the layers and high-risk areas of the face to treat safely.',
+        lessons: [
+          {
+            title: 'Layers of the Face',
+            durationMin: 10,
+            objectives: ['Name the facial layers', 'Locate the SMAS', 'Understand danger zones'],
+            studyTips: ['SMAS = the muscular/fibrous layer.'],
+            examRefs: ['Facial anatomy'],
+            steps: [
+              { kind: 'say', text: 'Safe practice starts with anatomy. Let’s map the face.', mood: 'think' },
+              { kind: 'teach', title: 'The layers', text: 'The face has layers: skin, fat, muscle (the SMAS), and beneath them vessels and nerves. Knowing them keeps treatments safe.' },
+              { kind: 'ask', prompt: 'Which is the muscular/fibrous layer of the face?', qtype: 'SINGLE', options: ['SMAS', 'Epidermis', 'Bone', 'Hair'], correct: [0], explanation: 'The SMAS is the muscular/fibrous layer.' },
+              { kind: 'teach', title: 'Predictable paths', text: 'Major vessels and nerves run in predictable places — the “danger zones” where extra care is needed.' },
+              { kind: 'ask', prompt: 'High-risk facial areas are called danger ___.', qtype: 'WORD', options: ['zones', 'lines', 'hours'], correct: [0], explanation: 'Danger zones.' },
+              { kind: 'say', text: 'Knowing where to be careful is half the battle.', mood: 'cheer' },
+              { kind: 'teach', title: 'Why it matters', text: 'Knowing depth and location helps you avoid bruising, nerve injury or worse.' },
+              { kind: 'say', text: 'Solid foundation laid.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Working Safely Near Risk Areas',
+            durationMin: 9,
+            objectives: ['Identify higher-risk areas', 'Slow down and adjust', 'Refer when unsure'],
+            studyTips: ['Unsure of the anatomy? Don’t proceed.'],
+            examRefs: ['Facial anatomy / safe practice'],
+            steps: [
+              { kind: 'say', text: 'Now — handling the tricky areas.', mood: 'think' },
+              { kind: 'teach', title: 'Close to the surface', text: 'Around the eyes, nose and temples, vessels and nerves sit close to the surface — slow down and use conservative settings.' },
+              { kind: 'ask', prompt: 'Higher-risk areas to treat carefully include…', qtype: 'MULTI', options: ['Around the eyes', 'The temples', 'The nose area', 'The earlobe only'], correct: [0, 1, 2], explanation: 'Eyes, temples and nasal area are higher-risk.' },
+              { kind: 'teach', title: 'When unsure', text: 'If you’re ever unsure of the anatomy, don’t proceed — refer or seek senior input.' },
+              { kind: 'ask', prompt: 'Unsure about the anatomy in an area? You should…', qtype: 'SINGLE', options: ['Pause and seek advice', 'Press on', 'Increase energy', 'Guess'], correct: [0], explanation: 'Safety first — pause and check.' },
+              { kind: 'teach', title: 'Document', text: 'Document the areas treated and any client feedback during the session.' },
+              { kind: 'say', text: 'Careful, considered, safe. Excellent.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Facial Anatomy Assessment', passMark: 70,
+          questions: [
+            { prompt: 'The muscular/fibrous facial layer is the…', type: 'WORD', options: ['SMAS', 'dermis', 'bone'], correct: [0], explanation: 'SMAS.' },
+            { prompt: 'High-risk facial areas are called…', type: 'SINGLE', options: ['Danger zones', 'Safe zones', 'Hot zones', 'No zones'], correct: [0], explanation: 'Where vessels/nerves run close.' },
+            { prompt: 'Which areas need extra care?', type: 'MULTI', options: ['Around the eyes', 'Temples', 'Nose area', 'Earlobe only'], correct: [0, 1, 2], explanation: 'Eyes, temples, nose area.' },
+            { prompt: 'Unsure of the anatomy, you should pause and seek advice.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Never guess.' },
+            { prompt: 'Knowing facial anatomy helps avoid…', type: 'MULTI', options: ['Bruising', 'Nerve injury', 'Better outcomes', 'Serious harm'], correct: [0, 1, 3], explanation: 'It reduces harm (a positive outcome isn’t something to “avoid”).' },
+            { prompt: 'Treated areas and client feedback should be documented.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Records protect everyone.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    courseSlug: 'level-3-laser-aesthetic-therapies',
+    modules: [
+      {
+        title: 'Laser Hair Removal in Practice',
+        summary: 'Choose the right candidate and manage a full course of treatments.',
+        lessons: [
+          {
+            title: 'Candidate Selection',
+            durationMin: 10,
+            objectives: ['Identify ideal candidates', 'Explain why hair colour matters', 'Set honest expectations'],
+            studyTips: ['Dark hair, lighter skin = the classic ideal — but devices have widened this.'],
+            examRefs: ['Laser hair removal'],
+            steps: [
+              { kind: 'say', text: 'Who is laser hair removal best for? Let’s see.', mood: 'happy' },
+              { kind: 'teach', title: 'The target', text: 'Laser hair removal works best on dark hair, because the laser targets the melanin in the hair.' },
+              { kind: 'ask', prompt: 'Laser hair removal works best on…', qtype: 'SINGLE', options: ['Dark hair', 'Grey hair', 'White hair', 'Red hair'], correct: [0], explanation: 'Dark hair has the melanin the laser targets.' },
+              { kind: 'teach', title: 'Poor responders', text: 'Very fair, grey or white hair has little melanin, so it responds poorly — set expectations honestly.' },
+              { kind: 'ask', prompt: 'Laser hair removal targets ___ in the hair.', qtype: 'WORD', options: ['melanin', 'water', 'keratin'], correct: [0], explanation: 'Melanin is the target.' },
+              { kind: 'say', text: 'Honesty up front saves disappointment later.', mood: 'cheer' },
+              { kind: 'teach', title: 'Darker skin', text: 'Higher Fitzpatrick types can be treated with the right device and caution — adjust settings, never assume it’s off-limits.' },
+              { kind: 'say', text: 'Good candidate sense — nice.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Managing a Course',
+            durationMin: 9,
+            objectives: ['Explain why multiple sessions', 'Space sessions correctly', 'Track and adjust'],
+            studyTips: ['Anagen = active growth = the responsive phase.'],
+            examRefs: ['Laser hair removal'],
+            steps: [
+              { kind: 'say', text: 'Now — running a full course.', mood: 'happy' },
+              { kind: 'teach', title: 'Hair cycles', text: 'Because hair grows in cycles, only follicles in the active (anagen) phase respond — that’s why a course of sessions is needed.', art: 'hair-cycle' },
+              { kind: 'ask', prompt: 'Why does hair removal need several sessions?', qtype: 'SINGLE', options: ['Hair grows in cycles', 'To charge more', 'For fun', 'No reason'], correct: [0], explanation: 'Only anagen follicles respond, so repeats catch more.' },
+              { kind: 'teach', title: 'Spacing', text: 'Sessions are spaced a few weeks apart to catch new hairs entering the active phase.' },
+              { kind: 'ask', prompt: 'Sessions are spaced a few ___ apart.', qtype: 'WORD', options: ['weeks', 'hours', 'years'], correct: [0], explanation: 'Typically 4–8 weeks.' },
+              { kind: 'teach', title: 'Track and adjust', text: 'Track progress with photos and notes; reduce energy if reactions are strong.' },
+              { kind: 'say', text: 'You can run a safe, effective course now. Brilliant.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Laser Hair Removal Assessment', passMark: 70,
+          questions: [
+            { prompt: 'Laser hair removal works best on…', type: 'SINGLE', options: ['Dark hair', 'White hair', 'Grey hair', 'No hair'], correct: [0], explanation: 'Dark hair holds the melanin target.' },
+            { prompt: 'The target chromophore in the hair is…', type: 'WORD', options: ['melanin', 'water', 'keratin'], correct: [0], explanation: 'Melanin.' },
+            { prompt: 'Multiple sessions are needed because hair grows in…', type: 'SINGLE', options: ['Cycles', 'Straight lines', 'One go', 'Winter only'], correct: [0], explanation: 'Only anagen follicles respond.' },
+            { prompt: 'Sessions are usually spaced a few weeks apart.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'To catch new active hairs.' },
+            { prompt: 'Higher Fitzpatrick types can never be treated.', type: 'TRUEFALSE', options: ['False', 'True'], correct: [0], explanation: 'They can, with the right device and caution.' },
+            { prompt: 'Progress should be tracked with…', type: 'MULTI', options: ['Photos', 'Notes', 'Guesswork only', 'Settings used'], correct: [0, 1, 3], explanation: 'Record objectively.' },
+          ],
+        },
+      },
+    ],
+  },
 ];
 
 export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
@@ -447,6 +612,15 @@ export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Reflection', prompt: 'Auditing your complication and re-treatment rates helps you…', options: ['Spot patterns and improve', 'Avoid records', 'Skip CPD', 'Work blindly'], correct: [0], explanation: 'Data drives improvement.' },
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Governance', prompt: 'The sector’s standards and register body is the…', type: 'WORD', options: ['JCCP', 'NHS', 'DVLA'], correct: [0], explanation: 'Joint Council for Cosmetic Practitioners.' },
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Leadership', prompt: 'A good safety culture…', options: ['Welcomes concerns being raised', 'Hides mistakes', 'Blames staff', 'Skips consent'], correct: [0], explanation: 'Openness and learning.' },
+  { courseSlug: L2, topic: 'Fitzpatrick', prompt: 'The Fitzpatrick scale sorts skin by its response to…', type: 'WORD', options: ['sun', 'water', 'cold'], correct: [0], explanation: 'It’s graded by reaction to UV.' },
+  { courseSlug: L2, topic: 'Fitzpatrick', prompt: 'Type VI skin…', options: ['Is deeply pigmented and rarely burns', 'Always burns', 'Has no melanin', 'Is the fairest'], correct: [0], explanation: 'Type VI is the most pigmented end of the scale.' },
+  { courseSlug: L2, topic: 'Fitzpatrick', prompt: 'If a client sits between two skin types, choose the…', options: ['Lower-energy, more cautious option', 'Higher-energy option', 'Average price', 'Quicker setting'], correct: [0], explanation: 'Default to caution when unsure.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Anatomy', prompt: 'In order from the surface inward, the face layers run…', options: ['Skin → fat → muscle (SMAS) → vessels/nerves', 'Bone → skin → fat', 'Muscle → skin → fat', 'Hair → bone → skin'], correct: [0], explanation: 'Skin, fat, the SMAS, then deeper vessels and nerves.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Anatomy', prompt: 'The SMAS is the face’s…', type: 'WORD', options: ['muscular', 'bony', 'fatty'], correct: [0], explanation: 'The muscular/fibrous layer.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Danger zones', prompt: 'Areas where extra care is needed because vessels and nerves sit close to the surface include…', type: 'MULTI', options: ['Around the eyes', 'The temples', 'The nasal area', 'The mid-cheek only'], correct: [0, 1, 2], explanation: 'Eyes, temples and the nasal area are higher-risk.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Hair removal', prompt: 'Laser hair removal responds best when the hair is…', options: ['Dark', 'Grey', 'White', 'Very fair'], correct: [0], explanation: 'Dark hair holds the melanin the laser targets.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Hair removal', prompt: 'Only follicles in the active growth phase respond — that phase is called…', type: 'WORD', options: ['anagen', 'telogen', 'catagen'], correct: [0], explanation: 'Anagen is the active, pigmented, connected phase.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Hair removal', prompt: 'Higher Fitzpatrick types can never have laser hair removal.', type: 'TRUEFALSE', options: ['False', 'True'], correct: [0], explanation: 'They can — with the right device, adjusted settings and caution.' },
 ];
 
 function bodyFromSteps(steps: Step[]): string {
