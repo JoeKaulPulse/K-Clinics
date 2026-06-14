@@ -1247,6 +1247,174 @@ export const NEW_MODULES: CourseContentDef[] = [
       },
     ],
   },
+  {
+    courseSlug: 'level-2-foundation-skin-laser',
+    modules: [
+      {
+        title: 'Health, Safety & the Salon Environment',
+        summary: 'Keep yourself, clients and colleagues safe through good salon practice.',
+        lessons: [
+          {
+            title: 'A Safe Treatment Space',
+            durationMin: 10,
+            objectives: ['Name key safety basics', 'Explain risk assessment', 'Know your legal duty'],
+            studyTips: ['Health & safety is a legal duty — not optional.'],
+            examRefs: ['Health & safety'],
+            steps: [
+              { kind: 'say', text: 'A safe space protects everyone. Let’s set it up right.', mood: 'think' },
+              { kind: 'teach', title: 'The basics', text: 'A safe salon means clean surfaces, working equipment, clear walkways, good lighting and the right protective gear to hand.', art: 'safety' },
+              { kind: 'ask', prompt: 'Which belong in a safe treatment space?', qtype: 'MULTI', options: ['Clean surfaces', 'Working equipment', 'Clear walkways', 'Trailing cables'], correct: [0, 1, 2], explanation: 'Trailing cables are a trip hazard.' },
+              { kind: 'teach', title: 'Risk assessment', text: 'A risk assessment simply means spotting what could cause harm and putting steps in place to prevent it.' },
+              { kind: 'ask', prompt: 'A risk assessment is about…', qtype: 'SINGLE', options: ['Spotting hazards and preventing harm', 'Selling more', 'Decorating', 'Saving time'], correct: [0], explanation: 'Identify hazards, control them.' },
+              { kind: 'say', text: 'Now the rules behind it.', mood: 'cheer' },
+              { kind: 'teach', title: 'A legal duty', text: 'Health and safety is a legal responsibility — you must protect clients, colleagues and yourself, and record your checks.' },
+              { kind: 'ask', prompt: 'Health and safety in the salon is…', qtype: 'WORD', options: ['legal', 'optional', 'occasional'], correct: [0], explanation: 'A legal duty.' },
+              { kind: 'say', text: 'Safe, legal, sorted. Lovely.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Chemicals & Waste',
+            durationMin: 9,
+            objectives: ['Understand COSHH basics', 'Store chemicals safely', 'Dispose of waste correctly'],
+            studyTips: ['COSHH = Control of Substances Hazardous to Health.'],
+            examRefs: ['COSHH / waste'],
+            steps: [
+              { kind: 'say', text: 'Salons use chemicals and create waste. Let’s handle both safely.', mood: 'happy' },
+              { kind: 'teach', title: 'COSHH', text: 'COSHH — Control of Substances Hazardous to Health — covers storing and using chemicals like disinfectants and solvents safely.' },
+              { kind: 'ask', prompt: 'COSHH is mainly about handling…', qtype: 'SINGLE', options: ['Hazardous substances', 'Bookings', 'Music', 'Lighting'], correct: [0], explanation: 'Substances hazardous to health.' },
+              { kind: 'teach', title: 'Store it right', text: 'Keep chemicals in labelled containers, away from heat, and follow the product’s safety instructions.' },
+              { kind: 'ask', prompt: 'Chemicals should be kept in containers that are…', qtype: 'WORD', options: ['labelled', 'open', 'unmarked'], correct: [0], explanation: 'Clearly labelled and closed.' },
+              { kind: 'teach', title: 'Dispose properly', text: 'Sharps go in a sharps bin and clinical waste in the correct stream — never in general rubbish.' },
+              { kind: 'ask', prompt: 'Used needles must go in a…', qtype: 'SINGLE', options: ['Sharps bin', 'General bin', 'Recycling', 'Drawer'], correct: [0], explanation: 'Always a sharps bin.' },
+              { kind: 'say', text: 'Chemicals and waste handled like a pro. Brilliant.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Health & Safety Assessment', passMark: 70,
+          questions: [
+            { prompt: 'Which belong in a safe treatment space?', type: 'MULTI', options: ['Clean surfaces', 'Working equipment', 'Clear walkways', 'Trailing cables'], correct: [0, 1, 2], explanation: 'Not trailing cables.' },
+            { prompt: 'A risk assessment is about…', type: 'SINGLE', options: ['Spotting hazards and preventing harm', 'Selling more', 'Decorating', 'Saving time'], correct: [0], explanation: 'Identify and control hazards.' },
+            { prompt: 'Health and safety in the salon is a legal duty.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Not optional.' },
+            { prompt: 'COSHH is mainly about handling…', type: 'WORD', options: ['chemicals', 'bookings', 'music'], correct: [0], explanation: 'Substances hazardous to health.' },
+            { prompt: 'Chemicals should be kept in containers that are…', type: 'WORD', options: ['labelled', 'open', 'unmarked'], correct: [0], explanation: 'Labelled and closed.' },
+            { prompt: 'Used needles must go in a sharps bin.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Never the general bin.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    courseSlug: 'level-3-laser-aesthetic-therapies',
+    modules: [
+      {
+        title: 'Skin Tightening & Body Treatments',
+        summary: 'How energy devices firm skin and treat the body — and what they realistically do.',
+        lessons: [
+          {
+            title: 'How Tightening Works',
+            durationMin: 10,
+            objectives: ['Explain controlled heating', 'Link heat to collagen', 'Set realistic expectations'],
+            studyTips: ['Controlled deep heat makes collagen contract and rebuild.'],
+            examRefs: ['Skin tightening'],
+            steps: [
+              { kind: 'say', text: 'Can we firm skin without surgery? To a point — here’s how.', mood: 'happy' },
+              { kind: 'teach', title: 'Heat the deeper layers', text: 'Devices like radiofrequency heat the deeper skin in a controlled way, which makes existing collagen contract and prompts new collagen.', art: 'collagen' },
+              { kind: 'ask', prompt: 'Skin tightening devices work mainly by controlled…', qtype: 'WORD', options: ['heating', 'cooling', 'cutting'], correct: [0], explanation: 'Controlled deep heat.' },
+              { kind: 'ask', prompt: 'That heat causes collagen to…', qtype: 'SINGLE', options: ['Contract and rebuild', 'Disappear', 'Turn to fat', 'Do nothing'], correct: [0], explanation: 'Contraction plus new collagen.' },
+              { kind: 'say', text: 'Now the honest bit.', mood: 'think' },
+              { kind: 'teach', title: 'Gradual and modest', text: 'Results build over weeks and are gradual — tightening firms and refines, it doesn’t replace a surgical lift.' },
+              { kind: 'ask', prompt: 'Energy skin tightening is best described as…', qtype: 'SINGLE', options: ['Gradual firming, not a surgical lift', 'Instant facelift', 'Permanent and total', 'Useless'], correct: [0], explanation: 'Modest, gradual firming.' },
+              { kind: 'say', text: 'Honest and clear — clients trust that. Lovely.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Body Treatments & Suitability',
+            durationMin: 9,
+            objectives: ['Name common body goals', 'Stress healthy-lifestyle context', 'Select suitable clients'],
+            studyTips: ['Body devices support, not replace, a healthy lifestyle.'],
+            examRefs: ['Body treatments'],
+            steps: [
+              { kind: 'say', text: 'Body treatments are popular — let’s frame them properly.', mood: 'happy' },
+              { kind: 'teach', title: 'What they target', text: 'Body devices aim to smooth, firm or contour areas — often used alongside, not instead of, diet and exercise.' },
+              { kind: 'ask', prompt: 'Body contouring devices work best…', qtype: 'SINGLE', options: ['Alongside a healthy lifestyle', 'Instead of any effort', 'Only overnight', 'On their own forever'], correct: [0], explanation: 'They support a healthy lifestyle.' },
+              { kind: 'teach', title: 'Right client', text: 'The best candidates are close to their target, with realistic goals — not expecting major weight loss from a device.' },
+              { kind: 'ask', prompt: 'Body devices are NOT a substitute for…', qtype: 'MULTI', options: ['A healthy diet', 'Exercise', 'Realistic goals', 'A holiday'], correct: [0, 1, 2], explanation: 'They complement healthy habits and honest goals.' },
+              { kind: 'teach', title: 'Consult fully', text: 'As with any treatment, consult, check contraindications and set expectations before starting.' },
+              { kind: 'say', text: 'Framed honestly, suited well. Brilliant.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Skin Tightening & Body Assessment', passMark: 70,
+          questions: [
+            { prompt: 'Skin tightening devices work mainly by controlled…', type: 'WORD', options: ['heating', 'cooling', 'cutting'], correct: [0], explanation: 'Controlled deep heat.' },
+            { prompt: 'That heat causes collagen to…', type: 'SINGLE', options: ['Contract and rebuild', 'Vanish', 'Turn to fat', 'Do nothing'], correct: [0], explanation: 'Contraction and new collagen.' },
+            { prompt: 'Energy skin tightening is best described as…', type: 'SINGLE', options: ['Gradual firming, not a surgical lift', 'An instant facelift', 'Permanent and total', 'Useless'], correct: [0], explanation: 'Modest, gradual firming.' },
+            { prompt: 'Body contouring devices work best alongside a healthy lifestyle.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'They support, not replace.' },
+            { prompt: 'Body devices are NOT a substitute for…', type: 'MULTI', options: ['A healthy diet', 'Exercise', 'Realistic goals', 'A holiday'], correct: [0, 1, 2], explanation: 'They complement healthy habits.' },
+            { prompt: 'Body treatments still need consultation and contraindication checks.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Same standards apply.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    courseSlug: 'advanced-aesthetics-level-5-7',
+    modules: [
+      {
+        title: 'Leadership & Mentoring',
+        summary: 'Lead a safe team and bring on the next generation of practitioners.',
+        lessons: [
+          {
+            title: 'Leading a Safe Team',
+            durationMin: 10,
+            objectives: ['Describe a safety culture', 'Encourage raising concerns', 'Lead by example'],
+            studyTips: ['A safe team is one where anyone can raise a concern without fear.'],
+            examRefs: ['Leadership'],
+            steps: [
+              { kind: 'say', text: 'Leading well keeps a whole clinic safe. Let’s look at how.', mood: 'think' },
+              { kind: 'teach', title: 'Safety culture', text: 'A good safety culture means everyone feels able to speak up about concerns, mistakes are treated as learning, and standards are shared.', art: 'concept' },
+              { kind: 'ask', prompt: 'A good safety culture treats mistakes as…', qtype: 'SINGLE', options: ['Learning opportunities', 'Reasons to blame', 'Things to hide', 'Unimportant'], correct: [0], explanation: 'Learn, don’t blame.' },
+              { kind: 'teach', title: 'Make it safe to speak', text: 'Leaders actively invite questions and concerns — staff who fear blame hide problems, and hidden problems harm clients.' },
+              { kind: 'ask', prompt: 'When staff fear blame, they tend to…', qtype: 'WORD', options: ['hide', 'share', 'report'], correct: [0], explanation: 'Fear hides problems.' },
+              { kind: 'say', text: 'Now lead from the front.', mood: 'cheer' },
+              { kind: 'teach', title: 'Lead by example', text: 'The standards you model — consent, records, hygiene, honesty — set the bar the whole team follows.' },
+              { kind: 'ask', prompt: 'The best way to set team standards is to…', qtype: 'SINGLE', options: ['Model them yourself', 'Just write rules', 'Hope for the best', 'Punish slips'], correct: [0], explanation: 'Lead by example.' },
+              { kind: 'say', text: 'That’s real leadership. Excellent.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Mentoring New Practitioners',
+            durationMin: 9,
+            objectives: ['Explain a mentor’s role', 'Give useful feedback', 'Support safe growth'],
+            studyTips: ['Good feedback is specific, kind and actionable.'],
+            examRefs: ['Mentoring'],
+            steps: [
+              { kind: 'say', text: 'Bringing on new talent is part of mastery. Here’s how to mentor well.', mood: 'happy' },
+              { kind: 'teach', title: 'The mentor’s role', text: 'A mentor guides, observes and supports a newer practitioner to build skills and judgement safely over time.' },
+              { kind: 'ask', prompt: 'A mentor mainly helps a newer practitioner to…', qtype: 'SINGLE', options: ['Build skills and judgement safely', 'Work unsupervised at once', 'Skip the basics', 'Compete'], correct: [0], explanation: 'Safe, supported growth.' },
+              { kind: 'teach', title: 'Useful feedback', text: 'Good feedback is specific, kind and actionable — say what was done well, what to change, and how.' },
+              { kind: 'ask', prompt: 'Good feedback is…', qtype: 'MULTI', options: ['Specific', 'Kind', 'Actionable', 'Vague'], correct: [0, 1, 2], explanation: 'Not vague.' },
+              { kind: 'teach', title: 'Grow them safely', text: 'Increase responsibility as competence grows, and stay available when they hit something new.' },
+              { kind: 'say', text: 'You can grow a safe, skilled team now. Brilliant.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Leadership & Mentoring Assessment', passMark: 70,
+          questions: [
+            { prompt: 'A good safety culture treats mistakes as…', type: 'SINGLE', options: ['Learning opportunities', 'Reasons to blame', 'Things to hide', 'Unimportant'], correct: [0], explanation: 'Learn, don’t blame.' },
+            { prompt: 'When staff fear blame, they tend to ___ problems.', type: 'WORD', options: ['hide', 'share', 'report'], correct: [0], explanation: 'Fear hides problems.' },
+            { prompt: 'The best way to set team standards is to model them yourself.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Lead by example.' },
+            { prompt: 'A mentor mainly helps a newer practitioner to…', type: 'SINGLE', options: ['Build skills and judgement safely', 'Work alone at once', 'Skip basics', 'Compete'], correct: [0], explanation: 'Safe, supported growth.' },
+            { prompt: 'Good feedback is…', type: 'MULTI', options: ['Specific', 'Kind', 'Actionable', 'Vague'], correct: [0, 1, 2], explanation: 'Not vague.' },
+            { prompt: 'Responsibility should grow as a mentee’s competence grows.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Match responsibility to competence.' },
+          ],
+        },
+      },
+    ],
+  },
 ];
 
 export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
@@ -1327,6 +1495,15 @@ export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Evidence', prompt: 'The strongest source of evidence for a treatment is…', options: ['A peer-reviewed study', 'A manufacturer brochure', 'A viral video', 'A rumour'], correct: [0], explanation: 'Peer-reviewed evidence outranks marketing.' },
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Audit', prompt: 'A clinical audit compares your practice against a…', type: 'WORD', options: ['standard', 'rival', 'rumour'], correct: [0], explanation: 'Measure against an agreed standard.' },
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Audit', prompt: 'After changing something, a good audit then re-measures to check it worked.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Closing the loop confirms improvement.' },
+  { courseSlug: L2, topic: 'Health & safety', prompt: 'A risk assessment is mainly about…', options: ['Spotting hazards and preventing harm', 'Selling more treatments', 'Decorating the room', 'Saving time'], correct: [0], explanation: 'Identify hazards and put controls in place.' },
+  { courseSlug: L2, topic: 'Health & safety', prompt: 'Health and safety in the salon is a ___ duty.', type: 'WORD', options: ['legal', 'optional', 'seasonal'], correct: [0], explanation: 'It is a legal responsibility.' },
+  { courseSlug: L2, topic: 'COSHH', prompt: 'COSHH is mainly concerned with the safe handling of…', options: ['Substances hazardous to health', 'Bookings', 'Music', 'Lighting'], correct: [0], explanation: 'Control of Substances Hazardous to Health.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Skin tightening', prompt: 'Radiofrequency-type skin tightening works mainly by controlled…', type: 'WORD', options: ['heating', 'cooling', 'cutting'], correct: [0], explanation: 'Controlled deep heat makes collagen contract and rebuild.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Skin tightening', prompt: 'Energy-based skin tightening is best described as…', options: ['Gradual firming, not a surgical lift', 'An instant facelift', 'Permanent and total', 'Useless'], correct: [0], explanation: 'It firms modestly and gradually.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Body treatments', prompt: 'Body contouring devices work best…', options: ['Alongside a healthy lifestyle', 'Instead of any diet or exercise', 'Only overnight', 'On their own forever'], correct: [0], explanation: 'They support, not replace, healthy habits.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Leadership', prompt: 'In a good safety culture, mistakes are treated as…', options: ['Learning opportunities', 'Reasons to blame', 'Things to hide', 'Unimportant'], correct: [0], explanation: 'Openness and learning, not blame.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Leadership', prompt: 'The best way for a leader to set team standards is to…', options: ['Model them personally', 'Only write rules', 'Hope for the best', 'Punish every slip'], correct: [0], explanation: 'Lead by example.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Mentoring', prompt: 'Useful feedback to a mentee is specific, kind and…', type: 'WORD', options: ['actionable', 'vague', 'harsh'], correct: [0], explanation: 'Specific, kind and actionable.' },
 ];
 
 function bodyFromSteps(steps: Step[]): string {
