@@ -8,6 +8,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+// Whether "Sign in with Google" shows depends on runtime config (env flag +
+// the OAuth client id, which may live in the in-app secrets table), so render
+// per-request rather than baking a build-time value into a static page.
+export const dynamic = 'force-dynamic';
+
 export default async function AdminLogin() {
   const ssoEnabled = await googleSsoEnabled();
   return (
