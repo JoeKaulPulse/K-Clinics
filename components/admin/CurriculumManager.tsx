@@ -113,6 +113,16 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
   const [f, setF] = useState({ title: l.title, durationMin: l.durationMin ?? '', minSeconds: l.minSeconds ?? '', videoUrl: l.videoUrl ?? '', imageUrl: l.imageUrl ?? '', body: l.body, keyPoints: listToText(l.keyPoints), objectives: listToText(l.objectives), studyTips: listToText(l.studyTips), homework: l.homework ?? '', examRefs: listToText(l.examRefs), citations: linksToText(l.citations), resources: linksToText(l.resources) });
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((s) => ({ ...s, [k]: v }));
   const move = (d: number) => { const ids = [...lessonIds]; const j = index + d; if (j < 0 || j >= ids.length) return; [ids[index], ids[j]] = [ids[j], ids[index]]; act({ op: 'reorderLessons', ids }); };
+  const [uploading, setUploading] = useState(false);
+  async function uploadVideo(file: File) {
+    setUploading(true);
+    try {
+      const { upload } = await import('@vercel/blob/client');
+      const blob = await upload(`academy/${Date.now()}-${file.name}`, file, { access: 'public', handleUploadUrl: '/api/admin/academy/blob-token' });
+      setF((s) => ({ ...s, videoUrl: blob.url }));
+    } catch (e) { alert('Upload failed: ' + ((e as Error)?.message || 'unknown')); }
+    finally { setUploading(false); }
+  }
 
   return (
     <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white">
@@ -129,7 +139,15 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
             <label className={label}>Title<input className={`${field} mt-1`} value={f.title} onChange={(e) => set('title', e.target.value)} /></label>
             <label className={label}>Duration (min, shown to learner)<input type="number" className={`${field} mt-1`} value={f.durationMin} onChange={(e) => set('durationMin', e.target.value as never)} /></label>
             <label className={label}>Min. time before complete (sec)<input type="number" min={0} className={`${field} mt-1`} value={f.minSeconds} onChange={(e) => set('minSeconds', e.target.value as never)} placeholder="e.g. 30 — stops skipping" /></label>
-            <label className={label}>Video URL (YouTube watch/embed, or any link)<input className={`${field} mt-1`} value={f.videoUrl} onChange={(e) => set('videoUrl', e.target.value)} placeholder="https://www.youtube.com/watch?v=…" /></label>
+            <label className={label}>Video (YouTube link, or upload a file)
+              <div className="mt-1 flex gap-2">
+                <input className={`${field} flex-1`} value={f.videoUrl} onChange={(e) => set('videoUrl', e.target.value)} placeholder="https://youtube… or upload →" />
+                <label className={`shrink-0 cursor-pointer rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-1.5 text-xs ${uploading ? 'opacity-60' : 'hover:border-[var(--color-gold)]'}`}>
+                  {uploading ? 'Uploading…' : 'Upload'}
+                  <input type="file" accept="video/*,image/*" className="hidden" disabled={uploading} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadVideo(file); e.currentTarget.value = ''; }} />
+                </label>
+              </div>
+            </label>
             <label className={label}>Image URL (optional)<input className={`${field} mt-1`} value={f.imageUrl} onChange={(e) => set('imageUrl', e.target.value)} /></label>
           </div>
           <label className={label}>Lesson content (Markdown: ## headings, - bullets, **bold**)<textarea rows={8} className={`${field} mt-1 font-mono text-xs`} value={f.body} onChange={(e) => set('body', e.target.value)} /></label>
