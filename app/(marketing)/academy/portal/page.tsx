@@ -4,6 +4,7 @@ import { PageHero } from '@/components/ui/PageHero';
 import { AcademyAuth } from '@/components/academy/AcademyAuth';
 import { AcademyLogout } from '@/components/academy/AcademyLogout';
 import { DailyGoal } from '@/components/academy/DailyGoal';
+import { InstallPrompt } from '@/components/academy/InstallPrompt';
 import { GuideHost } from '@/components/guide/GuideHost';
 import { OnboardingHost } from '@/components/onboarding/OnboardingHost';
 import { ONBOARDING } from '@/lib/onboarding-steps';
@@ -83,6 +84,7 @@ export default async function AcademyPortalPage() {
         </div>
         <DailyGoal status={daily} />
         </div>
+        <div className="mt-4 flex justify-center"><InstallPrompt /></div>
       </section>
       <section className="container-lux section" data-tour="academy-courses">
         <div className="mb-6 flex items-center justify-between gap-3">

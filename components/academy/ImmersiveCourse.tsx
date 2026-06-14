@@ -145,7 +145,7 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, onExit
 
   return (
     <ArtCtx.Provider value={{ levelFor, seeArt }}>
-    <div className="fixed inset-0 z-[200] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]">
+    <div className="fixed inset-0 z-[200] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
       <AmbientBackdrop tone="dark" />
       {/* Top bar: exit · progress · counter */}
       <header className="relative z-10 flex items-center gap-4 border-b border-white/10 px-4 py-3 sm:px-6">
