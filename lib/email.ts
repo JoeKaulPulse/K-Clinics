@@ -278,14 +278,15 @@ export function tmplWinBack(firstName: string, unsubUrl: string) {
   });
 }
 
-export function tmplReviewRequest(firstName: string, link: string, treatment?: string) {
+export function tmplReviewRequest(firstName: string, link: string, treatment?: string, googleUrl?: string) {
   return emailShell({
     preheader: 'We would love your feedback',
     body: `${heroBand('review')}
     <h1 style="font-size:26px;margin:0 0 16px;">How did we do, ${escape(firstName)}?</h1>
     <p>We hope you are loving the results of your recent visit to KClinics${treatment ? ` for your ${escape(treatment)}` : ''}.</p>
     <p>If you have a moment, we would be so grateful if you could share your experience — it helps us, and helps others discover the clinic.</p>
-    <p style="margin:28px 0;">${btn(link, 'Leave a review')}</p>
+    <p style="margin:28px 0 ${googleUrl ? '12px' : '28px'};">${btn(link, 'Leave a review')}</p>
+    ${googleUrl ? `<p style="margin:0 0 24px;font-size:14px;color:#7d6259;">Happy to post on Google too? <a href="${googleUrl}" style="color:#856a4a;font-weight:600;">Leave us a Google review</a> — it means the world to a new clinic.</p>` : ''}
     <p>It only takes a minute, from any device.</p>
     <p>With warmth,<br>The KClinics team</p>`,
   });

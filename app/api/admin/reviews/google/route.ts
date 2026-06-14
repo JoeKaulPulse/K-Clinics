@@ -77,6 +77,29 @@ export async function POST(req: Request) {
       await db.googleReview.deleteMany({ where: b.id ? { id: String(b.id) } : { googleName: String(b.googleName) } });
       return NextResponse.json({ ok: true });
     }
+    case 'bulkAdd': {
+      // Load many reviews at once (e.g. your existing Google reviews, before the
+      // Business Profile API is approved). Each publishes on the site immediately.
+      const list = Array.isArray(b.reviews) ? b.reviews : [];
+      if (!list.length) return NextResponse.json({ ok: false, error: 'No reviews to add.' }, { status: 400 });
+      const { db } = await import('@/lib/db');
+      let added = 0;
+      for (const it of list.slice(0, 300)) {
+        const stars = Math.max(1, Math.min(5, Math.round(Number(it?.starRating) || 0)));
+        if (!stars) continue;
+        const parsed = it?.createTime ? new Date(String(it.createTime)) : new Date();
+        await db.googleReview.create({ data: {
+          googleName: `manual:${Date.now()}:${Math.random().toString(36).slice(2, 9)}`,
+          reviewerName: (typeof it?.reviewerName === 'string' ? it.reviewerName.trim() : '') || null,
+          starRating: stars,
+          comment: (typeof it?.comment === 'string' ? it.comment.trim() : '') || null,
+          createTime: isNaN(parsed.getTime()) ? new Date() : parsed,
+        } }).then(() => { added++; }).catch(() => {});
+      }
+      const { logAudit } = await import('@/lib/audit');
+      await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: `Bulk-added ${added} Google reviews` }).catch(() => {});
+      return NextResponse.json({ ok: true, added });
+    }
   }
   return NextResponse.json({ ok: false, error: 'Unknown op.' }, { status: 400 });
 }
