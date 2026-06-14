@@ -18,7 +18,10 @@ export default async function LearnPage({ params }: { params: Promise<{ slug: st
 
   const { getCourseLearning } = await import('@/lib/lms');
   const { studentStanding } = await import('@/lib/academy-gamification');
+  const { registerForAge } = await import('@/components/academy/lessonFlow');
   const [learning, standing] = await Promise.all([getCourseLearning(slug, student.id), studentStanding(student.id)]);
+  const age = student.dob ? Math.floor((Date.now() - new Date(student.dob).getTime()) / 31557600000) : null;
+  const register = registerForAge(age);
 
   if (!learning) {
     return (
@@ -34,7 +37,7 @@ export default async function LearnPage({ params }: { params: Promise<{ slug: st
 
   return (
     <section className="container-lux py-[calc(var(--header-h,5.25rem)+2rem)]">
-      <CourseExperience learning={learning} slug={slug} xp={standing.xp} />
+      <CourseExperience learning={learning} slug={slug} xp={standing.xp} register={register} />
     </section>
   );
 }
