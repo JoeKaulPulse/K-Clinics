@@ -1,6 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db';
 import { saveConnection, getConnection, validAccessToken, disconnect, type Tokens } from '@/lib/oauth-connections';
+import { getSecret } from '@/lib/secrets';
 
 // Google Business Profile ("My Business") integration.
 //
@@ -37,16 +38,16 @@ export function businessRedirectUri(): string {
   return `${siteUrl()}/api/admin/integrations/google-business/callback`;
 }
 
-export function googleOAuthConfigured(): boolean {
-  return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+export async function googleOAuthConfigured(): Promise<boolean> {
+  return Boolean((await getSecret('GOOGLE_CLIENT_ID')) && (await getSecret('GOOGLE_CLIENT_SECRET')));
 }
 function locationName(): string | null {
   const a = process.env.GOOGLE_BUSINESS_ACCOUNT_ID;
   const l = process.env.GOOGLE_BUSINESS_LOCATION_ID;
   return a && l ? `accounts/${a}/locations/${l}` : null;
 }
-export function googleBusinessConfigured(): boolean {
-  return googleOAuthConfigured() && Boolean(locationName());
+export async function googleBusinessConfigured(): Promise<boolean> {
+  return (await googleOAuthConfigured()) && Boolean(locationName());
 }
 
 /** Public write-a-review deep link (Places-based, no OAuth needed). */
@@ -56,10 +57,11 @@ export async function googleWriteReviewUrl(): Promise<string | null> {
 }
 
 // ── OAuth (one-time owner connection) ────────────────────────────────────────
-export function businessAuthUrl(state: string): string | null {
-  if (!googleOAuthConfigured()) return null;
+export async function businessAuthUrl(state: string): Promise<string | null> {
+  const clientId = await getSecret('GOOGLE_CLIENT_ID');
+  if (!clientId) return null;
   const p = new URLSearchParams({
-    client_id: process.env.GOOGLE_CLIENT_ID!,
+    client_id: clientId,
     redirect_uri: businessRedirectUri(),
     response_type: 'code',
     access_type: 'offline',
@@ -71,11 +73,14 @@ export function businessAuthUrl(state: string): string | null {
 }
 
 async function tokenRequest(body: Record<string, string>): Promise<Tokens | null> {
+  const clientId = await getSecret('GOOGLE_CLIENT_ID');
+  const clientSecret = await getSecret('GOOGLE_CLIENT_SECRET');
+  if (!clientId || !clientSecret) return null;
   const res = await fetch(TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     signal: AbortSignal.timeout(10_000),
-    body: new URLSearchParams({ client_id: process.env.GOOGLE_CLIENT_ID!, client_secret: process.env.GOOGLE_CLIENT_SECRET!, ...body }),
+    body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, ...body }),
   });
   if (!res.ok) return null;
   const d = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number };

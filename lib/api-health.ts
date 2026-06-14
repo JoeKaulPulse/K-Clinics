@@ -260,7 +260,7 @@ async function checkTrueLayer(): Promise<Outcome> {
 async function checkGoogleBusiness(): Promise<Outcome> {
   try {
     const gb = await import('@/lib/google-business');
-    if (!gb.googleOAuthConfigured()) return { light: 'grey', detail: 'Not configured — Google reviews sync off' };
+    if (!(await gb.googleOAuthConfigured())) return { light: 'grey', detail: 'Not configured — Google reviews sync off' };
     if (!(await gb.googleBusinessConnected())) return { light: 'amber', detail: 'Credentials present — not connected', info: ['Connect from Reviews → Google.'] };
     const t = Date.now();
     const r = await gb.listBusinessLocations();
@@ -331,7 +331,7 @@ async function checkMeta(): Promise<Outcome> {
 /** Refresh-token grant for the marketing Google connection — mirrors the
  *  closure in lib/ad-spend.ts googleSpend(). */
 async function refreshGoogleTokens(refreshToken: string): Promise<{ access: string; refresh?: string; expiresAt: number | null } | null> {
-  const id = process.env.GOOGLE_CLIENT_ID, secret = process.env.GOOGLE_CLIENT_SECRET;
+  const id = await getSecret('GOOGLE_CLIENT_ID'), secret = await getSecret('GOOGLE_CLIENT_SECRET');
   if (!id || !secret) return null;
   try {
     const res = await fetch('https://oauth2.googleapis.com/token', {
