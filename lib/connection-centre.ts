@@ -102,16 +102,16 @@ const DEFS: ConnectionDef[] = [
     steps: ['Save both keys, register the redirect URI, then press Connect and choose your bank.'],
   },
   {
-    id: 'google-business', title: 'Google reviews — Business Profile', category: 'Reviews',
-    powers: 'Imports your full Google review history into the dashboard to manage and reply in-app. (Your public site already shows Google reviews via the Places API — this card is the deeper admin import.)',
-    keyNames: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
+    id: 'google-business', title: 'Google reviews', category: 'Reviews',
+    powers: 'Shows your Google reviews on the website. Two paths: the Place ID + Places key give your live rating and recent reviews instantly; the OAuth Connect imports your full history to manage and reply in-app.',
+    keyNames: ['GOOGLE_PLACE_ID', 'GOOGLE_PLACES_API_KEY', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
     connectHref: '/api/admin/integrations/google-business/connect', connectLabel: 'Connect Google',
     console: { label: 'console.cloud.google.com', url: 'https://console.cloud.google.com/apis/credentials' },
     register: [{ label: 'OAuth redirect URI', url: `${BASE}/api/admin/integrations/google-business/callback`, note: 'Google Cloud → Credentials → Authorised redirect URIs.' }],
     steps: [
-      'The same Google client powers Ads, Analytics and Search below. Save it once, register the redirect, then Connect.',
-      'If it says “Business Profile API access not granted yet”: enable “My Business Account Management API” and “My Business Business Information API” in Google Cloud → APIs & Services → Library, then re-check.',
-      'The full review feed additionally needs Google to approve Business Profile API access (a one-time request form; can take a few days). Until then, reviews still show publicly via the Places API.',
+      'Quickest win: add the Place ID + Places API key (no approval needed) — your live rating and recent reviews show on the site straight away.',
+      'For the full history with in-app replies, the OAuth client powers the Business Profile import (same client as Ads/Analytics below). Save it, register the redirect, then Connect.',
+      'If it says “Business Profile API access not granted yet”: enable the My Business APIs in Google Cloud, and Google must approve Business Profile API access (a one-time form, a few days). Meanwhile you can add reviews by hand on Admin → Reviews and they publish immediately.',
     ],
   },
   {
