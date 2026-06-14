@@ -95,13 +95,13 @@ export default async function PricingPage() {
                                         return (
                                           <span key={c.sessions} className="block">
                                             Course of {c.sessions} — <span className="font-medium text-[var(--color-ink)]">{formatPence(c.totalPence)}</span>
-                                            <span className="text-[var(--color-stone-soft)]"> ({formatPence(per)}/session{save > 0 ? <>, <span className="text-[var(--color-gold-deep)]">save {save}%</span></> : ''})</span>
+                                            <span className="text-[var(--color-stone)]"> ({formatPence(per)}/session{save > 0 ? <>, <span className="text-[var(--color-gold-deep)]">save {save}%</span></> : ''})</span>
                                           </span>
                                         );
                                       })}
                                     </span>
                                   )}
-                                  {v.offerName && <span className="mt-0.5 block text-sm font-medium text-[var(--color-gold)]">{v.offerName}</span>}
+                                  {v.offerName && <span className="mt-0.5 block text-sm font-medium text-[var(--color-gold-deep)]">{v.offerName}</span>}
                                 </div>
                                 <span className="flex shrink-0 items-center gap-2 font-[family-name:var(--font-display)] text-lg text-[var(--color-ink)]">
                                   {unavailable ? (
@@ -109,7 +109,7 @@ export default async function PricingPage() {
                                   ) : v.status === 'CONSULTATION' ? (
                                     <span className="text-base text-[var(--color-stone)]">On consultation</span>
                                   ) : v.offerPence != null ? (
-                                    <span><span className="mr-2 text-base text-[var(--color-stone-soft)] line-through">{formatPence(v.pricePence)}</span>{formatPence(v.offerPence)}</span>
+                                    <span><span className="mr-2 text-base text-[var(--color-stone)] line-through">{formatPence(v.pricePence)}</span>{formatPence(v.offerPence)}</span>
                                   ) : (
                                     formatPence(v.pricePence)
                                   )}
