@@ -223,7 +223,7 @@ export async function getIntegrations(): Promise<Integration[]> {
     id: 'transcription',
     name: 'Voice transcription (Deepgram)',
     category: 'Communications',
-    description: 'Transcribes dictated appointment notes; Claude then structures the transcript into draft notes & checklist answers for the clinician to review and the client to sign.',
+    description: 'Transcribes a clinician’s dictated appointment note in the session; Claude then tidies the transcript into a clean draft clinical note for the clinician to review, edit and save.',
     status: dgKey && aiKey ? 'connected' : dgKey || aiKey ? 'partial' : 'not_configured',
     detail: dgKey && aiKey ? 'Transcription + structuring ready.' : dgKey ? 'Deepgram set — add ANTHROPIC_API_KEY for note structuring.' : aiKey ? 'Claude set — add DEEPGRAM_API_KEY to transcribe audio.' : 'Add a Deepgram key to transcribe clinical voice notes.',
     envVars: [

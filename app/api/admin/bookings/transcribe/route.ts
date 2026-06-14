@@ -45,14 +45,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Recording too large.' }, { status: 413 });
   }
 
-  const dgRes = await fetch(
-    'https://api.deepgram.com/v1/listen?model=nova-3&language=en-GB&smart_format=true&punctuate=true',
-    {
-      method: 'POST',
-      headers: { Authorization: `Token ${key}`, 'Content-Type': contentType },
-      body: audio,
-    },
-  ).catch((e) => { throw new Error(`Deepgram unreachable: ${(e as Error).message}`); });
+  let dgRes: Response;
+  try {
+    dgRes = await fetch(
+      'https://api.deepgram.com/v1/listen?model=nova-3&language=en-GB&smart_format=true&punctuate=true',
+      {
+        method: 'POST',
+        headers: { Authorization: `Token ${key}`, 'Content-Type': contentType },
+        body: audio,
+        signal: AbortSignal.timeout(45_000), // bound a hung upstream
+      },
+    );
+  } catch (e) {
+    const timedOut = (e as Error)?.name === 'TimeoutError';
+    return NextResponse.json({ ok: false, error: timedOut ? 'Transcription timed out — please try a shorter recording.' : 'Could not reach the transcription service.' }, { status: 504 });
+  }
 
   if (!dgRes.ok) {
     const detail = (await dgRes.text().catch(() => '')).slice(0, 200);
@@ -63,5 +70,44 @@ export async function POST(req: Request) {
   const transcript: string = json?.results?.channels?.[0]?.alternatives?.[0]?.transcript ?? '';
   if (!transcript) return NextResponse.json({ ok: false, error: 'No speech detected — try speaking closer to the microphone.' });
 
-  return NextResponse.json({ ok: true, transcript });
+  // Structure the raw dictation into a clean clinical note via Claude (formatting
+  // only — never adds, infers, diagnoses or recommends). Falls back to the raw
+  // transcript when Claude isn't configured or the call fails, so transcription
+  // always works on its own. The clinician reviews and edits before saving.
+  const aiKey = await getSecret('ANTHROPIC_API_KEY');
+  const structured = aiKey && transcript.length > 40 ? await tidyClinicalNote(transcript, aiKey).catch(() => null) : null;
+
+  return NextResponse.json({ ok: true, transcript: structured || transcript, structured: Boolean(structured) });
+}
+
+// Claude (Haiku) reformats a dictation into a clean clinical note. Strictly
+// formatting/organisation — the prompt forbids adding or inferring clinical
+// content — so it stays clear of the medical-device line (it never interprets or
+// recommends). Special-category data is already gated by clients.clinical.view,
+// and Anthropic is an existing named processor for the clinical AI features.
+async function tidyClinicalNote(transcript: string, key: string): Promise<string | null> {
+  const system = [
+    'You are a clinical scribe for an aesthetics & skin clinic. Reformat the practitioner’s dictated note into a clean, professional clinical record.',
+    'RULES (strict):',
+    '- Use ONLY information stated in the dictation. Never add, infer, diagnose, or recommend anything that was not explicitly said.',
+    '- Correct grammar, punctuation, capitalisation and obvious mis-transcriptions of clinical or product names.',
+    '- Organise into short labelled lines where the content supports it (e.g. Presentation, Treatment performed, Areas/products, Aftercare advised, Follow-up). Do not invent sections the dictation does not support.',
+    '- Keep it concise and factual. Preserve any numbers, units, product names and doses exactly.',
+    '- If the dictation is too short or unclear to structure, return it lightly cleaned.',
+    'Output ONLY the note text — no preamble, no markdown code fences.',
+  ].join('\n');
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 900, system, messages: [{ role: 'user', content: transcript }] }),
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) return null;
+    const j = await res.json();
+    const text: string | undefined = j?.content?.find((c: { type: string }) => c.type === 'text')?.text?.trim();
+    return text && text.length > 0 ? text : null;
+  } catch {
+    return null;
+  }
 }
