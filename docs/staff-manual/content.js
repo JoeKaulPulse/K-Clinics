@@ -33,6 +33,8 @@ const CONTENT = {
       title: 'Signing in, your account and 2FA',
       lead: 'Your login protects client and health data. Treat it the way you would treat keys to the clinic.',
       blocks: [
+        { shot: { src: 'admin-login', device: 'desk', url: 'kclinics.co.uk/admin', caption: 'The admin sign-in. Your email, your password, then a code or your fingerprint.' } },
+        { ktip: 'Add a passkey on your own phone, then signing in is just your face or thumb — and there is no password to forget.' },
         { task: { title: 'Sign in to the admin', roles: ['All staff'], steps: [
           'Go to <code>kclinics.co.uk/admin</code>.',
           'Enter your work email and password, then press <b>Sign in</b>.',
@@ -119,6 +121,7 @@ const CONTENT = {
           'Open <code>/admin/time-off</code>.',
           'Open a request marked Pending, check the team calendar below it for clashes, and press <b>Approve</b> or <b>Decline</b>.',
         ], done: 'the request moves to Approved or Declined and the person is notified.' } },
+        { ktip: 'Clock in the moment you arrive. Day close reads your hours from it, so it only works if it is on.' },
       ],
     },
 
@@ -157,6 +160,7 @@ const CONTENT = {
           'Open their profile and select the <b>Clinical</b> area to read allergies, medications and notes.',
           'Add a treatment note after the appointment so the record stays current.',
         ], done: 'your note is saved against the client and dated.' } },
+        { ktip: 'Send the health form when you take the booking, never on the day. It saves the clinician chasing it at the door.' },
         { note: { label: 'Client privacy', note: 'Exporting or deleting a client is recorded in the activity log and limited to senior roles. Never download client lists to a personal device. See the GDPR section for the right way to handle access and erasure requests.' } },
       ],
     },
@@ -183,6 +187,8 @@ const CONTENT = {
           'Save. It shows in the offers strip on the booking page while active.',
         ], done: 'the offer appears on <code>/offers</code> and on the booking page.' } },
         { p: 'Clients earn points for spending and for leaving reviews, redeemable against future visits. Referrals give both people credit once the new client’s first treatment is done. These run automatically; you only step in to fix a dispute.' },
+        { shot: { src: 'gift', device: 'desk', url: 'kclinics.co.uk/gift-vouchers', caption: 'Clients buy gift cards here; you can also issue and track them from the admin.' } },
+        { ktip: 'Points and referral rewards land on their own. If a client says theirs are missing, check the activity log before you adjust anything.' },
       ],
     },
 
@@ -205,6 +211,7 @@ const CONTENT = {
           'Add the name, price, an image and the stock quantity.',
           'Tick <b>18+</b> if it must be age-checked at checkout. Save.',
         ], done: 'the product shows in the shop and on the till.' } },
+        { ktip: 'Fill in the cost price as well as the retail price. That one field is what makes the margin reports tell the truth.' },
       ],
     },
 
@@ -224,6 +231,7 @@ const CONTENT = {
           'Add or rearrange sections by dragging. Edit text and images in place.',
           'Press <b>Preview</b> to see it as visitors will. When happy, press <b>Publish</b>.',
         ], done: 'the live page shows your changes.' } },
+        { ktip: 'Press Preview before Publish. What you see in Preview is exactly what a visitor gets — no surprises.' },
         { note: { label: 'Before &amp; after photos', note: 'Only upload result photos where the client has signed consent for their images to be shown. Tag each pair with the treatment so it appears on the right page.' } },
       ],
     },
@@ -251,7 +259,10 @@ const CONTENT = {
           'Review their details and press <b>Accept</b>.',
           'Take the deposit (instalments are supported) and confirm the place.',
         ], done: 'the trainee can sign in to the portal and start the course.' } },
-        { p: 'Trainees learn in a guided, bite-size format with a friendly on-screen guide, quizzes, points, badges and streaks, on phone or desktop. They can sign in with Face ID or a fingerprint. Content grows automatically through a standing job, so the course library keeps expanding without manual work.' },
+        { shot: { src: 'academy', device: 'desk', url: 'kclinics.co.uk/academy', caption: 'The public academy page that markets your courses.', pins: [ { x: '12%', y: '76%', n: 1 }, { x: '25%', y: '76%', n: 2 }, { x: '50%', y: '98%', n: 3 } ], legend: ['Explore courses — browse and enrol', 'Trainee login', 'Ofqual / VTCT / CPD accreditations'] } },
+        { p: 'Trainees learn in a guided, bite-size format with a friendly on-screen guide, quizzes, points, badges and streaks, on phone or desktop. Content grows automatically through a standing job, so the course library keeps expanding without manual work.' },
+        { shot: { src: 'academy-portal', device: 'phone', url: '/academy/portal', caption: 'How a trainee signs in on their phone.', pins: [ { x: '52%', y: '80%', n: 1 }, { x: '52%', y: '93%', n: 2 } ], legend: ['Email and password', 'Or sign in with Face ID / fingerprint'] } },
+        { ktip: 'Show new trainees how to install the portal like an app and sign in with their face. They will actually keep their streak going.' },
       ],
     },
 
@@ -289,6 +300,7 @@ const CONTENT = {
           'Do the stock check and tick off the shutdown list (clean, lights, alarm).',
           'Submit to lock the day.',
         ], done: 'the day shows as closed and reconciled.' } },
+        { ktip: 'Receive stock with its expiry date in the box. The 90-day "expiring soon" warning only works if the date is actually entered.' },
       ],
     },
 
@@ -316,6 +328,7 @@ const CONTENT = {
           'Send a test to yourself first.',
           'Schedule a send time or press <b>Send now</b>.',
         ], done: 'the campaign shows as sent, with opens and clicks updating over the next hours.' } },
+        { ktip: 'Send yourself a test first. Always. It is the cheapest way to catch a wrong link or a broken image before 2,000 clients do.' },
         { note: { label: 'Consent matters', note: 'Marketing email and SMS only go to clients who agreed to receive them. Never add people from outside lists. The platform suppresses anyone who bounces or complains automatically.' } },
       ],
     },
@@ -337,6 +350,7 @@ const CONTENT = {
           'Apply any discount, then press <b>Charge</b> and take card or cash.',
           'Offer a printed or emailed receipt.',
         ], done: 'the sale shows in Orders and the takings update day close.' } },
+        { ktip: 'Reports stay locked until you unlock them, and unlocking is deliberately slow to brute-force. That is a safety feature, not a fault.' },
         { note: { label: 'Finance is locked by default', note: 'Reports stay locked until unlocked at <code>/admin/finance/unlock</code>, which is rate-limited on purpose. Only finance roles see money figures. The owner holds the controls for VAT, refunds and audit locks.' } },
       ],
     },
@@ -381,6 +395,7 @@ const CONTENT = {
       title: 'The public website and booking flow',
       lead: 'What clients see, and what you do behind it. The site turns visitors into bookings; the booking flow saves a card securely and only charges when the service is delivered.',
       blocks: [
+        { shot: { src: 'book', device: 'desk', url: 'kclinics.co.uk/book', caption: 'The booking flow runs left to right across the top of the widget.', pins: [ { x: '57%', y: '86%', n: 1 }, { x: '70%', y: '86%', n: 2 }, { x: '87%', y: '86%', n: 3 } ], legend: ['Choose the treatment', 'Pick a time', 'Confirm — card saved, charged only after the visit'] } },
         { h3: 'The client’s journey to a booking' },
         { ul: [
           'They browse treatments and prices, or use the treatment finder quiz at <code>/treatment-finder</code> for a recommendation.',
@@ -395,6 +410,8 @@ const CONTENT = {
           'Send health and consent forms before the appointment so the clinician is ready.',
           'After treatment, the system asks the client for a review automatically. Keep an eye on new ones in <code>/admin/reviews</code>.',
         ] },
+        { shot: { src: 'finder', device: 'desk', url: '/treatment-finder', caption: 'The treatment finder quiz suggests treatments for clients who are not sure what they want.' } },
+        { ktip: 'No card is charged at booking — only after the treatment, with free cancellation up to 24 hours before. Tell nervous clients that up front.' },
         { note: { label: 'If booking looks down', note: 'If the database is briefly unreachable, the booking page shows a "please call us" message rather than an error, so you can still take the booking by phone and enter it in the admin.' } },
       ],
     },
@@ -405,6 +422,7 @@ const CONTENT = {
       blocks: [
         { h3: 'The Skin &amp; Smile kiosk' },
         { p: 'A screen in the window or reception shows a QR code. A passer-by scans it, takes a selfie on their own phone, and gets a friendly skin and smile read-out with suggested treatments and a link to book. The photo is handled securely and deleted automatically after 30 days.' },
+        { shot: { src: 'kiosk', device: 'phone', url: '/kiosk/display', caption: 'What the window screen shows.', pins: [ { x: '50%', y: '17%', n: 1 }, { x: '50%', y: '63%', n: 2 }, { x: '50%', y: '95%', n: 3 } ], legend: ['Sits on the window screen', 'The client scans with their own phone', 'The code refreshes itself'] } },
         { task: { title: 'Set up and check the kiosk', roles: ['Admin', 'Front desk'], steps: [
           'Mount the screen and point it at <code>/kiosk/display</code> (find the link and QR under <code>/admin/qr</code>).',
           'Check the QR is on screen and the WiFi is stable each morning.',
@@ -412,6 +430,7 @@ const CONTENT = {
         ], done: 'the window screen shows the live QR and scanning opens the check on a phone.' } },
         { h3: 'Room displays' },
         { p: 'Small screens outside treatment rooms show the room, the current client’s first name only, the treatment and the time, plus what is next. They refresh by themselves. Generate a screen link per room under Devices in Operations.' },
+        { ktip: 'Glance at the window screen every morning. A frozen QR code books nobody.' },
       ],
     },
 
@@ -428,7 +447,9 @@ const CONTENT = {
           ['Gift cards', 'Add a gift code to their balance.'],
           ['Profile', 'Update details, marketing choices, and request a data export or deletion.'],
         ] } },
+        { shot: { src: 'portal-login', device: 'desk', url: 'kclinics.co.uk/account/login', caption: 'Where clients sign in to manage their own bookings, forms and points.' } },
         { p: 'Most of this is self-service. Your job is to make sure forms are completed before treatment and to help anyone who calls in stuck.' },
+        { ktip: 'Half of "can you change my appointment" calls can be a 20-second nudge: clients can reschedule themselves from here.' },
       ],
     },
 
@@ -442,6 +463,7 @@ const CONTENT = {
           'Before-photos: capture required laser before-photos through the platform, never on a personal phone. They are stored encrypted with the clinical record.',
           'Age policy: age-restricted treatments and products are checked at the point of booking or sale. No ID images are stored.',
         ] },
+        { ktip: 'No consent signed, no treatment. If you are not sure which form applies, ask the clinician before you send it.' },
         { note: { label: 'No treatment without consent', note: 'A booking should not be completed until the matching consent is signed and the health form is done. If you are unsure which form applies, ask the clinician before proceeding.' } },
       ],
     },
@@ -497,6 +519,7 @@ const CONTENT = {
           ['Automation', '<code>CRON_SECRET</code>, <code>BOARD_QUEUE_TOKEN</code>', 'Nightly jobs and the work queue'],
         ] } },
         { note: { label: 'Make a strong secret', note: 'For any token or JWT secret, run <code>openssl rand -base64 32</code> and paste the result. Store a copy in a password manager, never in a note or a doc. Keep an offline backup of <code>HEALTH_ENCRYPTION_KEY</code> in particular.' } },
+        { ktip: 'You will set these once and rarely touch them again. Keep them in a password manager, never in a chat or an email.' },
       ],
     },
 
@@ -514,6 +537,7 @@ const CONTENT = {
           ['Signed consent forms', '8 years', 'Deleted (UK clinical norm)'],
           ['Before-photos', '8 years', 'Deleted (UK clinical norm)'],
         ] } },
+        { ktip: 'If a kind of data is not in this table, nothing deletes it automatically. Decide a policy and write it into your privacy notice.' },
         { note: { label: 'Your decision to make', note: 'There is no automatic deletion yet for client profiles, bookings, consultations or audit logs — they are kept until removed by hand. Decide a policy (for example, anonymise clients with no visit for five years) and ask for it to be built. Note it in your privacy policy either way.' } },
       ],
     },
@@ -528,6 +552,7 @@ const CONTENT = {
           'The cookie banner is opt-in with no pre-ticked boxes, and reject is as easy as accept.',
           'For health questionnaires, show a privacy notice and capture separate consent for processing health data, kept apart from marketing consent.',
         ] },
+        { ktip: 'An access request starts a one-month clock. Begin it the day it lands, not the day you have time.' },
         { h3: 'Access requests (a client asks for their data)' },
         { task: { title: 'Answer a subject access request', roles: ['Owner'], steps: [
           'Open the client at <code>/admin/clients</code> and choose the export option (a senior role plus a passkey step is required).',
@@ -553,6 +578,7 @@ const CONTENT = {
       title: 'Owner: security baseline',
       lead: 'The platform ships with strong defaults — encrypted health data, signed logins, brute-force limits, 2FA, security headers. Your job is to switch on what needs switching on and keep good habits.',
       blocks: [
+        { ktip: 'Turn on two-factor for your own login first. You are the biggest target in the building.' },
         { h3: 'Before you go live' },
         { ul: [
           'Generate fresh secrets for every key (do not reuse test values), and store them in a password manager.',
