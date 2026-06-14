@@ -201,19 +201,17 @@ export async function getIntegrations(): Promise<Integration[]> {
     docsHref: 'https://console.truelayer.com',
   });
 
-  // ── Translation (DeepL / Google) ──
-  const deepl = present('DEEPL_API_KEY');
+  // ── Translation (Google) ──
   const gtrans = present('GOOGLE_TRANSLATE_KEY');
   items.push({
     id: 'translation',
     name: 'Translation',
     category: 'Communications',
-    description: 'Translates client health-form answers into British English for staff. Originals are always preserved.',
-    status: deepl || gtrans ? 'connected' : 'not_configured',
-    detail: deepl ? 'DeepL connected' : gtrans ? 'Google Translate connected' : 'Add a DeepL or Google Translate key to enable.',
+    description: 'Translates client health-form answers into British English for staff (Google Translate). Originals are always preserved.',
+    status: gtrans ? 'connected' : 'not_configured',
+    detail: gtrans ? 'Google Translate connected' : 'Add a Google Translate key to enable.',
     envVars: [
-      { name: 'DEEPL_API_KEY', set: deepl, optional: true },
-      { name: 'GOOGLE_TRANSLATE_KEY', set: gtrans, optional: true },
+      { name: 'GOOGLE_TRANSLATE_KEY', set: gtrans },
     ],
     docsHref: 'https://www.deepl.com/pro-api',
   });

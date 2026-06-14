@@ -180,26 +180,17 @@ async function checkTwilio(): Promise<Outcome> {
 }
 
 async function checkTranslation(): Promise<Outcome> {
-  const deeplKey = await getSecret('DEEPL_API_KEY');
+  // Google Cloud Translation is the configured provider (DeepL is no longer used).
   const gKey = await getSecret('GOOGLE_TRANSLATE_KEY');
-  if (!has(deeplKey) && !has(gKey)) return { light: 'grey', detail: 'Not configured — health-form answers stay untranslated' };
-  if (has(deeplKey)) {
-    const host = process.env.DEEPL_API_FREE === 'true' ? 'api-free.deepl.com' : 'api.deepl.com';
-    try {
-      const { res, ms } = await timed(`https://${host}/v2/usage`, { headers: { Authorization: `DeepL-Auth-Key ${deeplKey}` } });
-      const j = await res.json().catch(() => ({}));
-      if (res.ok) {
-        const used = Number(j.character_count ?? 0); const limit = Number(j.character_limit ?? 0);
-        const nearCap = limit > 0 && used / limit > 0.9;
-        return { light: nearCap ? 'amber' : 'green', detail: `DeepL key valid · ${used.toLocaleString('en-GB')}/${limit ? limit.toLocaleString('en-GB') : '∞'} chars used`, latencyMs: ms, info: nearCap ? ['Over 90% of the DeepL quota used this period.'] : undefined };
-      }
-      if (res.status === 401 || res.status === 403) return { light: 'red', detail: `DeepL key rejected (${res.status})`, latencyMs: ms };
-      return { light: 'amber', detail: `DeepL answered HTTP ${res.status}`, latencyMs: ms };
-    } catch (e) { return netFail(e); }
+  if (!has(gKey)) {
+    const deeplKey = await getSecret('DEEPL_API_KEY');
+    if (has(deeplKey)) return { light: 'amber', detail: 'DeepL key present but unused — add GOOGLE_TRANSLATE_KEY', info: ['Translation now uses Google; the DeepL key can be cleared.'] };
+    return { light: 'grey', detail: 'Not configured — health-form answers stay untranslated' };
   }
   try {
     const { res, ms } = await timed(`https://translation.googleapis.com/language/translate/v2/languages?key=${encodeURIComponent(gKey!)}&target=en`);
     if (res.ok) return { light: 'green', detail: 'Google Translate key valid', latencyMs: ms };
+    if (res.status === 401 || res.status === 403) return { light: 'red', detail: `Google Translate key rejected (${res.status})`, latencyMs: ms };
     return { light: 'red', detail: `Google Translate answered HTTP ${res.status}`, latencyMs: ms };
   } catch (e) { return netFail(e); }
 }
