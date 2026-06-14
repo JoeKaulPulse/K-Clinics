@@ -265,14 +265,16 @@ export async function getIntegrations(): Promise<Integration[]> {
   // ── SMS (Twilio) ──
   const twSid = present('TWILIO_ACCOUNT_SID');
   const twTok = present('TWILIO_AUTH_TOKEN');
-  const twFrom = present('TWILIO_FROM');
+  // TWILIO_FROM has a built-in default (the clinic SMS sender), so only the Twilio
+  // credentials need configuring; an owner-set TWILIO_FROM still overrides it.
+  const twFrom = true;
   items.push({
     id: 'sms',
     name: 'SMS reminders (Twilio)',
     category: 'Communications',
     description: 'Appointment reminders and confirmations by text message.',
-    status: twSid && twTok && twFrom ? 'connected' : (twSid || twTok || twFrom) ? 'partial' : 'not_configured',
-    detail: twSid && twTok && twFrom ? 'Configured' : 'Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM.',
+    status: twSid && twTok ? 'connected' : (twSid || twTok) ? 'partial' : 'not_configured',
+    detail: twSid && twTok ? 'Configured' : 'Add TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN.',
     envVars: [
       { name: 'TWILIO_ACCOUNT_SID', set: twSid },
       { name: 'TWILIO_AUTH_TOKEN', set: twTok },
