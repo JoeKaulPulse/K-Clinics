@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { KMark } from '@/components/brand/marks';
 
 type Stage = 'intro' | 'budget' | 'consent' | 'capture' | 'auth' | 'analysing' | 'results';
@@ -48,6 +48,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
   const [stage, setStage] = useState<Stage>('intro');
   const [authed, setAuthed] = useState(signedIn);
   const [name, setName] = useState(firstName);
+  const reduce = useReducedMotion();
   const [areas, setAreas] = useState<Set<string>>(new Set(['skin']));
   const [budget, setBudget] = useState<Budget | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -179,9 +180,9 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {photos[0] && <img src={photos[0].dataUrl} alt="Analysing your uploaded photo" className="h-full w-full object-cover opacity-90" />}
                 <div className="absolute inset-0" style={{ background: 'linear-gradient(transparent, rgba(12,11,10,0.5))' }} />
-                <motion.div className="absolute inset-x-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${gold}, transparent)`, boxShadow: `0 0 18px ${gold}` }} initial={{ top: '0%' }} animate={{ top: ['0%', '100%', '0%'] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }} />
+                <motion.div className="absolute inset-x-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${gold}, transparent)`, boxShadow: `0 0 18px ${gold}` }} initial={{ top: '0%' }} animate={reduce ? { top: '50%' } : { top: ['0%', '100%', '0%'] }} transition={reduce ? { duration: 0 } : { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }} />
                 {[[30, 35], [62, 44], [46, 62]].map(([x, y], i) => (
-                  <motion.span key={i} className="absolute h-3 w-3 rounded-full" style={{ left: `${x}%`, top: `${y}%`, border: `1.5px solid ${gold}` }} initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1.3, 1], opacity: [0, 1, 0.6] }} transition={{ delay: 0.6 + i * 0.5, duration: 1.2, repeat: Infinity, repeatDelay: 1 }} />
+                  <motion.span key={i} className="absolute h-3 w-3 rounded-full" style={{ left: `${x}%`, top: `${y}%`, border: `1.5px solid ${gold}` }} initial={{ scale: 0, opacity: 0 }} animate={reduce ? { scale: 1, opacity: 0.6 } : { scale: [0, 1.3, 1], opacity: [0, 1, 0.6] }} transition={reduce ? { duration: 0 } : { delay: 0.6 + i * 0.5, duration: 1.2, repeat: Infinity, repeatDelay: 1 }} />
                 ))}
               </div>
               <p className="mt-7 font-[family-name:var(--font-display)] text-2xl">Building your plan…</p>
@@ -327,6 +328,7 @@ function CameraCapture({ faceGuide, onCapture, onClose, onError }: { faceGuide: 
   const streamRef = useRef<MediaStream | null>(null);
   const [facing, setFacing] = useState<'user' | 'environment'>('user');
   const [ready, setReady] = useState(false);
+  const reduce = useReducedMotion();
   useEffect(() => {
     let active = true;
     (async () => {
@@ -354,7 +356,7 @@ function CameraCapture({ faceGuide, onCapture, onClose, onError }: { faceGuide: 
     <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/95 p-4">
       <div className="relative aspect-[3/4] w-full max-w-sm overflow-hidden rounded-3xl border border-white/10">
         <video ref={videoRef} playsInline muted className={`h-full w-full object-cover ${facing === 'user' ? '-scale-x-100' : ''}`} />
-        {faceGuide && <div className="pointer-events-none absolute inset-0 grid place-items-center"><motion.div className="h-[68%] w-[56%] rounded-[50%] border-2" style={{ borderColor: gold, boxShadow: '0 0 0 9999px rgba(0,0,0,0.4)' }} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 2.4, repeat: Infinity }} /></div>}
+        {faceGuide && <div className="pointer-events-none absolute inset-0 grid place-items-center"><motion.div className="h-[68%] w-[56%] rounded-[50%] border-2" style={{ borderColor: gold, boxShadow: '0 0 0 9999px rgba(0,0,0,0.4)' }} animate={reduce ? { opacity: 0.9 } : { opacity: [0.5, 1, 0.5] }} transition={reduce ? { duration: 0 } : { duration: 2.4, repeat: Infinity }} /></div>}
         <p className="absolute inset-x-0 top-4 px-6 text-center text-sm text-white/85">{faceGuide ? 'Centre your face in the oval, soft even light, hold still' : 'Frame the area clearly and hold still'}</p>
         {!ready && <p className="absolute inset-x-0 bottom-4 text-center text-sm text-white/60">Starting camera…</p>}
       </div>
