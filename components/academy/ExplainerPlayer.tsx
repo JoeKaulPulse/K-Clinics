@@ -29,7 +29,7 @@ export function ExplainerPlayer({ title, level, points, onClose, onStart }: { ti
   const art = cur.kind === 'point' ? matchIllustration(cur.text) : null;
 
   return (
-    <div className="fixed inset-0 z-[320] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]" onClick={() => !last && setI((x) => x + 1)}>
+    <div className="fixed inset-0 z-[320] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }} onClick={() => !last && setI((x) => x + 1)}>
       <AmbientBackdrop tone="dark" />
       <header className="relative z-10 flex items-center justify-between px-5 py-3">
         <span className="text-xs uppercase tracking-[0.18em] text-white/45">60-second explainer</span>
