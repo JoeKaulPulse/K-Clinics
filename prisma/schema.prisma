@@ -1842,6 +1842,7 @@ model Course {
   liveClasses   LiveClass[]
   examQuestions ExamQuestion[]
   pastPapers    PastPaper[]
+  fundingApplications FundingApplication[]
 
   @@index([active, order])
   @@index([tenantId])
@@ -2149,6 +2150,65 @@ model Enrolment {
   @@index([courseId])
   @@index([applicantEmail])
   @@index([tenantId])
+}
+
+// ── Academy funding / grants applications ───────────────────────────────────
+// A prospective trainee asking for help to pay (government loan/grant, council
+// funding, monthly course finance, or self/employer funded). Captured from the
+// public /academy/funding page and worked in /admin/academy/funding. Separate
+// from Enrolment because a learner can ask about funding before choosing a
+// course — `course` is optional. The eligibility snapshot is what they told the
+// self-check; staff confirm the real position before any funding is offered.
+enum FundingStatus {
+  NEW // submitted from the website, awaiting first review
+  REVIEWING // staff assessing eligibility
+  REFERRED // referred to a funder / finance partner / partner college
+  APPROVED // funding agreed in principle
+  DECLINED // not eligible / not proceeding with funding
+  FUNDED // funding in place — learner can enrol
+  CLOSED // withdrawn / no longer pursuing
+}
+
+model FundingApplication {
+  id       String  @id @default(cuid())
+  tenantId String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+
+  // Applicant.
+  name  String
+  email String
+  phone String?
+
+  // Course of interest (optional — they may apply before choosing one).
+  course      Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  courseId    String?
+  courseLevel String? // level they're interested in, e.g. "Level 4"
+
+  // Funding route the applicant is pursuing + every route the self-check flagged
+  // as a likely fit (route keys live in lib/funding.ts).
+  route          String
+  eligibleRoutes String[] @default([])
+
+  // Eligibility self-check snapshot (all optional; the checker can be skipped).
+  age19Plus         Boolean?
+  residencyOk       Boolean? // settled / 3-year UK or EU residence (loan + ASF gate)
+  londonResident    Boolean?
+  islingtonResident Boolean?
+  employmentStatus  String? // employed | unemployed | self_employed | other
+  lowIncome         Boolean? // unemployed or on a low wage (full-funding gate)
+  priorLevel3       Boolean? // already holds a full Level 3 (free Level 3 offer gate)
+
+  message String?
+  status  FundingStatus @default(NEW)
+  notes   String? // staff notes
+  source  String? // page / utm origin
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([email])
+  @@index([tenantId])
+  @@index([createdAt])
 }
 
 // ── Post-treatment follow-up questionnaire ──────────────────────────────────
