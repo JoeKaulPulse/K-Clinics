@@ -577,6 +577,173 @@ export const NEW_MODULES: CourseContentDef[] = [
       },
     ],
   },
+  {
+    courseSlug: L2,
+    modules: [
+      {
+        title: 'Skin Structure & Function',
+        summary: 'Know the skin’s layers and what each one does — the base every treatment builds on.',
+        lessons: [
+          {
+            title: 'The Skin’s Layers',
+            durationMin: 10,
+            objectives: ['Name the three main skin layers', 'Place the epidermis and dermis', 'Say what sits in each'],
+            studyTips: ['Epidermis = top barrier; dermis = the “working” layer with collagen and vessels.'],
+            examRefs: ['Skin structure'],
+            steps: [
+              { kind: 'say', text: 'Everything we do happens in the skin — so let’s open it up.', mood: 'happy' },
+              { kind: 'teach', title: 'Three layers', text: 'Skin has three main layers: the epidermis on top, the dermis beneath it, and the fatty hypodermis below that.', art: 'skin-layers' },
+              { kind: 'ask', prompt: 'The top layer of skin is the…', qtype: 'WORD', options: ['epidermis', 'dermis', 'hypodermis'], correct: [0], explanation: 'Epidermis = the outer barrier.' },
+              { kind: 'teach', title: 'The barrier', text: 'The epidermis is the protective barrier — it holds the melanin that gives skin its colour and shields against UV.' },
+              { kind: 'ask', prompt: 'Melanin, which gives skin colour, sits mainly in the…', qtype: 'SINGLE', options: ['Epidermis', 'Hypodermis', 'Bone', 'Hair shaft only'], correct: [0], explanation: 'Melanocytes live in the epidermis.' },
+              { kind: 'say', text: 'Now the busy layer underneath.', mood: 'cheer' },
+              { kind: 'teach', title: 'The working layer', text: 'The dermis holds collagen, elastin, blood vessels, nerves and glands — it’s where most treatments do their real work.', art: 'skin-layers' },
+              { kind: 'ask', prompt: 'Collagen and blood vessels sit mainly in the…', qtype: 'SINGLE', options: ['Dermis', 'Epidermis', 'Air', 'Nail'], correct: [0], explanation: 'The dermis is the structural, vascular layer.' },
+              { kind: 'say', text: 'Layers sorted — strong foundation.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'What Skin Does',
+            durationMin: 9,
+            objectives: ['List skin’s main jobs', 'Link structure to function', 'See why healthy skin matters for treatment'],
+            examRefs: ['Skin function'],
+            steps: [
+              { kind: 'say', text: 'Skin isn’t just a wrapper — it’s working hard. Let’s see how.', mood: 'happy' },
+              { kind: 'teach', title: 'Many jobs', text: 'Skin protects against germs and injury, senses touch and temperature, controls heat, and helps make vitamin D.' },
+              { kind: 'ask', prompt: 'Which are real jobs of the skin?', qtype: 'MULTI', options: ['Protection', 'Sensation', 'Temperature control', 'Digesting food'], correct: [0, 1, 2], explanation: 'Digestion isn’t one of them.' },
+              { kind: 'teach', title: 'Cools and warms', text: 'Sweat glands and surface vessels let skin cool you down or hold heat in — that’s why a treated area can look flushed.' },
+              { kind: 'ask', prompt: 'Skin helps control body…', qtype: 'WORD', options: ['temperature', 'weight', 'eyesight'], correct: [0], explanation: 'Thermoregulation.' },
+              { kind: 'teach', title: 'Why it matters', text: 'Healthy, intact skin heals better and reacts more predictably — broken or compromised skin is a reason to pause.' },
+              { kind: 'say', text: 'You now read skin like a pro. Lovely.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Skin Structure Assessment', passMark: 70,
+          questions: [
+            { prompt: 'The skin’s three main layers, top to bottom, are…', type: 'SINGLE', options: ['Epidermis, dermis, hypodermis', 'Dermis, epidermis, bone', 'Hypodermis, dermis, epidermis', 'Epidermis, bone, fat'], correct: [0], explanation: 'Epidermis → dermis → hypodermis.' },
+            { prompt: 'The outer barrier layer is the…', type: 'WORD', options: ['epidermis', 'dermis', 'hypodermis'], correct: [0], explanation: 'The epidermis.' },
+            { prompt: 'Collagen, vessels and nerves sit mainly in the…', type: 'SINGLE', options: ['Dermis', 'Epidermis', 'Hair', 'Nail'], correct: [0], explanation: 'The dermis is the working layer.' },
+            { prompt: 'Which are real functions of skin?', type: 'MULTI', options: ['Protection', 'Sensation', 'Temperature control', 'Pumping blood'], correct: [0, 1, 2], explanation: 'The heart pumps blood, not skin.' },
+            { prompt: 'Melanin is produced mainly in the epidermis.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Melanocytes live there.' },
+            { prompt: 'Broken or compromised skin is a reason to pause a treatment.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Intact skin heals and reacts more predictably.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    courseSlug: 'level-3-laser-aesthetic-therapies',
+    modules: [
+      {
+        title: 'Laser & Light Devices',
+        summary: 'Tell the main devices apart and match the right one to each job.',
+        lessons: [
+          {
+            title: 'Types of Device',
+            durationMin: 10,
+            objectives: ['Distinguish IPL from laser', 'Name common laser types', 'Link each to a typical use'],
+            studyTips: ['IPL = many wavelengths (broad-band); a laser = one wavelength.'],
+            examRefs: ['Laser & light devices'],
+            steps: [
+              { kind: 'say', text: 'Lots of machines, one set of rules. Let’s line them up.', mood: 'happy' },
+              { kind: 'teach', title: 'IPL vs laser', text: 'IPL sends out many wavelengths at once (broad-band light); a laser sends a single, precise wavelength.', art: 'light-spectrum' },
+              { kind: 'ask', prompt: 'A laser emits…', qtype: 'SINGLE', options: ['One wavelength', 'Many wavelengths', 'No light', 'Only heat'], correct: [0], explanation: 'Single wavelength — IPL is the broad-band one.' },
+              { kind: 'teach', title: 'The common lasers', text: 'Common types are Diode and Alexandrite (often hair removal) and Nd:YAG, which goes deeper and suits darker skin and vascular work.', art: 'light-spectrum' },
+              { kind: 'ask', prompt: 'Which laser penetrates deepest and suits darker skin?', qtype: 'SINGLE', options: ['Nd:YAG', 'Alexandrite', 'Diode', 'IPL'], correct: [0], explanation: 'Longer wavelength = deeper, safer in higher skin types.' },
+              { kind: 'say', text: 'Names down — now what they’re for.', mood: 'cheer' },
+              { kind: 'teach', title: 'Right tool, right job', text: 'No single device does everything — the skill is matching the machine to the target and the skin type.' },
+              { kind: 'ask', prompt: 'One device can safely do every job on every skin.', qtype: 'TRUEFALSE', options: ['False', 'True'], correct: [0], explanation: 'You match device to target and skin type.' },
+              { kind: 'say', text: 'Device sense unlocked. Nice work.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Matching Device to Job',
+            durationMin: 9,
+            objectives: ['Connect wavelength to depth', 'Pick by chromophore', 'Factor in skin type'],
+            studyTips: ['Longer wavelength → deeper penetration.'],
+            examRefs: ['Laser & light devices'],
+            steps: [
+              { kind: 'say', text: 'Now let’s choose wisely for a real client.', mood: 'think' },
+              { kind: 'teach', title: 'Wavelength and depth', text: 'Longer wavelengths reach deeper. So the target’s depth helps decide which device and setting you reach for.' },
+              { kind: 'ask', prompt: 'A longer wavelength generally reaches…', qtype: 'WORD', options: ['deeper', 'shallower', 'nowhere'], correct: [0], explanation: 'Depth rises with wavelength.' },
+              { kind: 'teach', title: 'Follow the chromophore', text: 'Match the device to the chromophore — melanin for hair and pigment, haemoglobin for vessels.' },
+              { kind: 'ask', prompt: 'For thread veins, the target chromophore is…', qtype: 'WORD', options: ['haemoglobin', 'melanin', 'water'], correct: [0], explanation: 'Vascular work targets haemoglobin.' },
+              { kind: 'teach', title: 'Skin type guards safety', text: 'Higher Fitzpatrick types favour longer wavelengths (like Nd:YAG) and gentler settings to protect surface melanin.' },
+              { kind: 'say', text: 'You can pick the right machine now. Brilliant.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Devices Assessment', passMark: 70,
+          questions: [
+            { prompt: 'IPL differs from a laser because it emits…', type: 'SINGLE', options: ['Many wavelengths', 'One wavelength', 'No light', 'Sound'], correct: [0], explanation: 'IPL is broad-band; a laser is single-wavelength.' },
+            { prompt: 'Which laser penetrates deepest and is safer in darker skin?', type: 'SINGLE', options: ['Nd:YAG', 'Alexandrite', 'Diode', 'IPL'], correct: [0], explanation: 'Longer wavelength, deeper, gentler on surface melanin.' },
+            { prompt: 'A longer wavelength reaches deeper into the skin.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Depth rises with wavelength.' },
+            { prompt: 'For vascular (thread vein) work the target is…', type: 'WORD', options: ['haemoglobin', 'melanin', 'water'], correct: [0], explanation: 'Haemoglobin.' },
+            { prompt: 'Which factors guide device choice?', type: 'MULTI', options: ['Target depth', 'Chromophore', 'Skin type', 'The client’s star sign'], correct: [0, 1, 2], explanation: 'Depth, chromophore and skin type — not astrology.' },
+            { prompt: 'One device can safely treat everything on every skin type.', type: 'TRUEFALSE', options: ['False', 'True'], correct: [0], explanation: 'Match the tool to the job.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    courseSlug: 'level-4-certificate-aesthetic-practice',
+    modules: [
+      {
+        title: 'Consent, Capacity & Expectations',
+        summary: 'Take consent properly, check capacity, and set expectations you can meet.',
+        lessons: [
+          {
+            title: 'Informed Consent',
+            durationMin: 10,
+            objectives: ['Define informed consent', 'List what must be explained', 'Know consent is ongoing'],
+            studyTips: ['Consent must be informed, voluntary and ongoing — a signature alone isn’t consent.'],
+            examRefs: ['Consent'],
+            steps: [
+              { kind: 'say', text: 'Consent is the cornerstone — let’s get it right.', mood: 'think' },
+              { kind: 'teach', title: 'What it means', text: 'Informed consent means the client understands the procedure, the risks, the alternatives and the cost — and agrees freely.', art: 'safety' },
+              { kind: 'ask', prompt: 'Informed consent must cover…', qtype: 'MULTI', options: ['The procedure', 'The risks', 'The alternatives', 'Your lunch plans'], correct: [0, 1, 2], explanation: 'Procedure, risks and alternatives — not small talk.' },
+              { kind: 'teach', title: 'A signature isn’t enough', text: 'A signed form alone isn’t consent — the conversation and understanding are what count.' },
+              { kind: 'ask', prompt: 'A signed form by itself counts as full consent.', qtype: 'TRUEFALSE', options: ['False', 'True'], correct: [0], explanation: 'Understanding, not just a signature.' },
+              { kind: 'say', text: 'Now — consent doesn’t stop at the form.', mood: 'happy' },
+              { kind: 'teach', title: 'It’s ongoing', text: 'Consent is ongoing: a client can change their mind at any point, and you stop.' },
+              { kind: 'ask', prompt: 'A client can withdraw consent…', qtype: 'SINGLE', options: ['At any time', 'Never', 'Only at the start', 'Only in writing a week ahead'], correct: [0], explanation: 'They can stop at any point.' },
+              { kind: 'say', text: 'Consent: properly understood. Excellent.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Capacity & Realistic Expectations',
+            durationMin: 9,
+            objectives: ['Explain mental capacity', 'Spot when to pause', 'Set honest expectations'],
+            studyTips: ['No capacity, or under-18 for cosmetic work → don’t proceed.'],
+            examRefs: ['Capacity / expectations'],
+            steps: [
+              { kind: 'say', text: 'Two more things that keep clients safe.', mood: 'think' },
+              { kind: 'teach', title: 'Capacity', text: 'Capacity means the client can understand, retain and weigh the information and communicate a decision. Without it, you don’t proceed.' },
+              { kind: 'ask', prompt: 'If a client lacks capacity to decide, you should…', qtype: 'SINGLE', options: ['Not proceed', 'Proceed anyway', 'Ask a stranger', 'Guess for them'], correct: [0], explanation: 'No capacity → no treatment.' },
+              { kind: 'teach', title: 'Honest expectations', text: 'Promise only what the treatment can realistically deliver — over-promising sets up disappointment and complaints.' },
+              { kind: 'ask', prompt: 'Over-promising results tends to lead to…', qtype: 'MULTI', options: ['Disappointment', 'Complaints', 'Loss of trust', 'Guaranteed success'], correct: [0, 1, 2], explanation: 'It rarely ends well.' },
+              { kind: 'teach', title: 'Document it', text: 'Record what you discussed, what you agreed and any expectations set — your notes protect both of you.' },
+              { kind: 'say', text: 'Safe, honest, well-recorded. That’s the standard.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Consent Assessment', passMark: 70,
+          questions: [
+            { prompt: 'Informed consent must be explained to include…', type: 'MULTI', options: ['The procedure', 'The risks', 'The alternatives', 'Nothing in particular'], correct: [0, 1, 2], explanation: 'Procedure, risks, alternatives.' },
+            { prompt: 'A signed form on its own is full consent.', type: 'TRUEFALSE', options: ['False', 'True'], correct: [0], explanation: 'Understanding matters, not just a signature.' },
+            { prompt: 'A client can withdraw consent…', type: 'SINGLE', options: ['At any time', 'Never', 'Only before booking', 'Only in writing'], correct: [0], explanation: 'At any point.' },
+            { prompt: 'If a client lacks capacity to decide, you…', type: 'SINGLE', options: ['Do not proceed', 'Proceed anyway', 'Decide for them', 'Ignore it'], correct: [0], explanation: 'No capacity → no treatment.' },
+            { prompt: 'Over-promising results can cause…', type: 'MULTI', options: ['Disappointment', 'Complaints', 'Lost trust', 'Better outcomes'], correct: [0, 1, 2], explanation: 'It harms trust, not outcomes.' },
+            { prompt: 'What you discussed and agreed should be documented.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Notes protect everyone.' },
+          ],
+        },
+      },
+    ],
+  },
 ];
 
 export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
@@ -621,6 +788,15 @@ export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
   { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Hair removal', prompt: 'Laser hair removal responds best when the hair is…', options: ['Dark', 'Grey', 'White', 'Very fair'], correct: [0], explanation: 'Dark hair holds the melanin the laser targets.' },
   { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Hair removal', prompt: 'Only follicles in the active growth phase respond — that phase is called…', type: 'WORD', options: ['anagen', 'telogen', 'catagen'], correct: [0], explanation: 'Anagen is the active, pigmented, connected phase.' },
   { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Hair removal', prompt: 'Higher Fitzpatrick types can never have laser hair removal.', type: 'TRUEFALSE', options: ['False', 'True'], correct: [0], explanation: 'They can — with the right device, adjusted settings and caution.' },
+  { courseSlug: L2, topic: 'Skin structure', prompt: 'The skin’s outer barrier layer is the…', type: 'WORD', options: ['epidermis', 'dermis', 'hypodermis'], correct: [0], explanation: 'The epidermis sits on top.' },
+  { courseSlug: L2, topic: 'Skin structure', prompt: 'Collagen, blood vessels and nerves sit mainly in the…', options: ['Dermis', 'Epidermis', 'Hypodermis', 'Hair shaft'], correct: [0], explanation: 'The dermis is the structural, vascular layer.' },
+  { courseSlug: L2, topic: 'Skin function', prompt: 'Which are genuine jobs of the skin?', type: 'MULTI', options: ['Protection', 'Temperature control', 'Sensation', 'Digesting food'], correct: [0, 1, 2], explanation: 'Digestion isn’t a skin function.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Devices', prompt: 'IPL differs from a laser because it emits…', options: ['Many wavelengths (broad-band)', 'One wavelength', 'No light', 'Only sound'], correct: [0], explanation: 'IPL is broad-band; a laser is single-wavelength.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Devices', prompt: 'Which laser penetrates deepest and is safer in darker skin?', options: ['Nd:YAG', 'Alexandrite', 'Diode', 'IPL'], correct: [0], explanation: 'Longer wavelength, deeper, gentler on surface melanin.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Devices', prompt: 'A longer wavelength generally penetrates…', type: 'WORD', options: ['deeper', 'shallower', 'sideways'], correct: [0], explanation: 'Depth rises with wavelength.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Consent', prompt: 'For consent to be valid it must be…', type: 'MULTI', options: ['Informed', 'Voluntary', 'Ongoing', 'Secret'], correct: [0, 1, 2], explanation: 'Informed, voluntary and ongoing.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Consent', prompt: 'A client may withdraw consent…', options: ['At any time', 'Never', 'Only before paying', 'Only in writing'], correct: [0], explanation: 'They can stop at any point.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Capacity', prompt: 'If a client lacks the mental capacity to decide, you should…', options: ['Not proceed', 'Proceed anyway', 'Decide for them', 'Ask a bystander'], correct: [0], explanation: 'No capacity means no treatment.' },
 ];
 
 function bodyFromSteps(steps: Step[]): string {
