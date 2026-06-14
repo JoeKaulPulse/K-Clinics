@@ -321,6 +321,7 @@ function TeachMicro({ step, onContinue, gated }: { step: TeachStep; onContinue: 
 function AskMicro({ step, onContinue }: { step: AskStep; onContinue: () => void }) {
   const { levelFor, seeArt } = useContext(ArtCtx);
   const multi = step.qtype === 'MULTI';
+  const word = step.qtype === 'WORD'; // "select the right word" — fill the blank from tiles
   const [selected, setSelected] = useState<number[]>([]);
   const [checked, setChecked] = useState(false);
   const [correct, setCorrect] = useState(false);
@@ -353,23 +354,42 @@ function AskMicro({ step, onContinue }: { step: AskStep; onContinue: () => void 
 
   return (
     <div className="py-2">
-      <p className="text-xs uppercase tracking-[0.16em] text-white/40">Quick check</p>
-      <h3 className="mt-2 font-[family-name:var(--font-display)] text-2xl leading-snug">{step.prompt}{multi && <span className="ml-2 align-middle text-xs font-normal text-white/45">(select all)</span>}</h3>
+      <p className="text-xs uppercase tracking-[0.16em] text-white/40">{word ? 'Select the right word' : 'Quick check'}</p>
+      {word ? (
+        <p className="mt-3 font-[family-name:var(--font-display)] text-2xl leading-relaxed">
+          {step.prompt.split('___')[0]}
+          <span className={`mx-1 inline-block min-w-[5ch] rounded-md border-b-2 px-2 text-center ${selected[0] != null ? 'border-[var(--color-gold)] text-[var(--color-gold)]' : 'border-white/40 text-white/30'}`}>{selected[0] != null ? step.options[selected[0]] : '  '}</span>
+          {step.prompt.split('___')[1] ?? ''}
+        </p>
+      ) : (
+        <h3 className="mt-2 font-[family-name:var(--font-display)] text-2xl leading-snug">{step.prompt}{multi && <span className="ml-2 align-middle text-xs font-normal text-white/45">(select all)</span>}</h3>
+      )}
       {art && <div className="mt-4"><Illustration name={art} level={lvl} /></div>}
-      <div className="mt-5 space-y-2.5">
-        {step.options.map((opt, oi) => {
-          const chosen = selected.includes(oi);
-          const showC = checked && correctIdx.includes(oi);
-          const cls = checked ? (showC ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/15' : chosen ? 'border-red-400/60 bg-red-400/10' : 'border-white/10 opacity-60') : chosen ? 'border-white bg-white/10' : 'border-white/15 hover:border-white/40';
-          return (
-            <button key={oi} onClick={() => toggle(oi)} disabled={checked} className={`flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left text-sm transition-colors ${cls}`}>
-              <span className={`grid h-5 w-5 shrink-0 place-items-center ${multi ? 'rounded-[4px]' : 'rounded-full'} border text-[0.7rem] ${chosen ? 'border-white bg-white text-[var(--color-ink)]' : 'border-white/40'}`}>{chosen ? '✓' : ''}</span>
-              <span className="flex-1">{opt}</span>
-              {checked && showC && <span className="text-xs text-[var(--color-gold)]">✓</span>}
-            </button>
-          );
-        })}
-      </div>
+      {word ? (
+        <div className="mt-6 flex flex-wrap justify-center gap-2.5">
+          {step.options.map((opt, oi) => {
+            const chosen = selected.includes(oi);
+            const showC = checked && correctIdx.includes(oi);
+            const cls = checked ? (showC ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/15 text-[var(--color-gold)]' : chosen ? 'border-red-400/60 bg-red-400/10' : 'border-white/10 opacity-50') : chosen ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/15' : 'border-white/25 hover:border-white/50';
+            return <button key={oi} onClick={() => toggle(oi)} disabled={checked} className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${cls}`}>{opt}</button>;
+          })}
+        </div>
+      ) : (
+        <div className="mt-5 space-y-2.5">
+          {step.options.map((opt, oi) => {
+            const chosen = selected.includes(oi);
+            const showC = checked && correctIdx.includes(oi);
+            const cls = checked ? (showC ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/15' : chosen ? 'border-red-400/60 bg-red-400/10' : 'border-white/10 opacity-60') : chosen ? 'border-white bg-white/10' : 'border-white/15 hover:border-white/40';
+            return (
+              <button key={oi} onClick={() => toggle(oi)} disabled={checked} className={`flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left text-sm transition-colors ${cls}`}>
+                <span className={`grid h-5 w-5 shrink-0 place-items-center ${multi ? 'rounded-[4px]' : 'rounded-full'} border text-[0.7rem] ${chosen ? 'border-white bg-white text-[var(--color-ink)]' : 'border-white/40'}`}>{chosen ? '✓' : ''}</span>
+                <span className="flex-1">{opt}</span>
+                {checked && showC && <span className="text-xs text-[var(--color-gold)]">✓</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
       {step.tip && !checked && hintAllowed && (
         <div className="mt-3">{showTip ? <p className="rounded-[var(--radius-md)] border border-[var(--color-gold)]/25 bg-[var(--color-gold)]/8 px-4 py-2.5 text-sm text-white/85">💡 {step.tip}</p> : <button onClick={() => setShowTip(true)} className="text-sm text-[var(--color-gold)] hover:underline">Need a hint?</button>}</div>
       )}
