@@ -104,8 +104,8 @@ async function googlePlacesSource(): Promise<SourceResult> {
   if (!placeId || !key) return null;
   try {
     const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=rating,user_ratings_total,reviews&reviews_sort=newest&key=${key}`;
-    // Cache for 6h — Google rate-limits and reviews change slowly.
-    const res = await fetch(url, { next: { revalidate: 21600 } });
+    // Cache for 1h — short enough that a newly-fixed key shows promptly.
+    const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) return null;
     const data = (await res.json()) as { result?: { rating?: number; user_ratings_total?: number; reviews?: GooglePlaceReview[] } };
     const r = data.result;

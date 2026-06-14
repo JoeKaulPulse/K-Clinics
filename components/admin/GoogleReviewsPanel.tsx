@@ -199,6 +199,7 @@ export function GoogleReviewsPanel({ connected, configured, locationSet, reviews
       {connected && !locationSet && <LocationSetup onReady={() => router.refresh()} />}
 
       <ManualAdd onAdded={() => router.refresh()} />
+      <BulkAdd onAdded={() => router.refresh()} />
 
       {reviews.length > 0 && (
         <div className="mt-5 space-y-3">
@@ -248,6 +249,49 @@ function ManualAdd({ onAdded }: { onAdded: () => void }) {
       {err && <p className="text-xs text-[var(--color-blush)]">{err}</p>}
       <div className="flex gap-2">
         <button onClick={add} disabled={busy || !comment.trim()} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Adding…' : 'Add review'}</button>
+        <button onClick={() => setOpen(false)} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs text-[var(--color-stone)]">Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function BulkAdd({ onAdded }: { onAdded: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  function parse() {
+    return text.split('\n').map((l) => l.trim()).filter(Boolean).map((line) => {
+      const p = line.split('|').map((s) => s.trim());
+      const starRating = Number(p[0]);
+      let createTime: string | undefined; let comment = '';
+      if (p.length >= 4) { createTime = p[2] || undefined; comment = p.slice(3).join(' | '); }
+      else if (p.length === 3) { comment = p[2]; }
+      return { starRating, reviewerName: p[1] || '', createTime, comment };
+    }).filter((r) => r.starRating >= 1 && r.starRating <= 5);
+  }
+
+  async function submit() {
+    const reviews = parse();
+    if (!reviews.length) { setMsg('Nothing valid found — check the format (rating | name | date | text).'); return; }
+    setBusy(true); setMsg('');
+    const r = await post({ op: 'bulkAdd', reviews });
+    setBusy(false);
+    if (r.ok) { setText(''); setOpen(false); onAdded(); } else setMsg(r.error || 'Could not import.');
+  }
+
+  if (!open) {
+    return <button onClick={() => setOpen(true)} className="mt-2 rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium text-[var(--color-stone)] hover:bg-[var(--color-bone)]">Paste many at once</button>;
+  }
+  return (
+    <div className="mt-3 space-y-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4">
+      <p className="text-sm font-medium text-[var(--color-ink)]">Paste your existing Google reviews</p>
+      <p className="text-xs text-[var(--color-stone)]">One per line: <code className="text-[0.7rem]">rating | name | date | review text</code>. Date is optional. They publish on the site immediately.</p>
+      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} placeholder={'5 | Jane D. | 2025-01-10 | Brilliant, the whole team were so kind.\n5 | Tom R. | 2025-02-02 | Highly recommend — natural results.'} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 font-[family-name:var(--font-mono)] text-xs outline-none focus:border-[var(--color-gold)]" />
+      {msg && <p className="text-xs text-[var(--color-blush)]">{msg}</p>}
+      <div className="flex gap-2">
+        <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Importing…' : 'Import all'}</button>
         <button onClick={() => setOpen(false)} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs text-[var(--color-stone)]">Cancel</button>
       </div>
     </div>
