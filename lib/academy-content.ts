@@ -251,6 +251,167 @@ export const NEW_MODULES: CourseContentDef[] = [
       },
     ],
   },
+  {
+    courseSlug: L2,
+    modules: [
+      {
+        title: 'Hygiene & Infection Control',
+        summary: 'Protect clients and yourself — hand hygiene, single-use sharps, clean surfaces and correct waste.',
+        lessons: [
+          {
+            title: 'Stopping the Spread',
+            durationMin: 10,
+            objectives: ['Apply hand hygiene', 'Use single-use items correctly', 'Dispose of sharps safely'],
+            studyTips: ['“Single-use means single-use” — never reuse cartridges or needles.'],
+            examRefs: ['Health & safety / infection control'],
+            steps: [
+              { kind: 'say', text: 'Infection control keeps everyone safe — let’s nail the basics.', mood: 'happy' },
+              { kind: 'teach', title: 'Clean hands', text: 'It starts with your hands — wash or sanitise before and after every single client.', art: 'safety' },
+              { kind: 'ask', prompt: 'When should you sanitise your hands?', qtype: 'SINGLE', options: ['Before and after every client', 'Once a day', 'Only if visibly dirty', 'Never'], correct: [0], explanation: 'Before AND after each client is the foundation.' },
+              { kind: 'teach', title: 'Single-use', text: 'Needles and cartridges are used once and binned. Reusable tools are cleaned and sterilised between clients.' },
+              { kind: 'ask', prompt: 'A microneedling cartridge is…', qtype: 'SINGLE', options: ['Single-use', 'Reusable if wiped', 'Used all day', 'Optional'], correct: [0], explanation: 'Single-use — never reuse between clients.' },
+              { kind: 'say', text: 'Exactly. Safety over shortcuts.', mood: 'cheer' },
+              { kind: 'teach', title: 'Sharps', text: 'Used needles go straight into a sharps bin — never a normal bin. This prevents needlestick injuries.' },
+              { kind: 'ask', prompt: 'Used needles go into a ___ bin.', qtype: 'WORD', options: ['sharps', 'recycling', 'general'], correct: [0], explanation: 'A sharps bin prevents injury and disease spread.' },
+              { kind: 'say', text: 'Clean and safe — well done.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'A Safe, Clean Workspace',
+            durationMin: 9,
+            objectives: ['Disinfect between clients', 'Use PPE correctly', 'Separate waste streams'],
+            examRefs: ['Health & safety / infection control'],
+            steps: [
+              { kind: 'say', text: 'Now the workspace itself.', mood: 'happy' },
+              { kind: 'teach', title: 'Surfaces', text: 'Surfaces and equipment are wiped with appropriate disinfectant between clients, and couch roll is changed every time.' },
+              { kind: 'ask', prompt: 'Couch roll should be changed…', qtype: 'SINGLE', options: ['Between every client', 'Weekly', 'Never', 'Monthly'], correct: [0], explanation: 'Fresh couch roll for every client.' },
+              { kind: 'teach', title: 'PPE', text: 'Gloves and eye protection are worn as needed and changed between clients.', art: 'safety' },
+              { kind: 'ask', prompt: 'Which are infection-control basics?', qtype: 'MULTI', options: ['Hand hygiene', 'Single-use sharps', 'Sharing tools unwashed', 'Surface disinfection'], correct: [0, 1, 3], explanation: 'Sharing unwashed tools is exactly what to avoid.' },
+              { kind: 'teach', title: 'Waste', text: 'Separate waste correctly: clinical waste, sharps, and general — each in its right stream.' },
+              { kind: 'say', text: 'A clean clinic is a safe clinic. Brilliant.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Hygiene & Infection Control Assessment', passMark: 70,
+          questions: [
+            { prompt: 'Hands should be sanitised before and after every client.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'The foundation of infection control.' },
+            { prompt: 'Microneedling cartridges are…', type: 'SINGLE', options: ['Single-use', 'Reusable', 'All-day', 'Optional'], correct: [0], explanation: 'Used once, then binned.' },
+            { prompt: 'Used needles go into a ___ bin.', type: 'WORD', options: ['sharps', 'general', 'recycling'], correct: [0], explanation: 'Sharps bin only.' },
+            { prompt: 'Couch roll is changed…', type: 'SINGLE', options: ['Between every client', 'Weekly', 'Monthly', 'Never'], correct: [0], explanation: 'Fresh per client.' },
+            { prompt: 'Which are infection-control basics?', type: 'MULTI', options: ['Hand hygiene', 'Surface disinfection', 'Reusing sharps', 'Single-use items'], correct: [0, 1, 3], explanation: 'Reusing sharps is unsafe.' },
+            { prompt: 'PPE such as gloves should be changed between clients.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Fresh PPE per client.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    courseSlug: 'level-3-laser-aesthetic-therapies',
+    modules: [
+      {
+        title: 'Skin Rejuvenation & Photofacials',
+        summary: 'Stimulate fresh collagen, even out tone, and plan settings safely.',
+        lessons: [
+          {
+            title: 'How Rejuvenation Works',
+            durationMin: 11,
+            objectives: ['Explain neocollagenesis', 'Describe what photofacials treat', 'Set realistic expectations'],
+            studyTips: ['Neo = new, collagenesis = collagen-making.'],
+            examRefs: ['Skin rejuvenation'],
+            steps: [
+              { kind: 'say', text: 'Rejuvenation is satisfying work — here’s how it actually works.', mood: 'happy' },
+              { kind: 'teach', title: 'Controlled injury', text: 'Rejuvenation creates controlled micro-injury, prompting the skin to make fresh collagen as it heals — firmer, smoother skin over weeks.', art: 'collagen' },
+              { kind: 'ask', prompt: 'Rejuvenation works mainly by stimulating…', qtype: 'SINGLE', options: ['New collagen', 'Melanin', 'Sweat', 'Hair'], correct: [0], explanation: 'Neocollagenesis — new collagen.' },
+              { kind: 'teach', title: 'Photofacials', text: 'Photofacials (IPL) also target redness and brown spots, evening out tone in the same session.' },
+              { kind: 'ask', prompt: 'IPL photofacials can help with…', qtype: 'MULTI', options: ['Redness', 'Brown spots', 'Uneven tone', 'Deep wrinkles alone'], correct: [0, 1, 2], explanation: 'Tone, redness and pigment; deep wrinkles need more.' },
+              { kind: 'say', text: 'Lovely. Manage expectations and you’re golden.', mood: 'cheer' },
+              { kind: 'ask', prompt: 'New collagen formation is called neo___.', qtype: 'WORD', options: ['collagenesis', 'plasia', 'natal'], correct: [0], explanation: 'Neocollagenesis.' },
+              { kind: 'say', text: 'That’s rejuvenation in a nutshell.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Planning a Safe Treatment',
+            durationMin: 10,
+            objectives: ['Match settings to the client', 'Understand fluence', 'Document the plan'],
+            studyTips: ['Fluence = energy density (J/cm²).'],
+            examRefs: ['Treatment planning'],
+            steps: [
+              { kind: 'say', text: 'Now — getting the settings right.', mood: 'think' },
+              { kind: 'teach', title: 'Match the client', text: 'Match settings to the client: skin type, the target, and a patch test guide your fluence and pulse.' },
+              { kind: 'ask', prompt: 'Higher Fitzpatrick types generally need…', qtype: 'SINGLE', options: ['Lower, more cautious settings', 'Maximum energy', 'No patch test', 'Faster pulses'], correct: [0], explanation: 'More melanin means more caution.' },
+              { kind: 'teach', title: 'Fluence', text: 'Fluence is the energy delivered. Too low won’t work; too high risks burns — build up cautiously.' },
+              { kind: 'ask', prompt: 'The energy a laser delivers is called its ___.', qtype: 'WORD', options: ['fluence', 'colour', 'volume'], correct: [0], explanation: 'Fluence — joules per cm².' },
+              { kind: 'teach', title: 'Document', text: 'Record the plan and settings, and review results before the next session.' },
+              { kind: 'say', text: 'Careful planning, safe results. Great.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Rejuvenation & Planning Assessment', passMark: 70,
+          questions: [
+            { prompt: 'Rejuvenation mainly stimulates…', type: 'SINGLE', options: ['New collagen', 'Melanin', 'Hair', 'Sweat'], correct: [0], explanation: 'Neocollagenesis.' },
+            { prompt: 'IPL photofacials help with redness, brown spots and uneven tone.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'They even out tone.' },
+            { prompt: 'The energy density a laser delivers is its ___.', type: 'WORD', options: ['fluence', 'wavelength', 'pulse'], correct: [0], explanation: 'Fluence (J/cm²).' },
+            { prompt: 'Higher Fitzpatrick types usually need…', type: 'SINGLE', options: ['Lower, cautious settings', 'Maximum energy', 'No consultation', 'No SPF'], correct: [0], explanation: 'More caution for more melanin.' },
+            { prompt: 'Too-high fluence risks…', type: 'SINGLE', options: ['Burns', 'Nothing', 'Better results always', 'Faster healing'], correct: [0], explanation: 'Build up cautiously.' },
+            { prompt: 'Treatment plans and settings should be documented.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Records guide the next session.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    courseSlug: 'advanced-aesthetics-level-5-7',
+    modules: [
+      {
+        title: 'Advanced Practice & Reflection',
+        summary: 'Audit your outcomes, lead on safety, and keep your practice current.',
+        lessons: [
+          {
+            title: 'Reflective Practice',
+            durationMin: 10,
+            objectives: ['Reflect on real outcomes', 'Audit your results', 'Improve from data'],
+            examRefs: ['Reflective practice'],
+            steps: [
+              { kind: 'say', text: 'Advanced practice is as much about reflection as technique.', mood: 'think' },
+              { kind: 'teach', title: 'Reflect honestly', text: 'Reflective practice means honestly analysing outcomes — what worked, what didn’t, and why.' },
+              { kind: 'ask', prompt: 'Reflective practice helps you…', qtype: 'SINGLE', options: ['Improve from real outcomes', 'Avoid records', 'Work faster only', 'Skip training'], correct: [0], explanation: 'Learning from your results raises standards.' },
+              { kind: 'teach', title: 'Audit', text: 'Track your complication rates, client satisfaction and re-treatment rates to spot patterns over time.' },
+              { kind: 'ask', prompt: 'Useful things to audit include…', qtype: 'MULTI', options: ['Complication rates', 'Client satisfaction', 'Re-treatment rates', 'Lunch breaks'], correct: [0, 1, 2], explanation: 'Clinical and outcome metrics, not breaks.' },
+              { kind: 'say', text: 'Measure, reflect, improve. Spot on.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Leading on Safety',
+            durationMin: 9,
+            objectives: ['Set clear protocols', 'Build a safety culture', 'Stay current'],
+            studyTips: ['JCCP = Joint Council for Cosmetic Practitioners.'],
+            examRefs: ['Governance & leadership'],
+            steps: [
+              { kind: 'say', text: 'Senior practitioners set the tone for everyone.', mood: 'happy' },
+              { kind: 'teach', title: 'Set the standard', text: 'Clear protocols, good records, and a culture where raising concerns is welcomed — that’s leadership.' },
+              { kind: 'ask', prompt: 'A strong safety culture means…', qtype: 'SINGLE', options: ['Concerns can be raised freely', 'Hiding mistakes', 'Blame', 'Skipping consent'], correct: [0], explanation: 'Openness and learning, not blame.' },
+              { kind: 'teach', title: 'Stay current', text: 'Guidance from the JCCP, Save Face and your insurer changes — keep up to date.' },
+              { kind: 'ask', prompt: 'The register and standards body for the sector is the ___.', qtype: 'WORD', options: ['JCCP', 'NHS', 'RAC'], correct: [0], explanation: 'Joint Council for Cosmetic Practitioners.' },
+              { kind: 'say', text: 'Leading safely — that’s the mark of an expert.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Advanced Practice Assessment', passMark: 70,
+          questions: [
+            { prompt: 'Reflective practice is about…', type: 'SINGLE', options: ['Learning from real outcomes', 'Avoiding records', 'Working faster only', 'Skipping CPD'], correct: [0], explanation: 'Honest analysis improves standards.' },
+            { prompt: 'Which are worth auditing?', type: 'MULTI', options: ['Complication rates', 'Client satisfaction', 'Re-treatment rates', 'Break times'], correct: [0, 1, 2], explanation: 'Clinical/outcome metrics.' },
+            { prompt: 'A strong safety culture welcomes raised concerns.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Openness over blame.' },
+            { prompt: 'The sector’s standards/register body is the ___.', type: 'WORD', options: ['JCCP', 'NHS', 'DVLA'], correct: [0], explanation: 'Joint Council for Cosmetic Practitioners.' },
+            { prompt: 'Keeping up to date with guidance and insurance is part of advanced practice.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Standards change; stay current.' },
+            { prompt: 'The duty of candour means being open and honest when something goes wrong.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Be open, apologise, put it right.' },
+          ],
+        },
+      },
+    ],
+  },
 ];
 
 export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
@@ -276,6 +437,16 @@ export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
   { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Complications', prompt: 'You should never pop a treatment blister.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Protect it intact to reduce infection risk.' },
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Governance', prompt: 'The duty of candour requires you to…', options: ['Be open and honest when something goes wrong', 'Hide mistakes', 'Blame the client', 'Delete records'], correct: [0], explanation: 'Be open, apologise, and put things right.' },
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Anatomy', prompt: 'Higher-risk facial “danger zones” matter most when working near…', options: ['Major vessels and nerves', 'The hairline only', 'The ears only', 'Nowhere'], correct: [0], explanation: 'Knowing the layered anatomy avoids serious harm.' },
+  { courseSlug: L2, topic: 'Hygiene', prompt: 'Used needles are disposed of in a…', options: ['Sharps bin', 'General bin', 'Recycling', 'Pocket'], correct: [0], explanation: 'Sharps bin prevents needlestick injury.' },
+  { courseSlug: L2, topic: 'Hygiene', prompt: 'Couch roll should be replaced…', type: 'WORD', options: ['between clients', 'weekly', 'never'], correct: [0], explanation: 'Fresh per client.' },
+  { courseSlug: L2, topic: 'Hygiene', prompt: 'Which is NOT good infection control?', options: ['Reusing an unwashed tool', 'Hand hygiene', 'Single-use sharps', 'Disinfecting surfaces'], correct: [0], explanation: 'Never reuse unwashed tools.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Rejuvenation', prompt: 'Skin rejuvenation mainly stimulates new…', type: 'WORD', options: ['collagen', 'melanin', 'sweat'], correct: [0], explanation: 'Neocollagenesis.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Planning', prompt: 'Fluence is best described as…', options: ['Energy delivered (J/cm²)', 'Wavelength', 'Pulse count', 'Skin type'], correct: [0], explanation: 'Energy density.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Planning', prompt: 'Too-high fluence mainly risks…', options: ['Burns', 'Better results', 'Nothing', 'Faster hair growth'], correct: [0], explanation: 'Build energy cautiously.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Rejuvenation', prompt: 'IPL photofacials can improve redness and pigmentation in one session.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'They even out tone.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Reflection', prompt: 'Auditing your complication and re-treatment rates helps you…', options: ['Spot patterns and improve', 'Avoid records', 'Skip CPD', 'Work blindly'], correct: [0], explanation: 'Data drives improvement.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Governance', prompt: 'The sector’s standards and register body is the…', type: 'WORD', options: ['JCCP', 'NHS', 'DVLA'], correct: [0], explanation: 'Joint Council for Cosmetic Practitioners.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Leadership', prompt: 'A good safety culture…', options: ['Welcomes concerns being raised', 'Hides mistakes', 'Blames staff', 'Skips consent'], correct: [0], explanation: 'Openness and learning.' },
 ];
 
 function bodyFromSteps(steps: Step[]): string {
