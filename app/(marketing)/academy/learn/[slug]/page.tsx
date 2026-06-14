@@ -17,7 +17,8 @@ export default async function LearnPage({ params }: { params: Promise<{ slug: st
   if (!student) redirect('/academy/portal');
 
   const { getCourseLearning } = await import('@/lib/lms');
-  const learning = await getCourseLearning(slug, student.id);
+  const { studentStanding } = await import('@/lib/academy-gamification');
+  const [learning, standing] = await Promise.all([getCourseLearning(slug, student.id), studentStanding(student.id)]);
 
   if (!learning) {
     return (
@@ -33,7 +34,7 @@ export default async function LearnPage({ params }: { params: Promise<{ slug: st
 
   return (
     <section className="container-lux py-[calc(var(--header-h,5.25rem)+2rem)]">
-      <CourseExperience learning={learning} slug={slug} />
+      <CourseExperience learning={learning} slug={slug} xp={standing.xp} />
     </section>
   );
 }

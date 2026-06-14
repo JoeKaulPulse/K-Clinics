@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { KMascot, KCelebration, KSpeech, type CelebrationVariant } from '@/components/academy/KMascot';
 import { buildLessonFlow, coerceSteps, type FlowStep, type SayStep, type TeachStep, type AskStep } from '@/components/academy/lessonFlow';
 import { Illustration, matchIllustration, type IlloKey, type IlloLevel } from '@/components/academy/Illustrations';
+import { AmbientBackdrop } from '@/components/academy/AmbientBackdrop';
+import { academyLevel } from '@/lib/academy-levels';
 import type { CourseLearning, LessonView, QuizView } from '@/lib/lms';
 
 // Session-scoped illustration exposure: the more a learner sees a concept, the
@@ -34,7 +36,7 @@ type Step =
   | { kind: 'quiz'; mi: number }
   | { kind: 'done' };
 
-export function ImmersiveCourse({ learning, slug, mode = 'learn', onExit }: { learning: CourseLearning; slug?: string; mode?: 'learn' | 'preview'; onExit?: () => void }) {
+export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, onExit }: { learning: CourseLearning; slug?: string; mode?: 'learn' | 'preview'; xp?: number; onExit?: () => void }) {
   const steps = useMemo<Step[]>(() => {
     const s: Step[] = [{ kind: 'intro' }];
     learning.modules.forEach((m, mi) => {
@@ -56,6 +58,16 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', onExit }: { le
   const [artSeen, setArtSeen] = useState<Record<string, number>>({});
   const levelFor = (k: IlloKey): IlloLevel => { if (mode === 'preview') return 'full'; const n = artSeen[k] || 0; return n === 0 ? 'full' : n < 3 ? 'reduced' : 'minimal'; };
   const seeArt = (k: IlloKey) => { if (mode === 'preview') return; setArtSeen((s) => ({ ...s, [k]: (s[k] || 0) + 1 })); };
+
+  // Live HUD: XP/level (base + what's earned this session) and time on task.
+  const [sessionXp, setSessionXp] = useState(0);
+  const [sessionSeconds, setSessionSeconds] = useState(0);
+  useEffect(() => {
+    const start = Date.now();
+    const t = setInterval(() => setSessionSeconds(Math.round((Date.now() - start) / 1000)), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const lvl = academyLevel(xp + sessionXp);
 
   const isStepComplete = (st: Step): boolean => {
     if (st.kind === 'lesson') return doneLessons.has(learning.modules[st.mi].lessons[st.li].id);
@@ -92,6 +104,7 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', onExit }: { le
 
   async function finishLesson(lesson: LessonView, seconds: number) {
     setDoneLessons((s) => new Set(s).add(lesson.id));
+    setSessionXp((x) => x + 10);
     lessonsThisSession.current += 1;
     const pacing = lessonsThisSession.current % 3 === 0 ? 'Great pace — a short break now helps it stick.' : undefined;
     const cs: Celebration[] = [{ variant: 'cheer', title: 'Lesson complete', subtitle: pacing }];
@@ -103,7 +116,7 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', onExit }: { le
     advance();
   }
   function finishQuiz(quizId: string, result: { passed: boolean; scorePct: number; newBadges: AwardedBadge[] }) {
-    if (result.passed) setQuizPassed((s) => new Set(s).add(quizId));
+    if (result.passed) { setQuizPassed((s) => new Set(s).add(quizId)); setSessionXp((x) => x + 25); }
     enqueue(...badgeCelebrations(result.newBadges));
     advance();
   }
@@ -132,8 +145,9 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', onExit }: { le
   return (
     <ArtCtx.Provider value={{ levelFor, seeArt }}>
     <div className="fixed inset-0 z-[200] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]">
+      <AmbientBackdrop tone="dark" />
       {/* Top bar: exit · progress · counter */}
-      <header className="flex items-center gap-4 border-b border-white/10 px-4 py-3 sm:px-6">
+      <header className="relative z-10 flex items-center gap-4 border-b border-white/10 px-4 py-3 sm:px-6">
         <button onClick={onExit} aria-label="Exit course" className="grid h-9 w-9 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white">
           <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><path d="m3 3 10 10M13 3 3 13" /></svg>
         </button>
@@ -144,11 +158,19 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', onExit }: { le
         {mode === 'preview' && <span className="shrink-0 rounded-full bg-[var(--color-gold)]/20 px-2.5 py-1 text-[0.65rem] font-medium uppercase tracking-wide text-[var(--color-gold)]">Preview</span>}
       </header>
 
-      {moduleLabel && (
-        <div className="border-b border-white/5 px-4 py-2 text-center text-xs uppercase tracking-[0.16em] text-white/45 sm:px-6">{moduleLabel}</div>
+      {mode !== 'preview' && (
+        <div className="relative z-10 flex items-center justify-center gap-4 border-b border-white/5 px-4 py-1.5 text-[0.7rem] text-white/55 sm:gap-7">
+          <span className="inline-flex items-center gap-1.5"><span className="grid h-4 w-4 place-items-center rounded-full bg-[var(--color-gold)] text-[0.6rem] font-bold text-[var(--color-ink)]">{lvl.level}</span>{lvl.title}</span>
+          <span className="tabular-nums">{(xp + sessionXp).toLocaleString()} XP{sessionXp > 0 && <span className="text-[var(--color-gold)]"> +{sessionXp}</span>}</span>
+          <span className="tabular-nums">⏱ {Math.floor(sessionSeconds / 60)}:{String(sessionSeconds % 60).padStart(2, '0')}</span>
+        </div>
       )}
 
-      <div className="flex-1 overflow-y-auto">
+      {moduleLabel && (
+        <div className="relative z-10 border-b border-white/5 px-4 py-2 text-center text-xs uppercase tracking-[0.16em] text-white/45 sm:px-6">{moduleLabel}</div>
+      )}
+
+      <div className="relative z-10 flex-1 overflow-y-auto">
         <AnimatePresence mode="wait">
           <motion.div key={idx} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.32, ease: 'easeOut' }} className="mx-auto w-full max-w-2xl px-5 py-10 sm:py-14">
             {step.kind === 'intro' && <IntroStep learning={learning} onBegin={() => go(Math.min(1, ceiling))} canBegin={ceiling >= 1} />}

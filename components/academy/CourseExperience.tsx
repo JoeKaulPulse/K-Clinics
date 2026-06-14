@@ -9,7 +9,7 @@ import type { CourseLearning } from '@/lib/lms';
 /** Trainee course page: an outline (CoursePlayer) plus a prominent launch into
  *  the full-screen, step-by-step immersive experience. On exit we refresh so the
  *  outline reflects any lessons/quizzes just completed. */
-export function CourseExperience({ learning, slug }: { learning: CourseLearning; slug: string }) {
+export function CourseExperience({ learning, slug, xp = 0 }: { learning: CourseLearning; slug: string; xp?: number }) {
   const router = useRouter();
   const [immersive, setImmersive] = useState(false);
   const started = learning.progressPct > 0;
@@ -27,7 +27,7 @@ export function CourseExperience({ learning, slug }: { learning: CourseLearning;
 
       <CoursePlayer learning={learning} slug={slug} />
 
-      {immersive && <ImmersiveCourse learning={learning} slug={slug} mode="learn" onExit={() => { setImmersive(false); router.refresh(); }} />}
+      {immersive && <ImmersiveCourse learning={learning} slug={slug} xp={xp} mode="learn" onExit={() => { setImmersive(false); router.refresh(); }} />}
     </>
   );
 }
