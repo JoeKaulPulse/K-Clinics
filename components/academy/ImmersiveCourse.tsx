@@ -258,8 +258,9 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
     const base = buildLessonFlow({ title: lesson.title, body: lesson.body, objectives: lesson.objectives, studyTips: lesson.studyTips, homework: lesson.homework, steps: lesson.steps }, register);
     // Auto-chunked lessons get one interspersed check, just before the closing line.
     const withAsk = !authored && formative && base.length > 1 ? [...base.slice(0, -1), formative as FlowStep, base[base.length - 1]] : base;
-    const vid = lesson.videoUrl ? ytId(lesson.videoUrl) : null;
-    return vid ? [{ kind: 'teach', title: 'Watch first', text: '', art: `video:${vid}` }, ...withAsk] : withAsk;
+    let videoArt: string | null = null;
+    if (lesson.videoUrl) { const yt = ytId(lesson.videoUrl); videoArt = yt ? `video:yt:${yt}` : `video:url:${encodeURIComponent(lesson.videoUrl)}`; }
+    return videoArt ? [{ kind: 'teach', title: 'Watch first', text: '', art: videoArt }, ...withAsk] : withAsk;
   }, [lesson, formative, register]);
 
   const [mi, setMi] = useState(0);
@@ -315,16 +316,21 @@ function TeachMicro({ step, onContinue, gated }: { step: TeachStep; onContinue: 
     const t = setTimeout(() => setWaited(true), 1600);
     return () => clearTimeout(t);
   }, [gated, step]);
-  const video = step.art?.startsWith('video:') ? step.art.slice(6) : null;
-  const art = video ? null : resolveArt(step.art, `${step.title ?? ''} ${step.text}`);
+  const v = step.art?.startsWith('video:') ? step.art.slice(6) : null;
+  const ytv = v?.startsWith('yt:') ? v.slice(3) : null;
+  const filev = v?.startsWith('url:') ? decodeURIComponent(v.slice(4)) : null;
+  const art = v ? null : resolveArt(step.art, `${step.title ?? ''} ${step.text}`);
   const [lvl] = useState<IlloLevel>(() => (art ? levelFor(art) : 'full'));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (art) seeArt(art); }, []);
   return (
     <div className="flex flex-col items-center text-center">
       {step.title && <p className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-gold)]">{step.title}</p>}
-      {video ? (
-        <div className="aspect-video w-full max-w-md overflow-hidden rounded-[var(--radius-lg)] border border-white/12"><iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${video}`} title="Lesson video" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
+      {ytv ? (
+        <div className="aspect-video w-full max-w-md overflow-hidden rounded-[var(--radius-lg)] border border-white/12"><iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${ytv}`} title="Lesson video" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
+      ) : filev ? (
+        // eslint-disable-next-line jsx-a11y/media-has-caption
+        <video controls playsInline className="aspect-video w-full max-w-md rounded-[var(--radius-lg)] border border-white/12" src={filev} />
       ) : (
         <>
           {art && <div className="mb-5 w-full max-w-[190px]"><Illustration name={art} level={lvl} /></div>}
