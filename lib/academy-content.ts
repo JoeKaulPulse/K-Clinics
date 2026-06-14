@@ -1079,6 +1079,174 @@ export const NEW_MODULES: CourseContentDef[] = [
       },
     ],
   },
+  {
+    courseSlug: 'level-4-certificate-aesthetic-practice',
+    modules: [
+      {
+        title: 'Skin Conditions & When to Adapt',
+        summary: 'Recognise common skin conditions and decide whether to adapt, delay or refer.',
+        lessons: [
+          {
+            title: 'Common Conditions',
+            durationMin: 10,
+            objectives: ['Recognise eczema, rosacea and psoriasis', 'Know they affect skin reactions', 'Spot what needs care'],
+            studyTips: ['You don’t diagnose — you recognise, adapt and refer.'],
+            examRefs: ['Skin conditions'],
+            steps: [
+              { kind: 'say', text: 'You’ll meet many skin types and conditions. Let’s learn to spot the common ones.', mood: 'think' },
+              { kind: 'teach', title: 'Three you’ll see', text: 'Eczema (dry, itchy, inflamed), rosacea (facial redness and flushing) and psoriasis (raised, scaly patches) are common conditions you’ll encounter.' },
+              { kind: 'ask', prompt: 'Facial redness and easy flushing is typical of…', qtype: 'SINGLE', options: ['Rosacea', 'Psoriasis', 'A healthy tan', 'Nothing'], correct: [0], explanation: 'Rosacea = redness and flushing.' },
+              { kind: 'teach', title: 'Not your job to diagnose', text: 'You don’t diagnose conditions — but recognising them tells you when to adapt a treatment or refer.' },
+              { kind: 'ask', prompt: 'Your role with a skin condition is to recognise, adapt and…', qtype: 'WORD', options: ['refer', 'diagnose', 'ignore'], correct: [0], explanation: 'Recognise, adapt, refer — not diagnose.' },
+              { kind: 'say', text: 'Good eyes. Now what to do about it.', mood: 'cheer' },
+              { kind: 'teach', title: 'They change reactions', text: 'Conditions and sensitive skin can change how skin reacts to treatment, so they always factor into your plan.' },
+              { kind: 'ask', prompt: 'A known skin condition should…', qtype: 'SINGLE', options: ['Factor into your plan', 'Be ignored', 'Speed things up', 'Raise the price'], correct: [0], explanation: 'It shapes a safe plan.' },
+              { kind: 'say', text: 'Sharp and safe. Lovely.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Adapt, Delay or Refer',
+            durationMin: 9,
+            objectives: ['Decide to adapt vs delay', 'Know when to refer', 'Record the reasoning'],
+            studyTips: ['Active flare-up → delay; unsure or medical → refer.'],
+            examRefs: ['Adapting treatment'],
+            steps: [
+              { kind: 'say', text: 'Three choices when something’s not quite right. Let’s sort them.', mood: 'happy' },
+              { kind: 'teach', title: 'Adapt', text: 'For mild, stable conditions you may adapt — gentler settings, smaller area, or avoiding the affected patch.' },
+              { kind: 'ask', prompt: 'For mild, stable skin you might…', qtype: 'SINGLE', options: ['Adapt the treatment', 'Refuse forever', 'Use maximum settings', 'Do nothing different'], correct: [0], explanation: 'Adapt gently.' },
+              { kind: 'teach', title: 'Delay', text: 'If a condition is flaring or the skin is broken, delay until it settles — treating inflamed skin risks harm.' },
+              { kind: 'ask', prompt: 'If skin is actively flaring or broken, you should…', qtype: 'WORD', options: ['delay', 'rush', 'ignore'], correct: [0], explanation: 'Wait until it settles.' },
+              { kind: 'teach', title: 'Refer and record', text: 'If you’re unsure, or it looks medical, refer — and record what you saw and decided either way.' },
+              { kind: 'say', text: 'Adapt, delay or refer — you’ve got it. Excellent.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Skin Conditions Assessment', passMark: 70,
+          questions: [
+            { prompt: 'Facial redness and easy flushing is typical of…', type: 'SINGLE', options: ['Rosacea', 'Psoriasis', 'A healthy tan', 'Nothing'], correct: [0], explanation: 'Rosacea.' },
+            { prompt: 'Your role with a skin condition is to recognise, adapt and…', type: 'WORD', options: ['refer', 'diagnose', 'ignore'], correct: [0], explanation: 'Not diagnose.' },
+            { prompt: 'A known skin condition should factor into your treatment plan.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'It shapes a safe plan.' },
+            { prompt: 'For mild, stable conditions you might…', type: 'SINGLE', options: ['Adapt the treatment', 'Refuse forever', 'Use max settings', 'Change nothing'], correct: [0], explanation: 'Adapt gently.' },
+            { prompt: 'If skin is actively flaring or broken, you should…', type: 'WORD', options: ['delay', 'rush', 'ignore'], correct: [0], explanation: 'Delay until settled.' },
+            { prompt: 'Decisions to adapt, delay or refer should be recorded.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Record your reasoning.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    courseSlug: 'level-3-laser-aesthetic-therapies',
+    modules: [
+      {
+        title: 'Pre & Post Treatment Care',
+        summary: 'Prepare skin properly and protect results with the right aftercare.',
+        lessons: [
+          {
+            title: 'Preparing the Skin',
+            durationMin: 10,
+            objectives: ['List pre-treatment steps', 'Explain why no recent tan', 'Check skin is ready'],
+            studyTips: ['Clean, shaved (for laser) and un-tanned skin is the safe starting point.'],
+            examRefs: ['Pre-treatment'],
+            steps: [
+              { kind: 'say', text: 'Good results start before the device switches on. Let’s prep properly.', mood: 'happy' },
+              { kind: 'teach', title: 'Clean and ready', text: 'Skin should be clean and free of make-up, lotions or deodorant, and for laser hair removal, shaved on the day.' },
+              { kind: 'ask', prompt: 'For laser hair removal, skin should be ___ on the day.', qtype: 'WORD', options: ['shaved', 'waxed', 'plucked'], correct: [0], explanation: 'Shaved keeps the root for the laser; waxing/plucking removes it.' },
+              { kind: 'teach', title: 'No recent tan', text: 'Avoid recent sun or fake tan — extra melanin in the skin raises the risk of burns and pigment changes.' },
+              { kind: 'ask', prompt: 'Why avoid a recent tan before laser?', qtype: 'SINGLE', options: ['Higher burn/pigment risk', 'It looks nicer', 'It speeds things up', 'No reason'], correct: [0], explanation: 'Tanned skin holds more melanin to absorb the energy.' },
+              { kind: 'say', text: 'Skin prepped and safe. Now protect the results.', mood: 'cheer' },
+              { kind: 'teach', title: 'Final checks', text: 'Re-check the consultation, contraindications and consent before every session — not just the first.' },
+              { kind: 'ask', prompt: 'Contraindications and consent are re-checked…', qtype: 'SINGLE', options: ['Before every session', 'Only the first time', 'Never again', 'Only if asked'], correct: [0], explanation: 'Things change — check each time.' },
+              { kind: 'say', text: 'Thorough prep — that’s a professional. Lovely.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Aftercare That Protects Results',
+            durationMin: 9,
+            objectives: ['Give clear aftercare', 'Explain heat and sun avoidance', 'Stress SPF'],
+            studyTips: ['Avoid heat and sun for 24–48h; SPF protects the result.'],
+            examRefs: ['Aftercare'],
+            steps: [
+              { kind: 'say', text: 'The right aftercare keeps clients safe and happy. Here’s the core.', mood: 'think' },
+              { kind: 'teach', title: 'Keep it cool', text: 'For 24–48 hours, clients avoid heat — saunas, hot showers, intense exercise — which can irritate freshly treated skin.' },
+              { kind: 'ask', prompt: 'For 24–48 hours after treatment, clients should avoid…', qtype: 'MULTI', options: ['Saunas', 'Hot showers', 'Intense exercise', 'Daily SPF'], correct: [0, 1, 2], explanation: 'Avoid heat; SPF is encouraged.' },
+              { kind: 'teach', title: 'Protect from sun', text: 'Treated skin is more sensitive to UV, so daily broad-spectrum SPF and sun avoidance protect both skin and results.' },
+              { kind: 'ask', prompt: 'After treatment, daily ___ protects the skin and the result.', qtype: 'WORD', options: ['SPF', 'makeup', 'exfoliation'], correct: [0], explanation: 'Broad-spectrum SPF.' },
+              { kind: 'teach', title: 'Give it in writing', text: 'Provide aftercare verbally and in writing, and tell clients how to reach you if they’re worried.' },
+              { kind: 'say', text: 'Clear aftercare, happy clients. Brilliant.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Pre & Post Care Assessment', passMark: 70,
+          questions: [
+            { prompt: 'For laser hair removal, skin should be ___ on the day.', type: 'WORD', options: ['shaved', 'waxed', 'plucked'], correct: [0], explanation: 'Shaving keeps the root in place.' },
+            { prompt: 'Why avoid a recent tan before laser?', type: 'SINGLE', options: ['Higher burn/pigment risk', 'It looks nicer', 'It speeds things up', 'No reason'], correct: [0], explanation: 'More melanin to absorb energy.' },
+            { prompt: 'Contraindications and consent are re-checked before every session.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Not just the first time.' },
+            { prompt: 'For 24–48 hours after treatment clients should avoid…', type: 'MULTI', options: ['Saunas', 'Hot showers', 'Intense exercise', 'Daily SPF'], correct: [0, 1, 2], explanation: 'Avoid heat; keep SPF.' },
+            { prompt: 'After treatment, daily ___ protects skin and results.', type: 'WORD', options: ['SPF', 'makeup', 'exfoliation'], correct: [0], explanation: 'Broad-spectrum SPF.' },
+            { prompt: 'Aftercare should be given verbally and in writing.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Both, with a way to reach you.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    courseSlug: 'advanced-aesthetics-level-5-7',
+    modules: [
+      {
+        title: 'Evidence-Based Practice & Audit',
+        summary: 'Use evidence and your own data to make treatments safer and better.',
+        lessons: [
+          {
+            title: 'Using Evidence',
+            durationMin: 10,
+            objectives: ['Define evidence-based practice', 'Judge a source’s quality', 'Avoid marketing claims'],
+            studyTips: ['Peer-reviewed studies beat a manufacturer’s brochure.'],
+            examRefs: ['Evidence-based practice'],
+            steps: [
+              { kind: 'say', text: 'Great practice follows evidence, not hype. Let’s learn to tell them apart.', mood: 'think' },
+              { kind: 'teach', title: 'What it means', text: 'Evidence-based practice means basing what you do on good research and proven results, not just habit or marketing.', art: 'concept' },
+              { kind: 'ask', prompt: 'Evidence-based practice is based mainly on…', qtype: 'SINGLE', options: ['Good research and proven results', 'Adverts', 'Guesswork', 'Habit alone'], correct: [0], explanation: 'Research and outcomes, not marketing.' },
+              { kind: 'teach', title: 'Judge the source', text: 'Peer-reviewed studies and recognised guidelines carry more weight than a manufacturer’s claim or a social-media post.' },
+              { kind: 'ask', prompt: 'Which is the strongest source?', qtype: 'SINGLE', options: ['A peer-reviewed study', 'A brochure', 'A viral video', 'A rumour'], correct: [0], explanation: 'Peer-reviewed evidence is strongest.' },
+              { kind: 'say', text: 'You can sift good from glossy now. Now your own data.', mood: 'cheer' },
+              { kind: 'teach', title: 'Stay sceptical', text: 'If a claim sounds too good to be true, look for the evidence behind it before you offer it.' },
+              { kind: 'ask', prompt: 'A “too good to be true” claim should be…', qtype: 'WORD', options: ['checked', 'believed', 'sold'], correct: [0], explanation: 'Check the evidence first.' },
+              { kind: 'say', text: 'Evidence-led and grounded. Excellent.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Clinical Audit',
+            durationMin: 9,
+            objectives: ['Explain what an audit is', 'Use outcomes to improve', 'Close the loop'],
+            studyTips: ['Audit = measure, compare to a standard, change, re-measure.'],
+            examRefs: ['Clinical audit'],
+            steps: [
+              { kind: 'say', text: 'Your own results are a goldmine. Let’s mine them with audit.', mood: 'happy' },
+              { kind: 'teach', title: 'What audit is', text: 'A clinical audit measures how you’re doing against a standard — for example complication or re-treatment rates — to find what to improve.' },
+              { kind: 'ask', prompt: 'A clinical audit compares your practice against a…', qtype: 'WORD', options: ['standard', 'rival', 'rumour'], correct: [0], explanation: 'Measure against a standard.' },
+              { kind: 'teach', title: 'Then act', text: 'You change something based on what the audit shows, then measure again to check it worked — closing the loop.' },
+              { kind: 'ask', prompt: 'After making a change, a good audit then…', qtype: 'SINGLE', options: ['Measures again', 'Stops', 'Hides the data', 'Blames staff'], correct: [0], explanation: 'Re-measure to confirm improvement.' },
+              { kind: 'teach', title: 'Why it matters', text: 'Auditing patterns in your outcomes turns everyday work into steady, evidence-based improvement.' },
+              { kind: 'say', text: 'Measure, improve, repeat — that’s mastery. Brilliant.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Evidence & Audit Assessment', passMark: 70,
+          questions: [
+            { prompt: 'Evidence-based practice is based mainly on…', type: 'SINGLE', options: ['Good research and proven results', 'Adverts', 'Guesswork', 'Habit alone'], correct: [0], explanation: 'Research and outcomes.' },
+            { prompt: 'The strongest source of evidence is…', type: 'SINGLE', options: ['A peer-reviewed study', 'A brochure', 'A viral video', 'A rumour'], correct: [0], explanation: 'Peer-reviewed evidence.' },
+            { prompt: 'A “too good to be true” claim should be checked before you offer it.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Verify first.' },
+            { prompt: 'A clinical audit compares your practice against a…', type: 'WORD', options: ['standard', 'rival', 'rumour'], correct: [0], explanation: 'A standard.' },
+            { prompt: 'After making a change, a good audit then…', type: 'SINGLE', options: ['Measures again', 'Stops', 'Hides data', 'Blames staff'], correct: [0], explanation: 'Re-measure to confirm.' },
+            { prompt: 'Audit turns everyday work into steady improvement.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Measure, improve, repeat.' },
+          ],
+        },
+      },
+    ],
+  },
 ];
 
 export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
@@ -1150,6 +1318,15 @@ export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
   { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Ageing', prompt: 'Ageing caused by sun, smoking and lifestyle is called…', type: 'WORD', options: ['extrinsic', 'intrinsic', 'eternal'], correct: [0], explanation: 'Extrinsic = external causes.' },
   { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Ageing', prompt: 'The biggest external cause of visible skin ageing is…', options: ['The sun (UV)', 'Cold weather', 'Reading', 'Drinking water'], correct: [0], explanation: 'UV drives most photoageing.' },
   { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Photodamage', prompt: 'Daily broad-spectrum SPF should be worn…', options: ['Even on cloudy days', 'Only on holiday', 'Only at night', 'Never'], correct: [0], explanation: 'UV reaches skin through cloud.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Skin conditions', prompt: 'Facial redness and easy flushing is most typical of…', options: ['Rosacea', 'Psoriasis', 'A healthy tan', 'Eczema only'], correct: [0], explanation: 'Rosacea presents as redness and flushing.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Skin conditions', prompt: 'Your role with a client’s skin condition is to recognise, adapt and…', type: 'WORD', options: ['refer', 'diagnose', 'ignore'], correct: [0], explanation: 'Recognise, adapt, refer — you don’t diagnose.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Adapting', prompt: 'If skin is actively flaring or broken, the right call is to…', options: ['Delay until it settles', 'Treat anyway', 'Use stronger settings', 'Ignore it'], correct: [0], explanation: 'Treating inflamed skin risks harm.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Pre-treatment', prompt: 'For laser hair removal, skin should be ___ on the day, not waxed.', type: 'WORD', options: ['shaved', 'plucked', 'tanned'], correct: [0], explanation: 'Shaving keeps the root the laser targets.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Pre-treatment', prompt: 'A recent tan before laser raises the risk of…', type: 'MULTI', options: ['Burns', 'Pigment changes', 'Better results', 'Adverse reaction'], correct: [0, 1, 3], explanation: 'Extra melanin absorbs energy — it doesn’t improve results.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Aftercare', prompt: 'After treatment, daily ___ protects both the skin and the result.', type: 'WORD', options: ['SPF', 'makeup', 'exfoliation'], correct: [0], explanation: 'Broad-spectrum SPF.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Evidence', prompt: 'The strongest source of evidence for a treatment is…', options: ['A peer-reviewed study', 'A manufacturer brochure', 'A viral video', 'A rumour'], correct: [0], explanation: 'Peer-reviewed evidence outranks marketing.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Audit', prompt: 'A clinical audit compares your practice against a…', type: 'WORD', options: ['standard', 'rival', 'rumour'], correct: [0], explanation: 'Measure against an agreed standard.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Audit', prompt: 'After changing something, a good audit then re-measures to check it worked.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Closing the loop confirms improvement.' },
 ];
 
 function bodyFromSteps(steps: Step[]): string {
