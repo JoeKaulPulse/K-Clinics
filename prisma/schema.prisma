@@ -1769,6 +1769,7 @@ model AcademyStudent {
   phone          String?
   passwordHash   String?
   portalActive   Boolean   @default(false)
+  sessionEpoch   Int       @default(0) // bump to revoke all outstanding academy JWTs (reset / suspend / sign-out-everywhere)
   lastLoginAt    DateTime?
   resetTokenHash String?
   resetTokenExp  DateTime?

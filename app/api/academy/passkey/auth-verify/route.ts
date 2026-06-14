@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   const expectedChallenge = (await cookies()).get('kc_acad_login')?.value;
   if (!expectedChallenge || !body.response?.id) return NextResponse.json({ ok: false, error: 'Sign-in expired — please try again.' }, { status: 400 });
 
-  const cred = await db.studentPasskey.findUnique({ where: { credentialId: String(body.response.id) }, include: { student: { select: { id: true, email: true, firstName: true, portalActive: true } } } });
+  const cred = await db.studentPasskey.findUnique({ where: { credentialId: String(body.response.id) }, include: { student: { select: { id: true, email: true, firstName: true, portalActive: true, sessionEpoch: true } } } });
   if (!cred || !cred.student) return NextResponse.json({ ok: false, error: 'Unrecognised passkey.' }, { status: 400 });
   if (cred.student.portalActive === false) return NextResponse.json({ ok: false, error: 'This account is suspended.' }, { status: 403 });
 
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   await db.academyStudent.update({ where: { id: cred.student.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
 
   const { createAcademySession } = await import('@/lib/auth');
-  await createAcademySession({ sub: cred.student.id, email: cred.student.email, firstName: cred.student.firstName });
+  await createAcademySession({ sub: cred.student.id, email: cred.student.email, firstName: cred.student.firstName, epoch: cred.student.sessionEpoch });
 
   const res = NextResponse.json({ ok: true });
   res.cookies.set('kc_acad_login', '', { path: '/', maxAge: 0 });
