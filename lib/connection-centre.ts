@@ -103,12 +103,16 @@ const DEFS: ConnectionDef[] = [
   },
   {
     id: 'google-business', title: 'Google reviews — Business Profile', category: 'Reviews',
-    powers: 'Imports every Google review into the dashboard and lets you reply in-app.',
+    powers: 'Imports your full Google review history into the dashboard to manage and reply in-app. (Your public site already shows Google reviews via the Places API — this card is the deeper admin import.)',
     keyNames: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
     connectHref: '/api/admin/integrations/google-business/connect', connectLabel: 'Connect Google',
     console: { label: 'console.cloud.google.com', url: 'https://console.cloud.google.com/apis/credentials' },
     register: [{ label: 'OAuth redirect URI', url: `${BASE}/api/admin/integrations/google-business/callback`, note: 'Google Cloud → Credentials → Authorised redirect URIs.' }],
-    steps: ['The same Google client powers Ads, Analytics and Search below. Save it once, register the redirect, then Connect.'],
+    steps: [
+      'The same Google client powers Ads, Analytics and Search below. Save it once, register the redirect, then Connect.',
+      'If it says “Business Profile API access not granted yet”: enable “My Business Account Management API” and “My Business Business Information API” in Google Cloud → APIs & Services → Library, then re-check.',
+      'The full review feed additionally needs Google to approve Business Profile API access (a one-time request form; can take a few days). Until then, reviews still show publicly via the Places API.',
+    ],
   },
   {
     id: 'google-ads', title: 'Google Ads', category: 'Marketing',
@@ -116,7 +120,11 @@ const DEFS: ConnectionDef[] = [
     keyNames: ['GOOGLE_ADS_DEVELOPER_TOKEN', 'GOOGLE_ADS_CUSTOMER_ID', 'GOOGLE_ADS_LOGIN_CUSTOMER_ID', 'GOOGLE_ADS_CONVERSION_ACTION_ID'],
     connectHref: '/admin/marketing/connections', connectLabel: 'Connect in Marketing',
     console: { label: 'ads.google.com', url: 'https://ads.google.com' },
-    steps: ['Add the IDs here, then connect the Google account on Marketing → Connections.'],
+    steps: [
+      'Developer token: only from a Google Ads MANAGER (MCC) account → Tools → API Center. New tokens start in “Test” mode — apply for Basic access. One token covers every account.',
+      'Customer ID = the 10-digit ID of the account with your campaigns. Login customer ID is different — only fill it if you reach that account through a manager (MCC); use the manager’s ID. No manager? Leave it blank.',
+      'Then connect the Google account on Marketing → Connections. If it shows “refresh-token grant failed”, reconnect there — the client secret changed or access was revoked.',
+    ],
   },
   {
     id: 'ga4', title: 'Analytics — GA4', category: 'Marketing',

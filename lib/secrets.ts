@@ -25,12 +25,12 @@ export const SECRET_DEFS: SecretDef[] = [
   { name: 'ANTHROPIC_API_KEY', label: 'Anthropic (Claude) API key', group: 'AI & voice', help: 'console.anthropic.com' },
   { name: 'DEEPGRAM_API_KEY', label: 'Deepgram API key', group: 'AI & voice', help: 'console.deepgram.com' },
   // Translation
-  { name: 'DEEPL_API_KEY', label: 'DeepL API key', group: 'Translation', help: 'deepl.com/pro-api' },
-  { name: 'GOOGLE_TRANSLATE_KEY', label: 'Google Translate key', group: 'Translation' },
+  { name: 'DEEPL_API_KEY', label: 'DeepL API key', group: 'Translation', help: 'No longer used — translation runs on Google. Safe to clear.' },
+  { name: 'GOOGLE_TRANSLATE_KEY', label: 'Google Translate key', group: 'Translation', help: 'Google Cloud Console → APIs & Services → Credentials → Create credentials → API key. FIRST enable “Cloud Translation API” (APIs & Services → Library). If it is rejected: the API is not enabled, or the key is restricted — set Application restrictions = None and API restrictions = Cloud Translation API only. Use a plain API key, not an OAuth client.' },
   // Ads — Meta / Google
-  { name: 'GOOGLE_ADS_DEVELOPER_TOKEN', label: 'Google Ads developer token', group: 'Ads' },
-  { name: 'GOOGLE_ADS_CUSTOMER_ID', label: 'Google Ads customer ID', group: 'Ads' },
-  { name: 'GOOGLE_ADS_LOGIN_CUSTOMER_ID', label: 'Google Ads login customer ID', group: 'Ads' },
+  { name: 'GOOGLE_ADS_DEVELOPER_TOKEN', label: 'Google Ads developer token', group: 'Ads', help: 'Only from a Google Ads MANAGER (MCC) account → Tools & Settings → Setup → API Center. New tokens start in “Test” mode — apply for “Basic access” to use live data. One token covers all your accounts; it is NOT a per-account number.' },
+  { name: 'GOOGLE_ADS_CUSTOMER_ID', label: 'Google Ads customer ID', group: 'Ads', help: 'The 10-digit ID (no dashes) of the Ads account that holds your campaigns — shown top-right at ads.google.com next to the account name.' },
+  { name: 'GOOGLE_ADS_LOGIN_CUSTOMER_ID', label: 'Google Ads login customer ID', group: 'Ads', help: 'Different from the customer ID above. ONLY needed if you reach the account through a manager (MCC) account — then put the MANAGER’s 10-digit ID here. If you sign in directly to a single account with no manager, leave this blank.' },
   { name: 'GOOGLE_ADS_CONVERSION_ACTION_ID', label: 'Google Ads conversion action ID', group: 'Ads', help: 'Google Ads → Goals → Conversions → your "Imported"/offline action. The numeric id (ctId) in the page URL. Enables value-based offline conversions from charged bookings.' },
   // Analytics — GA4 Data API + Search Console reporting
   { name: 'GA4_PROPERTY_ID', label: 'GA4 property ID (numeric)', group: 'Analytics', help: 'GA4 → Admin → Property settings → Property ID. A number like 123456789 — NOT the G-XXXX tag. Powers the Performance "traffic by channel" widget.' },
