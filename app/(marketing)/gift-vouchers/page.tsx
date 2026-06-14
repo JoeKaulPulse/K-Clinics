@@ -14,7 +14,7 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({
   keywords: ['KClinics gift voucher', 'beauty gift card London', 'aesthetics gift voucher', 'gift card Islington clinic'],
 });
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600; // ISR — gift packages + settings, no per-request state
 
 async function physicalConfig() {
   try {

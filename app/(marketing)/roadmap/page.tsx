@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { listPublicItems } from '@/lib/build-board';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300; // ISR — public board snapshot, no per-request state
 
 export const metadata: Metadata = {
   title: 'Roadmap — K Clinics',

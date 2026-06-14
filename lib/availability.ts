@@ -288,9 +288,12 @@ export async function popularDays(durationMin: number, treatmentSlug?: string, l
   const days = [...new Set(bookings.map((b) => clinicDateISO(b.startAt)))].sort();
   const out: string[] = [];
   // Bound the availability checks for cost; days are already sorted soonest-first.
-  for (const d of days.slice(0, 12)) {
-    if (out.length >= limit) break;
-    if ((await freeSlots(d, durationMin, treatmentSlug, locationId)).length) out.push(d);
+  // Run them concurrently (per-request getSetting cache dedupes the shared reads)
+  // then take the soonest `limit` with availability, preserving order.
+  const candidates = days.slice(0, 12);
+  const have = await Promise.all(candidates.map((d) => freeSlots(d, durationMin, treatmentSlug, locationId)));
+  for (let i = 0; i < candidates.length && out.length < limit; i++) {
+    if (have[i].length) out.push(candidates[i]);
   }
   return out;
 }
