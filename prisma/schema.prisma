@@ -3211,8 +3211,12 @@ model KioskSession {
   ageDeclaredAt DateTime? // when the explicit 18+ tap happened
   updatedAt     DateTime  @default(now()) @updatedAt
 
+  // BLD-137 slice 2: per-location attribution (plain scope tag, matches FacilityDoc/ContractorVisit pattern)
+  locationId String? // optional Location.id — set from ?location= on /kiosk/display
+
   @@index([token])
   @@index([status, createdAt])
+  @@index([locationId])
 }
 
 model KioskResult {

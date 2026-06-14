@@ -23,12 +23,27 @@ async function originFromHeaders(): Promise<string> {
 // Storefront full-screen display: shows a large QR that opens a fresh mobile
 // session. Auto-regenerates every 20 minutes (client-side reload triggers a new
 // session). No auth — this is the screen on the storefront device.
-export default async function KioskDisplayPage() {
+//
+// BLD-137 slice 2: pass ?location=<slug> to attribute sessions to a specific
+// site (e.g. /kiosk/display?location=islington).
+export default async function KioskDisplayPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ location?: string }>;
+}) {
   const origin = await originFromHeaders();
+  const { location: locationSlug } = await searchParams;
 
   // BLD-137: read the active seasonal theme from settings (falls back to default).
   const rawTheme = await getStringSetting('kiosk_theme', KIOSK_THEME_DEFAULT);
   const theme: KioskThemeKey = isKioskThemeKey(rawTheme) ? rawTheme : KIOSK_THEME_DEFAULT;
+
+  // BLD-137 slice 2: resolve the locationId from slug for attribution.
+  let locationId: string | undefined;
+  if (locationSlug) {
+    const loc = await db.location.findUnique({ where: { slug: locationSlug }, select: { id: true } });
+    locationId = loc?.id;
+  }
 
   // Create a fresh session for this display render.
   let token = randomToken();
@@ -40,7 +55,9 @@ export default async function KioskDisplayPage() {
   // BLD-159: a capability secret travels in the QR (?s=) — not in the brute-
   // forceable token — and gates the live camera feed (/stream, /frame).
   const secret = randomSecret();
-  await db.kioskSession.create({ data: { token, secret, status: 'ACTIVE', expiresAt: sessionExpiry() } }).catch(() => {});
+  await db.kioskSession.create({
+    data: { token, secret, status: 'ACTIVE', expiresAt: sessionExpiry(), ...(locationId ? { locationId } : {}) },
+  }).catch(() => {});
 
   const url = `${origin}/kiosk/${token}?s=${secret}`;
   const svg = await qrSvg(url, { dark: '#2a2420', light: '#ffffff' });

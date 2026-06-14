@@ -95,12 +95,11 @@ export async function verifyClientToken(token: string | undefined): Promise<Clie
 
 // Academy (trainee) portal — separate from the clinic client portal.
 export const academySecret = (): Uint8Array => {
-  const s = process.env.ACADEMY_JWT_SECRET || process.env.CLIENT_JWT_SECRET || process.env.ADMIN_JWT_SECRET;
+  const s = process.env.ACADEMY_JWT_SECRET;
   if (!s) {
     if (process.env.NODE_ENV === 'production') throw new Error('ACADEMY_JWT_SECRET is required in production.');
     return toKey('dev-insecure-academy-secret-change-me');
   }
-  if (!process.env.ACADEMY_JWT_SECRET) warnSharedSecret('ACADEMY_JWT_SECRET');
   return toKey(s);
 };
 
