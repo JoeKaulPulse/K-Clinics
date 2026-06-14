@@ -6,6 +6,7 @@ import { KMascot, KCelebration, KSpeech, type CelebrationVariant } from '@/compo
 import { buildLessonFlow, coerceSteps, type FlowStep, type SayStep, type TeachStep, type AskStep } from '@/components/academy/lessonFlow';
 import { Illustration, matchIllustration, type IlloKey, type IlloLevel } from '@/components/academy/Illustrations';
 import { AmbientBackdrop } from '@/components/academy/AmbientBackdrop';
+import { ExplainerPlayer } from '@/components/academy/ExplainerPlayer';
 import { academyLevel } from '@/lib/academy-levels';
 import type { CourseLearning, LessonView, QuizView } from '@/lib/lms';
 
@@ -247,9 +248,11 @@ function LessonStep({ lesson, reviewing, preview, formative, onContinue, onNext 
   }, [lesson, formative]);
 
   const [mi, setMi] = useState(0);
+  const [showExplainer, setShowExplainer] = useState(false);
   const startedAt = useRef(Date.now());
   const cur = flow[Math.min(mi, flow.length - 1)];
   const last = mi >= flow.length - 1;
+  const explainerPoints = lesson.keyPoints.length >= 2 ? lesson.keyPoints : lesson.objectives;
 
   function advanceMicro() {
     if (last) { if (reviewing) onNext(); else onContinue(Math.round((Date.now() - startedAt.current) / 1000)); return; }
@@ -260,9 +263,11 @@ function LessonStep({ lesson, reviewing, preview, formative, onContinue, onNext 
   return (
     <div>
       <div className="mb-4 flex items-center gap-3">
-        <span className="text-xs uppercase tracking-[0.16em] text-white/40">{lesson.title}</span>
-        <span className="ml-auto text-xs tabular-nums text-white/30">{Math.min(mi + 1, flow.length)} / {flow.length}</span>
+        <span className="truncate text-xs uppercase tracking-[0.16em] text-white/40">{lesson.title}</span>
+        {explainerPoints.length >= 2 && <button onClick={() => setShowExplainer(true)} className="ml-auto shrink-0 rounded-full border border-white/20 px-2.5 py-1 text-[0.65rem] font-medium text-white/70 transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">▶ Explainer</button>}
+        <span className={`shrink-0 text-xs tabular-nums text-white/30 ${explainerPoints.length >= 2 ? '' : 'ml-auto'}`}>{Math.min(mi + 1, flow.length)} / {flow.length}</span>
       </div>
+      {showExplainer && <ExplainerPlayer title={lesson.title} points={explainerPoints} onClose={() => setShowExplainer(false)} />}
       <div className="mb-8 h-1 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-[var(--color-gold)]/70 transition-[width] duration-300" style={{ width: `${pct}%` }} /></div>
 
       <AnimatePresence mode="wait">
