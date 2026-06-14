@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
+
+const refreshPublic = () => { try { revalidatePath('/reviews'); revalidatePath('/'); } catch { /* ignore */ } };
 
 export const runtime = 'nodejs';
 
@@ -24,12 +27,14 @@ export async function POST(req: Request) {
       if (r.ok) {
         // Import straight away so the owner sees reviews immediately.
         const synced = await gb.syncGoogleReviews();
+        refreshPublic();
         return NextResponse.json({ ...r, imported: synced.imported });
       }
       return NextResponse.json(r, { status: 400 });
     }
     case 'sync': {
       const r = await gb.syncGoogleReviews();
+      if (r.ok) refreshPublic();
       return NextResponse.json(r, { status: r.ok ? 200 : 400 });
     }
     case 'reply': {
@@ -69,12 +74,14 @@ export async function POST(req: Request) {
       } });
       const { logAudit } = await import('@/lib/audit');
       await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: 'Added a Google review manually' }).catch(() => {});
+      refreshPublic();
       return NextResponse.json({ ok: true });
     }
     case 'delete': {
       if (!b.id && !b.googleName) return NextResponse.json({ ok: false, error: 'Bad request.' }, { status: 400 });
       const { db } = await import('@/lib/db');
       await db.googleReview.deleteMany({ where: b.id ? { id: String(b.id) } : { googleName: String(b.googleName) } });
+      refreshPublic();
       return NextResponse.json({ ok: true });
     }
     case 'bulkAdd': {
@@ -98,6 +105,7 @@ export async function POST(req: Request) {
       }
       const { logAudit } = await import('@/lib/audit');
       await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: `Bulk-added ${added} Google reviews` }).catch(() => {});
+      refreshPublic();
       return NextResponse.json({ ok: true, added });
     }
   }
