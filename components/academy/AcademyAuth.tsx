@@ -24,6 +24,23 @@ export function AcademyAuth() {
     } catch { setError('Network error. Please try again.'); setBusy(false); }
   }
 
+  async function passkeyLogin() {
+    setBusy(true); setError('');
+    try {
+      const { startAuthentication } = await import('@simplewebauthn/browser');
+      const opt = await fetch('/api/academy/passkey/auth-options', { method: 'POST' }).then((r) => r.json());
+      if (!opt.ok) throw new Error(opt.error || 'Could not start.');
+      const response = await startAuthentication({ optionsJSON: opt.options });
+      const v = await fetch('/api/academy/passkey/auth-verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ response }) }).then((r) => r.json());
+      if (v.ok) window.location.reload();
+      else { setError(v.error || 'Passkey sign-in failed.'); setBusy(false); }
+    } catch (e) {
+      const msg = (e as Error)?.message || '';
+      setError(/NotAllowed|abort|cancel/i.test(msg) ? 'Sign-in cancelled.' : 'No passkey on this device yet — sign in with your password, then enable Face ID in Settings.');
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-md rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6 md:p-8">
       <h2 className="font-[family-name:var(--font-display)] text-2xl">{mode === 'signup' ? 'Create your trainee account' : 'Trainee login'}</h2>
@@ -46,6 +63,12 @@ export function AcademyAuth() {
           </label>
         )}
         <input type="text" tabIndex={-1} autoComplete="off" value={f.company} onChange={(e) => set('company', e.target.value)} className="absolute -left-[9999px] h-0 w-0" aria-hidden />
+        {mode === 'login' && (
+          <button type="button" onClick={() => !busy && passkeyLogin()} className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-sm font-medium text-[var(--color-ink)] transition-colors hover:border-[var(--color-gold)]">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 11v4M9 11V8a3 3 0 0 1 6 0v3" /><rect x="5" y="11" width="14" height="9" rx="2" /></svg>
+            Sign in with Face ID / fingerprint
+          </button>
+        )}
       </div>
       {error && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
       <div className="mt-6 flex items-center justify-between gap-4">

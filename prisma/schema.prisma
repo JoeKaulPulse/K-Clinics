@@ -1784,9 +1784,30 @@ model AcademyStudent {
   pointEvents      PointEvent[]
   badges           StudentBadge[]
   dailyActivity    DailyActivity[]
+  passkeys         StudentPasskey[]
 
   @@index([createdAt])
   @@index([xp])
+  @@index([tenantId])
+}
+
+// Trainee passkeys — Face ID / Touch ID / fingerprint sign-in for the academy
+// app. Additive convenience; password sign-in always remains. Mirrors the
+// admin WebAuthnCredential flow (lib/webauthn) but for AcademyStudent.
+model StudentPasskey {
+  id           String         @id @default(cuid())
+  tenantId     String? // ClinicOS multi-tenant (Ring 0)
+  student      AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId    String
+  credentialId String         @unique // base64url
+  publicKey    Bytes // COSE public key
+  counter      Int            @default(0)
+  transports   String[]       @default([])
+  deviceName   String?
+  createdAt    DateTime       @default(now())
+  lastUsedAt   DateTime?
+
+  @@index([studentId])
   @@index([tenantId])
 }
 
