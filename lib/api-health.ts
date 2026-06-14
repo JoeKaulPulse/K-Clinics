@@ -209,6 +209,21 @@ async function checkAnthropic(): Promise<Outcome> {
   } catch (e) { return netFail(e); }
 }
 
+async function checkPlaces(): Promise<Outcome> {
+  // Live Google rating + recent reviews on the public site (classic Places API).
+  const placeId = await getSecret('GOOGLE_PLACE_ID');
+  const key = await getSecret('GOOGLE_PLACES_API_KEY');
+  if (!has(placeId) || !has(key)) return { light: 'grey', detail: 'Not set — add a Place ID + Places API key to show your live Google rating on the site' };
+  try {
+    const { res, ms } = await timed(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId!)}&fields=rating,user_ratings_total&key=${encodeURIComponent(key!)}`);
+    const j = (await res.json().catch(() => ({}))) as { status?: string; error_message?: string; result?: { rating?: number; user_ratings_total?: number } };
+    if (j.status === 'OK') return { light: 'green', detail: `Live · ${j.result?.rating ?? '—'}★ from ${j.result?.user_ratings_total ?? 0} Google reviews`, latencyMs: ms };
+    if (j.status === 'REQUEST_DENIED') return { light: 'red', detail: `Rejected — ${j.error_message?.slice(0, 110) || 'enable the classic “Places API” + billing in Google Cloud, and remove any HTTP-referrer restriction on the key'}`, latencyMs: ms };
+    if (j.status === 'NOT_FOUND' || j.status === 'INVALID_REQUEST') return { light: 'red', detail: `Place ID looks wrong (${j.status}) — re-check it in Google’s Place ID Finder`, latencyMs: ms };
+    return { light: 'amber', detail: `Places API: ${j.status || 'no rating returned'}`, latencyMs: ms };
+  } catch (e) { return netFail(e); }
+}
+
 async function checkDeepgram(): Promise<Outcome> {
   const key = await getSecret('DEEPGRAM_API_KEY');
   if (!has(key)) return { light: 'grey', detail: 'Not configured — clinical voice-note transcription off' };
@@ -487,6 +502,7 @@ const CHECKS: Def[] = [
   { id: 'tiktok', label: 'TikTok Ads', category: 'Marketing', probe: 'GET advertiser list with stored token', run: checkTikTok },
   { id: 'ga4', label: 'GA4 conversions', category: 'Marketing', probe: 'POST GA4 /debug/mp/collect (validates, records nothing)', run: checkGa4 },
 
+  { id: 'places', label: 'Google rating (Places API)', category: 'Scheduling & Reviews', probe: 'GET maps.googleapis.com place/details', run: checkPlaces },
   { id: 'google-business', label: 'Google Business Profile', category: 'Scheduling & Reviews', probe: 'Accounts + locations list with stored token', run: checkGoogleBusiness },
   { id: 'gcal', label: 'Google Calendar', category: 'Scheduling & Reviews', probe: 'Config + connected staff (parked)', run: checkGoogleCalendar },
   { id: 'caldav', label: 'Clinic calendar (CalDAV)', category: 'Scheduling & Reviews', probe: 'OPTIONS on the CalDAV collection', run: checkCalDav },
