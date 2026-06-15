@@ -240,11 +240,23 @@ export async function finalizeBookingCharge(
   if (!booking) return true;
 
   try {
+    // VAT breakdown on the receipt once the clinic is VAT-registered (dormant otherwise).
+    let vat: { netPence: number; vatPence: number; ratePct: number } | null = null;
+    try {
+      const { getVatConfig, effectiveVatClass, vatBreakdown } = await import('@/lib/vat');
+      const cfg = await getVatConfig();
+      if (cfg.registered) {
+        const { getServiceByTreatment } = await import('@/lib/services');
+        const svc = await getServiceByTreatment(booking.treatmentSlug);
+        const b = vatBreakdown(amountReceivedPence, cfg, effectiveVatClass({ vatClass: svc?.vatClass, category: svc?.category }));
+        if (b.applied) vat = { netPence: b.netPence, vatPence: b.vatPence, ratePct: b.ratePct };
+      }
+    } catch { /* receipt still sends without the VAT line */ }
     const detail = opts.late ? null : await receiptDetail(booking.id, booking.stripePaymentMethodId);
     await sendEmail({
       to: booking.client.email,
       subject: opts.late ? 'Late-cancellation fee — KClinics' : `Receipt — ${booking.treatmentTitle}`,
-      html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountReceivedPence, late: opts.late, ...(detail ?? {}) }),
+      html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountReceivedPence, late: opts.late, vat, ...(detail ?? {}) }),
     });
     await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment receipt', status: 'SENT' } });
   } catch (e) { console.error('[charge] receipt failed:', (e as Error)?.message); }
