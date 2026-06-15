@@ -1265,6 +1265,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Integrated @sentry/nextjs for production error aggregation. instrumentation.ts registers Sentry on both nodejs and edge runtimes via register(); onRequestError hook captures every server request error. instrumentation-client.ts initialises client-side Sentry with session replay. sentry.server.config.ts + sentry.edge.config.ts read SENTRY_DSN env var; no-op when unset so builds and tests pass without a DSN. app/global-error.tsx reports root boundary errors via Sentry.captureException(). CSP connect-src updated to allow *.sentry.io. To activate: set SENTRY_DSN (server) and NEXT_PUBLIC_SENTRY_DSN (client) in Vercel env.',
     notes: ['instrumentation.ts, instrumentation-client.ts, sentry.server.config.ts, sentry.edge.config.ts, app/global-error.tsx, next.config.mjs CSP. No withSentryConfig wrapper (instrumentation API is sufficient for App Router). @sentry/nextjs added to dependencies.'],
   },
+  {
+    title: 'Google Workspace Directory API: manage mailboxes from admin dashboard (BLD-312)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 8,
+    detail: 'Phase A + B shipped. lib/google-workspace.ts: service-account JWT (RS256 via jose), short-TTL token cache, listWorkspaceUsers/getWorkspaceUser/createWorkspaceUser/suspendWorkspaceUser/restoreWorkspaceUser/addUserAlias/removeUserAlias/listGroups/createGroup/addGroupMember/removeGroupMember. All functions no-op when credentials absent. API routes under /api/admin/integrations/google-workspace/* gated on settings.manage with logAudit on every write. /admin/workspace page: users table (status, last login, suspend/restore, alias add/remove) + groups tab (list, create). lib/integrations.ts: Workspace card. lib/admin-nav.ts: Workspace entry. lib/secrets.ts: GOOGLE_WORKSPACE_SA_KEY, GOOGLE_WORKSPACE_ADMIN_EMAIL, GOOGLE_WORKSPACE_CUSTOMER_ID added to SECRET_DEFS. Setup: see docs/GOOGLE_WORKSPACE_MIGRATION.md section 10.',
+    notes: ['To activate: (1) In Google Cloud, enable Admin SDK API; (2) Create a service account + JSON key; (3) In Google Admin console Security -> API controls -> Domain-wide delegation, grant the client ID the Directory API scopes; (4) Paste the JSON key into Admin -> Credentials (GOOGLE_WORKSPACE_SA_KEY) and set the admin email (GOOGLE_WORKSPACE_ADMIN_EMAIL).'],
+  },
+  {
+    title: 'Academy content batch 9: record keeping, acne/PIH, medication interactions (BLD-311)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 5,
+    detail: 'Three new modules added to lib/academy-content.ts. L2: Record Keeping & Data Protection in Practice (2 lessons: what to record + UK GDPR/confidentiality, 6-question quiz). L3: Acne & PIH Protocols (2 lessons: IPL/porphyrin mechanism + PIH prevention, 6-question quiz). L4: Medication Interactions & Photosensitivity (2 lessons: drug-induced photosensitivity + anticoagulants/immunosuppressants/GP clearance, 6-question quiz). 12 new exam-bank questions spanning L2-L4 and L5-7 slugs.',
+    notes: ['enrichCourseContentIfNeeded() will seed these on the next daily cron run. Idempotent by title -- safe to re-run.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
