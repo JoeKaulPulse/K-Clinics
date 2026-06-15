@@ -133,6 +133,35 @@ export async function deleteClient(clientId: string, confirm: string) {
   return { ok: true };
 }
 
+// BLD-314 Phase 3: GDPR Art.17 erasure for academy trainees. Requires
+// settings.manage (admin-level). Pseudonymises the student row and hard-deletes
+// the records that have no retention basis (passkeys, progress tokens).
+// Enrolment rows are retained pseudonymously (certification verification basis).
+export async function eraseStudentData(studentId: string) {
+  if (!crmEnabled) return { ok: false };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'settings.manage')) return { ok: false, error: 'Not permitted.' };
+  const { db } = await import('@/lib/db');
+  const { logAudit } = await import('@/lib/audit');
+  const student = await db.academyStudent.findUnique({ where: { id: studentId }, select: { email: true } });
+  if (!student) return { ok: false, error: 'Student not found.' };
+  await db.$transaction([
+    db.academyStudent.update({
+      where: { id: studentId },
+      data: {
+        firstName: 'Erased', lastName: null, email: `erased-${studentId}@redacted.invalid`,
+        phone: null, dob: null, portalActive: false, passwordHash: null,
+        resetTokenHash: null, resetTokenExp: null,
+      },
+    }),
+    // Remove authentication credentials — no retention basis.
+    db.studentPasskey.deleteMany({ where: { studentId } }),
+  ]);
+  await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, summary: `Academy student ${student.email} data erased (GDPR Art.17)` });
+  revalidatePath('/admin/academy');
+  return { ok: true };
+}
+
 export async function togglePinNote(noteId: string, clientId: string, pinned: boolean) {
   if (!crmEnabled) return;
   const session = await getSession();
