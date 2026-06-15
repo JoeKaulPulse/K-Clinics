@@ -9,6 +9,7 @@ export const maxDuration = 300; // the daily run does a lot (automations, loyalt
 // CRON_SECRET as a bearer token. Idempotent — every send is logged so nothing
 // double-fires within its window.
 export async function GET(req: Request) {
+  const cronStartedAt = Date.now();
   // Require a configured secret, and a matching bearer token (constant-time). If
   // no secret is set, refuse rather than running the automations unprotected.
   const { cronAuthorized } = await import('@/lib/cron-auth');
@@ -230,9 +231,25 @@ export async function GET(req: Request) {
     await db.setting.upsert({ where: { key: 'cron_daily_last' }, update: { value: new Date().toISOString() }, create: { key: 'cron_daily_last', value: new Date().toISOString() } });
   } catch { /* non-fatal */ }
 
+  const cronDurationMs = Date.now() - cronStartedAt;
+
+  // BLD-349: push failure summary to a webhook channel when configured.
+  // Set CRON_ALERT_WEBHOOK_URL (Slack/Discord/Make/Zapier) in Vercel env.
+  if (failures > 0) {
+    const webhookUrl = process.env.CRON_ALERT_WEBHOOK_URL;
+    if (webhookUrl) {
+      const body = JSON.stringify({
+        text: `[kclinics cron] ${failures} failure(s) in ${Math.round(cronDurationMs / 1000)}s — check Vercel logs`,
+        failures,
+        durationMs: cronDurationMs,
+      });
+      fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }).catch(() => {});
+    }
+  }
+
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, ...result, loyalty, membership, gcal, gbiz, retention, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, academyTenant, examBank, gamification, authored, courseContent },
+    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, retention, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, academyTenant, examBank, gamification, authored, courseContent },
     { status: failures === 0 ? 200 : 500 },
   );
 }
