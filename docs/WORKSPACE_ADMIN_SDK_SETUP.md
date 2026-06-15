@@ -10,6 +10,12 @@ aliases. Do this once, the moment `webmaster@kclinics.co.uk` has Cloud **Owner**
 
 Sign in to both consoles as `webmaster@kclinics.co.uk`.
 
+> **Scope to the project, not the Organisation.** For steps 1–4, click the project
+> picker at the top of the Cloud Console and select the **KClinics** project. At the
+> Organisation level "Service accounts" is greyed out — *"Not viewable for
+> organisations"* — because they're a project-level resource. Owner on the KClinics
+> project (already granted) is all you need.
+
 ---
 
 ## 1. Enable the Admin SDK API
