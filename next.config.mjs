@@ -1,3 +1,6 @@
+// @ts-check
+import { withSentryConfig } from '@sentry/nextjs';
+
 /** @type {import('next').NextConfig} */
 
 // When deploying to GitHub Pages we produce a fully static export served from a
@@ -19,7 +22,7 @@ const csp = [
   "font-src 'self' https://fonts.gstatic.com data:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "script-src 'self' 'unsafe-inline' https://js.stripe.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://maps.googleapis.com https://maps.gstatic.com",
-  "connect-src 'self' https://api.stripe.com https://m.stripe.network https://r.stripe.com https://challenges.cloudflare.com https://maps.googleapis.com https://blob.vercel-storage.com https://*.public.blob.vercel-storage.com",
+  "connect-src 'self' https://api.stripe.com https://m.stripe.network https://r.stripe.com https://challenges.cloudflare.com https://maps.googleapis.com https://blob.vercel-storage.com https://*.public.blob.vercel-storage.com https://*.sentry.io https://*.ingest.sentry.io",
   "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com",
   "worker-src 'self' blob:",
   'upgrade-insecure-requests',
@@ -133,4 +136,23 @@ const nextConfig = {
     : { redirects, headers }),
 };
 
-export default nextConfig;
+const sentryConfig = withSentryConfig(nextConfig, {
+  // Sentry org/project are set in SENTRY_ORG / SENTRY_PROJECT env vars.
+  // Missing values = no source-map upload; the SDK still captures errors at runtime.
+  silent: true, // suppress CLI output in CI/build logs
+  hideSourceMaps: true,
+  disableLogger: true,
+});
+
+// Sentry adds 'pg' (and possibly other Prisma packages) to serverExternalPackages
+// for its OpenTelemetry pg instrumentation. Those same packages are in
+// transpilePackages (required for Vercel's lambda bundling — see comment above).
+// Turbopack rejects the conflict, so we strip them from the Sentry-added list.
+const BUNDLED_PKGS = new Set(['pg', '@prisma/client', '@prisma/adapter-pg', '@prisma/extension-accelerate']);
+if (Array.isArray(sentryConfig.serverExternalPackages)) {
+  sentryConfig.serverExternalPackages = sentryConfig.serverExternalPackages.filter(
+    (p) => !BUNDLED_PKGS.has(p)
+  );
+}
+
+export default sentryConfig;

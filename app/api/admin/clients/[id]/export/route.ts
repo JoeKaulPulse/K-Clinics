@@ -6,10 +6,13 @@ export const dynamic = 'force-dynamic';
 
 // Subject Access Request export — a full JSON of a client's record. Clinical
 // (encrypted health) data is only included for staff who may view it.
+// BLD-315 item 1: include all personal-data categories that erasure covers.
+// BLD-315 item 4: clinical gate uses the revocable clients.clinical.view
+//   permission (sessionCan) not the static canViewClinical(role) check.
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
   const { id } = await params;
-  const { getSession, sessionCan, canViewClinical } = await import('@/lib/auth');
+  const { getSession, sessionCan } = await import('@/lib/auth');
   const session = await getSession();
   if (!sessionCan(session, 'clients.export')) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
 
@@ -19,6 +22,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     include: {
       consultations: true, interactions: true, appointments: true, bookings: true,
       emails: true, discountClaims: true, tasks: true,
+      // BLD-315 item 1: relations present on Client that were missing from SAR.
+      aiAnalyses: true, followUps: true, reviews: true, npsResponses: true,
+      waitlist: true, referralsMade: true, callRecords: true,
     },
   });
   if (!c) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
@@ -38,14 +44,26 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const out: Record<string, unknown> = { exportedAt: new Date().toISOString(), exportedBy: session!.email, client };
 
-  if (canViewClinical(session!.role)) {
+  // BLD-315 item 1: models that have clientId but no back-relation on Client —
+  // must be queried separately to reach parity with the erasure list.
+  const [signedConsents, beforePhotos, chatConversations] = await Promise.all([
+    db.signedConsent.findMany({ where: { clientId: id } }),
+    db.beforePhoto.findMany({ where: { clientId: id } }),
+    db.chatConversation.findMany({ where: { clientId: id } }),
+  ]);
+  out.signedConsents = signedConsents;
+  out.beforePhotos = beforePhotos;
+  out.chatConversations = chatConversations;
+
+  // BLD-315 item 4: use the revocable permission not the static role check.
+  if (sessionCan(session, 'clients.clinical.view')) {
     const assessments = await db.healthAssessment.findMany({ where: { clientId: id }, orderBy: { submittedAt: 'desc' } });
     const { formatAssessment } = await import('@/lib/health-assessments');
     out.healthAssessments = await Promise.all(assessments.map((a) => formatAssessment(a.id)));
   }
 
   const { logAudit } = await import('@/lib/audit');
-  await logAudit({ action: 'ASSESSMENT_VIEWED', actor: session!.email, actorRole: session!.role, clientId: id, summary: 'Client data exported (SAR)' });
+  await logAudit({ action: 'DATA_EXPORTED', actor: session!.email, actorRole: session!.role, clientId: id, summary: 'Client data exported (SAR)' });
 
   const name = [c.firstName, c.lastName].filter(Boolean).join('-').toLowerCase() || 'client';
   return new NextResponse(JSON.stringify(out, null, 2), {

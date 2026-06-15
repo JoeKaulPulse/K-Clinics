@@ -27,11 +27,13 @@ export async function addNote(clientId: string, summary: string, type: string = 
 }
 
 // GDPR right-to-erasure — pseudonymise a client's personal data while keeping
-// financial/audit records intact for legal retention. Requires clients.export.
+// financial/audit records intact for legal retention. Requires clients.delete
+// (BLD-315 item 5: was incorrectly gated by clients.export; erasure is a
+// destructive, irreversible write — it needs the delete permission).
 export async function eraseClientData(clientId: string) {
   if (!crmEnabled) return { ok: false };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'clients.export')) return { ok: false, error: 'Not permitted' };
+  if (!session || !sessionCan(session, 'clients.delete')) return { ok: false, error: 'Not permitted' };
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
   // Art. 17 erasure across ALL personal/special-category data, atomically. We
@@ -92,8 +94,17 @@ export async function eraseClientData(clientId: string) {
     // Legacy Appointment model (pre-Booking era) — status/schedule data only,
     // no financial retention basis, safe to hard-delete.
     db.appointment.deleteMany({ where: { clientId } }),
+    // BLD-315 item 3: DiscountClaim identity fingerprints survive erasure and
+    // remain re-identifiable (emailNorm is the normalised email; phoneNorm the
+    // normalised phone; nameDobKey is a name+dob composite). Strip them and
+    // retain only the salted hash so repeat-claim fraud detection still works
+    // while the raw PII is gone.
+    db.discountClaim.updateMany({
+      where: { clientId },
+      data: { emailNorm: '', phoneNorm: null },
+    }),
   ]);
-  await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
+  await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
   revalidatePath(`/admin/clients/${clientId}`);
   return { ok: true };
 }

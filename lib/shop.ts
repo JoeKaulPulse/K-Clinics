@@ -5,9 +5,18 @@ export const FREE_SHIP_THRESHOLD = 5000; // free shipping over £50
 
 export const formatPence = (p: number) => (p <= 0 ? 'Free' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`);
 
+const PRODUCT_PUBLIC_SELECT = {
+  id: true, slug: true, name: true, description: true, brand: true, category: true,
+  pricePence: true, compareAtPence: true, sku: true, images: true, status: true,
+  ageRestricted: true, trackInventory: true, stockQty: true, lowStockThreshold: true,
+  createdAt: true, updatedAt: true,
+  // costPence and barcode are internal-only; excluded here to avoid leaking margin
+  // data or supplier barcodes through the public shop and cart APIs.
+} as const;
+
 export async function activeProducts() {
   const { db } = await import('@/lib/db');
-  return db.product.findMany({ where: { status: 'ACTIVE' }, orderBy: { updatedAt: 'desc' } });
+  return db.product.findMany({ where: { status: 'ACTIVE' }, orderBy: { updatedAt: 'desc' }, select: PRODUCT_PUBLIC_SELECT });
 }
 
 export async function getProductBySlug(slug: string) {
@@ -23,7 +32,7 @@ export type ValidatedCart = { lines: CartLine[]; subtotalPence: number; hasAgeRe
 export async function validateCart(input: CartInput): Promise<ValidatedCart> {
   const { db } = await import('@/lib/db');
   const ids = [...new Set(input.map((i) => i.productId))];
-  const products = ids.length ? await db.product.findMany({ where: { id: { in: ids }, status: 'ACTIVE' } }) : [];
+  const products = ids.length ? await db.product.findMany({ where: { id: { in: ids }, status: 'ACTIVE' }, select: PRODUCT_PUBLIC_SELECT }) : [];
   const byId = new Map(products.map((p) => [p.id, p]));
   const lines: CartLine[] = [];
   const issues: string[] = [];
@@ -44,8 +53,28 @@ export const shippingFor = (method: string, subtotalPence: number) =>
 
 export async function nextOrderNumber(): Promise<string> {
   const { db } = await import('@/lib/db');
-  const count = await db.order.count();
-  return `KC${(1000 + count + 1).toString()}`;
+  // Race-free: Postgres sequence guarantees each concurrent caller gets a
+  // distinct value. The DO block is idempotent — it creates the sequence once
+  // and seeds it above any existing KC-number so old count-based numbers are
+  // never re-issued (Order.number is @unique, so a collision would fail the
+  // insert; this prevents the collision upstream).
+  await db.$executeRaw`
+    DO $body$
+    DECLARE maxn BIGINT;
+    BEGIN
+      CREATE SEQUENCE IF NOT EXISTS kc_order_seq MINVALUE 1001 START 1001;
+      SELECT COALESCE(MAX(CAST(SUBSTRING(number FROM 3) AS BIGINT)), 1000)
+        INTO maxn
+        FROM "Order"
+        WHERE number ~ E'^KC[0-9]+$';
+      PERFORM setval('kc_order_seq', GREATEST(
+        (SELECT last_value FROM kc_order_seq), maxn
+      ));
+    END
+    $body$
+  `;
+  const [row] = await db.$queryRaw<[{ n: bigint }]>`SELECT nextval('kc_order_seq') AS n`;
+  return `KC${row.n}`;
 }
 
 /** Finalise a paid order: decrement stock, redeem any gift card, send the
