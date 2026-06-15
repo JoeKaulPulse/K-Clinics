@@ -40,7 +40,7 @@ export default async function WaitlistPage() {
           <tbody className="divide-y divide-[var(--color-line)]">
             {rows.length === 0 && <tr><td colSpan={5} className="px-4 py-5 text-[var(--color-stone)]">No one is on the waitlist right now.</td></tr>}
             {rows.map((w) => (
-              <tr key={w.id} className="bg-[var(--color-porcelain)] align-top">
+              <tr key={w.id} className="bg-[var(--color-porcelain)] align-top transition-colors duration-150 hover:bg-[var(--color-bone)]">
                 <td className="px-4 py-3">
                   <a href={`/admin/clients/${w.client.id}`} className="font-medium hover:text-[var(--color-gold)]">{[w.client.firstName, w.client.lastName].filter(Boolean).join(' ') || w.client.email}</a>
                 </td>
