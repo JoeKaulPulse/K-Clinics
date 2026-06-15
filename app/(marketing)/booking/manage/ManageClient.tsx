@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 
 type B = {
@@ -54,9 +54,9 @@ export function ManageClient({ token, booking }: { token: string; booking: B }) 
     finally { setBusy(false); setConfirming(false); }
   }
 
-  async function fetchSlots(date: string) {
+  async function fetchSlots(date: string, preselect?: string | null) {
     if (!date) return;
-    setLoadingSlots(true); setSlots([]); setSelectedSlot(null);
+    setLoadingSlots(true); setSlots([]); setSelectedSlot(preselect ?? null);
     try {
       const res = await fetch('/api/booking/availability', {
         method: 'POST',
@@ -98,6 +98,9 @@ export function ManageClient({ token, booking }: { token: string; booking: B }) 
         setSlots([]); setSelectedSlot(null); setRescheduleDate('');
       } else {
         setMsg(j.error || 'Could not reschedule. Please call us on 020 8050 0750.');
+        // The slot was taken between selection and submit — refresh the list so the
+        // stale time disappears and the client can repick (finding #5).
+        if (j.code === 'SLOT_TAKEN' && rescheduleDate) fetchSlots(rescheduleDate);
       }
     } catch { setMsg('Network error. Please call us.'); }
     finally { setBusy(false); }
@@ -106,6 +109,35 @@ export function ManageClient({ token, booking }: { token: string; booking: B }) 
   // Min date for the picker: 48h from now + 1 day buffer for display
   const minDate = new Date(Date.now() + 48 * 60 * 60 * 1000 + 60 * 60 * 1000);
   const minDateStr = minDate.toISOString().slice(0, 10);
+
+  // Persist the reschedule picker across an accidental mid-flow refresh (finding #8):
+  // date/time selections live only in component state, so a reload would silently
+  // drop a half-finished reschedule. Stash them in sessionStorage, keyed by token.
+  const rescheduleStoreKey = `kc-reschedule:${token}`;
+  useEffect(() => {
+    if (done || typeof window === 'undefined') return;
+    try {
+      const saved = window.sessionStorage.getItem(rescheduleStoreKey);
+      if (!saved) return;
+      const s = JSON.parse(saved) as { date?: string; slot?: string | null };
+      if (s.date) {
+        setShowReschedule(true);
+        setRescheduleDate(s.date);
+        fetchSlots(s.date, s.slot ?? null); // re-list times, restoring the chosen slot
+      }
+    } catch { /* malformed/disabled storage — ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (showReschedule && rescheduleDate) {
+        window.sessionStorage.setItem(rescheduleStoreKey, JSON.stringify({ date: rescheduleDate, slot: selectedSlot }));
+      } else {
+        window.sessionStorage.removeItem(rescheduleStoreKey);
+      }
+    } catch { /* storage disabled (private mode) — non-fatal */ }
+  }, [showReschedule, rescheduleDate, selectedSlot, rescheduleStoreKey]);
 
   return (
     <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-8 md:p-10">

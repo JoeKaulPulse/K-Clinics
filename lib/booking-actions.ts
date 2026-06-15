@@ -382,7 +382,7 @@ export async function rescheduleBooking(
   bookingId: string,
   newStartISO: string,
   opts: { by: string; reason?: string; admin?: boolean },
-): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; error?: string }> {
+): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; error?: string; code?: 'SLOT_TAKEN' }> {
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
   if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(booking.status)) {
@@ -413,7 +413,7 @@ export async function rescheduleBooking(
   // Exclude this booking from the clash check so a same-day move doesn't conflict
   // with its own current slot/clinician/room (BLD reschedule self-clash).
   if (!(await isSlotFree(newStartISO, booking.durationMin, booking.treatmentSlug, null, { excludeBookingId: bookingId, ...(opts.admin ? { leadMinutes: 0 } : {}) }))) {
-    return { ok: false, error: 'That time is no longer available. Please choose another slot.' };
+    return { ok: false, code: 'SLOT_TAKEN', error: 'That time is no longer available. Please choose another slot.' };
   }
 
   let charged = 0;
