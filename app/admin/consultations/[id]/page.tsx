@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
-import { getSession, sessionPermissions, sessionCan, canViewClinical } from '@/lib/auth';
+import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { ConsultationNotes } from '@/components/admin/ConsultationNotes';
@@ -29,7 +29,7 @@ export default async function ConsultationDetail({ params }: { params: Promise<{
   const consult = await getConsultation(id);
   if (!consult) notFound();
 
-  const clinical = canViewClinical(session?.role);
+  const clinical = sessionCan(session, 'clients.clinical.view');
   const can = await sessionPermissions();
   const fullName = [consult.client.firstName, consult.client.lastName].filter(Boolean).join(' ');
 
