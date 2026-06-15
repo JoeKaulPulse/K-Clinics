@@ -45,6 +45,11 @@ export const SECRET_DEFS: SecretDef[] = [
   { name: 'XERO_CLIENT_SECRET', label: 'Xero client secret', group: 'OAuth · Xero' },
   { name: 'TRUELAYER_CLIENT_ID', label: 'TrueLayer client ID', group: 'OAuth · Bank', help: 'console.truelayer.com' },
   { name: 'TRUELAYER_CLIENT_SECRET', label: 'TrueLayer client secret', group: 'OAuth · Bank' },
+  // Google Workspace Directory API (BLD-312) — service account + domain-wide delegation.
+  // See docs/GOOGLE_WORKSPACE_MIGRATION.md §10.1 for the one-off setup steps.
+  { name: 'GOOGLE_WORKSPACE_SA_KEY', label: 'Workspace service-account key (JSON)', group: 'Google Workspace', help: 'Paste the full JSON key downloaded from Google Cloud Console → IAM & Admin → Service Accounts → Keys. The key must have domain-wide delegation enabled with the Directory API scopes.' },
+  { name: 'GOOGLE_WORKSPACE_ADMIN_EMAIL', label: 'Workspace admin email to impersonate', group: 'Google Workspace', help: 'The super-admin email the service account will impersonate, e.g. admin@kclinics.co.uk. This user must have the Admin SDK Directory API access.' },
+  { name: 'GOOGLE_WORKSPACE_CUSTOMER_ID', label: 'Workspace customer ID (optional)', group: 'Google Workspace', help: 'Optional. If set, replaces "my_customer" in Directory API calls. Find it at admin.google.com → Account → Account settings → Customer ID.' },
   // Payments — hosting-managed by design: the publishable key is baked into the
   // browser bundle at BUILD TIME and can't be served from the DB, so payments
   // always need both keys in env + a redeploy. Shown read-only for reference.

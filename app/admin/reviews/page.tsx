@@ -83,7 +83,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
 
       <div className="mt-6 flex flex-wrap gap-1 rounded-full border border-[var(--color-line)] p-0.5 text-sm">
         {FILTERS.map((f) => (
-          <Link key={f} href={`/admin/reviews?status=${f}`} className={`rounded-full px-3 py-1 ${status === f ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)]'}`}>
+          <Link key={f} href={`/admin/reviews?status=${f}`} className={`rounded-full px-3 py-1 transition-colors duration-150 ${status === f ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:bg-[var(--color-bone)]'}`}>
             {f === 'ALL' ? L('All', 'Усі') : f[0] + f.slice(1).toLowerCase()}
           </Link>
         ))}
@@ -94,7 +94,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
         {reviews.map((r) => {
           const name = [r.client.firstName, r.client.lastName].filter(Boolean).join(' ') || L('Client', 'Клієнт');
           return (
-            <div key={r.id} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
+            <div key={r.id} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 transition-shadow duration-150 hover:shadow-[var(--shadow-soft)]">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">

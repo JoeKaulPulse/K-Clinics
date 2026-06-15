@@ -143,9 +143,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         </div>
         <div className="flex gap-1 rounded-full border border-[var(--color-line)] p-0.5 text-sm">
           {RANGES.map((r) => (
-            <Link key={r} href={`/admin/reports?range=${r}`} className={`rounded-full px-3 py-1 ${!all && days === r ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)]'}`}>{r}d</Link>
+            <Link key={r} href={`/admin/reports?range=${r}`} className={`rounded-full px-3 py-1 transition-colors duration-150 ${!all && days === r ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:bg-[var(--color-bone)]'}`}>{r}d</Link>
           ))}
-          <Link href="/admin/reports?range=all" className={`rounded-full px-3 py-1 ${all ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)]'}`}>{L('All', 'Усе')}</Link>
+          <Link href="/admin/reports?range=all" className={`rounded-full px-3 py-1 transition-colors duration-150 ${all ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:bg-[var(--color-bone)]'}`}>{L('All', 'Усе')}</Link>
         </div>
       </div>
 
@@ -158,7 +158,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           { label: L('Clinical hours', 'Клінічні години'), value: hrs(totalActualMin) },
           { label: L('Consumables used', 'Витратні'), value: gbp(consumablesUsed) },
         ].map((k) => (
-          <div key={k.label} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
+          <div key={k.label} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 transition-shadow duration-150 hover:shadow-[var(--shadow-soft)]">
             <div className="font-[family-name:var(--font-display)] text-2xl tabular-nums">{k.value}</div>
             <div className="mt-1 text-xs text-[var(--color-stone)]">{k.label}</div>
           </div>
@@ -180,7 +180,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                   const avgActual = s.count ? Math.round(s.actualMin / s.count) : 0;
                   const avgBooked = s.count ? Math.round(s.bookedMin / s.count) : 0;
                   return (
-                    <tr key={s.name} className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-bone)]">
+                    <tr key={s.name} className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)] transition-colors duration-150 hover:bg-[var(--color-bone)]">
                       <td className="px-4 py-2.5 font-medium">{s.name}</td>
                       <td className="px-4 py-2.5 text-right">{s.count}</td>
                       <td className="px-4 py-2.5 text-right">{hrs(s.actualMin)}</td>
@@ -219,7 +219,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                 <tbody>
                   {profitability.length === 0 && <tr><td colSpan={5} className="px-4 py-4 text-[var(--color-stone)]">{L('No data yet.', 'Немає даних.')}</td></tr>}
                   {profitability.map((p) => (
-                    <tr key={p.title} className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-bone)]">
+                    <tr key={p.title} className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)] transition-colors duration-150 hover:bg-[var(--color-bone)]">
                       <td className="px-4 py-2.5 font-medium">{p.title} <span className="text-xs text-[var(--color-stone-soft)]">×{p.count}</span>{minMarginPct > 0 && p.cost > 0 && p.marginPct < minMarginPct && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[0.6rem] font-medium text-amber-800">⚠ below {minMarginPct}%</span>}</td>
                       <td className="px-4 py-2.5 text-right text-[var(--color-jade)]">{gbp(p.revenue)}</td>
                       <td className="px-4 py-2.5 text-right text-[var(--color-stone)]">{p.cost > 0 ? gbp(p.cost) : '—'}</td>
@@ -258,7 +258,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               </thead>
               <tbody>
                 {stepRows.map((r) => (
-                  <tr key={r.label} className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-bone)]">
+                  <tr key={r.label} className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)] transition-colors duration-150 hover:bg-[var(--color-bone)]">
                     <td className="px-4 py-2.5 font-medium">{r.label}</td>
                     <td className="px-4 py-2.5 text-right">
                       <span className="inline-flex items-center justify-end gap-2">
