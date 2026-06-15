@@ -603,6 +603,13 @@ model Booking {
   reminder72hSent Boolean  @default(false)
   reminder48hSent Boolean  @default(false)
   rescheduleCount Int      @default(0)
+
+  // Google Calendar: id of the event mirrored onto the assigned clinician's
+  // Workspace calendar, so it can be updated/removed idempotently. Null until
+  // pushed (and when no clinician is connected); cleared on cancellation.
+  // Best-effort — calendar sync never blocks the booking lifecycle.
+  googleEventId String?
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -930,6 +937,15 @@ model AdminUser {
   // Google Calendar integration (busy-time sync + event push).
   googleCalendarId   String?
   googleRefreshToken String?
+
+  // Google Workspace SSO: the linked Google account id (stable `sub` claim) and
+  // the Google email it signs in with. Set on first "Sign in with Google", or
+  // pre-linked by an owner when someone's Workspace email differs from their
+  // existing login email (so their account merges instead of duplicating).
+  // Not @unique — the deploy gate forbids adding unique constraints to existing
+  // tables; uniqueness is enforced in the SSO/link code (lib/google-sso.ts).
+  googleSub   String?
+  googleEmail String?
 
   locale                 String  @default("en") // CRM UI language (en | uk)
   preferredDashboardView String? // PRJ-63: OWNER/ADMIN can pin a role-view to land on (null = role default)
@@ -1844,6 +1860,7 @@ model Course {
   liveClasses   LiveClass[]
   examQuestions ExamQuestion[]
   pastPapers    PastPaper[]
+  fundingApplications FundingApplication[]
 
   @@index([active, order])
   @@index([tenantId])
@@ -2151,6 +2168,65 @@ model Enrolment {
   @@index([courseId])
   @@index([applicantEmail])
   @@index([tenantId])
+}
+
+// ── Academy funding / grants applications ───────────────────────────────────
+// A prospective trainee asking for help to pay (government loan/grant, council
+// funding, monthly course finance, or self/employer funded). Captured from the
+// public /academy/funding page and worked in /admin/academy/funding. Separate
+// from Enrolment because a learner can ask about funding before choosing a
+// course — `course` is optional. The eligibility snapshot is what they told the
+// self-check; staff confirm the real position before any funding is offered.
+enum FundingStatus {
+  NEW // submitted from the website, awaiting first review
+  REVIEWING // staff assessing eligibility
+  REFERRED // referred to a funder / finance partner / partner college
+  APPROVED // funding agreed in principle
+  DECLINED // not eligible / not proceeding with funding
+  FUNDED // funding in place — learner can enrol
+  CLOSED // withdrawn / no longer pursuing
+}
+
+model FundingApplication {
+  id       String  @id @default(cuid())
+  tenantId String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+
+  // Applicant.
+  name  String
+  email String
+  phone String?
+
+  // Course of interest (optional — they may apply before choosing one).
+  course      Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  courseId    String?
+  courseLevel String? // level they're interested in, e.g. "Level 4"
+
+  // Funding route the applicant is pursuing + every route the self-check flagged
+  // as a likely fit (route keys live in lib/funding.ts).
+  route          String
+  eligibleRoutes String[] @default([])
+
+  // Eligibility self-check snapshot (all optional; the checker can be skipped).
+  age19Plus         Boolean?
+  residencyOk       Boolean? // settled / 3-year UK or EU residence (loan + ASF gate)
+  londonResident    Boolean?
+  islingtonResident Boolean?
+  employmentStatus  String? // employed | unemployed | self_employed | other
+  lowIncome         Boolean? // unemployed or on a low wage (full-funding gate)
+  priorLevel3       Boolean? // already holds a full Level 3 (free Level 3 offer gate)
+
+  message String?
+  status  FundingStatus @default(NEW)
+  notes   String? // staff notes
+  source  String? // page / utm origin
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([email])
+  @@index([tenantId])
+  @@index([createdAt])
 }
 
 // ── Post-treatment follow-up questionnaire ──────────────────────────────────

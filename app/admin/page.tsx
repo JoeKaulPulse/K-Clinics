@@ -130,12 +130,18 @@ export default async function AdminOverview() {
   const canBookings = sessionCan(session, 'bookings.view');
   const canReviews = sessionCan(session, 'reviews.manage');
   const canBuild = sessionCan(session, 'build.view');
+  const canAutomations = sessionCan(session, 'automations.view');
   const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(); dayEnd.setHours(23, 59, 59, 999);
+  // Comms health: transactional emails (booking confirmations/receipts/reminders)
+  // have no campaignId; a FAILED row means the send was attempted but the provider
+  // isn't configured / the domain isn't verified. Surfaced so a silent delivery
+  // outage is noticed without reading the log (booking assessment follow-up #4).
+  const commsSince = new Date(Date.now() - 7 * 864e5);
   // Load the whole dashboard through a couple of quick retries, so a single
   // transient DB blip doesn't 500 the overview (it recomposes the queries each
   // attempt — safe, as these are all reads).
-  const [o, a, pendingTimeOff, myTasks, stockItems, expiringSoon, ordersToFulfil, retailProducts, todaysBookings, reqConsent, reqPhoto, gReviewAgg, googleUnreplied, buildOpen, buildBlocked, buildUnsynced] = await withDbRetry(() => Promise.all([
+  const [o, a, pendingTimeOff, myTasks, stockItems, expiringSoon, ordersToFulfil, retailProducts, todaysBookings, reqConsent, reqPhoto, gReviewAgg, googleUnreplied, buildOpen, buildBlocked, buildUnsynced, failedComms] = await withDbRetry(() => Promise.all([
     getOverview(),
     getAnalytics(),
     canApproveTimeOff ? db.staffTimeOff.count({ where: { status: 'PENDING' } }) : Promise.resolve(0),
@@ -152,6 +158,7 @@ export default async function AdminOverview() {
     canBuild ? db.buildItem.count({ where: { status: { not: 'SHIPPED' } } }) : Promise.resolve(0),
     canBuild ? db.buildItem.count({ where: { status: 'BLOCKED' } }) : Promise.resolve(0),
     canBuild ? db.buildItem.count({ where: { githubUrl: null } }) : Promise.resolve(0),
+    canAutomations ? db.emailEvent.count({ where: { status: 'FAILED', campaignId: null, createdAt: { gte: commsSince } } }) : Promise.resolve(0),
   ]));
   const googleAvg = gReviewAgg?._avg.starRating ?? null;
   const googleCount = gReviewAgg?._count._all ?? 0;
@@ -177,6 +184,7 @@ export default async function AdminOverview() {
   }
   const sameDayRequests = canBookings ? await db.booking.count({ where: { status: 'REQUESTED' } }).catch(() => 0) : 0;
   const attention = [
+    { show: canAutomations && failedComms > 0, label: 'Confirmation emails failing', value: failedComms, href: '/admin/automations', tone: 'red' },
     { show: sameDayRequests > 0, label: 'Same-day requests to action', value: sameDayRequests, href: '/admin/bookings?filter=REQUESTED', tone: 'amber' },
     { show: todayNotReady > 0, label: 'Appointments not ready today', value: todayNotReady, href: '/admin/my-day', tone: 'amber' },
     { show: canFinance && unchargedCompleted > 0, label: 'Completed, not charged', value: unchargedCompleted, href: '/admin/bookings', tone: 'amber' },
@@ -191,6 +199,7 @@ export default async function AdminOverview() {
   ].filter((x) => x.show);
 
   const toneCls: Record<string, string> = {
+    red: 'border-red-300 bg-red-50 text-red-800',
     amber: 'border-amber-300 bg-amber-50 text-amber-900',
     blush: 'border-[var(--color-blush)]/40 bg-[var(--color-blush)]/10 text-[var(--color-ink)]',
     ink: 'border-[var(--color-line)] bg-[var(--color-porcelain)] text-[var(--color-ink)]',

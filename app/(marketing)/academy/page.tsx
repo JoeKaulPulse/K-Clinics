@@ -38,6 +38,7 @@ export default async function AcademyPage() {
       >
         <div className="flex flex-wrap gap-3">
           <Button href="#courses" variant="gold">Explore courses <ArrowIcon /></Button>
+          <Button href="/academy/funding" variant="outline">Funding &amp; finance</Button>
           <Button href="/academy/portal" variant="outline">Trainee login</Button>
         </div>
       </PageHero>
@@ -72,7 +73,7 @@ export default async function AcademyPage() {
         <Reveal>
           <p className="eyebrow mb-3">Courses</p>
           <h2 className="text-title">Qualifications that open doors.</h2>
-          <p className="mt-3 max-w-2xl text-[var(--color-ink-soft)]">Pay in instalments with Clearpay. Enrol any time — we’ll place you in the next suitable cohort.</p>
+          <p className="mt-3 max-w-2xl text-[var(--color-ink-soft)]">Spread the cost monthly, or see if you qualify for government or London funding — explore your <Link href="/academy/funding" className="link-underline font-medium text-[var(--color-ink)]">funding options</Link>. Enrol any time; we’ll place you in the next suitable cohort.</p>
         </Reveal>
         {courses.length === 0 ? (
           <p className="mt-8 text-[var(--color-stone)]">Our course schedule is being finalised — <Link href="/academy/portal" className="link-underline">register your interest</Link> and we’ll be in touch.</p>
@@ -94,6 +95,22 @@ export default async function AcademyPage() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* Funding */}
+      <section className="container-lux section">
+        <Reveal>
+          <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-10 md:p-14">
+            <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+              <div>
+                <p className="eyebrow mb-3">Funding &amp; finance</p>
+                <h2 className="font-[family-name:var(--font-display)] text-3xl">Worried about the cost? You have options.</h2>
+                <p className="mt-4 max-w-2xl text-[var(--color-ink-soft)]">Spread the cost month by month, ask your employer to sponsor you, or check whether you qualify for an Advanced Learner Loan or fully-funded London training. Because our Level 2–4 courses are Ofqual-regulated, they open funding doors that CPD-only courses can’t.</p>
+              </div>
+              <Button href="/academy/funding" variant="gold">Check funding options <ArrowIcon /></Button>
+            </div>
+          </div>
+        </Reveal>
       </section>
 
       {/* Equipment leasing */}

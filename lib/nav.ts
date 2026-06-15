@@ -126,6 +126,7 @@ export const footerNav = [
       { label: 'Special Offers', href: '/offers' },
       { label: 'Before & After Gallery', href: '/gallery' },
       { label: 'Buy Now, Pay Later', href: '/finance#buy-now-pay-later' },
+      { label: 'Academy Funding', href: '/academy/funding' },
       { label: 'FAQs', href: '/faq' },
       { label: 'Blog', href: '/journal' },
       { label: 'Quiz', href: '/treatment-finder' },

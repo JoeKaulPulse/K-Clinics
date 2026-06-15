@@ -343,6 +343,8 @@ export async function cancelBooking(
 
   // Remove from the shared clinic calendar (Hostinger CalDAV; no-op if unconfigured).
   import('@/lib/hostinger-calendar').then((m) => m.removeBooking(booking.id)).catch(() => {});
+  // Remove from the clinician's Google Calendar too (no-op while parked).
+  import('@/lib/google-calendar').then((m) => m.removeBookingFromClinician(booking.id)).catch(() => {});
 
   // Return any loyalty points the client had applied to this booking.
   try {
@@ -380,7 +382,7 @@ export async function rescheduleBooking(
   bookingId: string,
   newStartISO: string,
   opts: { by: string; reason?: string; admin?: boolean },
-): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; error?: string }> {
+): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; error?: string; code?: 'SLOT_TAKEN' }> {
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
   if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(booking.status)) {
@@ -411,7 +413,7 @@ export async function rescheduleBooking(
   // Exclude this booking from the clash check so a same-day move doesn't conflict
   // with its own current slot/clinician/room (BLD reschedule self-clash).
   if (!(await isSlotFree(newStartISO, booking.durationMin, booking.treatmentSlug, null, { excludeBookingId: bookingId, ...(opts.admin ? { leadMinutes: 0 } : {}) }))) {
-    return { ok: false, error: 'That time is no longer available. Please choose another slot.' };
+    return { ok: false, code: 'SLOT_TAKEN', error: 'That time is no longer available. Please choose another slot.' };
   }
 
   let charged = 0;
@@ -457,6 +459,8 @@ export async function rescheduleBooking(
   // the existing entry — we must NOT remove it (that would drop the appointment
   // from the clinic calendar entirely).
   import('@/lib/hostinger-calendar').then((m) => m.pushBooking(booking.id)).catch(() => {});
+  // Move the clinician's Google Calendar event to the new time (no-op while parked).
+  import('@/lib/google-calendar').then((m) => m.pushBookingToClinician(booking.id)).catch(() => {});
 
   // Confirmation email (best-effort).
   await sendEmail({
