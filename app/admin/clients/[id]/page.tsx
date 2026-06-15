@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
-import { getSession, canViewClinical, sessionPermissions } from '@/lib/auth';
+import { getSession, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { AddNote, PinToggle, SendEmail, StatusSelect } from '@/components/admin/ClientActions';
@@ -70,7 +70,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
 
   // Clinical (health) data — practitioners/admins/owner only. Decrypt the latest
   // version of each assessment type for display.
-  const clinical = canViewClinical(session?.role);
+  const clinical = sessionCan(session, 'clients.clinical.view');
   const clinicalAssessments: { id: string; title: string; version: number; submittedAt: Date; tampered: boolean; current: boolean; sourceLocale?: string; translatedNote?: string | null; items: { id: string; prompt: string; value: string; original?: string }[] }[] = [];
   if (clinical && c.assessments.length) {
     const { formatAssessment } = await import('@/lib/health-assessments');
