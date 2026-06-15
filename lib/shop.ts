@@ -75,7 +75,7 @@ export async function nextOrderNumber(): Promise<string> {
           WHERE number ~ E'^KC[0-9]+$';
         BEGIN
           EXECUTE 'CREATE SEQUENCE kc_order_seq MINVALUE 1001 START ' || start_val::text;
-        EXCEPTION WHEN duplicate_table THEN
+        EXCEPTION WHEN duplicate_object THEN
           NULL; -- concurrent creation; sequence is already there
         END;
       END IF;

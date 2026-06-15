@@ -23,7 +23,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       consultations: true, interactions: true, appointments: true, bookings: true,
       emails: true, discountClaims: true, tasks: true,
       // BLD-315 item 1: relations present on Client that were missing from SAR.
-      aiAnalyses: true, followUps: true, reviews: true, npsResponses: true,
+      followUps: true, reviews: true, npsResponses: true,
       waitlist: true, referralsMade: true, callRecords: true,
     },
   });
@@ -60,6 +60,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const assessments = await db.healthAssessment.findMany({ where: { clientId: id }, orderBy: { submittedAt: 'desc' } });
     const { formatAssessment } = await import('@/lib/health-assessments');
     out.healthAssessments = await Promise.all(assessments.map((a) => formatAssessment(a.id)));
+    // AiAnalysis contains skin findings + treatment recommendations — clinical data.
+    out.aiAnalyses = await db.aiAnalysis.findMany({ where: { clientId: id } });
   }
 
   const { logAudit } = await import('@/lib/audit');

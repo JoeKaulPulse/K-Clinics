@@ -101,7 +101,7 @@ export async function eraseClientData(clientId: string) {
     // while the raw PII is gone.
     db.discountClaim.updateMany({
       where: { clientId },
-      data: { emailNorm: '', phoneNorm: null },
+      data: { emailNorm: '', phoneNorm: null, nameDobKey: null, ip: null },
     }),
   ]);
   await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
@@ -168,7 +168,7 @@ export async function eraseStudentData(studentId: string) {
     // Remove authentication credentials — no retention basis.
     db.studentPasskey.deleteMany({ where: { studentId } }),
   ]);
-  await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, summary: `Academy student ${student.email} data erased (GDPR Art.17)` });
+  await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, summary: `Academy student ${student.email} data erased (GDPR Art.17)` });
   revalidatePath('/admin/academy');
   return { ok: true };
 }
