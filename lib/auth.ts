@@ -131,8 +131,9 @@ export async function getClientSession(): Promise<ClientSession | null> {
   if (!session) return null;
   // BLD-161: validate the token's epoch against the client's current
   // sessionEpoch so a password reset (or future "sign out everywhere") revokes
-  // outstanding portal JWTs immediately. DB-unreachable falls back to the signed
-  // claims (mirrors getSession) so a transient blip can't lock everyone out.
+  // outstanding portal JWTs immediately. BLD-345: if the DB is unreachable we
+  // fail closed (return null) rather than trusting the signed claims, so a
+  // revoked session can't survive an outage. Mirrors getSession.
   try {
     const { db } = await import('@/lib/db');
     const c = await db.client.findUnique({ where: { id: session.sub }, select: { sessionEpoch: true } });

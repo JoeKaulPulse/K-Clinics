@@ -15,14 +15,24 @@ const PUBLIC_ACCOUNT = new Set([
 // Everything else under /academy requires a valid academy JWT (BLD-314 Phase 3).
 const PUBLIC_ACADEMY = new Set([
   '/academy',
+  '/academy/portal', // sign-in / sign-up landing (also the redirect target below)
   '/academy/forgot-password',
   '/academy/reset',
 ]);
-// Prefix match: course-catalogue slugs (/academy/<slug>) are public.
+// Single-segment /academy/* paths that are trainee-only and must NOT be served
+// as public course-catalogue slugs. They share the /academy/[slug] namespace but
+// resolve to static trainee routes (each also enforces auth at the page level).
+// Keep in sync with the static segments under app/(marketing)/academy/*.
+const RESERVED_ACADEMY = new Set([
+  '/academy/settings',
+  '/academy/practice',
+  '/academy/leaderboard',
+]);
+// Prefix match: course-catalogue slugs (/academy/<slug>) are public, except the
+// reserved trainee routes above. Deeper paths (/academy/learn/...) are never public.
 const isPublicAcademyPath = (p: string) =>
   PUBLIC_ACADEMY.has(p) ||
-  // Top-level slug pages are the public course catalogue — only one segment deep.
-  /^\/academy\/[^/]+$/.test(p);
+  (!RESERVED_ACADEMY.has(p) && /^\/academy\/[^/]+$/.test(p));
 
 // ── Admin-managed URL redirects ─────────────────────────────────────────────
 // Cached in module memory (per warm edge instance) and refreshed from the
