@@ -27,11 +27,11 @@ export async function addNote(clientId: string, summary: string, type: string = 
 }
 
 // GDPR right-to-erasure — pseudonymise a client's personal data while keeping
-// financial/audit records intact for legal retention. Requires clients.export.
+// financial/audit records intact for legal retention. Requires clients.delete.
 export async function eraseClientData(clientId: string) {
   if (!crmEnabled) return { ok: false };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'clients.export')) return { ok: false, error: 'Not permitted' };
+  if (!session || !sessionCan(session, 'clients.delete')) return { ok: false, error: 'Not permitted' };
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
   // Art. 17 erasure across ALL personal/special-category data, atomically. We
@@ -92,8 +92,18 @@ export async function eraseClientData(clientId: string) {
     // Legacy Appointment model (pre-Booking era) — status/schedule data only,
     // no financial retention basis, safe to hard-delete.
     db.appointment.deleteMany({ where: { clientId } }),
+    // Null fingerprint fields in DiscountClaim — re-identifiable without retention basis.
+    db.discountClaim.updateMany({ where: { clientId }, data: { emailNorm: 'erased', phoneNorm: null, nameDobKey: null } }),
+    // Strip PII from retail Orders (email/name/phone/address) — keep order number
+    // and amounts for Xero/HMRC basis. Order.clientId is a nullable String set at
+    // checkout (no formal FK relation), so we match on it directly.
+    db.order.updateMany({ where: { clientId }, data: { name: 'Erased', email: `erased-${clientId}@redacted.invalid`, phone: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
+    // Strip PII from GiftVouchers claimed by this client. (Vouchers they
+    // *purchased* carry only an email/name string with no FK to Client, so
+    // they can't be matched here reliably — see BLD-315 residual note.)
+    db.giftVoucher.updateMany({ where: { claimedByClientId: clientId }, data: { recipientName: null, recipientEmail: null, message: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
   ]);
-  await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
+  await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
   revalidatePath(`/admin/clients/${clientId}`);
   return { ok: true };
 }
@@ -130,6 +140,35 @@ export async function deleteClient(clientId: string, confirm: string) {
     meta: { email: c.email },
   });
   revalidatePath('/admin/clients');
+  return { ok: true };
+}
+
+// BLD-314 Phase 3: GDPR Art.17 erasure for academy trainees. Requires
+// settings.manage (admin-level). Pseudonymises the student row and hard-deletes
+// the records that have no retention basis (passkeys, progress tokens).
+// Enrolment rows are retained pseudonymously (certification verification basis).
+export async function eraseStudentData(studentId: string) {
+  if (!crmEnabled) return { ok: false };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'settings.manage')) return { ok: false, error: 'Not permitted.' };
+  const { db } = await import('@/lib/db');
+  const { logAudit } = await import('@/lib/audit');
+  const student = await db.academyStudent.findUnique({ where: { id: studentId }, select: { email: true } });
+  if (!student) return { ok: false, error: 'Student not found.' };
+  await db.$transaction([
+    db.academyStudent.update({
+      where: { id: studentId },
+      data: {
+        firstName: 'Erased', lastName: null, email: `erased-${studentId}@redacted.invalid`,
+        phone: null, dob: null, portalActive: false, passwordHash: null,
+        resetTokenHash: null, resetTokenExp: null,
+      },
+    }),
+    // Remove authentication credentials — no retention basis.
+    db.studentPasskey.deleteMany({ where: { studentId } }),
+  ]);
+  await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, summary: `Academy student ${student.email} data erased (GDPR Art.17)` });
+  revalidatePath('/admin/academy');
   return { ok: true };
 }
 

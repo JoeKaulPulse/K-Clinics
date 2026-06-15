@@ -57,8 +57,8 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   vat_registered: false,
   prices_vat_inclusive: true,
   kiosk_discount_enabled: true,
-  reminder_72h: false,
-  reminder_48h: false,
+  reminder_72h: true,
+  reminder_48h: true,
   contractor_checkin_enabled: false, // PRJ-63: ships dark; owner enables after review
 };
 

@@ -73,7 +73,7 @@ function SupplierGroup({ group, canManage, uk, L }: { group: Group; canManage: b
           <thead className="bg-[var(--color-bone)] text-xs uppercase tracking-wide text-[var(--color-stone)]">
             <tr>
               {[L('Product', 'Товар'), L('In stock', 'В наявності'), L('MOQ', 'МОЗ'), L('Order', 'Замовити'), L('Line cost', 'Сума')].map((h) => (
-                <th key={h} className="px-4 py-2.5 text-right first:text-left">{h}</th>
+                <th key={h} scope="col" className="px-4 py-2.5 text-right first:text-left">{h}</th>
               ))}
             </tr>
           </thead>

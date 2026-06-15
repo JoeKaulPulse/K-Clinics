@@ -1,6 +1,6 @@
 # Project: Accessibility — WCAG 2.2 AA compliance pass
 
-> Status: **Planning** · Board epic: `BLD-313` · Source: 2026-06-14 audit
+> Status: **In progress (S3–S5 shipped)** · Board epic: `BLD-313` · Source: 2026-06-14 audit
 > (accessibility stream). Legal driver: Equality Act 2010 + WCAG 2.2 AA.
 
 The codebase is already accessibility-aware (skip link, `lang="en-GB"`,
@@ -54,20 +54,35 @@ trap, Escape, focus restore, or `role="dialog"`/`aria-modal`/`aria-labelledby`
 `MediaPicker`, `ReplayList`, `ReportProblem`). Build one `<Dialog>` (focus trap +
 Escape + `aria-modal` + labelledby + focus restore — `CookieConsent.tsx` and the
 header mega-menu already have the pattern to lift) and adopt it everywhere.
+- **Shipped:** `components/ui/Dialog.tsx` created with full focus trap + Escape +
+  `role="dialog"` + `aria-modal` + `aria-labelledby` + focus restore.
+  `EditClientDetails` and `ReplayList` migrated to use it.
+  Remaining: `BuildBoard` (TaskModal/IdeaModal), `SupplierManager`, `KVision` camera
+  overlay, `MediaPicker`, `ReportProblem`.
 
 ### S4 — Motion, headings, widget state · value 4-5 / effort 2-3
 - KVision Framer-Motion infinite animations ignore `prefers-reduced-motion`
   (the CSS `!important` override can't reach inline `animate` styles) — gate on
-  `useReducedMotion()`.
+  `useReducedMotion()`. **Shipped (#824).**
 - `h1→h3` skips on `PageHero` card grids (`offers/page.tsx:41`, team, packages)
-  — add a section `<h2>` (visible or `sr-only`).
+  — add a section `<h2>` (visible or `sr-only`). **Shipped:** sr-only h2 added to
+  `offers`, `team` (eyebrow p→h2), `academy` (Pillars section). Packages uses h2
+  already (correct).
 - Multi-select widgets don't expose state — add `aria-pressed`
   (`TreatmentFinder.tsx`), `aria-current`/`aria-pressed` (gallery/filters),
-  `aria-live` for the kiosk countdown/saving status.
+  `aria-live` for the kiosk countdown/saving status. **Shipped:** `TreatmentFinder`
+  (#824), `PublicGallery` aria-pressed, kiosk `aria-live` polite region.
 
 ### S5 — Admin tables & cleanup · value 5 / effort 3
 ~15 admin tables omit `<th scope>`; index-based `key={i}` on lists containing
 inputs; a stray `console.error('[replay]')` (`ReplayList.tsx:110`).
+- **Shipped:** `scope="col"` added to all 15 admin tables:
+  `BuildBoard`, `ReplayList`, `StaffManager`, `GiftVoucherManager`,
+  `RedirectsManager`, `CampaignsList`, `ServicesManager` (both tables),
+  `OrdersManager`, `CareersManager`, `PromotionsManager`, `SupplierManager`,
+  `ProductsList`, `AcademyManager`, `ReorderList`, `CashflowManager`,
+  `StudentsManager`. Contrast: `packages/page.tsx` "View programme" swapped
+  from gold to gold-deep.
 
 ## Acceptance
 

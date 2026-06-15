@@ -7,7 +7,16 @@ export const formatPence = (p: number) => (p <= 0 ? 'Free' : `£${(p / 100).toLo
 
 export async function activeProducts() {
   const { db } = await import('@/lib/db');
-  return db.product.findMany({ where: { status: 'ACTIVE' }, orderBy: { updatedAt: 'desc' } });
+  return db.product.findMany({
+    where: { status: 'ACTIVE' },
+    orderBy: { updatedAt: 'desc' },
+    select: {
+      id: true, slug: true, name: true, description: true, brand: true,
+      category: true, pricePence: true, compareAtPence: true, sku: true,
+      images: true, status: true, ageRestricted: true, trackInventory: true,
+      stockQty: true, lowStockThreshold: true, createdAt: true, updatedAt: true,
+    },
+  });
 }
 
 export async function getProductBySlug(slug: string) {
@@ -23,7 +32,13 @@ export type ValidatedCart = { lines: CartLine[]; subtotalPence: number; hasAgeRe
 export async function validateCart(input: CartInput): Promise<ValidatedCart> {
   const { db } = await import('@/lib/db');
   const ids = [...new Set(input.map((i) => i.productId))];
-  const products = ids.length ? await db.product.findMany({ where: { id: { in: ids }, status: 'ACTIVE' } }) : [];
+  const products = ids.length ? await db.product.findMany({
+    where: { id: { in: ids }, status: 'ACTIVE' },
+    select: {
+      id: true, name: true, sku: true, pricePence: true, ageRestricted: true,
+      trackInventory: true, stockQty: true, images: true, status: true,
+    },
+  }) : [];
   const byId = new Map(products.map((p) => [p.id, p]));
   const lines: CartLine[] = [];
   const issues: string[] = [];
@@ -44,8 +59,36 @@ export const shippingFor = (method: string, subtotalPence: number) =>
 
 export async function nextOrderNumber(): Promise<string> {
   const { db } = await import('@/lib/db');
-  const count = await db.order.count();
-  return `KC${(1000 + count + 1).toString()}`;
+  // Atomic counter — serialises concurrent checkouts so no two orders can ever
+  // get the same human-facing number. The Setting row acts as the sequence;
+  // ON CONFLICT ensures only one writer increments at a time.
+  //
+  // First-run seed must clear any orders that predate this counter (minted by
+  // the old count()-based scheme), otherwise the first new number would collide
+  // with an existing Order.number (@unique) and block checkout. The seed is the
+  // greater of 1001 and (max existing KC#### + 1), computed in the same atomic
+  // statement. All values are SQL literals/subqueries — no interpolation.
+  const rows = await db.$queryRaw<[{ value: string }]>`
+    INSERT INTO "Setting" (key, value, "updatedAt")
+    VALUES (
+      '_order_seq',
+      GREATEST(
+        1001,
+        COALESCE(
+          (SELECT MAX(CAST(SUBSTRING(number FROM 3) AS INTEGER)) + 1
+             FROM "Order"
+            WHERE number ~ '^KC[0-9]+$'),
+          1001
+        )
+      )::TEXT,
+      NOW()
+    )
+    ON CONFLICT (key) DO UPDATE
+      SET value = (CAST("Setting".value AS INTEGER) + 1)::TEXT,
+          "updatedAt" = NOW()
+    RETURNING value
+  `;
+  return `KC${rows[0].value}`;
 }
 
 /** Finalise a paid order: decrement stock, redeem any gift card, send the

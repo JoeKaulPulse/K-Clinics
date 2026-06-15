@@ -60,7 +60,7 @@ export function GiftVoucherManager({ vouchers, canManage = false }: { vouchers: 
 
       <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
         <table className="w-full min-w-[820px] text-sm">
-          <thead><tr className="bg-[var(--color-porcelain)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th className="px-3 py-2">Code</th><th className="px-3 py-2">From / To</th><th className="px-3 py-2">Value</th><th className="px-3 py-2">Balance</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Expires</th><th className="px-3 py-2"></th></tr></thead>
+          <thead><tr className="bg-[var(--color-porcelain)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th scope="col" className="px-3 py-2">Code</th><th scope="col" className="px-3 py-2">From / To</th><th scope="col" className="px-3 py-2">Value</th><th scope="col" className="px-3 py-2">Balance</th><th scope="col" className="px-3 py-2">Status</th><th scope="col" className="px-3 py-2">Expires</th><th scope="col" className="px-3 py-2"></th></tr></thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr><td colSpan={7} className="px-3 py-6 text-center text-[var(--color-stone-soft)]">No vouchers found.</td></tr>

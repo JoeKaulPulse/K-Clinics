@@ -9,6 +9,7 @@ export const maxDuration = 300; // the daily run does a lot (automations, loyalt
 // CRON_SECRET as a bearer token. Idempotent — every send is logged so nothing
 // double-fires within its window.
 export async function GET(req: Request) {
+  const cronStartedAt = Date.now();
   // Require a configured secret, and a matching bearer token (constant-time). If
   // no secret is set, refuse rather than running the automations unprotected.
   const { cronAuthorized } = await import('@/lib/cron-auth');
@@ -113,6 +114,40 @@ export async function GET(req: Request) {
     failures++; console.error('[cron] analytics retention failed (continuing):', (e as Error)?.message);
   }
 
+  // BLD-314 Phase 3: GDPR retention sweep. Purge rejected/abandoned job
+  // applications (no retention basis after the hiring decision) and reset tokens
+  // that expired more than 7 days ago (pure housekeeping).
+  let gdprSweep = { jobs: 0, academyTokens: 0 };
+  try {
+    const { db } = await import('@/lib/db');
+    const jobRejectedCutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000); // 6 months
+    const jobAbandonedCutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000); // 12 months
+    const tokenExpiredCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);   // 7 days
+    const [jobs, , academyTokens] = await Promise.all([
+      db.jobApplication.deleteMany({
+        where: {
+          OR: [
+            { status: 'REJECTED', createdAt: { lt: jobRejectedCutoff } },
+            { status: { in: ['NEW', 'REVIEWING'] }, createdAt: { lt: jobAbandonedCutoff } },
+          ],
+        },
+      }),
+      // Client portal: clear expired reset tokens (no personal data beyond email FK).
+      db.client.updateMany({
+        where: { resetTokenExp: { lt: tokenExpiredCutoff }, resetTokenHash: { not: null } },
+        data: { resetTokenHash: null, resetTokenExp: null },
+      }),
+      // Academy portal: clear expired reset tokens.
+      db.academyStudent.updateMany({
+        where: { resetTokenExp: { lt: tokenExpiredCutoff }, resetTokenHash: { not: null } },
+        data: { resetTokenHash: null, resetTokenExp: null },
+      }),
+    ]);
+    gdprSweep = { jobs: jobs.count, academyTokens: academyTokens.count };
+  } catch (e) {
+    failures++; console.error('[cron] gdpr-retention sweep failed (continuing):', (e as Error)?.message);
+  }
+
   // BLD-248: self-healing clinical-encryption backfill. Encrypts any historic
   // plaintext health rows automatically (no manual trigger), then flags itself
   // complete after a clean pass so it stops scanning. Best-effort.
@@ -196,9 +231,25 @@ export async function GET(req: Request) {
     await db.setting.upsert({ where: { key: 'cron_daily_last' }, update: { value: new Date().toISOString() }, create: { key: 'cron_daily_last', value: new Date().toISOString() } });
   } catch { /* non-fatal */ }
 
+  const cronDurationMs = Date.now() - cronStartedAt;
+
+  // BLD-349: push failure summary to a webhook channel when configured.
+  // Set CRON_ALERT_WEBHOOK_URL (Slack/Discord/Make/Zapier) in Vercel env.
+  if (failures > 0) {
+    const webhookUrl = process.env.CRON_ALERT_WEBHOOK_URL;
+    if (webhookUrl) {
+      const body = JSON.stringify({
+        text: `[kclinics cron] ${failures} failure(s) in ${Math.round(cronDurationMs / 1000)}s — check Vercel logs`,
+        failures,
+        durationMs: cronDurationMs,
+      });
+      fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }).catch(() => {});
+    }
+  }
+
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend, board, clinicalBackfill, academyTenant, examBank, gamification, authored, courseContent },
+    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, retention, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, academyTenant, examBank, gamification, authored, courseContent },
     { status: failures === 0 ? 200 : 500 },
   );
 }
