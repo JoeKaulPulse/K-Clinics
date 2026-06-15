@@ -31,7 +31,7 @@ export function Applications({ enrolments, courses }: { enrolments: Enrolment[];
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px] text-sm">
             <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">
-              <th className="py-1 pr-2">Applicant</th><th className="px-2">Course</th><th className="px-2">Status</th><th className="px-2">Cohort</th><th className="px-2">Paid</th><th className="px-2"></th>
+              <th scope="col" className="py-1 pr-2">Applicant</th><th scope="col" className="px-2">Course</th><th scope="col" className="px-2">Status</th><th scope="col" className="px-2">Cohort</th><th scope="col" className="px-2">Paid</th><th scope="col" className="px-2"></th>
             </tr></thead>
             <tbody>
               {enrolments.map((e) => (

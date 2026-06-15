@@ -105,6 +105,20 @@ export function KioskDisplay({ svg, token, secret, theme = 'default' }: { svg: s
       <GoldParticles />
       <div aria-hidden className="kd-vignette" />
 
+      {/* Screen-reader live region: announces scene changes without visual disruption */}
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {scene === 'attract' && 'Kiosk ready — scan the QR code to begin'}
+        {scene === 'paired' && 'Session live — follow the steps on your phone'}
+        {scene === 'consent' && 'Consent required — confirm on your phone'}
+        {scene === 'mirror' && 'Camera active — centre your face in the frame'}
+        {scene === 'review' && 'Photo captured — reviewing your shots'}
+        {scene === 'analyzing' && 'Analysing your photo'}
+        {scene === 'reveal' && 'Your skin analysis is ready'}
+        {scene === 'share' && 'Session complete — thank you'}
+        {scene === 'declined' && 'Session ended'}
+        {scene === 'failed' && 'Photo could not be read — please try again'}
+      </div>
+
       {/* Active scene (keyed so enter animation replays per scene change) */}
       <div key={scene} className="kd-scene kd-scene-enter">
         {scene === 'attract' && <AttractScene svg={svg} remainingMs={remaining} theme={theme} />}

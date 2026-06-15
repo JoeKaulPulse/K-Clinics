@@ -54,6 +54,7 @@ export default async function AcademyPage() {
 
       {/* Pillars */}
       <section className="container-lux section">
+        <h2 className="sr-only">Why train at K Academy</h2>
         <div className="grid gap-8 md:grid-cols-3">
           {PILLARS.map((p, i) => (
             <Reveal key={p.t} delay={i * 0.08}>

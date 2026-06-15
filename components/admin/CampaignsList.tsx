@@ -61,7 +61,7 @@ export function CampaignsList({ rows, canManage }: { rows: CampaignRow[]; canMan
         <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
           <table className="w-full text-sm">
             <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">
-              <th className="p-3">Campaign</th><th className="p-3">Status</th><th className="p-3">Bookings</th><th className="p-3">Revenue</th><th className="p-3">ROI</th>
+              <th scope="col" className="p-3">Campaign</th><th scope="col" className="p-3">Status</th><th scope="col" className="p-3">Bookings</th><th scope="col" className="p-3">Revenue</th><th scope="col" className="p-3">ROI</th>
             </tr></thead>
             <tbody>
               {rows.map((r) => (

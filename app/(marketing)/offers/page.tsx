@@ -33,6 +33,7 @@ export default function OffersPage() {
       />
 
       <section className="container-lux section">
+        <h2 className="sr-only">Our current offers</h2>
         <Stagger className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {OFFERS.map((o) => (
             <StaggerItem key={o.t}>
