@@ -49,7 +49,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const [signedConsents, beforePhotos, chatConversations] = await Promise.all([
     db.signedConsent.findMany({ where: { clientId: id } }),
     db.beforePhoto.findMany({ where: { clientId: id } }),
-    db.chatConversation.findMany({ where: { clientId: id } }),
+    db.chatConversation.findMany({ where: { clientId: id }, include: { messages: true } }),
   ]);
   out.signedConsents = signedConsents;
   out.beforePhotos = beforePhotos;
