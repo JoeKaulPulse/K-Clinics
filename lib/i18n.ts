@@ -93,6 +93,7 @@ export const DICT: Record<string, Entry> = {
   'nav.redirects': { en: 'Redirects', uk: 'Перенаправлення' },
   'nav.connectioncentre': { en: 'Connection Centre', uk: 'Центр підключень' },
   'nav.integrations': { en: 'Integrations', uk: 'Інтеграції' },
+  'nav.workspace': { en: 'Google Workspace', uk: 'Google Workspace' },
   'nav.credentials': { en: 'Credentials & keys', uk: 'Облікові дані та ключі' },
   'nav.settings': { en: 'Settings', uk: 'Налаштування' },
 

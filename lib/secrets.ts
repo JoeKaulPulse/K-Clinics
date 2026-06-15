@@ -41,6 +41,10 @@ export const SECRET_DEFS: SecretDef[] = [
   // OAuth client credentials — set here, then click Connect on the relevant page.
   { name: 'GOOGLE_CLIENT_ID', label: 'Google OAuth client ID', group: 'OAuth · Google', help: 'console.cloud.google.com → Credentials. Powers Google Ads/Analytics/Search. (Calendar/Business still read hosting env.)' },
   { name: 'GOOGLE_CLIENT_SECRET', label: 'Google OAuth client secret', group: 'OAuth · Google' },
+  // Workspace directory management (BLD-312) — service account + domain-wide delegation.
+  { name: 'GOOGLE_WORKSPACE_SA_KEY', label: 'Workspace service-account key (JSON)', group: 'Workspace · Google', help: 'Paste the entire service-account JSON key. Google Cloud → IAM & Admin → Service accounts → Keys → Add key (JSON). The service account needs domain-wide delegation for the admin.directory scopes. Full setup: docs/WORKSPACE_ADMIN_SDK_SETUP.md.' },
+  { name: 'GOOGLE_WORKSPACE_ADMIN_EMAIL', label: 'Workspace admin to impersonate', group: 'Workspace · Google', help: 'A super-admin address the service account acts as, e.g. webmaster@kclinics.co.uk.' },
+  { name: 'GOOGLE_WORKSPACE_CUSTOMER_ID', label: 'Workspace customer ID (optional)', group: 'Workspace · Google', help: 'Leave blank to use “my_customer” (your own Workspace).' },
   { name: 'XERO_CLIENT_ID', label: 'Xero client ID', group: 'OAuth · Xero', help: 'developer.xero.com/app/manage' },
   { name: 'XERO_CLIENT_SECRET', label: 'Xero client secret', group: 'OAuth · Xero' },
   { name: 'TRUELAYER_CLIENT_ID', label: 'TrueLayer client ID', group: 'OAuth · Bank', help: 'console.truelayer.com' },

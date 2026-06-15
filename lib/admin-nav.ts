@@ -121,6 +121,7 @@ export const navGroups: NavGroup[] = [
     { href: '/admin/seo', key: 'nav.seo', perm: 'settings.manage', keywords: 'search engine meta ai sitemap' },
     { href: '/admin/redirects', key: 'nav.redirects', perm: 'settings.manage', keywords: 'url forwarding 301' },
     { href: '/admin/integrations', key: 'nav.integrations', perm: 'settings.manage', keywords: 'api connections stripe xero webhooks' },
+    { href: '/admin/workspace', key: 'nav.workspace', perm: 'settings.manage', keywords: 'google workspace email mailbox mailboxes alias aliases group groups seat seats directory gmail accounts staff provisioning suspend' },
     { href: '/admin/settings/credentials', key: 'nav.credentials', perm: 'settings.manage', keywords: 'api keys secrets credentials env vars passwords tokens stripe resend twilio' },
     { href: '/admin/settings', key: 'nav.settings', perm: 'settings.manage', keywords: 'preferences configuration options' },
   ] },

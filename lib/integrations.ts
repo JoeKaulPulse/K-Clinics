@@ -282,5 +282,24 @@ export async function getIntegrations(): Promise<Integration[]> {
     ],
   });
 
+  // ── Google Workspace (Directory API) — BLD-312 ──
+  const wsKey = present('GOOGLE_WORKSPACE_SA_KEY');
+  const wsAdmin = present('GOOGLE_WORKSPACE_ADMIN_EMAIL');
+  items.push({
+    id: 'google-workspace',
+    name: 'Google Workspace (Directory)',
+    category: 'Communications',
+    description: 'Manage staff mailboxes, groups and aliases for the domain from the dashboard (read-only to start).',
+    status: wsKey && wsAdmin ? 'connected' : wsKey || wsAdmin ? 'partial' : 'not_configured',
+    detail: wsKey && wsAdmin ? 'Service account configured — directory view live.' : 'Add the service-account key + admin email to enable.',
+    envVars: [
+      { name: 'GOOGLE_WORKSPACE_SA_KEY', set: wsKey },
+      { name: 'GOOGLE_WORKSPACE_ADMIN_EMAIL', set: wsAdmin },
+      { name: 'GOOGLE_WORKSPACE_CUSTOMER_ID', set: present('GOOGLE_WORKSPACE_CUSTOMER_ID'), optional: true },
+    ],
+    manageHref: '/admin/workspace',
+    docsHref: 'https://admin.google.com',
+  });
+
   return items;
 }

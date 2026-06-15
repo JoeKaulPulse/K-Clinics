@@ -1,0 +1,87 @@
+# Google Workspace Admin SDK — service-account setup (BLD-312)
+
+Developer runbook to connect `/admin/workspace` to the Workspace Directory API so
+the dashboard can read (Phase A) and later manage (Phase B) users, groups and
+aliases. Do this once, the moment `webmaster@kclinics.co.uk` has Cloud **Owner**.
+
+**Prerequisites (already granted by the owner):**
+- `webmaster@kclinics.co.uk` is a Workspace **Super Admin**.
+- `webmaster@kclinics.co.uk` is **Owner** on the Google Cloud project **KClinics**.
+
+Sign in to both consoles as `webmaster@kclinics.co.uk`.
+
+---
+
+## 1. Enable the Admin SDK API
+- [console.cloud.google.com](https://console.cloud.google.com) → top project picker → select **KClinics**.
+- **APIs & Services → Library** → search **"Admin SDK API"** → **Enable**.
+
+## 2. Create the service account
+- **IAM & Admin → Service Accounts → Create service account**.
+- Name: `kclinics-workspace`. **Skip** "Grant this service account access to the
+  project" — it acts via delegation, not project IAM. **Done**.
+
+## 3. Create a JSON key
+- Open the service account → **Keys → Add key → Create new key → JSON → Create**.
+- A `.json` file downloads. This is the credential — handle it like a password.
+
+## 4. Copy the service account's Client ID
+- Service account → **Details** → copy the **Unique ID** (a long number). This is
+  the OAuth client ID used to authorise delegation in step 5.
+
+## 5. Authorise domain-wide delegation (Workspace Admin)
+- [admin.google.com](https://admin.google.com) → **Security → Access and data
+  control → API controls → Manage Domain-Wide Delegation → Add new**.
+- **Client ID:** the Unique ID from step 4.
+- **OAuth scopes (Phase A — read-only)**, comma-separated:
+  ```
+  https://www.googleapis.com/auth/admin.directory.user.readonly,https://www.googleapis.com/auth/admin.directory.group.readonly
+  ```
+- **Authorise.**
+- **Phase B (later):** re-open the same entry and add the writable scopes:
+  ```
+  https://www.googleapis.com/auth/admin.directory.user,https://www.googleapis.com/auth/admin.directory.group,https://www.googleapis.com/auth/admin.directory.user.alias,https://www.googleapis.com/auth/admin.directory.group.member
+  ```
+
+## 6. Load the credentials into the app
+- In the admin: **Credentials & keys** (`/admin/settings/credentials`), set:
+  - `GOOGLE_WORKSPACE_SA_KEY` = the **entire contents** of the JSON key file.
+  - `GOOGLE_WORKSPACE_ADMIN_EMAIL` = `webmaster@kclinics.co.uk` (the super-admin to impersonate).
+  - `GOOGLE_WORKSPACE_CUSTOMER_ID` = leave blank (uses `my_customer`).
+- Values are stored encrypted (`setSecret` → `encryptJson`) — never in env or the repo.
+
+## 7. Verify
+- Open `/admin/workspace`. It should list your users, groups and aliases.
+- On failure the page prints the exact reason and fix, e.g.:
+  - *"domain-wide delegation is not authorised for these scopes"* → recheck step 5.
+  - *"Admin SDK API is not enabled"* → step 1.
+  - *"invalid_grant"* → `GOOGLE_WORKSPACE_ADMIN_EMAIL` must be a real super-admin.
+
+---
+
+## gcloud alternative (steps 1–4)
+```bash
+gcloud config set project <PROJECT_ID>        # the KClinics project ID (may differ from the display name)
+gcloud services enable admin.googleapis.com
+gcloud iam service-accounts create kclinics-workspace --display-name="KClinics Workspace"
+SA="kclinics-workspace@<PROJECT_ID>.iam.gserviceaccount.com"
+gcloud iam service-accounts keys create kclinics-workspace.json --iam-account="$SA"
+gcloud iam service-accounts describe "$SA" --format='value(oauth2ClientId)'   # Client ID for step 5
+```
+
+## Security
+- The key can administer the directory — store it **only** via the encrypted
+  Credentials screen; never commit or email it (one-time link if you must send it).
+- **Least privilege:** Phase A uses read-only scopes; add the write scopes only
+  when Phase B ships.
+- **Revoke:** delete the key (Service account → Keys) and remove the delegation
+  entry — the app falls inert automatically.
+- Keep the impersonated admin a dedicated super-admin with 2-Step Verification.
+
+## How the app uses it
+`lib/google-workspace.ts` signs a short-lived JWT with the key (jose, RS256),
+impersonates `GOOGLE_WORKSPACE_ADMIN_EMAIL` (`sub`), exchanges it at
+`oauth2.googleapis.com/token`, caches the access token ~1h, and calls the
+Directory API. Inert until both the key and admin email are set. UI:
+`app/admin/workspace/page.tsx` + `components/admin/WorkspaceManager.tsx`.
+Full design and phasing: `docs/GOOGLE_WORKSPACE_MIGRATION.md` §10.
