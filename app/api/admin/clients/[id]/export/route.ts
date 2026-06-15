@@ -39,7 +39,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { passwordHash, resetTokenHash, resetTokenExp, ...client } = c as Record<string, unknown> & { passwordHash?: unknown; resetTokenHash?: unknown; resetTokenExp?: unknown };
   void passwordHash; void resetTokenHash; void resetTokenExp;
 
-  const out: Record<string, unknown> = { exportedAt: new Date().toISOString(), exportedBy: session!.email, client };
+  // Fetch records not declared as reverse-FK relations on Client (no include path).
+  const [signedConsents, beforePhotos, chatConversations] = await Promise.all([
+    db.signedConsent.findMany({ where: { clientId: id } }),
+    db.beforePhoto.findMany({ where: { clientId: id } }),
+    db.chatConversation.findMany({ where: { clientId: id }, include: { messages: true } }),
+  ]);
+
+  const out: Record<string, unknown> = {
+    exportedAt: new Date().toISOString(),
+    exportedBy: session!.email,
+    client,
+    signedConsents,
+    beforePhotos,
+    chatConversations,
+  };
 
   if (sessionCan(session!, 'clients.clinical.view')) {
     const assessments = await db.healthAssessment.findMany({ where: { clientId: id }, orderBy: { submittedAt: 'desc' } });
