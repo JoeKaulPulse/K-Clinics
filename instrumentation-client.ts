@@ -6,12 +6,10 @@ if (dsn) {
   Sentry.init({
     dsn,
     environment: process.env.NODE_ENV ?? 'development',
-    tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+    tracesSampleRate: 0.05,
+    sendDefaultPii: false,
     replaysOnErrorSampleRate: 1.0,
     replaysSessionSampleRate: 0.01,
-    sendDefaultPii: false,
-    integrations: [
-      Sentry.replayIntegration({ maskAllText: true, blockAllMedia: false }),
-    ],
+    integrations: [Sentry.replayIntegration()],
   });
 }

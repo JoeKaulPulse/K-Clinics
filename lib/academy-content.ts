@@ -1911,6 +1911,351 @@ export const NEW_MODULES: CourseContentDef[] = [
     ],
   },
 
+  // ── Batch 8 ─────────────────────────────────────────────────────────────────
+
+  {
+    courseSlug: L2,
+    modules: [
+      {
+        title: 'Electrical Safety & Equipment Maintenance',
+        summary: 'Identify electrical hazards in the treatment room, carry out basic equipment checks, and know when to report or remove a faulty device.',
+        lessons: [
+          {
+            title: 'Electrical Hazards & Safe Working',
+            durationMin: 10,
+            objectives: ['Identify electrical hazards in a treatment room', 'Describe how to work safely with electrical devices', 'Know what to do when a fault is found'],
+            studyTips: ['All electrical treatment devices must be PAT-tested. If a device looks damaged, do not use it -- report it.'],
+            examRefs: ['Health and safety', 'Equipment safety'],
+            steps: [
+              { kind: 'say', text: 'Every electrical device in the treatment room carries a risk if not maintained. Let\'s keep things safe.', mood: 'think' },
+              { kind: 'teach', title: 'Common electrical hazards', text: 'Frayed cables, overloaded sockets, damaged plugs, and wet hands near equipment are the main risks in a treatment room.' },
+              { kind: 'ask', prompt: 'Which of these is an electrical hazard in a treatment room?', qtype: 'MULTI', options: ['Frayed cable', 'Overloaded socket', 'Wet hands near a device', 'A clean plug'], correct: [0, 1, 2], explanation: 'A clean plug is fine. The others are hazards.' },
+              { kind: 'teach', title: 'Before you plug in', text: 'Before each use, visually check the device: cable intact, plug undamaged, no signs of burning or melting, no liquid near the unit.' },
+              { kind: 'ask', prompt: 'Before using an electrical device you should first...', qtype: 'SINGLE', options: ['Visually check the cable, plug and unit', 'Start immediately', 'Ignore the cable', 'Check only the price'], correct: [0], explanation: 'A visual check before every use catches faults early.' },
+              { kind: 'teach', title: 'If you find a fault', text: 'If a device looks or smells wrong, do not use it. Switch it off, unplug it, label it "do not use" and report it to a supervisor immediately.' },
+              { kind: 'ask', prompt: 'You notice a burning smell from a device mid-treatment. You should...', qtype: 'SINGLE', options: ['Stop, switch off, unplug, label and report', 'Carry on for this client', 'Spray water on it', 'Ignore it and watch for smoke'], correct: [0], explanation: 'Stop immediately. Any sign of electrical fault is a safety emergency.' },
+              { kind: 'say', text: 'Safety first, always. A quick check takes seconds and can prevent injury.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Equipment Checks, PAT Testing & Records',
+            durationMin: 10,
+            objectives: ['Explain what PAT testing is and why it matters', 'Understand who carries out PAT testing', 'Describe equipment maintenance records'],
+            studyTips: ['PAT = Portable Appliance Testing. It must be done by a competent person (often an electrician or trained staff member) and the results recorded.'],
+            examRefs: ['Health and safety', 'Equipment maintenance', 'PAT testing'],
+            steps: [
+              { kind: 'say', text: 'Daily checks are your job. Periodic testing is for a competent person. Let\'s see how both work together.', mood: 'happy' },
+              { kind: 'teach', title: 'What is PAT testing?', text: 'Portable Appliance Testing (PAT) is an inspection and electrical test of portable equipment to ensure it is safe to use. It is carried out by a competent person and the results are recorded.' },
+              { kind: 'ask', prompt: 'PAT testing must be carried out by...', qtype: 'SINGLE', options: ['A competent person', 'Any client', 'The device manufacturer only', 'Nobody'], correct: [0], explanation: 'A competent person -- often a trained staff member or electrician -- carries out PAT testing.' },
+              { kind: 'teach', title: 'How often?', text: 'Frequency depends on the device and how it is used. High-use equipment in a busy clinic is often tested annually, but your employer\'s risk assessment sets the schedule.' },
+              { kind: 'ask', prompt: 'How often high-use equipment in a clinic is PAT-tested is set by...', qtype: 'SINGLE', options: ['The employer\'s risk assessment', 'Never', 'Only once ever', 'The client'], correct: [0], explanation: 'The employer\'s risk assessment determines the correct testing interval.' },
+              { kind: 'teach', title: 'Equipment records', text: 'All maintenance, PAT results, and reported faults must be recorded. This forms an audit trail and shows your legal duty of care has been met.' },
+              { kind: 'ask', prompt: 'Why must equipment maintenance and PAT results be recorded?', qtype: 'MULTI', options: ['To meet the legal duty of care', 'To show faults were acted on', 'To create an audit trail', 'To decorate the wall'], correct: [0, 1, 2], explanation: 'Records prove compliance and support any incident investigation.' },
+              { kind: 'say', text: 'Good records protect your clients, your employer and you.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Electrical Safety & Equipment Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'Which of these is an electrical hazard in a treatment room?', type: 'MULTI', options: ['Frayed cable', 'Overloaded socket', 'Wet hands near a device', 'A clean, intact plug'], correct: [0, 1, 2], explanation: 'A sound plug is safe; the others are hazards.' },
+            { prompt: 'If a device smells of burning you should immediately...', type: 'SINGLE', options: ['Stop, switch off, unplug, label and report', 'Finish the treatment first', 'Spray water on it', 'Ignore it'], correct: [0], explanation: 'Any electrical fault is a safety emergency -- stop at once.' },
+            { prompt: 'PAT testing must be carried out by a competent person.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Only a competent person may carry out PAT testing.' },
+            { prompt: 'PAT testing stands for Portable ___ Testing.', type: 'WORD', options: ['Appliance', 'Antenna', 'Application'], correct: [0], explanation: 'Portable Appliance Testing.' },
+            { prompt: 'How often equipment is PAT-tested in a clinic is determined by the employer\'s...', type: 'SINGLE', options: ['Risk assessment', 'Favourite colour', 'Opening hours', 'Lunch schedule'], correct: [0], explanation: 'The risk assessment sets the testing frequency.' },
+            { prompt: 'Equipment maintenance and PAT records must be kept to form an...', type: 'WORD', options: ['audit trail', 'expense', 'obstacle'], correct: [0], explanation: 'An audit trail proves due diligence and supports any investigation.' },
+          ],
+        },
+      },
+    ],
+  },
+
+  {
+    courseSlug: 'level-3-laser-aesthetic-therapies',
+    modules: [
+      {
+        title: 'Combination Protocols & Treatment Sequencing',
+        summary: 'How to plan treatments that involve more than one modality: the right order, safe intervals between sessions, and when combining treatments creates risk rather than benefit.',
+        lessons: [
+          {
+            title: 'Why Sequencing Order Matters',
+            durationMin: 11,
+            objectives: ['Explain why treatment order affects outcomes and safety', 'Identify which modalities interact and why', 'Describe the risks of incorrect sequencing'],
+            studyTips: ['Think of the skin as recovering from each treatment. What heals first opens the door for the next modality safely.'],
+            examRefs: ['Treatment planning', 'Combination therapies'],
+            steps: [
+              { kind: 'say', text: 'Combining treatments can give great results -- or serious harm. Order matters enormously.', mood: 'think' },
+              { kind: 'teach', title: 'Why sequence matters', text: 'Each treatment changes the skin\'s condition. A resurfacing treatment leaves the barrier disrupted; applying laser energy over disrupted skin raises burn risk. The sequence determines what the skin\'s state is at each step.' },
+              { kind: 'ask', prompt: 'Applying laser energy over recently resurfaced skin raises the risk of...', qtype: 'SINGLE', options: ['Burns and adverse reaction', 'Better results', 'No change', 'Faster healing'], correct: [0], explanation: 'Disrupted barrier + energy = elevated burn and pigmentation risk.' },
+              { kind: 'teach', title: 'General rule: least aggressive first', text: 'As a starting principle, perform the least aggressive treatment first (e.g. cleansing, mild exfoliation) before energy-based modalities.' },
+              { kind: 'ask', prompt: 'As a general rule, in a combination session you should perform the least aggressive step...', qtype: 'SINGLE', options: ['First', 'Last', 'At any point', 'Skip it entirely'], correct: [0], explanation: 'Least aggressive first preserves the skin\'s integrity for subsequent steps.' },
+              { kind: 'teach', title: 'Chemical peels and laser', text: 'Chemical peels (especially medium to deep) and laser resurfacing should never be combined in the same session. Both disrupt the epidermal barrier; doing both at once dramatically increases risk.' },
+              { kind: 'ask', prompt: 'A medium chemical peel and a laser resurfacing treatment should...', qtype: 'SINGLE', options: ['Never be combined in the same session', 'Always be done together', 'Be done only with no gap', 'Improve each other with no risk'], correct: [0], explanation: 'Combining two barrier-disrupting modalities in one session is unsafe.' },
+              { kind: 'say', text: 'The rule is simple: respect what the skin has just been through before adding more.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Safe Intervals & Combination Contraindications',
+            durationMin: 11,
+            objectives: ['Recommend safe intervals between specific treatment modalities', 'Identify contraindications that arise only when treatments are combined', 'Advise clients on at-home care between modalities'],
+            studyTips: ['Laser + tanning (natural or spray) is always contraindicated. Never let a client be treated with active tan.'],
+            examRefs: ['Combination therapies', 'Contraindications', 'Treatment planning'],
+            steps: [
+              { kind: 'say', text: 'Now let\'s get specific about intervals and which combinations are always off the table.', mood: 'happy' },
+              { kind: 'teach', title: 'Intervals between sessions', text: 'The interval depends on how disruptive each treatment is. Mild LED therapy might allow another session within days; laser resurfacing needs weeks for full barrier recovery before repeat energy-based treatment.' },
+              { kind: 'ask', prompt: 'After laser resurfacing, the next energy-based treatment is usually safe after...', qtype: 'SINGLE', options: ['Several weeks of barrier recovery', 'The next day', 'One hour', 'Six months always'], correct: [0], explanation: 'The barrier must be fully healed before more energy is applied.' },
+              { kind: 'teach', title: 'Active tan is always a contraindication for laser', text: 'Laser and IPL with an active tan (natural or spray) is always contraindicated. The extra melanin in the tan absorbs energy unpredictably, dramatically raising burn and pigmentation-change risk.' },
+              { kind: 'ask', prompt: 'A client comes in with a recent spray tan. Your action for their laser appointment is to...', qtype: 'SINGLE', options: ['Postpone until the tan has faded', 'Proceed but reduce settings slightly', 'Treat as normal', 'Apply more cooling gel and continue'], correct: [0], explanation: 'Any tan -- natural or spray -- is a contraindication for laser and IPL.' },
+              { kind: 'teach', title: 'Injectable and laser timing', text: 'Laser treatment near a recent injectable site (e.g. filler or anti-wrinkle) carries added risk. Wait at least two weeks after injectables before laser in the same area.' },
+              { kind: 'ask', prompt: 'After a dermal filler in the cheek, a safe minimum wait before laser in that area is...', qtype: 'SINGLE', options: ['At least two weeks', 'Twenty-four hours', 'No wait needed', 'Six weeks always'], correct: [0], explanation: 'Two weeks is the commonly accepted minimum; longer if the area is still settling.' },
+              { kind: 'say', text: 'Good combination planning protects outcomes and client safety. Always document your reasoning.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Combination Protocols Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'When combining treatments, the least aggressive step should generally be performed...', type: 'SINGLE', options: ['First', 'Last', 'At random', 'Only once ever'], correct: [0], explanation: 'Least aggressive first preserves the skin\'s integrity for subsequent steps.' },
+            { prompt: 'A medium chemical peel and laser resurfacing in the same session is...', type: 'SINGLE', options: ['Unsafe and should never be combined', 'Recommended for faster results', 'Fine with extra cooling', 'Neutral in effect'], correct: [0], explanation: 'Both disrupt the barrier; combining them dramatically elevates risk.' },
+            { prompt: 'An active tan (natural or spray) before laser treatment is...', type: 'SINGLE', options: ['A contraindication', 'Beneficial', 'Irrelevant', 'Preferred'], correct: [0], explanation: 'Extra melanin in the tan absorbs energy unpredictably.' },
+            { prompt: 'After laser resurfacing, the next energy-based treatment requires the ___ to recover first.', type: 'WORD', options: ['barrier', 'melanin', 'dermis'], correct: [0], explanation: 'Full barrier recovery is needed before repeating energy-based treatment.' },
+            { prompt: 'A minimum of two weeks should pass after a dermal filler before laser in the same area.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Two weeks is the accepted minimum to reduce risk in the treated area.' },
+            { prompt: 'Why must treatment sequencing be documented?', type: 'MULTI', options: ['To show reasoning if a complication occurs', 'To support future treatment planning', 'To meet audit requirements', 'To hide mistakes'], correct: [0, 1, 2], explanation: 'Documentation supports safety, accountability and continuity of care.' },
+          ],
+        },
+      },
+    ],
+  },
+
+  {
+    courseSlug: 'level-4-certificate-aesthetic-practice',
+    modules: [
+      {
+        title: 'Client Psychology & Wellbeing',
+        summary: 'Recognise the psychological dimension of aesthetic treatments, build therapeutic rapport, spot the signs of body dysmorphic disorder, and know when referring to other professionals is the right call.',
+        lessons: [
+          {
+            title: 'Understanding Client Psychology',
+            durationMin: 11,
+            objectives: ['Explain why motivation and self-image matter in aesthetics', 'Describe how to build therapeutic rapport', 'Identify unrealistic expectations and how to address them'],
+            studyTips: ['Aesthetic treatments affect how a person feels about themselves, not just how they look. Understanding this protects both the client and you.'],
+            examRefs: ['Client consultation', 'Ethics', 'Client psychology'],
+            steps: [
+              { kind: 'say', text: 'Aesthetic treatments are not just physical. Understanding your client\'s psychology is part of safe practice.', mood: 'think' },
+              { kind: 'teach', title: 'Motivation matters', text: 'A client who wants to feel more like themselves after illness is in a very different headspace to one who wants to look like a filtered photo. Understanding motivation shapes what you offer and how.' },
+              { kind: 'ask', prompt: 'Why does a client\'s motivation for treatment matter?', qtype: 'SINGLE', options: ['It helps you tailor treatment and spot risk factors', 'It determines the price', 'It is irrelevant to the outcome', 'It only matters for new clients'], correct: [0], explanation: 'Motivation reveals what the client really wants and flags psychological risk factors.' },
+              { kind: 'teach', title: 'Building rapport', text: 'Use open questions, listen without interrupting, mirror language, and avoid leading suggestions. A client who feels heard is more likely to disclose concerns honestly.' },
+              { kind: 'ask', prompt: 'Which approach best builds therapeutic rapport with a client?', qtype: 'MULTI', options: ['Open questions', 'Listening without interrupting', 'Avoiding leading suggestions', 'Telling them what they need immediately'], correct: [0, 1, 2], explanation: 'Open questions, active listening and no leading suggestions create a safe space for honest disclosure.' },
+              { kind: 'teach', title: 'Unrealistic expectations', text: 'When a client expects perfection, or expresses distress entirely out of proportion to the perceived flaw, this is a red flag. Document, address it calmly, and consider whether treatment is appropriate at all.' },
+              { kind: 'ask', prompt: 'A client is extremely distressed about a feature that appears minor to you. The right response is to...', qtype: 'SINGLE', options: ['Document, address calmly, consider whether treatment is appropriate', 'Treat immediately to reassure them', 'Dismiss their concern', 'Offer the most aggressive option'], correct: [0], explanation: 'Disproportionate distress is a clinical flag -- document and assess before proceeding.' },
+              { kind: 'say', text: 'Listening as carefully as you treat is what separates a good practitioner from an excellent one.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Recognising BDD & When to Refer',
+            durationMin: 12,
+            objectives: ['Describe body dysmorphic disorder (BDD) and how it presents', 'Explain why aesthetic treatment does not help BDD', 'Know when and how to refer a client to mental health support'],
+            studyTips: ['BDD = Body Dysmorphic Disorder. The JCCP and major industry bodies say you must not treat a client with suspected BDD. Treatment won\'t resolve the underlying distress and may worsen it.'],
+            examRefs: ['Body dysmorphic disorder', 'Safeguarding', 'Ethics', 'Client psychology'],
+            steps: [
+              { kind: 'say', text: 'BDD is a recognised mental health condition. Knowing the signs protects your clients and your practice.', mood: 'think' },
+              { kind: 'teach', title: 'What is BDD?', text: 'Body Dysmorphic Disorder is an obsessive preoccupation with a perceived flaw in appearance that others cannot see or consider minor. It causes significant distress and impaired daily function.' },
+              { kind: 'ask', prompt: 'Body Dysmorphic Disorder is best described as...', qtype: 'SINGLE', options: ['Obsessive preoccupation with a perceived appearance flaw causing real distress', 'A preference for cosmetic treatment', 'A normal level of self-consciousness', 'A skin condition'], correct: [0], explanation: 'BDD is a mental health condition characterised by obsessive, distressing focus on a perceived flaw.' },
+              { kind: 'teach', title: 'Red-flag signs in a consultation', text: 'Warning signs include: repeated consultations about the same minor issue, requests to look like a specific celebrity or filtered image, requesting multiple areas in one session, arriving with altered photos, and previous treatment dissatisfaction despite good results.' },
+              { kind: 'ask', prompt: 'Which of these may indicate BDD during a consultation?', qtype: 'MULTI', options: ['Repeated consultations about one minor feature', 'Wanting to look like a filtered image of themselves', 'Dissatisfied despite objectively good previous results', 'A single clear treatment goal discussed calmly'], correct: [0, 1, 2], explanation: 'A calm, single clear goal is healthy. The others are red flags for BDD or unrealistic expectations.' },
+              { kind: 'teach', title: 'Why treatment does not help BDD', text: 'Aesthetic treatment does not resolve BDD because the problem is the client\'s perception, not their appearance. Treating often moves the focus to the next perceived flaw.' },
+              { kind: 'ask', prompt: 'If a client has suspected BDD, aesthetic treatment should be...', qtype: 'SINGLE', options: ['Declined and the client signposted to mental health support', 'Offered at a discount', 'Agreed to immediately to reassure them', 'Offered in smaller steps only'], correct: [0], explanation: 'Treatment doesn\'t resolve BDD and may worsen distress. Decline and refer to appropriate support.' },
+              { kind: 'teach', title: 'How to decline and refer', text: 'Be calm, non-judgemental and clear. Say you believe treatment is not right for them at this time, and signpost them to their GP or a mental health service. Document the decision and your reasoning.' },
+              { kind: 'ask', prompt: 'When declining a client for suspected BDD, you should...', qtype: 'MULTI', options: ['Be calm and non-judgemental', 'Signpost to GP or mental health support', 'Document your reasoning', 'Offer the treatment anyway with a caveat'], correct: [0, 1, 2], explanation: 'Calm, compassionate refusal with a clear referral pathway and full documentation.' },
+              { kind: 'say', text: 'Declining a client when it is the right thing to do is a sign of a skilled, ethical practitioner.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Client Psychology & Wellbeing Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'Understanding a client\'s motivation for treatment helps you...', type: 'SINGLE', options: ['Tailor treatment and spot psychological risk factors', 'Set the price', 'Skip the consultation', 'Choose the strongest modality'], correct: [0], explanation: 'Motivation reveals what they really want and flags red flags.' },
+            { prompt: 'Building therapeutic rapport involves...', type: 'MULTI', options: ['Open questions', 'Listening without interrupting', 'Avoiding leading suggestions', 'Immediately recommending the priciest option'], correct: [0, 1, 2], explanation: 'Open questions, active listening and no steering.' },
+            { prompt: 'Body Dysmorphic Disorder is characterised by obsessive distress about a perceived appearance flaw.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'BDD causes significant real distress about a perceived (often minor or absent) flaw.' },
+            { prompt: 'If BDD is suspected, aesthetic treatment is...', type: 'SINGLE', options: ['Contraindicated', 'Recommended immediately', 'Fine with reduced settings', 'Only for small areas'], correct: [0], explanation: 'Treatment will not resolve BDD and may worsen distress. Decline and refer.' },
+            { prompt: 'When declining a client for BDD, you should document...', type: 'SINGLE', options: ['Your reasoning and what you signposted them to', 'Nothing', 'The client\'s address only', 'The cost of the missed appointment'], correct: [0], explanation: 'Documentation of the decision and referral pathway is essential.' },
+            { prompt: 'Repeated, obsessive consultations about a single minor feature may indicate...', type: 'SINGLE', options: ['Possible BDD', 'Good client engagement', 'High satisfaction', 'A need for the most advanced treatment'], correct: [0], explanation: 'Repeated distress about a minor feature is a BDD red flag.' },
+          ],
+        },
+      },
+    ],
+  },
+
+  // -- BATCH 9 modules ---------------------------------------------------------
+
+  {
+    courseSlug: L2,
+    modules: [
+      {
+        title: 'Record Keeping & Data Protection in Practice',
+        summary: 'Understand what to record after every treatment, how long to keep it, and what GDPR requires of clinic data.',
+        lessons: [
+          {
+            title: 'Client Records: What, Why and When',
+            durationMin: 10,
+            objectives: ['State the minimum record-keeping requirements for laser treatments', 'Explain why comprehensive records protect both client and practitioner', 'Describe what a good treatment note includes'],
+            steps: [
+              { kind: 'teach', title: 'Why records matter', text: 'A client record is a legal document. It shows what you assessed, what you did, and what advice you gave — your first line of defence if a complaint is ever made.' },
+              { kind: 'teach', title: 'Before treatment', text: 'Record the consultation findings: medical history, contraindications checked, patch test result, the client\'s skin type, and the signed consent form reference.' },
+              { kind: 'ask', prompt: 'Which of these belongs in a pre-treatment record?', options: ['Patch test result and skin type', 'The treatment room temperature', 'How long the client waited', 'The practitioner\'s lunch break'], correct: [0], explanation: 'Clinical findings and safety checks are the pre-treatment record; logistics are not.' },
+              { kind: 'teach', title: 'During treatment', text: 'Note the device used, the settings (wavelength, fluence, pulse width), the area treated, and the number of passes.' },
+              { kind: 'ask', prompt: 'Why record the exact treatment settings?', options: ['So future sessions can be adapted safely', 'To fill the record card', 'For marketing purposes', 'The equipment manufacturer requires it'], correct: [0], explanation: 'Knowing what worked (or caused a reaction) is essential for the next visit.' },
+              { kind: 'teach', title: 'After treatment', text: 'Record the client\'s immediate reaction, any cooling or first aid applied, and the aftercare advice you gave (and how).' },
+              { kind: 'ask', prompt: 'What should be noted if a client\'s skin blisters during a treatment?', options: ['The blister, the action taken, advice given, and follow-up plan', 'Nothing — mild reactions are expected', 'The blister only', 'The device brand name'], correct: [0], explanation: 'Adverse events must be documented in full: what happened, what you did, and what you said.' },
+              { kind: 'teach', title: 'Signatures', text: 'The client\'s signature on the consent form confirms they were informed. Retain the original or a secure digital copy alongside the session record.' },
+              { kind: 'ask', prompt: 'A client\'s consent form must be kept for at least...', options: ['7 years (or until the client is 25, if younger)', '6 months', '28 days', 'Indefinitely'], correct: [0], explanation: 'HMRC retention rules apply to financial records; for clinical records, 7 years is the standard minimum for adults and until age 25 for minors.' },
+              { kind: 'say', text: 'Well-kept records are not admin — they are clinical care. They protect the client if things go wrong and protect you if a claim is ever made.' },
+            ],
+          },
+          {
+            title: 'GDPR & Data Protection in the Clinic',
+            durationMin: 10,
+            objectives: ['Name the lawful basis for processing client health data', 'Describe what a subject access request (SAR) requires', 'State how to handle a right-to-erasure request'],
+            steps: [
+              { kind: 'teach', title: 'What is personal data?', text: 'Any data that can identify a living person — name, date of birth, phone number, email, photos, treatment notes.' },
+              { kind: 'teach', title: 'Special category data', text: 'Health data is "special category" under UK GDPR. Processing it requires both a lawful basis AND an additional condition — typically "provision of health care" or explicit consent.' },
+              { kind: 'ask', prompt: 'Before-treatment clinical photographs are classed as...', options: ['Special category data (health)', 'General personal data', 'Public information', 'Anonymous data'], correct: [0], explanation: 'Photos linked to a named client and their health condition are special category data — they need explicit consent and secure storage.' },
+              { kind: 'teach', title: 'Retention limits', text: 'You may only keep data for as long as you need it. For clinical records, the standard is 7 years post-treatment for adults. After that, data should be securely deleted.' },
+              { kind: 'teach', title: 'Subject Access Requests', text: 'Any client can ask you to provide a copy of all the personal data you hold on them. You must respond within one month at no charge.' },
+              { kind: 'ask', prompt: 'A client asks for all the data you hold on them. This is called a...', type: 'WORD', options: ['Subject Access Request', 'Privacy Notice', 'Consent Form'], correct: [0], explanation: 'A Subject Access Request (SAR) is the client\'s legal right under UK GDPR Art. 15.' },
+              { kind: 'teach', title: 'Right to erasure', text: 'Clients can request deletion of their data. You must comply unless you have a legal obligation to retain it (e.g. financial records for HMRC).' },
+              { kind: 'ask', prompt: 'A client asks you to delete all their records. You must comply with all records EXCEPT those...', options: ['Kept for legal or regulatory reasons (e.g. financial records)', 'That are inconvenient to delete', 'Held for more than 7 years', 'In paper format'], correct: [0], explanation: 'HMRC and other legal obligations override the right to erasure for the relevant records.' },
+              { kind: 'say', text: 'GDPR is not just for large companies. Every clinic that holds client data must comply — and non-compliance can lead to fines and reputational damage.' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Record Keeping & Data Protection Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'A treatment record must include the device settings used.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Settings are a clinical record requirement — without them you cannot safely repeat or adapt treatment.' },
+            { prompt: 'Client health data belongs to which GDPR category?', options: ['Special category data', 'General personal data', 'Anonymous data', 'Public data'], correct: [0], explanation: 'Health data is special category under UK GDPR and requires additional conditions for processing.' },
+            { prompt: 'A Subject Access Request must be fulfilled within...', options: ['One calendar month', 'Six months', '7 working days', 'One week'], correct: [0], explanation: 'UK GDPR Art. 15: respond within one month, at no charge.' },
+            { prompt: 'After an adverse reaction during a treatment, you should document...', options: ['The reaction, action taken, advice given, and follow-up plan', 'Nothing if it resolved quickly', 'The device brand only', 'The reaction only'], correct: [0], explanation: 'All elements of an adverse event must be captured — incomplete records can be as damaging as no records.' },
+            { prompt: 'Before-treatment consent forms should be retained for at least...', options: ['7 years for adults', '6 months', '28 days', 'There is no requirement'], correct: [0], explanation: 'Clinical records should be kept for 7 years post-treatment for adults as a minimum standard.' },
+            { prompt: 'Which of these is NOT a requirement of a laser treatment record?', options: ['The practitioner\'s personal home address', 'Treatment settings used', 'Signed consent reference', 'Client reaction and aftercare given'], correct: [0], explanation: 'The practitioner\'s home address has no place in a clinical record. The others are all standard requirements.' },
+          ],
+        },
+      },
+    ],
+  },
+
+  {
+    courseSlug: 'level-3-laser-aesthetic-therapies',
+    modules: [
+      {
+        title: 'Acne & Post-Inflammatory Hyperpigmentation Protocols',
+        summary: 'Plan safe laser and IPL protocols for active acne and the PIH it often leaves behind, with correct Fitzpatrick-based adjustments.',
+        lessons: [
+          {
+            title: 'Treating Active Acne with IPL & Laser',
+            durationMin: 11,
+            objectives: ['Identify the mechanism by which IPL reduces acne', 'List the contraindications to laser/IPL for active acne', 'State the isotretinoin waiting period'],
+            steps: [
+              { kind: 'teach', title: 'The mechanism', text: 'IPL wavelengths around 420 nm are absorbed by porphyrins produced by Cutibacterium acnes. The energy destroys the bacteria and reduces sebaceous activity — without touching the surrounding tissue.' },
+              { kind: 'ask', prompt: 'IPL targets acne bacteria via...', type: 'WORD', options: ['porphyrins', 'melanin', 'haemoglobin'], correct: [0], explanation: 'Porphyrins in C. acnes absorb the 420 nm blue/green wavelength, making them the primary chromophore in acne IPL.' },
+              { kind: 'teach', title: 'Who it helps', text: 'Best results are seen in inflammatory acne (papules, pustules). It is not a first-line treatment for nodulo-cystic acne, which needs medical management.' },
+              { kind: 'ask', prompt: 'IPL for acne works best on which type?', options: ['Inflammatory (papules and pustules)', 'Nodulo-cystic acne', 'Comedonal acne only', 'All types equally'], correct: [0], explanation: 'Inflammatory acne responds well; cystic acne needs GP/dermatology referral.' },
+              { kind: 'teach', title: 'Isotretinoin (Roaccutane)', text: 'Isotretinoin makes skin fragile and reduces sebum dramatically. Any laser or IPL treatment must wait until at least 6 months after the last dose.' },
+              { kind: 'ask', prompt: 'A client finished isotretinoin 4 months ago. Can you treat their acne with IPL?', options: ['No — wait at least 6 months post-course', 'Yes, at reduced settings', 'Yes, with extra cooling', 'Only if a GP approves on the day'], correct: [0], explanation: 'Six months post-isotretinoin is the minimum safe interval before any ablative or light-based treatment.' },
+              { kind: 'teach', title: 'Other contraindications', text: 'Photosensitising antibiotics (tetracyclines), topical retinoids applied within 48 hours, and active cold sores on the face are all contraindications. Review the full medication history.' },
+              { kind: 'say', text: 'For acne, laser/IPL is a complement to medical treatment — not a replacement. Always ask about current medications and GP involvement before planning a course.' },
+            ],
+          },
+          {
+            title: 'Post-Inflammatory Hyperpigmentation: Assessment & Treatment',
+            durationMin: 11,
+            objectives: ['Distinguish PIH from other pigmentation conditions', 'Apply Fitzpatrick-based risk assessment for PIH', 'State the low-fluence first-pass principle for darker skin types'],
+            steps: [
+              { kind: 'teach', title: 'What is PIH?', text: 'Post-inflammatory hyperpigmentation (PIH) is excess melanin deposited after skin inflammation. It is not a scar — the skin texture is normal, only the colour has changed.' },
+              { kind: 'ask', prompt: 'PIH is caused by excess melanin following...', type: 'WORD', options: ['inflammation', 'dehydration', 'ageing'], correct: [0], explanation: 'Any skin inflammation — including acne, an adverse treatment reaction, or a wound — can trigger PIH.' },
+              { kind: 'teach', title: 'Higher Fitzpatrick risk', text: 'Fitzpatrick types IV–VI have more reactive melanocytes. Laser or IPL itself can cause PIH if settings are too high — the treatment that causes inflammation can worsen the problem it was meant to fix.' },
+              { kind: 'ask', prompt: 'For a Fitzpatrick V client with PIH, what is the initial approach?', options: ['Start at a low fluence and review before progressing', 'Use maximum settings for faster clearance', 'Treat the same as a Fitzpatrick II', 'Avoid all treatment'], correct: [0], explanation: 'Low, conservative settings and careful review prevent treatment-induced PIH on higher skin types.' },
+              { kind: 'teach', title: 'Whitening prep', text: 'Topical tyrosinase inhibitors (e.g. azelaic acid, niacinamide, alpha-arbutin) can be applied 4–6 weeks before treatment to reduce melanocyte activity and improve outcomes — but only with a prescriber\'s involvement for hydroquinone.' },
+              { kind: 'ask', prompt: 'Pre-treatment use of tyrosinase inhibitors in PIH aims to...', options: ['Reduce melanocyte activity before the treatment', 'Exfoliate the skin', 'Increase skin hydration', 'Numb the area'], correct: [0], explanation: 'Inhibiting melanocyte activity before light-based treatment reduces the risk of PIH worsening.' },
+              { kind: 'teach', title: 'Sun avoidance', text: 'Fresh UV exposure before or between sessions significantly increases PIH risk. Daily SPF 50 broad-spectrum is mandatory throughout any course and for 4 weeks after the last treatment.' },
+              { kind: 'say', text: 'PIH requires patience — results come over weeks, not sessions. Manage expectations from the outset and reinforce sun protection at every appointment.' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Acne & PIH Protocols Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'IPL targets acne bacteria primarily via their porphyrins.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'C. acnes produces porphyrins that absorb visible (especially ~420 nm) light — this is the mechanism of photodynamic acne treatment.' },
+            { prompt: 'A client on isotretinoin can receive IPL treatment if extra cooling is used.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [1], explanation: 'Isotretinoin is an absolute contraindication during treatment and for 6 months post-course. Cooling does not remove the risk.' },
+            { prompt: 'PIH on a Fitzpatrick V client should initially be treated with...', options: ['Low fluence, conservative settings with careful review', 'Maximum fluence for fastest results', 'Standard protocols as for Fitzpatrick I', 'No light-based treatment ever'], correct: [0], explanation: 'Higher skin types require conservative starts to avoid treatment-induced PIH.' },
+            { prompt: 'What pre-treatment topical approach can reduce PIH risk before laser?', options: ['Tyrosinase inhibitors such as azelaic acid or niacinamide', 'AHA chemical peel two days before', 'High-SPF sunscreen alone', 'Topical retinoid the night before'], correct: [0], explanation: 'Tyrosinase inhibitors reduce melanocyte activity over 4-6 weeks pre-treatment, lowering PIH risk.' },
+            { prompt: 'The minimum gap after finishing isotretinoin before any light-based treatment is...', options: ['6 months', '2 weeks', '3 months', '1 year always'], correct: [0], explanation: '6 months is the standard minimum; some guidelines recommend longer for ablative procedures.' },
+            { prompt: 'Which acne type responds best to IPL/laser?', options: ['Inflammatory (papules and pustules)', 'Nodulo-cystic', 'Comedonal only', 'Scarring only'], correct: [0], explanation: 'Inflammatory acne with visible papules and pustules responds best to photodynamic-style IPL.' },
+          ],
+        },
+      },
+    ],
+  },
+
+  {
+    courseSlug: 'level-4-certificate-aesthetic-practice',
+    modules: [
+      {
+        title: 'Medication Interactions & Photosensitivity',
+        summary: 'Identify the drugs that affect laser and light-based treatment safety, and manage clients on anticoagulants or immunosuppressants appropriately.',
+        lessons: [
+          {
+            title: 'Drugs That Affect Laser Safety',
+            durationMin: 12,
+            objectives: ['List the main classes of photosensitising medications', 'State the correct pauses before treatment for retinoids and isotretinoin', 'Identify which drugs increase bleeding or bruising risk'],
+            steps: [
+              { kind: 'teach', title: 'Why medication matters', text: 'Several common medications change how the skin responds to light-based treatment — by increasing photosensitivity, thinning the blood, or impairing healing. A full medication review is non-negotiable at every consultation.' },
+              { kind: 'teach', title: 'Photosensitising drugs', text: 'These make the skin react more strongly to light, increasing the risk of burns, PIH, and adverse reactions. Main classes: tetracycline antibiotics (especially doxycycline), St John\'s Wort (herbal supplement), NSAIDs, certain diuretics (thiazides), some antidepressants (SSRIs), and fluoroquinolone antibiotics.' },
+              { kind: 'ask', prompt: 'Which of the following is a photosensitising medication?', options: ['Doxycycline (tetracycline antibiotic)', 'Paracetamol', 'Cetirizine antihistamine', 'Vitamin C'], correct: [0], explanation: 'Tetracyclines, especially doxycycline, are a well-documented cause of photosensitivity and must be disclosed before laser/IPL.' },
+              { kind: 'teach', title: 'Retinoids', text: 'Topical retinoids (tretinoin, adapalene) thin the skin and increase sensitivity. Pause topical application for 5–7 days before ablative or resurfacing treatments. For oral retinoids (isotretinoin), wait 6 months after the last dose.' },
+              { kind: 'ask', prompt: 'A client uses topical tretinoin nightly. Before a laser resurfacing, they should stop it for...', options: ['5-7 days', '24 hours', 'No pause needed', '6 months'], correct: [0], explanation: 'Topical retinoids need a 5-7 day pause before resurfacing procedures to reduce sensitivity and impaired healing.' },
+              { kind: 'teach', title: 'Isotretinoin (oral retinoid)', text: 'The 6-month rule is absolute: no ablative, resurfacing, or aggressive light-based treatments until 6 months post-course. The skin is profoundly altered — reduced sebum, thinner, impaired wound healing.' },
+              { kind: 'ask', prompt: 'Isotretinoin alters skin behaviour primarily by...', type: 'MULTI', options: ['Reducing sebum production', 'Thinning the skin', 'Impairing wound healing', 'Increasing melanin production'], correct: [0, 1, 2], explanation: 'Reduced sebum, thinner epidermis, and impaired healing — all three make any energy-based treatment higher risk.' },
+              { kind: 'say', text: 'Always ask "are you on any medications, vitamins or herbal supplements?" — St John\'s Wort is over the counter and commonly overlooked, yet it is a significant photosensitiser.' },
+            ],
+          },
+          {
+            title: 'Anticoagulants, Immunosuppressants & Complex Clients',
+            durationMin: 12,
+            objectives: ['Describe the treatment risks for clients on anticoagulants', 'Explain how immunosuppression affects healing and infection risk', 'State when to seek GP input before treating a medically complex client'],
+            steps: [
+              { kind: 'teach', title: 'Anticoagulants', text: 'Warfarin, apixaban, rivaroxaban, clopidogrel, and aspirin all reduce the ability of blood to clot. Energy-based treatments may cause prolonged bleeding, unusual bruising, or purpura after vascular or resurfacing treatments.' },
+              { kind: 'ask', prompt: 'A client on warfarin for atrial fibrillation is having IPL for thread veins. The main added risk is...', options: ['Prolonged bleeding or unusual bruising', 'Increased hyperpigmentation', 'Reduced treatment efficacy', 'No additional risk'], correct: [0], explanation: 'Anticoagulants significantly increase bleeding and bruising risk after any vascular or energy-based treatment.' },
+              { kind: 'teach', title: 'Do not stop their medication', text: 'Never advise a client to stop anticoagulants before a cosmetic appointment. Stopping warfarin without GP supervision can be life-threatening. Obtain GP written clearance if proceeding.' },
+              { kind: 'ask', prompt: 'A client asks if they should stop warfarin before their laser appointment. You should...', options: ['Never advise them to stop — refer to their GP', 'Tell them to skip one dose', 'Reassure them it is fine to stop for 48 hours', 'Proceed without any adjustments'], correct: [0], explanation: 'Only the prescribing GP can authorise any change to anticoagulation. Never advise the client to stop.' },
+              { kind: 'teach', title: 'Immunosuppressants', text: 'Methotrexate, ciclosporin, azathioprine, and biologics (used for psoriasis, rheumatoid arthritis, transplants) impair the immune response. Any open wound or skin compromise carries a higher infection risk, and healing is slower and less predictable.' },
+              { kind: 'ask', prompt: 'A client on methotrexate for rheumatoid arthritis has a skin infection risk after laser because...', options: ['Their immune system is suppressed and wound healing is impaired', 'Methotrexate is photosensitising', 'They will be more comfortable than usual', 'There is no added risk'], correct: [0], explanation: 'Methotrexate suppresses the immune system, raising infection risk after any skin disruption.' },
+              { kind: 'teach', title: 'GP referral pathway', text: 'Any medically complex client — on anticoagulants, immunosuppressants, or multiple medications — should be treated only after written GP clearance. Document the referral, the GP response, and your clinical rationale.' },
+              { kind: 'say', text: 'The safest words in complex cases are "let me check with your GP first". A short delay to get clearance is far better than a complication you could not defend.' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Medication Interactions & Photosensitivity Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'Doxycycline is a photosensitising medication.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Tetracyclines, including doxycycline, are well-documented photosensitisers — an absolute disclosure requirement before any light-based treatment.' },
+            { prompt: 'A client who finished isotretinoin 5 months ago should be treated with laser resurfacing if they are keen and the skin looks normal.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [1], explanation: 'Six months post-course is the minimum. The skin may look normal but wound healing and sebaceous function remain altered.' },
+            { prompt: 'Before topical retinoid use and a resurfacing laser, the retinoid should be paused for...', options: ['5-7 days', '24 hours only', 'No pause needed', '6 months'], correct: [0], explanation: 'Topical retinoids should be stopped 5-7 days before any resurfacing or ablative procedure.' },
+            { prompt: 'You should advise a client on warfarin to skip one dose before vascular IPL.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [1], explanation: 'Never advise stopping or adjusting anticoagulants. Refer to the prescribing GP for written clearance.' },
+            { prompt: 'Immunosuppressed clients undergoing laser treatment face higher risk of...', options: ['Infection and impaired healing', 'Faster recovery', 'Reduced bruising', 'No change in outcome'], correct: [0], explanation: 'Immunosuppression raises infection risk and slows healing after any treatment that breaches the skin barrier.' },
+            { prompt: 'St John\'s Wort is relevant to ask about before laser treatment because it is...', options: ['A photosensitiser available over the counter', 'Irrelevant to skin treatment', 'A prescription anticoagulant', 'A topical retinoid'], correct: [0], explanation: 'St John\'s Wort is a common, over-the-counter photosensitiser that many clients do not think to mention.' },
+          ],
+        },
+      },
+    ],
+  },
+
 ];
 
 export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
@@ -2040,16 +2385,54 @@ export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
   { courseSlug: L2, topic: "Treatment preparation", prompt: "Pre-treatment photographs form part of the...", options: ["Clinical record and provide a medicolegal baseline", "Social media feed", "Invoice", "Marketing campaign"], correct: [0], explanation: "Before photos are a clinical record requirement, not a marketing asset." },
   { courseSlug: L2, topic: "Treatment delivery", prompt: "During a treatment, unexpected sharp pain or blistering means you should...", options: ["Stop, assess, and adjust before continuing", "Increase the energy setting", "Continue to the end of the treatment", "Leave the client to rest"], correct: [0], explanation: "Any unexpected adverse response is a signal to stop immediately and assess." },
 
+  // Electrical Safety & Equipment Maintenance (L2)
+  { courseSlug: L2, topic: 'Equipment safety', prompt: 'PAT testing stands for Portable ___ Testing.', type: 'WORD', options: ['Appliance', 'Antenna', 'Application'], correct: [0], explanation: 'PAT = Portable Appliance Testing -- an electrical safety inspection of portable devices.' },
+  { courseSlug: L2, topic: 'Equipment safety', prompt: 'A visually damaged cable on a treatment device should be...', options: ['Reported and the device taken out of use', 'Taped up and used carefully', 'Ignored until next service', 'Left for the client to report'], correct: [0], explanation: 'Damaged cables must not be used. Report and withdraw from service immediately.' },
+  { courseSlug: L2, topic: 'Equipment safety', prompt: 'Equipment maintenance records help form a legal...', type: 'WORD', options: ['audit trail', 'marketing plan', 'client record'], correct: [0], explanation: 'An audit trail demonstrates that your duty of care was met and supports any incident investigation.' },
+
   // Combination Treatments & Course Planning (L3)
   { courseSlug: "level-3-laser-aesthetic-therapies", topic: "Course planning", prompt: "Skin rejuvenation photofacial sessions are typically spaced...", options: ["3-4 weeks apart", "Every 6 months", "Daily", "Every 2 years"], correct: [0], explanation: "3-4 weeks allows the neocollagenesis response to develop before the next treatment." },
   { courseSlug: "level-3-laser-aesthetic-therapies", topic: "Combination treatments", prompt: "The main clinical risk of applying two energy-based devices to the same area in one session is...", options: ["Cumulative heat causing burns or post-inflammatory hyperpigmentation", "Better results", "Reduced discomfort", "Faster healing"], correct: [0], explanation: "Stacked heat in one session significantly raises the risk of burns and PIH." },
   { courseSlug: "level-3-laser-aesthetic-therapies", topic: "Course planning", prompt: "A written treatment plan benefits the client by...", options: ["Setting clear expectations about the number of sessions and likely outcomes", "Locking them into a payment plan", "Reducing the number of sessions needed", "Allowing the practitioner to change the plan without notice"], correct: [0], explanation: "Clear, documented expectations protect both client and practitioner." },
+
+  // Combination Protocols & Treatment Sequencing (L3)
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Combination protocols', prompt: 'In a combination session, treatments should generally progress from...', options: ['Least to most aggressive', 'Most to least aggressive', 'Random order', 'Most expensive first'], correct: [0], explanation: 'Least aggressive first preserves the skin barrier for subsequent energy-based steps.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Combination protocols', prompt: 'A client has a fresh spray tan. The laser appointment should be...', options: ['Postponed until the tan has faded', 'Adapted with lower settings', 'Carried out as normal', 'Cancelled permanently'], correct: [0], explanation: 'Any active tan is a contraindication for laser and IPL; postpone and re-book.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Combination protocols', prompt: 'After a medium chemical peel, laser resurfacing in the same area should wait until the...', type: 'WORD', options: ['barrier', 'colour', 'melanin'], correct: [0], explanation: 'The epidermal barrier must fully recover before additional energy-based treatment is applied.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Combination protocols', prompt: 'The minimum recommended gap between a dermal filler and laser in the same area is...', options: ['Two weeks', 'Two hours', 'No gap needed', 'Six months always'], correct: [0], explanation: 'Two weeks allows initial settling and reduces the risk of adverse interaction with the filler.' },
 
   // Business Development & Governance (L4 and L5-7)
   { courseSlug: "level-4-certificate-aesthetic-practice", topic: "Governance", prompt: "Clinical governance operates...", options: ["Continuously as an active accountability framework", "Only during regulatory inspections", "Once a year at review", "When complaints arise"], correct: [0], explanation: "Clinical governance is an ongoing, active process, not a reactive one." },
   { courseSlug: "level-4-certificate-aesthetic-practice", topic: "Audit", prompt: "The audit cycle is only complete once you have...", options: ["Re-audited to confirm the change improved practice", "Written a report", "Presented the findings at a meeting", "Filed the data"], correct: [0], explanation: "Re-audit closes the loop; without it you cannot confirm whether the improvement worked." },
   { courseSlug: "advanced-aesthetics-level-5-7", topic: "Business development", prompt: "Value-based pricing reflects...", options: ["The perceived benefit of the outcome to the client", "The cost of supplies only", "A standard market rate", "What competitors charge"], correct: [0], explanation: "Value-based pricing is set from the client's perspective -- what the result is worth to them." },
   { courseSlug: "advanced-aesthetics-level-5-7", topic: "Marketing compliance", prompt: "Aesthetic treatment before/after photographs used in marketing require...", options: ["Explicit written consent for marketing use, separate from clinical consent", "Verbal agreement only", "No consent if faces are cropped", "Automatic consent after payment"], correct: [0], explanation: "Marketing consent must be separate, explicit and in writing." },
+
+  // Client Psychology & Wellbeing (L4)
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Client psychology', prompt: 'Body Dysmorphic Disorder (BDD) is best described as...', options: ['Obsessive, distressing preoccupation with a perceived appearance flaw', 'Normal concern about appearance', 'A contraindication for all consultations', 'A skin condition'], correct: [0], explanation: 'BDD is a mental health condition -- obsessive, distressing focus on a perceived (often minor or absent) flaw.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Client psychology', prompt: 'Aesthetic treatment for a client with suspected BDD should be...', options: ['Declined; client signposted to mental health support', 'Offered immediately to reduce distress', 'Given at a reduced rate', 'Completed in stages only'], correct: [0], explanation: 'Treatment does not resolve BDD and may worsen it. Decline and refer appropriately.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Client psychology', prompt: 'Which of these is a red flag for unrealistic expectations or BDD during consultation?', type: 'MULTI', options: ['Wanting to look like a filtered image', 'Repeated visits about one minor feature', 'Dissatisfied after objectively successful treatment', 'A single clear, realistic goal discussed calmly'], correct: [0, 1, 2], explanation: 'A calm, specific, realistic goal is healthy. The others raise concern.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Client psychology', prompt: 'When declining a client for psychological reasons, the practitioner must...', type: 'MULTI', options: ['Be calm and non-judgemental', 'Signpost to GP or mental health services', 'Document the decision and reasoning', 'Tell other clients about the case'], correct: [0, 1, 2], explanation: 'Calm, compassionate refusal with a referral pathway and full documentation -- never breach confidentiality.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Client psychology', prompt: 'Understanding a client\'s motivation for treatment is part of the practitioner\'s...', type: 'SINGLE', options: ['Duty of care', 'Marketing strategy', 'Personal curiosity', 'Financial planning'], correct: [0], explanation: 'Duty of care includes assessing psychological suitability, not just physical contraindications.' },
+
+  // -- BATCH 9 exam bank questions ---------------------------------------------
+
+  // Record Keeping & Data Protection (L2)
+  { courseSlug: L2, topic: 'Record keeping', prompt: 'Laser treatment settings must be recorded in the client notes.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Treatment settings are a clinical record requirement — without them future sessions cannot safely adapt the protocol.' },
+  { courseSlug: L2, topic: 'GDPR', prompt: 'A client\'s before-treatment photographs are classed as...', options: ['Special category data under UK GDPR', 'General personal data', 'Anonymous data', 'Public information'], correct: [0], explanation: 'Photographs linked to a named client\'s health are special category data and require explicit consent and secure storage.' },
+  { courseSlug: L2, topic: 'GDPR', prompt: 'A Subject Access Request must be fulfilled within...', options: ['One calendar month', 'Six months', 'Seven working days', 'One year'], correct: [0], explanation: 'UK GDPR Art. 15 requires a response within one month at no charge.' },
+  { courseSlug: L2, topic: 'Record keeping', prompt: 'After an adverse reaction during treatment you must record...', type: 'MULTI', options: ['The reaction and its severity', 'The action you took', 'The aftercare advice given', 'The lunch menu that day'], correct: [0, 1, 2], explanation: 'Full adverse event documentation: what happened, what you did, and what you advised — all three protect the client and the practitioner.' },
+
+  // Acne & PIH Protocols (L3)
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Acne protocols', prompt: 'IPL for acne works by targeting bacterial porphyrins with approximately 420 nm light.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Porphyrins produced by C. acnes absorb short-wavelength visible light, making them the chromophore in photodynamic acne treatment.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Acne protocols', prompt: 'A client finished isotretinoin 3 months ago. The correct decision is to...', options: ['Decline and rebook after 6 months post-course', 'Treat at half fluence', 'Treat as normal if skin looks healthy', 'Apply extra cooling and proceed'], correct: [0], explanation: 'Six months post-isotretinoin is the minimum before any light-based treatment. Appearance alone does not confirm skin safety.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'PIH', prompt: 'For PIH on a Fitzpatrick V client, the safest first approach is...', options: ['Conservative low-fluence start with review before increasing', 'Standard fluence as for Fitzpatrick II', 'Maximum settings for fastest clearance', 'No treatment ever'], correct: [0], explanation: 'Higher skin types need conservative starts; aggressive settings on reactive melanocytes can worsen PIH.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'PIH', prompt: 'Tyrosinase inhibitors used before laser treatment aim to...', options: ['Reduce melanocyte activity before the treatment session', 'Exfoliate dead skin', 'Increase collagen production', 'Numb the treatment area'], correct: [0], explanation: 'Inhibiting melanocyte activity 4-6 weeks before laser reduces the risk of treatment-triggered PIH.' },
+
+  // Medication Interactions & Photosensitivity (L4)
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Photosensitivity', prompt: 'St John\'s Wort is relevant to disclose before laser treatment because it is a photosensitiser.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'St John\'s Wort is an over-the-counter photosensitiser. Many clients do not consider herbal supplements medications and may not volunteer this.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Medication interactions', prompt: 'A client asks if they should stop warfarin before their vascular IPL appointment. You should...', options: ['Advise them never to stop without GP instruction and refer for written clearance', 'Tell them to skip one dose', 'Reassure them it is safe to stop for 48 hours', 'Proceed without GP involvement'], correct: [0], explanation: 'Only the prescribing GP can authorise changes to anticoagulation. Never advise the client to stop warfarin.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Medication interactions', prompt: 'Topical retinoids should be paused before resurfacing for...', options: ['5-7 days', '24 hours', '6 months', 'No pause is needed'], correct: [0], explanation: 'Topical retinoids thin the skin and increase photosensitivity; a 5-7 day pause before resurfacing is standard.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Medication interactions', prompt: 'Which of these drugs should trigger a GP referral before laser treatment?', type: 'MULTI', options: ['Warfarin', 'Methotrexate', 'Isotretinoin (within last 6 months)', 'Vitamin D supplement'], correct: [0, 1, 2], explanation: 'Anticoagulants, immunosuppressants, and recent isotretinoin all require GP clearance before any laser or energy-based treatment.' },
 
 ];
 

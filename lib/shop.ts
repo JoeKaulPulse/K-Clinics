@@ -53,37 +53,36 @@ export const shippingFor = (method: string, subtotalPence: number) =>
 
 export async function nextOrderNumber(): Promise<string> {
   const { db } = await import('@/lib/db');
-  // Race-free: Postgres sequence guarantees each concurrent caller gets a
-  // distinct value. On first use we CREATE the sequence with START = max(existing
-  // KC-number) + 1, so the very first nextval is already above all existing
-  // Order.number values — no gap between creation and seeding that another
-  // concurrent nextval could exploit. Subsequent calls skip the IF block.
-  // On concurrent creation, only one EXECUTE succeeds; the other catches the
-  // duplicate_object exception and moves on — both then call nextval safely.
-  await db.$executeRaw`
-    DO $body$
-    DECLARE
-      start_val BIGINT;
-    BEGIN
-      IF NOT EXISTS (SELECT FROM pg_sequences WHERE sequencename = 'kc_order_seq') THEN
-        SELECT GREATEST(
-          COALESCE(MAX(CAST(SUBSTRING(number FROM 3) AS BIGINT)), 1000) + 1,
+  // Atomic counter — serialises concurrent checkouts so no two orders can ever
+  // get the same human-facing number. The Setting row acts as the sequence;
+  // ON CONFLICT ensures only one writer increments at a time.
+  //
+  // First-run seed must clear any orders that predate this counter (minted by
+  // the old count()-based scheme), otherwise the first new number would collide
+  // with an existing Order.number (@unique) and block checkout. The seed is the
+  // greater of 1001 and (max existing KC#### + 1), computed in the same atomic
+  // statement. All values are SQL literals/subqueries — no interpolation.
+  const rows = await db.$queryRaw<[{ value: string }]>`
+    INSERT INTO "Setting" (key, value, "updatedAt")
+    VALUES (
+      '_order_seq',
+      GREATEST(
+        1001,
+        COALESCE(
+          (SELECT MAX(CAST(SUBSTRING(number FROM 3) AS INTEGER)) + 1
+             FROM "Order"
+            WHERE number ~ '^KC[0-9]+$'),
           1001
         )
-          INTO start_val
-          FROM "Order"
-          WHERE number ~ E'^KC[0-9]+$';
-        BEGIN
-          EXECUTE 'CREATE SEQUENCE kc_order_seq MINVALUE 1001 START ' || start_val::text;
-        EXCEPTION WHEN duplicate_object THEN
-          NULL; -- concurrent creation; sequence is already there
-        END;
-      END IF;
-    END
-    $body$
+      )::TEXT,
+      NOW()
+    )
+    ON CONFLICT (key) DO UPDATE
+      SET value = (CAST("Setting".value AS INTEGER) + 1)::TEXT,
+          "updatedAt" = NOW()
+    RETURNING value
   `;
-  const [row] = await db.$queryRaw<[{ n: bigint }]>`SELECT nextval('kc_order_seq') AS n`;
-  return `KC${row.n}`;
+  return `KC${rows[0].value}`;
 }
 
 /** Finalise a paid order: decrement stock, redeem any gift card, send the

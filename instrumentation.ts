@@ -7,4 +7,11 @@ export async function register() {
   }
 }
 
-export { captureRequestError as onRequestError } from '@sentry/nextjs';
+export async function onRequestError(
+  error: { digest: string } & Error,
+  request: { path: string; method: string; headers: Record<string, string | string[] | undefined> },
+  context: { routerKind: string; routePath: string; routeType: string },
+) {
+  const { captureRequestError } = await import('@sentry/nextjs');
+  captureRequestError(error, request, context);
+}

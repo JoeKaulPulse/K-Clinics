@@ -1,7 +1,7 @@
 'use client';
 
-import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
+import * as Sentry from '@sentry/nextjs';
 
 // Root error boundary — catches errors thrown in the root layout itself, where
 // the normal segment error.tsx can't run. Must render its own <html>/<body>.

@@ -101,8 +101,16 @@ export async function eraseClientData(clientId: string) {
     // while the raw PII is gone.
     db.discountClaim.updateMany({
       where: { clientId },
-      data: { emailNorm: '', phoneNorm: null, nameDobKey: null, ip: null },
+      data: { emailNorm: 'erased', phoneNorm: null, nameDobKey: null, ip: null },
     }),
+    // Strip PII from retail Orders (email/name/phone/address) — keep order number
+    // and amounts for Xero/HMRC basis. Order.clientId is a nullable String set at
+    // checkout (no formal FK relation), so we match on it directly.
+    db.order.updateMany({ where: { clientId }, data: { name: 'Erased', email: `erased-${clientId}@redacted.invalid`, phone: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
+    // Strip PII from GiftVouchers claimed by this client. (Vouchers they
+    // *purchased* carry only an email/name string with no FK to Client, so
+    // they can't be matched here reliably — see BLD-315 residual note.)
+    db.giftVoucher.updateMany({ where: { claimedByClientId: clientId }, data: { recipientName: null, recipientEmail: null, message: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
   ]);
   await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
   revalidatePath(`/admin/clients/${clientId}`);
