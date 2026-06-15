@@ -62,9 +62,27 @@ export async function nextOrderNumber(): Promise<string> {
   // Atomic counter — serialises concurrent checkouts so no two orders can ever
   // get the same human-facing number. The Setting row acts as the sequence;
   // ON CONFLICT ensures only one writer increments at a time.
+  //
+  // First-run seed must clear any orders that predate this counter (minted by
+  // the old count()-based scheme), otherwise the first new number would collide
+  // with an existing Order.number (@unique) and block checkout. The seed is the
+  // greater of 1001 and (max existing KC#### + 1), computed in the same atomic
+  // statement. All values are SQL literals/subqueries — no interpolation.
   const rows = await db.$queryRaw<[{ value: string }]>`
     INSERT INTO "Setting" (key, value, "updatedAt")
-    VALUES ('_order_seq', '1001', NOW())
+    VALUES (
+      '_order_seq',
+      GREATEST(
+        1001,
+        COALESCE(
+          (SELECT MAX(CAST(SUBSTRING(number FROM 3) AS INTEGER)) + 1
+             FROM "Order"
+            WHERE number ~ '^KC[0-9]+$'),
+          1001
+        )
+      )::TEXT,
+      NOW()
+    )
     ON CONFLICT (key) DO UPDATE
       SET value = (CAST("Setting".value AS INTEGER) + 1)::TEXT,
           "updatedAt" = NOW()

@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
   const { id } = await params;
-  const { getSession, sessionCan, canViewClinical } = await import('@/lib/auth');
+  const { getSession, sessionCan } = await import('@/lib/auth');
   const session = await getSession();
   if (!sessionCan(session, 'clients.export')) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
 
@@ -21,7 +21,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       emails: true, discountClaims: true, tasks: true,
       aiAnalyses: true, reviews: true, npsResponses: true, followUps: true,
       waitlist: true, callRecords: true,
-      referralsMade: { where: { referrerId: id } },
+      referralsMade: true,
     },
   });
   if (!c) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
