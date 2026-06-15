@@ -68,20 +68,25 @@ export async function sendEmail(opts: {
 // URL is reachable from the recipient's mail client. Only attached when the HTML
 // actually references the cid, so unrelated mail stays lean.
 function brandAttachments(html: string) {
-  const attachments: { filename: string; content: Buffer; contentType: string; inlineContentId: string }[] = [];
+  // Resend marks an attachment inline (and binds it to a `cid:` reference in the
+  // HTML) only when the field is named `contentId`. It was previously
+  // `inlineContentId`, which Resend ignores — so the marks were sent as plain
+  // attachments with no Content-ID, rendering as broken images in the header while
+  // the files showed up in the attachment list.
+  const attachments: { filename: string; content: Buffer; contentType: string; contentId: string }[] = [];
   for (const [motif, b64] of Object.entries(EMAIL_HEROES)) {
     if (html.includes(`cid:hero-${motif}`)) {
-      attachments.push({ filename: `kclinics-${motif}.gif`, content: Buffer.from(b64, 'base64'), contentType: 'image/gif', inlineContentId: `hero-${motif}` });
+      attachments.push({ filename: `kclinics-${motif}.gif`, content: Buffer.from(b64, 'base64'), contentType: 'image/gif', contentId: `hero-${motif}` });
     }
   }
   if (html.includes('cid:kmark')) {
-    attachments.push({ filename: 'k-mark.png', content: Buffer.from(K_MARK_LIGHT_B64, 'base64'), contentType: 'image/png', inlineContentId: 'kmark' });
+    attachments.push({ filename: 'k-mark.png', content: Buffer.from(K_MARK_LIGHT_B64, 'base64'), contentType: 'image/png', contentId: 'kmark' });
   }
   if (html.includes('cid:kbadge')) {
-    attachments.push({ filename: 'k-badge.png', content: Buffer.from(K_BADGE_B64, 'base64'), contentType: 'image/png', inlineContentId: 'kbadge' });
+    attachments.push({ filename: 'k-badge.png', content: Buffer.from(K_BADGE_B64, 'base64'), contentType: 'image/png', contentId: 'kbadge' });
   }
   if (html.includes('cid:kwordmark')) {
-    attachments.push({ filename: 'k-clinics.png', content: Buffer.from(K_WORDMARK_LIGHT_B64, 'base64'), contentType: 'image/png', inlineContentId: 'kwordmark' });
+    attachments.push({ filename: 'k-clinics.png', content: Buffer.from(K_WORDMARK_LIGHT_B64, 'base64'), contentType: 'image/png', contentId: 'kwordmark' });
   }
   return attachments.length ? { attachments } : {};
 }
