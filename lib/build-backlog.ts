@@ -1331,6 +1331,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: '3 new modules: "Electrical Safety & Equipment Maintenance" (L2), "Combination Protocols & Treatment Sequencing" (L3), "Client Psychology & Wellbeing" (L4). Each: 2 lessons, 6-question quiz. Plus 12 new exam-bank questions across all 4 courses.',
     notes: ['lib/academy-content.ts. enrichCourseContentIfNeeded() picks up additions on the next daily cron run.'],
   },
+  {
+    title: 'Race-safe order number allocation -- derive from last row, not count() (BLD-332)', type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'nextOrderNumber() changed from db.order.count() to findFirst({ orderBy: { createdAt: desc } }) so order numbers are derived from the highest existing row rather than a row count. Added allocateOrderNumber() with a 5-retry loop + random jitter (0-20 ms) and a timestamp-based fallback, so concurrent checkouts can no longer produce duplicate KC#### candidates. Both checkout routes updated to call allocateOrderNumber(). Commit 0a654f5.',
+    notes: ['lib/shop.ts: nextOrderNumber(), allocateOrderNumber(). app/api/shop/checkout/route.ts, app/api/admin/pos/route.ts.'],
+  },
+  {
+    title: 'GDPR SAR export parity with Art. 17 erasure list (BLD-315)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 4,
+    detail: 'Client SAR export now includes all 10 previously-missing data categories. Non-clinical (followUps, reviews, npsResponses, waitlist, referralsMade, points) added to main include. Clinical (aiAnalyses, beforePhotos, signedConsents, consultationNotes, appointmentSessions, chatConversations, callRecords) added to the canViewClinical block via parallel Promise.all queries. Previously the erasure deleted these records but the export never included them, violating GDPR Art. 15. Commit b212eca.',
+    notes: ['app/api/admin/clients/[id]/export/route.ts. Erasure list in app/admin/actions.ts eraseClientData() used as the source of truth for parity.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
