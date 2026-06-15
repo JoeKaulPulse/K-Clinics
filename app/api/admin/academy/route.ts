@@ -134,9 +134,15 @@ export async function POST(req: Request) {
     }
     case 'setStudentActive': {
       // Activate / suspend a trainee's portal access. A suspended trainee loses
-      // access immediately (getCurrentStudent rejects portalActive === false).
+      // access immediately (getCurrentStudent rejects portalActive === false);
+      // bumping sessionEpoch on suspend also revokes their outstanding JWTs, so a
+      // later reactivation doesn't silently restore a pre-suspension session.
       if (!body.id) return bad();
-      await db.academyStudent.update({ where: { id: String(body.id) }, data: { portalActive: !!body.active } });
+      const active = !!body.active;
+      await db.academyStudent.update({
+        where: { id: String(body.id) },
+        data: { portalActive: active, ...(active ? {} : { sessionEpoch: { increment: 1 } }) },
+      });
       return ok();
     }
     case 'updateStudentNotes': {

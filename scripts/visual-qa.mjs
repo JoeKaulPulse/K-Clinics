@@ -89,12 +89,15 @@ function watch(page, area) {
   page.on('response', (r) => { if (r.status() >= 500) note('P1', area, `${r.status()} on ${r.url().replace(BASE, '')}`); else if (r.status() >= 400 && r.url().startsWith(BASE)) note('P2', area, `${r.status()} on ${r.url().replace(BASE, '')}`); });
 }
 
-async function visit(browser, route, name, label) {
+// BLD-346: pages with persistent SSE connections (e.g. /kiosk/display) never
+// reach network-idle. Pass waitUntil:'load' for those routes so the QA run
+// does not time out and raise a false P1 alert.
+async function visit(browser, route, name, label, { waitUntil = 'networkidle' } = {}) {
   const ctx = await browser.newContext(CONTEXT_OPTS);
   const page = await ctx.newPage();
   watch(page, name);
   try {
-    const resp = await page.goto(`${BASE}${route}`, { waitUntil: 'networkidle', timeout: 30000 });
+    const resp = await page.goto(`${BASE}${route}`, { waitUntil, timeout: 30000 });
     if (resp && resp.status() >= 400) note('P1', name, `page ${route} returned ${resp.status()}`);
     await settle(page);
     await shoot(page, name, label);
@@ -193,7 +196,8 @@ async function main() {
   const browser = await chromium.launch();
   try {
     // Static page visual checks (extend this list for other journeys).
-    await visit(browser, '/kiosk/display', 'kiosk-1-display', 'Storefront display (QR attract screen)');
+    // /kiosk/display holds an open SSE channel — use 'load' not 'networkidle'.
+    await visit(browser, '/kiosk/display', 'kiosk-1-display', 'Storefront display (QR attract screen)', { waitUntil: 'load' });
     await visit(browser, '/', 'home', 'Homepage');
     await visit(browser, '/book', 'book', 'Booking flow');
     await visit(browser, '/gift-vouchers', 'gift', 'Gift vouchers');

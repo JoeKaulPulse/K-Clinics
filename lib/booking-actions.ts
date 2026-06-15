@@ -103,7 +103,6 @@ export async function chargeBooking(
         where: { id: booking.id },
         data: { chargePaymentIntentId: pi.id, chargedPence: amountPence, chargedAt: new Date() },
       });
-      await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment receipt', status: 'SENT' } });
       // VAT breakdown on the receipt once the clinic is VAT-registered (dormant otherwise).
       let vat: { netPence: number; vatPence: number; ratePct: number } | null = null;
       try {
@@ -116,12 +115,18 @@ export async function chargeBooking(
           if (b.applied) vat = { netPence: b.netPence, vatPence: b.vatPence, ratePct: b.ratePct };
         }
       } catch { /* receipt still sends without the VAT line */ }
-      const detail = opts.late ? null : await receiptDetail(booking.id, booking.stripePaymentMethodId);
-      await sendEmail({
+      // Receipt email — guarded so a detail lookup or send hiccup can't 500 a
+      // charge that has ALREADY gone through, and recorded with its REAL outcome
+      // (this path previously logged SENT before the send was even attempted,
+      // masking provider/config failures like an unverified domain).
+      const detail = opts.late ? null : await receiptDetail(booking.id, booking.stripePaymentMethodId).catch(() => null);
+      const receipt = await sendEmail({
         to: booking.client.email,
         subject: opts.late ? 'Late-cancellation fee — KClinics' : `Receipt — ${booking.treatmentTitle}`,
         html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountPence, late: opts.late, vat, ...(detail ?? {}) }),
       });
+      if (!receipt.ok) console.error('[charge] receipt email failed:', receipt.error);
+      await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment receipt', status: receipt.ok ? 'SENT' : 'FAILED', providerId: receipt.id, error: receipt.error } }).catch(() => {});
       // Books: raise the Xero invoice (+ payment). Idempotent vs the webhook path.
       try { const { pushBookingSaleToXero } = await import('@/lib/xero'); await pushBookingSaleToXero(booking.id); } catch (e) { console.error('[charge] xero push failed:', (e as Error)?.message); }
       return { ok: true };
@@ -190,10 +195,17 @@ export async function refundBooking(
 
   const totalRefunded = (booking.refundedPence ?? 0) + amount;
   const fully = totalRefunded >= (booking.chargedPence ?? 0);
-  await db.booking.update({
-    where: { id: booking.id },
+  // CAS: only the writer that advances refundedPence from the value we read runs
+  // the side-effects. Guards the race where a concurrent webhook echo or a second
+  // in-app click creates a Stripe refund with the same idempotencyKey (no-op at
+  // Stripe) but both callers reach this point — the second writer's updateMany
+  // returns count=0 and we return early, so loyalty and Xero fire exactly once.
+  // Mirrors the same pattern in the charge.refunded webhook handler.
+  const claimed = await db.booking.updateMany({
+    where: { id: booking.id, refundedPence: booking.refundedPence },
     data: { refundedPence: totalRefunded, refundedAt: new Date(), refundReason: opts.reason?.slice(0, 500) || booking.refundReason || null },
   });
+  if (claimed.count === 0) return { ok: true, refundedPence: totalRefunded };
 
   // Reverse loyalty points once the booking is fully refunded (best-effort).
   if (fully) {
@@ -240,11 +252,23 @@ export async function finalizeBookingCharge(
   if (!booking) return true;
 
   try {
+    // VAT breakdown on the receipt once the clinic is VAT-registered (dormant otherwise).
+    let vat: { netPence: number; vatPence: number; ratePct: number } | null = null;
+    try {
+      const { getVatConfig, effectiveVatClass, vatBreakdown } = await import('@/lib/vat');
+      const cfg = await getVatConfig();
+      if (cfg.registered) {
+        const { getServiceByTreatment } = await import('@/lib/services');
+        const svc = await getServiceByTreatment(booking.treatmentSlug);
+        const b = vatBreakdown(amountReceivedPence, cfg, effectiveVatClass({ vatClass: svc?.vatClass, category: svc?.category }));
+        if (b.applied) vat = { netPence: b.netPence, vatPence: b.vatPence, ratePct: b.ratePct };
+      }
+    } catch { /* receipt still sends without the VAT line */ }
     const detail = opts.late ? null : await receiptDetail(booking.id, booking.stripePaymentMethodId);
     await sendEmail({
       to: booking.client.email,
       subject: opts.late ? 'Late-cancellation fee — KClinics' : `Receipt — ${booking.treatmentTitle}`,
-      html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountReceivedPence, late: opts.late, ...(detail ?? {}) }),
+      html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountReceivedPence, late: opts.late, vat, ...(detail ?? {}) }),
     });
     await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment receipt', status: 'SENT' } });
   } catch (e) { console.error('[charge] receipt failed:', (e as Error)?.message); }
@@ -328,12 +352,15 @@ export async function cancelBooking(
     console.error('[cancelBooking] points refund failed (continuing):', (e as Error)?.message);
   }
 
-  // Cancellation email (free vs late-fee).
-  await sendEmail({
+  // Cancellation email (free vs late-fee) — best-effort, with its outcome recorded
+  // so a silent provider/config failure is visible in the email log.
+  const cancelEmail = await sendEmail({
     to: booking.client.email,
     subject: `Booking cancelled — ${booking.treatmentTitle}`,
     html: tmplBookingCancelled({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, start: booking.startAt, feeCharged: charged || undefined }),
   });
+  if (!cancelEmail.ok) console.error('[cancelBooking] email failed:', cancelEmail.error);
+  await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Booking cancelled', status: cancelEmail.ok ? 'SENT' : 'FAILED', providerId: cancelEmail.id, error: cancelEmail.error } }).catch(() => {});
 
   return { ok: true, charged, requiresAction, feeFailed };
 }
@@ -381,7 +408,9 @@ export async function rescheduleBooking(
   // BLD-192: an admin reschedule may move an appointment to any free time (the
   // 48h-notice gate above already governs client self-service); a staff move must
   // not be blocked by the public 2-hour online lead window.
-  if (!(await isSlotFree(newStartISO, booking.durationMin, booking.treatmentSlug, null, opts.admin ? { leadMinutes: 0 } : undefined))) {
+  // Exclude this booking from the clash check so a same-day move doesn't conflict
+  // with its own current slot/clinician/room (BLD reschedule self-clash).
+  if (!(await isSlotFree(newStartISO, booking.durationMin, booking.treatmentSlug, null, { excludeBookingId: bookingId, ...(opts.admin ? { leadMinutes: 0 } : {}) }))) {
     return { ok: false, error: 'That time is no longer available. Please choose another slot.' };
   }
 

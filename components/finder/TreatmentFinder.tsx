@@ -62,6 +62,7 @@ export function TreatmentFinder({ gender, prices = {} }: { gender?: string | nul
                 <button
                   key={o.value}
                   onClick={() => pick(o.value)}
+                  aria-pressed={isSel(o.value)}
                   className={`rounded-[var(--radius-md)] border p-5 text-left text-lg transition-all ${isSel(o.value) ? 'border-[var(--color-gold)] bg-[var(--color-bone)] shadow-[var(--shadow-soft)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}
                 >
                   {o.label}

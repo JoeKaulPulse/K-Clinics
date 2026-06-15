@@ -5,7 +5,7 @@ import { AddToCart } from '@/components/shop/AddToCart';
 import { CartLink } from '@/components/shop/CartLink';
 import { getProductBySlug, formatPence } from '@/lib/shop';
 import { crmEnabled } from '@/lib/crm';
-import { pageMeta } from '@/lib/seo';
+import { pageMeta, JsonLd, productLd, breadcrumbLd } from '@/lib/seo';
 
 export const revalidate = 3600;
 
@@ -21,9 +21,17 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const p = await getProductBySlug(slug).catch(() => null);
   if (!p) notFound();
   const onSale = p.compareAtPence && p.compareAtPence > p.pricePence;
+  const inStock = !(p.trackInventory && p.stockQty <= 0);
 
   return (
-    <section className="container-lux section pt-[calc(var(--header-h,5.25rem)+2rem)]">
+    <>
+      <JsonLd
+        data={[
+          productLd({ name: p.name, slug: p.slug, description: p.description, brand: p.brand, images: p.images, pricePence: p.pricePence, inStock }),
+          breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Shop', path: '/shop' }, { name: p.name, path: `/shop/${p.slug}` }]),
+        ]}
+      />
+      <section className="container-lux section pt-[calc(var(--header-h,5.25rem)+2rem)]">
       <div className="mb-6 flex items-center justify-between">
         <Link href="/shop" className="text-sm text-[var(--color-stone)] hover:underline">← Shop</Link>
         <CartLink />
@@ -44,11 +52,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           )}
         </div>
         <div>
-          {p.brand && <p className="eyebrow text-[var(--color-gold)]">{p.brand}</p>}
+          {p.brand && <p className="eyebrow">{p.brand}</p>}
           <h1 className="text-title mt-1">{p.name}</h1>
           <p className="mt-4 font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">
             {formatPence(p.pricePence)}
-            {onSale ? <span className="ml-3 text-lg text-[var(--color-stone-soft)] line-through">{formatPence(p.compareAtPence!)}</span> : null}
+            {onSale ? <span className="ml-3 text-lg text-[var(--color-stone)] line-through">{formatPence(p.compareAtPence!)}</span> : null}
           </p>
           {p.description && <p className="mt-5 whitespace-pre-line leading-relaxed text-[var(--color-stone)]">{p.description}</p>}
           {p.ageRestricted && <p className="mt-4 inline-block rounded-full bg-[var(--color-ink)] px-3 py-1 text-xs text-[var(--color-porcelain)]">Age-restricted — 18+ verification required at checkout</p>}
@@ -57,6 +65,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           </div>
         </div>
       </div>
-    </section>
+      </section>
+    </>
   );
 }

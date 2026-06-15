@@ -44,8 +44,22 @@ export async function notifyAftercare(bookingId: string): Promise<void> {
  * (with line items, forms prompt and an arrive-early note for first visits),
  * a clinic notification to info@kclinics.co.uk, and an SMS confirmation when the
  * client has opted into text reminders. Safe to call once per confirmation.
+ *
+ * Guaranteed never to throw: the booking is already CONFIRMED before this runs,
+ * so a comms failure must never bubble up and 500 the booking response — that
+ * used to surface to clients as a misleading "Network error. Please try again."
+ * on an appointment that had in fact gone through. Any failure is logged here and
+ * (for the client email) recorded as a FAILED EmailEvent for the team to see.
  */
 export async function notifyBookingConfirmed(bookingId: string): Promise<void> {
+  try {
+    await sendBookingConfirmation(bookingId);
+  } catch (e) {
+    console.error('[booking-notify] notifyBookingConfirmed failed for', bookingId, e);
+  }
+}
+
+async function sendBookingConfirmation(bookingId: string): Promise<void> {
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
     include: { client: true, items: { orderBy: { createdAt: 'asc' } }, practitioner: { select: { name: true } }, location: true },

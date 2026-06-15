@@ -46,24 +46,30 @@ export type SessionSnapshot = {
     chargedPence: number | null;
     chargedAt: string | null;
     pricePence: number;
+    items: { label: string; pricePence: number; discountPence: number; isAddon: boolean; sessions: number }[];
   };
   consentSigned: boolean;
   consents: { kind: string; title: string; signedAt: string; cert: string }[];
+  // Consent requests awaiting the client's signature (token = the same one the
+  // public /sign/[token] flow and /api/consent/sign use).
+  pendingConsents: { token: string; title: string; kind: string }[];
   hasBeforePhoto: boolean;
 };
 
 export async function sessionSnapshot(bookingId: string): Promise<SessionSnapshot | null> {
-  const [b, s, signed, beforePhoto] = await Promise.all([
+  const [b, s, signed, beforePhoto, pending] = await Promise.all([
     db.booking.findUnique({
       where: { id: bookingId },
       select: {
         status: true, startedAt: true, finishedAt: true, actualMinutes: true, aftercareAckAt: true,
         sopAcknowledgedAt: true, medicalFlagReviewedAt: true, chargedPence: true, chargedAt: true, pricePence: true,
+        items: { orderBy: { createdAt: 'asc' }, select: { label: true, pricePence: true, discountPence: true, isAddon: true, sessions: true } },
       },
     }),
     db.appointmentSession.findUnique({ where: { bookingId } }),
     db.signedConsent.findMany({ where: { bookingId }, orderBy: { signedAt: 'desc' }, select: { kind: true, title: true, signedAt: true, contentHash: true } }),
     db.beforePhoto.findFirst({ where: { bookingId }, select: { id: true } }),
+    db.consentRequest.findMany({ where: { bookingId, status: 'PENDING' }, orderBy: { createdAt: 'asc' }, select: { token: true, title: true, kind: true } }),
   ]);
   if (!b) return null;
 
@@ -95,9 +101,11 @@ export async function sessionSnapshot(bookingId: string): Promise<SessionSnapsho
       chargedPence: b.chargedPence,
       chargedAt: b.chargedAt?.toISOString() ?? null,
       pricePence: b.pricePence,
+      items: b.items,
     },
     consentSigned: signed.some((x) => x.kind === 'treatment'),
     consents: signed.map((x) => ({ kind: x.kind, title: x.title, signedAt: x.signedAt.toISOString(), cert: x.contentHash.slice(0, 12) })),
+    pendingConsents: pending,
     hasBeforePhoto: !!beforePhoto || signed.some((x) => x.kind === 'photo_opt_out'),
   };
   // Stored timings only change on transitions (open-step seconds are derived
@@ -110,13 +118,14 @@ export async function sessionSnapshot(bookingId: string): Promise<SessionSnapsho
  *  instead of the full four-query snapshot build + hash on every tick. The
  *  full snapshot is built only when this string moves. */
 export async function sessionProbe(bookingId: string): Promise<string | null> {
-  const [b, consentCount, photoCount] = await Promise.all([
+  const [b, consentCount, pendingCount, photoCount] = await Promise.all([
     db.booking.findUnique({ where: { id: bookingId }, select: { updatedAt: true, liveSession: { select: { updatedAt: true } } } }),
     db.signedConsent.count({ where: { bookingId } }),
+    db.consentRequest.count({ where: { bookingId, status: 'PENDING' } }),
     db.beforePhoto.count({ where: { bookingId } }),
   ]);
   if (!b) return null;
-  return `${+b.updatedAt}|${b.liveSession ? +b.liveSession.updatedAt : 0}|${consentCount}|${photoCount}`;
+  return `${+b.updatedAt}|${b.liveSession ? +b.liveSession.updatedAt : 0}|${consentCount}|${pendingCount}|${photoCount}`;
 }
 
 /** What the CLIENT's phone may see — no emails, no clinical/gate detail. */
@@ -128,6 +137,19 @@ export type ClientLiveView = {
   finishedAt: boolean;
   with: { name: string; title: string | null; photo: string | null } | null;
   journey: { at: string; step: string; name: string; title: string | null; photo: string | null }[];
+  // What the client will pay: each line (primary + add-ons) at its actual charge
+  // (net of any discount), the total their card will be charged, and — once taken
+  // — the amount actually charged. Add-ons are flagged so the phone can label them.
+  pricing: {
+    items: { label: string; pricePence: number; isAddon: boolean; sessions: number }[];
+    totalPence: number;
+    chargedPence: number | null;
+  };
+  // Consent forms for this booking the client can read/tick/sign on their phone.
+  // Pending entries carry the signing token; signed entries carry when it was done.
+  forms: {
+    consents: { token: string | null; title: string; kind: string; signed: boolean; signedAt: string | null }[];
+  };
 };
 
 export function clientView(snap: SessionSnapshot): ClientLiveView {
@@ -140,6 +162,18 @@ export function clientView(snap: SessionSnapshot): ClientLiveView {
     finishedAt: !!snap.booking.finishedAt,
     with: a ? { name: a.name, title: a.title, photo: a.photo } : null,
     journey: (snap.session?.touchpoints ?? []).map((t) => ({ at: t.at, step: t.step, name: t.staffName, title: t.staffTitle ?? null, photo: t.staffPhoto ?? null })),
+    pricing: {
+      items: snap.booking.items.map((it) => ({ label: it.label, pricePence: Math.max(0, it.pricePence - it.discountPence), isAddon: it.isAddon, sessions: it.sessions })),
+      totalPence: snap.booking.pricePence,
+      chargedPence: snap.booking.chargedPence,
+    },
+    forms: {
+      // Pending (actionable) first, then the ones already signed.
+      consents: [
+        ...snap.pendingConsents.map((c) => ({ token: c.token, title: c.title, kind: c.kind, signed: false, signedAt: null })),
+        ...snap.consents.map((c) => ({ token: null, title: c.title, kind: c.kind, signed: true, signedAt: c.signedAt })),
+      ],
+    },
   };
 }
 

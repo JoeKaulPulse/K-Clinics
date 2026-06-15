@@ -113,7 +113,7 @@ export async function POST(req: Request) {
   const resourceIds = await withDbRetry(() => assignResources(d.startISO, totalDuration, treatmentSlug));
 
   const { stripe, ensureCustomer } = await import('@/lib/stripe');
-  const customerId = await ensureCustomer(client);
+  let customerId = await ensureCustomer(client);
 
   const start = new Date(d.startISO);
   const end = new Date(start.getTime() + totalDuration * 60_000);
@@ -239,14 +239,33 @@ export async function POST(req: Request) {
   if (d.waitlistToken) { const { claimWaitlist } = await import('@/lib/waitlist'); await claimWaitlist(d.waitlistToken, { clientId: client.id }); }
 
   // ── Card on file: reuse a saved card, else save one via SetupIntent ──
+  // Verify the stored customer exists under the CURRENT Stripe key, and self-heal
+  // if not. A stored id from a different key/mode (e.g. a test-mode customer id
+  // against a live key, or an account switch) is the classic cause of SetupIntent
+  // failing with "No such customer" — ensureCustomer trusts the stored id without
+  // checking. Recreating it lets the booking proceed instead of dead-ending.
   let defaultPm: string | null = null;
   try {
     const customer = await stripe().customers.retrieve(customerId);
-    if (customer && !('deleted' in customer && customer.deleted)) {
-      const dpm = (customer as { invoice_settings?: { default_payment_method?: string | { id: string } } }).invoice_settings?.default_payment_method;
-      defaultPm = typeof dpm === 'string' ? dpm : dpm?.id ?? null;
+    if (!customer || ('deleted' in customer && customer.deleted)) {
+      throw Object.assign(new Error('customer deleted'), { code: 'resource_missing' });
     }
-  } catch { /* fall through to collecting a card */ }
+    const dpm = (customer as { invoice_settings?: { default_payment_method?: string | { id: string } } }).invoice_settings?.default_payment_method;
+    defaultPm = typeof dpm === 'string' ? dpm : dpm?.id ?? null;
+  } catch (e) {
+    if ((e as { code?: string })?.code === 'resource_missing') {
+      try {
+        const fresh = await stripe().customers.create({
+          email: client.email, name: [client.firstName, client.lastName].filter(Boolean).join(' ') || undefined,
+          phone: client.phone || undefined, metadata: { clientId: client.id },
+        });
+        customerId = fresh.id;
+        await db.client.update({ where: { id: client.id }, data: { stripeCustomerId: fresh.id } }).catch(() => {});
+        await db.booking.update({ where: { id: booking.id }, data: { stripeCustomerId: fresh.id } }).catch(() => {});
+      } catch (e2) { console.error('[booking-start] customer recreate failed for', booking.id, e2); }
+    }
+    // Any other retrieve error: fall through; the SetupIntent guard below handles it.
+  }
 
   if (defaultPm) {
     await db.booking.update({ where: { id: booking.id }, data: { status: 'CONFIRMED', stripePaymentMethodId: defaultPm } });
@@ -256,11 +275,26 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, bookingId: booking.id, needCard: false, manageToken: booking.manageToken });
   }
 
-  const setupIntent = await stripe().setupIntents.create({
-    customer: customerId, usage: 'off_session', payment_method_types: ['card'],
-    metadata: { bookingId: booking.id, clientId: client.id },
-  });
-  await db.booking.update({ where: { id: booking.id }, data: { stripeSetupIntentId: setupIntent.id } });
-
-  return NextResponse.json({ ok: true, bookingId: booking.id, needCard: true, clientSecret: setupIntent.client_secret });
+  // Card setup must not be able to 500 the response. The booking is already
+  // committed (PENDING) above, so an unguarded Stripe failure here surfaced to
+  // clients as a misleading "Network error" while leaving a dangling held slot.
+  try {
+    const setupIntent = await stripe().setupIntents.create({
+      customer: customerId, usage: 'off_session', payment_method_types: ['card'],
+      metadata: { bookingId: booking.id, clientId: client.id },
+    });
+    await db.booking.update({ where: { id: booking.id }, data: { stripeSetupIntentId: setupIntent.id } });
+    return NextResponse.json({ ok: true, bookingId: booking.id, needCard: true, clientSecret: setupIntent.client_secret });
+  } catch (e) {
+    console.error('[booking-start] card setup could not start for', booking.id, e);
+    // Capture the real Stripe reason in the audit log so it's visible in the admin
+    // (no server-log access needed to diagnose, e.g. a bad key vs a missing customer).
+    const se = e as { message?: string; code?: string; type?: string };
+    const reason = [se.type, se.code, se.message].filter(Boolean).join(' · ').slice(0, 300) || 'unknown error';
+    // Release the held slot (CANCELLED is excluded from the held-slot checks) so a
+    // failed attempt doesn't block the time, then return a clean, actionable error.
+    await db.booking.update({ where: { id: booking.id }, data: { status: 'CANCELLED' } }).catch(() => {});
+    await logAudit({ action: 'BOOKING_CANCELLED', actor: 'system', clientId: client.id, bookingId: booking.id, summary: `Auto-cancelled: secure card setup could not start — ${reason}` }).catch(() => {});
+    return NextResponse.json({ ok: false, error: 'We couldn’t start secure card setup. Please try again in a moment.' }, { status: 502 });
+  }
 }

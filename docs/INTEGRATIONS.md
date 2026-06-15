@@ -64,6 +64,13 @@ front-desk notifications.
 **Without `RESEND_API_KEY`:** all email sends become no-ops (logged, not sent).
 Bookings still work; clients/staff just don't get emails.
 
+> Resend is **transactional sending only** (from the `mail.kclinics.co.uk`
+> subdomain). The **company mailboxes** staff log into are separate. To move them
+> from Hostinger to Google Workspace at lowest cost with no data loss — and to
+> manage Workspace accounts from `/admin` (**BLD-312**) — see
+> [`docs/GOOGLE_WORKSPACE_MIGRATION.md`](./GOOGLE_WORKSPACE_MIGRATION.md). The
+> apex MX moves to Google; the Resend subdomains are left untouched.
+
 ---
 
 ## 4. Payments — Stripe — **Required for online booking with card**

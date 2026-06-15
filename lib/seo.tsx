@@ -344,6 +344,38 @@ export function faqLd(faqs: { q: string; a: string }[]) {
   };
 }
 
+// Product + Offer for shop items — enables merchant rich results (price,
+// availability, brand, image) on /shop/[slug], which previously had no JSON-LD.
+export function productLd(p: {
+  name: string;
+  slug: string;
+  description?: string | null;
+  brand?: string | null;
+  images: string[];
+  pricePence: number;
+  inStock: boolean;
+}) {
+  const abs = (u: string) => (/^https?:\/\//.test(u) ? u : `${base}${u.startsWith('/') ? '' : '/'}${u}`);
+  const url = `${base}/shop/${p.slug}`;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: p.name,
+    ...(p.description ? { description: p.description.slice(0, 5000) } : {}),
+    ...(p.brand ? { brand: { '@type': 'Brand', name: p.brand } } : {}),
+    ...(p.images.length ? { image: p.images.map(abs) } : {}),
+    url,
+    offers: {
+      '@type': 'Offer',
+      price: (p.pricePence / 100).toFixed(2),
+      priceCurrency: 'GBP',
+      availability: p.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      url,
+      seller: { '@id': `${base}/#clinic` },
+    },
+  };
+}
+
 export function breadcrumbLd(items: { name: string; path: string }[]) {
   return {
     '@context': 'https://schema.org',

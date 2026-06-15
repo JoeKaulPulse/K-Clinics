@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
   const { id } = await params;
-  const { getSession, sessionCan, canViewClinical } = await import('@/lib/auth');
+  const { getSession, sessionCan } = await import('@/lib/auth');
   const session = await getSession();
   if (!sessionCan(session, 'clients.export')) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
 
@@ -19,6 +19,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     include: {
       consultations: true, interactions: true, appointments: true, bookings: true,
       emails: true, discountClaims: true, tasks: true,
+      aiAnalyses: true, reviews: true, npsResponses: true, followUps: true,
+      waitlist: true, callRecords: true,
+      referralsMade: true,
     },
   });
   if (!c) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
@@ -36,16 +39,30 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { passwordHash, resetTokenHash, resetTokenExp, ...client } = c as Record<string, unknown> & { passwordHash?: unknown; resetTokenHash?: unknown; resetTokenExp?: unknown };
   void passwordHash; void resetTokenHash; void resetTokenExp;
 
-  const out: Record<string, unknown> = { exportedAt: new Date().toISOString(), exportedBy: session!.email, client };
+  // Fetch records not declared as reverse-FK relations on Client (no include path).
+  const [signedConsents, beforePhotos, chatConversations] = await Promise.all([
+    db.signedConsent.findMany({ where: { clientId: id } }),
+    db.beforePhoto.findMany({ where: { clientId: id } }),
+    db.chatConversation.findMany({ where: { clientId: id }, include: { messages: true } }),
+  ]);
 
-  if (canViewClinical(session!.role)) {
+  const out: Record<string, unknown> = {
+    exportedAt: new Date().toISOString(),
+    exportedBy: session!.email,
+    client,
+    signedConsents,
+    beforePhotos,
+    chatConversations,
+  };
+
+  if (sessionCan(session!, 'clients.clinical.view')) {
     const assessments = await db.healthAssessment.findMany({ where: { clientId: id }, orderBy: { submittedAt: 'desc' } });
     const { formatAssessment } = await import('@/lib/health-assessments');
     out.healthAssessments = await Promise.all(assessments.map((a) => formatAssessment(a.id)));
   }
 
   const { logAudit } = await import('@/lib/audit');
-  await logAudit({ action: 'ASSESSMENT_VIEWED', actor: session!.email, actorRole: session!.role, clientId: id, summary: 'Client data exported (SAR)' });
+  await logAudit({ action: 'DATA_EXPORTED', actor: session!.email, actorRole: session!.role, clientId: id, summary: 'Client data exported (SAR)' });
 
   const name = [c.firstName, c.lastName].filter(Boolean).join('-').toLowerCase() || 'client';
   return new NextResponse(JSON.stringify(out, null, 2), {

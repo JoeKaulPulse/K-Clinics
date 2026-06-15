@@ -165,6 +165,7 @@ enum AuditAction {
   CONSENT_DECLINED
   BEFORE_PHOTO_CAPTURED
   CLIENT_DELETED
+  CLIENT_ERASED
   CLIENT_EDITED
   DATA_EXPORTED
   DATA_IMPORTED // a data-migration step wrote records (e.g. WordPress import, BLD-187)
@@ -1769,6 +1770,7 @@ model AcademyStudent {
   phone          String?
   passwordHash   String?
   portalActive   Boolean   @default(false)
+  sessionEpoch   Int       @default(0) // bump to revoke all outstanding academy JWTs (reset / suspend / sign-out-everywhere)
   lastLoginAt    DateTime?
   resetTokenHash String?
   resetTokenExp  DateTime?
