@@ -1265,6 +1265,72 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Integrated @sentry/nextjs for production error aggregation. instrumentation.ts registers Sentry on both nodejs and edge runtimes via register(); onRequestError hook captures every server request error. instrumentation-client.ts initialises client-side Sentry with session replay. sentry.server.config.ts + sentry.edge.config.ts read SENTRY_DSN env var; no-op when unset so builds and tests pass without a DSN. app/global-error.tsx reports root boundary errors via Sentry.captureException(). CSP connect-src updated to allow *.sentry.io. To activate: set SENTRY_DSN (server) and NEXT_PUBLIC_SENTRY_DSN (client) in Vercel env.',
     notes: ['instrumentation.ts, instrumentation-client.ts, sentry.server.config.ts, sentry.edge.config.ts, app/global-error.tsx, next.config.mjs CSP. No withSentryConfig wrapper (instrumentation API is sufficient for App Router). @sentry/nextjs added to dependencies.'],
   },
+  {
+    title: 'Turnstile CAPTCHA fails closed when TURNSTILE_SECRET_KEY is unset (BLD-344)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 9, effort: 2,
+    detail: 'verifyTurnstile() in lib/security/guard.ts now returns false (not true) in production when TURNSTILE_SECRET_KEY is unset. Dev/test environments still return true so login remains testable without a key. Commit 3b8f152.',
+    notes: ['lib/security/guard.ts lines 87-94. NODE_ENV guard preserves dev ergonomics while closing the production hole.'],
+  },
+  {
+    title: 'Admin session revocation bypassed when database is unreachable (BLD-345)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 4,
+    detail: 'getSession(), getClientSession() and getAcademySession() in lib/auth.ts now return null on DB failure instead of trusting the raw JWT claims. Deactivated accounts can no longer remain authenticated during a database outage. Commit 3b8f152.',
+    notes: ['lib/auth.ts lines 98-103 (admin), 142-145 (client). Mirror pattern across all three portal session functions.'],
+  },
+  {
+    title: '/kiosk/display visual QA timeout (SSE networkidle) (BLD-346)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'scripts/visual-qa.mjs now uses waitUntil:load instead of networkidle for /kiosk/display, preventing the SSE persistent connection from blocking the 30 s timeout. Commit 3b8f152.',
+    notes: ['scripts/visual-qa.mjs. The SSE stream keeps the network active indefinitely -- load fires once the initial HTML is parsed, which is the right signal for this page.'],
+  },
+  {
+    title: 'VAT breakdown absent from webhook-triggered booking receipts (BLD-347)', type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'finalizeBookingCharge() in lib/booking-actions.ts now computes VAT and passes it to the receipt email, matching chargeBooking() on the direct path. Clients charged via Stripe webhook (saved-card on-day charges) now receive VAT-breakdown receipts. Commit 57bee02.',
+    notes: ['lib/booking-actions.ts. Extracted VAT logic is consistent with chargeBooking() direct path.'],
+  },
+  {
+    title: 'Promise.all crash risk in finance controls route (BLD-350)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'app/api/admin/finance/controls/route.ts VAT and kiosk ops replaced Promise.all with Promise.allSettled so a single DB write failure no longer crashes the entire endpoint. Partial failures are detected and surfaced cleanly. Commit 57bee02.',
+    notes: ['app/api/admin/finance/controls/route.ts. Search route already used a safe() wrapper; stripe webhook cascade was reviewed as acceptable.'],
+  },
+  {
+    title: 'Enable appointment reminder emails -- 48h and 72h flags off by default (BLD-351)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 1,
+    detail: 'reminder_48h and reminder_72h defaults changed to true in lib/settings.ts. Clients now receive pre-appointment reminder emails automatically. Commit 57bee02.',
+    notes: ['lib/settings.ts. No schema change; the automation was already complete and tested.'],
+  },
+  {
+    title: 'Add noindex meta to /book booking entry page (BLD-352)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 1,
+    detail: 'app/(marketing)/book/page.tsx now exports generateMetadata with robots: { index: false }. Consistent with /booking/pay, /booking/card and /booking/manage. Commit 57bee02.',
+    notes: ['app/(marketing)/book/page.tsx. Thin transactional page no longer wastes crawl budget.'],
+  },
+  {
+    title: 'Academy portal security & data-lifecycle parity -- phases 2 & 3 (BLD-314)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 6,
+    detail: 'Phase 2: password-reset flow for AcademyStudent (forgot-password + reset routes, timing-safe token, epoch bump on reset). Phase 3: /academy/* middleware secure-by-default gate (public catalogue slugs excepted; trainee-only reserved paths listed). eraseStudentData() GDPR Art.17 action on app/admin/actions.ts. Daily cron retention sweep added. Commit 3b8f152.',
+    notes: ['middleware.ts, lib/academy-auth.ts, app/(marketing)/academy/forgot-password, app/api/academy/account/*, app/admin/actions.ts, app/api/cron/daily/route.ts.'],
+  },
+  {
+    title: 'WCAG 2.2 AA accessibility pass S3-S5 (BLD-313)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 9, effort: 8,
+    detail: 'S3: new accessible Dialog primitive (focus trap, Escape, aria-modal, focus restore) applied to EditClientDetails and ReplayList. S4: heading hierarchy fixed on offers, team, academy pages; aria-live region on KioskDisplay; aria-pressed on PublicGallery filters. S5: scope="col" on all 15 admin tables. Merged in PR #835 (commit 421beca).',
+    notes: ['components/ui/Dialog.tsx (new). 15 admin table components. docs/projects/accessibility-aa.md updated.'],
+  },
+  {
+    title: 'Academy content batch 7 -- Treatment Planning, Skin Pharmacology, Legal Frameworks (BLD-311)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 5,
+    detail: '3 new modules across L2/L3/L4: "Treatment Planning & Client Records" (L2), "Skin Pharmacology & Topicals" (L3), "Legal Frameworks & Professional Accountability" (L4). Each: 2 lessons, 6-question quiz, 4-5 exam-bank questions. Merged in PR #835 (commit 421beca).',
+    notes: ['lib/academy-content.ts. enrichCourseContentIfNeeded() picks up additions on the next daily cron run.'],
+  },
+  {
+    title: 'Academy content batch 8 -- Electrical Safety, Combination Protocols, Client Psychology (BLD-311)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 5,
+    detail: '3 new modules: "Electrical Safety & Equipment Maintenance" (L2), "Combination Protocols & Treatment Sequencing" (L3), "Client Psychology & Wellbeing" (L4). Each: 2 lessons, 6-question quiz. Plus 12 new exam-bank questions across all 4 courses.',
+    notes: ['lib/academy-content.ts. enrichCourseContentIfNeeded() picks up additions on the next daily cron run.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

@@ -1911,6 +1911,184 @@ export const NEW_MODULES: CourseContentDef[] = [
     ],
   },
 
+  // ── Batch 8 ─────────────────────────────────────────────────────────────────
+
+  {
+    courseSlug: L2,
+    modules: [
+      {
+        title: 'Electrical Safety & Equipment Maintenance',
+        summary: 'Identify electrical hazards in the treatment room, carry out basic equipment checks, and know when to report or remove a faulty device.',
+        lessons: [
+          {
+            title: 'Electrical Hazards & Safe Working',
+            durationMin: 10,
+            objectives: ['Identify electrical hazards in a treatment room', 'Describe how to work safely with electrical devices', 'Know what to do when a fault is found'],
+            studyTips: ['All electrical treatment devices must be PAT-tested. If a device looks damaged, do not use it -- report it.'],
+            examRefs: ['Health and safety', 'Equipment safety'],
+            steps: [
+              { kind: 'say', text: 'Every electrical device in the treatment room carries a risk if not maintained. Let\'s keep things safe.', mood: 'think' },
+              { kind: 'teach', title: 'Common electrical hazards', text: 'Frayed cables, overloaded sockets, damaged plugs, and wet hands near equipment are the main risks in a treatment room.' },
+              { kind: 'ask', prompt: 'Which of these is an electrical hazard in a treatment room?', qtype: 'MULTI', options: ['Frayed cable', 'Overloaded socket', 'Wet hands near a device', 'A clean plug'], correct: [0, 1, 2], explanation: 'A clean plug is fine. The others are hazards.' },
+              { kind: 'teach', title: 'Before you plug in', text: 'Before each use, visually check the device: cable intact, plug undamaged, no signs of burning or melting, no liquid near the unit.' },
+              { kind: 'ask', prompt: 'Before using an electrical device you should first...', qtype: 'SINGLE', options: ['Visually check the cable, plug and unit', 'Start immediately', 'Ignore the cable', 'Check only the price'], correct: [0], explanation: 'A visual check before every use catches faults early.' },
+              { kind: 'teach', title: 'If you find a fault', text: 'If a device looks or smells wrong, do not use it. Switch it off, unplug it, label it "do not use" and report it to a supervisor immediately.' },
+              { kind: 'ask', prompt: 'You notice a burning smell from a device mid-treatment. You should...', qtype: 'SINGLE', options: ['Stop, switch off, unplug, label and report', 'Carry on for this client', 'Spray water on it', 'Ignore it and watch for smoke'], correct: [0], explanation: 'Stop immediately. Any sign of electrical fault is a safety emergency.' },
+              { kind: 'say', text: 'Safety first, always. A quick check takes seconds and can prevent injury.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Equipment Checks, PAT Testing & Records',
+            durationMin: 10,
+            objectives: ['Explain what PAT testing is and why it matters', 'Understand who carries out PAT testing', 'Describe equipment maintenance records'],
+            studyTips: ['PAT = Portable Appliance Testing. It must be done by a competent person (often an electrician or trained staff member) and the results recorded.'],
+            examRefs: ['Health and safety', 'Equipment maintenance', 'PAT testing'],
+            steps: [
+              { kind: 'say', text: 'Daily checks are your job. Periodic testing is for a competent person. Let\'s see how both work together.', mood: 'happy' },
+              { kind: 'teach', title: 'What is PAT testing?', text: 'Portable Appliance Testing (PAT) is an inspection and electrical test of portable equipment to ensure it is safe to use. It is carried out by a competent person and the results are recorded.' },
+              { kind: 'ask', prompt: 'PAT testing must be carried out by...', qtype: 'SINGLE', options: ['A competent person', 'Any client', 'The device manufacturer only', 'Nobody'], correct: [0], explanation: 'A competent person -- often a trained staff member or electrician -- carries out PAT testing.' },
+              { kind: 'teach', title: 'How often?', text: 'Frequency depends on the device and how it is used. High-use equipment in a busy clinic is often tested annually, but your employer\'s risk assessment sets the schedule.' },
+              { kind: 'ask', prompt: 'How often high-use equipment in a clinic is PAT-tested is set by...', qtype: 'SINGLE', options: ['The employer\'s risk assessment', 'Never', 'Only once ever', 'The client'], correct: [0], explanation: 'The employer\'s risk assessment determines the correct testing interval.' },
+              { kind: 'teach', title: 'Equipment records', text: 'All maintenance, PAT results, and reported faults must be recorded. This forms an audit trail and shows your legal duty of care has been met.' },
+              { kind: 'ask', prompt: 'Why must equipment maintenance and PAT results be recorded?', qtype: 'MULTI', options: ['To meet the legal duty of care', 'To show faults were acted on', 'To create an audit trail', 'To decorate the wall'], correct: [0, 1, 2], explanation: 'Records prove compliance and support any incident investigation.' },
+              { kind: 'say', text: 'Good records protect your clients, your employer and you.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Electrical Safety & Equipment Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'Which of these is an electrical hazard in a treatment room?', type: 'MULTI', options: ['Frayed cable', 'Overloaded socket', 'Wet hands near a device', 'A clean, intact plug'], correct: [0, 1, 2], explanation: 'A sound plug is safe; the others are hazards.' },
+            { prompt: 'If a device smells of burning you should immediately...', type: 'SINGLE', options: ['Stop, switch off, unplug, label and report', 'Finish the treatment first', 'Spray water on it', 'Ignore it'], correct: [0], explanation: 'Any electrical fault is a safety emergency -- stop at once.' },
+            { prompt: 'PAT testing must be carried out by a competent person.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Only a competent person may carry out PAT testing.' },
+            { prompt: 'PAT testing stands for Portable ___ Testing.', type: 'WORD', options: ['Appliance', 'Antenna', 'Application'], correct: [0], explanation: 'Portable Appliance Testing.' },
+            { prompt: 'How often equipment is PAT-tested in a clinic is determined by the employer\'s...', type: 'SINGLE', options: ['Risk assessment', 'Favourite colour', 'Opening hours', 'Lunch schedule'], correct: [0], explanation: 'The risk assessment sets the testing frequency.' },
+            { prompt: 'Equipment maintenance and PAT records must be kept to form an...', type: 'WORD', options: ['audit trail', 'expense', 'obstacle'], correct: [0], explanation: 'An audit trail proves due diligence and supports any investigation.' },
+          ],
+        },
+      },
+    ],
+  },
+
+  {
+    courseSlug: 'level-3-laser-aesthetic-therapies',
+    modules: [
+      {
+        title: 'Combination Protocols & Treatment Sequencing',
+        summary: 'How to plan treatments that involve more than one modality: the right order, safe intervals between sessions, and when combining treatments creates risk rather than benefit.',
+        lessons: [
+          {
+            title: 'Why Sequencing Order Matters',
+            durationMin: 11,
+            objectives: ['Explain why treatment order affects outcomes and safety', 'Identify which modalities interact and why', 'Describe the risks of incorrect sequencing'],
+            studyTips: ['Think of the skin as recovering from each treatment. What heals first opens the door for the next modality safely.'],
+            examRefs: ['Treatment planning', 'Combination therapies'],
+            steps: [
+              { kind: 'say', text: 'Combining treatments can give great results -- or serious harm. Order matters enormously.', mood: 'think' },
+              { kind: 'teach', title: 'Why sequence matters', text: 'Each treatment changes the skin\'s condition. A resurfacing treatment leaves the barrier disrupted; applying laser energy over disrupted skin raises burn risk. The sequence determines what the skin\'s state is at each step.' },
+              { kind: 'ask', prompt: 'Applying laser energy over recently resurfaced skin raises the risk of...', qtype: 'SINGLE', options: ['Burns and adverse reaction', 'Better results', 'No change', 'Faster healing'], correct: [0], explanation: 'Disrupted barrier + energy = elevated burn and pigmentation risk.' },
+              { kind: 'teach', title: 'General rule: least aggressive first', text: 'As a starting principle, perform the least aggressive treatment first (e.g. cleansing, mild exfoliation) before energy-based modalities.' },
+              { kind: 'ask', prompt: 'As a general rule, in a combination session you should perform the least aggressive step...', qtype: 'SINGLE', options: ['First', 'Last', 'At any point', 'Skip it entirely'], correct: [0], explanation: 'Least aggressive first preserves the skin\'s integrity for subsequent steps.' },
+              { kind: 'teach', title: 'Chemical peels and laser', text: 'Chemical peels (especially medium to deep) and laser resurfacing should never be combined in the same session. Both disrupt the epidermal barrier; doing both at once dramatically increases risk.' },
+              { kind: 'ask', prompt: 'A medium chemical peel and a laser resurfacing treatment should...', qtype: 'SINGLE', options: ['Never be combined in the same session', 'Always be done together', 'Be done only with no gap', 'Improve each other with no risk'], correct: [0], explanation: 'Combining two barrier-disrupting modalities in one session is unsafe.' },
+              { kind: 'say', text: 'The rule is simple: respect what the skin has just been through before adding more.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Safe Intervals & Combination Contraindications',
+            durationMin: 11,
+            objectives: ['Recommend safe intervals between specific treatment modalities', 'Identify contraindications that arise only when treatments are combined', 'Advise clients on at-home care between modalities'],
+            studyTips: ['Laser + tanning (natural or spray) is always contraindicated. Never let a client be treated with active tan.'],
+            examRefs: ['Combination therapies', 'Contraindications', 'Treatment planning'],
+            steps: [
+              { kind: 'say', text: 'Now let\'s get specific about intervals and which combinations are always off the table.', mood: 'happy' },
+              { kind: 'teach', title: 'Intervals between sessions', text: 'The interval depends on how disruptive each treatment is. Mild LED therapy might allow another session within days; laser resurfacing needs weeks for full barrier recovery before repeat energy-based treatment.' },
+              { kind: 'ask', prompt: 'After laser resurfacing, the next energy-based treatment is usually safe after...', qtype: 'SINGLE', options: ['Several weeks of barrier recovery', 'The next day', 'One hour', 'Six months always'], correct: [0], explanation: 'The barrier must be fully healed before more energy is applied.' },
+              { kind: 'teach', title: 'Active tan is always a contraindication for laser', text: 'Laser and IPL with an active tan (natural or spray) is always contraindicated. The extra melanin in the tan absorbs energy unpredictably, dramatically raising burn and pigmentation-change risk.' },
+              { kind: 'ask', prompt: 'A client comes in with a recent spray tan. Your action for their laser appointment is to...', qtype: 'SINGLE', options: ['Postpone until the tan has faded', 'Proceed but reduce settings slightly', 'Treat as normal', 'Apply more cooling gel and continue'], correct: [0], explanation: 'Any tan -- natural or spray -- is a contraindication for laser and IPL.' },
+              { kind: 'teach', title: 'Injectable and laser timing', text: 'Laser treatment near a recent injectable site (e.g. filler or anti-wrinkle) carries added risk. Wait at least two weeks after injectables before laser in the same area.' },
+              { kind: 'ask', prompt: 'After a dermal filler in the cheek, a safe minimum wait before laser in that area is...', qtype: 'SINGLE', options: ['At least two weeks', 'Twenty-four hours', 'No wait needed', 'Six weeks always'], correct: [0], explanation: 'Two weeks is the commonly accepted minimum; longer if the area is still settling.' },
+              { kind: 'say', text: 'Good combination planning protects outcomes and client safety. Always document your reasoning.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Combination Protocols Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'When combining treatments, the least aggressive step should generally be performed...', type: 'SINGLE', options: ['First', 'Last', 'At random', 'Only once ever'], correct: [0], explanation: 'Least aggressive first preserves the skin\'s integrity for subsequent steps.' },
+            { prompt: 'A medium chemical peel and laser resurfacing in the same session is...', type: 'SINGLE', options: ['Unsafe and should never be combined', 'Recommended for faster results', 'Fine with extra cooling', 'Neutral in effect'], correct: [0], explanation: 'Both disrupt the barrier; combining them dramatically elevates risk.' },
+            { prompt: 'An active tan (natural or spray) before laser treatment is...', type: 'SINGLE', options: ['A contraindication', 'Beneficial', 'Irrelevant', 'Preferred'], correct: [0], explanation: 'Extra melanin in the tan absorbs energy unpredictably.' },
+            { prompt: 'After laser resurfacing, the next energy-based treatment requires the ___ to recover first.', type: 'WORD', options: ['barrier', 'melanin', 'dermis'], correct: [0], explanation: 'Full barrier recovery is needed before repeating energy-based treatment.' },
+            { prompt: 'A minimum of two weeks should pass after a dermal filler before laser in the same area.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Two weeks is the accepted minimum to reduce risk in the treated area.' },
+            { prompt: 'Why must treatment sequencing be documented?', type: 'MULTI', options: ['To show reasoning if a complication occurs', 'To support future treatment planning', 'To meet audit requirements', 'To hide mistakes'], correct: [0, 1, 2], explanation: 'Documentation supports safety, accountability and continuity of care.' },
+          ],
+        },
+      },
+    ],
+  },
+
+  {
+    courseSlug: 'level-4-certificate-aesthetic-practice',
+    modules: [
+      {
+        title: 'Client Psychology & Wellbeing',
+        summary: 'Recognise the psychological dimension of aesthetic treatments, build therapeutic rapport, spot the signs of body dysmorphic disorder, and know when referring to other professionals is the right call.',
+        lessons: [
+          {
+            title: 'Understanding Client Psychology',
+            durationMin: 11,
+            objectives: ['Explain why motivation and self-image matter in aesthetics', 'Describe how to build therapeutic rapport', 'Identify unrealistic expectations and how to address them'],
+            studyTips: ['Aesthetic treatments affect how a person feels about themselves, not just how they look. Understanding this protects both the client and you.'],
+            examRefs: ['Client consultation', 'Ethics', 'Client psychology'],
+            steps: [
+              { kind: 'say', text: 'Aesthetic treatments are not just physical. Understanding your client\'s psychology is part of safe practice.', mood: 'think' },
+              { kind: 'teach', title: 'Motivation matters', text: 'A client who wants to feel more like themselves after illness is in a very different headspace to one who wants to look like a filtered photo. Understanding motivation shapes what you offer and how.' },
+              { kind: 'ask', prompt: 'Why does a client\'s motivation for treatment matter?', qtype: 'SINGLE', options: ['It helps you tailor treatment and spot risk factors', 'It determines the price', 'It is irrelevant to the outcome', 'It only matters for new clients'], correct: [0], explanation: 'Motivation reveals what the client really wants and flags psychological risk factors.' },
+              { kind: 'teach', title: 'Building rapport', text: 'Use open questions, listen without interrupting, mirror language, and avoid leading suggestions. A client who feels heard is more likely to disclose concerns honestly.' },
+              { kind: 'ask', prompt: 'Which approach best builds therapeutic rapport with a client?', qtype: 'MULTI', options: ['Open questions', 'Listening without interrupting', 'Avoiding leading suggestions', 'Telling them what they need immediately'], correct: [0, 1, 2], explanation: 'Open questions, active listening and no leading suggestions create a safe space for honest disclosure.' },
+              { kind: 'teach', title: 'Unrealistic expectations', text: 'When a client expects perfection, or expresses distress entirely out of proportion to the perceived flaw, this is a red flag. Document, address it calmly, and consider whether treatment is appropriate at all.' },
+              { kind: 'ask', prompt: 'A client is extremely distressed about a feature that appears minor to you. The right response is to...', qtype: 'SINGLE', options: ['Document, address calmly, consider whether treatment is appropriate', 'Treat immediately to reassure them', 'Dismiss their concern', 'Offer the most aggressive option'], correct: [0], explanation: 'Disproportionate distress is a clinical flag -- document and assess before proceeding.' },
+              { kind: 'say', text: 'Listening as carefully as you treat is what separates a good practitioner from an excellent one.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Recognising BDD & When to Refer',
+            durationMin: 12,
+            objectives: ['Describe body dysmorphic disorder (BDD) and how it presents', 'Explain why aesthetic treatment does not help BDD', 'Know when and how to refer a client to mental health support'],
+            studyTips: ['BDD = Body Dysmorphic Disorder. The JCCP and major industry bodies say you must not treat a client with suspected BDD. Treatment won\'t resolve the underlying distress and may worsen it.'],
+            examRefs: ['Body dysmorphic disorder', 'Safeguarding', 'Ethics', 'Client psychology'],
+            steps: [
+              { kind: 'say', text: 'BDD is a recognised mental health condition. Knowing the signs protects your clients and your practice.', mood: 'think' },
+              { kind: 'teach', title: 'What is BDD?', text: 'Body Dysmorphic Disorder is an obsessive preoccupation with a perceived flaw in appearance that others cannot see or consider minor. It causes significant distress and impaired daily function.' },
+              { kind: 'ask', prompt: 'Body Dysmorphic Disorder is best described as...', qtype: 'SINGLE', options: ['Obsessive preoccupation with a perceived appearance flaw causing real distress', 'A preference for cosmetic treatment', 'A normal level of self-consciousness', 'A skin condition'], correct: [0], explanation: 'BDD is a mental health condition characterised by obsessive, distressing focus on a perceived flaw.' },
+              { kind: 'teach', title: 'Red-flag signs in a consultation', text: 'Warning signs include: repeated consultations about the same minor issue, requests to look like a specific celebrity or filtered image, requesting multiple areas in one session, arriving with altered photos, and previous treatment dissatisfaction despite good results.' },
+              { kind: 'ask', prompt: 'Which of these may indicate BDD during a consultation?', qtype: 'MULTI', options: ['Repeated consultations about one minor feature', 'Wanting to look like a filtered image of themselves', 'Dissatisfied despite objectively good previous results', 'A single clear treatment goal discussed calmly'], correct: [0, 1, 2], explanation: 'A calm, single clear goal is healthy. The others are red flags for BDD or unrealistic expectations.' },
+              { kind: 'teach', title: 'Why treatment does not help BDD', text: 'Aesthetic treatment does not resolve BDD because the problem is the client\'s perception, not their appearance. Treating often moves the focus to the next perceived flaw.' },
+              { kind: 'ask', prompt: 'If a client has suspected BDD, aesthetic treatment should be...', qtype: 'SINGLE', options: ['Declined and the client signposted to mental health support', 'Offered at a discount', 'Agreed to immediately to reassure them', 'Offered in smaller steps only'], correct: [0], explanation: 'Treatment doesn\'t resolve BDD and may worsen distress. Decline and refer to appropriate support.' },
+              { kind: 'teach', title: 'How to decline and refer', text: 'Be calm, non-judgemental and clear. Say you believe treatment is not right for them at this time, and signpost them to their GP or a mental health service. Document the decision and your reasoning.' },
+              { kind: 'ask', prompt: 'When declining a client for suspected BDD, you should...', qtype: 'MULTI', options: ['Be calm and non-judgemental', 'Signpost to GP or mental health support', 'Document your reasoning', 'Offer the treatment anyway with a caveat'], correct: [0, 1, 2], explanation: 'Calm, compassionate refusal with a clear referral pathway and full documentation.' },
+              { kind: 'say', text: 'Declining a client when it is the right thing to do is a sign of a skilled, ethical practitioner.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Client Psychology & Wellbeing Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'Understanding a client\'s motivation for treatment helps you...', type: 'SINGLE', options: ['Tailor treatment and spot psychological risk factors', 'Set the price', 'Skip the consultation', 'Choose the strongest modality'], correct: [0], explanation: 'Motivation reveals what they really want and flags red flags.' },
+            { prompt: 'Building therapeutic rapport involves...', type: 'MULTI', options: ['Open questions', 'Listening without interrupting', 'Avoiding leading suggestions', 'Immediately recommending the priciest option'], correct: [0, 1, 2], explanation: 'Open questions, active listening and no steering.' },
+            { prompt: 'Body Dysmorphic Disorder is characterised by obsessive distress about a perceived appearance flaw.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'BDD causes significant real distress about a perceived (often minor or absent) flaw.' },
+            { prompt: 'If BDD is suspected, aesthetic treatment is...', type: 'SINGLE', options: ['Contraindicated', 'Recommended immediately', 'Fine with reduced settings', 'Only for small areas'], correct: [0], explanation: 'Treatment will not resolve BDD and may worsen distress. Decline and refer.' },
+            { prompt: 'When declining a client for BDD, you should document...', type: 'SINGLE', options: ['Your reasoning and what you signposted them to', 'Nothing', 'The client\'s address only', 'The cost of the missed appointment'], correct: [0], explanation: 'Documentation of the decision and referral pathway is essential.' },
+            { prompt: 'Repeated, obsessive consultations about a single minor feature may indicate...', type: 'SINGLE', options: ['Possible BDD', 'Good client engagement', 'High satisfaction', 'A need for the most advanced treatment'], correct: [0], explanation: 'Repeated distress about a minor feature is a BDD red flag.' },
+          ],
+        },
+      },
+    ],
+  },
+
 ];
 
 export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
@@ -2040,16 +2218,34 @@ export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
   { courseSlug: L2, topic: "Treatment preparation", prompt: "Pre-treatment photographs form part of the...", options: ["Clinical record and provide a medicolegal baseline", "Social media feed", "Invoice", "Marketing campaign"], correct: [0], explanation: "Before photos are a clinical record requirement, not a marketing asset." },
   { courseSlug: L2, topic: "Treatment delivery", prompt: "During a treatment, unexpected sharp pain or blistering means you should...", options: ["Stop, assess, and adjust before continuing", "Increase the energy setting", "Continue to the end of the treatment", "Leave the client to rest"], correct: [0], explanation: "Any unexpected adverse response is a signal to stop immediately and assess." },
 
+  // Electrical Safety & Equipment Maintenance (L2)
+  { courseSlug: L2, topic: 'Equipment safety', prompt: 'PAT testing stands for Portable ___ Testing.', type: 'WORD', options: ['Appliance', 'Antenna', 'Application'], correct: [0], explanation: 'PAT = Portable Appliance Testing -- an electrical safety inspection of portable devices.' },
+  { courseSlug: L2, topic: 'Equipment safety', prompt: 'A visually damaged cable on a treatment device should be...', options: ['Reported and the device taken out of use', 'Taped up and used carefully', 'Ignored until next service', 'Left for the client to report'], correct: [0], explanation: 'Damaged cables must not be used. Report and withdraw from service immediately.' },
+  { courseSlug: L2, topic: 'Equipment safety', prompt: 'Equipment maintenance records help form a legal...', type: 'WORD', options: ['audit trail', 'marketing plan', 'client record'], correct: [0], explanation: 'An audit trail demonstrates that your duty of care was met and supports any incident investigation.' },
+
   // Combination Treatments & Course Planning (L3)
   { courseSlug: "level-3-laser-aesthetic-therapies", topic: "Course planning", prompt: "Skin rejuvenation photofacial sessions are typically spaced...", options: ["3-4 weeks apart", "Every 6 months", "Daily", "Every 2 years"], correct: [0], explanation: "3-4 weeks allows the neocollagenesis response to develop before the next treatment." },
   { courseSlug: "level-3-laser-aesthetic-therapies", topic: "Combination treatments", prompt: "The main clinical risk of applying two energy-based devices to the same area in one session is...", options: ["Cumulative heat causing burns or post-inflammatory hyperpigmentation", "Better results", "Reduced discomfort", "Faster healing"], correct: [0], explanation: "Stacked heat in one session significantly raises the risk of burns and PIH." },
   { courseSlug: "level-3-laser-aesthetic-therapies", topic: "Course planning", prompt: "A written treatment plan benefits the client by...", options: ["Setting clear expectations about the number of sessions and likely outcomes", "Locking them into a payment plan", "Reducing the number of sessions needed", "Allowing the practitioner to change the plan without notice"], correct: [0], explanation: "Clear, documented expectations protect both client and practitioner." },
+
+  // Combination Protocols & Treatment Sequencing (L3)
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Combination protocols', prompt: 'In a combination session, treatments should generally progress from...', options: ['Least to most aggressive', 'Most to least aggressive', 'Random order', 'Most expensive first'], correct: [0], explanation: 'Least aggressive first preserves the skin barrier for subsequent energy-based steps.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Combination protocols', prompt: 'A client has a fresh spray tan. The laser appointment should be...', options: ['Postponed until the tan has faded', 'Adapted with lower settings', 'Carried out as normal', 'Cancelled permanently'], correct: [0], explanation: 'Any active tan is a contraindication for laser and IPL; postpone and re-book.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Combination protocols', prompt: 'After a medium chemical peel, laser resurfacing in the same area should wait until the...', type: 'WORD', options: ['barrier', 'colour', 'melanin'], correct: [0], explanation: 'The epidermal barrier must fully recover before additional energy-based treatment is applied.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Combination protocols', prompt: 'The minimum recommended gap between a dermal filler and laser in the same area is...', options: ['Two weeks', 'Two hours', 'No gap needed', 'Six months always'], correct: [0], explanation: 'Two weeks allows initial settling and reduces the risk of adverse interaction with the filler.' },
 
   // Business Development & Governance (L4 and L5-7)
   { courseSlug: "level-4-certificate-aesthetic-practice", topic: "Governance", prompt: "Clinical governance operates...", options: ["Continuously as an active accountability framework", "Only during regulatory inspections", "Once a year at review", "When complaints arise"], correct: [0], explanation: "Clinical governance is an ongoing, active process, not a reactive one." },
   { courseSlug: "level-4-certificate-aesthetic-practice", topic: "Audit", prompt: "The audit cycle is only complete once you have...", options: ["Re-audited to confirm the change improved practice", "Written a report", "Presented the findings at a meeting", "Filed the data"], correct: [0], explanation: "Re-audit closes the loop; without it you cannot confirm whether the improvement worked." },
   { courseSlug: "advanced-aesthetics-level-5-7", topic: "Business development", prompt: "Value-based pricing reflects...", options: ["The perceived benefit of the outcome to the client", "The cost of supplies only", "A standard market rate", "What competitors charge"], correct: [0], explanation: "Value-based pricing is set from the client's perspective -- what the result is worth to them." },
   { courseSlug: "advanced-aesthetics-level-5-7", topic: "Marketing compliance", prompt: "Aesthetic treatment before/after photographs used in marketing require...", options: ["Explicit written consent for marketing use, separate from clinical consent", "Verbal agreement only", "No consent if faces are cropped", "Automatic consent after payment"], correct: [0], explanation: "Marketing consent must be separate, explicit and in writing." },
+
+  // Client Psychology & Wellbeing (L4)
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Client psychology', prompt: 'Body Dysmorphic Disorder (BDD) is best described as...', options: ['Obsessive, distressing preoccupation with a perceived appearance flaw', 'Normal concern about appearance', 'A contraindication for all consultations', 'A skin condition'], correct: [0], explanation: 'BDD is a mental health condition -- obsessive, distressing focus on a perceived (often minor or absent) flaw.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Client psychology', prompt: 'Aesthetic treatment for a client with suspected BDD should be...', options: ['Declined; client signposted to mental health support', 'Offered immediately to reduce distress', 'Given at a reduced rate', 'Completed in stages only'], correct: [0], explanation: 'Treatment does not resolve BDD and may worsen it. Decline and refer appropriately.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Client psychology', prompt: 'Which of these is a red flag for unrealistic expectations or BDD during consultation?', type: 'MULTI', options: ['Wanting to look like a filtered image', 'Repeated visits about one minor feature', 'Dissatisfied after objectively successful treatment', 'A single clear, realistic goal discussed calmly'], correct: [0, 1, 2], explanation: 'A calm, specific, realistic goal is healthy. The others raise concern.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Client psychology', prompt: 'When declining a client for psychological reasons, the practitioner must...', type: 'MULTI', options: ['Be calm and non-judgemental', 'Signpost to GP or mental health services', 'Document the decision and reasoning', 'Tell other clients about the case'], correct: [0, 1, 2], explanation: 'Calm, compassionate refusal with a referral pathway and full documentation -- never breach confidentiality.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Client psychology', prompt: 'Understanding a client\'s motivation for treatment is part of the practitioner\'s...', type: 'SINGLE', options: ['Duty of care', 'Marketing strategy', 'Personal curiosity', 'Financial planning'], correct: [0], explanation: 'Duty of care includes assessing psychological suitability, not just physical contraindications.' },
 
 ];
 
