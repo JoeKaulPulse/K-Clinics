@@ -113,6 +113,40 @@ export async function GET(req: Request) {
     failures++; console.error('[cron] analytics retention failed (continuing):', (e as Error)?.message);
   }
 
+  // BLD-314 Phase 3: GDPR retention sweep. Purge rejected/abandoned job
+  // applications (no retention basis after the hiring decision) and reset tokens
+  // that expired more than 7 days ago (pure housekeeping).
+  let gdprSweep = { jobs: 0, academyTokens: 0 };
+  try {
+    const { db } = await import('@/lib/db');
+    const jobRejectedCutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000); // 6 months
+    const jobAbandonedCutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000); // 12 months
+    const tokenExpiredCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);   // 7 days
+    const [jobs, , academyTokens] = await Promise.all([
+      db.jobApplication.deleteMany({
+        where: {
+          OR: [
+            { status: 'REJECTED', createdAt: { lt: jobRejectedCutoff } },
+            { status: { in: ['NEW', 'REVIEWING'] }, createdAt: { lt: jobAbandonedCutoff } },
+          ],
+        },
+      }),
+      // Client portal: clear expired reset tokens (no personal data beyond email FK).
+      db.client.updateMany({
+        where: { resetTokenExp: { lt: tokenExpiredCutoff }, resetTokenHash: { not: null } },
+        data: { resetTokenHash: null, resetTokenExp: null },
+      }),
+      // Academy portal: clear expired reset tokens.
+      db.academyStudent.updateMany({
+        where: { resetTokenExp: { lt: tokenExpiredCutoff }, resetTokenHash: { not: null } },
+        data: { resetTokenHash: null, resetTokenExp: null },
+      }),
+    ]);
+    gdprSweep = { jobs: jobs.count, academyTokens: academyTokens.count };
+  } catch (e) {
+    failures++; console.error('[cron] gdpr-retention sweep failed (continuing):', (e as Error)?.message);
+  }
+
   // BLD-248: self-healing clinical-encryption backfill. Encrypts any historic
   // plaintext health rows automatically (no manual trigger), then flags itself
   // complete after a clean pass so it stops scanning. Best-effort.
@@ -198,7 +232,7 @@ export async function GET(req: Request) {
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, ...result, loyalty, membership, gcal, gbiz, retention, scheduledEmail, adSpend, board, clinicalBackfill, academyTenant, examBank, gamification, authored, courseContent },
+    { ok: failures === 0, failures, ...result, loyalty, membership, gcal, gbiz, retention, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, academyTenant, examBank, gamification, authored, courseContent },
     { status: failures === 0 ? 200 : 500 },
   );
 }

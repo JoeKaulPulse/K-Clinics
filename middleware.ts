@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { verifyToken, verifyClientToken, SESSION_COOKIE, CLIENT_SESSION_COOKIE } from '@/lib/auth-edge';
+import { verifyToken, verifyClientToken, verifyAcademyToken, SESSION_COOKIE, CLIENT_SESSION_COOKIE, ACADEMY_SESSION_COOKIE } from '@/lib/auth-edge';
 import { ATTRIB_COOKIE, ATTRIB_MAX_AGE, attributionFromUrl } from '@/lib/attribution';
 import { SEG_COOKIE, SEG_MAX_AGE, segmentFromUrl } from '@/lib/personalize';
 
@@ -10,6 +10,19 @@ const PUBLIC_ACCOUNT = new Set([
   '/account/forgot-password',
   '/account/reset',
 ]);
+
+// Academy pages that are publicly accessible without a trainee session.
+// Everything else under /academy requires a valid academy JWT (BLD-314 Phase 3).
+const PUBLIC_ACADEMY = new Set([
+  '/academy',
+  '/academy/forgot-password',
+  '/academy/reset',
+]);
+// Prefix match: course-catalogue slugs (/academy/<slug>) are public.
+const isPublicAcademyPath = (p: string) =>
+  PUBLIC_ACADEMY.has(p) ||
+  // Top-level slug pages are the public course catalogue — only one segment deep.
+  /^\/academy\/[^/]+$/.test(p);
 
 // ── Admin-managed URL redirects ─────────────────────────────────────────────
 // Cached in module memory (per warm edge instance) and refreshed from the
@@ -54,6 +67,21 @@ export async function middleware(req: NextRequest) {
     if (!client) {
       const url = req.nextUrl.clone();
       url.pathname = '/account/login';
+      url.searchParams.set('from', pathname);
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
+
+  // ── Academy trainee portal ─────────────────────────────────────────────
+  // BLD-314 Phase 3: secure-by-default gate — any new /academy/* page is
+  // protected unless explicitly listed in PUBLIC_ACADEMY or matches the
+  // public single-slug catalogue pattern.
+  if (pathname.startsWith('/academy') && !isPublicAcademyPath(pathname)) {
+    const student = await verifyAcademyToken(req.cookies.get(ACADEMY_SESSION_COOKIE)?.value);
+    if (!student) {
+      const url = req.nextUrl.clone();
+      url.pathname = '/academy/portal';
       url.searchParams.set('from', pathname);
       return NextResponse.redirect(url);
     }

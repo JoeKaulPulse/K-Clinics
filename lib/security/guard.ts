@@ -84,7 +84,15 @@ export async function enforceRateLimit(req: Request, scope: string, limit: numbe
 export const turnstileConfigured = Boolean(process.env.TURNSTILE_SECRET_KEY);
 
 export async function verifyTurnstile(token: string | undefined, req: Request): Promise<boolean> {
-  if (!turnstileConfigured) return true; // not enforced when unconfigured
+  if (!turnstileConfigured) {
+    // BLD-344: fail closed in production so a missing key doesn't silently
+    // disable bot protection. In dev/test allow through so login still works.
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[turnstile] TURNSTILE_SECRET_KEY is not set — CAPTCHA challenge will be rejected until the key is configured.');
+      return false;
+    }
+    return true;
+  }
   if (!token) return false;
   try {
     const body = new URLSearchParams({ secret: process.env.TURNSTILE_SECRET_KEY!, response: token, remoteip: clientIp(req) });

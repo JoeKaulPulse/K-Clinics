@@ -1,6 +1,14 @@
 import 'server-only';
+import crypto from 'crypto';
 import { db } from '@/lib/db';
 import { hashPassword, verifyPassword, createAcademySession, getAcademySession } from '@/lib/auth';
+
+const sha256 = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
+const hashesEqual = (a: string, b: string) => {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ab.length === bb.length && crypto.timingSafeEqual(ab, bb);
+};
 
 export type AcademySignup = { firstName: string; lastName?: string; email: string; phone?: string; password: string; dob?: string };
 
@@ -56,4 +64,51 @@ export async function getCurrentStudent() {
  *  on suspend, password reset, or an explicit "sign out everywhere". */
 export async function bumpAcademyEpoch(studentId: string): Promise<void> {
   await db.academyStudent.update({ where: { id: studentId }, data: { sessionEpoch: { increment: 1 } } }).catch(() => {});
+}
+
+// BLD-314 Phase 2 — academy password reset (mirrors lib/client-auth.ts pattern).
+
+/** Begin a password reset for an academy trainee. Always resolves ok:true
+ *  (no account enumeration); sends a one-hour link only if the account exists. */
+export async function requestAcademyPasswordReset(email: string): Promise<{ ok: true }> {
+  const student = await db.academyStudent.findUnique({ where: { email: email.trim().toLowerCase() }, select: { id: true, email: true, firstName: true, passwordHash: true } });
+  if (student?.passwordHash) {
+    const token = crypto.randomBytes(32).toString('hex');
+    await db.academyStudent.update({
+      where: { id: student.id },
+      data: { resetTokenHash: sha256(token), resetTokenExp: new Date(Date.now() + 60 * 60 * 1000) },
+    });
+    const base = process.env.NEXT_PUBLIC_SITE_URL || '';
+    const url = `${base}/academy/reset?token=${token}&id=${student.id}`;
+    try {
+      const { sendEmail, tmplPasswordReset } = await import('@/lib/email');
+      await sendEmail({ to: student.email, subject: 'Reset your K Academy password', html: tmplPasswordReset(student.firstName, url) });
+    } catch {
+      /* swallow — never reveal whether the email exists */
+    }
+  }
+  return { ok: true };
+}
+
+/** Complete a password reset with a valid, unexpired token. Signs the student in. */
+export async function performAcademyPasswordReset(studentId: string, token: string, newPassword: string): Promise<{ ok: boolean; error?: string }> {
+  if (!studentId || !token || newPassword.length < 8) return { ok: false, error: 'Invalid request.' };
+  const student = await db.academyStudent.findUnique({ where: { id: studentId }, select: { id: true, email: true, firstName: true, resetTokenHash: true, resetTokenExp: true } });
+  if (!student?.resetTokenHash || !student.resetTokenExp || student.resetTokenExp < new Date()) {
+    return { ok: false, error: 'This reset link has expired. Please request a new one.' };
+  }
+  if (!hashesEqual(sha256(token), student.resetTokenHash)) return { ok: false, error: 'Invalid reset link.' };
+  const { isBreachedPassword } = await import('@/lib/security/breached-password');
+  if (await isBreachedPassword(newPassword)) return { ok: false, error: 'That password has appeared in a known data breach. Please choose a different one.' };
+  const updated = await db.academyStudent.update({
+    where: { id: student.id },
+    data: { passwordHash: await hashPassword(newPassword), resetTokenHash: null, resetTokenExp: null, portalActive: true, sessionEpoch: { increment: 1 } },
+    select: { sessionEpoch: true },
+  });
+  try {
+    const { sendEmail, tmplPasswordChanged } = await import('@/lib/email');
+    await sendEmail({ to: student.email, subject: 'Your K Academy password was changed', html: tmplPasswordChanged(student.firstName || 'there') });
+  } catch { /* best-effort */ }
+  await createAcademySession({ sub: student.id, email: student.email, firstName: student.firstName, epoch: updated.sessionEpoch });
+  return { ok: true };
 }
