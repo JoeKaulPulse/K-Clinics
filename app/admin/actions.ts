@@ -34,6 +34,11 @@ export async function eraseClientData(clientId: string) {
   if (!session || !sessionCan(session, 'clients.delete')) return { ok: false, error: 'Not permitted' };
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
+  // Fetch before erasing — purchaserEmail is a plain string (no FK), so we
+  // need the current email to match GiftVouchers the client purchased.
+  const client = await db.client.findUnique({ where: { id: clientId }, select: { email: true } });
+  if (!client) return { ok: false, error: 'Not found.' };
+  const erasedEmail = `erased-${clientId}@redacted.invalid`;
   // Art. 17 erasure across ALL personal/special-category data, atomically. We
   // pseudonymise the Client row + strip clinical free-text from RETAINED
   // financial records (bookings/consultations kept for HMRC/lawful retention,
@@ -46,7 +51,7 @@ export async function eraseClientData(clientId: string) {
     db.client.update({
       where: { id: clientId },
       data: {
-        firstName: 'Erased', lastName: null, email: `erased-${clientId}@redacted.invalid`,
+        firstName: 'Erased', lastName: null, email: erasedEmail,
         phone: null, dob: null, notes: null, allergies: null, medicalFlag: null, medicalFlagSetBy: null, medicalFlagAt: null,
         marketingOptIn: false, unsubscribed: true, portalActive: false, passwordHash: null,
         resetTokenHash: null, resetTokenExp: null,
@@ -97,11 +102,14 @@ export async function eraseClientData(clientId: string) {
     // Strip PII from retail Orders (email/name/phone/address) — keep order number
     // and amounts for Xero/HMRC basis. Order.clientId is a nullable String set at
     // checkout (no formal FK relation), so we match on it directly.
-    db.order.updateMany({ where: { clientId }, data: { name: 'Erased', email: `erased-${clientId}@redacted.invalid`, phone: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
-    // Strip PII from GiftVouchers claimed by this client. (Vouchers they
-    // *purchased* carry only an email/name string with no FK to Client, so
-    // they can't be matched here reliably — see BLD-315 residual note.)
-    db.giftVoucher.updateMany({ where: { claimedByClientId: clientId }, data: { recipientName: null, recipientEmail: null, message: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
+    db.order.updateMany({ where: { clientId }, data: { name: 'Erased', email: erasedEmail, phone: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
+    // GiftVouchers claimed by this client — strip purchaser + recipient PII.
+    db.giftVoucher.updateMany({ where: { claimedByClientId: clientId }, data: { purchaserName: 'Erased', purchaserEmail: erasedEmail, recipientName: null, recipientEmail: null, message: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
+    // GiftVouchers purchased by this client (email-matched; no purchaserClientId FK).
+    db.giftVoucher.updateMany({ where: { purchaserEmail: client.email }, data: { purchaserName: 'Erased', purchaserEmail: erasedEmail } }),
+    // PromoRedemption — null the captured email (BLD-315 residual: SAR exports it
+    // but erasure previously did not remove it).
+    db.promoRedemption.updateMany({ where: { clientId }, data: { email: null } }),
   ]);
   await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
   revalidatePath(`/admin/clients/${clientId}`);
