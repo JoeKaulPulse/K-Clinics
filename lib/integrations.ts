@@ -233,6 +233,25 @@ export async function getIntegrations(): Promise<Integration[]> {
     docsHref: 'https://console.deepgram.com',
   });
 
+  // ── Google Workspace Directory API (BLD-312) ──
+  const wsKey = present('GOOGLE_WORKSPACE_SA_KEY');
+  const wsAdmin = present('GOOGLE_WORKSPACE_ADMIN_EMAIL');
+  items.push({
+    id: 'google-workspace',
+    name: 'Google Workspace (Directory API)',
+    category: 'Staff management',
+    description: 'Manage @kclinics.co.uk mailboxes, aliases and shared inboxes from the admin dashboard. Requires a service account with domain-wide delegation.',
+    status: wsKey && wsAdmin ? 'connected' : wsKey || wsAdmin ? 'partial' : 'not_configured',
+    detail: wsKey && wsAdmin ? 'Service account configured — manage mailboxes at /admin/workspace.' : wsKey ? 'Service account key set — add GOOGLE_WORKSPACE_ADMIN_EMAIL.' : wsAdmin ? 'Admin email set — add the service account JSON key.' : 'Set GOOGLE_WORKSPACE_SA_KEY and GOOGLE_WORKSPACE_ADMIN_EMAIL to enable.',
+    envVars: [
+      { name: 'GOOGLE_WORKSPACE_SA_KEY', set: wsKey },
+      { name: 'GOOGLE_WORKSPACE_ADMIN_EMAIL', set: wsAdmin },
+      { name: 'GOOGLE_WORKSPACE_CUSTOMER_ID', set: present('GOOGLE_WORKSPACE_CUSTOMER_ID'), optional: true },
+    ],
+    manageHref: '/admin/workspace',
+    docsHref: '/docs/GOOGLE_WORKSPACE_MIGRATION.md',
+  });
+
   // ── Security & encryption ──
   const jwt = has(process.env.ADMIN_JWT_SECRET);
   const enc = has(process.env.HEALTH_ENCRYPTION_KEY);

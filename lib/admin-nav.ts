@@ -113,6 +113,7 @@ export const navGroups: NavGroup[] = [
     { href: '/admin/api-health', key: 'nav.apihealth', perm: 'platform.status', keywords: 'api health live checks endpoints stripe resend anthropic claude xero probes traffic light connections broken' },
     { href: '/admin/build', key: 'nav.build', perm: 'build.view', keywords: 'issues bugs tickets backlog development' },
     { href: '/admin/contractors', key: 'nav.contractors', perm: 'contractor.tasks.manage', keywords: 'contractor check-in reception sign in visitor onsite trades maintenance' },
+    { href: '/admin/workspace', key: 'nav.workspace', perm: 'settings.manage', keywords: 'google workspace email mailbox alias group seat directory' },
     { href: '/admin/staff', key: 'nav.staff', perm: 'staff.view', keywords: 'team users access roles permissions employees' },
     { href: '/admin/security', key: 'nav.security', perm: 'security.manage', keywords: 'login 2fa sessions audit centre' },
     { href: '/admin/activity', key: 'nav.activity', perm: 'staff.view', keywords: 'log history audit trail events' },
