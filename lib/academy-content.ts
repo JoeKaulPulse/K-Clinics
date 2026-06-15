@@ -1675,7 +1675,7 @@ export const NEW_MODULES: CourseContentDef[] = [
             title: "Setting Up & Preparing the Client",
             durationMin: 11,
             objectives: ["Describe correct room preparation before a laser or light treatment", "Explain why pre-treatment photographs are taken", "State how to position and prepare the client safely"],
-            studyTips: ["VTCT Level 2 assessments often include practical observation of your set-up routine — every step matters."],
+            studyTips: ["VTCT Level 2 assessments often include practical observation of your set-up routine -- every step matters."],
             examRefs: ["Treatment preparation", "Client preparation", "Record keeping"],
             steps: [
               { kind: "say", text: "Good preparation before the first pulse is what separates a safe treatment from a risky one.", mood: "think" },
