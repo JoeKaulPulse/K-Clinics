@@ -1241,6 +1241,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Added optional locationId String? to KioskSession (plain scope tag matching the FacilityDoc/ContractorVisit pattern -- no FK, no Location model touch, additive schema change). /kiosk/display accepts a ?location=<slug> search param: it resolves the Location.id by slug and stamps it on the new session at creation. Admin > QR codes page now shows a "Per-location display links" section listing all active locations with their /kiosk/display?location=<slug> URL so staff can point each site\'s storefront screen at the right link without any deploy. Sessions without locationId continue to work as before.',
     notes: ['schema.prisma: locationId String? + @@index([locationId]) on KioskSession. app/kiosk/display/page.tsx: searchParams.location -> db.location.findUnique({where:{slug}}) -> session.locationId. app/admin/qr/page.tsx: db.location.findMany(active) -> per-location link list. Consistent with FacilityDoc.locationId and ContractorVisit.locationId patterns.'],
   },
+  {
+    title: 'Sentry error tracking: DSN-gated init for client, server, edge runtimes (BLD-348)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'Added @sentry/nextjs. Three runtime config files (sentry.client.config.ts, sentry.server.config.ts, sentry.edge.config.ts) init Sentry only when NEXT_PUBLIC_SENTRY_DSN or SENTRY_DSN is set -- no-op otherwise. instrumentation.ts registers the server/edge configs via the Next.js instrumentation hook. global-error.tsx captures root layout exceptions. next.config.mjs wraps with withSentryConfig when DSN env vars are present. CSP connect-src extended with https://o*.ingest.sentry.io https://*.sentry.io.',
+    notes: ['tracesSampleRate: client 0.1, server/edge 0.05. Replays disabled (replaysSessionSampleRate: 0, replaysOnErrorSampleRate: 0). hideSourceMaps: true keeps source maps off the CDN. automaticVercelMonitors: false avoids cron-monitor noise.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
