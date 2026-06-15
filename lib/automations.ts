@@ -293,10 +293,15 @@ async function reminders(t: Tally) {
   const smsOn = await smsConfigured();
   const { getSetting } = await import('@/lib/settings');
   const [r72, r48] = await Promise.all([getSetting('reminder_72h'), getSetting('reminder_48h')]);
+  const { clinicDateISO, clinicDayBounds } = await import('@/lib/clinic-time');
 
   async function sendWindow(daysAhead: number, sentFlag: 'reminder72hSent' | 'reminder48hSent' | 'remindersSent', label: string) {
-    const start = new Date(); start.setDate(start.getDate() + daysAhead); start.setHours(0, 0, 0, 0);
-    const end = new Date(start); end.setHours(23, 59, 59, 999);
+    // Window bounds in clinic-local (Europe/London) time, not the server's TZ: on a
+    // UTC host, setHours(0,…) lands on UTC midnight, so the day boundary is an hour
+    // off and near-midnight appointments get reminded a day early/late.
+    const [yy, mm, dd] = clinicDateISO(new Date()).split('-').map(Number);
+    const targetISO = clinicDateISO(new Date(Date.UTC(yy, mm - 1, dd + daysAhead, 12)));
+    const { dayStart: start, dayEnd: end } = clinicDayBounds(targetISO);
     const bookings = await db.booking.findMany({
       where: { status: 'CONFIRMED', [sentFlag]: false, startAt: { gte: start, lte: end } },
       include: { client: true },

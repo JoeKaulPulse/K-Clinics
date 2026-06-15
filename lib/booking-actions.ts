@@ -103,7 +103,6 @@ export async function chargeBooking(
         where: { id: booking.id },
         data: { chargePaymentIntentId: pi.id, chargedPence: amountPence, chargedAt: new Date() },
       });
-      await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment receipt', status: 'SENT' } });
       // VAT breakdown on the receipt once the clinic is VAT-registered (dormant otherwise).
       let vat: { netPence: number; vatPence: number; ratePct: number } | null = null;
       try {
@@ -116,12 +115,18 @@ export async function chargeBooking(
           if (b.applied) vat = { netPence: b.netPence, vatPence: b.vatPence, ratePct: b.ratePct };
         }
       } catch { /* receipt still sends without the VAT line */ }
-      const detail = opts.late ? null : await receiptDetail(booking.id, booking.stripePaymentMethodId);
-      await sendEmail({
+      // Receipt email — guarded so a detail lookup or send hiccup can't 500 a
+      // charge that has ALREADY gone through, and recorded with its REAL outcome
+      // (this path previously logged SENT before the send was even attempted,
+      // masking provider/config failures like an unverified domain).
+      const detail = opts.late ? null : await receiptDetail(booking.id, booking.stripePaymentMethodId).catch(() => null);
+      const receipt = await sendEmail({
         to: booking.client.email,
         subject: opts.late ? 'Late-cancellation fee — KClinics' : `Receipt — ${booking.treatmentTitle}`,
         html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountPence, late: opts.late, vat, ...(detail ?? {}) }),
       });
+      if (!receipt.ok) console.error('[charge] receipt email failed:', receipt.error);
+      await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment receipt', status: receipt.ok ? 'SENT' : 'FAILED', providerId: receipt.id, error: receipt.error } }).catch(() => {});
       // Books: raise the Xero invoice (+ payment). Idempotent vs the webhook path.
       try { const { pushBookingSaleToXero } = await import('@/lib/xero'); await pushBookingSaleToXero(booking.id); } catch (e) { console.error('[charge] xero push failed:', (e as Error)?.message); }
       return { ok: true };
@@ -347,12 +352,15 @@ export async function cancelBooking(
     console.error('[cancelBooking] points refund failed (continuing):', (e as Error)?.message);
   }
 
-  // Cancellation email (free vs late-fee).
-  await sendEmail({
+  // Cancellation email (free vs late-fee) — best-effort, with its outcome recorded
+  // so a silent provider/config failure is visible in the email log.
+  const cancelEmail = await sendEmail({
     to: booking.client.email,
     subject: `Booking cancelled — ${booking.treatmentTitle}`,
     html: tmplBookingCancelled({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, start: booking.startAt, feeCharged: charged || undefined }),
   });
+  if (!cancelEmail.ok) console.error('[cancelBooking] email failed:', cancelEmail.error);
+  await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Booking cancelled', status: cancelEmail.ok ? 'SENT' : 'FAILED', providerId: cancelEmail.id, error: cancelEmail.error } }).catch(() => {});
 
   return { ok: true, charged, requiresAction, feeFailed };
 }

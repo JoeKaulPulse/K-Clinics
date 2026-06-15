@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { SESSION_STEPS, CLIENT_STAGE_COPY, type SessionStepKey } from '@/lib/appointment-session';
 import type { ClientLiveView } from '@/lib/appointment-session-server';
 import { CheckIcon } from '@/components/ui/session-icons';
+import { ConsentSigner } from '@/components/consent/ConsentSigner';
 
 // BLD-138 v2 — the client's phone companion. A dark, jewel-box page that
 // mirrors the in-clinic session in real time: the current stage breathes at
@@ -15,6 +16,7 @@ const POLL_MS = 4000;
 
 const gold = '#c8a96a';
 const STAGE_ORDER = SESSION_STEPS.map((s) => s.key);
+const money = (p: number) => (p <= 0 ? 'On consultation' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`);
 
 export function LiveCompanion({ token, firstName, treatmentTitle, startAt, durationMin, practitionerName, initial }: {
   token: string; firstName: string; treatmentTitle: string; startAt: string; durationMin: number;
@@ -22,6 +24,7 @@ export function LiveCompanion({ token, firstName, treatmentTitle, startAt, durat
 }) {
   const reduce = useReducedMotion();
   const [live, setLive] = useState<ClientLiveView | null>(initial);
+  const [signing, setSigning] = useState<string | null>(null); // consent token being signed inline
   const [notifyOn, setNotifyOn] = useState(false);
   const [canNotify, setCanNotify] = useState(false);
   useEffect(() => { setCanNotify(typeof Notification !== 'undefined'); }, []);
@@ -183,6 +186,38 @@ export function LiveCompanion({ token, firstName, treatmentTitle, startAt, durat
           </ol>
         </section>
 
+        {/* Your forms — read, tick & sign on your own phone, in step with the visit */}
+        {live?.forms?.consents.length ? (
+          <section className="mt-12" aria-label="Your forms">
+            <p className="mb-3 text-center text-[11px] uppercase tracking-[0.22em] text-[#9a8f80]">Your forms</p>
+            <ul className="space-y-2.5">
+              {live.forms.consents.map((c, i) => c.signed ? (
+                <li key={`s${i}`} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                  <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full" style={{ background: gold, color: '#12100e' }}><CheckIcon /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm text-[#e7dccd]">{c.title}</span>
+                    <span className="block text-xs text-[#9a8f80]">Signed{c.signedAt ? ` · ${new Date(c.signedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}</span>
+                  </span>
+                </li>
+              ) : (
+                <li key={`p${i}`}>
+                  <button type="button" onClick={() => c.token && setSigning(c.token)}
+                    className="flex w-full items-center gap-3 rounded-2xl border border-[#c8a96a]/50 bg-[#c8a96a]/10 px-4 py-3.5 text-left transition-colors hover:bg-[#c8a96a]/20">
+                    <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full border" style={{ borderColor: gold, color: gold }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium text-[#f4ece1]">{c.title}</span>
+                      <span className="block text-xs text-[#cdbfae]">Tap to read &amp; sign on your phone</span>
+                    </span>
+                    <span aria-hidden style={{ color: gold }}>→</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
         {/* Visit details + notifications */}
         <footer className="mt-auto pt-12">
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-center backdrop-blur">
@@ -192,6 +227,7 @@ export function LiveCompanion({ token, firstName, treatmentTitle, startAt, durat
               {practitionerName ? ` · with ${practitionerName}` : ''}
             </p>
           </div>
+          {live?.pricing && <PriceCard pricing={live.pricing} />}
           {!notifyOn && canNotify && !done && (
             <button type="button" onClick={enableNotifications}
               className="mx-auto mt-4 block min-h-11 rounded-full border border-white/15 px-5 py-2.5 text-xs text-[#cdbfae] transition-colors hover:border-[#c8a96a] hover:text-[#f4ece1]">
@@ -201,7 +237,83 @@ export function LiveCompanion({ token, firstName, treatmentTitle, startAt, durat
           {notifyOn && <p className="mt-4 text-center text-xs text-[#9a8f80]" role="status">Notifications on — we’ll nudge you at each stage.</p>}
         </footer>
       </div>
+
+      {signing && <ConsentSheet token={signing} onClose={() => setSigning(null)} />}
     </main>
+  );
+}
+
+type ConsentContent = { token: string; title: string; bodyHtml: string; acknowledgements: string[]; defaultName: string; kind: string };
+
+// A focused, light-themed signing surface laid over the dark companion. It pulls
+// the consent content for the token and hands it to the shared ConsentSigner, so
+// the read → tick → sign ceremony and the immutable signed record are exactly the
+// same as the standalone /sign page. Falls back to that page if content can't load.
+function ConsentSheet({ token, onClose }: { token: string; onClose: () => void }) {
+  const [state, setState] = useState<'loading' | 'error' | 'gone' | ConsentContent>('loading');
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/consent/${encodeURIComponent(token)}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (!alive) return;
+        if (j?.ok && j.status === 'open') setState(j as ConsentContent);
+        else if (j?.ok) setState('gone'); // signed / expired / unavailable
+        else setState('error');
+      })
+      .catch(() => { if (alive) setState('error'); });
+    return () => { alive = false; };
+  }, [token]);
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[var(--color-bone)] text-[var(--color-ink)]">
+      <div className="mx-auto max-w-2xl px-4 pb-16 pt-4">
+        <button type="button" onClick={onClose}
+          className="mb-4 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">
+          ← Back to your visit
+        </button>
+        {state === 'loading' ? (
+          <p className="py-16 text-center text-sm text-[var(--color-stone)]">Loading your form…</p>
+        ) : state === 'gone' ? (
+          <p className="py-16 text-center text-sm text-[var(--color-stone)]">This form is already complete or no longer open. You can head back to your visit.</p>
+        ) : state === 'error' ? (
+          <p className="py-16 text-center text-sm text-[var(--color-stone)]">We couldn’t load the form here. <a href={`/sign/${encodeURIComponent(token)}`} className="link-underline font-medium text-[var(--color-ink)]">Open it on a dedicated page →</a></p>
+        ) : (
+          <ConsentSigner token={state.token} title={state.title} bodyHtml={state.bodyHtml} acknowledgements={state.acknowledgements} defaultName={state.defaultName} kind={state.kind} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// What the client will pay, itemised — the booked treatment plus any add-ons,
+// each at the price their card will actually be charged. Shows the live total
+// while the card is on file, then the amount paid once it's taken at checkout.
+function PriceCard({ pricing }: { pricing: ClientLiveView['pricing'] }) {
+  if (!pricing.items.length && pricing.totalPence <= 0) return null;
+  const charged = pricing.chargedPence != null;
+  return (
+    <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur">
+      <p className="mb-2.5 text-[11px] uppercase tracking-[0.22em] text-[#9a8f80]">{charged ? 'Your payment' : 'What you’ll pay'}</p>
+      <ul className="space-y-2">
+        {pricing.items.map((it, i) => (
+          <li key={i} className="flex items-baseline justify-between gap-3 text-sm">
+            <span className="min-w-0 text-[#e7dccd]">
+              {it.label}{it.sessions > 1 ? ` · course of ${it.sessions}` : ''}
+              {it.isAddon && <span className="ml-2 inline-block rounded-full border border-[#c8a96a]/40 px-1.5 py-px text-[10px] uppercase tracking-wider text-[#c8a96a]">Add-on</span>}
+            </span>
+            <span className="shrink-0 tabular-nums text-[#f4ece1]">{money(it.pricePence)}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-3 flex items-baseline justify-between border-t border-white/10 pt-3">
+        <span className="text-sm text-[#cdbfae]">{charged ? 'Paid today' : 'Total'}</span>
+        <span className="font-[family-name:var(--font-display)] text-lg" style={{ color: gold }}>{money(charged ? pricing.chargedPence! : pricing.totalPence)}</span>
+      </div>
+      <p className="mt-2 text-[11px] leading-relaxed text-[#9a8f80]">
+        {charged ? 'Thank you — your card has been charged for today’s visit.' : 'Saved securely to your card — only taken after your treatment.'}
+      </p>
+    </div>
   );
 }
 
