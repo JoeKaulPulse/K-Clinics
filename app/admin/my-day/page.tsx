@@ -15,8 +15,7 @@ import { LiveClock } from '@/components/admin/DashboardLive';
 import { DashboardShell } from '@/components/admin/dashboard/DashboardShell';
 import { ClinicianView } from '@/components/admin/dashboard/ClinicianView';
 import { ReceptionistView } from '@/components/admin/dashboard/ReceptionistView';
-import { DeveloperView } from '@/components/admin/dashboard/DeveloperView';
-import { ContractorView } from '@/components/admin/dashboard/ContractorView';
+import { DeveloperMyDay, ContractorMyDay } from '@/components/admin/dashboard/MyDayFocus';
 import { ScaffoldView } from '@/components/admin/dashboard/ScaffoldView';
 import { resolveView, canSwitchViews, type DashboardView } from '@/lib/dashboard-views';
 
@@ -227,6 +226,10 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
   // All built views.
   const BUILT_VIEWS: DashboardView[] = ['admin', 'clinician', 'reception', 'developer', 'contractor'];
   const renderedView: DashboardView = BUILT_VIEWS.includes(view) ? view : 'admin';
+  // Developer & contractor days aren't appointment-shaped — their My Day is their
+  // own work (assigned items / jobs), the same whatever the date picker says, so
+  // they skip the date-nav + appointment timeline entirely (PRJ-63.12).
+  const isWorkRole = renderedView === 'developer' || renderedView === 'contractor';
 
   return (
     <AdminShell user={session.email} can={can} locale={locale}>
@@ -241,17 +244,18 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {isToday && clockWeather}
-          {dateNav}
+          {!isWorkRole && dateNav}
         </div>
       </div>
 
-      {isToday ? (
+      {isWorkRole ? (
+        // Developer / contractor: their own work for the day (not appointment-shaped).
+        renderedView === 'developer' ? <DeveloperMyDay session={session} /> : <ContractorMyDay session={session} />
+      ) : isToday ? (
         // Today: show the full role-specific view (same as dashboard) via DashboardShell.
         <DashboardShell role={role} view={renderedView} heading={<></>} aside={undefined}>
           {renderedView === 'clinician' ? <ClinicianView session={session} />
             : renderedView === 'reception' ? <ReceptionistView session={session} />
-            : renderedView === 'developer' ? <DeveloperView session={session} />
-            : renderedView === 'contractor' ? <ContractorView session={session} />
             : (
               // Admin / Owner: show personal appointments as the day-planner and
               // let the dashboard handle the full management overview.
