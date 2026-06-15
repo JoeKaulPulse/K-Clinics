@@ -37,7 +37,7 @@ type Clinician = {
 };
 
 /** Clinicians competent for a treatment, with schedule/time-off/bookings for the day. */
-async function cliniciansForDay(treatmentSlug: string, dayStart: Date, dayEnd: Date): Promise<Clinician[]> {
+async function cliniciansForDay(treatmentSlug: string, dayStart: Date, dayEnd: Date, excludeBookingId?: string): Promise<Clinician[]> {
   const staff = await db.adminUser.findMany({
     where: { isClinician: true, active: true },
     select: {
@@ -47,7 +47,8 @@ async function cliniciansForDay(treatmentSlug: string, dayStart: Date, dayEnd: D
       schedules: { select: { dayOfWeek: true, startMin: true, endMin: true, breakStartMin: true, breakEndMin: true, locationId: true } },
       timeOff: { where: { startAt: { lt: dayEnd }, endAt: { gt: dayStart }, status: { notIn: ['DECLINED', 'CANCELLED'] } }, select: { startAt: true, endAt: true } },
       bookings: {
-        where: { status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { gte: dayStart, lte: dayEnd } },
+        // Exclude the booking being rescheduled so it doesn't clash with itself.
+        where: { status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { gte: dayStart, lte: dayEnd }, ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}) },
         select: { startAt: true, endAt: true, bufferMin: true },
       },
     },
@@ -94,10 +95,10 @@ type Pool = {
   bookings: { startAt: Date; endAt: Date; bufferMin: number; resIds: string[] }[];
 };
 
-async function loadPool(resources: { id: string; capacity: number }[], dayStart: Date, dayEnd: Date): Promise<Pool> {
+async function loadPool(resources: { id: string; capacity: number }[], dayStart: Date, dayEnd: Date, excludeBookingId?: string): Promise<Pool> {
   const ids = resources.map((r) => r.id);
   const rows = await db.booking.findMany({
-    where: { status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { lt: dayEnd }, endAt: { gt: dayStart }, resources: { some: { id: { in: ids } } } },
+    where: { status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { lt: dayEnd }, endAt: { gt: dayStart }, resources: { some: { id: { in: ids } } }, ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}) },
     select: { startAt: true, endAt: true, bufferMin: true, resources: { where: { id: { in: ids } }, select: { id: true } } },
   });
   return { resources, bookings: rows.map((r) => ({ startAt: r.startAt, endAt: r.endAt, bufferMin: r.bufferMin, resIds: r.resources.map((x) => x.id) })) };
@@ -108,7 +109,7 @@ async function loadPool(resources: { id: string; capacity: number }[], dayStart:
  *  equipment qualify. Returns null when no rooms are configured for the tag at
  *  all (requirement not enforced); an empty pool (→ no slots) when rooms exist
  *  for the tag but none hold the required equipment. */
-async function roomPool(roomTag: string | null, equipSlug: string | undefined, dayStart: Date, dayEnd: Date, locationId?: string | null): Promise<Pool | null> {
+async function roomPool(roomTag: string | null, equipSlug: string | undefined, dayStart: Date, dayEnd: Date, locationId?: string | null, excludeBookingId?: string): Promise<Pool | null> {
   if (!roomTag) return null;
   const locWhere = locationId ? { OR: [{ locationId: null }, { locationId }] } : {};
   const anyRoom = await db.resource.count({ where: { kind: 'ROOM', active: true, tags: { has: roomTag }, ...locWhere } });
@@ -121,7 +122,7 @@ async function roomPool(roomTag: string | null, equipSlug: string | undefined, d
     },
     select: { id: true, capacity: true },
   });
-  const pool = await loadPool(resources, dayStart, dayEnd); // may be empty → blocks the slot
+  const pool = await loadPool(resources, dayStart, dayEnd, excludeBookingId); // may be empty → blocks the slot
   // BLD-198: a scheduled room closure occupies the room like a booking, so a
   // blocked room drops out of availability for any overlapping slot.
   const closures = await db.roomClosure.findMany({
@@ -141,14 +142,14 @@ function boundEquipSlug(binding: boolean, treatmentSlug?: string): string | unde
 }
 
 /** Shared equipment (laser/HIFU) the treatment requires. */
-async function equipmentPool(treatmentSlug: string | undefined, dayStart: Date, dayEnd: Date, locationId?: string | null): Promise<Pool | null> {
+async function equipmentPool(treatmentSlug: string | undefined, dayStart: Date, dayEnd: Date, locationId?: string | null, excludeBookingId?: string): Promise<Pool | null> {
   const required = treatmentSlug ? bookingFor(treatmentSlug).requiresResource : undefined;
   if (!required) return null;
   const resources = await db.resource.findMany({
     where: { kind: 'EQUIPMENT', active: true, slug: required, ...(locationId ? { OR: [{ locationId: null }, { locationId }] } : {}) },
     select: { id: true, capacity: true },
   });
-  return resources.length ? loadPool(resources, dayStart, dayEnd) : null;
+  return resources.length ? loadPool(resources, dayStart, dayEnd, excludeBookingId) : null;
 }
 
 /** First pool member with spare capacity for [start, endBuffered], else null. */
@@ -344,7 +345,8 @@ export async function assignResources(startISO: string, durationMin: number, tre
  * so they can move an appointment to any free time. Public flows omit it and
  * keep the full 2-hour notice.
  */
-export async function isSlotFree(startISO: string, durationMin: number, treatmentSlug?: string, locationId?: string | null, opts?: { leadMinutes?: number }): Promise<boolean> {
+export async function isSlotFree(startISO: string, durationMin: number, treatmentSlug?: string, locationId?: string | null, opts?: { leadMinutes?: number; excludeBookingId?: string }): Promise<boolean> {
+  const excludeBookingId = opts?.excludeBookingId;
   const start = new Date(startISO);
   if (isNaN(start.getTime())) return false;
   const end = new Date(start.getTime() + durationMin * 60_000);
@@ -365,8 +367,8 @@ export async function isSlotFree(startISO: string, durationMin: number, treatmen
   const binding = treatmentSlug ? await getSetting('room_equipment_binding') : false;
   const [closures, rooms, equip] = await Promise.all([
     dayClosures(dayStart, dayEnd, locationId),
-    roomPool(roomTagFor(treatmentSlug), boundEquipSlug(binding, treatmentSlug), dayStart, dayEnd, locationId),
-    equipmentPool(treatmentSlug, dayStart, dayEnd, locationId),
+    roomPool(roomTagFor(treatmentSlug), boundEquipSlug(binding, treatmentSlug), dayStart, dayEnd, locationId, excludeBookingId),
+    equipmentPool(treatmentSlug, dayStart, dayEnd, locationId, excludeBookingId),
   ]);
   if (closures.some((cl) => start.getTime() < cl.endAt.getTime() && end.getTime() > cl.startAt.getTime())) return false;
   if (!poolFree(rooms, start, endBufferedMs)) return false;
@@ -374,13 +376,13 @@ export async function isSlotFree(startISO: string, durationMin: number, treatmen
 
   const enforce = treatmentSlug ? await getSetting('enforce_staff_availability') : false;
   if (enforce && treatmentSlug) {
-    const clinicians = await cliniciansForDay(treatmentSlug, dayStart, dayEnd);
+    const clinicians = await cliniciansForDay(treatmentSlug, dayStart, dayEnd, excludeBookingId);
     if (clinicians.length) return clinicians.some((c) => clinicianFree(c, start, end, clinicDayOfWeek(dateISO), bufferMin, locationId));
   }
 
   // Single-resource fallback — buffer-aware overlap check.
   const sameDay = await db.booking.findMany({
-    where: { status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { gte: dayStart, lte: dayEnd }, ...(locationId ? { locationId } : {}) },
+    where: { status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { gte: dayStart, lte: dayEnd }, ...(locationId ? { locationId } : {}), ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}) },
     select: { startAt: true, endAt: true, bufferMin: true },
   });
   return !sameDay.some((b) => start.getTime() < busyEnd(b) && endBufferedMs > b.startAt.getTime());

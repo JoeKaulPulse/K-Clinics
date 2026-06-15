@@ -25,15 +25,15 @@ export async function signupStudent(input: AcademySignup): Promise<{ ok: boolean
   });
   // Link any prior applications made with this email to the new account.
   await db.enrolment.updateMany({ where: { applicantEmail: email, studentId: null }, data: { studentId: student.id } }).catch(() => {});
-  await createAcademySession({ sub: student.id, email: student.email, firstName: student.firstName });
+  await createAcademySession({ sub: student.id, email: student.email, firstName: student.firstName, epoch: student.sessionEpoch });
   return { ok: true };
 }
 
 export async function loginStudent(email: string, password: string): Promise<{ ok: boolean; error?: string }> {
-  const student = await db.academyStudent.findUnique({ where: { email: email.trim().toLowerCase() }, select: { id: true, email: true, firstName: true, passwordHash: true } });
+  const student = await db.academyStudent.findUnique({ where: { email: email.trim().toLowerCase() }, select: { id: true, email: true, firstName: true, passwordHash: true, sessionEpoch: true } });
   if (!student?.passwordHash || !(await verifyPassword(password, student.passwordHash))) return { ok: false, error: 'Invalid email or password.' };
   await db.academyStudent.update({ where: { id: student.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
-  await createAcademySession({ sub: student.id, email: student.email, firstName: student.firstName });
+  await createAcademySession({ sub: student.id, email: student.email, firstName: student.firstName, epoch: student.sessionEpoch });
   return { ok: true };
 }
 
@@ -41,7 +41,19 @@ export async function getCurrentStudent() {
   const session = await getAcademySession();
   if (!session) return null;
   const student = await db.academyStudent.findUnique({ where: { id: session.sub } });
+  if (!student) return null;
   // A deactivated trainee loses access immediately (don't wait for token expiry).
-  if (student && student.portalActive === false) return null;
+  if (student.portalActive === false) return null;
+  // Revoke superseded sessions: a password reset / suspend / sign-out-everywhere
+  // bumps sessionEpoch, so a token minted before that no longer authenticates.
+  // (Legacy tokens issued before this field default to epoch 0 = current, so no
+  // flag-day logout.)
+  if ((session.epoch ?? 0) !== student.sessionEpoch) return null;
   return student;
+}
+
+/** Revoke all outstanding academy sessions for a student (bump the epoch). Called
+ *  on suspend, password reset, or an explicit "sign out everywhere". */
+export async function bumpAcademyEpoch(studentId: string): Promise<void> {
+  await db.academyStudent.update({ where: { id: studentId }, data: { sessionEpoch: { increment: 1 } } }).catch(() => {});
 }

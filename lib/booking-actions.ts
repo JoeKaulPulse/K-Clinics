@@ -383,7 +383,9 @@ export async function rescheduleBooking(
   // BLD-192: an admin reschedule may move an appointment to any free time (the
   // 48h-notice gate above already governs client self-service); a staff move must
   // not be blocked by the public 2-hour online lead window.
-  if (!(await isSlotFree(newStartISO, booking.durationMin, booking.treatmentSlug, null, opts.admin ? { leadMinutes: 0 } : undefined))) {
+  // Exclude this booking from the clash check so a same-day move doesn't conflict
+  // with its own current slot/clinician/room (BLD reschedule self-clash).
+  if (!(await isSlotFree(newStartISO, booking.durationMin, booking.treatmentSlug, null, { excludeBookingId: bookingId, ...(opts.admin ? { leadMinutes: 0 } : {}) }))) {
     return { ok: false, error: 'That time is no longer available. Please choose another slot.' };
   }
 
