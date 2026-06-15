@@ -7,7 +7,16 @@ export const formatPence = (p: number) => (p <= 0 ? 'Free' : `£${(p / 100).toLo
 
 export async function activeProducts() {
   const { db } = await import('@/lib/db');
-  return db.product.findMany({ where: { status: 'ACTIVE' }, orderBy: { updatedAt: 'desc' } });
+  return db.product.findMany({
+    where: { status: 'ACTIVE' },
+    orderBy: { updatedAt: 'desc' },
+    select: {
+      id: true, slug: true, name: true, description: true, brand: true, category: true,
+      pricePence: true, compareAtPence: true, sku: true, images: true, status: true,
+      ageRestricted: true, trackInventory: true, stockQty: true, lowStockThreshold: true,
+      createdAt: true, updatedAt: true,
+    },
+  });
 }
 
 export async function getProductBySlug(slug: string) {
@@ -23,7 +32,12 @@ export type ValidatedCart = { lines: CartLine[]; subtotalPence: number; hasAgeRe
 export async function validateCart(input: CartInput): Promise<ValidatedCart> {
   const { db } = await import('@/lib/db');
   const ids = [...new Set(input.map((i) => i.productId))];
-  const products = ids.length ? await db.product.findMany({ where: { id: { in: ids }, status: 'ACTIVE' } }) : [];
+  const products = ids.length
+    ? await db.product.findMany({
+        where: { id: { in: ids }, status: 'ACTIVE' },
+        select: { id: true, name: true, sku: true, pricePence: true, ageRestricted: true, trackInventory: true, stockQty: true, images: true },
+      })
+    : [];
   const byId = new Map(products.map((p) => [p.id, p]));
   const lines: CartLine[] = [];
   const issues: string[] = [];
@@ -44,8 +58,21 @@ export const shippingFor = (method: string, subtotalPence: number) =>
 
 export async function nextOrderNumber(): Promise<string> {
   const { db } = await import('@/lib/db');
-  const count = await db.order.count();
-  return `KC${(1000 + count + 1).toString()}`;
+  // Atomic: INSERT the counter row (seeded from current max order number + 1)
+  // or, on conflict, increment it. Both branches return the allocated number.
+  // A race between two concurrent checkouts can't mint the same KC#### because
+  // the UPDATE is serialised at the DB row level.
+  const rows = await db.$queryRaw<[{ num: bigint }]>`
+    INSERT INTO "OrderCounter" (id, next)
+    SELECT 1, GREATEST(
+      (SELECT COALESCE(MAX(CAST(SUBSTRING(number FROM 3) AS INTEGER)), 1000) + 1
+       FROM "Order" WHERE number ~ '^KC[0-9]+$'),
+      1001
+    ) + 1
+    ON CONFLICT (id) DO UPDATE SET next = "OrderCounter".next + 1
+    RETURNING "OrderCounter".next - 1 AS num
+  `;
+  return `KC${Number(rows[0].num)}`;
 }
 
 /** Finalise a paid order: decrement stock, redeem any gift card, send the

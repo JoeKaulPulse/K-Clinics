@@ -2920,6 +2920,17 @@ model OrderItem {
   ageRestricted Boolean @default(false)
 }
 
+// ── Order number sequence counter ────────────────────────────────────────────
+// A single-row counter that allocates KC#### order numbers without races.
+// nextOrderNumber() in lib/shop.ts uses an atomic INSERT … ON CONFLICT UPDATE
+// so two concurrent checkouts can never mint the same number. No @unique needed
+// (uniqueness is structural — one row, atomically incremented). Additive schema
+// change; prisma db push safe.
+model OrderCounter {
+  id   Int @id @default(1)
+  next Int @default(1001)
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Day-close — the end-of-day clinic shutdown record. One per location per
 // business day. Captures the financial reconciliation (expected vs counted

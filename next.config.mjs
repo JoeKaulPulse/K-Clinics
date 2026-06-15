@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+import { withSentryConfig } from '@sentry/nextjs';
 
 // When deploying to GitHub Pages we produce a fully static export served from a
 // sub-path (https://<user>.github.io/<repo>/). The Actions workflow sets these.
@@ -19,7 +20,7 @@ const csp = [
   "font-src 'self' https://fonts.gstatic.com data:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "script-src 'self' 'unsafe-inline' https://js.stripe.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://maps.googleapis.com https://maps.gstatic.com",
-  "connect-src 'self' https://api.stripe.com https://m.stripe.network https://r.stripe.com https://challenges.cloudflare.com https://maps.googleapis.com https://blob.vercel-storage.com https://*.public.blob.vercel-storage.com",
+  "connect-src 'self' https://api.stripe.com https://m.stripe.network https://r.stripe.com https://challenges.cloudflare.com https://maps.googleapis.com https://blob.vercel-storage.com https://*.public.blob.vercel-storage.com https://*.sentry.io https://*.ingest.sentry.io",
   "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com",
   "worker-src 'self' blob:",
   'upgrade-insecure-requests',
@@ -133,4 +134,18 @@ const nextConfig = {
     : { redirects, headers }),
 };
 
-export default nextConfig;
+// Wrap with Sentry only when SENTRY_DSN or SENTRY_AUTH_TOKEN is configured.
+// Without these vars the build behaves identically to before — no overhead.
+const hasSentry = Boolean(process.env.SENTRY_DSN || process.env.SENTRY_AUTH_TOKEN);
+
+export default hasSentry
+  ? withSentryConfig(nextConfig, {
+      // Disable source-map upload unless SENTRY_AUTH_TOKEN is explicitly set.
+      sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+      // Suppress verbose CLI output.
+      silent: true,
+      // Do not auto-instrument anything beyond what instrumentation.ts already does.
+      autoInstrumentServerFunctions: false,
+      autoInstrumentMiddleware: false,
+    })
+  : nextConfig;

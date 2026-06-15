@@ -76,6 +76,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   // in this file) whose work has shipped: reconcileBacklog() matches by exact
   // title and advances the live item to SHIPPED on the next board load.
   {
+    title: 'Add Sentry (or equivalent) error tracking (BLD-348)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 9, effort: 3,
+    detail: '@sentry/nextjs 10.x integrated. instrumentation.ts (register + onRequestError = captureRequestError) covers server-side errors in route handlers, Server Components and middleware. sentry.client.config.ts covers client-side errors (loaded by the webpack plugin via withSentryConfig when SENTRY_DSN is set). global-error.tsx now calls captureException on render. CSP updated to allow *.sentry.io + *.ingest.sentry.io in connect-src. withSentryConfig wraps next.config.mjs conditionally (only active when SENTRY_DSN or SENTRY_AUTH_TOKEN is in the build env) so builds without Sentry are unchanged. To activate: add SENTRY_DSN (server) and NEXT_PUBLIC_SENTRY_DSN (client) to Vercel env vars and redeploy. Optionally add SENTRY_AUTH_TOKEN for source-map upload.',
+    notes: ['instrumentation.ts: register() + onRequestError = Sentry.captureRequestError. sentry.client.config.ts: client init (no-op if NEXT_PUBLIC_SENTRY_DSN unset). next.config.mjs: withSentryConfig conditional on hasSentry = Boolean(SENTRY_DSN || SENTRY_AUTH_TOKEN). CSP: connect-src += *.sentry.io + *.ingest.sentry.io. Alert thresholds: configure in Sentry dashboard under Project > Alerts after first errors arrive. tracesSampleRate: 0.05 (5% of requests traced).'],
+  },
+  {
+    title: 'Order number generation races on order.count() — duplicate KC#### possible (BLD-332)', type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 5, effort: 4,
+    detail: 'Replaced the racy count()-based nextOrderNumber() with an atomic INSERT ... ON CONFLICT DO UPDATE counter row. New OrderCounter model (additive, no @unique, prisma db push safe). The INSERT seeds itself from the current max KC#### on first call; every subsequent call does a lock-serialised atomic increment. Two concurrent checkouts can no longer mint the same number. Also fixed activeProducts() and validateCart() to use column-projected select (excludes costPence and barcode from public responses) — BLD-316 remaining partial.',
+    notes: ['prisma/schema.prisma: new OrderCounter model (id Int @id @default(1), next Int @default(1001)). lib/shop.ts nextOrderNumber(): $queryRaw atomic INSERT...ON CONFLICT UPDATE RETURNING next-1. lib/shop.ts activeProducts(): select excludes costPence/barcode. lib/shop.ts validateCart(): select only needed fields.'],
+  },
+  {
     title: "Heatmap isn't loading in and session recordings not working", type: 'ERROR', urgency: 'P0', status: 'SHIPPED', pr: PR(489),
     detail: 'Owner-reported (issue #374): the Behaviour-insights heatmap preview and session replays were broken.',
     notes: [
