@@ -54,22 +54,31 @@ export const shippingFor = (method: string, subtotalPence: number) =>
 export async function nextOrderNumber(): Promise<string> {
   const { db } = await import('@/lib/db');
   // Race-free: Postgres sequence guarantees each concurrent caller gets a
-  // distinct value. The DO block is idempotent — it creates the sequence once
-  // and seeds it above any existing KC-number so old count-based numbers are
-  // never re-issued (Order.number is @unique, so a collision would fail the
-  // insert; this prevents the collision upstream).
+  // distinct value. On first use we CREATE the sequence with START = max(existing
+  // KC-number) + 1, so the very first nextval is already above all existing
+  // Order.number values — no gap between creation and seeding that another
+  // concurrent nextval could exploit. Subsequent calls skip the IF block.
+  // On concurrent creation, only one EXECUTE succeeds; the other catches the
+  // duplicate_object exception and moves on — both then call nextval safely.
   await db.$executeRaw`
     DO $body$
-    DECLARE maxn BIGINT;
+    DECLARE
+      start_val BIGINT;
     BEGIN
-      CREATE SEQUENCE IF NOT EXISTS kc_order_seq MINVALUE 1001 START 1001;
-      SELECT COALESCE(MAX(CAST(SUBSTRING(number FROM 3) AS BIGINT)), 1000)
-        INTO maxn
-        FROM "Order"
-        WHERE number ~ E'^KC[0-9]+$';
-      PERFORM setval('kc_order_seq', GREATEST(
-        (SELECT last_value FROM kc_order_seq), maxn
-      ));
+      IF NOT EXISTS (SELECT FROM pg_sequences WHERE sequencename = 'kc_order_seq') THEN
+        SELECT GREATEST(
+          COALESCE(MAX(CAST(SUBSTRING(number FROM 3) AS BIGINT)), 1000) + 1,
+          1001
+        )
+          INTO start_val
+          FROM "Order"
+          WHERE number ~ E'^KC[0-9]+$';
+        BEGIN
+          EXECUTE 'CREATE SEQUENCE kc_order_seq MINVALUE 1001 START ' || start_val::text;
+        EXCEPTION WHEN duplicate_table THEN
+          NULL; -- concurrent creation; sequence is already there
+        END;
+      END IF;
     END
     $body$
   `;
