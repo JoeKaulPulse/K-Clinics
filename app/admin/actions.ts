@@ -27,11 +27,11 @@ export async function addNote(clientId: string, summary: string, type: string = 
 }
 
 // GDPR right-to-erasure — pseudonymise a client's personal data while keeping
-// financial/audit records intact for legal retention. Requires clients.export.
+// financial/audit records intact for legal retention. Requires clients.delete.
 export async function eraseClientData(clientId: string) {
   if (!crmEnabled) return { ok: false };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'clients.export')) return { ok: false, error: 'Not permitted' };
+  if (!session || !sessionCan(session, 'clients.delete')) return { ok: false, error: 'Not permitted' };
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
   // Art. 17 erasure across ALL personal/special-category data, atomically. We
@@ -92,8 +92,18 @@ export async function eraseClientData(clientId: string) {
     // Legacy Appointment model (pre-Booking era) — status/schedule data only,
     // no financial retention basis, safe to hard-delete.
     db.appointment.deleteMany({ where: { clientId } }),
+    // Null fingerprint fields in DiscountClaim — re-identifiable without retention basis.
+    db.discountClaim.updateMany({ where: { clientId }, data: { emailNorm: 'erased', phoneNorm: null, nameDobKey: null } }),
+    // Strip PII from retail Orders (email/name/phone/address) — keep order number
+    // and amounts for Xero/HMRC basis. Orders have no FK to Client so we match by email
+    // after pseudonymising — use the client's current (pre-erase) email if possible,
+    // but since we're inside a transaction that updates the email, use clientId match.
+    // Note: Order.clientId is nullable String with no formal FK relation.
+    db.order.updateMany({ where: { clientId }, data: { name: 'Erased', email: `erased-${clientId}@redacted.invalid`, phone: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
+    // Strip PII from GiftVouchers purchased or claimed by this client.
+    db.giftVoucher.updateMany({ where: { claimedByClientId: clientId }, data: { recipientName: null, recipientEmail: null, message: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
   ]);
-  await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
+  await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
   revalidatePath(`/admin/clients/${clientId}`);
   return { ok: true };
 }

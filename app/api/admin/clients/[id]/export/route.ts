@@ -19,6 +19,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     include: {
       consultations: true, interactions: true, appointments: true, bookings: true,
       emails: true, discountClaims: true, tasks: true,
+      aiAnalyses: true, reviews: true, npsResponses: true, followUps: true,
+      waitlist: true, callRecords: true,
+      referralsMade: { where: { referrerId: id } },
     },
   });
   if (!c) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
@@ -38,14 +41,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const out: Record<string, unknown> = { exportedAt: new Date().toISOString(), exportedBy: session!.email, client };
 
-  if (canViewClinical(session!.role)) {
+  if (sessionCan(session!, 'clients.clinical.view')) {
     const assessments = await db.healthAssessment.findMany({ where: { clientId: id }, orderBy: { submittedAt: 'desc' } });
     const { formatAssessment } = await import('@/lib/health-assessments');
     out.healthAssessments = await Promise.all(assessments.map((a) => formatAssessment(a.id)));
   }
 
   const { logAudit } = await import('@/lib/audit');
-  await logAudit({ action: 'ASSESSMENT_VIEWED', actor: session!.email, actorRole: session!.role, clientId: id, summary: 'Client data exported (SAR)' });
+  await logAudit({ action: 'DATA_EXPORTED', actor: session!.email, actorRole: session!.role, clientId: id, summary: 'Client data exported (SAR)' });
 
   const name = [c.firstName, c.lastName].filter(Boolean).join('-').toLowerCase() || 'client';
   return new NextResponse(JSON.stringify(out, null, 2), {
