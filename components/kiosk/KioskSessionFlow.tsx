@@ -245,7 +245,7 @@ export function KioskSessionFlow({
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm">
           <h2 className="font-[family-name:var(--font-display)] text-2xl">Quick consent</h2>
           <p className="mt-3 text-sm text-[var(--color-blush)]">
-            We’ll analyse your photo using AI provided by Anthropic. Your photo is stored securely and deleted after 30 days.
+            We’ll analyse your photo using AI provided by Anthropic, which processes it in the United States under appropriate UK data-transfer safeguards. Your photo is stored securely and deleted after 30 days.
           </p>
           <p className="mt-2 text-sm text-[var(--color-blush)]">
             Photos are deleted within 30 days — and immediately if we can’t confirm you’re 18 or over.
