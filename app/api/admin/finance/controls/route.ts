@@ -31,21 +31,27 @@ export async function POST(req: Request) {
   if (b.op === 'vat') {
     const rate = Math.round(Number(b.defaultRatePct));
     if (!Number.isFinite(rate) || rate < 0 || rate > 100) return NextResponse.json({ ok: false, error: 'VAT rate must be between 0 and 100%.' }, { status: 400 });
-    await Promise.all([
+    const vatResults = await Promise.allSettled([
       setSetting('vat_registered', !!b.registered, session.email),
       setSetting('prices_vat_inclusive', !!b.inclusive, session.email),
       setConfigNumber('vat_default_rate_pct', rate, session.email),
     ]);
+    if (vatResults.some((r) => r.status === 'rejected')) {
+      return NextResponse.json({ ok: false, error: 'Some settings could not be saved.' }, { status: 500 });
+    }
     await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: `VAT: ${b.registered ? 'registered' : 'not registered'}, ${b.inclusive ? 'inclusive' : 'exclusive'}, ${rate}%` }).catch(() => {});
     return NextResponse.json({ ok: true });
   }
   if (b.op === 'kiosk') {
     const pct = Math.round(Number(b.discountPct));
     if (!Number.isFinite(pct) || pct < 1 || pct > 100) return NextResponse.json({ ok: false, error: 'Discount must be between 1 and 100%.' }, { status: 400 });
-    await Promise.all([
+    const kioskResults = await Promise.allSettled([
       setSetting('kiosk_discount_enabled', !!b.enabled, session.email),
       setConfigNumber('kiosk_discount_pct', pct, session.email),
     ]);
+    if (kioskResults.some((r) => r.status === 'rejected')) {
+      return NextResponse.json({ ok: false, error: 'Some settings could not be saved.' }, { status: 500 });
+    }
     await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: `Kiosk share reward: ${b.enabled ? 'on' : 'off'}, ${pct}%` }).catch(() => {});
     return NextResponse.json({ ok: true });
   }
