@@ -115,11 +115,19 @@ a read-only SSE mirror of the session. Added so far, and planned:
   card will be charged (net of discount), the held total, and the amount once taken at checkout.
   Sanitised through `ClientLiveView`; no clinical or PII detail.
   (`lib/appointment-session-server.ts`, `components/live/LiveCompanion.tsx`).
-- Planned: health and consent forms surfaced inline on the same page to read, tick and sign on
-  the client's own phone, reusing the existing immutable consent pipeline (`ConsentTemplate` /
-  `ConsentRequest` / `SignedConsent`, `templateKeyForTreatment`) and the canvas signature pad
-  in `components/consent/ConsentSigner.tsx`, so the legal certificate + integrity hash are
-  preserved.
+- Done: consent forms surfaced inline. When the clinician generates a consent request during the
+  visit, it appears live (over SSE) on the client's phone as a "Your forms" card; tapping it opens
+  a focused, light-themed sheet that reuses the shared `ConsentSigner` (read → tick → sign with the
+  canvas pad) and the existing token-authed `/api/consent/sign`, so the immutable `SignedConsent`
+  record, certificate and integrity hash are identical to the standalone `/sign/[token]` flow.
+  A new token-scoped `GET /api/consent/[token]` serves the content; the sheet falls back to the
+  dedicated page if it can't load. Signed forms then show as completed on the companion.
+  (`lib/appointment-session-server.ts`, `components/live/LiveCompanion.tsx`,
+  `app/api/consent/[token]/route.ts`).
+- Follow-up: token-authed health-intake (medical history) on `/live`. Health questionnaires are
+  account-gated today (`/account/assessments`) and capture answers, not signatures; surfacing a
+  fill-in flow on the token-authed live page (special-category data, client identity) is a separate
+  piece. Until then the consent forms above are the read/tick/sign surface on the phone.
 
 ## Recommended follow-ups (prioritised)
 
