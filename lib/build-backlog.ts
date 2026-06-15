@@ -1343,6 +1343,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Client SAR export now includes all 10 previously-missing data categories. Non-clinical (followUps, reviews, npsResponses, waitlist, referralsMade, points) added to main include. Clinical (aiAnalyses, beforePhotos, signedConsents, consultationNotes, appointmentSessions, chatConversations, callRecords) added to the canViewClinical block via parallel Promise.all queries. Previously the erasure deleted these records but the export never included them, violating GDPR Art. 15. Commit b212eca.',
     notes: ['app/api/admin/clients/[id]/export/route.ts. Erasure list in app/admin/actions.ts eraseClientData() used as the source of truth for parity.'],
   },
+  {
+    title: 'Academy content batch 9 -- Record Keeping, Acne Protocols, Medication Interactions (BLD-311)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 5,
+    detail: '3 new modules: "Record Keeping & Data Protection in Practice" (L2 -- GDPR, SAR, retention, adverse event records), "Acne & Post-Inflammatory Hyperpigmentation Protocols" (L3 -- IPL mechanism, isotretinoin 6-month rule, PIH Fitzpatrick adjustment, tyrosinase prep), "Medication Interactions & Photosensitivity" (L4 -- photosensitisers, retinoid pause, anticoagulants, immunosuppressants, GP referral pathway). Each: 2 lessons, 6-question quiz. Plus 12 new exam-bank questions across L2/L3/L4.',
+    notes: ['lib/academy-content.ts. enrichCourseContentIfNeeded() picks up additions on the next daily cron run.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
