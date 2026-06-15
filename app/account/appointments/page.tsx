@@ -29,7 +29,8 @@ export default async function AppointmentsPage() {
   const { upcoming, past } = await getDashboard(client.id);
 
   const { clientBalance, pointsToPence, LOYALTY } = await import('@/lib/client-loyalty');
-  const balancePence = pointsToPence(await clientBalance(client.id));
+  // Loyalty balance is non-essential to the appointments list — never let it 500 the page.
+  const balancePence = pointsToPence(await clientBalance(client.id).catch(() => 0));
 
   const locale: Locale = client.locale === 'uk' ? 'uk' : 'en';
   const t = (k: string, v?: Record<string, string | number>) => pt(locale, k, v);

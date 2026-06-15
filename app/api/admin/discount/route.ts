@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
@@ -34,9 +35,12 @@ export async function POST(req: Request) {
       select: { id: true, status: true },
     });
     if (other) return NextResponse.json({ ok: false, error: `This client already has ${other.status === 'REDEEMED' ? 'used' : 'an active'} welcome discount — revoke it first.` }, { status: 409 });
+    // If this was an anti-abuse placeholder, mint a clean welcome code so the
+    // client never sees a "BLOCKED-…" code on their dashboard once it's granted.
+    const regen = claim.code.startsWith('BLOCKED-') ? { code: `KC15-${crypto.randomBytes(3).toString('hex').toUpperCase()}` } : {};
     await db.discountClaim.update({
       where: { id: claimId },
-      data: { status: 'ACTIVE', reviewedBy: session.email, flagged: false },
+      data: { status: 'ACTIVE', reviewedBy: session.email, flagged: false, ...regen },
     });
     await db.client.update({ where: { id: claim.clientId }, data: { firstDiscountClaimed: true } });
   }
