@@ -27,11 +27,12 @@ export async function addNote(clientId: string, summary: string, type: string = 
 }
 
 // GDPR right-to-erasure — pseudonymise a client's personal data while keeping
-// financial/audit records intact for legal retention. Requires clients.export.
+// financial/audit records intact for legal retention. Requires clients.delete
+// (stronger gate than clients.export — erasure is irreversible). (BLD-315)
 export async function eraseClientData(clientId: string) {
   if (!crmEnabled) return { ok: false };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'clients.export')) return { ok: false, error: 'Not permitted' };
+  if (!session || !sessionCan(session, 'clients.delete')) return { ok: false, error: 'Not permitted' };
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
   // Art. 17 erasure across ALL personal/special-category data, atomically. We
@@ -93,7 +94,7 @@ export async function eraseClientData(clientId: string) {
     // no financial retention basis, safe to hard-delete.
     db.appointment.deleteMany({ where: { clientId } }),
   ]);
-  await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
+  await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR Art.17 right-to-erasure)' });
   revalidatePath(`/admin/clients/${clientId}`);
   return { ok: true };
 }

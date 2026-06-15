@@ -76,6 +76,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   // in this file) whose work has shipped: reconcileBacklog() matches by exact
   // title and advances the live item to SHIPPED on the next board load.
   {
+    title: 'GDPR data-subject completeness (SAR / erasure / export parity) (BLD-315)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 6,
+    detail: 'BLD-315 items 1, 4, 5 implemented. (1) SAR export now covers all data categories the erasure path touches: followUps, aiAnalyses (status/areas/summary), reviews, npsResponses, waitlist, referralsMade/referredVia, callRecords, points, chatConversations+messages, and — gated on clients.clinical.view — signedConsents (id/templateKey/title/kind/declined/signerName/signedAt) and beforePhotos (id/area/capturedBy/attestation/createdAt). Encrypted image data not exported — referenced by id. (4) Clinical view in SAR export changed from canViewClinical(role) to sessionCan(session, clients.clinical.view) so permission revocation is immediately effective without requiring a role change. (5) eraseClientData: gating changed from clients.export to clients.delete (erasure is irreversible; export permission alone should not gate it); audit action changed from NOTE_ADDED to CLIENT_ERASED (new additive AuditAction enum value). Skipped items 2/3 (Order/GiftVoucher/DiscountClaim erasure — need HMRC retention analysis), 6 (kiosk consent text — legal text needs owner review), 7 (translation sub-processor — separate register update).',
+    notes: ['app/api/admin/clients/[id]/export/route.ts: broadened include + clinical select gated on clients.clinical.view. app/admin/actions.ts: clients.delete permission gate + CLIENT_ERASED audit action. prisma/schema.prisma: CLIENT_ERASED added to AuditAction enum (additive, db push safe).'],
+  },
+  {
     title: "Heatmap isn't loading in and session recordings not working", type: 'ERROR', urgency: 'P0', status: 'SHIPPED', pr: PR(489),
     detail: 'Owner-reported (issue #374): the Behaviour-insights heatmap preview and session replays were broken.',
     notes: [

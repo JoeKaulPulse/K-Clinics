@@ -165,6 +165,7 @@ enum AuditAction {
   CONSENT_DECLINED
   BEFORE_PHOTO_CAPTURED
   CLIENT_DELETED
+  CLIENT_ERASED // GDPR Art.17 right-to-erasure (pseudonymisation + hard-deletes) (BLD-315)
   CLIENT_EDITED
   DATA_EXPORTED
   DATA_IMPORTED // a data-migration step wrote records (e.g. WordPress import, BLD-187)
