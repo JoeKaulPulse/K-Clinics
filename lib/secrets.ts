@@ -54,6 +54,16 @@ export const SECRET_DEFS: SecretDef[] = [
 
 const MANAGEABLE = new Set(SECRET_DEFS.filter((d) => !d.envOnly).map((d) => d.name));
 
+// Built-in fallback values for non-credential config, used by getSecret when
+// neither a managed value nor an env var is set. NOT secrets — an owner-set value
+// or env var overrides them. Kept separate from SECRET_DEFS so the value is never
+// included in secretStatus()/returned to the client.
+const SECRET_DEFAULTS: Record<string, string> = {
+  // K Clinics outbound SMS sender (Twilio). Used ONLY to text clients — server-side
+  // sending identifier, never surfaced publicly (the public number is site.phone).
+  TWILIO_FROM: '+447828877444',
+};
+
 // Short in-memory cache (per server instance) so hot paths (every email/SMS send)
 // don't hit the DB each time. Eventual consistency within the TTL is fine.
 let cache: Map<string, string> | null = null;
@@ -82,7 +92,8 @@ export async function getSecret(name: string): Promise<string | undefined> {
     if (v) return v;
   }
   const env = process.env[name];
-  return env && env.length > 0 ? env : undefined;
+  if (env && env.length > 0) return env;
+  return SECRET_DEFAULTS[name]; // built-in default (e.g. the SMS sender number), else undefined
 }
 
 /** Convenience for `Boolean(await getSecret(name))`. */
