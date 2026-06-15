@@ -1911,6 +1911,190 @@ export const NEW_MODULES: CourseContentDef[] = [
     ],
   },
 
+  // -- BATCH 9 -----------------------------------------------------------------
+
+  {
+    courseSlug: 'level-2-foundation-skin-laser',
+    modules: [
+      {
+        title: 'Record Keeping & Data Protection in Practice',
+        summary: "What to record after every treatment, how long to keep records, and how UK GDPR applies to client health data in an aesthetic practice.",
+        lessons: [
+          {
+            title: 'What to Record and Why',
+            durationMin: 10,
+            objectives: ['List the essential components of a treatment record', "Explain why contemporaneous records protect both client and practitioner", 'State the minimum retention period for aesthetic treatment records'],
+            studyTips: ['VTCT assessors look for complete records in practical units. Incomplete records are the most common cause of assessment re-sits.'],
+            examRefs: ['Record keeping', 'Clinical documentation'],
+            steps: [
+              { kind: 'say', text: "A good record is your evidence of what you did, why you did it, and how the client responded.", mood: 'think' },
+              { kind: 'teach', title: 'The essential components', text: "Every treatment record must include: the date, client name and date of birth, the treatment carried out, device and settings used (where relevant), batch numbers for any products applied, the client's response during and after treatment, and the aftercare advice given." },
+              { kind: 'ask', prompt: 'Which items belong in a complete treatment record?', qtype: 'MULTI', options: ['Settings and device used', 'Client response', 'Aftercare advice given', "The practitioner's opinion of the client's clothes"], correct: [0, 1, 2], explanation: "Settings, client response and aftercare are all essential; personal opinions do not belong in a clinical record." },
+              { kind: 'teach', title: 'Contemporaneous recording', text: 'Records must be made at the time of treatment, not reconstructed later. A contemporaneous note is more accurate and carries more legal weight if ever challenged.' },
+              { kind: 'ask', prompt: 'When should treatment notes be completed?', qtype: 'SINGLE', options: ['At the time of treatment', 'At the end of the week', 'Only when something went wrong', 'Never for low-risk treatments'], correct: [0], explanation: 'At the time is the standard. Delayed records are less reliable and less credible.' },
+              { kind: 'teach', title: 'Retention periods', text: "Aesthetic treatment records should be kept for a minimum of 7 years in adults, or until the client's 25th birthday if they were under 18 at the time of treatment, to ensure records survive into adulthood." },
+              { kind: 'ask', prompt: 'The minimum recommended retention period for adult aesthetic records is...', qtype: 'SINGLE', options: ['7 years', '2 years', '1 year', 'Indefinitely'], correct: [0], explanation: '7 years is the standard, mirroring NHS guidance for primary care records.' },
+              { kind: 'say', text: 'Good records protect clients and protect you. Write them every time, immediately.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'UK GDPR & Client Confidentiality',
+            durationMin: 11,
+            objectives: ["Explain why health data is classed as special category data under UK GDPR", "Describe the practitioner's duty to store and transmit records securely", "Outline a client's rights in relation to their own health data"],
+            studyTips: ["UK GDPR applies to all businesses processing personal data, including sole traders. Your lawful basis for processing client health data in treatment is 'vital interests' or an explicit consent form -- make sure you have one."],
+            examRefs: ['Data protection', 'UK GDPR', 'Client rights'],
+            steps: [
+              { kind: 'say', text: "Clients share health information with you in confidence. GDPR is the legal framework that governs how you handle it.", mood: 'think' },
+              { kind: 'teach', title: 'Special category data', text: "Health information is classed as 'special category data' under the UK GDPR -- the most protected type. It includes medical history, medications, allergies, and any clinical notes you write about a client." },
+              { kind: 'ask', prompt: 'Under UK GDPR, client health data is classed as...', qtype: 'WORD', options: ['special category', 'public', 'routine'], correct: [0], explanation: 'Health information requires the highest level of protection under UK GDPR.' },
+              { kind: 'teach', title: 'Secure storage', text: 'Records must be stored securely: paper records in a locked cabinet; digital records in a password-protected or encrypted system. Only staff with a legitimate clinical reason should be able to access them.' },
+              { kind: 'ask', prompt: 'Paper client records must be stored in a...', qtype: 'WORD', options: ['locked', 'open', 'shared'], correct: [0], explanation: 'Locked storage is the minimum requirement for paper health records.' },
+              { kind: 'teach', title: 'Client rights', text: "Clients have the right to request a copy of all personal data you hold about them (a Subject Access Request, or SAR). You must respond within one calendar month at no charge. They can also ask you to correct inaccurate data or delete data you no longer have a reason to hold." },
+              { kind: 'ask', prompt: 'A client sends a Subject Access Request. How long do you have to respond?', qtype: 'SINGLE', options: ['One calendar month', 'One week', 'Three months', 'Only if you choose to'], correct: [0], explanation: 'UK GDPR requires a response within one calendar month, free of charge.' },
+              { kind: 'teach', title: 'Confidentiality', text: "Client information must never be shared with third parties without consent, except where required by law (e.g. a formal court order or a safeguarding concern). Discussing a client by name with someone outside your team is a breach -- even if no harm results." },
+              { kind: 'ask', prompt: "When can you share a client's health information with a third party without their consent?", qtype: 'SINGLE', options: ['When required by law (e.g. a safeguarding concern or court order)', 'Whenever you think it is helpful', 'After their treatment ends', 'Never under any circumstances'], correct: [0], explanation: 'Exceptions to confidentiality are narrow and legally defined. Safeguarding and lawful court orders are the main ones.' },
+              { kind: 'say', text: "Treat every client's data the way you would want your own treated.", mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Record Keeping & Data Protection Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'A treatment record must be completed...', type: 'SINGLE', options: ['At the time of treatment', 'At the end of the day', 'Only if something went wrong', 'After the client has paid'], correct: [0], explanation: 'Contemporaneous records are more accurate and legally stronger.' },
+            { prompt: 'The minimum retention period for adult aesthetic records is...', type: 'SINGLE', options: ['7 years', '2 years', '6 months', '30 days'], correct: [0], explanation: '7 years is the standard, aligned with NHS primary care guidance.' },
+            { prompt: 'Client health data is classed under UK GDPR as...', type: 'SINGLE', options: ['Special category data', 'Routine personal data', 'Public information', 'Unrestricted'], correct: [0], explanation: 'Health data carries the highest level of GDPR protection.' },
+            { prompt: 'A Subject Access Request must be answered within...', type: 'SINGLE', options: ['One calendar month', 'Three months', 'Six months', 'Only if legally forced'], correct: [0], explanation: 'UK GDPR mandates a response within one calendar month, at no cost to the client.' },
+            { prompt: 'Which items must appear in every treatment record?', type: 'MULTI', options: ['Date and client details', 'Settings and products used', 'Client response and aftercare given', "The practitioner's mood"], correct: [0, 1, 2], explanation: 'Date, settings, response and aftercare are all required; subjective personal comments are not.' },
+            { prompt: 'Paper client health records should be kept in a...', type: 'SINGLE', options: ['Locked cabinet', 'Open shelf', 'Reception desk', 'Bin after each visit'], correct: [0], explanation: 'Locked storage is the minimum for paper health records.' },
+          ],
+        },
+      },
+    ],
+  },
+
+  {
+    courseSlug: 'level-3-laser-aesthetic-therapies',
+    modules: [
+      {
+        title: 'Acne & Post-Inflammatory Hyperpigmentation Protocols',
+        summary: "How acne forms, why IPL and laser improve it, how to recognise and prevent post-inflammatory hyperpigmentation, and how Fitzpatrick type should modify your treatment approach.",
+        lessons: [
+          {
+            title: 'Light-Based Acne Treatment: Pathology and Mechanisms',
+            durationMin: 13,
+            objectives: ['Describe the pathophysiology of inflammatory acne', 'Explain how IPL and blue-light targets reduce P. acnes and sebum production', 'List contraindications specific to light-based acne treatment'],
+            studyTips: ['The porphyrin mechanism is a VTCT exam favourite. Know that it is the bacteria that absorbs the light, not just the skin.'],
+            examRefs: ['Acne treatment', 'IPL mechanisms', 'Contraindications'],
+            steps: [
+              { kind: 'say', text: "Acne is not just a surface problem -- light works because it addresses what is happening inside the follicle.", mood: 'think' },
+              { kind: 'teach', title: 'How acne forms', text: "Acne begins when sebum and dead skin cells block a hair follicle. Propionibacterium acnes (P. acnes), a normal skin bacterium, proliferates in the blocked, oxygen-poor environment, triggering inflammation -- the redness, swelling and pain of a pimple." },
+              { kind: 'ask', prompt: 'Inflammatory acne is driven by which bacterium?', qtype: 'WORD', options: ['P. acnes', 'Staph. aureus', 'Streptococcus'], correct: [0], explanation: 'P. acnes (Cutibacterium acnes) proliferates in blocked follicles and causes inflammation.' },
+              { kind: 'teach', title: 'The porphyrin mechanism', text: 'P. acnes naturally produces porphyrins. When blue or green light (415-560 nm) hits these porphyrins, it produces reactive oxygen species that destroy the bacteria -- without damaging surrounding tissue. This is selective photothermolysis targeting a biological molecule rather than a structural chromophore.' },
+              { kind: 'ask', prompt: 'IPL treats acne partly by activating porphyrins produced by...', qtype: 'SINGLE', options: ['P. acnes bacteria', 'Melanin in the skin', 'Haemoglobin in blood vessels', 'The sebaceous gland directly'], correct: [0], explanation: 'Porphyrins are bacterially produced; their activation destroys P. acnes via reactive oxygen species.' },
+              { kind: 'teach', title: 'Sebaceous gland suppression', text: 'The heat component of IPL (particularly the longer wavelengths, 530-700 nm) can partially suppress overactive sebaceous glands, reducing sebum production over a course of treatment. This complements the antibacterial effect.' },
+              { kind: 'teach', title: 'Acne-specific contraindications', text: "Do not treat: active isotretinoin use (must be stopped for 6 months before light-based treatment -- retinoids thin the skin and raise sensitivity), open infected cysts or nodular acne (risk of spreading infection), and known photosensitising medication not already identified at consultation." },
+              { kind: 'ask', prompt: 'Isotretinoin must be stopped for how long before light-based acne treatment?', qtype: 'SINGLE', options: ['6 months', '2 weeks', '1 month', 'It does not need to be stopped'], correct: [0], explanation: '6 months is the standard safe interval -- isotretinoin creates prolonged photosensitivity and skin thinning.' },
+              { kind: 'say', text: 'Know your mechanism and your contraindications. That is what makes the difference between a safe result and a complication.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Post-Inflammatory Hyperpigmentation: Recognition, Prevention and Treatment',
+            durationMin: 12,
+            objectives: ['Define post-inflammatory hyperpigmentation and describe how it arises', 'Identify which Fitzpatrick types are at highest risk', 'Apply evidence-based prevention and treatment strategies for PIH'],
+            studyTips: ['Examiners often ask you to match the Fitzpatrick type to the PIH risk. Higher Fitzpatrick types = more melanin activity = higher PIH risk. Lower your energy, lengthen your cooling, space your sessions.'],
+            examRefs: ['PIH', 'Fitzpatrick', 'Complications', 'Treatment modification'],
+            steps: [
+              { kind: 'say', text: 'PIH is the most common complication of light-based treatment in darker skin tones -- it is preventable with the right protocol.', mood: 'think' },
+              { kind: 'teach', title: 'What PIH is', text: 'Post-inflammatory hyperpigmentation (PIH) is darkening of the skin after any injury or inflammation, including laser and IPL. Melanocytes over-produce melanin in response to the inflammatory stimulus, leaving a brown or greyish patch that can persist for months or longer.' },
+              { kind: 'ask', prompt: 'PIH is caused by melanocytes...', qtype: 'SINGLE', options: ['Over-producing melanin in response to inflammation', 'Being destroyed by the laser', 'Migrating from the dermis', 'Producing less melanin'], correct: [0], explanation: 'Inflammation triggers melanocyte over-production -- that is the mechanism of PIH.' },
+              { kind: 'teach', title: 'Fitzpatrick type and PIH risk', text: "Higher Fitzpatrick types (IV-VI) have more reactive melanocytes and are at significantly greater risk of PIH from laser and light-based treatment. This does not mean they cannot be treated -- it means the protocol must be adapted: lower fluence, longer pulse duration, adequate cooling, test pulses at conservative settings, and longer intervals between sessions." },
+              { kind: 'ask', prompt: 'Which Fitzpatrick types carry the highest risk of PIH from laser treatment?', qtype: 'SINGLE', options: ['Types IV-VI', 'Types I-II', 'All types equally', 'Only Type VI'], correct: [0], explanation: 'Higher Fitzpatrick types have more reactive melanocytes, making PIH more likely without adapted protocols.' },
+              { kind: 'teach', title: 'Prevention: adapt the protocol', text: 'Prevention is better than treatment. Reduce fluence for higher Fitzpatrick types, use effective contact cooling or cryogen spray before and after pulses, allow full healing between sessions, and prime the skin with SPF for 4-6 weeks pre-treatment. Tyrosinase inhibitors (vitamin C, kojic acid, niacinamide) in the prep phase can reduce melanocyte reactivity.' },
+              { kind: 'ask', prompt: 'A topical ingredient that inhibits the enzyme driving melanin production (tyrosinase) and may reduce PIH risk is...', qtype: 'SINGLE', options: ['Vitamin C (ascorbic acid)', 'Retinol', 'Glycolic acid', 'Salicylic acid'], correct: [0], explanation: 'Vitamin C is a tyrosinase inhibitor and antioxidant -- it helps suppress melanin overproduction.' },
+              { kind: 'teach', title: 'Managing existing PIH', text: 'Established PIH usually fades with consistent SPF (UV drives melanin production), combined with a tyrosinase inhibitor. Broad-spectrum SPF50 every day -- including cloudy days -- is non-negotiable. Chemical exfoliants (AHAs) can accelerate cell turnover but use them cautiously in sensitive skin.' },
+              { kind: 'ask', prompt: 'The single most important ongoing intervention for post-treatment PIH is...', qtype: 'SINGLE', options: ['Daily broad-spectrum SPF', 'Laser retreatment immediately', 'Strong chemical peels', 'Covering with makeup only'], correct: [0], explanation: 'SPF prevents UV from driving further melanin production -- nothing else matters if this step is skipped.' },
+              { kind: 'say', text: 'Adapt your protocol for every Fitzpatrick type. Prevention of PIH is always better than treating it once it has appeared.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Acne & PIH Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'Which bacterium does IPL target via the porphyrin mechanism?', type: 'SINGLE', options: ['P. acnes (Cutibacterium acnes)', 'MRSA', 'Staphylococcus aureus', 'E. coli'], correct: [0], explanation: 'P. acnes produces porphyrins; light activates them to destroy the bacteria.' },
+            { prompt: 'The isotretinoin pause before light-based treatment is...', type: 'SINGLE', options: ['6 months', '2 weeks', '1 month', '24 hours'], correct: [0], explanation: '6 months to allow photosensitivity to resolve and skin barrier to normalise.' },
+            { prompt: 'PIH occurs when melanocytes...', type: 'SINGLE', options: ['Over-produce melanin after inflammation', 'Are destroyed by treatment', 'Stop producing melanin', 'Migrate to the epidermis'], correct: [0], explanation: 'Inflammation triggers over-production of melanin, causing dark patches.' },
+            { prompt: 'Which Fitzpatrick types are most at risk of PIH from laser treatment?', type: 'SINGLE', options: ['Types IV-VI', 'Types I-II', 'All equally', 'Only Type IV'], correct: [0], explanation: 'Higher types have more reactive melanocytes -- more risk, not a bar to treatment, but the protocol must adapt.' },
+            { prompt: 'The single most important measure to manage or prevent PIH is...', type: 'SINGLE', options: ['Daily broad-spectrum SPF50', 'Immediate re-treatment', 'Chemical peels weekly', 'Avoiding water'], correct: [0], explanation: 'UV drives melanin production. SPF every day is the foundation of every PIH protocol.' },
+            { prompt: 'Tyrosinase inhibitors (e.g. vitamin C) help reduce PIH risk by...', type: 'SINGLE', options: ['Blocking the enzyme that produces melanin', 'Exfoliating dead skin', 'Cooling the skin', 'Killing bacteria'], correct: [0], explanation: 'Tyrosinase is the key enzyme in the melanin synthesis pathway -- inhibiting it suppresses production.' },
+          ],
+        },
+      },
+    ],
+  },
+
+  {
+    courseSlug: 'level-4-certificate-aesthetic-practice',
+    modules: [
+      {
+        title: 'Medication Interactions & Photosensitivity in Aesthetics',
+        summary: "How to identify drug-induced photosensitivity, when anticoagulant and immunosuppressant use requires protocol modification or GP clearance, and how to document and act on a complex medication history.",
+        lessons: [
+          {
+            title: 'Drug-Induced Photosensitivity: Identification and Management',
+            durationMin: 14,
+            objectives: ['List the main drug classes that cause photosensitivity relevant to aesthetic treatment', 'Explain the clinical impact of photosensitising medications on laser and IPL outcomes', 'Describe the protocol modification or pause required for each category'],
+            studyTips: ['The L4 exam tests systematic thinking. Learn the drug classes and the underlying mechanism (phototoxicity vs photoallergy), not just a list of brand names. Know the standard pauses.'],
+            examRefs: ['Medication interactions', 'Photosensitivity', 'Contraindications', 'Medical history'],
+            steps: [
+              { kind: 'say', text: "A medication that looks unrelated to aesthetics can change how a client's skin responds to your device. The consultation medication review is not a box-tick -- it is clinical risk assessment.", mood: 'think' },
+              { kind: 'teach', title: 'What photosensitivity means', text: "A photosensitising drug increases the skin's sensitivity to light, including the wavelengths used in laser and IPL. The result can be unexpected burns, blistering, or severe PIH even at settings that are safe for most clients." },
+              { kind: 'teach', title: 'Common photosensitising drug classes', text: "The key classes are: (1) Tetracyclines (e.g. doxycycline, lymecycline) -- commonly prescribed for acne; clients should usually complete the course and allow 1-2 weeks before light treatment. (2) Fluoroquinolone antibiotics (e.g. ciprofloxacin) -- similar approach. (3) Retinoids (topical or oral -- isotretinoin needs 6 months). (4) Some antifungals (e.g. griseofulvin). (5) NSAIDs such as piroxicam and naproxen. (6) Certain antidepressants (e.g. amitriptyline, St John's Wort). (7) Amiodarone (cardiac) -- very long half-life, needs specialist input." },
+              { kind: 'ask', prompt: 'Tetracycline antibiotics (e.g. doxycycline) are often prescribed for...', qtype: 'WORD', options: ['acne', 'diabetes', 'hypertension'], correct: [0], explanation: 'Tetracyclines are a common acne treatment -- very relevant for aesthetic clients.' },
+              { kind: 'ask', prompt: 'Which drug class requires a 6-month pause before light-based treatment?', qtype: 'SINGLE', options: ['Oral isotretinoin', 'Doxycycline', 'Naproxen', 'Amitriptyline'], correct: [0], explanation: 'Isotretinoin has prolonged effects on skin sensitivity and barrier function -- 6 months is the standard safe pause.' },
+              { kind: 'teach', title: 'Phototoxicity vs photoallergy', text: 'Phototoxicity is the more common reaction -- the drug (or its metabolite) absorbs UV/light and releases energy that damages cells. It happens on first exposure, is dose-dependent, and looks like exaggerated sunburn. Photoallergy is immune-mediated, less common, and requires prior sensitisation before a reaction occurs.' },
+              { kind: 'ask', prompt: 'Phototoxicity differs from photoallergy in that it...', qtype: 'SINGLE', options: ['Can occur on first drug exposure and is dose-dependent', 'Always requires previous sensitisation', 'Is an immune-mediated response', 'Only affects darker skin types'], correct: [0], explanation: 'Phototoxicity is direct photochemical damage -- no sensitisation period needed.' },
+              { kind: 'teach', title: 'The consultation review protocol', text: 'Ask for all current medications and supplements at every consultation. Use a photosensitising drugs reference list. For any drug on the list: (1) identify the pause or modification needed; (2) document your decision in the treatment record; (3) seek GP advice if the medication cannot be paused or the risk is unclear.' },
+              { kind: 'say', text: "When in doubt, a short phone call to the client's GP is the right call. Document that you sought advice.", mood: 'think' },
+            ],
+          },
+          {
+            title: 'Anticoagulants, Immunosuppressants & GP Clearance Pathways',
+            durationMin: 13,
+            objectives: ['Explain the risks that anticoagulant use introduces into aesthetic treatment', 'Describe how immunosuppressant drugs alter infection and healing risk', 'State when a GP clearance letter is required before treatment proceeds'],
+            studyTips: ['Questions in this area often test your decision-making process, not just drug knowledge. Know WHEN to refer, not just that some drugs are risky.'],
+            examRefs: ['Anticoagulants', 'Immunosuppressants', 'GP clearance', 'Contraindications'],
+            steps: [
+              { kind: 'say', text: 'Some medication histories mean you need a conversation with another clinician before you treat. This is professional practice, not over-caution.', mood: 'think' },
+              { kind: 'teach', title: 'Anticoagulants and bruising risk', text: 'Anticoagulants (warfarin, apixaban, rivaroxaban, dabigatran) and antiplatelets (aspirin, clopidogrel) impair clotting. After any treatment that causes trauma -- injection, microneedling, ablative treatment -- the bruising risk is significantly higher and may take longer to resolve. This does not necessarily mean treatment cannot proceed, but informed consent must address the increased bruising risk, and your settings and depth should reflect it.' },
+              { kind: 'ask', prompt: 'A client on warfarin requesting microneedling should be...', qtype: 'SINGLE', options: ['Fully counselled on elevated bruising risk, and treated at modified settings if they consent', 'Refused treatment entirely', 'Treated without change', "Asked to stop warfarin before treatment"], correct: [0], explanation: "Anticoagulants increase bruising risk; treatment can proceed with adapted technique and explicit informed consent -- but never ask the client to stop their medication without GP instruction." },
+              { kind: 'teach', title: 'Never advise stopping anticoagulants', text: 'You must never advise a client to pause anticoagulant or antiplatelet medication without GP or specialist instruction. These drugs prevent life-threatening clots. Asking a client to stop them before a cosmetic procedure is dangerous and outside your scope of practice.' },
+              { kind: 'ask', prompt: 'A client on rivaroxaban (a blood thinner) asks if they should stop it before a laser treatment. Your response is...', qtype: 'SINGLE', options: ["Advise them to speak to their GP -- never tell them to stop it yourself", 'Tell them to stop for 3 days', 'Treat without discussion', 'Refuse all treatment forever'], correct: [0], explanation: 'Only a prescribing clinician can advise pausing anticoagulants. Unsafe advice here could cause a stroke or pulmonary embolism.' },
+              { kind: 'teach', title: 'Immunosuppressants: infection and healing risk', text: 'Immunosuppressants (methotrexate, ciclosporin, azathioprine, biologics such as adalimumab) and long-term systemic corticosteroids suppress the immune response. This means: higher infection risk (even minor treatment breaks can become infected), delayed or impaired wound healing, and possible atypical presentations of complications. GP clearance is needed before treating.' },
+              { kind: 'ask', prompt: 'A client on long-term methotrexate asks for a photofacial. Before proceeding, you should...', qtype: 'SINGLE', options: ['Request GP clearance in writing', 'Treat at normal settings', 'Refuse permanently', 'Ask a colleague for their opinion only'], correct: [0], explanation: 'Immunosuppressants impair infection response and healing. Written GP clearance is the safe and professionally defensible approach.' },
+              { kind: 'teach', title: 'The GP clearance process', text: "Write to the client's GP (or ask the client to request a letter) explaining the proposed treatment, your clinical reasoning, and the specific concern. Keep the response in the client's record. If clearance is not granted or the GP advises against, do not proceed and document that decision." },
+              { kind: 'ask', prompt: 'GP clearance must be...', qtype: 'WORD', options: ['documented', 'verbal only', 'ignored'], correct: [0], explanation: 'Documented clearance protects you and is part of the clinical record.' },
+              { kind: 'say', text: 'A well-documented medication review and a timely GP clearance letter are the foundations of safe advanced practice.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Medication Interactions & Photosensitivity Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'Isotretinoin requires a pause of how long before light-based treatment?', type: 'SINGLE', options: ['6 months', '2 weeks', '1 month', '24 hours'], correct: [0], explanation: '6 months -- isotretinoin causes prolonged photosensitivity and skin thinning.' },
+            { prompt: 'Phototoxicity can occur...', type: 'SINGLE', options: ['On first exposure to the drug, without prior sensitisation', 'Only after years on the drug', 'Only in Type I Fitzpatrick skin', 'Only with injectable drugs'], correct: [0], explanation: 'Phototoxicity is a direct photochemical reaction -- no prior sensitisation is needed.' },
+            { prompt: 'A client on warfarin should be...', type: 'SINGLE', options: ['Counselled on elevated bruising risk and treated at modified settings if they consent', 'Always refused', 'Told to stop warfarin before treatment', 'Treated without any modification'], correct: [0], explanation: 'Adapted technique and informed consent; never tell them to stop prescribed medication.' },
+            { prompt: 'A client on methotrexate (an immunosuppressant) requires...', type: 'SINGLE', options: ['Written GP clearance before any aesthetic treatment', 'No special consideration', 'A verbal agreement only', 'An allergy test only'], correct: [0], explanation: 'Immunosuppressants impair healing and infection response -- written GP clearance is required.' },
+            { prompt: 'Which drug class is most associated with prolonged photosensitivity after stopping?', type: 'SINGLE', options: ['Isotretinoin (oral retinoid)', 'Doxycycline (tetracycline)', 'Naproxen (NSAID)', 'Amitriptyline (antidepressant)'], correct: [0], explanation: 'Isotretinoin -- 6 months is the standard pause; the others have shorter windows.' },
+            { prompt: 'The medication review at consultation should be documented in the...', type: 'SINGLE', options: ['Treatment record', 'Staff handbook only', 'A separate locked folder never accessed again', 'Nowhere'], correct: [0], explanation: 'The treatment record is the medicolegal document -- the review must be in it.' },
+          ],
+        },
+      },
+    ],
+  },
+
 ];
 
 export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
@@ -2050,6 +2234,20 @@ export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
   { courseSlug: "level-4-certificate-aesthetic-practice", topic: "Audit", prompt: "The audit cycle is only complete once you have...", options: ["Re-audited to confirm the change improved practice", "Written a report", "Presented the findings at a meeting", "Filed the data"], correct: [0], explanation: "Re-audit closes the loop; without it you cannot confirm whether the improvement worked." },
   { courseSlug: "advanced-aesthetics-level-5-7", topic: "Business development", prompt: "Value-based pricing reflects...", options: ["The perceived benefit of the outcome to the client", "The cost of supplies only", "A standard market rate", "What competitors charge"], correct: [0], explanation: "Value-based pricing is set from the client's perspective -- what the result is worth to them." },
   { courseSlug: "advanced-aesthetics-level-5-7", topic: "Marketing compliance", prompt: "Aesthetic treatment before/after photographs used in marketing require...", options: ["Explicit written consent for marketing use, separate from clinical consent", "Verbal agreement only", "No consent if faces are cropped", "Automatic consent after payment"], correct: [0], explanation: "Marketing consent must be separate, explicit and in writing." },
+
+  // -- BATCH 9 exam questions --------------------------------------------------
+  { courseSlug: 'level-2-foundation-skin-laser', topic: 'Record keeping', prompt: 'Treatment records must be completed...', options: ['At the time of treatment', 'At the end of the day', 'Only for high-risk treatments', 'Annually'], correct: [0], explanation: 'Contemporaneous records are more accurate and carry more legal weight.' },
+  { courseSlug: 'level-2-foundation-skin-laser', topic: 'Data protection', prompt: 'Client health records must be kept for a minimum of...', type: 'WORD', options: ['7 years', '2 years', '30 days'], correct: [0], explanation: '7 years is the standard for adult aesthetic records.' },
+  { courseSlug: 'level-2-foundation-skin-laser', topic: 'Data protection', prompt: 'Under UK GDPR, client health data is classed as...', type: 'WORD', options: ['special category', 'public', 'minimal'], correct: [0], explanation: 'Health information requires the highest level of protection.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Acne', prompt: 'IPL reduces P. acnes by activating which molecules in the bacterium?', options: ['Porphyrins', 'Haemoglobin', 'Melanin', 'Collagen'], correct: [0], explanation: 'P. acnes produces porphyrins that absorb light and generate reactive oxygen species.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'PIH', prompt: 'Post-inflammatory hyperpigmentation is most common after treatment in...', options: ['Higher Fitzpatrick types (IV-VI)', 'Lower Fitzpatrick types (I-II)', 'All types equally', 'Type III only'], correct: [0], explanation: 'Higher Fitzpatrick types have more reactive melanocytes and a higher PIH risk.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'PIH prevention', prompt: 'The most important daily measure to prevent worsening of PIH is...', options: ['Broad-spectrum SPF50 every day', 'Immediate re-treatment', 'Weekly chemical peels', 'Avoiding moisturiser'], correct: [0], explanation: 'UV drives melanin production. SPF is non-negotiable in any PIH protocol.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Photosensitivity', prompt: 'Oral isotretinoin must be paused for how long before light-based treatment?', options: ['6 months', '2 weeks', '1 month', '48 hours'], correct: [0], explanation: '6 months -- isotretinoin creates prolonged photosensitivity and barrier thinning.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Anticoagulants', prompt: 'A client on apixaban asks about microneedling. You should...', options: ['Counsel on elevated bruising risk and modify technique if they consent', 'Refuse all treatment', 'Tell them to stop apixaban', 'Treat at full settings without mention'], correct: [0], explanation: 'Adapted technique + informed consent. Never advise stopping anticoagulants.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Immunosuppressants', prompt: 'Treating a client on long-term ciclosporin requires...', options: ['Written GP clearance before treatment', 'No special consideration', 'A verbal GP call only', 'A higher energy setting'], correct: [0], explanation: 'Immunosuppressants impair infection response and healing -- written clearance is required.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Complex history', prompt: "When a client's medication history is unclear or complex, the correct step is to...", options: ['Seek written GP clearance before treating', 'Proceed and document later', 'Ask a colleague with no prescribing knowledge', 'Ignore the history'], correct: [0], explanation: 'Written GP clearance protects the client and creates a defensible medicolegal record.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Data protection', prompt: 'A Subject Access Request (SAR) must be responded to within...', options: ['One calendar month', 'Three months', 'Six months', 'One week'], correct: [0], explanation: 'UK GDPR: one calendar month at no charge.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Record keeping', prompt: 'Confidential client data may be shared with a third party without consent...', options: ['When required by law (e.g. safeguarding or a court order)', 'Whenever the practitioner judges it appropriate', "After the client's treatment ends", 'Never under any circumstances'], correct: [0], explanation: 'Exceptions to confidentiality are narrow and legally defined. Safeguarding and lawful orders are the main ones.' },
 
 ];
 
