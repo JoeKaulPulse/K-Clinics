@@ -223,7 +223,7 @@ export async function getIntegrations(): Promise<Integration[]> {
     id: 'transcription',
     name: 'Voice transcription (Deepgram)',
     category: 'Communications',
-    description: 'Transcribes dictated appointment notes; Claude then structures the transcript into draft notes & checklist answers for the clinician to review and the client to sign.',
+    description: 'Transcribes a clinician’s dictated appointment note in the session; Claude then tidies the transcript into a clean draft clinical note for the clinician to review, edit and save.',
     status: dgKey && aiKey ? 'connected' : dgKey || aiKey ? 'partial' : 'not_configured',
     detail: dgKey && aiKey ? 'Transcription + structuring ready.' : dgKey ? 'Deepgram set — add ANTHROPIC_API_KEY for note structuring.' : aiKey ? 'Claude set — add DEEPGRAM_API_KEY to transcribe audio.' : 'Add a Deepgram key to transcribe clinical voice notes.',
     envVars: [
@@ -265,14 +265,16 @@ export async function getIntegrations(): Promise<Integration[]> {
   // ── SMS (Twilio) ──
   const twSid = present('TWILIO_ACCOUNT_SID');
   const twTok = present('TWILIO_AUTH_TOKEN');
-  const twFrom = present('TWILIO_FROM');
+  // TWILIO_FROM has a built-in default (the clinic SMS sender), so only the Twilio
+  // credentials need configuring; an owner-set TWILIO_FROM still overrides it.
+  const twFrom = true;
   items.push({
     id: 'sms',
     name: 'SMS reminders (Twilio)',
     category: 'Communications',
     description: 'Appointment reminders and confirmations by text message.',
-    status: twSid && twTok && twFrom ? 'connected' : (twSid || twTok || twFrom) ? 'partial' : 'not_configured',
-    detail: twSid && twTok && twFrom ? 'Configured' : 'Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM.',
+    status: twSid && twTok ? 'connected' : (twSid || twTok) ? 'partial' : 'not_configured',
+    detail: twSid && twTok ? 'Configured' : 'Add TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN.',
     envVars: [
       { name: 'TWILIO_ACCOUNT_SID', set: twSid },
       { name: 'TWILIO_AUTH_TOKEN', set: twTok },

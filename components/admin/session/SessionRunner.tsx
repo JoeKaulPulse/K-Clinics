@@ -1257,11 +1257,12 @@ function VoiceRecorder({ bookingId, onTranscript }: { bookingId: string; onTrans
   type State = 'idle' | 'recording' | 'transcribing' | 'error';
   const [state, setState] = useState<State>('idle');
   const [errMsg, setErrMsg] = useState('');
+  const [hint, setHint] = useState('');
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
 
   async function start() {
-    setErrMsg('');
+    setErrMsg(''); setHint('');
     let stream: MediaStream;
     try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch {
       setErrMsg('Microphone access denied.'); setState('error'); return;
@@ -1281,7 +1282,11 @@ function VoiceRecorder({ bookingId, onTranscript }: { bookingId: string; onTrans
           body: blob,
         });
         const json = await res.json().catch(() => ({ ok: false, error: 'Network error.' }));
-        if (json.ok && json.transcript) { onTranscript(json.transcript); setState('idle'); }
+        if (json.ok && json.transcript) {
+          onTranscript(json.transcript);
+          setHint(json.structured ? 'Transcribed & tidied into a draft — please review before saving.' : 'Transcribed — please review before saving.');
+          setState('idle');
+        }
         else { setErrMsg(json.error || 'Transcription failed.'); setState('error'); }
       } catch (e) { setErrMsg((e as Error).message || 'Network error.'); setState('error'); }
     };
@@ -1317,6 +1322,7 @@ function VoiceRecorder({ bookingId, onTranscript }: { bookingId: string; onTrans
         Record voice note
       </button>
       {state === 'error' && <p className="text-xs text-red-500">{errMsg}</p>}
+      {hint && <p className="text-xs text-[var(--color-stone)]">{hint}</p>}
     </div>
   );
 }
