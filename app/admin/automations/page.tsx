@@ -26,7 +26,11 @@ export default async function AutomationsPage() {
   if (!sessionCan(session, 'automations.view')) redirect('/admin');
 
   const since = new Date(Date.now() - 30 * 864e5);
-  const [counts, r72, r48] = await Promise.all([
+  // Transactional emails (confirmations/receipts/reminders) carry no campaignId; a
+  // FAILED row in the last 7 days means the provider isn't configured or the domain
+  // isn't verified, so clients silently get nothing. Surface it (assessment #4).
+  const failSince = new Date(Date.now() - 7 * 864e5);
+  const [counts, r72, r48, failedComms, lastFail] = await Promise.all([
     db.emailEvent.groupBy({
       by: ['kind'],
       where: { status: 'SENT', createdAt: { gte: since } },
@@ -34,6 +38,8 @@ export default async function AutomationsPage() {
     }),
     getSetting('reminder_72h'),
     getSetting('reminder_48h'),
+    db.emailEvent.count({ where: { status: 'FAILED', campaignId: null, createdAt: { gte: failSince } } }),
+    db.emailEvent.findFirst({ where: { status: 'FAILED', campaignId: null }, orderBy: { createdAt: 'desc' }, select: { subject: true, error: true } }),
   ]);
   const countFor = (kind: string) => counts.filter((c) => c.kind === kind).reduce((s, c) => s + c._count._all, 0);
 
@@ -49,6 +55,17 @@ export default async function AutomationsPage() {
     <AdminShell user={session?.email} can={can} locale={locale}>
       <h1 className="font-[family-name:var(--font-display)] text-3xl">{t(locale, 'nav.automations')}</h1>
       <p className="mt-1 text-sm text-[var(--color-stone)]">Branded lifecycle emails, sent automatically by a daily job. Counts show the last 30 days.</p>
+
+      {failedComms > 0 && (
+        <div className="mt-6 rounded-[var(--radius-lg)] border border-red-300 bg-red-50 p-5 text-red-900">
+          <p className="font-[family-name:var(--font-display)] text-lg">{failedComms} transactional email{failedComms === 1 ? '' : 's'} failed to send in the last 7 days</p>
+          <p className="mt-1 text-sm">
+            Booking confirmations, receipts and reminders only send when the email provider is configured.
+            {lastFail?.error ? <> Latest failure{lastFail.subject ? ` (${lastFail.subject})` : ''}: <span className="font-mono text-xs">{lastFail.error}</span>.</> : null}
+          </p>
+          <p className="mt-2 text-sm">Fix in <strong>Settings → Credentials</strong>: set <code>RESEND_API_KEY</code> and verify the sending domain in Resend.</p>
+        </div>
+      )}
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
         {automations.map((a) => {

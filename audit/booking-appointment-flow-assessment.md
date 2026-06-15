@@ -39,7 +39,7 @@ provider keys are set, and a failure there is now recorded but cannot be fixed i
 |----------|-------|--------|
 | High     | 1 | Fixed |
 | Medium   | 3 | Fixed |
-| Low      | 4 | Open (hardening / by-design) |
+| Low      | 4 | 1 fixed (#8), 1 improved (#5), 1 by-design (#6), 1 open (#7) |
 | Info     | 2 | — |
 | **Total** | **10** | |
 
@@ -80,10 +80,10 @@ Fix (this change set):
 | 2 | Medium | Fixed | Charge | Receipt email logged `SENT` before the send was attempted, masking real failures; detail lookup + send unguarded after the card was charged | `lib/booking-actions.ts:106,119-124` |
 | 3 | Medium | Fixed | Cancel | Cancellation email result ignored and unrecorded — a silent provider/config failure left the client unnotified with no trace | `lib/booking-actions.ts:350-355` |
 | 4 | Medium | Fixed | Reminders | 24h/48h/72h window bounds computed in server TZ (UTC on Vercel), not Europe/London, so near-midnight appointments could be reminded a day early/late | `lib/automations.ts:297-299` |
-| 5 | Low | Open | Availability | `popularDays()` and the slot list show availability that the atomic hold may have taken since; the hold catches it (409) but the UI can offer a stale slot | `lib/availability.ts:282-300` |
-| 6 | Low | Open | Booking-create | The non-account `create` route always creates a SetupIntent and never reuses a card on file (unlike `start`); minor UX cost, not a correctness issue | `app/api/booking/create/route.ts:196` |
+| 5 | Low | Improved | Availability | `popularDays()` and the slot list show availability the atomic hold may have taken since; the hold catches it (409). The booking flow already refreshes; the manage/reschedule page now auto-refreshes its slot list on a `SLOT_TAKEN` result so a stale time can't linger. | `lib/availability.ts:282-300`, `ManageClient.tsx` |
+| 6 | Low | Won't fix (by design) | Booking-create | The non-account `create` route always creates a SetupIntent rather than reusing a card on file. This is **correct and deliberate**: `create` is unauthenticated (no `getCurrentClient()`), so reusing a saved card by email alone would let anyone hold/charge a booking against a stranger's stored card. Per-booking card entry is the safeguard; the `start` route only reuses a card because the client is signed in. | `app/api/booking/create/route.ts:196` |
 | 7 | Low | Open | Webhook | A transient DB error on a non-critical event (`payment_intent.payment_failed`) returns 200 and is not retried; staff still notice via the unchanged booking record | `app/api/stripe/webhook/route.ts:126-127` |
-| 8 | Low | Open | Manage | Reschedule UI state is client-local and clears on refresh mid-flow | `app/(marketing)/booking/manage/ManageClient.tsx` |
+| 8 | Low | Fixed | Manage | Reschedule picker state was client-local and lost on a mid-flow refresh — now persisted to `sessionStorage` (keyed by the booking token) and restored on load. | `app/(marketing)/booking/manage/ManageClient.tsx` |
 | 9 | Info | — | Availability | Slot maths converts clinic-local wall time to UTC correctly via `lib/clinic-time.ts` (BST/GMT proven); double-booking held in a Serializable transaction | `lib/availability.ts`, `app/api/booking/start/route.ts:161-194` |
 | 10 | Info | — | Charge | Off-session charge is gated (COMPLETED, consent/before-photo), capped (4× price fat-finger guard), and idempotent (atomic `chargedAt:null` claim + Stripe key); webhook is the backstop incl. SCA recovery | `app/admin/bookings/actions.ts:36-62`, `lib/booking-actions.ts:78-98`, `app/api/stripe/webhook/route.ts` |
 
@@ -133,9 +133,13 @@ a read-only SSE mirror of the session. Added so far, and planned:
 
 1. Owner: verify `RESEND_API_KEY` + a verified Resend domain are set; add Twilio for SMS. Then
    send a test booking and confirm the email log shows `SENT`. (Highest impact — without this,
-   the code fixes still produce no delivered mail.)
-2. Consider holding a short soft-lock on a slot when it is offered (or surface a friendlier
-   "just taken" recovery) to reduce stale-slot 409s from finding #5.
-3. Reuse a card on file in the non-account `create` route (finding #6) to match `start`.
-4. Optional: a small admin health indicator that turns red when recent confirmation emails are
-   FAILED, so a provider/domain problem is noticed without reading the log.
+   the code fixes still produce no delivered mail.) The new comms-health indicator (see 4) now
+   makes a misconfiguration visible on the dashboard.
+2. Done (partial): the manage/reschedule page auto-refreshes its slot list on a `SLOT_TAKEN`
+   result (finding #5). A true offered-slot soft-lock remains a larger, optional change.
+3. Not doing (finding #6): reusing a card on file in the **non-account** `create` route would be
+   a security regression — that route is unauthenticated, so a saved card must not be reused by
+   email match. Documented as by-design above.
+4. Done: a comms-health indicator now turns red when transactional emails (no `campaignId`) have
+   `FAILED` in the last 7 days — an attention chip on the dashboard (`/admin`) and a diagnostic
+   banner on `/admin/automations` showing the count and the latest provider error.
