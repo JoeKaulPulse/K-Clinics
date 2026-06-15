@@ -1349,6 +1349,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: '3 new modules: "Record Keeping & Data Protection in Practice" (L2 -- GDPR, SAR, retention, adverse event records), "Acne & Post-Inflammatory Hyperpigmentation Protocols" (L3 -- IPL mechanism, isotretinoin 6-month rule, PIH Fitzpatrick adjustment, tyrosinase prep), "Medication Interactions & Photosensitivity" (L4 -- photosensitisers, retinoid pause, anticoagulants, immunosuppressants, GP referral pathway). Each: 2 lessons, 6-question quiz. Plus 12 new exam-bank questions across L2/L3/L4.',
     notes: ['lib/academy-content.ts. enrichCourseContentIfNeeded() picks up additions on the next daily cron run.'],
   },
+  {
+    title: 'refundBooking() race: concurrent refund clicks fire loyalty/Xero twice (BLD-355)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 9, effort: 2,
+    detail: 'Replaced plain db.booking.update with a compare-and-swap db.booking.updateMany (WHERE refundedPence = <value-we-read>). If two concurrent callers reach the side-effects block (loyalty points reversal, Xero credit note, webhook re-delivery), only the first one wins the CAS; the second sees count=0 and returns early. Stripe-side idempotency was already guarded via idempotencyKey "refund-<id>-from-<refundedPence>-<amount>" -- this closes the application-layer gap. Mirrors the identical guard already present in the charge.refunded webhook handler.',
+    notes: ['lib/booking-actions.ts refundBooking(). CAS pattern: db.booking.updateMany({where:{id, refundedPence: booking.refundedPence}}).'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
