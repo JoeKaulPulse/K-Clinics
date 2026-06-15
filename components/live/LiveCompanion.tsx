@@ -15,6 +15,7 @@ const POLL_MS = 4000;
 
 const gold = '#c8a96a';
 const STAGE_ORDER = SESSION_STEPS.map((s) => s.key);
+const money = (p: number) => (p <= 0 ? 'On consultation' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`);
 
 export function LiveCompanion({ token, firstName, treatmentTitle, startAt, durationMin, practitionerName, initial }: {
   token: string; firstName: string; treatmentTitle: string; startAt: string; durationMin: number;
@@ -192,6 +193,7 @@ export function LiveCompanion({ token, firstName, treatmentTitle, startAt, durat
               {practitionerName ? ` · with ${practitionerName}` : ''}
             </p>
           </div>
+          {live?.pricing && <PriceCard pricing={live.pricing} />}
           {!notifyOn && canNotify && !done && (
             <button type="button" onClick={enableNotifications}
               className="mx-auto mt-4 block min-h-11 rounded-full border border-white/15 px-5 py-2.5 text-xs text-[#cdbfae] transition-colors hover:border-[#c8a96a] hover:text-[#f4ece1]">
@@ -202,6 +204,37 @@ export function LiveCompanion({ token, firstName, treatmentTitle, startAt, durat
         </footer>
       </div>
     </main>
+  );
+}
+
+// What the client will pay, itemised — the booked treatment plus any add-ons,
+// each at the price their card will actually be charged. Shows the live total
+// while the card is on file, then the amount paid once it's taken at checkout.
+function PriceCard({ pricing }: { pricing: ClientLiveView['pricing'] }) {
+  if (!pricing.items.length && pricing.totalPence <= 0) return null;
+  const charged = pricing.chargedPence != null;
+  return (
+    <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur">
+      <p className="mb-2.5 text-[11px] uppercase tracking-[0.22em] text-[#9a8f80]">{charged ? 'Your payment' : 'What you’ll pay'}</p>
+      <ul className="space-y-2">
+        {pricing.items.map((it, i) => (
+          <li key={i} className="flex items-baseline justify-between gap-3 text-sm">
+            <span className="min-w-0 text-[#e7dccd]">
+              {it.label}{it.sessions > 1 ? ` · course of ${it.sessions}` : ''}
+              {it.isAddon && <span className="ml-2 inline-block rounded-full border border-[#c8a96a]/40 px-1.5 py-px text-[10px] uppercase tracking-wider text-[#c8a96a]">Add-on</span>}
+            </span>
+            <span className="shrink-0 tabular-nums text-[#f4ece1]">{money(it.pricePence)}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-3 flex items-baseline justify-between border-t border-white/10 pt-3">
+        <span className="text-sm text-[#cdbfae]">{charged ? 'Paid today' : 'Total'}</span>
+        <span className="font-[family-name:var(--font-display)] text-lg" style={{ color: gold }}>{money(charged ? pricing.chargedPence! : pricing.totalPence)}</span>
+      </div>
+      <p className="mt-2 text-[11px] leading-relaxed text-[#9a8f80]">
+        {charged ? 'Thank you — your card has been charged for today’s visit.' : 'Saved securely to your card — only taken after your treatment.'}
+      </p>
+    </div>
   );
 }
 

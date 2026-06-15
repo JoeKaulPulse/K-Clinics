@@ -46,6 +46,7 @@ export type SessionSnapshot = {
     chargedPence: number | null;
     chargedAt: string | null;
     pricePence: number;
+    items: { label: string; pricePence: number; discountPence: number; isAddon: boolean; sessions: number }[];
   };
   consentSigned: boolean;
   consents: { kind: string; title: string; signedAt: string; cert: string }[];
@@ -59,6 +60,7 @@ export async function sessionSnapshot(bookingId: string): Promise<SessionSnapsho
       select: {
         status: true, startedAt: true, finishedAt: true, actualMinutes: true, aftercareAckAt: true,
         sopAcknowledgedAt: true, medicalFlagReviewedAt: true, chargedPence: true, chargedAt: true, pricePence: true,
+        items: { orderBy: { createdAt: 'asc' }, select: { label: true, pricePence: true, discountPence: true, isAddon: true, sessions: true } },
       },
     }),
     db.appointmentSession.findUnique({ where: { bookingId } }),
@@ -95,6 +97,7 @@ export async function sessionSnapshot(bookingId: string): Promise<SessionSnapsho
       chargedPence: b.chargedPence,
       chargedAt: b.chargedAt?.toISOString() ?? null,
       pricePence: b.pricePence,
+      items: b.items,
     },
     consentSigned: signed.some((x) => x.kind === 'treatment'),
     consents: signed.map((x) => ({ kind: x.kind, title: x.title, signedAt: x.signedAt.toISOString(), cert: x.contentHash.slice(0, 12) })),
@@ -128,6 +131,14 @@ export type ClientLiveView = {
   finishedAt: boolean;
   with: { name: string; title: string | null; photo: string | null } | null;
   journey: { at: string; step: string; name: string; title: string | null; photo: string | null }[];
+  // What the client will pay: each line (primary + add-ons) at its actual charge
+  // (net of any discount), the total their card will be charged, and — once taken
+  // — the amount actually charged. Add-ons are flagged so the phone can label them.
+  pricing: {
+    items: { label: string; pricePence: number; isAddon: boolean; sessions: number }[];
+    totalPence: number;
+    chargedPence: number | null;
+  };
 };
 
 export function clientView(snap: SessionSnapshot): ClientLiveView {
@@ -140,6 +151,11 @@ export function clientView(snap: SessionSnapshot): ClientLiveView {
     finishedAt: !!snap.booking.finishedAt,
     with: a ? { name: a.name, title: a.title, photo: a.photo } : null,
     journey: (snap.session?.touchpoints ?? []).map((t) => ({ at: t.at, step: t.step, name: t.staffName, title: t.staffTitle ?? null, photo: t.staffPhoto ?? null })),
+    pricing: {
+      items: snap.booking.items.map((it) => ({ label: it.label, pricePence: Math.max(0, it.pricePence - it.discountPence), isAddon: it.isAddon, sessions: it.sessions })),
+      totalPence: snap.booking.pricePence,
+      chargedPence: snap.booking.chargedPence,
+    },
   };
 }
 
