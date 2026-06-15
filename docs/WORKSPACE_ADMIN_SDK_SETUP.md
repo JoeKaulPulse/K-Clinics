@@ -31,6 +31,24 @@ Sign in to both consoles as `webmaster@kclinics.co.uk`.
 - Open the service account → **Keys → Add key → Create new key → JSON → Create**.
 - A `.json` file downloads. This is the credential — handle it like a password.
 
+> **If you see "Service account key creation is disabled"**
+> (`iam.disableServiceAccountKeyCreation` — Google's secure-by-default org policy),
+> an **Organization Policy Administrator** must allow keys, scoped to just this
+> project so the rest of the org stays protected:
+> 1. The org owner grants `roles/orgpolicy.policyAdmin` (**Organization Policy
+>    Administrator**) to `webmaster@kclinics.co.uk` (or themselves) at the
+>    **Organisation** level (IAM, Organisation scope → Grant access).
+> 2. Switch scope to the **KClinics project** → **IAM & Admin → Organization
+>    Policies** → open **"Disable service account key creation"** → **Manage policy
+>    → Customize → Add rule → Enforcement: Off → Set policy**.
+> 3. Retry **Keys → Add key → JSON**.
+> 4. **Recommended:** set that policy back to **Inherit parent's policy** afterwards
+>    — the one key you created keeps working, but no further keys can be made.
+>
+> Prefer no key at all? The keyless alternative is **Workload Identity Federation**
+> from Vercel (OIDC → STS → impersonate, signing the delegation JWT via the IAM
+> `signJwt` API). More secure, more setup — ask the developer to wire it up.
+
 ## 4. Copy the service account's Client ID
 - Service account → **Details** → copy the **Unique ID** (a long number). This is
   the OAuth client ID used to authorise delegation in step 5.
