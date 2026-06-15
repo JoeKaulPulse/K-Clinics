@@ -1,4 +1,5 @@
 import 'server-only';
+import { randomBytes } from 'node:crypto';
 import { importPKCS8, SignJWT } from 'jose';
 import { getSecret } from '@/lib/secrets';
 
@@ -21,6 +22,16 @@ const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const READONLY_SCOPES = [
   'https://www.googleapis.com/auth/admin.directory.user.readonly',
   'https://www.googleapis.com/auth/admin.directory.group.readonly',
+];
+
+// Phase B (provisioning). The same Client ID must be authorised for these in
+// domain-wide delegation before writes succeed (the page surfaces a clear hint
+// if not). Kept separate from the read scopes so a read-only install still works.
+const WRITE_SCOPES = [
+  'https://www.googleapis.com/auth/admin.directory.user',
+  'https://www.googleapis.com/auth/admin.directory.user.alias',
+  'https://www.googleapis.com/auth/admin.directory.group',
+  'https://www.googleapis.com/auth/admin.directory.group.member',
 ];
 
 type ServiceAccountKey = { client_email?: string; private_key?: string; token_uri?: string };
@@ -142,6 +153,28 @@ async function directoryGet<T>(path: string, scopes?: string[]): Promise<{ ok: t
   return { ok: true, data: (j || {}) as T };
 }
 
+// Phase B write transport. Always requests WRITE_SCOPES (a separate cached token
+// from the read path). DELETE/empty responses (204) are treated as success.
+async function directoryWrite<T>(method: 'POST' | 'PATCH' | 'PUT' | 'DELETE', path: string, body?: unknown): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
+  const tok = await directoryToken(WRITE_SCOPES);
+  if (!tok.token) return { ok: false, error: tok.error || 'Not configured.' };
+  let res: Response;
+  try {
+    res = await fetch(`${DIRECTORY}${path}`, {
+      method,
+      headers: { authorization: `Bearer ${tok.token}`, ...(body ? { 'content-type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Network error contacting Google.' };
+  }
+  if (res.status === 204) return { ok: true, data: {} as T };
+  const j = (await res.json().catch(() => null)) as (T & { error?: { message?: string } }) | null;
+  if (!res.ok) return { ok: false, error: hint(String(j?.error?.message || `HTTP ${res.status}`)) };
+  return { ok: true, data: (j || {}) as T };
+}
+
 // Turn Google's terse errors into actionable setup guidance — the most common
 // failures during first-time service-account/delegation setup.
 function hint(reason: string): string {
@@ -235,4 +268,84 @@ export async function getWorkspaceOverview(): Promise<WorkspaceOverview> {
     users: u.users,
     groups: g.groups,
   };
+}
+
+// ── Provisioning (BLD-312 Phase B) ─────────────────────────────────────────
+// Gated + audited at the action layer (app/admin/workspace/actions.ts). No hard
+// delete is exposed — suspend is the reversible, no-data-loss control.
+
+const emailOk = (e: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e);
+
+// One-time temporary password (mixed classes, shuffled); user must change it at
+// first login. Returned once to the caller to hand over — never stored or logged.
+function genPassword(): string {
+  const U = 'ABCDEFGHJKLMNPQRSTUVWXYZ', L = 'abcdefghijkmnpqrstuvwxyz', D = '23456789', S = '!@#$%^*-_';
+  const all = U + L + D + S;
+  const b = randomBytes(24);
+  const at = (s: string, i: number) => s[b[i] % s.length];
+  const chars = [at(U, 0), at(L, 1), at(D, 2), at(S, 3)];
+  for (let i = 4; i < 20; i++) chars.push(at(all, i));
+  for (let i = chars.length - 1; i > 0; i--) { const j = b[(i + 3) % b.length] % (i + 1); [chars[i], chars[j]] = [chars[j], chars[i]]; }
+  return chars.join('');
+}
+
+export async function createWorkspaceUser(input: { email: string; firstName: string; lastName: string }): Promise<{ ok: boolean; user?: WorkspaceUser; tempPassword?: string; error?: string }> {
+  const email = input.email.trim().toLowerCase();
+  const firstName = input.firstName.trim();
+  const lastName = input.lastName.trim();
+  if (!emailOk(email)) return { ok: false, error: 'Enter a valid email address.' };
+  if (!firstName || !lastName) return { ok: false, error: 'First and last name are both required.' };
+  const password = genPassword();
+  const r = await directoryWrite<DirUser>('POST', '/users', {
+    primaryEmail: email,
+    name: { givenName: firstName, familyName: lastName },
+    password,
+    changePasswordAtNextLogin: true,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, user: mapUser(r.data), tempPassword: password };
+}
+
+export async function setWorkspaceUserSuspended(email: string, suspended: boolean): Promise<{ ok: boolean; error?: string }> {
+  const e = email.trim().toLowerCase();
+  if (!emailOk(e)) return { ok: false, error: 'Invalid email.' };
+  const r = await directoryWrite<DirUser>('PATCH', `/users/${encodeURIComponent(e)}`, { suspended });
+  return r.ok ? { ok: true } : { ok: false, error: r.error };
+}
+
+export async function addUserAlias(email: string, alias: string): Promise<{ ok: boolean; error?: string }> {
+  const e = email.trim().toLowerCase(), a = alias.trim().toLowerCase();
+  if (!emailOk(e) || !emailOk(a)) return { ok: false, error: 'Enter valid email addresses.' };
+  const r = await directoryWrite<unknown>('POST', `/users/${encodeURIComponent(e)}/aliases`, { alias: a });
+  return r.ok ? { ok: true } : { ok: false, error: r.error };
+}
+
+export async function removeUserAlias(email: string, alias: string): Promise<{ ok: boolean; error?: string }> {
+  const e = email.trim().toLowerCase(), a = alias.trim().toLowerCase();
+  if (!emailOk(e) || !emailOk(a)) return { ok: false, error: 'Invalid email.' };
+  const r = await directoryWrite<unknown>('DELETE', `/users/${encodeURIComponent(e)}/aliases/${encodeURIComponent(a)}`);
+  return r.ok ? { ok: true } : { ok: false, error: r.error };
+}
+
+export async function createWorkspaceGroup(input: { email: string; name: string; description?: string }): Promise<{ ok: boolean; error?: string }> {
+  const email = input.email.trim().toLowerCase();
+  const name = input.name.trim();
+  if (!emailOk(email)) return { ok: false, error: 'Enter a valid group email address.' };
+  if (!name) return { ok: false, error: 'Give the group a name.' };
+  const r = await directoryWrite<DirGroup>('POST', '/groups', { email, name, description: (input.description || '').trim() || undefined });
+  return r.ok ? { ok: true } : { ok: false, error: r.error };
+}
+
+export async function addGroupMember(groupEmail: string, memberEmail: string): Promise<{ ok: boolean; error?: string }> {
+  const g = groupEmail.trim().toLowerCase(), m = memberEmail.trim().toLowerCase();
+  if (!emailOk(g) || !emailOk(m)) return { ok: false, error: 'Enter valid email addresses.' };
+  const r = await directoryWrite<unknown>('POST', `/groups/${encodeURIComponent(g)}/members`, { email: m, role: 'MEMBER' });
+  return r.ok ? { ok: true } : { ok: false, error: r.error };
+}
+
+export async function removeGroupMember(groupEmail: string, memberEmail: string): Promise<{ ok: boolean; error?: string }> {
+  const g = groupEmail.trim().toLowerCase(), m = memberEmail.trim().toLowerCase();
+  if (!emailOk(g) || !emailOk(m)) return { ok: false, error: 'Invalid email.' };
+  const r = await directoryWrite<unknown>('DELETE', `/groups/${encodeURIComponent(g)}/members/${encodeURIComponent(m)}`);
+  return r.ok ? { ok: true } : { ok: false, error: r.error };
 }

@@ -38,7 +38,9 @@ Sign in to both consoles as `webmaster@kclinics.co.uk`.
   https://www.googleapis.com/auth/admin.directory.user.readonly,https://www.googleapis.com/auth/admin.directory.group.readonly
   ```
 - **Authorise.**
-- **Phase B (later):** re-open the same entry and add the writable scopes:
+- **Phase B (provisioning — shipped):** to create/suspend users and manage
+  aliases & groups from `/admin/workspace`, re-open the same delegation entry and
+  add the writable scopes (reads keep working with only the read-only scopes):
   ```
   https://www.googleapis.com/auth/admin.directory.user,https://www.googleapis.com/auth/admin.directory.group,https://www.googleapis.com/auth/admin.directory.user.alias,https://www.googleapis.com/auth/admin.directory.group.member
   ```

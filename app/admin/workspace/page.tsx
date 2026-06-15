@@ -20,6 +20,26 @@ export default async function WorkspacePage() {
   if (!sessionCan(session, 'settings.manage')) redirect('/admin');
 
   const overview = await getWorkspaceOverview();
+
+  // Staff-lifecycle correlation: active staff on the Workspace domain who don't
+  // yet have a mailbox or alias — surfaced for one-click provisioning.
+  let staffMissingMailbox: { email: string; name: string }[] = [];
+  if (overview.ok) {
+    const domain = overview.adminEmail?.split('@')[1]?.toLowerCase();
+    if (domain) {
+      const have = new Set<string>();
+      for (const u of overview.users) {
+        have.add(u.email.toLowerCase());
+        for (const a of u.aliases) have.add(a.toLowerCase());
+      }
+      const { db } = await import('@/lib/db');
+      const staff = await db.adminUser.findMany({ where: { active: true }, select: { email: true, name: true } });
+      staffMissingMailbox = staff
+        .filter((s) => s.email.toLowerCase().endsWith('@' + domain) && !have.has(s.email.toLowerCase()))
+        .map((s) => ({ email: s.email, name: s.name ?? '' }));
+    }
+  }
+
   const can = await sessionPermissions();
   const locale = await getLocale();
   const t = translator(locale);
@@ -27,7 +47,7 @@ export default async function WorkspacePage() {
   return (
     <AdminShell user={session?.email} can={can} locale={locale}>
       <h1 className="font-[family-name:var(--font-display)] text-3xl">{t('nav.workspace')}</h1>
-      <WorkspaceManager overview={overview} />
+      <WorkspaceManager overview={overview} staffMissingMailbox={staffMissingMailbox} />
     </AdminShell>
   );
 }
