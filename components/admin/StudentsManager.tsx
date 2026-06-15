@@ -65,7 +65,7 @@ export function StudentsManager({ students }: { students: StudentRow[] }) {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[860px] text-sm">
             <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">
-              <th className="py-1 pr-2">Trainee</th><th className="px-2">Enrolments</th><th className="px-2">Progress</th><th className="px-2">XP</th><th className="px-2">Joined</th><th className="px-2">Last login</th><th className="px-2">Access</th>
+              <th scope="col" className="py-1 pr-2">Trainee</th><th scope="col" className="px-2">Enrolments</th><th scope="col" className="px-2">Progress</th><th scope="col" className="px-2">XP</th><th scope="col" className="px-2">Joined</th><th scope="col" className="px-2">Last login</th><th scope="col" className="px-2">Access</th>
             </tr></thead>
             <tbody>
               {rows.map((s) => (

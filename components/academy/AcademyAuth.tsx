@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 
 const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none focus:border-[var(--color-gold)]';
@@ -77,6 +78,11 @@ export function AcademyAuth() {
         </button>
         <Button onClick={() => !busy && submit()} variant="gold">{busy ? 'Please wait…' : mode === 'signup' ? 'Create account' : 'Sign in'} <ArrowIcon /></Button>
       </div>
+      {mode === 'login' && (
+        <p className="mt-3 text-center text-xs text-[var(--color-stone)]">
+          <Link href="/academy/forgot-password" className="hover:text-[var(--color-ink)] hover:underline">Forgot your password?</Link>
+        </p>
+      )}
     </div>
   );
 }

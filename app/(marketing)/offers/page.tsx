@@ -33,6 +33,7 @@ export default function OffersPage() {
       />
 
       <section className="container-lux section">
+        <h2 className="sr-only">Our current offers</h2>
         <Stagger className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {OFFERS.map((o) => (
             <StaggerItem key={o.t}>
@@ -40,7 +41,7 @@ export default function OffersPage() {
                 <span className="self-start rounded-full bg-[color-mix(in_oklab,var(--color-gold)_18%,transparent)] px-3 py-1 text-[0.65rem] font-medium uppercase tracking-[0.12em] text-[var(--color-ink)]">{o.tag}</span>
                 <h3 className="mt-4 font-[family-name:var(--font-display)] text-2xl leading-snug">{o.t}</h3>
                 <p className="mt-2 flex-1 leading-relaxed text-[var(--color-ink-soft)]">{o.d}</p>
-                <a href={o.href} className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-gold)] hover:underline">{o.cta} →</a>
+                <a href={o.href} className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-gold-deep)] hover:underline">{o.cta} →</a>
               </div>
             </StaggerItem>
           ))}

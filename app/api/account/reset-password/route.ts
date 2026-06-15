@@ -10,8 +10,9 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'Not enabled.' }, { status: 503 });
 
-  const auth = req.headers.get('authorization');
-  const viaSecret = process.env.CRON_SECRET && auth === `Bearer ${process.env.CRON_SECRET}`;
+  const { cronAuthorized } = await import('@/lib/cron-auth');
+  const viaSecret = cronAuthorized(req); // constant-time compare
+  let actor = 'cron-secret';
 
   if (!viaSecret) {
     const { getSession, sessionCan } = await import('@/lib/auth');
@@ -19,6 +20,13 @@ export async function POST(req: Request) {
     if (!sessionCan(session, 'clients.edit')) {
       return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
     }
+    actor = session?.email || 'staff';
+  }
+
+  // Bound abuse of this privileged endpoint (it can set any client's password).
+  const { enforceRateLimit, recordSecurity } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'admin-pw-reset', 20, 600, 'admin'))) {
+    return NextResponse.json({ ok: false, error: 'Too many attempts. Please wait and try again.' }, { status: 429 });
   }
 
   const { email, password } = (await req.json().catch(() => ({}))) as { email?: string; password?: string };
@@ -31,10 +39,14 @@ export async function POST(req: Request) {
   const client = await db.client.findUnique({ where: { email: email.toLowerCase() } });
   if (!client) return NextResponse.json({ ok: false, error: 'No client with that email.' }, { status: 404 });
 
+  // Reset the password AND bump sessionEpoch to revoke any outstanding portal
+  // sessions (mirrors the self-service reset) — a stolen session must not survive
+  // an admin reset. Log the action for accountability.
   await db.client.update({
     where: { id: client.id },
-    data: { passwordHash: await hashPassword(password), portalActive: true },
+    data: { passwordHash: await hashPassword(password), portalActive: true, sessionEpoch: { increment: 1 } },
   });
+  await recordSecurity('PASSWORD_RESET_ADMIN', 'admin', client.email, req, { by: actor }).catch(() => {});
   const { notifyPasswordChanged } = await import('@/lib/client-auth');
   await notifyPasswordChanged(client.email, client.firstName);
   return NextResponse.json({ ok: true });

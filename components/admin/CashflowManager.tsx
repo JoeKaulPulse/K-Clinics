@@ -57,7 +57,7 @@ export function CashflowManager({ cfg, drivers, consumablesMonthly, months, rese
             <thead className="bg-[var(--color-bone)] text-xs uppercase tracking-wide text-[var(--color-stone)]">
               <tr>
                 {[L('Month', 'Місяць'), L('Income', 'Дохід'), L('of which booked', 'із них заброньовано'), L('Expenses', 'Витрати'), L('Net', 'Чистий'), L('To reserves', 'У резерви'), L('Operating', 'Операційні'), L('Reserves', 'Резерви')].map((h) => (
-                  <th key={h} className="px-4 py-2.5 text-right first:text-left">{h}</th>
+                  <th key={h} scope="col" className="px-4 py-2.5 text-right first:text-left">{h}</th>
                 ))}
               </tr>
             </thead>

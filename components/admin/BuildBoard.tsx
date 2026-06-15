@@ -435,7 +435,7 @@ function ListView({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => void 
     <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
       <table className="w-full min-w-[760px] text-sm">
         <thead className="bg-[var(--color-porcelain)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]">
-          <tr>{['ID', 'Task', 'Type', 'Urgency', 'Status', 'Owner', 'V:E', 'Subtasks', 'Time', 'ETA'].map((h) => <th key={h} className="px-3 py-2 font-semibold">{h}</th>)}</tr>
+          <tr>{['ID', 'Task', 'Type', 'Urgency', 'Status', 'Owner', 'V:E', 'Subtasks', 'Time', 'ETA'].map((h) => <th key={h} scope="col" className="px-3 py-2 font-semibold">{h}</th>)}</tr>
         </thead>
         <tbody>
           {sorted.map((i) => {

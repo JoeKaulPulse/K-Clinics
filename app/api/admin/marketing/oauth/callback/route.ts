@@ -27,6 +27,10 @@ export async function GET(req: Request) {
   const storedState = jar.get('kc_oauth_state')?.value ?? '';
   const stateMatch = storedState.length === state.length && timingSafeEqual(Buffer.from(storedState), Buffer.from(state));
   if (!storedState || !stateMatch) return to(`error=${providerId}_bad_state`);
+  // Bind the state to the provider it was minted for. The state is `${id}.${nonce}`
+  // (connect/route.ts), so a state issued for provider A must not be honoured on a
+  // callback that claims provider B — otherwise A's code/cookie is exchanged at B.
+  if (!state.startsWith(`${providerId}.`)) return to(`error=${providerId}_bad_state`);
 
   const { getProvider, isConfigured, REDIRECT_URI } = await import('@/lib/marketing-connections');
   const p = getProvider(providerId);

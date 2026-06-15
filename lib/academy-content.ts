@@ -1360,6 +1360,126 @@ export const NEW_MODULES: CourseContentDef[] = [
     ],
   },
   {
+    courseSlug: 'level-4-certificate-aesthetic-practice',
+    modules: [
+      {
+        title: 'Skin Analysis & Assessment Methods',
+        summary: 'Assess skin type, condition and texture systematically before any treatment plan.',
+        lessons: [
+          {
+            title: 'Reading the Skin',
+            durationMin: 11,
+            objectives: ['Describe a structured skin analysis', 'Identify skin type and condition', 'Use magnification and lighting tools'],
+            studyTips: ['Oily, dry, combination and sensitive are skin types; dehydration is a condition, not a type.'],
+            examRefs: ['Skin analysis'],
+            steps: [
+              { kind: 'say', text: 'A thorough skin analysis shapes every good treatment plan. Let\'s walk it through.', mood: 'think' },
+              { kind: 'teach', title: 'Start with a clean face', text: 'Analyse skin after gentle cleansing, with good lighting and ideally a magnifying lamp to see texture, pores and lesions clearly.' },
+              { kind: 'ask', prompt: 'Why cleanse before a skin analysis?', qtype: 'SINGLE', options: ['To see the true skin without product interference', 'To waste time', 'To exfoliate first', 'It is not needed'], correct: [0], explanation: 'Make-up and product residue mask what you need to see.' },
+              { kind: 'teach', title: 'Skin types', text: 'The four main types are oily, dry, combination and sensitive. Type is largely genetic and determines baseline sebum output.' },
+              { kind: 'ask', prompt: 'Which are the four main skin types?', qtype: 'MULTI', options: ['Oily', 'Dry', 'Combination', 'Dehydrated'], correct: [0, 1, 2], explanation: 'Dehydration is a condition, not a type — it can affect any type.' },
+              { kind: 'say', text: 'Good. Now the difference between type and condition.', mood: 'cheer' },
+              { kind: 'teach', title: 'Type vs condition', text: 'A skin condition is a temporary or changeable state such as dehydration, sensitivity or congestion that sits on top of the underlying type.' },
+              { kind: 'ask', prompt: 'Dehydration is a skin ___, not a skin type.', qtype: 'WORD', options: ['condition', 'disease', 'type'], correct: [0], explanation: 'Even oily skin can be dehydrated.' },
+              { kind: 'teach', title: 'Use the tools', text: 'A magnifying lamp highlights open pores, comedones, erythema and pigment changes that are easy to miss with the naked eye.' },
+              { kind: 'ask', prompt: 'A magnifying lamp helps you spot…', qtype: 'MULTI', options: ['Open pores', 'Comedones', 'Erythema', 'The client\'s exact age'], correct: [0, 1, 2], explanation: 'It reveals texture and vascular detail, not exact age.' },
+              { kind: 'say', text: 'Strong analysis = a treatment plan you can stand behind. Brilliant.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Recording & Translating Findings',
+            durationMin: 10,
+            objectives: ['Document findings clearly', 'Link analysis to treatment choice', 'Flag anything to refer'],
+            studyTips: ['"Possible rosacea - refer for confirmation" is safer than a diagnosis.'],
+            examRefs: ['Skin analysis / treatment planning'],
+            steps: [
+              { kind: 'say', text: 'Now - how to capture what you found and use it.', mood: 'happy' },
+              { kind: 'teach', title: 'Write it down', text: 'Record skin type, condition, any lesions noted (size, location, appearance) and any concerns. A face map or photograph helps.' },
+              { kind: 'ask', prompt: 'A good skin analysis record includes…', qtype: 'MULTI', options: ['Skin type and condition', 'Any lesions noted', 'Your concerns', 'The client\'s star sign'], correct: [0, 1, 2], explanation: 'Objective clinical findings, not astrology.' },
+              { kind: 'teach', title: 'Drive the plan', text: 'Your findings directly shape the treatment: oily skin may need different exfoliation; sensitive skin needs gentler settings.' },
+              { kind: 'ask', prompt: 'A skin analysis mainly helps you to…', qtype: 'SINGLE', options: ['Choose a safe, appropriate treatment plan', 'Set the price', 'Decorate the room', 'Skip consent'], correct: [0], explanation: 'Analysis informs a safe plan.' },
+              { kind: 'say', text: 'Now - when to stop and refer.', mood: 'think' },
+              { kind: 'teach', title: 'Flag and refer', text: 'Anything that looks medical - asymmetric, changing, bleeding or ulcerating lesions - should be noted and referred before any treatment.' },
+              { kind: 'ask', prompt: 'An asymmetric, changing lesion should be…', qtype: 'SINGLE', options: ['Noted and referred', 'Treated at once', 'Ignored', 'Photographed and forgotten'], correct: [0], explanation: 'Note, refer, do not treat.' },
+              { kind: 'say', text: 'Analyse, record, plan, refer when needed. That is the standard.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Skin Analysis Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'Which are the four main skin types?', type: 'MULTI', options: ['Oily', 'Dry', 'Combination', 'Dehydrated'], correct: [0, 1, 2], explanation: 'Dehydration is a condition, not a type.' },
+            { prompt: 'Dehydration is a skin condition, not a skin type.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Any skin type can be dehydrated.' },
+            { prompt: 'A magnifying lamp helps identify…', type: 'MULTI', options: ['Open pores', 'Comedones', 'Erythema', 'Nothing useful'], correct: [0, 1, 2], explanation: 'It reveals texture and vascular detail.' },
+            { prompt: 'Before a skin analysis, skin should be…', type: 'WORD', options: ['cleansed', 'moisturised', 'made up'], correct: [0], explanation: 'Cleanse first to remove product interference.' },
+            { prompt: 'An asymmetric or changing lesion should be…', type: 'SINGLE', options: ['Noted and referred', 'Treated at once', 'Ignored', 'Lasered'], correct: [0], explanation: 'Refer before any treatment.' },
+            { prompt: 'A skin analysis mainly helps you to…', type: 'SINGLE', options: ['Choose a safe treatment plan', 'Set the price', 'Skip consent', 'Decorate'], correct: [0], explanation: 'Analysis drives the plan.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    courseSlug: L2,
+    modules: [
+      {
+        title: 'Laser Safety & Radiation Protection',
+        summary: 'Protect everyone in the room with the right eyewear, controls and safety checks.',
+        lessons: [
+          {
+            title: 'Why Laser Safety Matters',
+            durationMin: 11,
+            objectives: ['Explain why lasers are classified as hazardous', 'Name the main risks', 'Understand the controlled area'],
+            studyTips: ['Class 4 lasers can cause eye and skin damage even from a reflection - treat them with total respect.'],
+            examRefs: ['Laser safety / radiation protection'],
+            steps: [
+              { kind: 'say', text: 'Lasers are powerful tools. Used carelessly, they hurt people. Let\'s understand the rules.', mood: 'think' },
+              { kind: 'teach', title: 'Classified hazards', text: 'Treatment lasers are typically Class 3B or Class 4 - high enough power to cause eye damage instantly and skin burns from direct or reflected beams.', art: 'safety' },
+              { kind: 'ask', prompt: 'A Class 4 laser can cause eye damage from…', qtype: 'SINGLE', options: ['A direct or reflected beam', 'A gentle glow only', 'No beam at all', 'Only if pointed directly at the eye'], correct: [0], explanation: 'Even a reflection is dangerous at high power.' },
+              { kind: 'teach', title: 'Main risks', text: 'The main hazards are eye injury (permanent if the retina is hit), skin burns, fire from flammable materials, and fumes from tissue.' },
+              { kind: 'ask', prompt: 'Which are recognised laser hazards?', qtype: 'MULTI', options: ['Eye injury', 'Skin burns', 'Fire risk', 'Better hearing'], correct: [0, 1, 2], explanation: 'Eye, skin, fire - not hearing.' },
+              { kind: 'say', text: 'So we control the environment first.', mood: 'cheer' },
+              { kind: 'teach', title: 'Controlled area', text: 'The treatment room is a laser-controlled area: warning signs on the door, no unauthorised entry during use, all reflective surfaces covered or removed.', art: 'safety' },
+              { kind: 'ask', prompt: 'During laser treatment, entry to the room should be…', qtype: 'WORD', options: ['controlled', 'open', 'optional'], correct: [0], explanation: 'A controlled area with no unexpected entry.' },
+              { kind: 'say', text: 'Environment locked down. Now the eyewear.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Eyewear, Checks & Operator Responsibility',
+            durationMin: 10,
+            objectives: ['Choose correct optical density eyewear', 'Perform pre-use safety checks', 'Know the operator\'s legal duties'],
+            studyTips: ['Eyewear must match the laser\'s wavelength - a different laser needs different goggles.'],
+            examRefs: ['Laser safety / radiation protection'],
+            steps: [
+              { kind: 'say', text: 'Eyewear is the single most important physical control. Let\'s get it right.', mood: 'happy' },
+              { kind: 'teach', title: 'Wavelength-matched eyewear', text: 'Protective eyewear must be rated for the specific wavelength in use and worn by the practitioner, the client and anyone else in the room.', art: 'safety' },
+              { kind: 'ask', prompt: 'During laser use, wavelength-matched eyewear is worn by…', qtype: 'MULTI', options: ['The practitioner', 'The client', 'Anyone in the room', 'Nobody'], correct: [0, 1, 2], explanation: 'Every person present needs protection.' },
+              { kind: 'teach', title: 'Pre-use checks', text: 'Before firing: verify goggles are correct and undamaged, the client is prepared, the door is signed, no one can walk in unexpectedly, and the device is calibrated.' },
+              { kind: 'ask', prompt: 'Which are part of a pre-use laser safety check?', qtype: 'MULTI', options: ['Verify goggles are correct', 'Check the door is signed', 'Confirm no unexpected entry', 'Check the music playlist'], correct: [0, 1, 2], explanation: 'Safety checks, not entertainment.' },
+              { kind: 'say', text: 'Every check, every time. Now the law.', mood: 'think' },
+              { kind: 'teach', title: 'Operator duties', text: 'In the UK, cosmetic laser use sits under MHRA guidance and Local Authority licensing. The operator is responsible for safe use at all times.' },
+              { kind: 'ask', prompt: 'Responsibility for safe laser use lies with…', qtype: 'SINGLE', options: ['The operator', 'The machine manufacturer only', 'The client', 'Nobody'], correct: [0], explanation: 'The operator is responsible at all times.' },
+              { kind: 'say', text: 'Safe, compliant, prepared. That is the standard.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Laser Safety Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'A Class 4 laser can cause eye injury from a direct or reflected beam.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Even reflections are dangerous at high power.' },
+            { prompt: 'Which are recognised laser hazards?', type: 'MULTI', options: ['Eye injury', 'Skin burns', 'Fire risk', 'Improved hearing'], correct: [0, 1, 2], explanation: 'Eye, skin, fire - not hearing.' },
+            { prompt: 'During laser treatment, room entry should be…', type: 'WORD', options: ['controlled', 'open', 'optional'], correct: [0], explanation: 'A controlled area with no unexpected entry.' },
+            { prompt: 'Wavelength-matched eyewear must be worn by…', type: 'MULTI', options: ['The practitioner', 'The client', 'Anyone in the room', 'Nobody'], correct: [0, 1, 2], explanation: 'Every person in the room needs protection.' },
+            { prompt: 'Protective goggles must be rated for the specific ___ in use.', type: 'WORD', options: ['wavelength', 'brand', 'colour'], correct: [0], explanation: 'Goggles must match the wavelength.' },
+            { prompt: 'Responsibility for safe laser use lies with the operator.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'The operator is accountable at all times.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
     courseSlug: 'advanced-aesthetics-level-5-7',
     modules: [
       {
@@ -1415,6 +1535,382 @@ export const NEW_MODULES: CourseContentDef[] = [
       },
     ],
   },
+
+  // -- BATCH 7 -----------------------------------------------------------------
+
+  {
+    courseSlug: L2,
+    modules: [
+      {
+        title: "Treatment Planning & Client Records",
+        summary: "How to document consultations and treatment plans legally and professionally; GDPR basics for client data; why good records protect both client and practitioner.",
+        lessons: [
+          {
+            title: "Building a Treatment Plan & Keeping Accurate Records",
+            durationMin: 12,
+            objectives: ["Construct a client-specific treatment plan", "Record consultation findings accurately", "Explain what a good client record must contain"],
+            studyTips: ["VTCT Level 2 units emphasise that records must be contemporaneous -- written at the time, not filled in later."],
+            examRefs: ["Record keeping", "Treatment planning"],
+            steps: [
+              { kind: "say", text: "A good record is the backbone of safe, legal practice. Let's build one.", mood: "happy" },
+              { kind: "teach", title: "What goes in a treatment plan", text: "A treatment plan records the agreed treatment, the settings or products used, expected outcomes, number of sessions, and review dates." },
+              { kind: "teach", title: "The consultation record", text: "It must capture the client's medical history, medications, contraindications identified, the patch-test result, and the client's signed consent." },
+              { kind: "ask", prompt: "Which MUST appear on a client record?", qtype: "MULTI", options: ["Signed consent", "Medical history", "Treatment settings used", "The client's shoe size"], correct: [0, 1, 2], explanation: "Consent, history and settings are essential; shoe size is irrelevant." },
+              { kind: "say", text: "Exactly right. Now let's look at why accuracy matters.", mood: "cheer" },
+              { kind: "teach", title: "Contemporaneous records", text: "Records must be written at the time of treatment, not reconstructed later. Courts and regulators treat late-added records with suspicion." },
+              { kind: "ask", prompt: "Records should be written...", qtype: "SINGLE", options: ["At the time of the appointment", "A week later", "Only if something goes wrong", "Never"], correct: [0], explanation: "Contemporaneous records are more credible and more useful." },
+              { kind: "teach", title: "What a record protects", text: "If a client complains or a dispute arises, a complete record shows exactly what was agreed, tested and performed -- protecting both parties." },
+              { kind: "ask", prompt: "A complete client record mainly protects...", qtype: "MULTI", options: ["The client", "The practitioner", "The business", "Nobody"], correct: [0, 1, 2], explanation: "Good records protect everyone involved." },
+              { kind: "say", text: "That's the record sorted. Now let's think about data law.", mood: "think" },
+            ],
+          },
+          {
+            title: "GDPR & Data Protection in the Clinic",
+            durationMin: 10,
+            objectives: ["Apply the core GDPR principles to client records", "Explain how long to keep records", "Describe what clients' data rights mean in practice"],
+            studyTips: ["Health data is special category under UK GDPR -- it needs extra protection compared with ordinary personal data."],
+            examRefs: ["GDPR", "Data protection", "Record keeping"],
+            steps: [
+              { kind: "say", text: "Client data is sensitive, and the law is clear about how to handle it.", mood: "think" },
+              { kind: "teach", title: "UK GDPR in aesthetics", text: "Health and treatment data is special category data under UK GDPR, requiring a lawful basis and additional safeguards." },
+              { kind: "ask", prompt: "Under UK GDPR, health data is classed as...", qtype: "WORD", options: ["special category", "public", "optional"], correct: [0], explanation: "Special category data needs stricter controls than ordinary personal data." },
+              { kind: "teach", title: "Core principles", text: "Collect only what you need (data minimisation), keep it accurate, store it securely, and don't hold it longer than necessary." },
+              { kind: "ask", prompt: "Which principle limits you to collecting only the data you actually need?", qtype: "SINGLE", options: ["Data minimisation", "Data maximisation", "Open sharing", "No rule applies"], correct: [0], explanation: "Data minimisation: collect only what is necessary for the purpose." },
+              { kind: "teach", title: "Retention periods", text: "Adult client records should be kept for a minimum of 7 years; records relating to minors, until they reach 25." },
+              { kind: "ask", prompt: "Adult client records in aesthetics should be kept for a minimum of...", qtype: "SINGLE", options: ["7 years", "1 year", "30 days", "Forever"], correct: [0], explanation: "7 years is the standard minimum retention period for adult treatment records." },
+              { kind: "teach", title: "Client rights", text: "Clients can request to see their data (subject access request) and can ask for errors to be corrected -- you must respond within one month." },
+              { kind: "ask", prompt: "A client asks to see their records. You must respond within...", qtype: "SINGLE", options: ["One month", "One year", "One week", "Ten minutes"], correct: [0], explanation: "One calendar month is the legal deadline for a subject access request." },
+              { kind: "say", text: "Solid data practice keeps clients safe and keeps you compliant. Well done.", mood: "cheer" },
+            ],
+          },
+        ],
+        quiz: {
+          title: "Treatment Planning & Client Records Assessment",
+          passMark: 70,
+          questions: [
+            { prompt: "Which information must appear on a client record?", type: "MULTI", options: ["Signed consent", "Medical history", "Settings used", "Client's shoe size"], correct: [0, 1, 2], explanation: "Consent, history and settings are essential records." },
+            { prompt: "Records should be written at the time of the appointment, not reconstructed later.", type: "TRUEFALSE", options: ["True", "False"], correct: [0], explanation: "Contemporaneous records are legally stronger and more credible." },
+            { prompt: "Under UK GDPR, health data is classed as ___ category data.", type: "WORD", options: ["special", "public", "basic"], correct: [0], explanation: "Special category data requires additional lawful basis and safeguards." },
+            { prompt: "The data minimisation principle means you should collect...", type: "SINGLE", options: ["Only what is needed for the treatment", "As much data as possible", "Nothing at all", "Only financial data"], correct: [0], explanation: "Collect only data that is necessary and proportionate." },
+            { prompt: "Adult aesthetics client records must be kept for a minimum of...", type: "SINGLE", options: ["7 years", "1 year", "30 days", "50 years"], correct: [0], explanation: "7 years is the standard minimum retention period." },
+            { prompt: "A client submits a subject access request. You must respond within...", type: "SINGLE", options: ["One month", "Six months", "One week", "One day"], correct: [0], explanation: "UK GDPR requires a response within one calendar month." },
+          ],
+        },
+      },
+    ],
+  },
+
+  {
+    courseSlug: "level-3-laser-aesthetic-therapies",
+    modules: [
+      {
+        title: "Skin Pharmacology & Topicals",
+        summary: "How topical agents interact with laser and aesthetic treatments; the role of retinoids, AHAs and SPF in pre/post protocols; photosensitising medications and why some topicals must stop before laser.",
+        lessons: [
+          {
+            title: "Topical Agents & Their Interaction with Laser Treatments",
+            durationMin: 13,
+            objectives: ["Name key topical agents used in pre/post laser protocols", "Explain why certain topicals must be stopped before laser", "Understand the role of numbing creams and photosensitisers"],
+            studyTips: ["A practical exam question often asks which topical to stop and why -- link the pharmacology to the risk (e.g. retinoids thin the skin, raising burn risk)."],
+            examRefs: ["Pre-treatment preparation", "Topical pharmacology"],
+            steps: [
+              { kind: "say", text: "What clients put on their skin before and after treatment matters as much as the device settings.", mood: "think" },
+              { kind: "teach", title: "Topical anaesthetics (numbing creams)", text: "EMLA and LMX creams contain local anaesthetics (lidocaine/prilocaine) applied under occlusion 30-60 minutes before treatment to reduce pain." },
+              { kind: "ask", prompt: "Topical anaesthetic cream is typically applied...", qtype: "SINGLE", options: ["30-60 minutes before treatment", "The day before", "During treatment", "After treatment"], correct: [0], explanation: "30-60 minutes under occlusion gives effective tissue penetration." },
+              { kind: "teach", title: "Retinoids -- stop before laser", text: "Retinoids (tretinoin, retinol) increase epidermal turnover and thin the stratum corneum; clients must stop 5-7 days before laser to avoid heightened sensitivity and burn risk." },
+              { kind: "ask", prompt: "Why must retinoid use stop before laser treatment?", qtype: "SINGLE", options: ["They thin the skin, raising burn risk", "They improve results", "They block the laser beam", "They have no effect"], correct: [0], explanation: "Retinoids accelerate cell turnover and thin the barrier, making skin more susceptible to laser injury." },
+              { kind: "teach", title: "AHAs and BHAs", text: "Alpha-hydroxy acids (glycolic, lactic) and beta-hydroxy acids (salicylic) exfoliate and sensitise skin; stop 5-7 days before laser to avoid adverse reactions." },
+              { kind: "ask", prompt: "Which topicals should be paused 5-7 days before laser?", qtype: "MULTI", options: ["Retinoids", "AHAs (glycolic acid)", "BHAs (salicylic acid)", "Plain moisturiser"], correct: [0, 1, 2], explanation: "Active exfoliants sensitise skin; plain moisturiser does not." },
+              { kind: "teach", title: "Photosensitising medications", text: "Some systemic drugs (certain antibiotics, diuretics, NSAIDs, some antidepressants) increase skin's UV/light sensitivity -- always take a full medication history." },
+              { kind: "ask", prompt: "Before laser, it is important to ask about systemic medications because some can...", qtype: "SINGLE", options: ["Increase skin photosensitivity", "Improve laser absorption", "Block all side effects", "Have no relevance"], correct: [0], explanation: "Photosensitising drugs raise the risk of adverse reactions to laser and IPL energy." },
+              { kind: "say", text: "A thorough medication history is as important as the device settings. Good work.", mood: "cheer" },
+            ],
+          },
+          {
+            title: "SPF, Serums & Post-Treatment Topical Protocols",
+            durationMin: 12,
+            objectives: ["Explain why SPF is non-negotiable post-laser", "Describe which ingredients support healing and which to avoid", "Advise clients confidently on a post-treatment regime"],
+            studyTips: ["Think of post-treatment skin as a wound: calm it, protect it, then rebuild. The same logic underpins every topical recommendation."],
+            examRefs: ["Post-treatment care", "SPF and photoprotection"],
+            steps: [
+              { kind: "say", text: "After laser, the skin is in a vulnerable state. The right topicals help it heal.", mood: "happy" },
+              { kind: "teach", title: "Why SPF is non-negotiable", text: "Post-laser skin lacks its normal barrier and is highly susceptible to UV-induced pigmentation changes; broad-spectrum SPF 30-50 must be worn daily." },
+              { kind: "ask", prompt: "After laser treatment, clients should wear broad-spectrum SPF...", qtype: "SINGLE", options: ["Every day, even on cloudy days", "Only on holiday", "Only for one day", "Never"], correct: [0], explanation: "UV reaches skin through cloud; post-laser PIH risk is elevated for weeks." },
+              { kind: "teach", title: "Barrier-supporting ingredients", text: "Ceramides, hyaluronic acid and gentle peptides support barrier repair post-laser without irritating compromised skin." },
+              { kind: "ask", prompt: "Which ingredient helps restore the skin barrier post-laser?", qtype: "SINGLE", options: ["Ceramides", "Glycolic acid", "Retinol", "Salicylic acid"], correct: [0], explanation: "Ceramides are lipid molecules integral to barrier structure and repair." },
+              { kind: "teach", title: "What to avoid post-treatment", text: "Avoid active exfoliants (AHAs, BHAs, retinoids), fragrance and heat for at least 5-7 days; these can disrupt healing and trigger PIH." },
+              { kind: "ask", prompt: "Post-laser, clients should avoid using...", qtype: "MULTI", options: ["Glycolic acid toner", "Tretinoin", "Fragrance-heavy products", "Plain SPF moisturiser"], correct: [0, 1, 2], explanation: "Active exfoliants and fragrance irritate compromised skin; plain SPF is fine." },
+              { kind: "teach", title: "When to reintroduce actives", text: "Retinoids and AHAs can usually be reintroduced after full healing -- typically 7-14 days post-treatment, guided by skin response." },
+              { kind: "ask", prompt: "Retinoids can usually be reintroduced after full healing, typically...", qtype: "SINGLE", options: ["7-14 days post-treatment", "The next morning", "After 6 months", "Never again"], correct: [0], explanation: "7-14 days is the standard guidance; individual response may vary." },
+              { kind: "say", text: "Get the post-treatment protocol right and results improve. You've got this.", mood: "cheer" },
+            ],
+          },
+        ],
+        quiz: {
+          title: "Skin Pharmacology & Topicals Assessment",
+          passMark: 70,
+          questions: [
+            { prompt: "Topical anaesthetic cream should be applied under occlusion...", type: "SINGLE", options: ["30-60 minutes before treatment", "Immediately before", "The day before", "After treatment"], correct: [0], explanation: "30-60 minutes gives adequate penetration and effect." },
+            { prompt: "Retinoids must be stopped before laser treatment because they...", type: "SINGLE", options: ["Thin the skin and raise burn risk", "Improve laser absorption", "Prevent pain", "Block laser wavelengths"], correct: [0], explanation: "Retinoids thin the stratum corneum, increasing sensitivity to laser energy." },
+            { prompt: "Which topicals should be paused 5-7 days before laser?", type: "MULTI", options: ["Retinoids", "AHAs", "BHAs", "Plain moisturiser"], correct: [0, 1, 2], explanation: "Active exfoliants sensitise skin; plain moisturiser does not." },
+            { prompt: "Some systemic medications raise skin photosensitivity and must be identified at...", type: "SINGLE", options: ["Consultation", "After treatment", "The invoice stage", "Never"], correct: [0], explanation: "Full medication history at consultation identifies photosensitising drugs." },
+            { prompt: "Post-laser, broad-spectrum SPF must be worn...", type: "SINGLE", options: ["Every day, including cloudy days", "Only in summer", "Only for 24 hours", "Only abroad"], correct: [0], explanation: "UV penetrates cloud; PIH risk is elevated for weeks post-laser." },
+            { prompt: "Which ingredient best supports barrier repair after laser?", type: "SINGLE", options: ["Ceramides", "Glycolic acid", "Salicylic acid", "Fragrance"], correct: [0], explanation: "Ceramides are structural lipids that restore barrier integrity." },
+          ],
+        },
+      },
+    ],
+  },
+
+  // -- BATCH 8 -----------------------------------------------------------------
+
+  {
+    courseSlug: L2,
+    modules: [
+      {
+        title: "Client Preparation & Treatment Delivery",
+        summary: "How to set up the treatment room, prepare the client, take pre-treatment photographs and deliver a systematic, safe treatment from start to finish.",
+        lessons: [
+          {
+            title: "Setting Up & Preparing the Client",
+            durationMin: 11,
+            objectives: ["Describe correct room preparation before a laser or light treatment", "Explain why pre-treatment photographs are taken", "State how to position and prepare the client safely"],
+            studyTips: ["VTCT Level 2 assessments often include practical observation of your set-up routine -- every step matters."],
+            examRefs: ["Treatment preparation", "Client preparation", "Record keeping"],
+            steps: [
+              { kind: "say", text: "Good preparation before the first pulse is what separates a safe treatment from a risky one.", mood: "think" },
+              { kind: "teach", title: "Room preparation", text: "The treatment room must be at a comfortable temperature, have a clean couch with fresh couch roll, and have all equipment switched on and tested before the client enters." },
+              { kind: "ask", prompt: "Couch roll must be replaced...", qtype: "SINGLE", options: ["Between every client", "Once a day", "Once a week", "When it looks dirty"], correct: [0], explanation: "Fresh couch roll for every client is an infection-control requirement." },
+              { kind: "teach", title: "Jewellery and clothing", text: "Ask the client to remove all jewellery and metal objects near the treatment area. Ensure clothing is folded back safely and not at risk from stray laser energy." },
+              { kind: "teach", title: "Pre-treatment photography", text: "Take clear, consistent photographs of the treatment area from standard angles before every treatment. These form part of the clinical record and provide a baseline for comparison." },
+              { kind: "ask", prompt: "Why photograph the treatment area before starting?", qtype: "SINGLE", options: ["To create a baseline for comparison and for the medicolegal record", "To post on social media", "To impress the client", "It is not necessary"], correct: [0], explanation: "Before photographs are essential for tracking progress and for medicolegal protection." },
+              { kind: "teach", title: "Client positioning", text: "Position the client so the treatment area is fully accessible, they are comfortable and stable, and you can move around the area without interruption." },
+              { kind: "ask", prompt: "The best client position for treatment is one that is...", qtype: "MULTI", options: ["Comfortable for the client", "Safe and stable", "Fully accessible to the practitioner", "As fast as possible"], correct: [0, 1, 2], explanation: "Comfort, stability and access are all essential; speed alone is not a positioning goal." },
+              { kind: "say", text: "A methodical setup protects both of you. Now let's look at delivering the treatment itself.", mood: "cheer" },
+            ],
+          },
+          {
+            title: "Delivering a Safe, Systematic Treatment",
+            durationMin: 12,
+            objectives: ["Explain the purpose of a test pulse before a full treatment", "Describe a systematic treatment delivery approach", "State how to recognise and respond to unexpected reactions mid-treatment"],
+            studyTips: ["The test pulse is not optional for new clients or new settings. Examiners look for it in practical assessments."],
+            examRefs: ["Treatment delivery", "Test pulse", "Adverse reactions"],
+            steps: [
+              { kind: "say", text: "Delivering the treatment well is about method, attention and knowing when to stop.", mood: "think" },
+              { kind: "teach", title: "Test pulse", text: "For a new client or new settings, fire a test pulse on an inconspicuous area and wait the recommended time to check the tissue response before treating the full area." },
+              { kind: "ask", prompt: "A test pulse is performed to...", qtype: "SINGLE", options: ["Check how the skin responds to the planned settings before full treatment", "Save time", "Impress the client", "Set the price"], correct: [0], explanation: "The test pulse identifies unexpected reactions early, when they are easy to manage." },
+              { kind: "teach", title: "Systematic coverage", text: "Work methodically across the treatment area using a systematic pattern. This avoids missed patches, double-pulsing the same spot, and over-treating one area." },
+              { kind: "teach", title: "Monitoring during treatment", text: "Watch for the expected tissue response (mild erythema, hair singeing in hair removal) and for unexpected signs: excessive redness, pain beyond mild discomfort, blistering or whitening of the skin." },
+              { kind: "ask", prompt: "If a client reports unexpected, sharp pain mid-treatment, you should...", qtype: "SINGLE", options: ["Stop, assess the skin and adjust settings before continuing", "Increase the energy and carry on", "Ignore it and finish", "Leave the room"], correct: [0], explanation: "Unexpected pain is a signal to stop and assess. Never continue through it." },
+              { kind: "teach", title: "Documenting the session", text: "Record the device used, wavelength, fluence, pulse duration, number of pulses, treatment area, client response, and any adverse reactions at the time of treatment." },
+              { kind: "ask", prompt: "Treatment notes must be completed...", qtype: "SINGLE", options: ["At the time of treatment", "At the end of the week", "Only if something went wrong", "Never"], correct: [0], explanation: "Contemporaneous records are more accurate and legally more credible." },
+              { kind: "say", text: "Methodical delivery and clear records are the foundation of safe, professional practice. You have got this.", mood: "cheer" },
+            ],
+          },
+        ],
+        quiz: {
+          title: "Client Preparation & Delivery Assessment",
+          passMark: 70,
+          questions: [
+            { prompt: "Couch roll must be changed...", type: "SINGLE", options: ["Between every client", "Once a day", "Once a week", "When it tears"], correct: [0], explanation: "Fresh per client is the infection-control standard." },
+            { prompt: "Jewellery near the treatment area should be...", type: "SINGLE", options: ["Removed before treatment", "Left on", "Covered with tape", "Placed on the couch"], correct: [0], explanation: "Metal near laser energy risks burns and reflection." },
+            { prompt: "Pre-treatment photographs are taken to...", type: "SINGLE", options: ["Create a baseline record for comparison and medicolegal use", "Post online", "Check the lighting", "Avoid starting treatment"], correct: [0], explanation: "Before shots are a clinical and medicolegal requirement." },
+            { prompt: "A test pulse is used to...", type: "SINGLE", options: ["Check the tissue response at planned settings before treating the full area", "Save energy", "Shorten the appointment", "Replace the patch test"], correct: [0], explanation: "It identifies unexpected reactions when the area treated is still small." },
+            { prompt: "If you see unexpected blistering mid-treatment, you should...", type: "SINGLE", options: ["Stop, cool the area, protect it and document", "Increase the energy", "Continue", "Apply makeup"], correct: [0], explanation: "Stop immediately, protect the blister, and document." },
+            { prompt: "Treatment notes must record...", type: "MULTI", options: ["Device and settings used", "Client response", "Date and area treated", "The best social media caption"], correct: [0, 1, 2], explanation: "Settings, response, date and area are all essential; social media captions are not." },
+          ],
+        },
+      },
+    ],
+  },
+
+  {
+    courseSlug: "level-3-laser-aesthetic-therapies",
+    modules: [
+      {
+        title: "Combination Treatments & Course Planning",
+        summary: "How to plan a multi-session treatment programme and combine different energy-based modalities safely to achieve outcomes neither could reach alone.",
+        lessons: [
+          {
+            title: "Building a Multi-Session Programme",
+            durationMin: 12,
+            objectives: ["Explain why courses deliver better outcomes than single sessions", "State standard treatment intervals for common laser modalities", "Write a structured written treatment plan"],
+            studyTips: ["Standard intervals exist because the biological response (collagen remodelling, follicle cycling) takes time. Know the timeframes for hair removal, pigmentation and rejuvenation separately."],
+            examRefs: ["Course planning", "Treatment intervals", "Written treatment plan"],
+            steps: [
+              { kind: "say", text: "Single sessions rarely deliver the full result. Understanding why courses work better makes you a much better clinician.", mood: "think" },
+              { kind: "teach", title: "Why courses beat single sessions", text: "Laser and light treatments work with the body's own biology. Collagen remodelling, follicle cycling and pigment clearance all take weeks to complete. A course of spaced treatments compounds the response." },
+              { kind: "teach", title: "Standard treatment intervals", text: "Hair removal: 4-8 weeks (to catch follicles cycling into anagen). Pigmentation and vascular: 4-6 weeks (allow clearance before the next session). Skin rejuvenation/photofacials: 3-4 weeks. Body contouring: 2-4 weeks." },
+              { kind: "ask", prompt: "Why are laser hair removal sessions spaced 4-8 weeks apart?", qtype: "SINGLE", options: ["To allow follicles in other growth phases to enter anagen, where they can be targeted", "To save appointment time", "To fill the diary", "There is no reason"], correct: [0], explanation: "Only follicles in anagen respond; spacing the sessions catches more of them." },
+              { kind: "teach", title: "The midcourse review", text: "Build a formal review into every programme, at the halfway point. Reassess the result, adjust settings if needed, manage expectations, and decide whether to continue or modify the plan." },
+              { kind: "ask", prompt: "A formal midcourse review allows you to...", qtype: "MULTI", options: ["Adjust settings based on response", "Manage the client's expectations", "Modify the number of sessions if needed", "Skip the remaining appointments"], correct: [0, 1, 2], explanation: "Review is for adjustment and expectation management, not abandonment." },
+              { kind: "teach", title: "The written treatment plan", text: "Document the agreed course: planned number of sessions, intervals, starting settings, target outcomes and review points. The client should be given a copy and sign to confirm they understand." },
+              { kind: "ask", prompt: "A written treatment plan must include...", qtype: "MULTI", options: ["Number of sessions", "Treatment intervals", "Target outcomes", "The practitioner's personal opinions"], correct: [0, 1, 2], explanation: "Facts about the plan; not personal opinions." },
+              { kind: "say", text: "A plan in writing protects both of you and sets clear expectations. Now: combining treatments safely.", mood: "cheer" },
+            ],
+          },
+          {
+            title: "Combining Modalities Safely",
+            durationMin: 11,
+            objectives: ["Explain the rationale for combining modalities", "Apply the one-modality-per-session rule correctly", "Identify contraindications that arise only in combination"],
+            studyTips: ["The standard rule: one energy-based modality per session on the same area. Exceptions need specific clinical justification and training in both devices."],
+            examRefs: ["Combination treatments", "Contraindications", "Treatment planning"],
+            steps: [
+              { kind: "say", text: "Combining modalities is powerful when done right -- and risky when done carelessly.", mood: "think" },
+              { kind: "teach", title: "Why combine?", text: "Some outcomes cannot be achieved by one modality alone. IPL targets melanin and haemoglobin while RF targets the deeper dermis -- combining them on different days can address both pigment and laxity." },
+              { kind: "teach", title: "The standard rule", text: "One energy-based modality per session on the same area. Cumulative heat from two devices in one session raises the risk of burns, PIH and prolonged downtime significantly." },
+              { kind: "ask", prompt: "A client wants both IPL and RF skin tightening on the same cheek in the same appointment. What is the standard advice?", qtype: "SINGLE", options: ["Plan them in separate sessions to allow the skin to recover between treatments", "Do both in one session to save time", "Do the RF first and IPL immediately after", "Refuse all combination plans"], correct: [0], explanation: "Cumulative heat in one session raises burn and PIH risk; separate sessions are safer." },
+              { kind: "teach", title: "Contraindication overlay", text: "When planning a combination programme, check whether adding the second modality introduces new contraindications. Some contraindications (e.g. recent IPL heat) make RF treatment less safe, and vice versa." },
+              { kind: "ask", prompt: "Before adding a second modality to a treatment plan, you must...", qtype: "SINGLE", options: ["Check whether it introduces new contraindications for this client", "Assume it is safe if both are individually safe", "Ask the client to decide", "Skip the consultation"], correct: [0], explanation: "Contraindications can arise in combination that do not exist for either modality alone." },
+              { kind: "teach", title: "Document the rationale", text: "If you use a combination approach, record in the treatment notes why it was chosen, the specific protocol used, and how the client was counselled about the additional risks." },
+              { kind: "ask", prompt: "The reason for combining modalities should always be...", qtype: "SINGLE", options: ["Clinical benefit for this client, based on their assessed needs", "Convenience", "Charging more per session", "Following a trend"], correct: [0], explanation: "Clinical need, not convenience or revenue, drives the decision." },
+              { kind: "say", text: "Combine to get better outcomes for the client -- not to impress or to save time.", mood: "think" },
+            ],
+          },
+        ],
+        quiz: {
+          title: "Combination Treatments & Course Planning Assessment",
+          passMark: 70,
+          questions: [
+            { prompt: "Standard laser hair removal sessions are spaced...", type: "SINGLE", options: ["4-8 weeks apart", "Daily", "Every 6 months", "Whenever convenient"], correct: [0], explanation: "4-8 weeks allows follicles to cycle into the anagen phase." },
+            { prompt: "A formal midcourse review allows the clinician to...", type: "SINGLE", options: ["Adjust settings, manage expectations and modify the plan if needed", "Cancel remaining sessions", "Charge more", "Ignore the result so far"], correct: [0], explanation: "Review points are for clinical adjustment and expectation management." },
+            { prompt: "The main risk of using two energy-based modalities on the same area in the same session is...", type: "SINGLE", options: ["Cumulative heat causing burns or PIH", "Better results", "Saving time", "Client satisfaction"], correct: [0], explanation: "Stacked heat from two devices in one session raises adverse event risk significantly." },
+            { prompt: "Before adding a second modality to a plan, you must check for...", type: "SINGLE", options: ["New contraindications that arise in combination", "Extra revenue", "A bigger treatment room", "Nothing extra"], correct: [0], explanation: "Combinations can create contraindications that do not exist for either device alone." },
+            { prompt: "A written treatment plan should be signed by...", type: "SINGLE", options: ["The client, to confirm they understand", "The device manufacturer", "The regulator", "Nobody"], correct: [0], explanation: "The client's signature confirms informed agreement to the plan." },
+            { prompt: "The rationale for a combination treatment programme should be based on...", type: "SINGLE", options: ["The client's specific clinical needs", "Trend following", "Upselling", "Saving appointment time"], correct: [0], explanation: "Clinical need is the only valid basis for treatment decisions." },
+          ],
+        },
+      },
+    ],
+  },
+
+  {
+    courseSlug: "advanced-aesthetics-level-5-7",
+    modules: [
+      {
+        title: "Business Development & Clinical Governance",
+        summary: "Clinical governance frameworks for advanced practice, and the principles of building a sustainable, ethical aesthetic business.",
+        lessons: [
+          {
+            title: "Clinical Governance in Aesthetic Practice",
+            durationMin: 13,
+            objectives: ["Define clinical governance and its seven pillars", "Explain how incident reporting and the audit cycle improve safety", "Describe what a near-miss is and why reporting matters"],
+            studyTips: ["Clinical governance is the framework that makes you accountable for quality. Regulators and insurers look for evidence that it is actually operating, not just written down."],
+            examRefs: ["Clinical governance", "Incident reporting", "Audit", "Duty of candour"],
+            steps: [
+              { kind: "say", text: "Clinical governance is not a paper exercise. It is how you demonstrate that client safety is built into your practice.", mood: "think" },
+              { kind: "teach", title: "What is clinical governance?", text: "Clinical governance is the framework through which an organisation and its clinicians are accountable for continuously improving quality and safeguarding high standards of care." },
+              { kind: "ask", prompt: "Clinical governance is best described as...", qtype: "SINGLE", options: ["The framework through which you are accountable for quality and safety in practice", "A set of marketing rules", "A document you file once and forget", "A competitor analysis tool"], correct: [0], explanation: "Governance is an active, ongoing accountability framework." },
+              { kind: "teach", title: "Seven pillars", text: "The seven pillars are: clinical effectiveness; patient safety; patient experience; workforce (competence and training); information and communication; audit; and leadership. Advanced practitioners are expected to operate across all seven." },
+              { kind: "ask", prompt: "Which of these is a pillar of clinical governance?", qtype: "MULTI", options: ["Patient safety", "Clinical effectiveness", "Workforce training", "Choosing a logo"], correct: [0, 1, 2], explanation: "Safety, effectiveness and workforce are pillars; brand design is not." },
+              { kind: "teach", title: "Incident reporting and near-misses", text: "Every adverse event and near-miss must be documented, reviewed and acted on. A near-miss is something that could have harmed a client but did not. Reporting it is how systems improve." },
+              { kind: "ask", prompt: "A near-miss in clinical practice should be...", qtype: "SINGLE", options: ["Documented, reviewed and learned from", "Ignored because no harm occurred", "Hidden to protect the business", "Reported only if the client noticed"], correct: [0], explanation: "Near-misses are valuable learning opportunities; not reporting them is a governance failure." },
+              { kind: "teach", title: "The audit cycle", text: "Set a standard. Collect data. Compare practice to the standard. Identify gaps. Make changes. Re-audit to confirm improvement. Skipping the re-audit step means you never know whether the change worked." },
+              { kind: "ask", prompt: "The last step of the audit cycle is...", qtype: "SINGLE", options: ["Re-auditing to confirm the change improved practice", "Writing a report", "Filing the data", "Moving on to a new topic"], correct: [0], explanation: "Re-audit closes the loop and proves whether the change worked." },
+              { kind: "say", text: "Governance is your evidence that you take safety seriously. It is what protects clients and what protects you.", mood: "cheer" },
+            ],
+          },
+          {
+            title: "Strategic Business Development",
+            durationMin: 12,
+            objectives: ["Describe a market analysis approach for an aesthetic practice", "Explain value-based pricing and when to use it", "Identify which marketing channels are compliant with CAP/ASA rules"],
+            studyTips: ["Advanced practitioners are often practice owners or leads. Business literacy is examinable at Level 5-7 -- know pricing models and advertising compliance, not just clinical protocols."],
+            examRefs: ["Business planning", "Pricing strategy", "Marketing compliance", "Service mix"],
+            steps: [
+              { kind: "say", text: "A brilliant clinician in a failing business helps no one. Business development is part of advanced practice.", mood: "think" },
+              { kind: "teach", title: "Market analysis", text: "Understand who your ideal client is, what outcomes they want, what they are willing to pay, and who else in your area offers it. This shapes your service mix and pricing." },
+              { kind: "teach", title: "Service mix", text: "Balance your menu: high-volume, lower-margin treatments (the revenue engine: laser hair removal, skin rejuvenation) with premium, higher-margin treatments (advanced injectables, combination programmes). Over-reliance on either extreme is fragile." },
+              { kind: "ask", prompt: "A balanced service mix typically combines...", qtype: "SINGLE", options: ["High-volume treatments for revenue and premium treatments for margin", "Only the most expensive treatments", "Only the cheapest treatments", "Whatever the competitor offers"], correct: [0], explanation: "Volume and premium treatments together create a more resilient revenue base." },
+              { kind: "teach", title: "Pricing models", text: "Cost-plus pricing sets price from your costs upward. Market-rate pricing matches local competition. Value-based pricing sets the price from the perceived benefit to the client. Advanced practitioners often use value-based for complex, outcome-driven programmes." },
+              { kind: "ask", prompt: "Value-based pricing sets the price based on...", qtype: "SINGLE", options: ["The perceived value of the outcome to the client", "Your cost of supplies only", "Whatever a competitor charges", "A random figure"], correct: [0], explanation: "Value-based pricing reflects what the result is worth to that specific client, not just what it costs to deliver." },
+              { kind: "teach", title: "Marketing compliance", text: "Aesthetic marketing must comply with CAP (Code of Advertising Practice) and ASA (Advertising Standards Authority) rules. Before/after images require explicit written consent. Claims must be truthful and substantiated. Avoid pressure tactics or misleading timelines." },
+              { kind: "ask", prompt: "Before/after photographs used in marketing require...", qtype: "SINGLE", options: ["Explicit written consent from the client specifically for marketing use", "Only verbal agreement", "No consent if faces are blurred", "Automatic consent once treatment is paid for"], correct: [0], explanation: "Marketing use is separate from clinical consent. A specific, written consent for the marketing purpose is needed." },
+              { kind: "teach", title: "Sustainable growth", text: "Sustainable growth comes from reputation and repeat business, not from discounting. Discounting attracts price-sensitive clients who do not return, and erodes your ability to invest in training and equipment." },
+              { kind: "ask", prompt: "The most sustainable driver of practice growth is...", qtype: "SINGLE", options: ["Reputation and client retention", "Constant discounting", "Copying competitors", "Volume alone"], correct: [0], explanation: "Repeat clients and referrals are cheaper to acquire and more loyal than discount-seekers." },
+              { kind: "say", text: "Business development done well is ethical, client-centred and sustainable. That is also what good governance looks like.", mood: "cheer" },
+            ],
+          },
+        ],
+        quiz: {
+          title: "Business Development & Governance Assessment",
+          passMark: 70,
+          questions: [
+            { prompt: "Clinical governance is best described as...", type: "SINGLE", options: ["An active accountability framework for quality and safety in practice", "A marketing strategy", "An annual filing requirement", "A competitor comparison"], correct: [0], explanation: "Governance is ongoing accountability, not a one-off document." },
+            { prompt: "A near-miss in clinical practice should always be...", type: "SINGLE", options: ["Documented and reviewed, even if no harm occurred", "Ignored", "Blamed on the client", "Hidden from the team"], correct: [0], explanation: "Near-misses reveal system weaknesses before they cause real harm." },
+            { prompt: "The final step of the audit cycle is...", type: "SINGLE", options: ["Re-audit to confirm the improvement worked", "Writing a summary", "Starting a new audit immediately", "Stopping the process"], correct: [0], explanation: "Re-audit closes the loop and proves improvement." },
+            { prompt: "Value-based pricing sets the price from...", type: "SINGLE", options: ["The perceived benefit of the outcome to the client", "Your costs alone", "A standard price list", "Competitor prices only"], correct: [0], explanation: "Value-based pricing reflects what the result is worth to the client." },
+            { prompt: "Before/after images used in marketing need...", type: "SINGLE", options: ["Explicit written consent for marketing use specifically", "Verbal consent only", "No consent", "Automatic consent"], correct: [0], explanation: "Clinical consent and marketing consent are separate; explicit written consent is needed for both." },
+            { prompt: "Sustainable practice growth depends most on...", type: "SINGLE", options: ["Reputation and client retention", "Discounting constantly", "Volume of new clients only", "Copying competitors"], correct: [0], explanation: "Repeat clients and referrals are the most durable source of growth." },
+          ],
+        },
+      },
+    ],
+  },
+
+  {
+    courseSlug: "level-4-certificate-aesthetic-practice",
+    modules: [
+      {
+        title: "Legal Frameworks & Professional Accountability",
+        summary: "UK aesthetics regulation, vicarious and personal liability, scope of practice, duty of candour, adverse event reporting, professional indemnity insurance, and what makes a defensible clinical record.",
+        lessons: [
+          {
+            title: "UK Regulation, Licensing & Scope of Practice",
+            durationMin: 14,
+            objectives: ["Describe the current UK regulatory landscape for aesthetics", "Explain local licensing requirements for Class 3B/4 lasers", "Define scope of practice and why it matters"],
+            studyTips: ["HEE and the JCCP set workforce standards; the CQC oversees clinical settings; local authorities license laser use. Know which body does what."],
+            examRefs: ["Regulation", "Licensing", "Scope of practice"],
+            steps: [
+              { kind: "say", text: "Knowing the regulatory landscape protects your clients, your career and your business.", mood: "think" },
+              { kind: "teach", title: "HEE and JCCP", text: "Health Education England (HEE) and the Joint Council for Cosmetic Practitioners (JCCP) set the competency and qualification standards for the UK aesthetics workforce." },
+              { kind: "ask", prompt: "Which body sets competency standards for the UK aesthetics workforce?", qtype: "SINGLE", options: ["JCCP / HEE", "The local council only", "The client", "No body regulates this"], correct: [0], explanation: "The JCCP and HEE set the workforce standards practitioners are expected to meet." },
+              { kind: "teach", title: "Local authority laser licensing", text: "Class 3B and Class 4 lasers used for cosmetic treatments require a local authority licence under the Local Government (Miscellaneous Provisions) Act 1982 in England and Wales." },
+              { kind: "ask", prompt: "Class 3B and 4 cosmetic lasers require a licence from...", qtype: "SINGLE", options: ["The local authority", "The client", "The device manufacturer only", "No licence is needed"], correct: [0], explanation: "Local authority licensing is a legal requirement before using these lasers commercially." },
+              { kind: "teach", title: "CQC oversight", text: "The Care Quality Commission (CQC) regulates clinical settings in England; if your practice carries out procedures classified as regulated activities, CQC registration may be required." },
+              { kind: "ask", prompt: "The CQC is primarily concerned with...", qtype: "SINGLE", options: ["Clinical care quality and safety in registered settings", "Laser licences only", "Pricing of treatments", "Social media advertising"], correct: [0], explanation: "CQC regulates quality and safety of regulated health activities." },
+              { kind: "teach", title: "Scope of practice", text: "Scope of practice means performing only those treatments you are trained, insured and competent to deliver -- working outside it risks the client and exposes you to liability." },
+              { kind: "ask", prompt: "Working within your scope of practice means...", qtype: "SINGLE", options: ["Only treating within your training, competence and insurance", "Doing whatever a client requests", "Following a colleague's advice only", "Avoiding all complex cases"], correct: [0], explanation: "Scope is defined by qualification, demonstrated competence and valid insurance coverage." },
+              { kind: "say", text: "Now you know who regulates what. Next: when things go wrong.", mood: "think" },
+            ],
+          },
+          {
+            title: "Liability, Duty of Candour & Defensible Records",
+            durationMin: 13,
+            objectives: ["Distinguish vicarious from personal liability", "Explain the duty of candour", "Describe what makes a record defensible in a dispute"],
+            studyTips: ["When something goes wrong the answer is always: stop, record, be honest, report, support the client."],
+            examRefs: ["Liability", "Duty of candour", "Adverse event reporting", "Indemnity insurance"],
+            steps: [
+              { kind: "say", text: "Even excellent practitioners face complaints. Knowing your legal position is essential.", mood: "think" },
+              { kind: "teach", title: "Personal vs vicarious liability", text: "Personal liability is your own responsibility for your actions; vicarious liability is an employer's responsibility for the acts of an employee within their role." },
+              { kind: "ask", prompt: "When an employer is legally responsible for an employee's clinical error, this is called...", qtype: "SINGLE", options: ["Vicarious liability", "Personal liability", "Strict liability", "No liability"], correct: [0], explanation: "Vicarious liability: the employer may be sued for an employee's negligent acts within their role." },
+              { kind: "teach", title: "Professional indemnity insurance", text: "Professional indemnity insurance covers legal costs and compensation claims arising from professional errors or omissions -- it must be valid for each specific procedure you perform." },
+              { kind: "ask", prompt: "Professional indemnity insurance must cover...", qtype: "SINGLE", options: ["Each specific procedure you perform", "Only injections", "All treatments regardless of training", "Nothing -- it is optional"], correct: [0], explanation: "Cover must be specific to the procedure; performing an uninsured treatment leaves you personally exposed." },
+              { kind: "teach", title: "Duty of candour", text: "The duty of candour requires you to be open and honest with a client when something has gone wrong with their treatment, offer an apology, and explain what happened." },
+              { kind: "ask", prompt: "The duty of candour requires you to...", qtype: "SINGLE", options: ["Be open, honest and apologise when something goes wrong", "Stay silent to avoid claims", "Blame the client", "Delete the record"], correct: [0], explanation: "Honesty, an apology and a plan to put things right are all required." },
+              { kind: "teach", title: "Adverse event reporting", text: "Serious adverse events must be reported to the MHRA (yellow card scheme for devices), your insurer, and -- where applicable -- the CQC." },
+              { kind: "ask", prompt: "A serious adverse event linked to a medical device should be reported to...", qtype: "SINGLE", options: ["The MHRA (yellow card scheme)", "Social media only", "Nobody", "The client's GP only"], correct: [0], explanation: "The MHRA yellow card scheme captures device-related adverse events." },
+              { kind: "teach", title: "The defensible record", text: "A defensible record is contemporaneous, complete, signed, and shows the rationale for decisions made -- it demonstrates you acted reasonably and in the client's best interests." },
+              { kind: "ask", prompt: "A defensible record must be...", qtype: "MULTI", options: ["Contemporaneous", "Complete", "Show the rationale for decisions", "Written weeks later"], correct: [0, 1, 2], explanation: "Written at the time, complete and reasoned -- not reconstructed after the fact." },
+              { kind: "say", text: "Honest practice, good records and the right insurance keep you and your clients protected. Excellent work.", mood: "cheer" },
+            ],
+          },
+        ],
+        quiz: {
+          title: "Legal Frameworks & Professional Accountability Assessment",
+          passMark: 70,
+          questions: [
+            { prompt: "Class 3B and Class 4 cosmetic lasers require a licence from...", type: "SINGLE", options: ["The local authority", "The manufacturer", "The client", "No licence needed"], correct: [0], explanation: "Local authority licensing is a legal requirement under the Local Government (Miscellaneous Provisions) Act 1982." },
+            { prompt: "Working within scope of practice means only treating within your training, competence and...", type: "WORD", options: ["insurance", "diary", "budget"], correct: [0], explanation: "Training, competence and valid insurance together define your scope." },
+            { prompt: "Vicarious liability applies when...", type: "SINGLE", options: ["An employer is held responsible for an employee's negligent act", "A practitioner is personally sued", "A client causes harm", "No one is responsible"], correct: [0], explanation: "Vicarious liability: the employer can be liable for acts of an employee within their role." },
+            { prompt: "Professional indemnity insurance must be valid for each specific procedure performed.", type: "TRUEFALSE", options: ["True", "False"], correct: [0], explanation: "Generic cover does not protect you for procedures not listed in the policy." },
+            { prompt: "The duty of candour requires you to be open and honest when something goes wrong.", type: "TRUEFALSE", options: ["True", "False"], correct: [0], explanation: "Openness, an apology and a plan to put things right are all required." },
+            { prompt: "A serious adverse event linked to a medical device should be reported to the...", type: "WORD", options: ["MHRA", "client only", "nobody"], correct: [0], explanation: "The Medicines and Healthcare products Regulatory Agency (MHRA) collects device-related adverse event reports." },
+          ],
+        },
+      },
+    ],
+  },
+
 ];
 
 export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
@@ -1504,6 +2000,57 @@ export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Leadership', prompt: 'In a good safety culture, mistakes are treated as…', options: ['Learning opportunities', 'Reasons to blame', 'Things to hide', 'Unimportant'], correct: [0], explanation: 'Openness and learning, not blame.' },
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Leadership', prompt: 'The best way for a leader to set team standards is to…', options: ['Model them personally', 'Only write rules', 'Hope for the best', 'Punish every slip'], correct: [0], explanation: 'Lead by example.' },
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Mentoring', prompt: 'Useful feedback to a mentee is specific, kind and…', type: 'WORD', options: ['actionable', 'vague', 'harsh'], correct: [0], explanation: 'Specific, kind and actionable.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Skin analysis', prompt: 'Before a skin analysis, skin should be…', type: 'WORD', options: ['cleansed', 'moisturised', 'made up'], correct: [0], explanation: 'Cleansing removes product interference so you see the true skin.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Skin analysis', prompt: 'Dehydration is a skin ___, not a skin type.', type: 'WORD', options: ['condition', 'disease', 'colour'], correct: [0], explanation: 'Any skin type can be dehydrated; it is a changeable state.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Skin analysis', prompt: 'Which are the main skin types?', type: 'MULTI', options: ['Oily', 'Dry', 'Combination', 'Dehydrated'], correct: [0, 1, 2], explanation: 'Dehydration is a condition, not a type.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Skin analysis', prompt: 'A magnifying lamp is used during skin analysis to see…', type: 'MULTI', options: ['Open pores', 'Comedones', 'Erythema', 'The client\'s exact age'], correct: [0, 1, 2], explanation: 'It reveals texture and vascular detail, not age.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Skin analysis', prompt: 'An asymmetric, changing or bleeding lesion should be treated immediately.', type: 'TRUEFALSE', options: ['False', 'True'], correct: [0], explanation: 'Refer it to a doctor before any treatment.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Skin analysis', prompt: 'The main purpose of a skin analysis is to…', options: ['Shape a safe treatment plan', 'Set the price', 'Skip the consultation', 'Impress the client'], correct: [0], explanation: 'Analysis informs a safe, appropriate plan.' },
+  { courseSlug: L2, topic: 'Laser safety', prompt: 'Treatment lasers are typically Class 3B or Class 4, meaning they can cause injury from…', type: 'MULTI', options: ['Direct beam contact', 'A reflected beam', 'Stray fumes', 'Good lighting only'], correct: [0, 1, 2], explanation: 'Direct, reflected beams and fumes are all recognised hazards.' },
+  { courseSlug: L2, topic: 'Laser safety', prompt: 'The treatment room during laser use is known as a laser-___ area.', type: 'WORD', options: ['controlled', 'open', 'free'], correct: [0], explanation: 'A controlled area with warning signs and restricted entry.' },
+  { courseSlug: L2, topic: 'Laser safety', prompt: 'Protective laser goggles must be rated for the specific ___ in use.', type: 'WORD', options: ['wavelength', 'brand', 'colour'], correct: [0], explanation: 'Different wavelengths need different optical density ratings.' },
+  { courseSlug: L2, topic: 'Laser safety', prompt: 'During laser use, wavelength-matched eyewear must be worn by…', type: 'MULTI', options: ['The practitioner', 'The client', 'Anyone in the room', 'Nobody'], correct: [0, 1, 2], explanation: 'Every person present needs wavelength-specific protection.' },
+  { courseSlug: L2, topic: 'Laser safety', prompt: 'Responsibility for safe laser use rests with…', options: ['The operator', 'The machine manufacturer only', 'The client', 'The regulator alone'], correct: [0], explanation: 'The operator is responsible and accountable at all times.' },
+  { courseSlug: L2, topic: 'Laser safety', prompt: 'Fire and fumes are potential laser hazards in addition to eye and skin injury.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Flammable materials and tissue fumes are recognised laser hazards.' },
+
+  // -- BATCH 7 exam bank questions ---------------------------------------------
+
+  // Treatment Planning & Client Records (L2)
+  { courseSlug: L2, topic: "Record keeping", prompt: "A client record should be completed...", options: ["At the time of the appointment", "The following week", "Only after a complaint", "Never"], correct: [0], explanation: "Contemporaneous records are legally stronger and more accurate than retrospective ones." },
+  { courseSlug: L2, topic: "Record keeping", prompt: "Under UK GDPR, client health data is classed as...", type: "WORD", options: ["special category", "public", "optional"], correct: [0], explanation: "Health data requires a higher level of protection as special category data." },
+  { courseSlug: L2, topic: "Record keeping", prompt: "Adult aesthetics client records should be retained for a minimum of...", options: ["7 years", "6 months", "30 days", "1 year"], correct: [0], explanation: "Seven years is the standard minimum retention period for adult treatment records." },
+  { courseSlug: L2, topic: "Record keeping", prompt: "The data minimisation principle requires you to collect...", options: ["Only data needed for the treatment", "As much data as possible", "No personal data at all", "Financial data only"], correct: [0], explanation: "Collect only what is necessary and proportionate to the purpose." },
+  { courseSlug: L2, topic: "Record keeping", prompt: "A complete client record protects...", type: "MULTI", options: ["The client", "The practitioner", "The business", "Nobody"], correct: [0, 1, 2], explanation: "Good records protect all parties if a dispute arises." },
+
+  // Skin Pharmacology & Topicals (L3)
+  { courseSlug: "level-3-laser-aesthetic-therapies", topic: "Topicals", prompt: "Retinoid use should be stopped before laser treatment because retinoids...", options: ["Thin the skin, increasing burn risk", "Protect the skin from heat", "Improve laser absorption", "Block the wavelength"], correct: [0], explanation: "Retinoids accelerate epidermal turnover and thin the stratum corneum, raising sensitivity to laser energy." },
+  { courseSlug: "level-3-laser-aesthetic-therapies", topic: "Topicals", prompt: "Topical anaesthetic creams (e.g. EMLA) are typically applied under occlusion for...", options: ["30-60 minutes before treatment", "The day before", "During the treatment", "After the treatment"], correct: [0], explanation: "30-60 minutes under occlusion achieves effective tissue penetration of the anaesthetic." },
+  { courseSlug: "level-3-laser-aesthetic-therapies", topic: "Topicals", prompt: "Post-laser, the ingredient best suited to supporting barrier repair is...", options: ["Ceramides", "Glycolic acid", "Salicylic acid", "Retinol"], correct: [0], explanation: "Ceramides are structural skin lipids that restore barrier integrity after treatment." },
+  { courseSlug: "level-3-laser-aesthetic-therapies", topic: "Photosensitivity", prompt: "Photosensitising systemic medications must be identified...", options: ["During the consultation", "After treatment", "At payment", "They need not be identified"], correct: [0], explanation: "A thorough medication history at consultation is needed before any laser or light-based treatment." },
+
+  // Legal Frameworks & Professional Accountability (L4)
+  { courseSlug: "level-4-certificate-aesthetic-practice", topic: "Regulation", prompt: "Class 3B and Class 4 cosmetic lasers require a licence from...", options: ["The local authority", "The device manufacturer", "The client", "No licence is needed"], correct: [0], explanation: "A local authority licence is required under the Local Government (Miscellaneous Provisions) Act 1982 before commercial cosmetic laser use." },
+  { courseSlug: "level-4-certificate-aesthetic-practice", topic: "Liability", prompt: "When an employer is legally responsible for an employee's negligent clinical act, this is known as...", options: ["Vicarious liability", "Personal liability", "Strict liability", "Absolute immunity"], correct: [0], explanation: "Vicarious liability holds the employer accountable for acts of an employee performed within their role." },
+  { courseSlug: "level-4-certificate-aesthetic-practice", topic: "Adverse events", prompt: "A serious adverse event related to a medical device must be reported to the...", options: ["MHRA (yellow card scheme)", "Client's GP only", "Nobody", "Social media"], correct: [0], explanation: "The MHRA's yellow card scheme collects device-related adverse event reports to protect public safety." },
+
+  // -- BATCH 8 exam bank questions ---------------------------------------------
+
+  // Client Preparation & Treatment Delivery (L2)
+  { courseSlug: L2, topic: "Treatment preparation", prompt: "Before the first full laser treatment on a new client, you should fire a...", type: "WORD", options: ["test pulse", "full sweep", "random burst"], correct: [0], explanation: "A test pulse checks the tissue response at the planned settings before committing to the full area." },
+  { courseSlug: L2, topic: "Treatment preparation", prompt: "Pre-treatment photographs form part of the...", options: ["Clinical record and provide a medicolegal baseline", "Social media feed", "Invoice", "Marketing campaign"], correct: [0], explanation: "Before photos are a clinical record requirement, not a marketing asset." },
+  { courseSlug: L2, topic: "Treatment delivery", prompt: "During a treatment, unexpected sharp pain or blistering means you should...", options: ["Stop, assess, and adjust before continuing", "Increase the energy setting", "Continue to the end of the treatment", "Leave the client to rest"], correct: [0], explanation: "Any unexpected adverse response is a signal to stop immediately and assess." },
+
+  // Combination Treatments & Course Planning (L3)
+  { courseSlug: "level-3-laser-aesthetic-therapies", topic: "Course planning", prompt: "Skin rejuvenation photofacial sessions are typically spaced...", options: ["3-4 weeks apart", "Every 6 months", "Daily", "Every 2 years"], correct: [0], explanation: "3-4 weeks allows the neocollagenesis response to develop before the next treatment." },
+  { courseSlug: "level-3-laser-aesthetic-therapies", topic: "Combination treatments", prompt: "The main clinical risk of applying two energy-based devices to the same area in one session is...", options: ["Cumulative heat causing burns or post-inflammatory hyperpigmentation", "Better results", "Reduced discomfort", "Faster healing"], correct: [0], explanation: "Stacked heat in one session significantly raises the risk of burns and PIH." },
+  { courseSlug: "level-3-laser-aesthetic-therapies", topic: "Course planning", prompt: "A written treatment plan benefits the client by...", options: ["Setting clear expectations about the number of sessions and likely outcomes", "Locking them into a payment plan", "Reducing the number of sessions needed", "Allowing the practitioner to change the plan without notice"], correct: [0], explanation: "Clear, documented expectations protect both client and practitioner." },
+
+  // Business Development & Governance (L4 and L5-7)
+  { courseSlug: "level-4-certificate-aesthetic-practice", topic: "Governance", prompt: "Clinical governance operates...", options: ["Continuously as an active accountability framework", "Only during regulatory inspections", "Once a year at review", "When complaints arise"], correct: [0], explanation: "Clinical governance is an ongoing, active process, not a reactive one." },
+  { courseSlug: "level-4-certificate-aesthetic-practice", topic: "Audit", prompt: "The audit cycle is only complete once you have...", options: ["Re-audited to confirm the change improved practice", "Written a report", "Presented the findings at a meeting", "Filed the data"], correct: [0], explanation: "Re-audit closes the loop; without it you cannot confirm whether the improvement worked." },
+  { courseSlug: "advanced-aesthetics-level-5-7", topic: "Business development", prompt: "Value-based pricing reflects...", options: ["The perceived benefit of the outcome to the client", "The cost of supplies only", "A standard market rate", "What competitors charge"], correct: [0], explanation: "Value-based pricing is set from the client's perspective -- what the result is worth to them." },
+  { courseSlug: "advanced-aesthetics-level-5-7", topic: "Marketing compliance", prompt: "Aesthetic treatment before/after photographs used in marketing require...", options: ["Explicit written consent for marketing use, separate from clinical consent", "Verbal agreement only", "No consent if faces are cropped", "Automatic consent after payment"], correct: [0], explanation: "Marketing consent must be separate, explicit and in writing." },
+
 ];
 
 function bodyFromSteps(steps: Step[]): string {

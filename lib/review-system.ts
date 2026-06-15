@@ -1,5 +1,6 @@
 import 'server-only';
 import { db } from '@/lib/db';
+import { getSecret } from '@/lib/secrets';
 
 // First-party review system. After a treatment we ask the client to leave a
 // review via our own page; once submitted and approved, high ratings can be
@@ -15,9 +16,10 @@ export function reviewLink(token: string): string {
   return `${siteUrl()}/review/${token}`;
 }
 
-/** Direct Google review link (place ID supplied later; inert placeholder now). */
-export function googleReviewLink(): string | null {
-  const placeId = process.env.GOOGLE_PLACE_ID;
+/** Direct "write a Google review" link. Place ID resolves from the in-app
+ *  credential store first, then hosting env — returns null until one is set. */
+export async function googleReviewLink(): Promise<string | null> {
+  const placeId = await getSecret('GOOGLE_PLACE_ID');
   if (!placeId) return null;
   return `https://search.google.com/local/writereview?placeid=${placeId}`;
 }
@@ -64,10 +66,11 @@ export async function sendReviewRequest(reviewId: string, channel: 'EMAIL' | 'SM
   }
 
   const { sendEmail, tmplReviewRequest } = await import('@/lib/email');
+  const googleUrl = await googleReviewLink();
   const res = await sendEmail({
     to: review.client.email,
     subject: 'How was your visit to KClinics?',
-    html: tmplReviewRequest(name, link, review.treatmentTitle || undefined),
+    html: tmplReviewRequest(name, link, review.treatmentTitle || undefined, googleUrl || undefined),
   });
   await db.review.update({ where: { id: reviewId }, data: { channel: 'EMAIL', requestedAt: new Date() } });
   try {

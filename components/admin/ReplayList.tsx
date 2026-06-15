@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Dialog } from '@/components/ui/Dialog';
 
 export type ReplayRow = { id: string; path: string; device: string | null; durationMs: number; eventCount: number; startedAt: string };
 
@@ -15,7 +16,7 @@ export function ReplayList({ rows }: { rows: ReplayRow[] }) {
       ) : (
         <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)]">
           <table className="w-full text-sm">
-            <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th className="p-2">When</th><th className="p-2">Entry</th><th className="p-2">Device</th><th className="p-2">Length</th><th className="p-2"></th></tr></thead>
+            <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th scope="col" className="p-2">When</th><th scope="col" className="p-2">Entry</th><th scope="col" className="p-2">Device</th><th scope="col" className="p-2">Length</th><th scope="col" className="p-2"></th></tr></thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="border-t border-[var(--color-line)]">
@@ -131,10 +132,10 @@ function ReplayModal({ id, onClose }: { id: string; onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div className="max-h-[90vh] w-full max-w-5xl overflow-auto rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-4" onClick={(e) => e.stopPropagation()}>
+    <Dialog open onClose={onClose} labelledby="replay-modal-title">
+      <div className="max-h-[90vh] w-full max-w-5xl overflow-auto rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-4">
         <div className="mb-2 flex items-center justify-between gap-4">
-          <h3 className="font-[family-name:var(--font-display)] text-lg">Session replay</h3>
+          <h3 id="replay-modal-title" className="font-[family-name:var(--font-display)] text-lg">Session replay</h3>
           <div className="flex items-center gap-3">
             {status === 'ready' && (
               <>
@@ -151,6 +152,6 @@ function ReplayModal({ id, onClose }: { id: string; onClose: () => void }) {
         {status === 'error' && <p className="py-8 text-center text-sm text-[var(--color-stone)]">{errMsg}</p>}
         <div ref={mount} className="rounded overflow-hidden" />
       </div>
-    </div>
+    </Dialog>
   );
 }

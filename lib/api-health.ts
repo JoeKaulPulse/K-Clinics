@@ -180,26 +180,17 @@ async function checkTwilio(): Promise<Outcome> {
 }
 
 async function checkTranslation(): Promise<Outcome> {
-  const deeplKey = await getSecret('DEEPL_API_KEY');
+  // Google Cloud Translation is the configured provider (DeepL is no longer used).
   const gKey = await getSecret('GOOGLE_TRANSLATE_KEY');
-  if (!has(deeplKey) && !has(gKey)) return { light: 'grey', detail: 'Not configured — health-form answers stay untranslated' };
-  if (has(deeplKey)) {
-    const host = process.env.DEEPL_API_FREE === 'true' ? 'api-free.deepl.com' : 'api.deepl.com';
-    try {
-      const { res, ms } = await timed(`https://${host}/v2/usage`, { headers: { Authorization: `DeepL-Auth-Key ${deeplKey}` } });
-      const j = await res.json().catch(() => ({}));
-      if (res.ok) {
-        const used = Number(j.character_count ?? 0); const limit = Number(j.character_limit ?? 0);
-        const nearCap = limit > 0 && used / limit > 0.9;
-        return { light: nearCap ? 'amber' : 'green', detail: `DeepL key valid · ${used.toLocaleString('en-GB')}/${limit ? limit.toLocaleString('en-GB') : '∞'} chars used`, latencyMs: ms, info: nearCap ? ['Over 90% of the DeepL quota used this period.'] : undefined };
-      }
-      if (res.status === 401 || res.status === 403) return { light: 'red', detail: `DeepL key rejected (${res.status})`, latencyMs: ms };
-      return { light: 'amber', detail: `DeepL answered HTTP ${res.status}`, latencyMs: ms };
-    } catch (e) { return netFail(e); }
+  if (!has(gKey)) {
+    const deeplKey = await getSecret('DEEPL_API_KEY');
+    if (has(deeplKey)) return { light: 'amber', detail: 'DeepL key present but unused — add GOOGLE_TRANSLATE_KEY', info: ['Translation now uses Google; the DeepL key can be cleared.'] };
+    return { light: 'grey', detail: 'Not configured — health-form answers stay untranslated' };
   }
   try {
     const { res, ms } = await timed(`https://translation.googleapis.com/language/translate/v2/languages?key=${encodeURIComponent(gKey!)}&target=en`);
     if (res.ok) return { light: 'green', detail: 'Google Translate key valid', latencyMs: ms };
+    if (res.status === 401 || res.status === 403) return { light: 'red', detail: `Google Translate key rejected (${res.status})`, latencyMs: ms };
     return { light: 'red', detail: `Google Translate answered HTTP ${res.status}`, latencyMs: ms };
   } catch (e) { return netFail(e); }
 }
@@ -215,6 +206,21 @@ async function checkAnthropic(): Promise<Outcome> {
     if (res.status === 401) return { light: 'red', detail: 'API key rejected (401) — AI features are failing', latencyMs: ms };
     if (res.status === 429) return { light: 'amber', detail: 'Rate-limited (429) — key valid but throttled', latencyMs: ms };
     return { light: res.status >= 500 ? 'amber' : 'red', detail: `Anthropic answered HTTP ${res.status}`, latencyMs: ms };
+  } catch (e) { return netFail(e); }
+}
+
+async function checkPlaces(): Promise<Outcome> {
+  // Live Google rating + recent reviews on the public site (classic Places API).
+  const placeId = await getSecret('GOOGLE_PLACE_ID');
+  const key = await getSecret('GOOGLE_PLACES_API_KEY');
+  if (!has(placeId) || !has(key)) return { light: 'grey', detail: 'Not set — add a Place ID + Places API key to show your live Google rating on the site' };
+  try {
+    const { res, ms } = await timed(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId!)}&fields=rating,user_ratings_total&key=${encodeURIComponent(key!)}`);
+    const j = (await res.json().catch(() => ({}))) as { status?: string; error_message?: string; result?: { rating?: number; user_ratings_total?: number } };
+    if (j.status === 'OK') return { light: 'green', detail: `Live · ${j.result?.rating ?? '—'}★ from ${j.result?.user_ratings_total ?? 0} Google reviews`, latencyMs: ms };
+    if (j.status === 'REQUEST_DENIED') return { light: 'red', detail: `Rejected — ${j.error_message?.slice(0, 110) || 'enable the classic “Places API” + billing in Google Cloud, and remove any HTTP-referrer restriction on the key'}`, latencyMs: ms };
+    if (j.status === 'NOT_FOUND' || j.status === 'INVALID_REQUEST') return { light: 'red', detail: `Place ID looks wrong (${j.status}) — re-check it in Google’s Place ID Finder`, latencyMs: ms };
+    return { light: 'amber', detail: `Places API: ${j.status || 'no rating returned'}`, latencyMs: ms };
   } catch (e) { return netFail(e); }
 }
 
@@ -260,7 +266,7 @@ async function checkTrueLayer(): Promise<Outcome> {
 async function checkGoogleBusiness(): Promise<Outcome> {
   try {
     const gb = await import('@/lib/google-business');
-    if (!gb.googleOAuthConfigured()) return { light: 'grey', detail: 'Not configured — Google reviews sync off' };
+    if (!(await gb.googleOAuthConfigured())) return { light: 'grey', detail: 'Not configured — Google reviews sync off' };
     if (!(await gb.googleBusinessConnected())) return { light: 'amber', detail: 'Credentials present — not connected', info: ['Connect from Reviews → Google.'] };
     const t = Date.now();
     const r = await gb.listBusinessLocations();
@@ -331,7 +337,7 @@ async function checkMeta(): Promise<Outcome> {
 /** Refresh-token grant for the marketing Google connection — mirrors the
  *  closure in lib/ad-spend.ts googleSpend(). */
 async function refreshGoogleTokens(refreshToken: string): Promise<{ access: string; refresh?: string; expiresAt: number | null } | null> {
-  const id = process.env.GOOGLE_CLIENT_ID, secret = process.env.GOOGLE_CLIENT_SECRET;
+  const id = await getSecret('GOOGLE_CLIENT_ID'), secret = await getSecret('GOOGLE_CLIENT_SECRET');
   if (!id || !secret) return null;
   try {
     const res = await fetch('https://oauth2.googleapis.com/token', {
@@ -496,6 +502,7 @@ const CHECKS: Def[] = [
   { id: 'tiktok', label: 'TikTok Ads', category: 'Marketing', probe: 'GET advertiser list with stored token', run: checkTikTok },
   { id: 'ga4', label: 'GA4 conversions', category: 'Marketing', probe: 'POST GA4 /debug/mp/collect (validates, records nothing)', run: checkGa4 },
 
+  { id: 'places', label: 'Google rating (Places API)', category: 'Scheduling & Reviews', probe: 'GET maps.googleapis.com place/details', run: checkPlaces },
   { id: 'google-business', label: 'Google Business Profile', category: 'Scheduling & Reviews', probe: 'Accounts + locations list with stored token', run: checkGoogleBusiness },
   { id: 'gcal', label: 'Google Calendar', category: 'Scheduling & Reviews', probe: 'Config + connected staff (parked)', run: checkGoogleCalendar },
   { id: 'caldav', label: 'Clinic calendar (CalDAV)', category: 'Scheduling & Reviews', probe: 'OPTIONS on the CalDAV collection', run: checkCalDav },

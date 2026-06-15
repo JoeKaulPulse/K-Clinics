@@ -69,7 +69,7 @@ export default async function GiftCardViewPage({ params }: { params: Promise<{ c
                 </>
               )}
             </div>
-            <p className="mt-5 text-center text-xs text-[var(--color-stone-soft)]">Treatments are for ages 18+. Show this code in clinic or add it to your account to use online.</p>
+            <p className="mt-5 text-center text-xs text-[var(--color-stone)]">Treatments are for ages 18+. Show this code in clinic or add it to your account to use online.</p>
           </>
         )}
       </div>

@@ -60,7 +60,7 @@ export function ProductsList({ rows }: { rows: ProductRow[] }) {
       ) : (
         <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
           <table className="w-full text-sm">
-            <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th className="p-3">Product</th><th className="p-3">Price</th><th className="p-3">Stock</th><th className="p-3">Status</th></tr></thead>
+            <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th scope="col" className="p-3">Product</th><th scope="col" className="p-3">Price</th><th scope="col" className="p-3">Stock</th><th scope="col" className="p-3">Status</th></tr></thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="border-t border-[var(--color-line)] hover:bg-[var(--color-bone)]/50">

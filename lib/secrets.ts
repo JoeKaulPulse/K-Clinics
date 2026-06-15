@@ -25,16 +25,19 @@ export const SECRET_DEFS: SecretDef[] = [
   { name: 'ANTHROPIC_API_KEY', label: 'Anthropic (Claude) API key', group: 'AI & voice', help: 'console.anthropic.com' },
   { name: 'DEEPGRAM_API_KEY', label: 'Deepgram API key', group: 'AI & voice', help: 'console.deepgram.com' },
   // Translation
-  { name: 'DEEPL_API_KEY', label: 'DeepL API key', group: 'Translation', help: 'deepl.com/pro-api' },
-  { name: 'GOOGLE_TRANSLATE_KEY', label: 'Google Translate key', group: 'Translation' },
+  { name: 'DEEPL_API_KEY', label: 'DeepL API key', group: 'Translation', help: 'No longer used — translation runs on Google. Safe to clear.' },
+  { name: 'GOOGLE_TRANSLATE_KEY', label: 'Google Translate key', group: 'Translation', help: 'Google Cloud Console → APIs & Services → Credentials → Create credentials → API key. FIRST enable “Cloud Translation API” (APIs & Services → Library). If it is rejected: the API is not enabled, or the key is restricted — set Application restrictions = None and API restrictions = Cloud Translation API only. Use a plain API key, not an OAuth client.' },
   // Ads — Meta / Google
-  { name: 'GOOGLE_ADS_DEVELOPER_TOKEN', label: 'Google Ads developer token', group: 'Ads' },
-  { name: 'GOOGLE_ADS_CUSTOMER_ID', label: 'Google Ads customer ID', group: 'Ads' },
-  { name: 'GOOGLE_ADS_LOGIN_CUSTOMER_ID', label: 'Google Ads login customer ID', group: 'Ads' },
+  { name: 'GOOGLE_ADS_DEVELOPER_TOKEN', label: 'Google Ads developer token', group: 'Ads', help: 'Only from a Google Ads MANAGER (MCC) account → Tools & Settings → Setup → API Center. New tokens start in “Test” mode — apply for “Basic access” to use live data. One token covers all your accounts; it is NOT a per-account number.' },
+  { name: 'GOOGLE_ADS_CUSTOMER_ID', label: 'Google Ads customer ID', group: 'Ads', help: 'The 10-digit ID (no dashes) of the Ads account that holds your campaigns — shown top-right at ads.google.com next to the account name.' },
+  { name: 'GOOGLE_ADS_LOGIN_CUSTOMER_ID', label: 'Google Ads login customer ID', group: 'Ads', help: 'Different from the customer ID above. ONLY needed if you reach the account through a manager (MCC) account — then put the MANAGER’s 10-digit ID here. If you sign in directly to a single account with no manager, leave this blank.' },
   { name: 'GOOGLE_ADS_CONVERSION_ACTION_ID', label: 'Google Ads conversion action ID', group: 'Ads', help: 'Google Ads → Goals → Conversions → your "Imported"/offline action. The numeric id (ctId) in the page URL. Enables value-based offline conversions from charged bookings.' },
   // Analytics — GA4 Data API + Search Console reporting
   { name: 'GA4_PROPERTY_ID', label: 'GA4 property ID (numeric)', group: 'Analytics', help: 'GA4 → Admin → Property settings → Property ID. A number like 123456789 — NOT the G-XXXX tag. Powers the Performance "traffic by channel" widget.' },
   { name: 'SEARCH_CONSOLE_SITE', label: 'Search Console property (optional)', group: 'Analytics', help: 'Optional. For a Domain property enter sc-domain:kclinics.co.uk; otherwise it defaults to the site URL.' },
+  // Reviews — public Google rating + recent reviews via the Places API (no OAuth)
+  { name: 'GOOGLE_PLACE_ID', label: 'Google Place ID', group: 'Reviews', help: 'Find it at developers.google.com/maps/documentation/places/web-service/place-id (search your clinic). Shows your live Google rating + recent reviews on the site immediately — no approval needed.' },
+  { name: 'GOOGLE_PLACES_API_KEY', label: 'Google Places API key', group: 'Reviews', help: 'Google Cloud → Credentials → API key, with the “Places API” enabled. Pairs with the Place ID above.' },
   // OAuth client credentials — set here, then click Connect on the relevant page.
   { name: 'GOOGLE_CLIENT_ID', label: 'Google OAuth client ID', group: 'OAuth · Google', help: 'console.cloud.google.com → Credentials. Powers Google Ads/Analytics/Search. (Calendar/Business still read hosting env.)' },
   { name: 'GOOGLE_CLIENT_SECRET', label: 'Google OAuth client secret', group: 'OAuth · Google' },
@@ -50,6 +53,16 @@ export const SECRET_DEFS: SecretDef[] = [
 ];
 
 const MANAGEABLE = new Set(SECRET_DEFS.filter((d) => !d.envOnly).map((d) => d.name));
+
+// Built-in fallback values for non-credential config, used by getSecret when
+// neither a managed value nor an env var is set. NOT secrets — an owner-set value
+// or env var overrides them. Kept separate from SECRET_DEFS so the value is never
+// included in secretStatus()/returned to the client.
+const SECRET_DEFAULTS: Record<string, string> = {
+  // K Clinics outbound SMS sender (Twilio). Used ONLY to text clients — server-side
+  // sending identifier, never surfaced publicly (the public number is site.phone).
+  TWILIO_FROM: '+447828877444',
+};
 
 // Short in-memory cache (per server instance) so hot paths (every email/SMS send)
 // don't hit the DB each time. Eventual consistency within the TTL is fine.
@@ -79,7 +92,8 @@ export async function getSecret(name: string): Promise<string | undefined> {
     if (v) return v;
   }
   const env = process.env[name];
-  return env && env.length > 0 ? env : undefined;
+  if (env && env.length > 0) return env;
+  return SECRET_DEFAULTS[name]; // built-in default (e.g. the SMS sender number), else undefined
 }
 
 /** Convenience for `Boolean(await getSecret(name))`. */

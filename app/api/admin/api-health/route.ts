@@ -18,8 +18,8 @@ export const maxDuration = 60;
 export async function GET(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'CRM disabled' }, { status: 503 });
 
-  const provided = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '') || req.headers.get('x-cron-secret') || '';
-  const cronAuthed = Boolean(process.env.CRON_SECRET) && provided === process.env.CRON_SECRET;
+  const { cronAuthorized } = await import('@/lib/cron-auth');
+  const cronAuthed = cronAuthorized(req); // constant-time
   if (!cronAuthed) {
     const { requirePermission } = await import('@/lib/auth');
     const session = await requirePermission('platform.status');

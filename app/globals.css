@@ -25,7 +25,7 @@
   --color-gold: #a98a6d;       /* warm taupe-gold — decorative/large-text accent */
   --color-gold-soft: #c2a589;  /* lighter taupe (eyebrows on dark surfaces) */
   --color-gold-bright: #dcc4a8;/* soft champagne */
-  --color-gold-deep: #856a4a;  /* darker gold for interactive surfaces — white text clears AA */
+  --color-gold-deep: #816748;  /* AA gold for text on light (4.5:1 on porcelain) + interactive surfaces */
   --color-jade: #2f7152;       /* jade green — positive / success / active / healthy accent */
   --color-blush: #cdb4a3;      /* warm sand highlight */
 
@@ -322,6 +322,28 @@
 
 .animate-float { animation: float-slow 9s var(--ease-glide) infinite; }
 .animate-marquee { animation: marquee 38s linear infinite; }
+
+/* Premium review stars — a periodic specular sweep clipped to the star shapes
+   (the star mask is applied inline in components/ui/Stars.tsx). The band rests
+   off-screen, sweeps across, then pauses, so the stars catch the light roughly
+   once every cycle. Fully disabled under prefers-reduced-motion. */
+@keyframes star-shimmer {
+  0%        { transform: translateX(-150%); }
+  50%, 100% { transform: translateX(250%); }
+}
+.star-shimmer-sweep {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 55%;
+  transform: translateX(-150%);
+  background: linear-gradient(105deg, transparent 36%, rgba(255, 255, 255, 0.95) 50%, transparent 64%);
+  animation: star-shimmer 3.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .star-shimmer-sweep { animation: none; }
+}
 
 /* ── CSS entrance animations (no JS — keeps the hero a light server component) ─ */
 @keyframes rise-in {
