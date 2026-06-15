@@ -1241,6 +1241,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Added optional locationId String? to KioskSession (plain scope tag matching the FacilityDoc/ContractorVisit pattern -- no FK, no Location model touch, additive schema change). /kiosk/display accepts a ?location=<slug> search param: it resolves the Location.id by slug and stamps it on the new session at creation. Admin > QR codes page now shows a "Per-location display links" section listing all active locations with their /kiosk/display?location=<slug> URL so staff can point each site\'s storefront screen at the right link without any deploy. Sessions without locationId continue to work as before.',
     notes: ['schema.prisma: locationId String? + @@index([locationId]) on KioskSession. app/kiosk/display/page.tsx: searchParams.location -> db.location.findUnique({where:{slug}}) -> session.locationId. app/admin/qr/page.tsx: db.location.findMany(active) -> per-location link list. Consistent with FacilityDoc.locationId and ContractorVisit.locationId patterns.'],
   },
+  {
+    title: 'Order number race condition -- duplicate KC#### impossible (BLD-332)', type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 5, effort: 4,
+    detail: 'Replaced count()-based nextOrderNumber() with a Postgres sequence (kc_order_seq). Sequences are atomic by Postgres definition so concurrent checkouts can never receive the same number. The sequence is created idempotently on first call, seeded from the highest existing KC#### suffix so it slots in after any legacy count()-based numbers already in the table. No schema change. Order.number retains its @unique constraint as a safety net.',
+    notes: ['lib/shop.ts: nextOrderNumber() now uses $executeRaw DO block to create kc_order_seq IF NOT EXISTS (seeded from MAX existing KC number), then $queryRaw SELECT nextval(...). BLD-332.'],
+  },
+  {
+    title: 'Shop: activeProducts/validateCart column select (no costPence/barcode leak) (BLD-316 partial)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 5,
+    detail: 'activeProducts() and validateCart() now use explicit select objects excluding costPence (margin data) and barcode (internal ops data) from the client-visible product queries. Remaining BLD-316 items (Accelerate cacheStrategy, db-push posture) stay open.',
+    notes: ['lib/shop.ts: activeProducts() select excludes costPence, barcode. validateCart() product query select excludes costPence, barcode. BLD-316.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

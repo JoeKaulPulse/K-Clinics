@@ -7,7 +7,17 @@ export const formatPence = (p: number) => (p <= 0 ? 'Free' : `£${(p / 100).toLo
 
 export async function activeProducts() {
   const { db } = await import('@/lib/db');
-  return db.product.findMany({ where: { status: 'ACTIVE' }, orderBy: { updatedAt: 'desc' } });
+  return db.product.findMany({
+    where: { status: 'ACTIVE' },
+    orderBy: { updatedAt: 'desc' },
+    select: {
+      id: true, slug: true, name: true, description: true, brand: true,
+      category: true, pricePence: true, compareAtPence: true, sku: true,
+      images: true, status: true, ageRestricted: true, trackInventory: true,
+      stockQty: true, lowStockThreshold: true, createdBy: true,
+      createdAt: true, updatedAt: true,
+    },
+  });
 }
 
 export async function getProductBySlug(slug: string) {
@@ -23,7 +33,13 @@ export type ValidatedCart = { lines: CartLine[]; subtotalPence: number; hasAgeRe
 export async function validateCart(input: CartInput): Promise<ValidatedCart> {
   const { db } = await import('@/lib/db');
   const ids = [...new Set(input.map((i) => i.productId))];
-  const products = ids.length ? await db.product.findMany({ where: { id: { in: ids }, status: 'ACTIVE' } }) : [];
+  const products = ids.length ? await db.product.findMany({
+    where: { id: { in: ids }, status: 'ACTIVE' },
+    select: {
+      id: true, name: true, sku: true, pricePence: true, images: true,
+      ageRestricted: true, trackInventory: true, stockQty: true,
+    },
+  }) : [];
   const byId = new Map(products.map((p) => [p.id, p]));
   const lines: CartLine[] = [];
   const issues: string[] = [];
@@ -44,8 +60,26 @@ export const shippingFor = (method: string, subtotalPence: number) =>
 
 export async function nextOrderNumber(): Promise<string> {
   const { db } = await import('@/lib/db');
-  const count = await db.order.count();
-  return `KC${(1000 + count + 1).toString()}`;
+  // Postgres sequences are atomic by definition, so concurrent checkouts can
+  // never receive the same number. We create the sequence on first call (idempotent)
+  // seeded from the highest existing KC#### suffix so it slots in after any
+  // legacy count()-based numbers already in the table. (BLD-332)
+  await db.$executeRaw`
+    DO $do$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_sequences WHERE sequencename = 'kc_order_seq') THEN
+        EXECUTE format(
+          'CREATE SEQUENCE kc_order_seq START WITH %s',
+          (SELECT COALESCE(MAX(CAST(SUBSTRING(number, 3) AS bigint)), 1000) + 1
+           FROM "Order"
+           WHERE number ~ E'^KC\\d+$')
+        );
+      END IF;
+    END
+    $do$
+  `;
+  const [{ n }] = await db.$queryRaw<{ n: bigint }[]>`SELECT nextval('kc_order_seq') AS n`;
+  return `KC${n}`;
 }
 
 /** Finalise a paid order: decrement stock, redeem any gift card, send the
