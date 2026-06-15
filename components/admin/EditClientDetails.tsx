@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { editClient } from '@/app/admin/clients/actions';
+import { Dialog } from '@/components/ui/Dialog';
 
 // BLD-199 — staff edit a client's details. Saves write an admin-only audit entry.
 export type EditableClient = {
@@ -49,10 +50,10 @@ export function EditClientDetails({ client }: { client: EditableClient }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-6" onClick={() => !pending && setOpen(false)}>
-      <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-[var(--radius-xl)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)] sm:rounded-[var(--radius-xl)] md:p-7" onClick={(e) => e.stopPropagation()}>
+    <Dialog open={open} onClose={() => { if (!pending) setOpen(false); }} labelledby="edit-client-title">
+      <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-[var(--radius-xl)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)] sm:rounded-[var(--radius-xl)] md:p-7">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-[family-name:var(--font-display)] text-2xl">Edit client details</h2>
+          <h2 id="edit-client-title" className="font-[family-name:var(--font-display)] text-2xl">Edit client details</h2>
           <button onClick={() => setOpen(false)} aria-label="Close" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>
         </div>
         <div className="space-y-3">
@@ -84,6 +85,6 @@ export function EditClientDetails({ client }: { client: EditableClient }) {
           </div>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }

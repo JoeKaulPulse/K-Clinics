@@ -42,11 +42,11 @@ export function StaffManager({ staff, canManage, actorRole }: { staff: Staff[]; 
         <table className="w-full text-left text-sm">
           <thead className="bg-[var(--color-bone)] text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">
             <tr>
-              <th className="px-5 py-3 font-medium">Name</th>
-              <th className="px-5 py-3 font-medium">Role</th>
-              <th className="px-5 py-3 font-medium">Custom access</th>
-              <th className="px-5 py-3 font-medium">Status</th>
-              <th className="px-5 py-3" />
+              <th scope="col" className="px-5 py-3 font-medium">Name</th>
+              <th scope="col" className="px-5 py-3 font-medium">Role</th>
+              <th scope="col" className="px-5 py-3 font-medium">Custom access</th>
+              <th scope="col" className="px-5 py-3 font-medium">Status</th>
+              <th scope="col" className="px-5 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--color-line)]">

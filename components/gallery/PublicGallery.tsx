@@ -19,6 +19,7 @@ export function PublicGallery({ items }: { items: PublicGalleryItem[] }) {
             <button
               key={c}
               onClick={() => setCat(c)}
+              aria-pressed={cat === c}
               className={`rounded-full border px-4 py-2 text-sm transition-colors ${cat === c ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-stone-soft)]'}`}
             >
               {c}

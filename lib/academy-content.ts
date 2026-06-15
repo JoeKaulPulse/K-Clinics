@@ -1535,6 +1535,197 @@ export const NEW_MODULES: CourseContentDef[] = [
       },
     ],
   },
+
+  // -- BATCH 7 -----------------------------------------------------------------
+
+  {
+    courseSlug: L2,
+    modules: [
+      {
+        title: "Treatment Planning & Client Records",
+        summary: "How to document consultations and treatment plans legally and professionally; GDPR basics for client data; why good records protect both client and practitioner.",
+        lessons: [
+          {
+            title: "Building a Treatment Plan & Keeping Accurate Records",
+            durationMin: 12,
+            objectives: ["Construct a client-specific treatment plan", "Record consultation findings accurately", "Explain what a good client record must contain"],
+            studyTips: ["VTCT Level 2 units emphasise that records must be contemporaneous -- written at the time, not filled in later."],
+            examRefs: ["Record keeping", "Treatment planning"],
+            steps: [
+              { kind: "say", text: "A good record is the backbone of safe, legal practice. Let's build one.", mood: "happy" },
+              { kind: "teach", title: "What goes in a treatment plan", text: "A treatment plan records the agreed treatment, the settings or products used, expected outcomes, number of sessions, and review dates." },
+              { kind: "teach", title: "The consultation record", text: "It must capture the client's medical history, medications, contraindications identified, the patch-test result, and the client's signed consent." },
+              { kind: "ask", prompt: "Which MUST appear on a client record?", qtype: "MULTI", options: ["Signed consent", "Medical history", "Treatment settings used", "The client's shoe size"], correct: [0, 1, 2], explanation: "Consent, history and settings are essential; shoe size is irrelevant." },
+              { kind: "say", text: "Exactly right. Now let's look at why accuracy matters.", mood: "cheer" },
+              { kind: "teach", title: "Contemporaneous records", text: "Records must be written at the time of treatment, not reconstructed later. Courts and regulators treat late-added records with suspicion." },
+              { kind: "ask", prompt: "Records should be written...", qtype: "SINGLE", options: ["At the time of the appointment", "A week later", "Only if something goes wrong", "Never"], correct: [0], explanation: "Contemporaneous records are more credible and more useful." },
+              { kind: "teach", title: "What a record protects", text: "If a client complains or a dispute arises, a complete record shows exactly what was agreed, tested and performed -- protecting both parties." },
+              { kind: "ask", prompt: "A complete client record mainly protects...", qtype: "MULTI", options: ["The client", "The practitioner", "The business", "Nobody"], correct: [0, 1, 2], explanation: "Good records protect everyone involved." },
+              { kind: "say", text: "That's the record sorted. Now let's think about data law.", mood: "think" },
+            ],
+          },
+          {
+            title: "GDPR & Data Protection in the Clinic",
+            durationMin: 10,
+            objectives: ["Apply the core GDPR principles to client records", "Explain how long to keep records", "Describe what clients' data rights mean in practice"],
+            studyTips: ["Health data is special category under UK GDPR -- it needs extra protection compared with ordinary personal data."],
+            examRefs: ["GDPR", "Data protection", "Record keeping"],
+            steps: [
+              { kind: "say", text: "Client data is sensitive, and the law is clear about how to handle it.", mood: "think" },
+              { kind: "teach", title: "UK GDPR in aesthetics", text: "Health and treatment data is special category data under UK GDPR, requiring a lawful basis and additional safeguards." },
+              { kind: "ask", prompt: "Under UK GDPR, health data is classed as...", qtype: "WORD", options: ["special category", "public", "optional"], correct: [0], explanation: "Special category data needs stricter controls than ordinary personal data." },
+              { kind: "teach", title: "Core principles", text: "Collect only what you need (data minimisation), keep it accurate, store it securely, and don't hold it longer than necessary." },
+              { kind: "ask", prompt: "Which principle limits you to collecting only the data you actually need?", qtype: "SINGLE", options: ["Data minimisation", "Data maximisation", "Open sharing", "No rule applies"], correct: [0], explanation: "Data minimisation: collect only what is necessary for the purpose." },
+              { kind: "teach", title: "Retention periods", text: "Adult client records should be kept for a minimum of 7 years; records relating to minors, until they reach 25." },
+              { kind: "ask", prompt: "Adult client records in aesthetics should be kept for a minimum of...", qtype: "SINGLE", options: ["7 years", "1 year", "30 days", "Forever"], correct: [0], explanation: "7 years is the standard minimum retention period for adult treatment records." },
+              { kind: "teach", title: "Client rights", text: "Clients can request to see their data (subject access request) and can ask for errors to be corrected -- you must respond within one month." },
+              { kind: "ask", prompt: "A client asks to see their records. You must respond within...", qtype: "SINGLE", options: ["One month", "One year", "One week", "Ten minutes"], correct: [0], explanation: "One calendar month is the legal deadline for a subject access request." },
+              { kind: "say", text: "Solid data practice keeps clients safe and keeps you compliant. Well done.", mood: "cheer" },
+            ],
+          },
+        ],
+        quiz: {
+          title: "Treatment Planning & Client Records Assessment",
+          passMark: 70,
+          questions: [
+            { prompt: "Which information must appear on a client record?", type: "MULTI", options: ["Signed consent", "Medical history", "Settings used", "Client's shoe size"], correct: [0, 1, 2], explanation: "Consent, history and settings are essential records." },
+            { prompt: "Records should be written at the time of the appointment, not reconstructed later.", type: "TRUEFALSE", options: ["True", "False"], correct: [0], explanation: "Contemporaneous records are legally stronger and more credible." },
+            { prompt: "Under UK GDPR, health data is classed as ___ category data.", type: "WORD", options: ["special", "public", "basic"], correct: [0], explanation: "Special category data requires additional lawful basis and safeguards." },
+            { prompt: "The data minimisation principle means you should collect...", type: "SINGLE", options: ["Only what is needed for the treatment", "As much data as possible", "Nothing at all", "Only financial data"], correct: [0], explanation: "Collect only data that is necessary and proportionate." },
+            { prompt: "Adult aesthetics client records must be kept for a minimum of...", type: "SINGLE", options: ["7 years", "1 year", "30 days", "50 years"], correct: [0], explanation: "7 years is the standard minimum retention period." },
+            { prompt: "A client submits a subject access request. You must respond within...", type: "SINGLE", options: ["One month", "Six months", "One week", "One day"], correct: [0], explanation: "UK GDPR requires a response within one calendar month." },
+          ],
+        },
+      },
+    ],
+  },
+
+  {
+    courseSlug: "level-3-laser-aesthetic-therapies",
+    modules: [
+      {
+        title: "Skin Pharmacology & Topicals",
+        summary: "How topical agents interact with laser and aesthetic treatments; the role of retinoids, AHAs and SPF in pre/post protocols; photosensitising medications and why some topicals must stop before laser.",
+        lessons: [
+          {
+            title: "Topical Agents & Their Interaction with Laser Treatments",
+            durationMin: 13,
+            objectives: ["Name key topical agents used in pre/post laser protocols", "Explain why certain topicals must be stopped before laser", "Understand the role of numbing creams and photosensitisers"],
+            studyTips: ["A practical exam question often asks which topical to stop and why -- link the pharmacology to the risk (e.g. retinoids thin the skin, raising burn risk)."],
+            examRefs: ["Pre-treatment preparation", "Topical pharmacology"],
+            steps: [
+              { kind: "say", text: "What clients put on their skin before and after treatment matters as much as the device settings.", mood: "think" },
+              { kind: "teach", title: "Topical anaesthetics (numbing creams)", text: "EMLA and LMX creams contain local anaesthetics (lidocaine/prilocaine) applied under occlusion 30-60 minutes before treatment to reduce pain." },
+              { kind: "ask", prompt: "Topical anaesthetic cream is typically applied...", qtype: "SINGLE", options: ["30-60 minutes before treatment", "The day before", "During treatment", "After treatment"], correct: [0], explanation: "30-60 minutes under occlusion gives effective tissue penetration." },
+              { kind: "teach", title: "Retinoids -- stop before laser", text: "Retinoids (tretinoin, retinol) increase epidermal turnover and thin the stratum corneum; clients must stop 5-7 days before laser to avoid heightened sensitivity and burn risk." },
+              { kind: "ask", prompt: "Why must retinoid use stop before laser treatment?", qtype: "SINGLE", options: ["They thin the skin, raising burn risk", "They improve results", "They block the laser beam", "They have no effect"], correct: [0], explanation: "Retinoids accelerate cell turnover and thin the barrier, making skin more susceptible to laser injury." },
+              { kind: "teach", title: "AHAs and BHAs", text: "Alpha-hydroxy acids (glycolic, lactic) and beta-hydroxy acids (salicylic) exfoliate and sensitise skin; stop 5-7 days before laser to avoid adverse reactions." },
+              { kind: "ask", prompt: "Which topicals should be paused 5-7 days before laser?", qtype: "MULTI", options: ["Retinoids", "AHAs (glycolic acid)", "BHAs (salicylic acid)", "Plain moisturiser"], correct: [0, 1, 2], explanation: "Active exfoliants sensitise skin; plain moisturiser does not." },
+              { kind: "teach", title: "Photosensitising medications", text: "Some systemic drugs (certain antibiotics, diuretics, NSAIDs, some antidepressants) increase skin's UV/light sensitivity -- always take a full medication history." },
+              { kind: "ask", prompt: "Before laser, it is important to ask about systemic medications because some can...", qtype: "SINGLE", options: ["Increase skin photosensitivity", "Improve laser absorption", "Block all side effects", "Have no relevance"], correct: [0], explanation: "Photosensitising drugs raise the risk of adverse reactions to laser and IPL energy." },
+              { kind: "say", text: "A thorough medication history is as important as the device settings. Good work.", mood: "cheer" },
+            ],
+          },
+          {
+            title: "SPF, Serums & Post-Treatment Topical Protocols",
+            durationMin: 12,
+            objectives: ["Explain why SPF is non-negotiable post-laser", "Describe which ingredients support healing and which to avoid", "Advise clients confidently on a post-treatment regime"],
+            studyTips: ["Think of post-treatment skin as a wound: calm it, protect it, then rebuild. The same logic underpins every topical recommendation."],
+            examRefs: ["Post-treatment care", "SPF and photoprotection"],
+            steps: [
+              { kind: "say", text: "After laser, the skin is in a vulnerable state. The right topicals help it heal.", mood: "happy" },
+              { kind: "teach", title: "Why SPF is non-negotiable", text: "Post-laser skin lacks its normal barrier and is highly susceptible to UV-induced pigmentation changes; broad-spectrum SPF 30-50 must be worn daily." },
+              { kind: "ask", prompt: "After laser treatment, clients should wear broad-spectrum SPF...", qtype: "SINGLE", options: ["Every day, even on cloudy days", "Only on holiday", "Only for one day", "Never"], correct: [0], explanation: "UV reaches skin through cloud; post-laser PIH risk is elevated for weeks." },
+              { kind: "teach", title: "Barrier-supporting ingredients", text: "Ceramides, hyaluronic acid and gentle peptides support barrier repair post-laser without irritating compromised skin." },
+              { kind: "ask", prompt: "Which ingredient helps restore the skin barrier post-laser?", qtype: "SINGLE", options: ["Ceramides", "Glycolic acid", "Retinol", "Salicylic acid"], correct: [0], explanation: "Ceramides are lipid molecules integral to barrier structure and repair." },
+              { kind: "teach", title: "What to avoid post-treatment", text: "Avoid active exfoliants (AHAs, BHAs, retinoids), fragrance and heat for at least 5-7 days; these can disrupt healing and trigger PIH." },
+              { kind: "ask", prompt: "Post-laser, clients should avoid using...", qtype: "MULTI", options: ["Glycolic acid toner", "Tretinoin", "Fragrance-heavy products", "Plain SPF moisturiser"], correct: [0, 1, 2], explanation: "Active exfoliants and fragrance irritate compromised skin; plain SPF is fine." },
+              { kind: "teach", title: "When to reintroduce actives", text: "Retinoids and AHAs can usually be reintroduced after full healing -- typically 7-14 days post-treatment, guided by skin response." },
+              { kind: "ask", prompt: "Retinoids can usually be reintroduced after full healing, typically...", qtype: "SINGLE", options: ["7-14 days post-treatment", "The next morning", "After 6 months", "Never again"], correct: [0], explanation: "7-14 days is the standard guidance; individual response may vary." },
+              { kind: "say", text: "Get the post-treatment protocol right and results improve. You've got this.", mood: "cheer" },
+            ],
+          },
+        ],
+        quiz: {
+          title: "Skin Pharmacology & Topicals Assessment",
+          passMark: 70,
+          questions: [
+            { prompt: "Topical anaesthetic cream should be applied under occlusion...", type: "SINGLE", options: ["30-60 minutes before treatment", "Immediately before", "The day before", "After treatment"], correct: [0], explanation: "30-60 minutes gives adequate penetration and effect." },
+            { prompt: "Retinoids must be stopped before laser treatment because they...", type: "SINGLE", options: ["Thin the skin and raise burn risk", "Improve laser absorption", "Prevent pain", "Block laser wavelengths"], correct: [0], explanation: "Retinoids thin the stratum corneum, increasing sensitivity to laser energy." },
+            { prompt: "Which topicals should be paused 5-7 days before laser?", type: "MULTI", options: ["Retinoids", "AHAs", "BHAs", "Plain moisturiser"], correct: [0, 1, 2], explanation: "Active exfoliants sensitise skin; plain moisturiser does not." },
+            { prompt: "Some systemic medications raise skin photosensitivity and must be identified at...", type: "SINGLE", options: ["Consultation", "After treatment", "The invoice stage", "Never"], correct: [0], explanation: "Full medication history at consultation identifies photosensitising drugs." },
+            { prompt: "Post-laser, broad-spectrum SPF must be worn...", type: "SINGLE", options: ["Every day, including cloudy days", "Only in summer", "Only for 24 hours", "Only abroad"], correct: [0], explanation: "UV penetrates cloud; PIH risk is elevated for weeks post-laser." },
+            { prompt: "Which ingredient best supports barrier repair after laser?", type: "SINGLE", options: ["Ceramides", "Glycolic acid", "Salicylic acid", "Fragrance"], correct: [0], explanation: "Ceramides are structural lipids that restore barrier integrity." },
+          ],
+        },
+      },
+    ],
+  },
+
+  {
+    courseSlug: "level-4-certificate-aesthetic-practice",
+    modules: [
+      {
+        title: "Legal Frameworks & Professional Accountability",
+        summary: "UK aesthetics regulation, vicarious and personal liability, scope of practice, duty of candour, adverse event reporting, professional indemnity insurance, and what makes a defensible clinical record.",
+        lessons: [
+          {
+            title: "UK Regulation, Licensing & Scope of Practice",
+            durationMin: 14,
+            objectives: ["Describe the current UK regulatory landscape for aesthetics", "Explain local licensing requirements for Class 3B/4 lasers", "Define scope of practice and why it matters"],
+            studyTips: ["HEE and the JCCP set workforce standards; the CQC oversees clinical settings; local authorities license laser use. Know which body does what."],
+            examRefs: ["Regulation", "Licensing", "Scope of practice"],
+            steps: [
+              { kind: "say", text: "Knowing the regulatory landscape protects your clients, your career and your business.", mood: "think" },
+              { kind: "teach", title: "HEE and JCCP", text: "Health Education England (HEE) and the Joint Council for Cosmetic Practitioners (JCCP) set the competency and qualification standards for the UK aesthetics workforce." },
+              { kind: "ask", prompt: "Which body sets competency standards for the UK aesthetics workforce?", qtype: "SINGLE", options: ["JCCP / HEE", "The local council only", "The client", "No body regulates this"], correct: [0], explanation: "The JCCP and HEE set the workforce standards practitioners are expected to meet." },
+              { kind: "teach", title: "Local authority laser licensing", text: "Class 3B and Class 4 lasers used for cosmetic treatments require a local authority licence under the Local Government (Miscellaneous Provisions) Act 1982 in England and Wales." },
+              { kind: "ask", prompt: "Class 3B and 4 cosmetic lasers require a licence from...", qtype: "SINGLE", options: ["The local authority", "The client", "The device manufacturer only", "No licence is needed"], correct: [0], explanation: "Local authority licensing is a legal requirement before using these lasers commercially." },
+              { kind: "teach", title: "CQC oversight", text: "The Care Quality Commission (CQC) regulates clinical settings in England; if your practice carries out procedures classified as regulated activities, CQC registration may be required." },
+              { kind: "ask", prompt: "The CQC is primarily concerned with...", qtype: "SINGLE", options: ["Clinical care quality and safety in registered settings", "Laser licences only", "Pricing of treatments", "Social media advertising"], correct: [0], explanation: "CQC regulates quality and safety of regulated health activities." },
+              { kind: "teach", title: "Scope of practice", text: "Scope of practice means performing only those treatments you are trained, insured and competent to deliver -- working outside it risks the client and exposes you to liability." },
+              { kind: "ask", prompt: "Working within your scope of practice means...", qtype: "SINGLE", options: ["Only treating within your training, competence and insurance", "Doing whatever a client requests", "Following a colleague's advice only", "Avoiding all complex cases"], correct: [0], explanation: "Scope is defined by qualification, demonstrated competence and valid insurance coverage." },
+              { kind: "say", text: "Now you know who regulates what. Next: when things go wrong.", mood: "think" },
+            ],
+          },
+          {
+            title: "Liability, Duty of Candour & Defensible Records",
+            durationMin: 13,
+            objectives: ["Distinguish vicarious from personal liability", "Explain the duty of candour", "Describe what makes a record defensible in a dispute"],
+            studyTips: ["When something goes wrong the answer is always: stop, record, be honest, report, support the client."],
+            examRefs: ["Liability", "Duty of candour", "Adverse event reporting", "Indemnity insurance"],
+            steps: [
+              { kind: "say", text: "Even excellent practitioners face complaints. Knowing your legal position is essential.", mood: "think" },
+              { kind: "teach", title: "Personal vs vicarious liability", text: "Personal liability is your own responsibility for your actions; vicarious liability is an employer's responsibility for the acts of an employee within their role." },
+              { kind: "ask", prompt: "When an employer is legally responsible for an employee's clinical error, this is called...", qtype: "SINGLE", options: ["Vicarious liability", "Personal liability", "Strict liability", "No liability"], correct: [0], explanation: "Vicarious liability: the employer may be sued for an employee's negligent acts within their role." },
+              { kind: "teach", title: "Professional indemnity insurance", text: "Professional indemnity insurance covers legal costs and compensation claims arising from professional errors or omissions -- it must be valid for each specific procedure you perform." },
+              { kind: "ask", prompt: "Professional indemnity insurance must cover...", qtype: "SINGLE", options: ["Each specific procedure you perform", "Only injections", "All treatments regardless of training", "Nothing -- it is optional"], correct: [0], explanation: "Cover must be specific to the procedure; performing an uninsured treatment leaves you personally exposed." },
+              { kind: "teach", title: "Duty of candour", text: "The duty of candour requires you to be open and honest with a client when something has gone wrong with their treatment, offer an apology, and explain what happened." },
+              { kind: "ask", prompt: "The duty of candour requires you to...", qtype: "SINGLE", options: ["Be open, honest and apologise when something goes wrong", "Stay silent to avoid claims", "Blame the client", "Delete the record"], correct: [0], explanation: "Honesty, an apology and a plan to put things right are all required." },
+              { kind: "teach", title: "Adverse event reporting", text: "Serious adverse events must be reported to the MHRA (yellow card scheme for devices), your insurer, and -- where applicable -- the CQC." },
+              { kind: "ask", prompt: "A serious adverse event linked to a medical device should be reported to...", qtype: "SINGLE", options: ["The MHRA (yellow card scheme)", "Social media only", "Nobody", "The client's GP only"], correct: [0], explanation: "The MHRA yellow card scheme captures device-related adverse events." },
+              { kind: "teach", title: "The defensible record", text: "A defensible record is contemporaneous, complete, signed, and shows the rationale for decisions made -- it demonstrates you acted reasonably and in the client's best interests." },
+              { kind: "ask", prompt: "A defensible record must be...", qtype: "MULTI", options: ["Contemporaneous", "Complete", "Show the rationale for decisions", "Written weeks later"], correct: [0, 1, 2], explanation: "Written at the time, complete and reasoned -- not reconstructed after the fact." },
+              { kind: "say", text: "Honest practice, good records and the right insurance keep you and your clients protected. Excellent work.", mood: "cheer" },
+            ],
+          },
+        ],
+        quiz: {
+          title: "Legal Frameworks & Professional Accountability Assessment",
+          passMark: 70,
+          questions: [
+            { prompt: "Class 3B and Class 4 cosmetic lasers require a licence from...", type: "SINGLE", options: ["The local authority", "The manufacturer", "The client", "No licence needed"], correct: [0], explanation: "Local authority licensing is a legal requirement under the Local Government (Miscellaneous Provisions) Act 1982." },
+            { prompt: "Working within scope of practice means only treating within your training, competence and...", type: "WORD", options: ["insurance", "diary", "budget"], correct: [0], explanation: "Training, competence and valid insurance together define your scope." },
+            { prompt: "Vicarious liability applies when...", type: "SINGLE", options: ["An employer is held responsible for an employee's negligent act", "A practitioner is personally sued", "A client causes harm", "No one is responsible"], correct: [0], explanation: "Vicarious liability: the employer can be liable for acts of an employee within their role." },
+            { prompt: "Professional indemnity insurance must be valid for each specific procedure performed.", type: "TRUEFALSE", options: ["True", "False"], correct: [0], explanation: "Generic cover does not protect you for procedures not listed in the policy." },
+            { prompt: "The duty of candour requires you to be open and honest when something goes wrong.", type: "TRUEFALSE", options: ["True", "False"], correct: [0], explanation: "Openness, an apology and a plan to put things right are all required." },
+            { prompt: "A serious adverse event linked to a medical device should be reported to the...", type: "WORD", options: ["MHRA", "client only", "nobody"], correct: [0], explanation: "The Medicines and Healthcare products Regulatory Agency (MHRA) collects device-related adverse event reports." },
+          ],
+        },
+      },
+    ],
+  },
+
 ];
 
 export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
@@ -1636,6 +1827,27 @@ export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
   { courseSlug: L2, topic: 'Laser safety', prompt: 'During laser use, wavelength-matched eyewear must be worn by…', type: 'MULTI', options: ['The practitioner', 'The client', 'Anyone in the room', 'Nobody'], correct: [0, 1, 2], explanation: 'Every person present needs wavelength-specific protection.' },
   { courseSlug: L2, topic: 'Laser safety', prompt: 'Responsibility for safe laser use rests with…', options: ['The operator', 'The machine manufacturer only', 'The client', 'The regulator alone'], correct: [0], explanation: 'The operator is responsible and accountable at all times.' },
   { courseSlug: L2, topic: 'Laser safety', prompt: 'Fire and fumes are potential laser hazards in addition to eye and skin injury.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Flammable materials and tissue fumes are recognised laser hazards.' },
+
+  // -- BATCH 7 exam bank questions ---------------------------------------------
+
+  // Treatment Planning & Client Records (L2)
+  { courseSlug: L2, topic: "Record keeping", prompt: "A client record should be completed...", options: ["At the time of the appointment", "The following week", "Only after a complaint", "Never"], correct: [0], explanation: "Contemporaneous records are legally stronger and more accurate than retrospective ones." },
+  { courseSlug: L2, topic: "Record keeping", prompt: "Under UK GDPR, client health data is classed as...", type: "WORD", options: ["special category", "public", "optional"], correct: [0], explanation: "Health data requires a higher level of protection as special category data." },
+  { courseSlug: L2, topic: "Record keeping", prompt: "Adult aesthetics client records should be retained for a minimum of...", options: ["7 years", "6 months", "30 days", "1 year"], correct: [0], explanation: "Seven years is the standard minimum retention period for adult treatment records." },
+  { courseSlug: L2, topic: "Record keeping", prompt: "The data minimisation principle requires you to collect...", options: ["Only data needed for the treatment", "As much data as possible", "No personal data at all", "Financial data only"], correct: [0], explanation: "Collect only what is necessary and proportionate to the purpose." },
+  { courseSlug: L2, topic: "Record keeping", prompt: "A complete client record protects...", type: "MULTI", options: ["The client", "The practitioner", "The business", "Nobody"], correct: [0, 1, 2], explanation: "Good records protect all parties if a dispute arises." },
+
+  // Skin Pharmacology & Topicals (L3)
+  { courseSlug: "level-3-laser-aesthetic-therapies", topic: "Topicals", prompt: "Retinoid use should be stopped before laser treatment because retinoids...", options: ["Thin the skin, increasing burn risk", "Protect the skin from heat", "Improve laser absorption", "Block the wavelength"], correct: [0], explanation: "Retinoids accelerate epidermal turnover and thin the stratum corneum, raising sensitivity to laser energy." },
+  { courseSlug: "level-3-laser-aesthetic-therapies", topic: "Topicals", prompt: "Topical anaesthetic creams (e.g. EMLA) are typically applied under occlusion for...", options: ["30-60 minutes before treatment", "The day before", "During the treatment", "After the treatment"], correct: [0], explanation: "30-60 minutes under occlusion achieves effective tissue penetration of the anaesthetic." },
+  { courseSlug: "level-3-laser-aesthetic-therapies", topic: "Topicals", prompt: "Post-laser, the ingredient best suited to supporting barrier repair is...", options: ["Ceramides", "Glycolic acid", "Salicylic acid", "Retinol"], correct: [0], explanation: "Ceramides are structural skin lipids that restore barrier integrity after treatment." },
+  { courseSlug: "level-3-laser-aesthetic-therapies", topic: "Photosensitivity", prompt: "Photosensitising systemic medications must be identified...", options: ["During the consultation", "After treatment", "At payment", "They need not be identified"], correct: [0], explanation: "A thorough medication history at consultation is needed before any laser or light-based treatment." },
+
+  // Legal Frameworks & Professional Accountability (L4)
+  { courseSlug: "level-4-certificate-aesthetic-practice", topic: "Regulation", prompt: "Class 3B and Class 4 cosmetic lasers require a licence from...", options: ["The local authority", "The device manufacturer", "The client", "No licence is needed"], correct: [0], explanation: "A local authority licence is required under the Local Government (Miscellaneous Provisions) Act 1982 before commercial cosmetic laser use." },
+  { courseSlug: "level-4-certificate-aesthetic-practice", topic: "Liability", prompt: "When an employer is legally responsible for an employee's negligent clinical act, this is known as...", options: ["Vicarious liability", "Personal liability", "Strict liability", "Absolute immunity"], correct: [0], explanation: "Vicarious liability holds the employer accountable for acts of an employee performed within their role." },
+  { courseSlug: "level-4-certificate-aesthetic-practice", topic: "Adverse events", prompt: "A serious adverse event related to a medical device must be reported to the...", options: ["MHRA (yellow card scheme)", "Client's GP only", "Nobody", "Social media"], correct: [0], explanation: "The MHRA's yellow card scheme collects device-related adverse event reports to protect public safety." },
+
 ];
 
 function bodyFromSteps(steps: Step[]): string {
