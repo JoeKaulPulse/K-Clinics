@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 type Rules = { gender?: string; source?: string; tag?: string; lapsedDays?: number; optInOnly?: boolean; visited?: string; tier?: string };
 export type TierOpt = { key: string; name: string };
-export type SegmentRow = { id: string; name: string; description: string; rules: Rules; summary: string; size: number };
+export type SegmentRow = { id: string; name: string; description: string; rules: Rules; summary: string; size: number; metaSyncedAt?: string | null };
 
 const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm';
 
@@ -103,7 +103,16 @@ function Builder({ sources, tags, tiers }: { sources: string[]; tags: string[]; 
 
 function Card({ r, canManage }: { r: SegmentRow; canManage: boolean }) {
   const router = useRouter();
+  const [syncing, setSyncing] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
   async function remove() { if (confirm(`Delete segment “${r.name}”?`)) { await post({ op: 'remove', id: r.id }); router.refresh(); } }
+  async function syncMeta() {
+    setSyncing(true); setMsg(null);
+    const res = await post({ op: 'syncMeta', id: r.id });
+    setSyncing(false);
+    setMsg(res.ok ? `Uploaded ${res.count ?? 0} opted-in contacts to Meta ✓` : (res.error || 'Sync failed.'));
+    if (res.ok) router.refresh();
+  }
   return (
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
       <div className="flex items-start justify-between gap-3">
@@ -113,7 +122,21 @@ function Card({ r, canManage }: { r: SegmentRow; canManage: boolean }) {
         </div>
         <span className="shrink-0 rounded-full bg-[var(--color-gold)]/15 px-3 py-1 text-sm font-medium text-[var(--color-gold)]">{r.size}</span>
       </div>
-      {canManage && <button onClick={remove} className="mt-3 text-xs text-[var(--color-blush)] hover:underline">Delete</button>}
+      {canManage && (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button
+            onClick={syncMeta}
+            disabled={syncing}
+            title="Uploads this segment's marketing-opted-in clients to Meta as a Custom Audience (for retargeting + lookalikes)."
+            className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--color-bone)] disabled:opacity-50"
+          >
+            {syncing ? 'Syncing…' : r.metaSyncedAt ? 'Re-sync to Meta' : 'Sync to Meta'}
+          </button>
+          {r.metaSyncedAt && !msg && <span className="text-xs text-[var(--color-stone)]">Synced {new Date(r.metaSyncedAt).toLocaleDateString('en-GB')}</span>}
+          {msg && <span className="min-w-0 text-xs text-[var(--color-stone)]">{msg}</span>}
+          <button onClick={remove} className="ml-auto text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+        </div>
+      )}
     </section>
   );
 }

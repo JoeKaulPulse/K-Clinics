@@ -1,9 +1,10 @@
 import 'server-only';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { db } from '@/lib/db';
-import { analyzeKioskPhoto } from '@/lib/kiosk-ai';
+import { analyzeKioskPhoto, analyzeKioskPhotosV2 } from '@/lib/kiosk-ai';
 import { createPersonalCode } from '@/lib/promo';
 import { site } from '@/lib/site';
+import { marketingConsentFields } from '@/lib/consent';
 
 // ── Shared kiosk helpers ─────────────────────────────────────────────────────
 // Token/slug generation, IP hashing (no raw IPs stored), funnel event logging,
@@ -24,6 +25,19 @@ export function randomToken(len = 10): string {
 
 /** 8-char share slug. */
 export const randomShareSlug = () => randomToken(8);
+
+/** A high-entropy capability secret for a kiosk session (BLD-159). Travels in
+ *  the storefront QR (?s=) — physically in-store, not derivable from the short,
+ *  brute-forceable token — and is required to read (/stream) or write (/frame)
+ *  the live camera feed. 28 chars ≈ 166 bits, far beyond brute force. */
+export const randomSecret = () => randomToken(28);
+
+/** Timing-safe compare for the session secret. */
+export function secretMatches(expected: string | null | undefined, provided: string | null | undefined): boolean {
+  if (!expected) return true; // legacy session minted before BLD-159 — no secret to check
+  if (!provided || provided.length !== expected.length) return false;
+  try { return timingSafeEqual(Buffer.from(provided), Buffer.from(expected)); } catch { return false; }
+}
 
 /** Hash a client IP so we never store the raw address (anti-abuse counting only). */
 export function hashIp(ip: string | null | undefined): string | null {
@@ -86,6 +100,120 @@ export async function runKioskAnalysis(sessionId: string): Promise<void> {
   }
 }
 
+// ── Kiosk v2 analysis (multi-photo, annotations, AI age backstop) ────────────
+
+/** Best-effort delete of kiosk Blob photos. Never throws. */
+export async function deleteKioskBlobs(urls: Array<string | null | undefined>): Promise<void> {
+  const unique = Array.from(new Set(urls.filter((u): u is string => !!u)));
+  if (!unique.length || !process.env.BLOB_READ_WRITE_TOKEN) return;
+  try {
+    const { del } = await import('@vercel/blob');
+    await del(unique);
+  } catch (e) {
+    console.error('[kiosk] blob delete failed:', (e as Error)?.message);
+  }
+}
+
+/**
+ * Fire-and-forget v2 analysis: one multi-photo Sonnet call → KioskResult upsert
+ * (annotations/shareCaption/bestPhotoUrl), status ANALYZED, stage 'reveal'.
+ * AI challenge-21 backstop: if the model is not confident the visitor is
+ * clearly over 21, ALL session photos are purged from Blob, the mirror frame is
+ * cleared, and the session becomes AGE_DECLINED / stage 'declined' — no result.
+ * Safe to call without awaiting; never throws.
+ */
+export async function runKioskAnalysisV2(sessionId: string): Promise<void> {
+  try {
+    const session = await db.kioskSession.findUnique({ where: { id: sessionId } });
+    if (!session) return;
+    const photos = session.photoUrls?.length
+      ? session.photoUrls
+      : (session.photoUrl ? [session.photoUrl] : []);
+    if (!photos.length) return;
+
+    // Don't double-bill: if this session already analysed, just surface reveal.
+    const existing = await db.kioskResult.findUnique({ where: { sessionId }, select: { id: true } });
+    if (existing && session.status === 'ANALYZED') {
+      await db.kioskSession.update({ where: { id: sessionId }, data: { stage: 'reveal' } }).catch(() => {});
+      return;
+    }
+
+    const ai = await analyzeKioskPhotosV2(photos);
+
+    if (!ai) {
+      await db.kioskSession.update({
+        where: { id: sessionId },
+        data: { status: 'ANALYSIS_FAILED', stage: 'failed' },
+      }).catch(() => {});
+      return;
+    }
+
+    if (!ai.clearlyOver21) {
+      // Inline privacy purge — not cron-dependent. Photos + mirror frame gone now.
+      await deleteKioskBlobs([...photos, session.photoUrl]);
+      await db.kioskSession.update({
+        where: { id: sessionId },
+        data: {
+          status: 'AGE_DECLINED',
+          stage: 'declined',
+          photoUrl: null,
+          photoUrls: [],
+          liveFrame: null,
+          liveFrameAt: null,
+        },
+      }).catch(() => {});
+      await logKioskEvent('age_declined', sessionId, session.ipHash);
+      return;
+    }
+
+    const bestPhotoUrl = photos[ai.bestPhotoIndex] ?? photos[0];
+    const insights = ai.observations.map((o) => o.detail).filter(Boolean).slice(0, 6);
+    if (!insights.length) insights.push('A naturally photogenic look — the camera agrees');
+    // Prisma Json column — observations are plain JSON-safe objects.
+    const annotations = JSON.parse(JSON.stringify(ai.observations));
+
+    await db.kioskResult.upsert({
+      where: { sessionId },
+      create: {
+        sessionId,
+        headline: ai.headline,
+        skinScore: ai.skinScore,
+        smileScore: ai.smileScore,
+        insights,
+        treatments: ai.treatments,
+        photoUrl: bestPhotoUrl,
+        bestPhotoUrl,
+        annotations,
+        shareCaption: ai.shareCaption,
+        shareSlug: randomShareSlug(),
+      },
+      update: {
+        headline: ai.headline,
+        skinScore: ai.skinScore,
+        smileScore: ai.smileScore,
+        insights,
+        treatments: ai.treatments,
+        photoUrl: bestPhotoUrl,
+        bestPhotoUrl,
+        annotations,
+        shareCaption: ai.shareCaption,
+      },
+    });
+    await db.kioskSession.update({
+      where: { id: sessionId },
+      // Mirror frame is no longer needed once we reveal — clear it (privacy).
+      data: { status: 'ANALYZED', stage: 'reveal', liveFrame: null, liveFrameAt: null },
+    });
+    await logKioskEvent('analyzed', sessionId, session.ipHash);
+  } catch (e) {
+    console.error('[kiosk] v2 analysis save failed:', (e as Error)?.message);
+    await db.kioskSession.update({
+      where: { id: sessionId },
+      data: { status: 'ANALYSIS_FAILED', stage: 'failed' },
+    }).catch(() => {});
+  }
+}
+
 // ── Share-to-claim reward ────────────────────────────────────────────────────
 const OOH_CAMPAIGN_SLUG = 'skin-smile-ooh';
 
@@ -115,7 +243,7 @@ export async function claimKioskDiscount(resultId: string, emailRaw: string, fir
   const { getSetting, getConfigNumber } = await import('@/lib/settings');
   if (!(await getSetting('kiosk_discount_enabled'))) return { ok: false, error: 'Rewards are paused right now — please ask in clinic.' };
 
-  const result = await db.kioskResult.findUnique({ where: { id: resultId }, include: { session: { select: { id: true, status: true, ipHash: true } } } });
+  const result = await db.kioskResult.findUnique({ where: { id: resultId }, include: { session: { select: { id: true, status: true, ipHash: true, ageDeclaredAt: true } } } });
   if (!result) return { ok: false, error: 'Result not found.' };
   // Idempotent: if already claimed, return the existing code.
   if (result.claimCode) return { ok: true, code: result.claimCode, pct: await getConfigNumber('kiosk_discount_pct'), days: await getConfigNumber('kiosk_discount_days') };
@@ -127,11 +255,15 @@ export async function claimKioskDiscount(resultId: string, emailRaw: string, fir
   const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
   // Find or create a marketing-opted-in client (kiosk is an explicit opt-in).
+  // The kiosk's explicit 18+ tap carries over to the client record so later
+  // bookings inherit the declaration (attribution per KIOSK_V2_CONTRACT.md).
+  const ageDeclaredAt = result.session.ageDeclaredAt;
   try {
     await db.client.upsert({
       where: { email },
-      update: { marketingOptIn: true },
-      create: { email, firstName, marketingOptIn: true, source: 'kiosk' },
+      // BLD-128: record consent evidence (what/when/where) per GDPR Art. 7.
+      update: { marketingOptIn: true, ...marketingConsentFields('kiosk'), ...(ageDeclaredAt ? { ageDeclaredAt } : {}) },
+      create: { email, firstName, marketingOptIn: true, source: 'kiosk', ...marketingConsentFields('kiosk'), ...(ageDeclaredAt ? { ageDeclaredAt } : {}) },
     });
   } catch (e) { console.error('[kiosk] client upsert failed (continuing):', (e as Error)?.message); }
 

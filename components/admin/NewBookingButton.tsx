@@ -5,18 +5,23 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import { createManualBooking, searchClientsForBooking } from '@/app/admin/bookings/create-action';
 
-type Treatment = { slug: string; title: string };
+type Variant = { id: string; name: string; durationMin: number; pricePence: number };
+type Treatment = { slug: string; title: string; group: string; variants?: Variant[] };
 type Found = { id: string; firstName: string; lastName: string | null; email: string; phone: string | null; hasDob: boolean; hasCard: boolean };
 type Result = { bookingId: string; manageToken?: string; hasCard?: boolean; clientFirstName?: string; clientEmail?: string; clientHasEmail?: boolean };
 
 const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-gold)]';
+const priceLabel = (p: number) => (p > 0 ? `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}` : 'On consultation');
 
 export function NewBookingButton({ treatments }: { treatments: Treatment[] }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button onClick={() => setOpen(true)} className="rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-espresso)]">
-        ☎ New phone booking
+      <button onClick={() => setOpen(true)} className="inline-flex items-center gap-2 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-espresso)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M5 3.5h3l1.2 3.2-1.7 1.3a10 10 0 0 0 4.2 4.2l1.3-1.7 3.2 1.2v3a1.5 1.5 0 0 1-1.6 1.5A13.5 13.5 0 0 1 3.5 5.1 1.5 1.5 0 0 1 5 3.5Z" />
+        </svg>
+        New phone booking
       </button>
       <AnimatePresence>{open && <Modal treatments={treatments} onClose={() => setOpen(false)} />}</AnimatePresence>
     </>
@@ -30,13 +35,34 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
   const [clash, setClash] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
 
+  // Group treatments by their group field for the two-step dropdown.
+  const groups = Array.from(new Set(treatments.map((t) => t.group)));
+  const firstGroup = groups[0] ?? '';
+  const firstSlug = treatments.find((t) => t.group === firstGroup)?.slug ?? treatments[0]?.slug ?? '';
+
   // Client selection
   const [tab, setTab] = useState<'existing' | 'new'>('existing');
   const [q, setQ] = useState('');
   const [matches, setMatches] = useState<Found[]>([]);
   const [selected, setSelected] = useState<Found | null>(null);
-  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', treatmentSlug: treatments[0]?.slug ?? '', date: '', time: '10:00', notes: '' });
+  const [selectedGroup, setSelectedGroup] = useState(firstGroup);
+  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', treatmentSlug: firstSlug, variantId: treatments.find((t) => t.slug === firstSlug)?.variants?.[0]?.id ?? '', asConsultation: false, date: '', time: '10:00', notes: '' });
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD((p) => ({ ...p, [k]: v }));
+  // The standalone "Consultation" category is already a consultation; the toggle
+  // is for booking a *real* treatment category as a consultation (BLD-208).
+  const isConsultationCat = d.treatmentSlug === 'consultation';
+
+  const groupTreatments = treatments.filter((t) => t.group === selectedGroup);
+  // The chosen category's specific service variants/areas (each its own price + time).
+  const variants = treatments.find((t) => t.slug === d.treatmentSlug)?.variants ?? [];
+  // Changing the treatment (directly or via its group) resets to that treatment's first area.
+  const setTreatment = (slug: string) => setD((p) => ({ ...p, treatmentSlug: slug, variantId: treatments.find((t) => t.slug === slug)?.variants?.[0]?.id ?? '' }));
+
+  function handleGroupChange(group: string) {
+    setSelectedGroup(group);
+    const first = treatments.find((t) => t.group === group);
+    if (first) setTreatment(first.slug);
+  }
 
   useEffect(() => {
     if (tab !== 'existing' || selected || q.trim().length < 2) { setMatches([]); return; }
@@ -44,7 +70,9 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
     return () => clearTimeout(t);
   }, [q, tab, selected]);
 
-  const treatmentTitle = treatments.find((t) => t.slug === d.treatmentSlug)?.title || 'your treatment';
+  const baseTitle = treatments.find((t) => t.slug === d.treatmentSlug)?.title || 'your treatment';
+  const variantName = variants.find((v) => v.id === d.variantId)?.name;
+  const treatmentTitle = (d.asConsultation && !isConsultationCat) ? `${baseTitle} — Consultation` : variantName ? `${baseTitle} — ${variantName}` : baseTitle;
   const whenLabel = d.date ? new Date(`${d.date}T${d.time}`).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '—';
 
   function submit(override = false) {
@@ -60,7 +88,7 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
         lastName: selected?.lastName || d.lastName,
         email: selected?.email || d.email,
         phone: selected?.phone || d.phone,
-        treatmentSlug: d.treatmentSlug, startISO, notes: d.notes, override,
+        treatmentSlug: d.treatmentSlug, variantId: d.asConsultation ? undefined : (d.variantId || undefined), asConsultation: d.asConsultation, startISO, notes: d.notes, override,
       });
       if (r.ok) setResult(r as Result);
       else { setError(r.error || 'Could not create booking.'); setClash(Boolean(r.clash)); }
@@ -73,7 +101,7 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
         className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-[var(--radius-xl)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)] sm:rounded-[var(--radius-xl)] md:p-8">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="font-[family-name:var(--font-display)] text-2xl">{result ? 'Booking created' : 'New phone booking'}</h2>
-          <button onClick={onClose} className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">✕</button>
+          <button onClick={onClose} aria-label="Close" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>
         </div>
 
         {result ? (
@@ -119,10 +147,27 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
               </div>
             )}
 
-            {/* Appointment */}
-            <select className={f} value={d.treatmentSlug} onChange={(e) => set('treatmentSlug', e.target.value)}>
-              {treatments.map((t) => <option key={t.slug} value={t.slug}>{t.title}</option>)}
+            {/* Appointment: group → treatment → specific service/area (its own price + time) */}
+            <select className={f} value={selectedGroup} onChange={(e) => handleGroupChange(e.target.value)}>
+              {groups.map((g) => <option key={g} value={g}>{g}</option>)}
             </select>
+            {groupTreatments.length > 1 && (
+              <select className={f} value={d.treatmentSlug} onChange={(e) => setTreatment(e.target.value)}>
+                {groupTreatments.map((t) => <option key={t.slug} value={t.slug}>{t.title}</option>)}
+              </select>
+            )}
+            {variants.length > 0 && !d.asConsultation && (
+              <select className={f} value={d.variantId} onChange={(e) => set('variantId', e.target.value)} aria-label="Specific service / area">
+                {variants.map((v) => <option key={v.id} value={v.id}>{v.name} — {priceLabel(v.pricePence)} · {v.durationMin} min</option>)}
+              </select>
+            )}
+            {/* Book any treatment category as a consultation (BLD-208). */}
+            {!isConsultationCat && (
+              <label className="flex items-center gap-2 text-sm text-[var(--color-stone)]">
+                <input type="checkbox" checked={d.asConsultation} onChange={(e) => set('asConsultation', e.target.checked)} />
+                Book as a consultation <span className="text-[var(--color-stone-soft)]">(30 min · on consultation)</span>
+              </label>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <input className={f} type="date" value={d.date} onChange={(e) => set('date', e.target.value)} />
               <input className={f} type="time" value={d.time} onChange={(e) => set('time', e.target.value)} />

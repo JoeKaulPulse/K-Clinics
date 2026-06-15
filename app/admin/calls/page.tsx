@@ -25,7 +25,9 @@ export default async function AdminCallsPage() {
       {!configured && (
         <p className="mt-4 rounded-[var(--radius-md)] border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Telephony isn’t connected yet. Set <code>YAY_WEBHOOK_SECRET</code>, then in yay point the
-          “Call Ended” and “Voicemail Notify” web hooks at <code>/api/integrations/yay?token=…</code>. Calls will appear here automatically.
+          “Call Ended” and “Voicemail Notify” web hooks at <code>/api/integrations/yay</code> and put the
+          same secret in yay’s <strong>Auth Token</strong> field (sent as the <code>X-Auth-Token</code> header —
+          never in the URL). Calls will appear here automatically.
         </p>
       )}
       <div className="mt-6">

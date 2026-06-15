@@ -12,6 +12,7 @@ import { pt } from '@/lib/i18n-portal';
 import type { Locale } from '@/lib/i18n';
 
 const STATUS_STYLE: Record<string, string> = {
+  REQUESTED: 'bg-[color-mix(in_oklab,var(--color-gold)_20%,transparent)] text-[var(--color-ink)]',
   PENDING: 'bg-amber-100 text-amber-800',
   CONFIRMED: 'bg-green-100 text-green-800',
   COMPLETED: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
@@ -28,7 +29,8 @@ export default async function AppointmentsPage() {
   const { upcoming, past } = await getDashboard(client.id);
 
   const { clientBalance, pointsToPence, LOYALTY } = await import('@/lib/client-loyalty');
-  const balancePence = pointsToPence(await clientBalance(client.id));
+  // Loyalty balance is non-essential to the appointments list — never let it 500 the page.
+  const balancePence = pointsToPence(await clientBalance(client.id).catch(() => 0));
 
   const locale: Locale = client.locale === 'uk' ? 'uk' : 'en';
   const t = (k: string, v?: Record<string, string | number>) => pt(locale, k, v);

@@ -208,7 +208,7 @@ export default async function HomePage() {
                 <div className="flex flex-1 flex-col p-7">
                   <h3 className="font-[family-name:var(--font-display)] text-[1.35rem] leading-tight">{p.name}</h3>
                   <p className="mt-2 text-sm text-[var(--color-stone)]">{p.subtitle}</p>
-                  <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-gold)]">
+                  <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-gold-deep)]">
                     Explore <ArrowIcon />
                   </span>
                 </div>
@@ -261,7 +261,7 @@ export default async function HomePage() {
           />
           <Reveal delay={0.1}>
             <FaqAccordion faqs={allGeneralFaqs.slice(0, 6)} />
-            <Link href="/faq" className="mt-7 inline-flex items-center gap-2 font-medium text-[var(--color-gold)]">
+            <Link href="/faq" className="mt-7 inline-flex items-center gap-2 font-medium text-[var(--color-gold-deep)]">
               All questions <ArrowIcon />
             </Link>
           </Reveal>

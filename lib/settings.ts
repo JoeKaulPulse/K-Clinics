@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { db, withDbRetry } from '@/lib/db';
 
 // Typed application settings, stored as key/value rows and editable in admin.
@@ -27,7 +28,10 @@ export type SettingKey =
   | 'staff_work_reengagement'    // email staff with pending assigned work if idle ≥8h
   | 'vat_registered'             // the clinic is VAT-registered (turns VAT on across pricing)
   | 'prices_vat_inclusive'       // prices are entered/shown VAT-inclusive (vs exclusive)
-  | 'kiosk_discount_enabled';    // the storefront kiosk issues a share-to-claim discount code
+  | 'kiosk_discount_enabled'     // the storefront kiosk issues a share-to-claim discount code
+  | 'reminder_72h'               // send a 3-day-ahead appointment reminder (BLD-126)
+  | 'reminder_48h'               // send a 2-day-ahead appointment reminder (BLD-126)
+  | 'contractor_checkin_enabled'; // PRJ-63: contractors self-sign-in at reception via QR
 
 export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   allow_clinician_choice: false,
@@ -42,9 +46,9 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   review_requests_enabled: true,
   require_consent: false,
   require_before_photo: true,
-  abandoned_booking_recovery: false,
+  abandoned_booking_recovery: true, // BLD-131: enabled (owner-approved revenue automation)
   no_show_notice: false,
-  membership_renewal_nudge: false,
+  membership_renewal_nudge: true, // BLD-131: enabled (owner-approved revenue automation)
   nps_survey: false,
   post_course_checkin: false,
   gift_card_physical_enabled: false,
@@ -53,6 +57,9 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   vat_registered: false,
   prices_vat_inclusive: true,
   kiosk_discount_enabled: true,
+  reminder_72h: true,
+  reminder_48h: true,
+  contractor_checkin_enabled: false, // PRJ-63: ships dark; owner enables after review
 };
 
 export const SETTING_META: Record<SettingKey, { label: string; description: string }> = {
@@ -148,6 +155,18 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
     label: 'Storefront kiosk share reward',
     description: 'When on, a storefront “Skin & Smile” kiosk visitor who shares their result can create an account and claim a single-use discount code (set the % under Finance → Financial controls). Turn off to pause the reward.',
   },
+  reminder_72h: {
+    label: '72-hour appointment reminder',
+    description: 'Send a reminder email (and SMS if configured) 3 days before a confirmed appointment, in addition to the standard 24-hour reminder. Off by default.',
+  },
+  reminder_48h: {
+    label: '48-hour appointment reminder',
+    description: 'Send a reminder email (and SMS if configured) 2 days before a confirmed appointment, in addition to the standard 24-hour reminder. Off by default.',
+  },
+  contractor_checkin_enabled: {
+    label: 'Contractor reception check-in',
+    description: 'When on, contractors can scan a QR at reception to sign in for their visit — finding their existing profile by name/email or registering a new one (which staff then approve). They see only their assigned jobs, facility plans and a visit timer — never client, clinical or financial data. Off by default.',
+  },
 };
 
 // Numeric/string config values (not booleans) live in the same Setting table
@@ -156,7 +175,11 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
 export type ConfigKey = 'gift_card_physical_fee_pence' | 'refund_window_days' | 'vat_default_rate_pct' | 'min_margin_pct' | 'kiosk_discount_pct' | 'kiosk_discount_days';
 export const CONFIG_DEFAULTS: Record<ConfigKey, number> = { gift_card_physical_fee_pence: 495, refund_window_days: 180, vat_default_rate_pct: 20, min_margin_pct: 0, kiosk_discount_pct: 15, kiosk_discount_days: 60 };
 
-export async function getConfigNumber(key: ConfigKey): Promise<number> {
+// Per-request memoised (React.cache): the booking/availability hot path reads the
+// same settings many times per request (popularDays calls freeSlots up to 12×,
+// each re-reading enforce_staff_availability + room_equipment_binding). cache()
+// dedupes those into one DB round-trip per key per request.
+export const getConfigNumber = cache(async (key: ConfigKey): Promise<number> => {
   try {
     const row = await withDbRetry(() => db.setting.findUnique({ where: { key } }), 2);
     const n = row ? Number(row.value) : NaN;
@@ -164,7 +187,7 @@ export async function getConfigNumber(key: ConfigKey): Promise<number> {
   } catch {
     return CONFIG_DEFAULTS[key];
   }
-}
+});
 
 export async function setConfigNumber(key: ConfigKey, value: number, updatedBy?: string) {
   await db.setting.upsert({ where: { key }, update: { value: String(Math.max(0, Math.round(value))), updatedBy }, create: { key, value: String(Math.max(0, Math.round(value))), updatedBy } });
@@ -174,7 +197,7 @@ export async function setConfigNumber(key: ConfigKey, value: number, updatedBy?:
 // never throw on a transient DB blip (cold start / connection spike during a
 // deploy). It retries briefly and, failing that, falls back to the coded
 // default — so a hiccup can never 500 the booking flow.
-export async function getSetting(key: SettingKey): Promise<boolean> {
+export const getSetting = cache(async (key: SettingKey): Promise<boolean> => {
   try {
     const row = await withDbRetry(() => db.setting.findUnique({ where: { key } }), 2);
     if (!row) return SETTING_DEFAULTS[key];
@@ -182,9 +205,9 @@ export async function getSetting(key: SettingKey): Promise<boolean> {
   } catch {
     return SETTING_DEFAULTS[key];
   }
-}
+});
 
-export async function getSettings(): Promise<Record<SettingKey, boolean>> {
+export const getSettings = cache(async (): Promise<Record<SettingKey, boolean>> => {
   let rows: { key: string; value: string }[] = [];
   try {
     rows = await withDbRetry(() => db.setting.findMany({ select: { key: true, value: true } }), 2);
@@ -197,12 +220,31 @@ export async function getSettings(): Promise<Record<SettingKey, boolean>> {
     out[k] = map.has(k) ? (map.get(k) as boolean) : SETTING_DEFAULTS[k];
   });
   return out;
-}
+});
 
 export async function setSetting(key: SettingKey, value: boolean, updatedBy?: string) {
   await db.setting.upsert({
     where: { key },
     update: { value: String(value), updatedBy },
     create: { key, value: String(value), updatedBy },
+  });
+}
+
+// String settings — arbitrary key/value pairs stored alongside boolean settings.
+// Not typed in SettingKey so they don't interfere with the boolean defaults map.
+export const getStringSetting = cache(async (key: string, fallback: string): Promise<string> => {
+  try {
+    const row = await withDbRetry(() => db.setting.findUnique({ where: { key } }), 2);
+    return row?.value ?? fallback;
+  } catch {
+    return fallback;
+  }
+});
+
+export async function setStringSetting(key: string, value: string, updatedBy?: string) {
+  await db.setting.upsert({
+    where: { key },
+    update: { value, updatedBy },
+    create: { key, value, updatedBy },
   });
 }

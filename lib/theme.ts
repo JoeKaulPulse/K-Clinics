@@ -42,7 +42,7 @@ export const defaultTheme: ThemeTokens = {
   gold: '#a98a6d',
   goldSoft: '#c2a589',
   goldBright: '#dcc4a8',
-  jade: '#7b6a5d',
+  jade: '#2f7152', // jade green — positive / success / active / healthy accent
   blush: '#cdb4a3',
 };
 
@@ -68,10 +68,18 @@ export async function getTheme(): Promise<ThemeTokens> {
   return defaultTheme;
 }
 
+const CSS_COLOR_RE = /^#[0-9a-fA-F]{3,8}$|^(rgb|rgba|hsl|hsla)\(/;
+
+function sanitizeColorValue(v: string): string {
+  const s = v.trim();
+  if (!CSS_COLOR_RE.test(s)) return 'transparent';
+  return s.replace(/[}<>"'`]/g, '');
+}
+
 /** Renders the active theme as a CSS variable override on :root. */
 export function themeToCss(theme: ThemeTokens): string {
   const decls = (Object.keys(theme) as (keyof ThemeTokens)[])
-    .map((k) => `${cssVar[k]}:${theme[k]};`)
+    .map((k) => `${cssVar[k]}:${sanitizeColorValue(String(theme[k]))};`)
     .join('');
   return `:root{${decls}}`;
 }

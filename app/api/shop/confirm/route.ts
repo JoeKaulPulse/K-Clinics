@@ -20,6 +20,7 @@ export async function POST(req: Request) {
       const { stripe } = await import('@/lib/stripe');
       const pi = await stripe().paymentIntents.retrieve(order.stripePaymentIntentId);
       if (pi.status !== 'succeeded') return NextResponse.json({ ok: false, error: 'Payment not completed.' }, { status: 402 });
+      if (pi.amount_received < order.totalPence || pi.currency !== 'gbp') return NextResponse.json({ ok: false, error: 'Payment amount mismatch.' }, { status: 402 });
     } catch {
       return NextResponse.json({ ok: false, error: 'Could not verify payment.' }, { status: 502 });
     }

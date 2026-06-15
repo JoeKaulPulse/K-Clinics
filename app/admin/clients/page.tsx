@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
+import { PageSearch } from '@/components/admin/PageSearch';
+import { EmptyState } from '@/components/admin/EmptyState';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { getLocale } from '@/lib/locale';
 import { t } from '@/lib/i18n';
@@ -45,10 +47,18 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   const SortHead = ({ col, label, className = '' }: { col: string; label: string; className?: string }) => {
     const active = sort === col;
     const nextDir = active && dir === 'asc' ? 'desc' : 'asc';
+    // This is a div-based grid, not a semantic <table>, so aria-sort would be invalid
+    // without full grid roles. An aria-label on the link conveys the sort action +
+    // current state to screen readers; the arrow glyph is decorative (aria-hidden).
+    const stateLabel = active ? `, currently sorted ${dir === 'asc' ? 'ascending' : 'descending'}` : '';
     return (
-      <Link href={`/admin/clients${qs({ sort: col, dir: nextDir })}`} className={`group inline-flex items-center gap-1 ${className}`}>
+      <Link
+        href={`/admin/clients${qs({ sort: col, dir: nextDir })}`}
+        aria-label={`Sort by ${label}${stateLabel}`}
+        className={`group inline-flex items-center gap-1 ${className}`}
+      >
         {label}
-        <span className={active ? 'text-[var(--color-gold)]' : 'opacity-0 group-hover:opacity-40'}>{active && dir === 'asc' ? '↑' : '↓'}</span>
+        <span aria-hidden className={active ? 'text-[var(--color-gold)]' : 'opacity-0 group-hover:opacity-40'}>{active && dir === 'asc' ? '↑' : '↓'}</span>
       </Link>
     );
   };
@@ -63,18 +73,11 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
           <h1 className="font-[family-name:var(--font-display)] text-3xl">{t(locale, 'nav.clients')}</h1>
           <p className="mt-1 text-sm text-[var(--color-stone)]">{rows.length}{rows.length === 200 ? '+' : ''} {rows.length === 1 ? 'client' : 'clients'}</p>
         </div>
-        <form className="flex gap-2">
-          {flag && <input type="hidden" name="flag" value={flag} />}
-          {sort && <input type="hidden" name="sort" value={sort} />}
-          {dir && <input type="hidden" name="dir" value={dir} />}
-          <input
-            name="q"
-            defaultValue={q}
-            placeholder="Search name, email or phone…"
-            className="w-56 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm outline-none focus:border-[var(--color-gold)]"
-          />
-          <button className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)]">Search</button>
-        </form>
+        <PageSearch
+          defaultValue={q}
+          placeholder="Search name, email or phone…"
+          hidden={{ flag, sort, dir }}
+        />
       </div>
 
       {/* Filters */}
@@ -87,7 +90,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         ))}
       </div>
 
-      <div className="mt-5 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
+      <div className="mt-5 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] tabular-nums">
         {/* Header row */}
         <div className={`${rowCls} bg-[var(--color-bone)] text-xs uppercase tracking-[0.12em] text-[var(--color-stone)]`}>
           <SortHead col="name" label="Name" />
@@ -96,12 +99,18 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
           <SortHead col="created" label="Added" className="hidden sm:inline-flex" />
           <span className="justify-self-end">Flags</span>
         </div>
-        {rows.length === 0 && <p className="p-6 text-sm text-[var(--color-stone)]">No clients found.</p>}
+        {rows.length === 0 && (
+          <EmptyState
+            title={q || flag ? 'No matching clients' : 'No clients yet'}
+            hint={q || flag ? 'Try a different name, email or phone — or clear the filters above.' : 'Clients appear here automatically when someone books, enquires or signs up.'}
+            icon={<><circle cx="9" cy="7" r="3" /><path d="M3.5 19a6 6 0 0 1 11 0" /><path d="M17 11h4M19 9v4" /></>}
+          />
+        )}
         {rows.map((c) => {
           const review = c.tags?.includes('needs-name-review');
           const test = c.tags?.includes('likely-test');
           return (
-            <Link key={c.id} href={`/admin/clients/${c.id}`} className={`${rowCls} hover:bg-[var(--color-bone)]`}>
+            <Link key={c.id} href={`/admin/clients/${c.id}`} className={`${rowCls} transition-colors duration-150 ease-out hover:bg-[var(--color-bone)] active:bg-[var(--color-sand)]`}>
               <p className="font-medium">{c.firstName} {c.lastName ?? ''}</p>
               <p className="hidden truncate text-sm text-[var(--color-stone)] sm:block">{c.email}</p>
               <p className="hidden text-sm text-[var(--color-stone)] sm:block">{c.phone ?? '—'}</p>

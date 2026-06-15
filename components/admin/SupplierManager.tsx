@@ -71,7 +71,7 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
         ) : (
           <table className="w-full text-sm">
             <thead className="border-b border-[var(--color-line)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]">
-              <tr><th className="px-4 py-2.5">Supplier</th><th className="px-4 py-2.5">Category</th><th className="px-4 py-2.5">Contact</th><th className="px-4 py-2.5">Phone</th><th className="px-4 py-2.5">Xero</th></tr>
+              <tr><th scope="col" className="px-4 py-2.5">Supplier</th><th scope="col" className="px-4 py-2.5">Category</th><th scope="col" className="px-4 py-2.5">Contact</th><th scope="col" className="px-4 py-2.5">Phone</th><th scope="col" className="px-4 py-2.5">Xero</th></tr>
             </thead>
             <tbody>
               {filtered.map((s) => (

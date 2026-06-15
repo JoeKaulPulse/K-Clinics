@@ -25,10 +25,11 @@ export async function POST(req: Request) {
   const tokens = Array.isArray(b?.tokens) ? b.tokens.map(String).slice(0, 50) : [];
   if (!tokens.length) return NextResponse.json({ ok: false, error: 'No tokens.' }, { status: 400 });
 
-  const sessions = await db.kioskSession.findMany({ where: { token: { in: tokens } }, select: { id: true, photoUrl: true } });
+  const sessions = await db.kioskSession.findMany({ where: { token: { in: tokens } }, select: { id: true, photoUrl: true, photoUrls: true } });
   if (!sessions.length) return NextResponse.json({ ok: true, deleted: 0 });
 
-  const urls = sessions.map((s) => s.photoUrl).filter((u): u is string => !!u);
+  // v1 photoUrl + v2 multi-capture photoUrls[] — remove every uploaded blob.
+  const urls = Array.from(new Set(sessions.flatMap((s) => [s.photoUrl, ...s.photoUrls]).filter((u): u is string => !!u)));
   if (urls.length && process.env.BLOB_READ_WRITE_TOKEN) {
     try { const { del } = await import('@vercel/blob'); await del(urls); } catch (e) { console.error('[kiosk test-cleanup] blob del failed', (e as Error)?.message); }
   }

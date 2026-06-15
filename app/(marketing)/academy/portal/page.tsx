@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { PageHero } from '@/components/ui/PageHero';
 import { AcademyAuth } from '@/components/academy/AcademyAuth';
 import { AcademyLogout } from '@/components/academy/AcademyLogout';
+import { DailyGoal } from '@/components/academy/DailyGoal';
+import { InstallPrompt } from '@/components/academy/InstallPrompt';
 import { GuideHost } from '@/components/guide/GuideHost';
 import { OnboardingHost } from '@/components/onboarding/OnboardingHost';
 import { ONBOARDING } from '@/lib/onboarding-steps';
@@ -46,13 +48,55 @@ export default async function AcademyPortalPage() {
     ),
   );
 
+  const { studentStanding } = await import('@/lib/academy-gamification');
+  const { academyLevel } = await import('@/lib/academy-levels');
+  const { dailyStatus } = await import('@/lib/academy-daily');
+  const [standing, timeAgg, daily] = await Promise.all([
+    studentStanding(student.id),
+    db.lessonProgress.aggregate({ where: { studentId: student.id }, _sum: { secondsSpent: true } }),
+    dailyStatus(student.id),
+  ]);
+  const lvl = academyLevel(standing.xp);
+  const totalMin = Math.round((timeAgg._sum.secondsSpent ?? 0) / 60);
+
   return (
     <>
       <PageHero eyebrow="K Academy" title={`Welcome, ${student.firstName}.`} lede="Your training, in one place." gradient={['#2a2420', '#7b6a5d']} />
+      <section className="container-lux pt-8">
+        <div className="grid gap-4 lg:grid-cols-[1fr_360px] lg:items-start">
+        <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5 sm:p-6">
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+            <div className="flex items-center gap-3">
+              <span className="grid h-12 w-12 place-items-center rounded-full bg-[var(--color-gold)] font-[family-name:var(--font-display)] text-xl text-white">{lvl.level}</span>
+              <div>
+                <p className="font-medium">{lvl.title}</p>
+                <p className="text-xs text-[var(--color-stone)]">Level {lvl.level}{lvl.nextAt != null ? ` · ${(lvl.nextAt - standing.xp).toLocaleString()} XP to next` : ' · max'}</p>
+              </div>
+            </div>
+            {[['XP', standing.xp.toLocaleString()], ['Badges', String(standing.badges.length)], ['Rank', `#${standing.rank}`], ['Time', totalMin >= 60 ? `${Math.floor(totalMin / 60)}h ${totalMin % 60}m` : `${totalMin}m`]].map(([label, value]) => (
+              <div key={label}><p className="font-[family-name:var(--font-display)] text-2xl">{value}</p><p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">{label}</p></div>
+            ))}
+            <div className="min-w-[160px] flex-1">
+              <div className="mb-1 flex justify-between text-xs text-[var(--color-stone)]"><span>To next level</span><span>{lvl.pct}%</span></div>
+              <div className="h-2 overflow-hidden rounded-full bg-[var(--color-line)]"><div className="h-full rounded-full bg-[var(--color-gold)] transition-[width] duration-500" style={{ width: `${lvl.pct}%` }} /></div>
+            </div>
+          </div>
+        </div>
+        <DailyGoal status={daily} />
+        </div>
+        <div className="mt-4 flex justify-center"><InstallPrompt /></div>
+      </section>
       <section className="container-lux section" data-tour="academy-courses">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between gap-3">
           <h2 className="text-title">Your courses</h2>
-          <AcademyLogout />
+          <div className="flex items-center gap-3">
+            <Link href="/academy/leaderboard" className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Leaderboard</Link>
+            <Link href="/academy/practice" className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Practice &amp; papers</Link>
+            <Link href="/academy/settings" aria-label="Settings" className="grid h-9 w-9 place-items-center rounded-full border border-[var(--color-line)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" /></svg>
+            </Link>
+            <AcademyLogout />
+          </div>
         </div>
 
         {enrolments.length === 0 ? (

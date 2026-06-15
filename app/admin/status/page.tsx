@@ -4,6 +4,7 @@ import { getSession, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { MaintenanceScheduler } from '@/components/admin/MaintenanceScheduler';
+import { ClinicalEncryptionBackfill } from '@/components/admin/ClinicalEncryptionBackfill';
 import { getPlatformStatus, type Light } from '@/lib/platform-status';
 import { listMaintenance } from '@/lib/maintenance';
 import { getLocale } from '@/lib/locale';
@@ -41,6 +42,7 @@ export default async function StatusPage() {
           <h1 className="font-[family-name:var(--font-display)] text-3xl">Platform status</h1>
           <p className="mt-1 max-w-2xl text-sm text-[var(--color-stone)]">
             A live, compartmentalised audit of every service, tool, database and security control. Owner/Admin only.
+            For live probes of each external API (real calls, not config checks) see <a href="/admin/api-health" className="underline">API health</a>.
           </p>
         </div>
         <div className="flex items-center gap-3 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm">
@@ -58,6 +60,15 @@ export default async function StatusPage() {
           </span>
         ))}
       </div>
+
+      {/* Data protection — one-click clinical-encryption backfill + verification.
+          The route needs the export-grade clinical permission, so only render
+          the card for holders (OWNER always; ADMIN only if granted). */}
+      {can.includes('clients.export') && (
+        <div className="mt-8">
+          <ClinicalEncryptionBackfill />
+        </div>
+      )}
 
       {/* Planned maintenance */}
       <div className="mt-8">

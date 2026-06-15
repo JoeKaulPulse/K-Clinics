@@ -14,6 +14,9 @@ export const consultSchema = z.object({
   preferredContact: z.enum(['email', 'phone', 'whatsapp']).optional(),
   marketingOptIn: z.boolean().default(false),
   consent: z.literal(true, 'Please accept to continue'),
+  // Client-generated id shared with the browser Meta Pixel so the server-side
+  // CAPI Lead event de-duplicates against the browser one.
+  eventId: z.string().max(64).optional().or(z.literal('')),
   // Honeypot — must stay empty.
   company: z.string().max(0).optional().or(z.literal('')),
 });
@@ -83,6 +86,7 @@ export const bookingStartSchema = z.object({
   aftercareAck: z.boolean().default(false),
   ageDeclare: z.boolean().default(false), // "I confirm I am 18 or over"
   promoCode: z.string().max(40).optional().or(z.literal('')),
+  waitlistToken: z.string().max(64).optional().or(z.literal('')), // BLD-133 claim link
 });
 export type BookingStartInput = z.infer<typeof bookingStartSchema>;
 
@@ -99,6 +103,7 @@ export const bookingCreateSchema = z.object({
   marketingOptIn: z.boolean().default(false),
   consent: z.literal(true, 'Please accept the booking terms'),
   promoCode: z.string().max(40).optional().or(z.literal('')),
+  waitlistToken: z.string().max(64).optional().or(z.literal('')), // BLD-133 claim link
   company: z.string().max(0).optional().or(z.literal('')), // honeypot
 });
 

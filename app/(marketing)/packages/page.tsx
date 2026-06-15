@@ -57,7 +57,7 @@ export default function PackagesPage() {
                     <p className="eyebrow mb-3">{p.subtitle}</p>
                     <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-[2.5rem]">{p.name}</h2>
                     <p className="mt-4 max-w-xl leading-relaxed text-[var(--color-stone)]">{p.description}</p>
-                    <span className="mt-7 inline-flex items-center gap-2 font-medium text-[var(--color-gold)]">
+                    <span className="mt-7 inline-flex items-center gap-2 font-medium text-[var(--color-gold-deep)]">
                       View programme <ArrowIcon />
                     </span>
                   </div>

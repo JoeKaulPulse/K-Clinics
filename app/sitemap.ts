@@ -27,6 +27,17 @@ async function courseSlugs(): Promise<string[]> {
   }
 }
 
+// Active shop products (DB-backed) so product pages are discoverable. Best-effort
+// — an unreachable DB at build/revalidate just omits them.
+async function shopProducts(): Promise<{ slug: string; updated: Date }[]> {
+  try {
+    const { activeProducts } = await import('@/lib/shop');
+    return (await activeProducts()).map((p) => ({ slug: p.slug, updated: p.updatedAt }));
+  } catch {
+    return [];
+  }
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const reviewed = CONTENT_REVIEWED;
   const base = site.url;
@@ -43,6 +54,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: '/packages', priority: 0.8, freq: 'monthly' },
     { path: '/pricing', priority: 0.8, freq: 'monthly' },
     { path: '/offers', priority: 0.7, freq: 'weekly' },
+    { path: '/shop', priority: 0.7, freq: 'weekly' },
     { path: '/gallery', priority: 0.6, freq: 'monthly' },
     { path: '/finance', priority: 0.6, freq: 'monthly' },
     { path: '/academy', priority: 0.8, freq: 'weekly' },
@@ -95,6 +107,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${base}/academy/${slug}`,
       lastModified: reviewed,
       changeFrequency: 'monthly' as const,
+      priority: 0.6,
+    })),
+    ...(await shopProducts()).map((p) => ({
+      url: `${base}/shop/${p.slug}`,
+      lastModified: p.updated,
+      changeFrequency: 'weekly' as const,
       priority: 0.6,
     })),
   ];

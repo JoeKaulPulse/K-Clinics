@@ -33,6 +33,9 @@ export async function createManualBooking(input: {
   email: string;
   phone?: string;
   treatmentSlug: string;
+  variantId?: string;
+  /** Book this treatment category as a consultation (BLD-208): 30 min, £0. */
+  asConsultation?: boolean;
   startISO: string;
   notes?: string;
   override?: boolean;
@@ -42,22 +45,62 @@ export async function createManualBooking(input: {
   if (!session || !sessionCan(session, 'bookings.manage')) {
     return { ok: false, error: 'You don’t have permission to create bookings.' };
   }
-  const treatment = getTreatment(input.treatmentSlug);
-  if (!treatment) return { ok: false, error: 'Unknown treatment.' };
+  // "Consultation" is a reserved pseudo-treatment (not in the marketing catalogue)
+  // so staff can book an in-clinic consultation appointment for a new client
+  // (BLD-203): 30 minutes, on-consultation (£0), any free room/clinician.
+  const isConsultation = input.treatmentSlug === 'consultation';
+  const treatment = isConsultation ? null : getTreatment(input.treatmentSlug);
+  if (!isConsultation && !treatment) return { ok: false, error: 'Unknown treatment.' };
   if (!input.startISO) return { ok: false, error: 'Choose a time.' };
   if (!input.clientId && (!input.email || !input.firstName)) return { ok: false, error: 'Name and email are required for a new client.' };
   const start = new Date(input.startISO);
   if (isNaN(+start)) return { ok: false, error: 'Invalid date/time.' };
+  // BLD-192: staff bookings must NOT inherit the public 2-hour online lead window
+  // — reception books same-day and just-arrived clients all the time. We only
+  // block times more than 15 minutes in the past (unless "book anyway" is ticked),
+  // with a clear message instead of the misleading "clash" error.
+  const STAFF_PAST_GRACE_MIN = 15;
+  if (!input.override && start.getTime() < Date.now() - STAFF_PAST_GRACE_MIN * 60_000) {
+    return { ok: false, error: 'That time has already passed. Choose a current or future time, or tick “book anyway” to log a past appointment.' };
+  }
 
-  const { durationMin, bufferMin } = bookingFor(input.treatmentSlug);
-  const { lowestPenceForTreatment } = await import('@/lib/services');
-  const pricePence = await lowestPenceForTreatment(input.treatmentSlug);
+  // A treatment category (e.g. "Laser Hair Removal") has specific service
+  // variants/areas (Underarms, Full Legs…), each with its own duration + price.
+  // When the booker picks one, use ITS duration/price and record a billing line
+  // item; otherwise fall back to the category's generic duration + "from" price.
+  // A consultation booking — the standalone "Consultation" (BLD-203) OR any
+  // treatment category booked as a consultation (BLD-208) — is 30 min, £0.
+  const consultBooking = isConsultation || (!!treatment && !!input.asConsultation);
+  const { durationMin: baseDuration, bufferMin } = bookingFor(input.treatmentSlug);
+  let durationMin = baseDuration;
+  let pricePence: number | null = null;
+  let bookingTitle = treatment?.title ?? 'Consultation';
+  let itemLabel = treatment?.title ?? 'Consultation';
+  let chosenVariantId: string | null = null;
+  const { getVariant, lowestPenceForTreatment } = await import('@/lib/services');
+  const variant = !consultBooking && input.variantId ? await getVariant(input.variantId) : null;
+  if (consultBooking) {
+    durationMin = 30;
+    pricePence = 0;
+    bookingTitle = treatment ? `${treatment.title} — Consultation` : 'Consultation';
+    itemLabel = bookingTitle;
+  } else if (variant && treatment && variant.service.treatmentSlug === input.treatmentSlug) {
+    durationMin = variant.variant.durationMin || baseDuration;
+    pricePence = variant.variant.pricePence;
+    bookingTitle = `${treatment.title} — ${variant.variant.name}`;
+    itemLabel = bookingTitle;
+    chosenVariantId = variant.variant.id;
+  } else {
+    pricePence = await lowestPenceForTreatment(input.treatmentSlug);
+  }
   const end = new Date(start.getTime() + durationMin * 60000);
 
   const { db } = await import('@/lib/db');
   const { isSlotFree, assignResources, pickPractitioner } = await import('@/lib/availability');
   // Guard against double-booking a room/clinician (unless explicitly overridden).
-  if (!input.override && !(await isSlotFree(input.startISO, durationMin, input.treatmentSlug))) {
+  // Staff get the 15-minute past grace (negative lead) — the real clash, closure
+  // and room/clinician checks below are unchanged.
+  if (!input.override && !(await isSlotFree(input.startISO, durationMin, input.treatmentSlug, null, { leadMinutes: -STAFF_PAST_GRACE_MIN }))) {
     return { ok: false, error: 'That slot clashes with an existing appointment, closure, or has no free room/clinician. Tick “book anyway” to override.', clash: true };
   }
   // Assign a competent, available clinician (so it shows in their day) + hold resources.
@@ -75,7 +118,7 @@ export async function createManualBooking(input: {
     data: {
       clientId: client.id,
       treatmentSlug: input.treatmentSlug,
-      treatmentTitle: treatment.title,
+      treatmentTitle: bookingTitle,
       startAt: start,
       endAt: end,
       durationMin,
@@ -85,10 +128,13 @@ export async function createManualBooking(input: {
       notes: input.notes || null,
       practitionerId,
       resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,
+      // Primary line item so the itemised receipt + billing reflect the exact
+      // service/area chosen (not just the category).
+      items: { create: [{ variantId: chosenVariantId, treatmentSlug: input.treatmentSlug, label: itemLabel, sessions: 1, durationMin, pricePence: pricePence ?? 0, isAddon: false }] },
     },
   });
   await db.interaction.create({
-    data: { clientId: client.id, type: 'APPOINTMENT', summary: `Booking created by staff: ${treatment.title}`, author: session.email },
+    data: { clientId: client.id, type: 'APPOINTMENT', summary: `Booking created by staff: ${bookingTitle}`, author: session.email },
   });
 
   // Staff incentive: reward the prior practitioner for a secured repeat booking.
@@ -98,4 +144,37 @@ export async function createManualBooking(input: {
 
   revalidatePath('/admin/bookings');
   return { ok: true, bookingId: booking.id, manageToken: booking.manageToken, hasCard, clientFirstName: client.firstName, clientEmail: client.email, clientHasEmail: !!client.email };
+}
+
+// Staff: schedule a follow-up appointment for the same client + treatment as an
+// existing booking (e.g. the next session of a course). It reuses createManualBooking,
+// so the slot is availability-checked, a clinician + room are assigned, and the
+// booking flows to Google Calendar sync once that integration is enabled. Staff-only
+// (bookings.manage) — not exposed to clients.
+export async function scheduleFollowUpAction(input: { fromBookingId: string; startISO: string; override?: boolean }) {
+  if (!crmEnabled) return { ok: false as const, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.manage')) {
+    return { ok: false as const, error: 'You don’t have permission to schedule appointments.' };
+  }
+  if (!input.startISO || isNaN(+new Date(input.startISO))) return { ok: false as const, error: 'Choose a date and time.' };
+  const { db } = await import('@/lib/db');
+  const from = await db.booking.findUnique({
+    where: { id: input.fromBookingId },
+    select: { treatmentSlug: true, client: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } }, items: { where: { isAddon: false }, select: { variantId: true }, take: 1 } },
+  });
+  const c = from?.client;
+  if (!c?.email) return { ok: false as const, error: 'Original booking or client not found.' };
+  return createManualBooking({
+    clientId: c.id,
+    firstName: c.firstName,
+    lastName: c.lastName ?? undefined,
+    email: c.email,
+    phone: c.phone ?? undefined,
+    treatmentSlug: from!.treatmentSlug,
+    variantId: from!.items[0]?.variantId ?? undefined,
+    startISO: input.startISO,
+    notes: 'Follow-up appointment booked by staff',
+    override: input.override,
+  });
 }

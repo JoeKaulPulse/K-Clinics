@@ -1,13 +1,14 @@
 import 'server-only';
 import { site } from '@/lib/site';
 import { isConnected } from '@/lib/oauth-connections';
+import { getSecret } from '@/lib/secrets';
 
 // Registry of marketing platform connections. The OAuth framework is generic
 // (standard OAuth2 authorization-code); each platform plugs in its endpoints +
 // scopes. "One-click" Connect works as soon as the platform's app credentials
 // are present in the environment; until then the UI shows a guided setup.
 
-export type ProviderId = 'google' | 'meta' | 'tiktok' | 'mailchimp';
+export type ProviderId = 'google' | 'meta' | 'tiktok';
 
 export type ProviderDef = {
   id: ProviderId;
@@ -48,8 +49,8 @@ export const PROVIDERS: ProviderDef[] = [
   {
     id: 'meta', name: 'Meta (Facebook & Instagram)', category: 'Ads · Pages',
     blurb: 'Facebook & Instagram ad performance, audiences and page insights.',
-    authUrl: 'https://www.facebook.com/v19.0/dialog/oauth',
-    tokenUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
+    authUrl: 'https://www.facebook.com/v23.0/dialog/oauth',
+    tokenUrl: 'https://graph.facebook.com/v23.0/oauth/access_token',
     // Ads + Pages only. `instagram_basic` is intentionally omitted — it's only
     // grantable once the app has the Instagram Graph product configured, and
     // requesting an unavailable scope makes the whole OAuth dialog fail for app
@@ -81,25 +82,12 @@ export const PROVIDERS: ProviderDef[] = [
       'Add TIKTOK_CLIENT_ID and TIKTOK_CLIENT_SECRET to the environment, then click Connect.',
     ],
   },
-  {
-    id: 'mailchimp', name: 'Mailchimp', category: 'Email',
-    blurb: 'Optional: sync audiences & campaign stats from Mailchimp.',
-    authUrl: 'https://login.mailchimp.com/oauth2/authorize',
-    tokenUrl: 'https://login.mailchimp.com/oauth2/token',
-    scopes: [],
-    scopeSeparator: ' ',
-    envClientId: 'MAILCHIMP_CLIENT_ID', envClientSecret: 'MAILCHIMP_CLIENT_SECRET',
-    docsUrl: 'https://admin.mailchimp.com/account/oauth2/',
-    setupSteps: [
-      'Register an app under Mailchimp → Account → Extras → API & OAuth apps.',
-      `Set this redirect URI: ${REDIRECT_URI}?provider=mailchimp`,
-      'Add MAILCHIMP_CLIENT_ID and MAILCHIMP_CLIENT_SECRET to the environment, then click Connect.',
-    ],
-  },
 ];
 
 export const getProvider = (id: string) => PROVIDERS.find((p) => p.id === id) ?? null;
-export const isConfigured = (p: ProviderDef) => Boolean(process.env[p.envClientId] && process.env[p.envClientSecret]);
+// Credentials resolve from owner-managed values first, then env (getSecret falls
+// back to process.env, so providers whose creds aren't catalogued still work).
+export const isConfigured = async (p: ProviderDef) => Boolean((await getSecret(p.envClientId)) && (await getSecret(p.envClientSecret)));
 
 export type ConnectionState = 'connected' | 'ready' | 'setup';
 export type ProviderStatus = { id: ProviderId; name: string; category: string; blurb: string; state: ConnectionState; setupSteps: string[]; docsUrl: string; redirectUri: string };
@@ -107,15 +95,15 @@ export type ProviderStatus = { id: ProviderId; name: string; category: string; b
 export async function connectionStatuses(): Promise<ProviderStatus[]> {
   return Promise.all(PROVIDERS.map(async (p) => ({
     id: p.id, name: p.name, category: p.category, blurb: p.blurb,
-    state: (await isConnected(p.id)) ? 'connected' : isConfigured(p) ? 'ready' : 'setup',
+    state: (await isConnected(p.id)) ? 'connected' : (await isConfigured(p)) ? 'ready' : 'setup',
     setupSteps: p.setupSteps, docsUrl: p.docsUrl, redirectUri: `${REDIRECT_URI}?provider=${p.id}`,
   } as ProviderStatus)));
 }
 
 /** Build the provider's OAuth authorization URL. */
-export function authUrlFor(p: ProviderDef, state: string): string {
+export async function authUrlFor(p: ProviderDef, state: string): Promise<string> {
   const u = new URL(p.authUrl);
-  u.searchParams.set('client_id', process.env[p.envClientId] || '');
+  u.searchParams.set('client_id', (await getSecret(p.envClientId)) || '');
   u.searchParams.set('redirect_uri', `${REDIRECT_URI}?provider=${p.id}`);
   u.searchParams.set('response_type', 'code');
   if (p.scopes.length) u.searchParams.set('scope', p.scopes.join(p.scopeSeparator));

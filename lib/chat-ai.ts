@@ -1,6 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db';
 import { site } from '@/lib/site';
+import { getSecret } from '@/lib/secrets';
 
 // ── Live-chat AI agent ───────────────────────────────────────────────────────
 // A cheap Claude Haiku agent that answers most visitor chat messages, grounded
@@ -130,6 +131,7 @@ async function callHaiku(key: string, system: string, messages: { role: 'user' |
         system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
         messages,
       }),
+      signal: AbortSignal.timeout(25_000),
     });
     if (!res.ok) { console.error('[chat-ai] anthropic', res.status, await res.text().catch(() => '')); return null; }
     const j = await res.json();
@@ -181,7 +183,7 @@ export async function maybeAutoReply(conversationId: string): Promise<void> {
     });
     if (!convo || convo.mode !== 'AI' || convo.status === 'CLOSED') return; // staff is driving / closed
 
-    const key = process.env.ANTHROPIC_API_KEY;
+    const key = await getSecret('ANTHROPIC_API_KEY');
     if (!key) { await handOver(conversationId, convo.visitorEmail, 'Thanks for your message!', 'assistant unavailable'); return; }
 
     const turns = convo.messages.slice().reverse();

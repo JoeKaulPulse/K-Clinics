@@ -16,11 +16,18 @@ export const revalidate = 3600;
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: site.dentistryLive
     ? 'Aesthetic & Cosmetic Dentistry in London | KClinics'
-    : 'Aesthetic & Cosmetic Dentistry — Opening Soon | KClinics London',
-  description:
-    'Aesthetic dentistry coming soon to KClinics, Islington — porcelain veneers, teeth whitening, composite bonding, dental implants and specialist care. Register your interest.',
+    : 'Cosmetic Dentistry Coming Soon — Join the Waiting List | KClinics London',
+  description: site.dentistryLive
+    ? 'Health-led aesthetic dentistry in Islington, London — porcelain veneers, teeth whitening, composite bonding, dental implants and specialist care at KClinics.'
+    : 'Aesthetic dentistry is coming soon to KClinics, Islington — porcelain veneers, whitening, bonding and implants. Join the waiting list and be first to book when we open.',
   path: '/dentistry',
-  keywords: ['cosmetic dentist London', 'dental clinic Islington', 'veneers London', 'dental implants London'],
+  // BLD-157: indexed even before launch, but title/description/keywords are framed
+  // for genuine coming-soon / waiting-list intent, so the page ranks for terms it
+  // can satisfy today (no "ranks for a service it can't deliver" mismatch). Keywords
+  // swap to live commercial intent once dentistry goes live.
+  keywords: site.dentistryLive
+    ? ['cosmetic dentist London', 'dental clinic Islington', 'veneers London', 'dental implants London']
+    : ['cosmetic dentist London opening soon', 'new dental clinic Islington', 'veneers London waiting list', 'cosmetic dentistry coming soon London', 'register interest cosmetic dentist London'],
 });
 
 export default async function DentistryPage() {

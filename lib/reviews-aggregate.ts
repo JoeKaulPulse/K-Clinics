@@ -1,5 +1,6 @@
 import 'server-only';
 import { db } from '@/lib/db';
+import { getSecret } from '@/lib/secrets';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Real review aggregation. Combines:
@@ -63,17 +64,48 @@ async function internalSource(): Promise<SourceResult> {
   }
 }
 
+/** Imported Google reviews (GoogleReview table — Business Profile API import or
+ *  manual entry). This is the primary Google source: the full history, not just
+ *  the 5 the Places API returns. Every imported review counts toward the honest
+ *  average/total; cards show the 5★ ones with written text. */
+async function googleImportedSource(): Promise<SourceResult> {
+  try {
+    const agg = await db.googleReview.aggregate({ _avg: { starRating: true }, _count: { starRating: true } });
+    const count = agg._count.starRating;
+    if (!count) return null;
+    const rows = await db.googleReview.findMany({
+      where: { starRating: 5, comment: { not: null } },
+      orderBy: { createTime: 'desc' },
+      take: 20,
+    });
+    const cards: ReviewCard[] = rows
+      .filter((r) => (r.comment || '').trim().length > 0)
+      .map((r) => ({
+        author: r.reviewerName?.trim() || 'Google reviewer',
+        rating: 5,
+        body: (r.comment || '').trim(),
+        source: 'google' as const,
+        date: r.createTime?.toISOString(),
+      }));
+    return { average: agg._avg.starRating || 0, count, cards };
+  } catch {
+    return null;
+  }
+}
+
 type GooglePlaceReview = { author_name?: string; rating?: number; text?: string; time?: number };
 
-/** Google Business Profile reviews via the Places API (opt-in via env). */
-async function googleSource(): Promise<SourceResult> {
-  const placeId = process.env.GOOGLE_PLACE_ID;
-  const key = process.env.GOOGLE_PLACES_API_KEY;
+/** Live Google rating + up to ~5 recent reviews via the Places API. Used only as
+ *  a fallback when nothing has been imported yet. Keys resolve from the in-app
+ *  credential store first, then hosting env. */
+async function googlePlacesSource(): Promise<SourceResult> {
+  const placeId = await getSecret('GOOGLE_PLACE_ID');
+  const key = await getSecret('GOOGLE_PLACES_API_KEY');
   if (!placeId || !key) return null;
   try {
     const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=rating,user_ratings_total,reviews&reviews_sort=newest&key=${key}`;
-    // Cache for 6h — Google rate-limits and reviews change slowly.
-    const res = await fetch(url, { next: { revalidate: 21600 } });
+    // Cache for 1h — short enough that a newly-fixed key shows promptly.
+    const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) return null;
     const data = (await res.json()) as { result?: { rating?: number; user_ratings_total?: number; reviews?: GooglePlaceReview[] } };
     const r = data.result;
@@ -96,9 +128,12 @@ async function googleSource(): Promise<SourceResult> {
   }
 }
 
-/** Combined, truthful aggregate. Returns null when no real reviews exist. */
+/** Combined, truthful aggregate. Returns null when no real reviews exist.
+ *  Google source = the imported review history if any has been imported,
+ *  otherwise the live Places API (so the two are never double-counted). */
 export async function getReviewAggregate(): Promise<ReviewAggregate | null> {
-  const [internal, google] = await Promise.all([internalSource(), googleSource()]);
+  const [internal, imported] = await Promise.all([internalSource(), googleImportedSource()]);
+  const google = imported ?? (await googlePlacesSource());
   const present = [
     ['internal', internal] as const,
     ['google', google] as const,

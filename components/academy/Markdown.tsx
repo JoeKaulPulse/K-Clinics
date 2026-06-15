@@ -4,12 +4,12 @@ import type { ReactNode } from 'react';
 // Supports: ## / ### headings, "- " bullets, "1." ordered lists, blank-line
 // paragraphs, and **bold** inline emphasis.
 
-function inline(text: string): ReactNode[] {
+function inline(text: string, strongCls: string): ReactNode[] {
   const out: ReactNode[] = [];
   text.split(/(\*\*[^*]+\*\*)/g).forEach((p, i) => {
     if (/^\*\*[^*]+\*\*$/.test(p)) {
       out.push(
-        <strong key={i} className="font-semibold text-[var(--color-ink)]">
+        <strong key={i} className={`font-semibold ${strongCls}`}>
           {p.slice(2, -2)}
         </strong>,
       );
@@ -20,7 +20,11 @@ function inline(text: string): ReactNode[] {
   return out;
 }
 
-export function Markdown({ text }: { text: string }) {
+export function Markdown({ text, tone = 'light' }: { text: string; tone?: 'light' | 'dark' }) {
+  // Body/emphasis colours flip for the dark immersive player; default light keeps
+  // every existing (light-background) usage unchanged.
+  const bodyCls = tone === 'dark' ? 'text-white/85' : 'text-[var(--color-ink-soft)]';
+  const strongCls = tone === 'dark' ? 'text-white' : 'text-[var(--color-ink)]';
   const lines = text.replace(/\r/g, '').split('\n');
   const blocks: ReactNode[] = [];
   let para: string[] = [];
@@ -31,8 +35,8 @@ export function Markdown({ text }: { text: string }) {
   function flushPara() {
     if (!para.length) return;
     blocks.push(
-      <p key={`p${k++}`} className="mt-4 leading-relaxed text-[var(--color-ink-soft)]">
-        {inline(para.join(' '))}
+      <p key={`p${k++}`} className={`mt-4 leading-relaxed ${bodyCls}`}>
+        {inline(para.join(' '), strongCls)}
       </p>,
     );
     para = [];
@@ -43,9 +47,9 @@ export function Markdown({ text }: { text: string }) {
     blocks.push(
       <ul key={`u${k++}`} className="mt-4 space-y-2">
         {items.map((b, i) => (
-          <li key={i} className="flex gap-2.5 leading-relaxed text-[var(--color-ink-soft)]">
+          <li key={i} className={`flex gap-2.5 leading-relaxed ${bodyCls}`}>
             <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-gold)]" />
-            <span>{inline(b)}</span>
+            <span>{inline(b, strongCls)}</span>
           </li>
         ))}
       </ul>,
@@ -58,9 +62,9 @@ export function Markdown({ text }: { text: string }) {
     blocks.push(
       <ol key={`o${k++}`} className="mt-4 space-y-2">
         {items.map((b, i) => (
-          <li key={i} className="flex gap-3 leading-relaxed text-[var(--color-ink-soft)]">
+          <li key={i} className={`flex gap-3 leading-relaxed ${bodyCls}`}>
             <span className="font-[family-name:var(--font-display)] text-[var(--color-gold)]">{i + 1}.</span>
-            <span>{inline(b)}</span>
+            <span>{inline(b, strongCls)}</span>
           </li>
         ))}
       </ol>,

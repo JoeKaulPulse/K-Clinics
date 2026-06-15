@@ -31,7 +31,7 @@ export default async function ConsultationsPage({ searchParams }: { searchParams
           <Link
             key={s}
             href={`/admin/consultations?status=${s}`}
-            className={`rounded-full px-4 py-1.5 text-sm transition-colors ${status === s ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'border border-[var(--color-line)] hover:bg-[var(--color-bone)]'}`}
+            className={`rounded-full px-4 py-1.5 text-sm transition-colors duration-150 ${status === s ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'border border-[var(--color-line)] hover:bg-[var(--color-bone)]'}`}
           >
             {s.charAt(0) + s.slice(1).toLowerCase()}
           </Link>
@@ -41,7 +41,7 @@ export default async function ConsultationsPage({ searchParams }: { searchParams
       <div className="mt-6 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
         {rows.length === 0 && <p className="p-6 text-sm text-[var(--color-stone)]">No consultations in this view.</p>}
         {rows.map((c) => (
-          <Link key={c.id} href={`/admin/consultations/${c.id}`} className="grid grid-cols-[1fr_auto] gap-4 border-b border-[var(--color-line)] px-5 py-4 last:border-0 hover:bg-[var(--color-bone)] sm:grid-cols-[1.2fr_1.4fr_0.8fr_auto] sm:items-center">
+          <Link key={c.id} href={`/admin/consultations/${c.id}`} className="grid grid-cols-[1fr_auto] gap-4 border-b border-[var(--color-line)] px-5 py-4 last:border-0 transition-colors duration-150 hover:bg-[var(--color-bone)] active:bg-[var(--color-sand)] sm:grid-cols-[1.2fr_1.4fr_0.8fr_auto] sm:items-center">
             <div>
               <p className="font-medium">{c.client.firstName} {c.client.lastName ?? ''}</p>
               <p className="text-xs text-[var(--color-stone)]">{c.client.email}</p>

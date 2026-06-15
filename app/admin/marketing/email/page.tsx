@@ -5,6 +5,7 @@ import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { EmailCampaignRows, type DraftRow } from '@/components/admin/EmailCampaignRows';
+import { RepermissionCard } from '@/components/admin/RepermissionCard';
 import { getLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
@@ -17,13 +18,15 @@ export default async function EmailDashboard() {
   if (!sessionCan(session, 'campaigns.view')) redirect('/admin');
 
   const { db } = await import('@/lib/db');
+  const { marketableClientWhere } = await import('@/lib/consent');
   const since = new Date(Date.now() - 30 * 86400000);
   const [sent30, opened30, clicked30, bounced30, optedIn, campaigns] = await Promise.all([
     db.emailEvent.count({ where: { kind: 'CAMPAIGN', status: 'SENT', createdAt: { gte: since } } }),
     db.emailEvent.count({ where: { kind: 'CAMPAIGN', openedAt: { not: null }, createdAt: { gte: since } } }),
     db.emailEvent.count({ where: { kind: 'CAMPAIGN', clickedAt: { not: null }, createdAt: { gte: since } } }),
     db.emailEvent.count({ where: { kind: 'CAMPAIGN', bouncedAt: { not: null }, createdAt: { gte: since } } }),
-    db.client.count({ where: { marketingOptIn: true, unsubscribed: false } }),
+    // Reachable audience = lawful marketing recipients only (BLD-242).
+    db.client.count({ where: marketableClientWhere() }),
     db.campaign.findMany({ where: { status: 'SENT' }, orderBy: { sentAt: 'desc' }, take: 12 }),
   ]);
 
@@ -87,6 +90,9 @@ export default async function EmailDashboard() {
   }
   const audienceRows = [...byAud.values()].sort((a, b) => b.recipients - a.recipients);
 
+  // BLD-242 — legacy opt-ins awaiting double opt-in re-permission.
+  const reperm = canSend ? await (await import('@/lib/re-permission')).repermissionStats() : { pending: 0, total: 0 };
+
   const can = await sessionPermissions();
   const locale = await getLocale();
   return (
@@ -108,6 +114,12 @@ export default async function EmailDashboard() {
         <Kpi label="Bounce rate" value={`${pct(bounced30, sent30)}%`} sub={`${bounced30} bounced`} />
         <Kpi label="Subscribers" value={String(optedIn)} sub="opted-in" />
       </div>
+
+      {canSend && reperm.total > 0 && (
+        <section className="mt-8">
+          <RepermissionCard initialPending={reperm.pending} initialTotal={reperm.total} />
+        </section>
+      )}
 
       {canSend && pendingRows.length > 0 && (
         <section className="mt-8">

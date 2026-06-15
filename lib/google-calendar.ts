@@ -1,6 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db';
 import { encryptJson, decryptJson } from '@/lib/crypto';
+import { site } from '@/lib/site';
 
 // The staff Google refresh token is a long-lived credential, so it is encrypted
 // at rest via the keyring (mirrors AdminUser.totpSecret) rather than stored
@@ -34,7 +35,10 @@ export function googleEnabled(): boolean {
   return process.env.GOOGLE_INTEGRATION_ENABLED === 'true' && googleConfigured();
 }
 
-const SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
+// Read busy-time off the clinician's calendar AND write the clinic's confirmed
+// bookings onto it (two-way sync). `calendar.events` covers both; switching up
+// from the old read-only scope means each clinician re-consents once.
+const SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 
 /** URL to start the OAuth consent flow. `state` is the CSRF nonce minted (and
  *  cookie-bound) by the connect route — it carries the target staffId after the
@@ -59,6 +63,7 @@ export async function exchangeCodeForStaff(code: string, staffId: string): Promi
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    signal: AbortSignal.timeout(10_000),
     body: new URLSearchParams({
       code,
       client_id: process.env.GOOGLE_CLIENT_ID!,
@@ -78,6 +83,7 @@ async function accessToken(refreshToken: string): Promise<string | null> {
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    signal: AbortSignal.timeout(10_000),
     body: new URLSearchParams({
       refresh_token: refreshToken,
       client_id: process.env.GOOGLE_CLIENT_ID!,
@@ -104,7 +110,7 @@ export async function syncStaffCalendar(staffId: string, days = 60): Promise<{ o
   const timeMax = new Date(Date.now() + days * 864e5).toISOString();
   const calId = encodeURIComponent(staff.googleCalendarId || 'primary');
   const url = `https://www.googleapis.com/calendar/v3/calendars/${calId}/events?timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime&maxResults=250`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000) });
   if (!res.ok) return { ok: false, imported: 0, error: `Calendar fetch ${res.status}` };
   const data = (await res.json()) as { items?: { id: string; status?: string; transparency?: string; start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string }; summary?: string }[] };
 
@@ -139,4 +145,86 @@ export async function syncAllCalendars(): Promise<{ ok: boolean; staff: number; 
     imported += r.imported;
   }
   return { ok: true, staff: connected.length, imported };
+}
+
+// ── Outbound: write the clinic's bookings onto the clinician's calendar ──────
+// Mirrors the assigned clinician's confirmed appointments onto their own Google
+// Calendar, so their work diary is complete alongside their personal events.
+// Idempotent via Booking.googleEventId; best-effort — never blocks the booking
+// lifecycle. No-op when Google is parked, the booking has no connected
+// clinician, or the event can't be written.
+
+/** Create or update the calendar event for a booking on its clinician's calendar. */
+export async function pushBookingToClinician(bookingId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!googleEnabled()) return { ok: false, error: 'parked' };
+  const b = await db.booking.findUnique({
+    where: { id: bookingId },
+    include: {
+      client: { select: { firstName: true, lastName: true, email: true, phone: true } },
+      practitioner: { select: { googleRefreshToken: true, googleCalendarId: true } },
+    },
+  });
+  if (!b || b.status === 'CANCELLED') return { ok: false, error: 'not pushable' };
+  const staff = b.practitioner;
+  if (!staff?.googleRefreshToken) return { ok: false, error: 'clinician not connected' };
+
+  const token = await accessToken(decryptRefresh(staff.googleRefreshToken));
+  if (!token) return { ok: false, error: 'token refresh failed' };
+
+  const name = [b.client?.firstName, b.client?.lastName].filter(Boolean).join(' ') || 'Client';
+  const event = {
+    summary: `${b.treatmentTitle} — ${name}`,
+    description: [
+      `Client: ${name}`,
+      b.client?.phone ? `Phone: ${b.client.phone}` : '',
+      b.client?.email ? `Email: ${b.client.email}` : '',
+      b.notes ? `Notes: ${b.notes}` : '',
+      `Open in CRM: ${site.url}/admin/bookings/${b.id}`,
+    ].filter(Boolean).join('\n'),
+    start: { dateTime: b.startAt.toISOString() },
+    end: { dateTime: b.endAt.toISOString() },
+    // Tag the event so it's identifiable as clinic-managed.
+    extendedProperties: { private: { kcBookingId: b.id } },
+  };
+
+  const calId = encodeURIComponent(staff.googleCalendarId || 'primary');
+  const base = `https://www.googleapis.com/calendar/v3/calendars/${calId}/events`;
+  const existing = b.googleEventId;
+  const res = await fetch(existing ? `${base}/${encodeURIComponent(existing)}` : base, {
+    method: existing ? 'PATCH' : 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(event),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) {
+    // The stored event was deleted on Google's side — drop the id and recreate.
+    if (existing && res.status === 404) {
+      await db.booking.update({ where: { id: b.id }, data: { googleEventId: null } });
+      return pushBookingToClinician(bookingId);
+    }
+    return { ok: false, error: `Calendar ${res.status}` };
+  }
+  const data = (await res.json().catch(() => null)) as { id?: string } | null;
+  if (data?.id && data.id !== existing) await db.booking.update({ where: { id: b.id }, data: { googleEventId: data.id } });
+  return { ok: true };
+}
+
+/** Remove a booking's event from its clinician's calendar (on cancellation). */
+export async function removeBookingFromClinician(bookingId: string): Promise<{ ok: boolean }> {
+  if (!googleEnabled()) return { ok: false };
+  const b = await db.booking.findUnique({
+    where: { id: bookingId },
+    select: { googleEventId: true, practitioner: { select: { googleRefreshToken: true, googleCalendarId: true } } },
+  });
+  if (!b?.googleEventId || !b.practitioner?.googleRefreshToken) return { ok: false };
+  const token = await accessToken(decryptRefresh(b.practitioner.googleRefreshToken));
+  if (!token) return { ok: false };
+  const calId = encodeURIComponent(b.practitioner.googleCalendarId || 'primary');
+  await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calId}/events/${encodeURIComponent(b.googleEventId)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(10_000),
+  }).catch(() => {});
+  await db.booking.update({ where: { id: bookingId }, data: { googleEventId: null } });
+  return { ok: true };
 }

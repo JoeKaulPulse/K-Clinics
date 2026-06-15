@@ -1,14 +1,29 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
-import { formatPrice } from '@/lib/treatments';
+import { formatPrice, bookableTreatments } from '@/lib/treatments';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { RevenueChart, TopTreatments } from '@/components/admin/Charts';
 import { OnboardingHost } from '@/components/onboarding/OnboardingHost';
 import { ONBOARDING } from '@/lib/onboarding-steps';
 import { getLocale } from '@/lib/locale';
+import { getWeather, uvBand } from '@/lib/weather';
+import { ClockInOut } from '@/components/admin/ClockInOut';
+import { fmtClinicTime, fmtClinicDate } from '@/lib/clinic-time';
+import { LiveClock } from '@/components/admin/DashboardLive';
+import { ArrivalPrep, type NextArrival } from '@/components/admin/ArrivalPrep';
+import { NewBookingButton } from '@/components/admin/NewBookingButton';
+import { decClinical } from '@/lib/clinical-crypto';
+import { resolveView, canSwitchViews, type DashboardView } from '@/lib/dashboard-views';
+import { DashboardShell } from '@/components/admin/dashboard/DashboardShell';
+import { StatTile, CLICKABLE_CARD } from '@/components/admin/dashboard/Widgets';
+import { ScaffoldView } from '@/components/admin/dashboard/ScaffoldView';
+import { ClinicianView } from '@/components/admin/dashboard/ClinicianView';
+import { ReceptionistView } from '@/components/admin/dashboard/ReceptionistView';
+import { DeveloperView } from '@/components/admin/dashboard/DeveloperView';
+import { ContractorView } from '@/components/admin/dashboard/ContractorView';
+import { RoomPrepStatus } from '@/components/admin/rooms/RoomPrepStatus';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,14 +33,95 @@ export default async function AdminOverview() {
   const session = await getSession();
   const { db, withDbRetry } = await import('@/lib/db');
 
-  const meProf = session ? await db.adminUser.findUnique({ where: { id: session.sub }, select: { onboardedAt: true, name: true, title: true, credentials: true, photoUrl: true, publicPhone: true } }) : null;
+  const meProf = session ? await db.adminUser.findUnique({ where: { id: session.sub }, select: { onboardedAt: true, name: true, title: true, credentials: true, photoUrl: true, publicPhone: true, preferredDashboardView: true } }) : null;
   const staffOnb = meProf ? { pending: !meProf.onboardedAt, initial: { name: meProf.name ?? '', title: meProf.title ?? '', credentials: meProf.credentials ?? '', photoUrl: meProf.photoUrl ?? '', publicPhone: meProf.publicPhone ?? '' } } : null;
 
-  // A practising clinician's home is "My day", not the owner KPI overview.
-  // Send clinical-only roles there; managers (OWNER/ADMIN) keep the overview.
-  if (session && !['OWNER', 'ADMIN'].includes(session.role)) {
-    const me = await db.adminUser.findUnique({ where: { id: session.sub }, select: { isClinician: true } });
-    if (me?.isClinician) redirect('/admin/my-day');
+  // (PRJ-63) Clinicians used to be redirected to /admin/my-day; they now land on
+  // the role-shaped Clinician dashboard view below (My day stays in the nav and
+  // is linked from that view). The per-role view is resolved next.
+
+  // ── Which dashboard view is active? (PRJ-63) Each role has a default view;
+  //    OWNER/ADMIN may pin another role's view to preview it. Views whose
+  //    dedicated bundle hasn't shipped yet fall back to the Admin overview, so
+  //    real role users never regress — only an admin actively previewing an
+  //    unbuilt view lands on its scaffold.
+  const role = session?.role ?? 'STAFF';
+  const view: DashboardView = resolveView(role, meProf?.preferredDashboardView);
+  const BUILT_VIEWS: DashboardView[] = ['admin', 'clinician', 'reception', 'developer', 'contractor'];
+  const renderedView: DashboardView = BUILT_VIEWS.includes(view) ? view : canSwitchViews(role) ? view : 'admin';
+
+  // Time-aware greeting in clinic-local (London) time — the server may run in UTC.
+  const now = new Date();
+  const londonHour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: 'numeric', hour12: false }).format(now));
+  const greeting = londonHour < 12 ? 'Good morning' : londonHour < 18 ? 'Good afternoon' : 'Good evening';
+  const todayLabel = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'long', day: 'numeric', month: 'long' }).format(now);
+
+  // Live clock + local weather/UV — shown in the greeting header so it is the
+  // first thing visible on every view (not buried below the ViewSwitcher).
+  const weather = await getWeather();
+  const uv = weather?.uvMax != null ? uvBand(weather.uvMax) : null;
+
+  // Greeting only — the live clock/weather + clock-in live in the header control
+  // cluster (built below) so the top row stays one tidy, anchored band.
+  const heading = (
+    <div>
+      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-stone-soft)]">Overview · {todayLabel}</p>
+      <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl">{greeting}{session?.name ? `, ${session.name}` : ''}</h1>
+    </div>
+  );
+
+  // BLD-226: one compact, right-aligned control cluster for every view —
+  // [live clock + weather] · [clock-in pill] · (Viewing-as ▾ added by the shell).
+  // Replaces the floaty stacked card so real content sits higher above the fold.
+  const clock = session ? await (await import('@/lib/time-tracking')).timeStatus(session.sub).catch(() => null) : null;
+  const clockWeather = (
+    <>
+      <div className="flex items-center gap-2.5 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3.5 py-1.5">
+        <LiveClock className="font-[family-name:var(--font-display)] text-base font-medium tabular-nums leading-none text-[var(--color-ink)]" />
+        {weather && (
+          // Ambient info — fold on phones so the weather can't widen/destabilise
+          // the header cluster on small screens (content-priority); shows from sm up.
+          <div className="hidden min-w-0 border-l border-[var(--color-line)] pl-2.5 leading-tight sm:block">
+            <p className="text-xs font-medium text-[var(--color-ink)]">
+              <span className="tabular-nums">{weather.tempC}°</span>
+              <span className="ml-1 inline-block max-w-[7rem] truncate align-bottom font-normal text-[var(--color-stone)]">{weather.label}</span>
+              {weather.uvMax != null && uv && (
+                <span className="ml-1.5 text-[var(--color-stone-soft)]">· UV <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{weather.uvMax}</span></span>
+              )}
+            </p>
+          </div>
+        )}
+      </div>
+      {clock && (
+        <ClockInOut
+          compact
+          onShift={clock.onShift}
+          onBreak={clock.onBreak}
+          shiftStartIso={clock.shiftStart ? clock.shiftStart.toISOString() : null}
+          workedTodayMin={clock.workedTodayMin}
+          breakTodayMin={clock.breakTodayMin}
+        />
+      )}
+    </>
+  );
+
+  // Preview branch: an OWNER/ADMIN is viewing a role whose dashboard is still
+  // being built — skip the heavy overview queries and show its planned widgets.
+  if (renderedView !== 'admin') {
+    const can = await sessionPermissions();
+    const locale = await getLocale();
+    return (
+      <AdminShell user={session?.email} can={can} locale={locale}>
+        <DashboardShell role={role} view={renderedView} heading={heading} aside={clockWeather}>
+          {renderedView === 'clinician' && session ? <ClinicianView session={session} />
+            : renderedView === 'reception' && session ? <ReceptionistView session={session} />
+            : renderedView === 'developer' && session ? <DeveloperView session={session} />
+            : renderedView === 'contractor' && session ? <ContractorView session={session} />
+            : <ScaffoldView view={renderedView} />}
+        </DashboardShell>
+        {staffOnb && <OnboardingHost pending={staffOnb.pending} title={ONBOARDING.staff.title} intro={ONBOARDING.staff.intro} steps={ONBOARDING.staff.steps} initial={staffOnb.initial} endpoint={ONBOARDING.staff.endpoint} />}
+      </AdminShell>
+    );
   }
 
   const canApproveTimeOff = sessionCan(session, 'schedule.manage');
@@ -34,12 +130,18 @@ export default async function AdminOverview() {
   const canBookings = sessionCan(session, 'bookings.view');
   const canReviews = sessionCan(session, 'reviews.manage');
   const canBuild = sessionCan(session, 'build.view');
+  const canAutomations = sessionCan(session, 'automations.view');
   const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(); dayEnd.setHours(23, 59, 59, 999);
+  // Comms health: transactional emails (booking confirmations/receipts/reminders)
+  // have no campaignId; a FAILED row means the send was attempted but the provider
+  // isn't configured / the domain isn't verified. Surfaced so a silent delivery
+  // outage is noticed without reading the log (booking assessment follow-up #4).
+  const commsSince = new Date(Date.now() - 7 * 864e5);
   // Load the whole dashboard through a couple of quick retries, so a single
   // transient DB blip doesn't 500 the overview (it recomposes the queries each
   // attempt — safe, as these are all reads).
-  const [o, a, pendingTimeOff, myTasks, stockItems, expiringSoon, ordersToFulfil, retailProducts, todaysBookings, reqConsent, reqPhoto, gReviewAgg, googleUnreplied, buildOpen, buildBlocked, buildUnsynced] = await withDbRetry(() => Promise.all([
+  const [o, a, pendingTimeOff, myTasks, stockItems, expiringSoon, ordersToFulfil, retailProducts, todaysBookings, reqConsent, reqPhoto, gReviewAgg, googleUnreplied, buildOpen, buildBlocked, buildUnsynced, failedComms] = await withDbRetry(() => Promise.all([
     getOverview(),
     getAnalytics(),
     canApproveTimeOff ? db.staffTimeOff.count({ where: { status: 'PENDING' } }) : Promise.resolve(0),
@@ -56,6 +158,7 @@ export default async function AdminOverview() {
     canBuild ? db.buildItem.count({ where: { status: { not: 'SHIPPED' } } }) : Promise.resolve(0),
     canBuild ? db.buildItem.count({ where: { status: 'BLOCKED' } }) : Promise.resolve(0),
     canBuild ? db.buildItem.count({ where: { githubUrl: null } }) : Promise.resolve(0),
+    canAutomations ? db.emailEvent.count({ where: { status: 'FAILED', campaignId: null, createdAt: { gte: commsSince } } }) : Promise.resolve(0),
   ]));
   const googleAvg = gReviewAgg?._avg.starRating ?? null;
   const googleCount = gReviewAgg?._count._all ?? 0;
@@ -79,7 +182,10 @@ export default async function AdminOverview() {
     const photoSet = new Set([...photoRows.map((p) => p.bookingId), ...signedRows.filter((s) => s.kind === 'photo_opt_out').map((s) => s.bookingId)]);
     todayNotReady = todaysBookings.filter((b) => (reqConsent && !consentSet.has(b.id)) || (reqPhoto && isLaserTreatment(b.treatmentSlug) && !photoSet.has(b.id))).length;
   }
+  const sameDayRequests = canBookings ? await db.booking.count({ where: { status: 'REQUESTED' } }).catch(() => 0) : 0;
   const attention = [
+    { show: canAutomations && failedComms > 0, label: 'Confirmation emails failing', value: failedComms, href: '/admin/automations', tone: 'red' },
+    { show: sameDayRequests > 0, label: 'Same-day requests to action', value: sameDayRequests, href: '/admin/bookings?filter=REQUESTED', tone: 'amber' },
     { show: todayNotReady > 0, label: 'Appointments not ready today', value: todayNotReady, href: '/admin/my-day', tone: 'amber' },
     { show: canFinance && unchargedCompleted > 0, label: 'Completed, not charged', value: unchargedCompleted, href: '/admin/bookings', tone: 'amber' },
     { show: ordersToFulfil > 0, label: 'Orders to fulfil', value: ordersToFulfil, href: '/admin/orders', tone: 'amber' },
@@ -93,6 +199,7 @@ export default async function AdminOverview() {
   ].filter((x) => x.show);
 
   const toneCls: Record<string, string> = {
+    red: 'border-red-300 bg-red-50 text-red-800',
     amber: 'border-amber-300 bg-amber-50 text-amber-900',
     blush: 'border-[var(--color-blush)]/40 bg-[var(--color-blush)]/10 text-[var(--color-ink)]',
     ink: 'border-[var(--color-line)] bg-[var(--color-porcelain)] text-[var(--color-ink)]',
@@ -110,10 +217,48 @@ export default async function AdminOverview() {
 
   const can = await sessionPermissions();
   const locale = await getLocale();
+
+  // ── Front-of-house essentials: the next client arrival (clock/weather above) ──
+  const treatments = bookableTreatments.map((t) => ({ slug: t.slug, title: t.title, group: t.group }));
+  const endOfToday = new Date(now); endOfToday.setHours(23, 59, 59, 999);
+  const nextBk = canBookings
+    ? await db.booking.findFirst({
+        where: { startAt: { gte: now }, status: { in: ['CONFIRMED', 'PENDING'] } },
+        orderBy: { startAt: 'asc' },
+        select: {
+          id: true, startAt: true, treatmentTitle: true, refreshments: true, clientId: true,
+          client: { select: { firstName: true, lastName: true, allergies: true, medicalFlag: true } },
+          practitioner: { select: { name: true } },
+        },
+      }).catch(() => null)
+    : null;
+  const canRoomsPrep = sessionCan(session, 'rooms.prep.manage');
+  const nextRoom = nextBk ? await db.resource.findFirst({ where: { kind: 'ROOM', bookings: { some: { id: nextBk.id } } }, select: { id: true, name: true } }).catch(() => null) : null;
+  // The next arrival's room prep state (for the live arrival-prep checklist).
+  const { getRoomPrepFor, getRoomsForDay } = await import('@/lib/room-prep');
+  const nextRoomPrep = nextRoom ? await getRoomPrepFor(nextRoom.id).catch(() => null) : null;
+  const nextArrival: NextArrival | null = nextBk ? {
+    id: nextBk.id,
+    clientId: nextBk.clientId,
+    clientName: [nextBk.client.firstName, nextBk.client.lastName].filter(Boolean).join(' ') || 'Client',
+    treatment: nextBk.treatmentTitle,
+    startIso: nextBk.startAt.toISOString(),
+    timeLabel: fmtClinicTime(nextBk.startAt) + (nextBk.startAt <= endOfToday ? '' : ` · ${fmtClinicDate(nextBk.startAt)}`),
+    practitioner: nextBk.practitioner?.name ?? null,
+    room: nextRoom?.name ?? null,
+    roomId: nextRoom?.id ?? null,
+    roomPrep: nextRoomPrep?.status,
+    canManageRoom: canRoomsPrep,
+    drinks: nextBk.refreshments ?? [],
+    allergies: decClinical(nextBk.client.allergies) ?? null,
+    medicalFlag: decClinical(nextBk.client.medicalFlag) ?? null,
+  } : null;
+  // Rooms board (front-of-house / clinician): availability + prep for the day.
+  const roomsToday = canRoomsPrep ? await getRoomsForDay().catch(() => []) : [];
+
   return (
     <AdminShell user={session?.email} can={can} locale={locale}>
-      <h1 className="font-[family-name:var(--font-display)] text-3xl">Overview</h1>
-      <p className="mt-1 text-sm text-[var(--color-stone)]">Welcome back{session?.name ? `, ${session.name}` : ''}.</p>
+      <DashboardShell role={role} view={renderedView} heading={heading} aside={clockWeather}>
 
       {/* Needs attention */}
       {attention.length > 0 && (
@@ -127,24 +272,54 @@ export default async function AdminOverview() {
         </div>
       )}
 
-      {/* KPI row */}
+      {/* Up next · prepare for arrival + day actions — the front-of-house core */}
+      <div className="mt-6 grid gap-4 lg:grid-cols-[1.5fr_1fr] [&>*]:min-w-0">
+        {nextArrival ? (
+          <ArrivalPrep a={nextArrival} />
+        ) : (
+          <section className="flex flex-col items-start justify-center rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
+            <p className="eyebrow text-[var(--color-stone)]">Up next</p>
+            <p className="mt-2 font-[family-name:var(--font-display)] text-xl">No upcoming appointments</p>
+            <p className="mt-1 text-sm text-[var(--color-stone)]">Nothing booked ahead right now — enjoy the calm, or take a new booking.</p>
+          </section>
+        )}
+        <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
+          <p className="eyebrow mb-3 text-[var(--color-stone)]">Quick actions</p>
+          {canBookings && <div className="mb-3"><NewBookingButton treatments={treatments} /></div>}
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { href: '/admin/calendar', label: 'Calendar', perm: 'calendar.view' },
+              { href: '/admin/my-day', label: 'My day' },
+              { href: '/admin/schedule', label: 'Lunch & breaks', perm: 'schedule.manage' },
+              { href: '/admin/day-close', label: 'Day-close', perm: 'dayclose.run' },
+            ]
+              .filter((t) => !t.perm || sessionCan(session, t.perm))
+              .map((t) => (
+                <Link key={t.href} href={t.href} className="flex items-center justify-center rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-3 text-center text-sm text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)]">
+                  {t.label}
+                </Link>
+              ))}
+          </div>
+        </section>
+      </div>
+
+      {/* Rooms today — live availability + prep handoff (front-of-house / clinician) */}
+      {canRoomsPrep && roomsToday.length > 0 && (
+        <section className="mt-6">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-[family-name:var(--font-display)] text-xl">Rooms today</h2>
+            <span className="text-xs text-[var(--color-stone)]">Tap a room to set its readiness · updates live</span>
+          </div>
+          <RoomPrepStatus initialRooms={roomsToday} initialCanManage={canRoomsPrep} />
+        </section>
+      )}
+
+      {/* KPI row — shared StatTile primitive (accessible SVG trend, unified
+          hover-lift/press, no dead links on non-clickable tiles) so the dashboard
+          matches every role view's card language (BLD-226 slice 3). */}
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((k) => (
-          <Link
-            key={k.label}
-            href={k.href || '#'}
-            className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 transition-shadow hover:shadow-[var(--shadow-soft)]"
-          >
-            <div className="flex items-baseline justify-between gap-2">
-              <p className="font-[family-name:var(--font-display)] text-3xl text-[var(--color-ink)]">{k.value}</p>
-              {typeof k.trend === 'number' && (
-                <span className={`text-xs font-medium ${k.trend >= 0 ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush)]'}`}>
-                  {k.trend >= 0 ? '▲' : '▼'} {Math.abs(k.trend)}%
-                </span>
-              )}
-            </div>
-            <p className="mt-1 text-sm text-[var(--color-stone)]">{k.label}{k.sub ? ` · ${k.sub}` : ''}</p>
-          </Link>
+          <StatTile key={k.label} label={k.label} value={k.value} sub={k.sub} href={k.href} trend={k.trend ?? undefined} />
         ))}
       </div>
 
@@ -158,7 +333,7 @@ export default async function AdminOverview() {
       {canBuild && (
         <Link
           href="/admin/build"
-          className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 transition-shadow hover:shadow-[var(--shadow-soft)]"
+          className={`mt-6 flex flex-wrap items-center gap-x-8 gap-y-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 ${CLICKABLE_CARD}`}
         >
           <div className="flex-1 min-w-[12rem]">
             <p className="font-[family-name:var(--font-display)] text-xl">Build &amp; issues</p>
@@ -232,7 +407,7 @@ export default async function AdminOverview() {
                 { label: 'Subscribers', value: o.marketingClients },
               ].map((s) => (
                 <div key={s.label} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
-                  <p className="font-[family-name:var(--font-display)] text-2xl">{s.value}</p>
+                  <p className="font-[family-name:var(--font-display)] text-2xl tabular-nums">{s.value}</p>
                   <p className="text-xs text-[var(--color-stone)]">{s.label}</p>
                 </div>
               ))}
@@ -253,6 +428,7 @@ export default async function AdminOverview() {
           </div>
         </section>
       </div>
+      </DashboardShell>
       {staffOnb && <OnboardingHost pending={staffOnb.pending} title={ONBOARDING.staff.title} intro={ONBOARDING.staff.intro} steps={ONBOARDING.staff.steps} initial={staffOnb.initial} endpoint={ONBOARDING.staff.endpoint} />}
     </AdminShell>
   );

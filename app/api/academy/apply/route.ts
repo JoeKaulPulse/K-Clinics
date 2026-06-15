@@ -26,15 +26,20 @@ export async function POST(req: Request) {
   if (!(await enforceRateLimit(req, 'academy-apply', 5, 600, 'academy'))) return NextResponse.json({ ok: false, error: 'Too many submissions — please try again shortly.' }, { status: 429 });
 
   const { db } = await import('@/lib/db');
-  const course = await db.course.findUnique({ where: { id: d.courseId }, select: { id: true, title: true, pricePence: true } });
+  const course = await db.course.findUnique({ where: { id: d.courseId }, select: { id: true, title: true, pricePence: true, tenantId: true } });
   if (!course) return NextResponse.json({ ok: false, error: 'That course is unavailable.' }, { status: 404 });
 
   // Link to a signed-in trainee account if present.
   const { getCurrentStudent } = await import('@/lib/academy-auth');
   const student = await getCurrentStudent().catch(() => null);
 
+  // The enrolment belongs to the course's tenant (ClinicOS Ring 0).
+  const { currentTenantId } = await import('@/lib/tenant');
+  const tenantId = course.tenantId ?? (await currentTenantId());
+
   const enrolment = await db.enrolment.create({
     data: {
+      tenantId,
       courseId: course.id,
       cohortId: d.cohortId || null,
       studentId: student?.id ?? null,

@@ -1,10 +1,11 @@
 import 'server-only';
 import { saveConnection, getConnection, validAccessToken, type Tokens } from '@/lib/oauth-connections';
+import { getSecret } from '@/lib/secrets';
 import { db } from '@/lib/db';
 import { logAudit } from '@/lib/audit';
 
 // Xero OAuth 2.0: cash-position/supplier reads + sales push (invoices, credit
-// notes). Activates when credentials are present.
+// notes). Activates when credentials are present (owner-managed or env).
 //   XERO_CLIENT_ID, XERO_CLIENT_SECRET, [XERO_REDIRECT_URI]
 
 const PROVIDER = 'xero';
@@ -13,26 +14,28 @@ const PROVIDER = 'xero';
 // Existing connections must reconnect to grant the new scopes.
 const SCOPE = 'openid profile email accounting.reports.read accounting.settings.read accounting.contacts accounting.transactions offline_access';
 
-export function xeroConfigured(): boolean {
-  return Boolean(process.env.XERO_CLIENT_ID && process.env.XERO_CLIENT_SECRET);
+export async function xeroConfigured(): Promise<boolean> {
+  return Boolean((await getSecret('XERO_CLIENT_ID')) && (await getSecret('XERO_CLIENT_SECRET')));
 }
 
 function redirectUri(): string {
   return process.env.XERO_REDIRECT_URI || `${process.env.NEXT_PUBLIC_SITE_URL || ''}/api/admin/integrations/xero/callback`;
 }
 
-export function xeroAuthUrl(state: string): string | null {
-  if (!xeroConfigured()) return null;
-  const p = new URLSearchParams({ response_type: 'code', client_id: process.env.XERO_CLIENT_ID!, redirect_uri: redirectUri(), scope: SCOPE, state });
+export async function xeroAuthUrl(state: string): Promise<string | null> {
+  const clientId = await getSecret('XERO_CLIENT_ID');
+  if (!clientId || !(await getSecret('XERO_CLIENT_SECRET'))) return null;
+  const p = new URLSearchParams({ response_type: 'code', client_id: clientId, redirect_uri: redirectUri(), scope: SCOPE, state });
   return `https://login.xero.com/identity/connect/authorize?${p}`;
 }
 
 async function tokenRequest(body: Record<string, string>): Promise<Tokens | null> {
-  const basic = Buffer.from(`${process.env.XERO_CLIENT_ID}:${process.env.XERO_CLIENT_SECRET}`).toString('base64');
+  const basic = Buffer.from(`${await getSecret('XERO_CLIENT_ID')}:${await getSecret('XERO_CLIENT_SECRET')}`).toString('base64');
   const res = await fetch('https://identity.xero.com/connect/token', {
     method: 'POST',
     headers: { Authorization: `Basic ${basic}`, 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams(body),
+    signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) return null;
   const d = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number };
@@ -41,13 +44,13 @@ async function tokenRequest(body: Record<string, string>): Promise<Tokens | null
 }
 
 export async function exchangeXeroCode(code: string): Promise<boolean> {
-  if (!xeroConfigured()) return false;
+  if (!(await xeroConfigured())) return false;
   const tokens = await tokenRequest({ grant_type: 'authorization_code', code, redirect_uri: redirectUri() });
   if (!tokens) return false;
   // Resolve the tenant (org) this token can access.
   let tenantId: string | null = null, tenantName: string | null = null;
   try {
-    const res = await fetch('https://api.xero.com/connections', { headers: { Authorization: `Bearer ${tokens.access}`, 'Content-Type': 'application/json' } });
+    const res = await fetch('https://api.xero.com/connections', { headers: { Authorization: `Bearer ${tokens.access}`, 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(10_000) });
     if (res.ok) {
       const conns = (await res.json()) as { tenantId: string; tenantName: string }[];
       tenantId = conns[0]?.tenantId ?? null;
@@ -69,6 +72,7 @@ async function xeroGet(path: string): Promise<{ ok: boolean; status?: number; da
   try {
     const res = await fetch(`https://api.xero.com/api.xro/2.0/${path}`, {
       headers: { Authorization: `Bearer ${token}`, 'Xero-tenant-id': conn.accountRef, Accept: 'application/json' },
+      signal: AbortSignal.timeout(10_000),
     });
     if (res.status === 403) return { ok: false, status: 403, error: 'Reconnect Xero to grant contacts/bills access.' };
     if (!res.ok) return { ok: false, status: res.status, error: `Xero responded ${res.status}.` };
@@ -156,6 +160,7 @@ async function xeroWrite(path: string, body: unknown): Promise<{ ok: boolean; st
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Xero-tenant-id': conn.accountRef, Accept: 'application/json', 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10_000),
     });
     const data: unknown = await res.json().catch(() => null);
     if (res.status === 403) return { ok: false, status: 403, error: 'Reconnect Xero to grant write (contacts/transactions) access.' };
@@ -191,10 +196,23 @@ async function findOrCreateContact(name: string, email: string | null): Promise<
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
-async function saleTaxType(): Promise<string> {
+// BLD-121: resolve per-service VAT class so exempt services (e.g. dentistry)
+// get EXEMPTOUTPUT instead of the blanket OUTPUT2 that would mis-categorise
+// them in the books once the clinic becomes VAT-registered.
+async function xeroTaxType(treatmentSlug: string): Promise<string> {
   try {
-    const { getVatConfig } = await import('@/lib/vat');
-    return (await getVatConfig()).registered ? 'OUTPUT2' : 'NONE';
+    const { getVatConfig, effectiveVatClass } = await import('@/lib/vat');
+    const cfg = await getVatConfig();
+    if (!cfg.registered) return 'NONE';
+    const { getServiceByTreatment } = await import('@/lib/services');
+    const svc = await getServiceByTreatment(treatmentSlug);
+    const cls = effectiveVatClass({ vatClass: svc?.vatClass, category: svc?.category });
+    switch (cls) {
+      case 'EXEMPT': return 'EXEMPTOUTPUT';
+      case 'ZERO': return 'ZERORATEDOUTPUT';
+      case 'REDUCED': return 'REDUCEDOUTPUT'; // BLD-252: 5% rate, not 20%
+      default: return 'OUTPUT2'; // STANDARD
+    }
   } catch { return 'NONE'; }
 }
 
@@ -204,7 +222,7 @@ async function saleTaxType(): Promise<string> {
  *  design — a failure never blocks the charge; it resets the claim and audits. */
 export async function pushBookingSaleToXero(bookingId: string): Promise<void> {
   const cfg = await salesPushConfig();
-  if (!cfg.enabled || !xeroConfigured()) return;
+  if (!cfg.enabled || !(await xeroConfigured())) return;
   // Claim (PENDING) so the webhook + direct paths can't double-invoice.
   const claimed = await db.booking.updateMany({
     where: { id: bookingId, xeroInvoiceId: null, chargedAt: { not: null } },
@@ -227,7 +245,7 @@ export async function pushBookingSaleToXero(bookingId: string): Promise<void> {
         Date: isoDay(when), DueDate: isoDay(when),
         LineAmountTypes: 'Inclusive', Status: 'AUTHORISED',
         Reference: `Booking ${booking.id}`,
-        LineItems: [{ Description: `${booking.treatmentTitle} — ${isoDay(booking.startAt)}`, Quantity: 1, UnitAmount: amountPence / 100, AccountCode: cfg.salesAccount, TaxType: await saleTaxType() }],
+        LineItems: [{ Description: `${booking.treatmentTitle} — ${isoDay(booking.startAt)}`, Quantity: 1, UnitAmount: amountPence / 100, AccountCode: cfg.salesAccount, TaxType: await xeroTaxType(booking.treatmentSlug) }],
       }],
     });
     const invoiceId = inv.ok ? (inv.data as { Invoices?: { InvoiceID?: string }[] }).Invoices?.[0]?.InvoiceID : undefined;
@@ -253,7 +271,7 @@ export async function pushBookingSaleToXero(bookingId: string): Promise<void> {
  *  bank account is configured). Skips quietly when the sale was never pushed. */
 export async function pushBookingRefundToXero(bookingId: string, amountPence: number, reason?: string): Promise<void> {
   const cfg = await salesPushConfig();
-  if (!cfg.enabled || !xeroConfigured() || amountPence <= 0) return;
+  if (!cfg.enabled || !(await xeroConfigured()) || amountPence <= 0) return;
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
   if (!booking || !booking.xeroInvoiceId || booking.xeroInvoiceId === 'PENDING') return;
 
@@ -267,7 +285,7 @@ export async function pushBookingRefundToXero(bookingId: string, amountPence: nu
         Type: 'ACCRECCREDIT', Contact: { ContactID: contact.contactId },
         Date: today, LineAmountTypes: 'Inclusive', Status: 'AUTHORISED',
         Reference: `Refund — booking ${booking.id}`,
-        LineItems: [{ Description: `Refund — ${booking.treatmentTitle}${reason ? ` (${reason.slice(0, 120)})` : ''}`, Quantity: 1, UnitAmount: amountPence / 100, AccountCode: cfg.salesAccount, TaxType: await saleTaxType() }],
+        LineItems: [{ Description: `Refund — ${booking.treatmentTitle}${reason ? ` (${reason.slice(0, 120)})` : ''}`, Quantity: 1, UnitAmount: amountPence / 100, AccountCode: cfg.salesAccount, TaxType: await xeroTaxType(booking.treatmentSlug) }],
       }],
     });
     const creditNoteId = cn.ok ? (cn.data as { CreditNotes?: { CreditNoteID?: string }[] }).CreditNotes?.[0]?.CreditNoteID : undefined;
@@ -295,6 +313,7 @@ export async function getXeroCashPence(): Promise<{ ok: boolean; pence: number; 
   try {
     const res = await fetch('https://api.xero.com/api.xro/2.0/Reports/BankSummary', {
       headers: { Authorization: `Bearer ${token}`, 'Xero-tenant-id': conn.accountRef, Accept: 'application/json' },
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) return { ok: false, pence: 0, label: conn.label };
     const data = (await res.json()) as { Reports?: { Rows?: { RowType?: string; Rows?: { Cells?: { Value?: string }[] }[] }[] }[] };

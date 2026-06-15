@@ -17,7 +17,7 @@ export async function setBookingLocation(bookingId: string, locationId: string |
 }
 
 // Staff: charge the saved card for a delivered service (adjustable amount).
-export async function chargeBookingAction(bookingId: string, amountPence: number) {
+export async function chargeBookingAction(bookingId: string, amountPence: number, opts?: { discountReason?: string; originalPence?: number }) {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
   if (!session) return { ok: false, error: 'Unauthorised' };
@@ -65,8 +65,12 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
   const res = await chargeBooking(booking, Math.round(amountPence), { late: false });
   const { logAudit } = await import('@/lib/audit');
   if (res.ok) {
-    await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Charged £${(amountPence / 100).toFixed(2)} for ${booking.treatmentTitle}`, author: session.email } });
-    await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId, summary: `Charged £${(amountPence / 100).toFixed(2)}` });
+    // BLD-207: record any ad-hoc price adjustment / discount + reason, immutably.
+    const disc = opts?.discountReason?.trim()
+      ? ` (price adjustment — ${opts.discountReason.trim()}${opts.originalPence && opts.originalPence > amountPence ? `; was £${(opts.originalPence / 100).toFixed(2)}` : ''})`
+      : '';
+    await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Charged £${(amountPence / 100).toFixed(2)} for ${booking.treatmentTitle}${disc}`, author: session.email } });
+    await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId, summary: `Charged £${(amountPence / 100).toFixed(2)}${disc}` });
     // The charged amount is the truest spend signal — credit loyalty points
     // (idempotent: a no-op if completion already awarded them).
     try {
@@ -85,7 +89,7 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
     // Report the sale to GA4 + Meta server-side (best-effort; hashed email only).
     try {
       const { sendPurchase } = await import('@/lib/conversions');
-      await sendPurchase({ bookingId, valuePence: amountPence, clientId: booking.clientId, email: booking.client?.email ?? null, campaign: booking.attribCampaign });
+      await sendPurchase({ bookingId, valuePence: amountPence, clientId: booking.clientId, email: booking.client?.marketingOptIn ? (booking.client?.email ?? null) : null, campaign: booking.attribCampaign, gclid: booking.gclid });
     } catch (e) {
       console.error('[bookings] conversion send failed:', (e as Error)?.message);
     }
@@ -114,6 +118,31 @@ export async function refundBookingAction(bookingId: string, amountPence: number
   revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath('/admin/bookings');
   return res;
+}
+
+// Approve a same-day appointment request: re-checks availability (the slot may have
+// been taken since the request came in), confirms the booking and notifies the
+// client. Staff only. Decline uses the normal cancelBookingAction.
+export async function approveBookingRequestAction(bookingId: string): Promise<{ ok: boolean; error?: string; clash?: boolean }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to manage bookings.' };
+  const { db } = await import('@/lib/db');
+  const b = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true, clientId: true, startAt: true, durationMin: true, treatmentSlug: true, locationId: true } });
+  if (!b) return { ok: false, error: 'Booking not found.' };
+  if (b.status !== 'REQUESTED') return { ok: false, error: 'This request has already been actioned.' };
+  const { isSlotFree } = await import('@/lib/availability');
+  // Staff are confirming same-day, so no online lead window applies — but the room
+  // and clinician must still be genuinely free right now.
+  const free = await isSlotFree(b.startAt.toISOString(), b.durationMin, b.treatmentSlug, b.locationId, { leadMinutes: 0 });
+  if (!free) return { ok: false, error: 'That time is no longer free. Reschedule with the client, or decline the request.', clash: true };
+  await db.booking.update({ where: { id: bookingId }, data: { status: 'CONFIRMED' } });
+  await db.interaction.create({ data: { clientId: b.clientId, type: 'APPOINTMENT', summary: 'Same-day request approved', author: session.email } });
+  try { const { notifyBookingConfirmed } = await import('@/lib/booking-notify'); await notifyBookingConfirmed(bookingId); } catch { /* best-effort */ }
+  const { logAudit } = await import('@/lib/audit');
+  await logAudit({ action: 'BOOKING_CONFIRMED', actor: session.email, actorRole: session.role, clientId: b.clientId, bookingId, summary: 'Same-day request approved' });
+  revalidatePath(`/admin/bookings/${bookingId}`); revalidatePath('/admin/bookings');
+  return { ok: true };
 }
 
 export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 'NO_SHOW' | 'CONFIRMED'): Promise<{ ok: boolean; error?: string }> {
@@ -234,4 +263,50 @@ export async function cancelBookingAction(bookingId: string, opts: { reason?: st
   revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath('/admin/bookings');
   return res;
+}
+
+// BLD-211 — reassign the practitioner/specialist on a booking. Admins/managers
+// only; the new clinician must be bookable and competent for the treatment.
+export async function reassignPractitioner(bookingId: string, practitionerId: string | null): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to reassign appointments.' };
+  const { db } = await import('@/lib/db');
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { treatmentSlug: true } });
+  if (!booking) return { ok: false, error: 'Booking not found.' };
+
+  let label = 'unassigned';
+  if (practitionerId) {
+    const clin = await db.adminUser.findFirst({ where: { id: practitionerId, active: true, isClinician: true }, select: { name: true, email: true, competencies: true } });
+    if (!clin) return { ok: false, error: 'That person isn’t a bookable clinician.' };
+    // A clinician with explicit competencies must list this treatment; an empty
+    // list means a generalist (no restriction).
+    if (clin.competencies.length && !clin.competencies.includes(booking.treatmentSlug)) {
+      return { ok: false, error: 'That clinician isn’t set up to perform this treatment.' };
+    }
+    label = clin.name || clin.email;
+  }
+
+  await db.booking.update({ where: { id: bookingId }, data: { practitionerId: practitionerId || null } });
+  try {
+    const { logAudit } = await import('@/lib/audit');
+    await logAudit({ action: 'PRACTITIONER_ASSIGNED', actor: session.email, actorRole: session.role, bookingId, summary: `Practitioner ${practitionerId ? `changed to ${label}` : 'unassigned'}` });
+  } catch { /* non-fatal */ }
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath('/admin/bookings');
+  return { ok: true };
+}
+
+// BLD-105 — staff reschedule an appointment (change date/time) without
+// cancel-and-rebook. Reuses rescheduleBooking with the admin override (no 48h
+// notice / window / fee rules), but keeps the slot-availability + future-time
+// guards, the client confirmation email, calendar re-push and audit.
+export async function rescheduleBookingAction(bookingId: string, newStartISO: string): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to reschedule appointments.' };
+  if (!newStartISO) return { ok: false, error: 'Pick a new date and time.' };
+  const { rescheduleBooking } = await import('@/lib/booking-actions');
+  const r = await rescheduleBooking(bookingId, newStartISO, { by: session.email, admin: true });
+  return r.ok ? { ok: true } : { ok: false, error: r.error || 'Could not reschedule.' };
 }

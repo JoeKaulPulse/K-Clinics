@@ -8,10 +8,12 @@ const SITE = (process.env.NEXT_PUBLIC_SITE_URL || site.url).replace(/\/$/, '');
 
 export type Audience = { type: 'all' | 'segment' | 'tag'; value?: string };
 
-/** Build the Prisma where-clause for an audience. Always restricted to
- *  opted-in, non-unsubscribed clients (marketing compliance). */
+/** Build the Prisma where-clause for an audience. Always restricted to clients
+ *  with a lawful basis for marketing — opted in, non-unsubscribed AND with
+ *  recorded consent evidence (BLD-242 / UK GDPR Art.7). */
 export async function audienceWhere(aud: Audience): Promise<Record<string, unknown>> {
-  let where: Record<string, unknown> = { marketingOptIn: true, unsubscribed: false };
+  const { marketableClientWhere } = await import('@/lib/consent');
+  let where: Record<string, unknown> = marketableClientWhere();
   if (aud.type === 'tag' && aud.value) where = { ...where, tags: { has: String(aud.value) } };
   if (aud.type === 'segment' && aud.value) {
     const seg = await db.segment.findUnique({ where: { id: String(aud.value) } });

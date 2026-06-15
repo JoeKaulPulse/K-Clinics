@@ -49,14 +49,14 @@ export default async function TeamPage() {
       {hasDbTeam ? (
         <>
           <section className="container-lux section">
-            {clinicians.length > 0 && <Reveal><p className="eyebrow mb-8">Clinical team</p></Reveal>}
+            {clinicians.length > 0 && <Reveal><h2 className="eyebrow mb-8">Clinical team</h2></Reveal>}
             <Stagger className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
               {clinicians.map((m) => <StaggerItem key={m.id}><Card m={m} /></StaggerItem>)}
             </Stagger>
           </section>
           {support.length > 0 && (
             <section className="container-lux pb-[var(--space-section)]">
-              <Reveal><p className="eyebrow mb-8">Front desk &amp; support team</p></Reveal>
+              <Reveal><h2 className="eyebrow mb-8">Front desk &amp; support team</h2></Reveal>
               <Stagger className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                 {support.map((m) => <StaggerItem key={m.id}><Card m={m} /></StaggerItem>)}
               </Stagger>
@@ -66,6 +66,7 @@ export default async function TeamPage() {
       ) : (
         // Graceful fallback until staff enable their public profiles in the CRM.
         <section className="container-lux section">
+          <h2 className="sr-only">Our team</h2>
           <Stagger className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {fallbackTeam.map((p) => (
               <StaggerItem key={p.slug}>
@@ -113,7 +114,7 @@ function Card({ m }: { m: TeamMember }) {
       </div>
 
       {m.rating != null && <div className="mt-4"><Stars rating={m.rating} count={m.reviewCount} /></div>}
-      {m.credentials && <p className="mt-3 text-xs text-[var(--color-stone-soft)]">{m.credentials}</p>}
+      {m.credentials && <p className="mt-3 text-xs text-[var(--color-stone)]">{m.credentials}</p>}
       {m.bio && <p className="mt-3 flex-1 text-sm text-[var(--color-ink-soft)]">{m.bio}</p>}
 
       {m.services.length > 0 && (

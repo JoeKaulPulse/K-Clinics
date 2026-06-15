@@ -1,7 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db';
 import { encryptJson, decryptJson, integrityHash, verifyIntegrity } from '@/lib/crypto';
-import { getQuestionnaire } from '@/lib/questionnaires';
+import { getEffectiveQuestionnaire, getQuestionnaireAtVersion } from '@/lib/questionnaire-versions';
 
 /**
  * Append-only clinical store. A submission is encrypted, integrity-stamped and
@@ -16,7 +16,9 @@ export async function saveAssessment(opts: {
   ip?: string | null;
   bookingId?: string | null;
 }) {
-  const q = getQuestionnaire(opts.questionnaireKey);
+  // Use the effective (latest published) version so a submission is captured
+  // against the current wording and records key@version for later resolution.
+  const q = await getEffectiveQuestionnaire(opts.questionnaireKey);
   if (!q) throw new Error('Unknown questionnaire.');
 
   // Find the latest prior version (for this client + type) to supersede.
@@ -76,12 +78,19 @@ export async function formatAssessment(id: string) {
   const a = await readAssessment(id);
   if (!a) return null;
   const key = (a.questionnaire?.key as string) || a.questionnaireKey.split('@')[0];
-  const def = getQuestionnaire(key);
+  // Resolve the questionnaire AS OF the version this answer was captured under, so
+  // historical forms always render with the exact wording the client saw (BLD-209).
+  const capturedVersion = Number(a.questionnaireKey.split('@')[1]);
+  const def = await getQuestionnaireAtVersion(key, capturedVersion);
   const answers = (a.answers || {}) as Record<string, unknown>;
   const sourceLocale = (a as { sourceLocale?: string }).sourceLocale || 'en';
 
+  // Include any admin-managed extra questions (BLD-190) so their answers display.
+  const { customQuestionsFor } = await import('@/lib/health-forms');
+  const allQuestions = [...(def?.questions ?? []), ...(await customQuestionsFor(key))];
+
   const items: { id: string; prompt: string; value: string; freeText: boolean; original?: string }[] =
-    (def?.questions ?? []).map((q) => {
+    allQuestions.map((q) => {
       const raw = answers[q.id];
       let value = '—';
       let freeText = false;
@@ -110,7 +119,7 @@ export async function formatAssessment(id: string) {
         freeIdx.forEach((i, k) => { items[i].original = items[i].value; items[i].value = translated[k]; });
         translatedNote = `Translated from ${localeName(sourceLocale)}`;
       } else {
-        translatedNote = translationConfigured()
+        translatedNote = (await translationConfigured())
           ? `Filled in ${localeName(sourceLocale)} — translation temporarily unavailable`
           : `Filled in ${localeName(sourceLocale)} — translation not configured`;
       }

@@ -8,15 +8,16 @@ import { db } from '@/lib/db';
 
 export type LinkRef = { label: string; url: string };
 export type LessonView = {
-  id: string; title: string; order: number; durationMin: number | null;
+  id: string; title: string; order: number; durationMin: number | null; minSeconds: number | null;
   videoUrl: string | null; imageUrl: string | null; body: string;
-  keyPoints: string[]; citations: LinkRef[]; resources: LinkRef[]; done: boolean;
+  keyPoints: string[]; objectives: string[]; studyTips: string[]; homework: string | null;
+  examRefs: string[]; steps: unknown; citations: LinkRef[]; resources: LinkRef[]; done: boolean;
 };
-export type QuizQuestionView = { id: string; order: number; prompt: string; type: string; options: string[]; imageUrl: string | null };
+export type QuizQuestionView = { id: string; order: number; prompt: string; type: string; options: string[]; tip: string | null; imageUrl: string | null; correct?: number[]; explanation?: string | null };
 export type QuizView = { id: string; title: string; passMark: number; questionCount: number; bestScore: number | null; passed: boolean; questions: QuizQuestionView[] };
 export type ModuleView = { id: string; title: string; summary: string | null; order: number; lessons: LessonView[]; quiz: QuizView | null; complete: boolean };
 export type CourseLearning = {
-  course: { id: string; slug: string; title: string; level: string | null };
+  course: { id: string; slug: string; title: string; level: string | null; welcome: string | null; objectives: string[] };
   modules: ModuleView[];
   progressPct: number;
   certificateEligible: boolean;
@@ -36,7 +37,7 @@ export async function studentCanAccess(studentId: string, courseId: string): Pro
 
 /** Full learning view for a student: content + progress (no correct answers). */
 export async function getCourseLearning(slug: string, studentId: string): Promise<CourseLearning | null> {
-  const course = await db.course.findUnique({ where: { slug }, select: { id: true, slug: true, title: true, level: true } });
+  const course = await db.course.findUnique({ where: { slug }, select: { id: true, slug: true, title: true, level: true, welcome: true, objectives: true } });
   if (!course) return null;
   if (!(await studentCanAccess(studentId, course.id))) return null;
 
@@ -66,9 +67,10 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
       const done = doneSet.has(l.id);
       totalUnits++; if (done) doneUnits++;
       return {
-        id: l.id, title: l.title, order: l.order, durationMin: l.durationMin,
+        id: l.id, title: l.title, order: l.order, durationMin: l.durationMin, minSeconds: l.minSeconds,
         videoUrl: l.videoUrl, imageUrl: l.imageUrl, body: l.body,
-        keyPoints: strArr(l.keyPoints), citations: arr(l.citations), resources: arr(l.resources), done,
+        keyPoints: strArr(l.keyPoints), objectives: strArr(l.objectives), studyTips: strArr(l.studyTips),
+        homework: l.homework, examRefs: strArr(l.examRefs), steps: l.steps, citations: arr(l.citations), resources: arr(l.resources), done,
       };
     });
     let quiz: QuizView | null = null;
@@ -78,7 +80,7 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
       quiz = {
         id: m.quiz.id, title: m.quiz.title, passMark: m.quiz.passMark, questionCount: m.quiz.questions.length,
         bestScore: b?.best ?? null, passed: b?.passed ?? false,
-        questions: m.quiz.questions.map((q) => ({ id: q.id, order: q.order, prompt: q.prompt, type: q.type, options: strArr(q.options), imageUrl: q.imageUrl })),
+        questions: m.quiz.questions.map((q) => ({ id: q.id, order: q.order, prompt: q.prompt, type: q.type, options: strArr(q.options), tip: q.tip, imageUrl: q.imageUrl })),
       };
     }
     const complete = lessons.every((l) => l.done) && (!quiz || quiz.passed);
@@ -90,23 +92,33 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
   return { course, modules: moduleViews, progressPct, certificateEligible };
 }
 
-/** Mark a lesson complete (idempotent). Verifies access. */
-export async function completeLesson(studentId: string, lessonId: string): Promise<{ ok: boolean }> {
+/** Mark a lesson complete (idempotent). Verifies access. `secondsSpent` (the
+ *  dwell time the player measured for this visit) is accumulated, not overwritten. */
+export async function completeLesson(studentId: string, lessonId: string, secondsSpent = 0): Promise<{ ok: boolean; newBadges?: { key: string; name: string; icon: string }[] }> {
   const lesson = await db.lesson.findUnique({ where: { id: lessonId }, select: { module: { select: { courseId: true } } } });
   if (!lesson) return { ok: false };
   if (!(await studentCanAccess(studentId, lesson.module.courseId))) return { ok: false };
+  const secs = Math.max(0, Math.min(Math.round(secondsSpent) || 0, 6 * 60 * 60)); // cap at 6h to ignore idle tabs
+  const firstTime = !(await db.lessonProgress.findUnique({ where: { studentId_lessonId: { studentId, lessonId } }, select: { id: true } }));
   await db.lessonProgress.upsert({
     where: { studentId_lessonId: { studentId, lessonId } },
-    update: {},
-    create: { studentId, lessonId },
+    update: secs > 0 ? { secondsSpent: { increment: secs } } : {},
+    create: { studentId, lessonId, secondsSpent: secs },
   });
-  return { ok: true };
+  let newBadges: { key: string; name: string; icon: string }[] = [];
+  if (firstTime) {
+    const { scoreAndBadge, XP } = await import('@/lib/academy-gamification');
+    newBadges = await scoreAndBadge(studentId, 'LESSON', XP.LESSON, lesson.module.courseId);
+    const { recordDailyTask } = await import('@/lib/academy-daily'); await recordDailyTask(studentId);
+  }
+  return { ok: true, newBadges };
 }
 
 export type GradeResult = {
   ok: boolean; error?: string;
   scorePct?: number; passed?: boolean; passMark?: number;
   results?: { questionId: string; correct: boolean; correctIndices: number[]; explanation: string | null }[];
+  newBadges?: { key: string; name: string; icon: string }[];
 };
 
 /** Grade a quiz submission server-side and record the attempt. */
@@ -130,8 +142,62 @@ export async function gradeQuiz(studentId: string, quizId: string, answers: Reco
 
   const scorePct = Math.round((correctCount / quiz.questions.length) * 100);
   const passed = scorePct >= quiz.passMark;
+  const priorPass = passed ? await db.quizAttempt.findFirst({ where: { studentId, quizId, passed: true }, select: { id: true } }) : null;
   await db.quizAttempt.create({ data: { studentId, quizId, scorePct, passed, answers: answers as object } });
-  return { ok: true, scorePct, passed, passMark: quiz.passMark, results };
+  let newBadges: { key: string; name: string; icon: string }[] = [];
+  if (passed && !priorPass) {
+    const { scoreAndBadge, XP } = await import('@/lib/academy-gamification');
+    newBadges = await scoreAndBadge(studentId, 'QUIZ', XP.QUIZ_PASS + (scorePct === 100 ? XP.QUIZ_PERFECT_BONUS : 0), quiz.module.courseId);
+    const { recordDailyTask } = await import('@/lib/academy-daily'); await recordDailyTask(studentId);
+  }
+  return { ok: true, scorePct, passed, passMark: quiz.passMark, results, newBadges };
+}
+
+/** Grade a SINGLE question for immediate (Duolingo-style) feedback. Verifies
+ *  access. Does not record an attempt — the full quiz is recorded via gradeQuiz
+ *  when the learner finishes. Reveals only this question's answer. */
+export async function checkQuizAnswer(studentId: string, quizId: string, questionId: string, answer: number[]): Promise<{ ok: boolean; correct?: boolean; correctIndices?: number[]; explanation?: string | null; error?: string }> {
+  const quiz = await db.quiz.findUnique({
+    where: { id: quizId },
+    select: { module: { select: { courseId: true } }, questions: { where: { id: questionId }, select: { correct: true, explanation: true } } },
+  });
+  if (!quiz || quiz.questions.length === 0) return { ok: false, error: 'Question not found.' };
+  if (!(await studentCanAccess(studentId, quiz.module.courseId))) return { ok: false, error: 'Not enrolled.' };
+  const q = quiz.questions[0];
+  const correctIndices = (Array.isArray(q.correct) ? (q.correct as number[]) : []).slice().sort();
+  const given = (answer ?? []).slice().sort();
+  const correct = correctIndices.length === given.length && correctIndices.every((v, i) => v === given[i]);
+  return { ok: true, correct, correctIndices, explanation: q.explanation };
+}
+
+/** Admin-only course preview: the full learning view for a course by id, with
+ *  no student/progress and WITH answer keys (so the immersive player can grade
+ *  client-side). Guard the caller with settings.manage — never expose to trainees. */
+export async function getCoursePreview(courseId: string): Promise<CourseLearning | null> {
+  const course = await db.course.findUnique({ where: { id: courseId }, select: { id: true, slug: true, title: true, level: true, welcome: true, objectives: true } });
+  if (!course) return null;
+  const modules = await db.courseModule.findMany({
+    where: { courseId },
+    orderBy: { order: 'asc' },
+    include: { lessons: { orderBy: { order: 'asc' } }, quiz: { include: { questions: { orderBy: { order: 'asc' } } } } },
+  });
+  const moduleViews: ModuleView[] = modules.map((m) => {
+    const lessons: LessonView[] = m.lessons.map((l) => ({
+      id: l.id, title: l.title, order: l.order, durationMin: l.durationMin, minSeconds: l.minSeconds,
+      videoUrl: l.videoUrl, imageUrl: l.imageUrl, body: l.body,
+      keyPoints: strArr(l.keyPoints), objectives: strArr(l.objectives), studyTips: strArr(l.studyTips),
+      homework: l.homework, examRefs: strArr(l.examRefs), steps: l.steps, citations: arr(l.citations), resources: arr(l.resources), done: false,
+    }));
+    const quiz: QuizView | null = m.quiz ? {
+      id: m.quiz.id, title: m.quiz.title, passMark: m.quiz.passMark, questionCount: m.quiz.questions.length, bestScore: null, passed: false,
+      questions: m.quiz.questions.map((q) => ({
+        id: q.id, order: q.order, prompt: q.prompt, type: q.type, options: strArr(q.options), tip: q.tip, imageUrl: q.imageUrl,
+        correct: (Array.isArray(q.correct) ? (q.correct as number[]) : []), explanation: q.explanation,
+      })),
+    } : null;
+    return { id: m.id, title: m.title, summary: m.summary, order: m.order, lessons, quiz, complete: false };
+  });
+  return { course, modules: moduleViews, progressPct: 0, certificateEligible: false };
 }
 
 /** Lean progress % for one course (for the portal list). 0–100, or null if the

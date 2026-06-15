@@ -39,8 +39,11 @@ export async function POST(req: Request) {
   if (!crmEnabled) return new Response('ok');
   const body = await req.text();
   const secret = process.env.RESEND_INBOUND_SECRET || process.env.RESEND_WEBHOOK_SECRET;
+  // BLD-279: fail closed on every environment with a real DB attached (incl.
+  // previews), not just production — a forged inbound could write to the DB.
   if (!secret) {
-    if (process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production') return new Response('webhook secret not configured', { status: 503 });
+    const { hasDatabase } = await import('@/lib/crm');
+    if (hasDatabase) return new Response('webhook secret not configured', { status: 503 });
   } else if (!verify(secret, req.headers, body)) {
     return new Response('bad signature', { status: 401 });
   }

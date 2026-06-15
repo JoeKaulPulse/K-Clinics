@@ -32,7 +32,7 @@ function suitable(audience: string, gender: string | null): boolean {
 
 type Stage = 'account' | 'service' | 'variant' | 'time' | 'upsell' | 'card' | 'done';
 
-export function BookingFlow({ catalogue, client, preselect = null }: { catalogue: Service[]; client: ClientInfo; preselect?: string | null }) {
+export function BookingFlow({ catalogue, client, preselect = null, preselectDate = '', waitlistToken = '' }: { catalogue: Service[]; client: ClientInfo; preselect?: string | null; preselectDate?: string; waitlistToken?: string }) {
   const [authed, setAuthed] = useState(client.signedIn);
   const [firstName, setFirstName] = useState(client.firstName);
   const [gender, setGender] = useState<string | null>(client.gender);
@@ -46,7 +46,9 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
   const [serviceId, setServiceId] = useState(validPreselect);
   const [variantId, setVariantId] = useState('');
   const [sessions, setSessions] = useState(1);
-  const [date, setDate] = useState('');
+  // From a waitlist claim link the offered day is pre-filled so the client lands
+  // straight on the freed slot (BLD-133 phase 2).
+  const [date, setDate] = useState(preselectDate || '');
   const [slots, setSlots] = useState<string[]>([]);
   const [preferred, setPreferred] = useState<string[]>([]);
   const [popularDays, setPopularDays] = useState<string[]>([]);
@@ -63,6 +65,7 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
 
   const [clientSecret, setClientSecret] = useState('');
   const [bookingId, setBookingId] = useState('');
+  const [requested, setRequested] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -119,7 +122,10 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
       .then((r) => r.json()).then((j) => setPopularDays(j.days || [])).catch(() => setPopularDays([]));
   }, [stage, service, variant, totalDuration]);
 
-  const minDate = useMemo(() => new Date(Date.now() + 864e5).toISOString().slice(0, 10), []);
+  // Today is selectable: same-day appointments go through as a request that staff
+  // confirm. Future dates book as normal. Clinic-local (UK) date.
+  const minDate = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
+  const isSameDay = !!date && date === minDate;
 
   const orderTotal = useMemo(() => {
     if (!variant) return 0;
@@ -134,13 +140,17 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
     try {
       const res = await fetch('/api/booking/start', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variantId, sessions, startISO: slot, addOnVariantIds: [...addOns], smsReminders: smsPref, refreshments: [...refreshments], allergyNote, aftercareAck, ageDeclare, promoCode: promo?.ok ? promo.code : undefined }),
+        body: JSON.stringify({ variantId, sessions, startISO: slot, addOnVariantIds: [...addOns], smsReminders: smsPref, refreshments: [...refreshments], allergyNote, aftercareAck, ageDeclare, promoCode: promo?.ok ? promo.code : undefined, waitlistToken: waitlistToken || undefined }),
       });
       const j = await res.json();
       if (!j.ok) { setError(j.error || 'Could not book.'); setSubmitting(false); return; }
-      if (j.needCard) { setClientSecret(j.clientSecret); setBookingId(j.bookingId); setStage('card'); }
-      else { setStage('done'); }
-    } catch { setError('Network error. Please try again.'); }
+      if (j.requested) { setRequested(true); setStage('done'); setSubmitting(false); return; }
+      if (j.needCard) {
+        setClientSecret(j.clientSecret); setBookingId(j.bookingId); setStage('card');
+        try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'add_payment_info', { currency: 'GBP', value: orderTotal / 100, items: [{ item_id: variantId, item_name: service?.name, item_category: service?.category }] }); } catch { /* analytics best-effort */ }
+        try { (window as Window & { fbq?: (...a: unknown[]) => void }).fbq?.('track', 'InitiateCheckout', { currency: 'GBP', value: orderTotal / 100 }); } catch { /* analytics best-effort */ }
+      } else { setStage('done'); }
+    } catch { setError('We couldn’t reach the server to finish your booking. Please check “My appointments” in a moment — if it isn’t there, try again.'); }
     finally { setSubmitting(false); }
   }
 
@@ -161,7 +171,9 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
   ];
   const stepIndex = Math.max(0, steps.findIndex((s) => s.key === stage));
 
-  if (stage === 'done') return <Done firstName={firstName} treatment={service?.name} slot={slot} />;
+  if (stage === 'done') return requested
+    ? <RequestReceived firstName={firstName} treatment={service?.name} slot={slot} />
+    : <Done firstName={firstName} treatment={service?.name} slot={slot} orderTotal={orderTotal} variantId={variantId} category={service?.category} bookingId={bookingId} />;
 
   return (
     <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6 md:p-10">
@@ -171,7 +183,7 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
             <div className="h-1 overflow-hidden rounded-full bg-[var(--color-sand)]">
               <motion.div className="h-full bg-[var(--color-gold)]" initial={false} animate={{ width: i < stepIndex ? '100%' : i === stepIndex ? '50%' : '0%' }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} />
             </div>
-            <span className={`hidden text-[0.65rem] uppercase tracking-[0.14em] sm:block ${i === stepIndex ? 'text-[var(--color-gold)]' : 'text-[var(--color-stone)]'}`}>{s.label}</span>
+            <span className={`hidden text-[0.65rem] uppercase tracking-[0.14em] sm:block ${i === stepIndex ? 'text-[var(--color-gold-deep)] font-medium' : 'text-[var(--color-stone)]'}`}>{s.label}</span>
           </div>
         ))}
       </div>
@@ -188,7 +200,7 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
           {stage === 'service' && (
             <div>
               <h3 className="font-[family-name:var(--font-display)] text-2xl">Choose your treatment</h3>
-              {welcome && <p className="mt-2 text-sm text-[var(--color-gold)]">✦ Your 15% welcome offer will be applied automatically.</p>}
+              {welcome && <p className="mt-2 text-sm text-[var(--color-gold-deep)]">✦ Your 15% welcome offer will be applied automatically.</p>}
               <div className="mt-6 grid max-h-[26rem] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
                 {catalogue.map((s) => (
                   <button key={s.id} type="button" onClick={() => { setServiceId(s.id); setVariantId(''); setSessions(1); setAddOns(new Set()); setStage('variant'); }}
@@ -197,7 +209,7 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
                       <span className="block font-[family-name:var(--font-display)] text-base leading-tight">{s.name}</span>
                       <span className="text-xs text-[var(--color-stone)]">{s.variants.length} option{s.variants.length > 1 ? 's' : ''}</span>
                     </span>
-                    <span className="shrink-0 text-sm font-medium text-[var(--color-gold)]">{(() => { const ps = s.variants.map((v) => v.offerPence ?? v.pricePence).filter((p) => p > 0); return ps.length ? `from ${money(Math.min(...ps))}` : 'On consultation'; })()}</span>
+                    <span className="shrink-0 text-sm font-medium text-[var(--color-gold-deep)]">{(() => { const ps = s.variants.map((v) => v.offerPence ?? v.pricePence).filter((p) => p > 0); return ps.length ? `from ${money(Math.min(...ps))}` : 'On consultation'; })()}</span>
                   </button>
                 ))}
               </div>
@@ -224,8 +236,8 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
                         <span className="block text-sm font-medium">{v.name}</span>
                         <span className="text-xs text-[var(--color-stone)]">{v.durationMin} min{pp.tag ? ` · ${pp.tag}` : ''}</span>
                       </span>
-                      <span className="shrink-0 text-right text-sm font-medium text-[var(--color-gold)]">
-                        {pp.was && <span className="mr-1 text-xs text-[var(--color-stone-soft)] line-through">{money(pp.was)}</span>}
+                      <span className="shrink-0 text-right text-sm font-medium text-[var(--color-gold-deep)]">
+                        {pp.was && <span className="mr-1 text-xs text-[var(--color-stone)] line-through">{money(pp.was)}</span>}
                         {money(pp.price)}
                       </span>
                     </button>
@@ -271,9 +283,19 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
               </div>
               {date && (
                 <div className="mt-6">
+                  {isSameDay && (
+                    <p className="mb-3 rounded-[var(--radius-sm)] bg-[color-mix(in_oklab,var(--color-gold)_12%,transparent)] px-3 py-2 text-sm text-[var(--color-ink)]">
+                      Same-day appointments are by request. Pick a time and we&rsquo;ll confirm with you shortly. Nothing is charged until we do.
+                    </p>
+                  )}
                   <p className={label}>Available times</p>
                   {loadingSlots ? <p className="text-sm text-[var(--color-stone)]">Finding available times…</p>
-                    : slots.length === 0 ? <p className="text-sm text-[var(--color-stone)]">No availability that day — please try another date.</p>
+                    : slots.length === 0 ? (
+                      <div>
+                        <p className="text-sm text-[var(--color-stone)]">No availability that day — please try another date.</p>
+                        <WaitlistCTA treatmentSlug={service.treatmentSlug} treatmentTitle={service.name} date={date} client={client} />
+                      </div>
+                    )
                     : (
                       <>
                         <div className="flex flex-wrap gap-2">
@@ -361,7 +383,7 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
               </div>
 
               <div className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] p-4 text-sm">
-                <div className="flex justify-between"><span className="text-[var(--color-stone)]">Total today</span><span className="font-medium">£0.00</span></div>
+                <div className="flex justify-between"><span className="text-[var(--color-stone)]">Due today</span><span className="font-medium text-[var(--color-stone)]">Nothing charged until after your visit</span></div>
                 <div className="flex justify-between"><span className="text-[var(--color-stone)]">Total at your visit</span><span className="font-medium text-[var(--color-ink)]">{money(orderTotal)}</span></div>
                 {promo?.ok && <div className="mt-1 flex justify-between text-[var(--color-jade,#3f7a5a)]"><span>Promo {promo.code}</span><span>−{money(promo.discountPence || 0)} applied</span></div>}
                 <p className="mt-2 text-xs text-[var(--color-stone-soft)]">{totalDuration} min · {[service.name, ...[...addOns].map((id) => catalogue.flatMap((s) => s.variants).find((v) => v.id === id)?.name).filter(Boolean)].join(' + ')}</p>
@@ -396,14 +418,14 @@ export function BookingFlow({ catalogue, client, preselect = null }: { catalogue
         </motion.div>
       </AnimatePresence>
 
-      {error && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
 
       {stage !== 'card' && stage !== 'account' && (
         <div className="mt-8 flex items-center justify-between gap-4">
           <button type="button" onClick={() => goBack()} className="text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Back</button>
-          {stage === 'variant' && <Button onClick={() => variant && setStage('time')} variant={variant ? 'gold' : 'outline'}>Continue <ArrowIcon /></Button>}
-          {stage === 'time' && <Button onClick={() => slot && setStage('upsell')} variant={slot ? 'gold' : 'outline'}>Continue <ArrowIcon /></Button>}
-          {stage === 'upsell' && <Button onClick={() => { if (!aftercareAck) { setError('Please confirm you’ve read and agree to the aftercare instructions.'); return; } if (!ageDeclare) { setError('Please confirm you are 18 or over.'); return; } if (!submitting) submitBooking(); }} variant={aftercareAck && ageDeclare ? 'gold' : 'outline'}>{submitting ? 'Securing…' : 'Continue to confirm'} <ArrowIcon /></Button>}
+          {stage === 'variant' && <Button onClick={() => variant && setStage('time')} variant={variant ? 'gold' : 'outline'} disabled={!variant}>Continue <ArrowIcon /></Button>}
+          {stage === 'time' && <Button onClick={() => { if (!slot) return; setStage('upsell'); try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'begin_checkout', { currency: 'GBP', value: orderTotal / 100, items: [{ item_id: variantId, item_name: service?.name, item_category: service?.category }] }); } catch { /* analytics best-effort */ } }} variant={slot ? 'gold' : 'outline'} disabled={!slot}>Continue <ArrowIcon /></Button>}
+          {stage === 'upsell' && <Button onClick={() => { if (!aftercareAck) { setError('Please confirm you’ve read and agree to the aftercare instructions.'); return; } if (!ageDeclare) { setError('Please confirm you are 18 or over.'); return; } if (!submitting) submitBooking(); }} variant={aftercareAck && ageDeclare ? 'gold' : 'outline'}>{submitting ? 'Securing…' : isSameDay ? 'Request appointment' : 'Continue to confirm'} <ArrowIcon /></Button>}
           {stage === 'service' && <span />}
         </div>
       )}
@@ -464,14 +486,14 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
 
       {mode === 'signup' ? (
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div><label className={label}>First name *</label><input autoComplete="given-name" className={field} value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} /></div>
-          <div><label className={label}>Last name *</label><input autoComplete="family-name" className={field} value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} /></div>
-          <div className="sm:col-span-2"><label className={label}>Email *</label><input type="email" autoComplete="email" className={field} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
-          <div><label className={label}>Mobile *</label><input type="tel" autoComplete="tel" className={field} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
-          <div><label className={label}>Date of birth *</label><input type="date" autoComplete="bday" className={field} value={f.dob} onChange={(e) => setF({ ...f, dob: e.target.value })} /></div>
-          <div className="sm:col-span-2"><label className={label}>Password * (8+)</label><input type="password" autoComplete="new-password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
-          <div className="sm:col-span-2"><label className={label}>Gender (optional — tailors recommendations)</label>
-            <select className={field} value={f.gender} onChange={(e) => setF({ ...f, gender: e.target.value })}>
+          <div><label htmlFor="bf-firstName" className={label}>First name *</label><input id="bf-firstName" autoComplete="given-name" className={field} value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} /></div>
+          <div><label htmlFor="bf-lastName" className={label}>Last name *</label><input id="bf-lastName" autoComplete="family-name" className={field} value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} /></div>
+          <div className="sm:col-span-2"><label htmlFor="bf-email" className={label}>Email *</label><input id="bf-email" type="email" autoComplete="email" className={field} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
+          <div><label htmlFor="bf-phone" className={label}>Mobile *</label><input id="bf-phone" type="tel" autoComplete="tel" className={field} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
+          <div><label htmlFor="bf-dob" className={label}>Date of birth *</label><input id="bf-dob" type="date" autoComplete="bday" className={field} value={f.dob} onChange={(e) => setF({ ...f, dob: e.target.value })} /></div>
+          <div className="sm:col-span-2"><label htmlFor="bf-password" className={label}>Password * (8+)</label><input id="bf-password" type="password" autoComplete="new-password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
+          <div className="sm:col-span-2"><label htmlFor="bf-gender" className={label}>Gender (optional — tailors recommendations)</label>
+            <select id="bf-gender" className={field} value={f.gender} onChange={(e) => setF({ ...f, gender: e.target.value })}>
               <option value="">Prefer not to say</option>
               <option value="FEMALE">Female</option><option value="MALE">Male</option>
               <option value="NON_BINARY">Non-binary</option><option value="OTHER">Other</option>
@@ -484,8 +506,8 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
         </div>
       ) : (
         <div className="mt-6 grid gap-4">
-          <div><label className={label}>Email</label><input type="email" className={field} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
-          <div><label className={label}>Password</label><input type="password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
+          <div><label htmlFor="bf-login-email" className={label}>Email</label><input id="bf-login-email" type="email" autoComplete="email" className={field} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
+          <div><label htmlFor="bf-login-password" className={label}>Password</label><input id="bf-login-password" type="password" autoComplete="current-password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
         </div>
       )}
 
@@ -499,7 +521,33 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
   );
 }
 
-function Done({ firstName, treatment, slot }: { firstName: string; treatment?: string; slot: string }) {
+function RequestReceived({ firstName, treatment, slot }: { firstName: string; treatment?: string; slot: string }) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-10 text-center md:p-16">
+      <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-full bg-[var(--color-gold)] text-white">
+        <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      </div>
+      <h2 className="text-title">Request received{firstName ? `, ${firstName}` : ''}.</h2>
+      <p className="mx-auto mt-4 max-w-md text-[var(--color-stone)]">
+        We&rsquo;ve asked the team to confirm {treatment || 'your appointment'}{slot ? ` for ${new Date(slot).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}` : ''}. We&rsquo;ll be in touch shortly. Nothing is charged until we confirm. You can see this request in <a href="/account" className="link-underline font-medium text-[var(--color-ink)]">your account</a>.
+      </p>
+    </motion.div>
+  );
+}
+
+function Done({ firstName, treatment, slot, orderTotal, variantId, category, bookingId }: { firstName: string; treatment?: string; slot: string; orderTotal: number; variantId: string; category?: string; bookingId?: string }) {
+  useEffect(() => {
+    try {
+      (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'purchase', {
+        currency: 'GBP', value: orderTotal / 100,
+        items: [{ item_id: variantId, item_name: treatment, item_category: category }],
+      });
+    } catch { /* analytics best-effort */ }
+    try {
+      // eventID = booking id so this de-duplicates against the server-side CAPI Schedule.
+      (window as Window & { fbq?: (...a: unknown[]) => void }).fbq?.('track', 'Schedule', { currency: 'GBP', value: orderTotal / 100 }, bookingId ? { eventID: bookingId } : undefined);
+    } catch { /* analytics best-effort */ }
+  }, []);
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-10 text-center md:p-16">
       <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-full bg-[var(--color-ink)] text-[var(--color-gold-soft)]">
@@ -514,6 +562,11 @@ function Done({ firstName, treatment, slot }: { firstName: string; treatment?: s
         Please <a href="/account/assessments" className="link-underline font-medium text-[var(--color-ink)]">complete your pre-treatment forms</a> before your visit, and arrive 15 minutes early for your first appointment.
       </p>
       <p className="mt-6"><a href="/account/appointments" className="link-underline text-sm font-medium text-[var(--color-ink)]">View my appointments →</a></p>
+      <div className="mx-auto mt-8 max-w-sm rounded-[var(--radius-lg)] border border-[var(--color-gold)]/40 bg-[var(--color-porcelain)] p-6 text-left">
+        <p className="text-sm font-medium text-[var(--color-ink)]">Know someone who'd love KClinics?</p>
+        <p className="mt-1 text-sm text-[var(--color-stone)]">Refer a friend — you both receive <strong className="font-semibold text-[var(--color-ink)]">£25 credit</strong> towards any treatment, and your Beauty Points for today&apos;s booking have been credited to <a href="/account" className="link-underline font-medium text-[var(--color-ink)]">your account</a>.</p>
+        <a href="/refer-a-friend" className="mt-4 inline-block rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white">Share your referral link →</a>
+      </div>
     </motion.div>
   );
 }
@@ -535,14 +588,60 @@ function CardStep({ bookingId, onDone, onError }: { bookingId: string; onDone: (
     setSubmitting(true); onError('');
     const { error } = await stripe.confirmSetup({ elements, redirect: 'if_required' });
     if (error) { onError(error.message || 'Card could not be saved.'); setSubmitting(false); return; }
-    const res = await fetch('/api/booking/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId }) });
-    const j = await res.json();
-    if (j.ok) onDone(); else { onError(j.error || 'Could not confirm booking.'); setSubmitting(false); }
+    // The card is saved now. Confirming is idempotent server-side (a repeat call
+    // returns the same success), so a transient failure here is safe to surface
+    // for retry without double-booking — and must not leave the button hung.
+    try {
+      const res = await fetch('/api/booking/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId }) });
+      const j = await res.json().catch(() => null);
+      if (j?.ok) { onDone(); return; }
+      onError(j?.error || 'Your card was saved, but we couldn’t finish confirming. Please tap Confirm again — you won’t be booked or charged twice.');
+      setSubmitting(false);
+    } catch {
+      onError('Your card was saved. If you don’t receive a confirmation email shortly, check “My appointments”, then tap Confirm again.');
+      setSubmitting(false);
+    }
   }
   return (
     <div>
       <PaymentElement />
       <div className="mt-6 flex justify-end"><Button onClick={submit} variant="gold" size="lg">{submitting ? 'Confirming…' : 'Confirm booking'} <ArrowIcon /></Button></div>
+    </div>
+  );
+}
+
+// BLD-133 — "notify me if a slot frees" shown when a chosen day is fully booked.
+function WaitlistCTA({ treatmentSlug, treatmentTitle, date, client }: { treatmentSlug: string; treatmentTitle: string; date: string; client: ClientInfo }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(client.firstName || '');
+  const [email, setEmail] = useState(client.email || '');
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState('');
+  const inp = 'min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+  const dayLabel = new Date(date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  async function join() {
+    setErr('');
+    if (!name.trim() || !/\S+@\S+\.\S+/.test(email)) { setErr('Enter your name and a valid email.'); return; }
+    setBusy(true);
+    try {
+      const r = await fetch('/api/waitlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ treatmentSlug, name, email, fromDate: date, toDate: date }) }).then((x) => x.json());
+      if (r.ok) setDone(true); else setErr(r.error || 'Could not join the waitlist.');
+    } catch { setErr('Network error — please try again.'); } finally { setBusy(false); }
+  }
+
+  if (done) return <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-gold)]/10 px-3 py-2 text-sm text-[var(--color-ink)]">You’re on the waitlist for {dayLabel} — we’ll email you if a slot opens.</p>;
+  if (!open) return <button type="button" onClick={() => setOpen(true)} className="mt-3 rounded-full border border-[var(--color-gold)] px-4 py-2 text-sm text-[var(--color-gold-deep)] transition-colors hover:bg-[var(--color-gold)]/10">🔔 Notify me if a slot opens that day</button>;
+  return (
+    <div className="mt-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/50 p-3">
+      <p className="text-sm text-[var(--color-stone)]">We’ll email you if a {treatmentTitle} slot frees up on {dayLabel}.</p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" aria-label="Your name" className={inp} />
+        <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Email" aria-label="Email" className={inp} />
+        <button type="button" onClick={join} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Joining…' : 'Join waitlist'}</button>
+      </div>
+      {err && <p className="mt-1 text-xs text-[var(--color-blush-deep)]">{err}</p>}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
+import { PageSearch } from '@/components/admin/PageSearch';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { DiscountAction } from '@/components/admin/DiscountActions';
 import { getLocale } from '@/lib/locale';
@@ -73,10 +74,13 @@ export default async function DiscountsPage({ searchParams }: { searchParams: Pr
             </Link>
           ))}
         </div>
-        <form className="flex gap-2">
-          {status !== 'ALL' && <input type="hidden" name="status" value={status} />}
-          <input name="q" defaultValue={q} placeholder={L('Code or email…', 'Код або email…')} className="rounded-full border border-[var(--color-line)] bg-white px-4 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
-        </form>
+        <PageSearch
+          defaultValue={q}
+          placeholder={L('Code or email…', 'Код або email…')}
+          hidden={{ status: status !== 'ALL' ? status : undefined }}
+          showSubmit={false}
+          widthClass="w-56"
+        />
       </div>
 
       {/* Table */}

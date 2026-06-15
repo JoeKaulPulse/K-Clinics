@@ -73,12 +73,19 @@ export async function POST(req: Request) {
   const resourceIds = await withDbRetry(() => assignResources(d.startISO, durationMin, d.slug));
 
   // Upsert client + Stripe customer.
+  const { marketingConsentFields } = await import('@/lib/consent');
   const client = await db.client.upsert({
     where: { email: d.email.toLowerCase() },
-    update: { firstName: d.firstName, lastName: d.lastName || undefined, phone: d.phone || undefined, dob: new Date(d.dob), ageDeclaredAt: new Date(), marketingOptIn: d.marketingOptIn || undefined },
+    update: {
+      firstName: d.firstName, lastName: d.lastName || undefined, phone: d.phone || undefined, dob: new Date(d.dob), ageDeclaredAt: new Date(),
+      marketingOptIn: d.marketingOptIn || undefined,
+      // BLD-128: evidence consent when opt-in is explicitly given.
+      ...(d.marketingOptIn ? marketingConsentFields('website-booking') : {}),
+    },
     create: {
       firstName: d.firstName, lastName: d.lastName || null, email: d.email.toLowerCase(),
       phone: d.phone || null, dob: new Date(d.dob), ageDeclaredAt: new Date(), source: 'website-booking', marketingOptIn: d.marketingOptIn,
+      ...(d.marketingOptIn ? marketingConsentFields('website-booking') : {}),
     },
   });
   const customerId = await ensureCustomer(client);
@@ -159,6 +166,9 @@ export async function POST(req: Request) {
     await logAudit({ action: 'PRACTITIONER_ASSIGNED', actor: 'system', bookingId: booking.id, clientId: client.id, summary: 'Clinician auto-assigned' });
   }
 
+  // BLD-133: if this booking came from a waitlist claim link, retire the offer.
+  if (d.waitlistToken) { const { claimWaitlist } = await import('@/lib/waitlist'); await claimWaitlist(d.waitlistToken, { clientId: client.id }); }
+
   // Staff incentive: reward the practitioner of the client's previous treatment
   // for securing this repeat booking (best-effort).
   try { const { awardForRebooking } = await import('@/lib/gamification'); await awardForRebooking(booking.id); } catch { /* non-fatal */ }
@@ -183,7 +193,7 @@ export async function POST(req: Request) {
     usage: 'off_session',
     payment_method_types: ['card'],
     metadata: { bookingId: booking.id, clientId: client.id },
-  });
+  }, { idempotencyKey: `setup-${booking.id}` });
 
   await db.booking.update({ where: { id: booking.id }, data: { stripeSetupIntentId: setupIntent.id } });
 

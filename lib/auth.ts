@@ -96,7 +96,10 @@ export const getSession = cache(async (): Promise<Session | null> => {
     if (!u || u.active === false) return null;
     if ((session.epoch ?? 0) !== (u.sessionEpoch ?? 0)) return null;
   } catch {
-    // If the DB is unreachable, fall back to the (valid, signed) token claims.
+    // BLD-345: fail closed on DB unreachable — a deactivated account must not
+    // remain authenticated during an outage. Active sessions will be re-verified
+    // on the next request once the DB recovers.
+    return null;
   }
   return session;
 });
@@ -124,7 +127,23 @@ export async function destroyClientSession() {
 
 export async function getClientSession(): Promise<ClientSession | null> {
   const token = (await cookies()).get(CLIENT_COOKIE)?.value;
-  return verifyClientToken(token);
+  const session = await verifyClientToken(token);
+  if (!session) return null;
+  // BLD-161: validate the token's epoch against the client's current
+  // sessionEpoch so a password reset (or future "sign out everywhere") revokes
+  // outstanding portal JWTs immediately. BLD-345: if the DB is unreachable we
+  // fail closed (return null) rather than trusting the signed claims, so a
+  // revoked session can't survive an outage. Mirrors getSession.
+  try {
+    const { db } = await import('@/lib/db');
+    const c = await db.client.findUnique({ where: { id: session.sub }, select: { sessionEpoch: true } });
+    if (!c) return null;
+    if ((session.epoch ?? 0) !== (c.sessionEpoch ?? 0)) return null;
+  } catch {
+    // BLD-345: fail closed on DB unreachable — mirrors the admin session fix.
+    return null;
+  }
+  return session;
 }
 
 // ── Academy (trainee) portal sessions (separate cookie + secret) ────────────

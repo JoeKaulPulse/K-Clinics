@@ -14,10 +14,10 @@ export async function GET(req: Request) {
   const providerId = new URL(req.url).searchParams.get('provider') || '';
   const p = getProvider(providerId);
   if (!p) return NextResponse.json({ ok: false, error: 'Unknown provider' }, { status: 400 });
-  if (!isConfigured(p)) return NextResponse.redirect(new URL(`/admin/marketing/connections?error=${p.id}_not_configured`, req.url));
+  if (!(await isConfigured(p))) return NextResponse.redirect(new URL(`/admin/marketing/connections?error=${p.id}_not_configured`, req.url));
 
   const state = `${p.id}.${crypto.randomUUID()}`;
-  const res = NextResponse.redirect(authUrlFor(p, state));
+  const res = NextResponse.redirect(await authUrlFor(p, state));
   res.cookies.set('kc_oauth_state', state, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 600 });
   return res;
 }

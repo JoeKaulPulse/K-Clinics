@@ -120,7 +120,8 @@ export function AssessmentRunner({ q, locale = 'en' }: { q: Questionnaire; local
             </motion.div>
           ) : current ? (
             <motion.div key={current.id} custom={dir} variants={slide} initial="enter" animate="center" exit="exit" transition={trans}>
-              <h2 className="font-[family-name:var(--font-display)] text-[clamp(1.6rem,1.2rem+1.6vw,2.5rem)] leading-[1.12]">{current.prompt}</h2>
+              <span className={`inline-block rounded-full px-2.5 py-0.5 text-[0.6rem] font-medium uppercase tracking-[0.14em] ${current.required ? 'bg-[var(--color-gold)]/15 text-[var(--color-ink)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{current.required ? t('assess.required') : t('assess.optional')}</span>
+              <h2 className="mt-2 font-[family-name:var(--font-display)] text-[clamp(1.6rem,1.2rem+1.6vw,2.5rem)] leading-[1.12]">{current.prompt}</h2>
               {current.help && <p className="mt-3 text-[var(--color-stone)]">{current.help}</p>}
               <div className="mt-8">
                 <Field q={current} value={answers[current.id]} set={set} pick={pickAndAdvance} />

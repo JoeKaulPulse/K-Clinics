@@ -15,6 +15,15 @@ export function TrackingSettings({ initial, conversions }: { initial: { ga4Id: s
 
   const dirty = ga4Id !== initial.ga4Id || googleAdsId !== initial.googleAdsId || metaPixelId !== initial.metaPixelId || ga4ApiSecret !== '' || metaCapiToken !== '';
 
+  // What's actually live right now (from the saved config). Lets the owner see at
+  // a glance whether each ID "took" — the field can be edited but un-saved, so this
+  // reflects the persisted value the public site uses, not the current input.
+  const liveStatus: [string, boolean][] = [
+    ['Google Analytics 4', !!initial.ga4Id],
+    ['Google Ads', !!initial.googleAdsId],
+    ['Meta Pixel', !!initial.metaPixelId],
+  ];
+
   async function save() {
     setBusy(true); setMsg('');
     const res = await fetch('/api/admin/tracking', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ga4Id, googleAdsId, metaPixelId, ga4ApiSecret, metaCapiToken }) });
@@ -30,6 +39,20 @@ export function TrackingSettings({ initial, conversions }: { initial: { ga4Id: s
         matching cookies</strong> — Analytics for Google Analytics, Marketing for Google Ads &amp; the Meta Pixel — so it stays
         GDPR-compliant. Leave a field blank to disable it.
       </p>
+
+      {/* Live status — what's actually saved & serving on the public site now. */}
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
+        {liveStatus.map(([label, on]) => (
+          <span key={label} className="inline-flex items-center gap-1.5">
+            <span aria-hidden className={`inline-block h-2 w-2 rounded-full ${on ? 'bg-[var(--color-jade)]' : 'bg-[var(--color-stone-soft)]'}`} />
+            {label}: <strong className={on ? 'text-[var(--color-ink)]' : 'text-[var(--color-stone)]'}>{on ? 'Live' : 'Not set'}</strong>
+          </span>
+        ))}
+      </div>
+      <p className="mt-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/60 px-3 py-2 text-xs leading-relaxed text-[var(--color-stone)]">
+        <strong className="text-[var(--color-ink)]">Testing tip:</strong> these pixels only load after a visitor accepts cookies. To check them, open the public site, click <strong>“Accept all”</strong> on the cookie banner, then look in GA4 DebugView or the Meta Pixel Helper. A checker run <em>without</em> accepting cookies will correctly show nothing — that doesn’t mean the ID isn’t saved.
+      </p>
+
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
         <label className="text-xs text-[var(--color-stone)]">Google Analytics 4 ID
           <input value={ga4Id} onChange={(e) => setGa4(e.target.value)} placeholder="G-XXXXXXXXXX" className={field} />

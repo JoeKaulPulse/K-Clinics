@@ -1,3 +1,6 @@
+# Claude Code agent worktrees (created by isolation: "worktree" subagents)
+.claude/worktrees/
+
 # dependencies
 /node_modules
 /.pnp
@@ -41,3 +44,7 @@ import/*.xml
 
 # Generated brand dossier (regenerate via scripts/build-dossier.mjs)
 KClinics-Platform-Guide.pdf
+__pycache__/
+
+# Funding action-plan scratch workspace (deliverables live in docs/funding/)
+funding-shots/

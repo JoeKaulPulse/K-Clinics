@@ -11,6 +11,8 @@ export async function POST(req: Request) {
   const { getSession } = await import('@/lib/auth');
   const session = await getSession();
   if (!session) return NextResponse.json({ ok: false, error: 'Sign in first.' }, { status: 403 });
+  // OWNER only — see register-options.
+  if (session.role !== 'OWNER') return NextResponse.json({ ok: false, error: 'Owner only.' }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));
   const { verifyRegistrationResponse } = await import('@simplewebauthn/server');

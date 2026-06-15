@@ -1,6 +1,7 @@
 import 'server-only';
 import crypto from 'node:crypto';
 import { crmEnabled } from '@/lib/crm';
+import { uploadGoogleAdsConversion } from '@/lib/google-ads-conversions';
 
 // Server-side conversion events. When a booking is charged we report the sale to
 // GA4 (Measurement Protocol) and Meta (Conversions API) using server-held
@@ -26,9 +27,10 @@ export async function conversionStatus(): Promise<{ ga4: boolean; meta: boolean 
   return { ga4: Boolean(ids.ga4Id && secrets.ga4ApiSecret), meta: Boolean(ids.metaPixelId && secrets.metaCapiToken) };
 }
 
-type PurchaseInput = { bookingId: string; valuePence: number; clientId?: string | null; email?: string | null; campaign?: string | null };
+type PurchaseInput = { bookingId: string; valuePence: number; clientId?: string | null; email?: string | null; campaign?: string | null; gclid?: string | null };
 
-/** Fire a Purchase conversion to GA4 + Meta (best-effort, never throws). */
+/** Fire a Purchase conversion to GA4 + Meta, and (when a GCLID was captured) an
+ *  offline conversion to Google Ads for value-based bidding. Best-effort. */
 export async function sendPurchase(input: PurchaseInput): Promise<void> {
   if (!crmEnabled || input.valuePence <= 0) return;
   try {
@@ -38,6 +40,8 @@ export async function sendPurchase(input: PurchaseInput): Promise<void> {
     await Promise.allSettled([
       ids.ga4Id && secrets.ga4ApiSecret ? ga4Purchase(ids.ga4Id, secrets.ga4ApiSecret, clientId, value, input) : null,
       ids.metaPixelId && secrets.metaCapiToken ? metaPurchase(ids.metaPixelId, secrets.metaCapiToken, value, input) : null,
+      // Google Ads offline conversion (no-ops unless a GCLID + conversion action are present).
+      input.gclid ? uploadGoogleAdsConversion({ gclid: input.gclid, valuePence: input.valuePence, bookingId: input.bookingId }) : null,
     ].filter(Boolean) as Promise<unknown>[]);
   } catch (e) {
     console.error('[conversions] send failed:', (e as Error)?.message);
@@ -56,37 +60,82 @@ export async function sendRefund(input: { bookingId: string; valuePence: number;
       events: [{ name: 'refund', params: { currency: 'GBP', value: input.valuePence / 100, transaction_id: input.bookingId } }],
     };
     await fetch(`https://www.google-analytics.com/mp/collect?measurement_id=${encodeURIComponent(ids.ga4Id)}&api_secret=${encodeURIComponent(secrets.ga4ApiSecret)}`, {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(10_000),
     });
   } catch (e) {
     console.error('[conversions] refund send failed:', (e as Error)?.message);
   }
 }
 
-async function ga4Purchase(measurementId: string, apiSecret: string, clientId: string, value: number, input: PurchaseInput) {
-  const body = {
-    client_id: clientId,
-    events: [{ name: 'purchase', params: { currency: 'GBP', value, transaction_id: input.bookingId, ...(input.campaign ? { campaign: input.campaign } : {}) } }],
-  };
+// ── Generic low-level senders — one code path for every event ──
+
+/** GA4 Measurement Protocol event. */
+async function ga4Event(measurementId: string, apiSecret: string, clientId: string, name: string, params: Record<string, unknown>) {
+  const body = { client_id: clientId, events: [{ name, params }] };
   await fetch(`https://www.google-analytics.com/mp/collect?measurement_id=${encodeURIComponent(measurementId)}&api_secret=${encodeURIComponent(apiSecret)}`, {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(10_000),
   });
 }
 
-async function metaPurchase(pixelId: string, token: string, value: number, input: PurchaseInput) {
+/** Meta Conversions API event. `eventId` MUST match the browser pixel's eventID
+ *  so Meta de-duplicates the browser + server copies. action_source defaults to
+ *  `website`; an in-clinic charge passes `physical_store`. */
+async function metaEvent(pixelId: string, token: string, eventName: string, eventId: string, opts: { value?: number; email?: string | null; actionSource?: string; sourceUrl?: string | null }) {
   const user_data: Record<string, string[]> = {};
-  if (input.email) user_data.em = [sha256(input.email)];
+  if (opts.email) user_data.em = [sha256(opts.email)];
   const body = {
     data: [{
-      event_name: 'Purchase',
+      event_name: eventName,
       event_time: Math.floor(Date.now() / 1000),
-      action_source: 'physical_store',
-      event_id: input.bookingId, // dedup with the browser pixel
+      action_source: opts.actionSource ?? 'website',
+      event_id: eventId,
+      ...(opts.sourceUrl ? { event_source_url: opts.sourceUrl } : {}),
       user_data,
-      custom_data: { currency: 'GBP', value },
+      ...(opts.value != null ? { custom_data: { currency: 'GBP', value: opts.value } } : {}),
     }],
   };
-  await fetch(`https://graph.facebook.com/v19.0/${encodeURIComponent(pixelId)}/events?access_token=${encodeURIComponent(token)}`, {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+  await fetch(`https://graph.facebook.com/v23.0/${encodeURIComponent(pixelId)}/events?access_token=${encodeURIComponent(token)}`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(10_000),
   });
+}
+
+async function ga4Purchase(measurementId: string, apiSecret: string, clientId: string, value: number, input: PurchaseInput) {
+  await ga4Event(measurementId, apiSecret, clientId, 'purchase', { currency: 'GBP', value, transaction_id: input.bookingId, ...(input.campaign ? { campaign: input.campaign } : {}) });
+}
+
+async function metaPurchase(pixelId: string, token: string, value: number, input: PurchaseInput) {
+  await metaEvent(pixelId, token, 'Purchase', input.bookingId, { value, email: input.email, actionSource: 'physical_store' });
+}
+
+/** Lead — an enquiry/consultation request (top of funnel; no monetary value).
+ *  Best-effort, never throws. `eventId` de-dupes with the browser Pixel. */
+export async function sendLead(input: { eventId: string; clientId?: string | null; email?: string | null; sourceUrl?: string | null }): Promise<void> {
+  if (!crmEnabled) return;
+  try {
+    const [ids, secrets] = await Promise.all([readJson(TRACKING_KEY), readJson(SECRETS_KEY)]);
+    const clientId = input.clientId || input.eventId;
+    await Promise.allSettled([
+      ids.metaPixelId && secrets.metaCapiToken ? metaEvent(ids.metaPixelId, secrets.metaCapiToken, 'Lead', input.eventId, { email: input.email, sourceUrl: input.sourceUrl }) : null,
+      ids.ga4Id && secrets.ga4ApiSecret ? ga4Event(ids.ga4Id, secrets.ga4ApiSecret, clientId, 'generate_lead', { currency: 'GBP', value: 0 }) : null,
+    ].filter(Boolean) as Promise<unknown>[]);
+  } catch (e) {
+    console.error('[conversions] lead failed:', (e as Error)?.message);
+  }
+}
+
+/** Schedule — a booking was placed (pre-charge). De-dupes with the browser Pixel
+ *  via the booking id; the matching Purchase fires later when the card is charged. */
+export async function sendSchedule(input: { bookingId: string; valuePence: number; clientId?: string | null; email?: string | null; campaign?: string | null }): Promise<void> {
+  if (!crmEnabled) return;
+  try {
+    const [ids, secrets] = await Promise.all([readJson(TRACKING_KEY), readJson(SECRETS_KEY)]);
+    const value = Math.max(0, input.valuePence) / 100;
+    const clientId = input.clientId || input.bookingId;
+    await Promise.allSettled([
+      ids.metaPixelId && secrets.metaCapiToken ? metaEvent(ids.metaPixelId, secrets.metaCapiToken, 'Schedule', input.bookingId, { value, email: input.email }) : null,
+      ids.ga4Id && secrets.ga4ApiSecret ? ga4Event(ids.ga4Id, secrets.ga4ApiSecret, clientId, 'begin_checkout', { currency: 'GBP', value, ...(input.campaign ? { campaign: input.campaign } : {}) }) : null,
+    ].filter(Boolean) as Promise<unknown>[]);
+  } catch (e) {
+    console.error('[conversions] schedule failed:', (e as Error)?.message);
+  }
 }

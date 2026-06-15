@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, canViewClinical } from '@/lib/auth';
 import { marketingConsentFields } from '@/lib/consent';
+import { encClinical } from '@/lib/clinical-crypto';
+import { Prisma } from '@prisma/client';
 
 const NOTE_TYPES = ['NOTE', 'CLINICAL', 'COMPLAINT', 'FOLLOW_UP', 'CALL'] as const;
 
@@ -16,7 +18,7 @@ export async function addNote(clientId: string, summary: string, type: string = 
   if (t === 'CLINICAL' && !canViewClinical(session.role)) return { ok: false, error: 'Clinical notes are restricted to clinical staff.' };
   const { db } = await import('@/lib/db');
   const note = await db.interaction.create({
-    data: { clientId, type: t as never, summary: summary.trim(), detail: detail?.trim() || null, author: session.email, pinned: Boolean(pinned) },
+    data: { clientId, type: t as never, summary: summary.trim(), detail: detail?.trim() ? encClinical(detail.trim()) : null, author: session.email, pinned: Boolean(pinned) },
   });
   const { logAudit } = await import('@/lib/audit');
   await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, clientId, summary: `${t.toLowerCase()} note added`, meta: { noteId: note.id } });
@@ -25,13 +27,18 @@ export async function addNote(clientId: string, summary: string, type: string = 
 }
 
 // GDPR right-to-erasure — pseudonymise a client's personal data while keeping
-// financial/audit records intact for legal retention. Requires clients.export.
+// financial/audit records intact for legal retention. Requires clients.delete.
 export async function eraseClientData(clientId: string) {
   if (!crmEnabled) return { ok: false };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'clients.export')) return { ok: false, error: 'Not permitted' };
+  if (!session || !sessionCan(session, 'clients.delete')) return { ok: false, error: 'Not permitted' };
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
+  // Fetch before erasing — purchaserEmail is a plain string (no FK), so we
+  // need the current email to match GiftVouchers the client purchased.
+  const client = await db.client.findUnique({ where: { id: clientId }, select: { email: true } });
+  if (!client) return { ok: false, error: 'Not found.' };
+  const erasedEmail = `erased-${clientId}@redacted.invalid`;
   // Art. 17 erasure across ALL personal/special-category data, atomically. We
   // pseudonymise the Client row + strip clinical free-text from RETAINED
   // financial records (bookings/consultations kept for HMRC/lawful retention,
@@ -44,7 +51,7 @@ export async function eraseClientData(clientId: string) {
     db.client.update({
       where: { id: clientId },
       data: {
-        firstName: 'Erased', lastName: null, email: `erased-${clientId}@redacted.invalid`,
+        firstName: 'Erased', lastName: null, email: erasedEmail,
         phone: null, dob: null, notes: null, allergies: null, medicalFlag: null, medicalFlagSetBy: null, medicalFlagAt: null,
         marketingOptIn: false, unsubscribed: true, portalActive: false, passwordHash: null,
         resetTokenHash: null, resetTokenExp: null,
@@ -54,6 +61,11 @@ export async function eraseClientData(clientId: string) {
     // identifying + special-category free-text from them.
     db.booking.updateMany({ where: { clientId }, data: { notes: null, allergyNote: null, cancelReason: null, clinicalNoteEnc: null, clinicalNoteBy: null, clinicalNoteAt: null } }),
     db.consultation.updateMany({ where: { clientId }, data: { concerns: null, message: null, medicalNotes: null } }),
+    // Consultation rows are retained (clinical-audit basis) but their staff team-notes
+    // (ConsultationNote.body — free-text, can hold personal/clinical detail) have no
+    // retention basis and are keyed via the consultation, so the Client-cascade never
+    // reaches them. Delete them explicitly for a complete Art. 17 erasure.
+    db.consultationNote.deleteMany({ where: { consultation: { clientId } } }),
     // Hard-delete the records that exist only to serve the data subject.
     db.interaction.deleteMany({ where: { clientId } }),
     db.healthAssessment.deleteMany({ where: { clientId } }),
@@ -64,8 +76,42 @@ export async function eraseClientData(clientId: string) {
     db.npsResponse.deleteMany({ where: { clientId } }),
     db.followUp.deleteMany({ where: { clientId } }),
     db.emailEvent.deleteMany({ where: { clientId } }),
+    // BLD-152: AppointmentSession stores session answers (aftercare_confirmed_by
+    // contains the client's typed name; startedBy stores staff email). Must be
+    // erased under Art. 17 — no financial retention basis for the session data.
+    db.appointmentSession.deleteMany({ where: { booking: { clientId } } }),
+    // BLD-127: scrub call recordings/transcripts/raw payload for this client.
+    db.callRecord.updateMany({ where: { matchedClientId: clientId }, data: { transcript: null, recordingUrl: null, raw: Prisma.DbNull, transcriptStatus: 'unavailable' } }),
+    // BLD-286: broaden Art. 17 to non-special-category personal-data tables.
+    // Referrals made by this client (referrer PII) — hard-delete; the reward
+    // history has no stand-alone retention basis once the referrer is erased.
+    db.referral.deleteMany({ where: { referrerId: clientId } }),
+    // Referral rows where THIS client is the referred person — null the FK and
+    // the captured email so the referrer's record becomes non-identifying.
+    db.referral.updateMany({ where: { referredId: clientId }, data: { referredId: null, referredEmail: null } }),
+    // Chat conversations initiated by this client (free text, contact details).
+    // ChatMessage rows cascade on ChatConversation delete.
+    db.chatConversation.deleteMany({ where: { clientId } }),
+    // Waitlist entries (treatment window, contact details) — no retention basis.
+    db.waitlistEntry.deleteMany({ where: { clientId } }),
+    // Legacy Appointment model (pre-Booking era) — status/schedule data only,
+    // no financial retention basis, safe to hard-delete.
+    db.appointment.deleteMany({ where: { clientId } }),
+    // Null fingerprint fields in DiscountClaim — re-identifiable without retention basis.
+    db.discountClaim.updateMany({ where: { clientId }, data: { emailNorm: 'erased', phoneNorm: null, nameDobKey: null } }),
+    // Strip PII from retail Orders (email/name/phone/address) — keep order number
+    // and amounts for Xero/HMRC basis. Order.clientId is a nullable String set at
+    // checkout (no formal FK relation), so we match on it directly.
+    db.order.updateMany({ where: { clientId }, data: { name: 'Erased', email: erasedEmail, phone: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
+    // GiftVouchers claimed by this client — strip purchaser + recipient PII.
+    db.giftVoucher.updateMany({ where: { claimedByClientId: clientId }, data: { purchaserName: 'Erased', purchaserEmail: erasedEmail, recipientName: null, recipientEmail: null, message: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
+    // GiftVouchers purchased by this client (email-matched; no purchaserClientId FK).
+    db.giftVoucher.updateMany({ where: { purchaserEmail: client.email }, data: { purchaserName: 'Erased', purchaserEmail: erasedEmail } }),
+    // PromoRedemption — null the captured email (BLD-315 residual: SAR exports it
+    // but erasure previously did not remove it).
+    db.promoRedemption.updateMany({ where: { clientId }, data: { email: null } }),
   ]);
-  await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
+  await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
   revalidatePath(`/admin/clients/${clientId}`);
   return { ok: true };
 }
@@ -102,6 +148,35 @@ export async function deleteClient(clientId: string, confirm: string) {
     meta: { email: c.email },
   });
   revalidatePath('/admin/clients');
+  return { ok: true };
+}
+
+// BLD-314 Phase 3: GDPR Art.17 erasure for academy trainees. Requires
+// settings.manage (admin-level). Pseudonymises the student row and hard-deletes
+// the records that have no retention basis (passkeys, progress tokens).
+// Enrolment rows are retained pseudonymously (certification verification basis).
+export async function eraseStudentData(studentId: string) {
+  if (!crmEnabled) return { ok: false };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'settings.manage')) return { ok: false, error: 'Not permitted.' };
+  const { db } = await import('@/lib/db');
+  const { logAudit } = await import('@/lib/audit');
+  const student = await db.academyStudent.findUnique({ where: { id: studentId }, select: { email: true } });
+  if (!student) return { ok: false, error: 'Student not found.' };
+  await db.$transaction([
+    db.academyStudent.update({
+      where: { id: studentId },
+      data: {
+        firstName: 'Erased', lastName: null, email: `erased-${studentId}@redacted.invalid`,
+        phone: null, dob: null, portalActive: false, passwordHash: null,
+        resetTokenHash: null, resetTokenExp: null,
+      },
+    }),
+    // Remove authentication credentials — no retention basis.
+    db.studentPasskey.deleteMany({ where: { studentId } }),
+  ]);
+  await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, summary: `Academy student ${student.email} data erased (GDPR Art.17)` });
+  revalidatePath('/admin/academy');
   return { ok: true };
 }
 

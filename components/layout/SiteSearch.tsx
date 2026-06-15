@@ -68,7 +68,7 @@ export function SiteSearch({ light }: { light?: boolean }) {
                 <li key={`${h.type}-${h.href}`}>
                   <Link href={h.href} onClick={() => setOpen(false)} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm hover:bg-[var(--color-bone)]">
                     <span className="min-w-0 truncate text-[var(--color-ink)]">{h.title}</span>
-                    <span className="shrink-0 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone-soft)]">{h.type}</span>
+                    <span className="shrink-0 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">{h.type}</span>
                   </Link>
                 </li>
               ))}

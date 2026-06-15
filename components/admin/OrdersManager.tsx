@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { EmptyState } from '@/components/admin/EmptyState';
 
 export type OrderRow = {
   id: string; number: string; createdAt: string; name: string; email: string; method: string; totalPence: number;
@@ -13,11 +14,19 @@ const STATUS: Record<string, string> = { PENDING: 'bg-amber-100 text-amber-800',
 
 export function OrdersManager({ rows, canManage }: { rows: OrderRow[]; canManage: boolean }) {
   const [open, setOpen] = useState<string | null>(null);
-  if (rows.length === 0) return <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 text-sm text-[var(--color-stone)]">No orders yet.</p>;
+  if (rows.length === 0) return (
+    <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] bg-[var(--color-porcelain)]">
+      <EmptyState
+        title="No orders yet"
+        hint="Retail orders placed in the online shop appear here to fulfil, add tracking and manage."
+        icon={<><path d="M5 8h14l-1 11a2 2 0 0 1-2 1.8H8a2 2 0 0 1-2-1.8Z" /><path d="M9 8V6a3 3 0 0 1 6 0v2" /></>}
+      />
+    </div>
+  );
   return (
     <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
-      <table className="w-full text-sm">
-        <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th className="p-3">Order</th><th className="p-3">Customer</th><th className="p-3">Total</th><th className="p-3">Status</th><th className="p-3">Fulfilment</th></tr></thead>
+      <table className="w-full text-sm tabular-nums">
+        <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th scope="col" className="p-3">Order</th><th scope="col" className="p-3">Customer</th><th scope="col" className="p-3">Total</th><th scope="col" className="p-3">Status</th><th scope="col" className="p-3">Fulfilment</th></tr></thead>
         <tbody>
           {rows.map((r) => (
             <Row key={r.id} r={r} open={open === r.id} onToggle={() => setOpen(open === r.id ? null : r.id)} canManage={canManage} />

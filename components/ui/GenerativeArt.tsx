@@ -59,15 +59,18 @@ export function GenerativeArt({
         />
       ))}
 
-      {/* Static metallic sheen — the "luxury" tell */}
-      <span
-        className="pointer-events-none absolute -inset-1/4"
-        style={{
-          background:
-            'conic-gradient(from 210deg, transparent 0deg, rgba(255,255,255,0.10) 40deg, transparent 90deg, transparent 270deg, rgba(255,255,255,0.07) 310deg, transparent 360deg)',
-          mixBlendMode: 'overlay',
-        }}
-      />
+      {/* BLD-122: wrap the oversized sheen in an inset-0 clip so -inset-1/4
+          doesn't push body scrollWidth wider than the viewport on mobile. */}
+      <span className="pointer-events-none absolute inset-0 overflow-hidden">
+        <span
+          className="absolute -inset-1/4"
+          style={{
+            background:
+              'conic-gradient(from 210deg, transparent 0deg, rgba(255,255,255,0.10) 40deg, transparent 90deg, transparent 270deg, rgba(255,255,255,0.07) 310deg, transparent 360deg)',
+            mixBlendMode: 'overlay',
+          }}
+        />
+      </span>
 
       {/* Top light + bottom shade + vignette */}
       <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_-10%,rgba(255,255,255,0.30),transparent_55%)]" />

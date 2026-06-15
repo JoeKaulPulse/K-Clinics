@@ -1,24 +1,19 @@
 import 'server-only';
 import { Resend } from 'resend';
 import { site } from './site';
+import { getSecret } from './secrets';
 import { K_MARK_LIGHT_B64, K_BADGE_B64, K_WORDMARK_LIGHT_B64 } from './brand-email-assets';
 import { EMAIL_HEROES } from './email-heroes';
 import { giftCardTheme } from './gift-card-themes';
 
-const apiKey = process.env.RESEND_API_KEY;
-const resend = apiKey ? new Resend(apiKey) : null;
-
 // Resend sends from the verified `mail.<domain>` subdomain; replies (and reply
-// tracking) route to `reply.mail.<domain>` via Resend Inbound. Env overrides win.
+// tracking) route to `reply.mail.<domain>` via Resend Inbound. Credentials and
+// addresses resolve from owner-managed values first, then hosting env, then a
+// sensible default — so a key entered in /admin/settings/credentials works
+// without a redeploy.
 const MAIL_HOST = (() => { try { return new URL(site.url).hostname.replace(/^www\./, ''); } catch { return 'kclinics.co.uk'; } })();
-const FROM = process.env.EMAIL_FROM || `KClinics <hello@mail.${MAIL_HOST}>`;
-const REPLY_TO = process.env.EMAIL_REPLY_TO || `KClinics <replies@reply.mail.${MAIL_HOST}>`;
 
 export type SendResult = { ok: boolean; id?: string; error?: string };
-
-// Default sender address (the part inside <…>), used to rebuild the From header
-// when a campaign overrides just the display name.
-const FROM_ADDRESS = (FROM.match(/<([^>]+)>/)?.[1] || FROM).trim();
 
 export async function sendEmail(opts: {
   to: string;
@@ -34,19 +29,33 @@ export async function sendEmail(opts: {
   /** Extra file attachments (e.g. an .ics calendar invite). */
   attachments?: { filename: string; content: Buffer | string; contentType?: string }[];
 }): Promise<SendResult> {
-  if (!resend) return { ok: false, error: 'RESEND_API_KEY not configured' };
+  const apiKey = await getSecret('RESEND_API_KEY');
+  if (!apiKey) return { ok: false, error: 'RESEND_API_KEY not configured' };
+  const resend = new Resend(apiKey);
+  const FROM = (await getSecret('EMAIL_FROM')) || `KClinics <hello@mail.${MAIL_HOST}>`;
+  const REPLY_TO = (await getSecret('EMAIL_REPLY_TO')) || `KClinics <replies@reply.mail.${MAIL_HOST}>`;
+  const FROM_ADDRESS = (FROM.match(/<([^>]+)>/)?.[1] || FROM).trim();
   try {
     const from = opts.from?.trim() ? opts.from.trim() : opts.fromName?.trim() ? `${opts.fromName.trim()} <${FROM_ADDRESS}>` : FROM;
     const attachments = [...(brandAttachments(opts.html).attachments || []), ...(opts.attachments || [])];
-    const { data, error } = await resend.emails.send({
-      from,
-      to: opts.to,
-      subject: opts.subject,
-      html: opts.html,
-      replyTo: opts.replyTo || REPLY_TO,
-      ...(attachments.length ? { attachments } : {}),
-      ...(opts.headers ? { headers: opts.headers } : {}),
-    });
+    // BLD-281: cap the Resend call so a hanging API can't pin the serverless
+    // function to its maxDuration — booking/notify flows degrade fast instead.
+    const TIMEOUT = Symbol('timeout');
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const result = await Promise.race([
+      resend.emails.send({
+        from,
+        to: opts.to,
+        subject: opts.subject,
+        html: opts.html,
+        replyTo: opts.replyTo || REPLY_TO,
+        ...(attachments.length ? { attachments } : {}),
+        ...(opts.headers ? { headers: opts.headers } : {}),
+      }),
+      new Promise<typeof TIMEOUT>((resolve) => { timer = setTimeout(() => resolve(TIMEOUT), 10_000); }),
+    ]).finally(() => { if (timer) clearTimeout(timer); });
+    if (result === TIMEOUT) return { ok: false, error: 'Email send timed out after 10s' };
+    const { data, error } = result;
     if (error) return { ok: false, error: String(error.message || error) };
     return { ok: true, id: data?.id };
   } catch (e) {
@@ -59,20 +68,25 @@ export async function sendEmail(opts: {
 // URL is reachable from the recipient's mail client. Only attached when the HTML
 // actually references the cid, so unrelated mail stays lean.
 function brandAttachments(html: string) {
-  const attachments: { filename: string; content: Buffer; contentType: string; inlineContentId: string }[] = [];
+  // Resend marks an attachment inline (and binds it to a `cid:` reference in the
+  // HTML) only when the field is named `contentId`. It was previously
+  // `inlineContentId`, which Resend ignores — so the marks were sent as plain
+  // attachments with no Content-ID, rendering as broken images in the header while
+  // the files showed up in the attachment list.
+  const attachments: { filename: string; content: Buffer; contentType: string; contentId: string }[] = [];
   for (const [motif, b64] of Object.entries(EMAIL_HEROES)) {
     if (html.includes(`cid:hero-${motif}`)) {
-      attachments.push({ filename: `kclinics-${motif}.gif`, content: Buffer.from(b64, 'base64'), contentType: 'image/gif', inlineContentId: `hero-${motif}` });
+      attachments.push({ filename: `kclinics-${motif}.gif`, content: Buffer.from(b64, 'base64'), contentType: 'image/gif', contentId: `hero-${motif}` });
     }
   }
   if (html.includes('cid:kmark')) {
-    attachments.push({ filename: 'k-mark.png', content: Buffer.from(K_MARK_LIGHT_B64, 'base64'), contentType: 'image/png', inlineContentId: 'kmark' });
+    attachments.push({ filename: 'k-mark.png', content: Buffer.from(K_MARK_LIGHT_B64, 'base64'), contentType: 'image/png', contentId: 'kmark' });
   }
   if (html.includes('cid:kbadge')) {
-    attachments.push({ filename: 'k-badge.png', content: Buffer.from(K_BADGE_B64, 'base64'), contentType: 'image/png', inlineContentId: 'kbadge' });
+    attachments.push({ filename: 'k-badge.png', content: Buffer.from(K_BADGE_B64, 'base64'), contentType: 'image/png', contentId: 'kbadge' });
   }
   if (html.includes('cid:kwordmark')) {
-    attachments.push({ filename: 'k-clinics.png', content: Buffer.from(K_WORDMARK_LIGHT_B64, 'base64'), contentType: 'image/png', inlineContentId: 'kwordmark' });
+    attachments.push({ filename: 'k-clinics.png', content: Buffer.from(K_WORDMARK_LIGHT_B64, 'base64'), contentType: 'image/png', contentId: 'kwordmark' });
   }
   return attachments.length ? { attachments } : {};
 }
@@ -269,14 +283,15 @@ export function tmplWinBack(firstName: string, unsubUrl: string) {
   });
 }
 
-export function tmplReviewRequest(firstName: string, link: string, treatment?: string) {
+export function tmplReviewRequest(firstName: string, link: string, treatment?: string, googleUrl?: string) {
   return emailShell({
     preheader: 'We would love your feedback',
     body: `${heroBand('review')}
     <h1 style="font-size:26px;margin:0 0 16px;">How did we do, ${escape(firstName)}?</h1>
     <p>We hope you are loving the results of your recent visit to KClinics${treatment ? ` for your ${escape(treatment)}` : ''}.</p>
     <p>If you have a moment, we would be so grateful if you could share your experience — it helps us, and helps others discover the clinic.</p>
-    <p style="margin:28px 0;">${btn(link, 'Leave a review')}</p>
+    <p style="margin:28px 0 ${googleUrl ? '12px' : '28px'};">${btn(link, 'Leave a review')}</p>
+    ${googleUrl ? `<p style="margin:0 0 24px;font-size:14px;color:#7d6259;">Happy to post on Google too? <a href="${googleUrl}" style="color:#856a4a;font-weight:600;">Leave us a Google review</a> — it means the world to a new clinic.</p>` : ''}
     <p>It only takes a minute, from any device.</p>
     <p>With warmth,<br>The KClinics team</p>`,
   });
@@ -586,22 +601,63 @@ export function tmplBookingRescheduled(o: {
   });
 }
 
-export function tmplChargeReceipt(o: { firstName: string; treatment: string; pricePence: number; late?: boolean; vat?: { netPence: number; vatPence: number; ratePct: number } | null }) {
-  const vatRows = o.vat
-    ? `<tr><td style="color:#91766e;padding-right:20px;">Net</td><td>${fmtMoney(o.vat.netPence)}</td></tr>
-       <tr><td style="color:#91766e;padding-right:20px;">VAT (${o.vat.ratePct}%)</td><td>${fmtMoney(o.vat.vatPence)}</td></tr>`
-    : '';
+export function tmplChargeReceipt(o: {
+  firstName: string;
+  treatment: string;
+  pricePence: number;
+  late?: boolean;
+  vat?: { netPence: number; vatPence: number; ratePct: number } | null;
+  // Richer, itemised receipt detail (all optional — falls back to a single line).
+  items?: { label: string; pricePence: number }[];
+  clinician?: string | null;
+  dateLabel?: string | null;
+  paymentMethod?: string | null;
+  reference?: string | null;
+  discountPence?: number | null;
+}) {
+  const lc = 'font-family:Helvetica,Arial,sans-serif;';
+  const muted = 'color:#91766e;';
+  // Itemised lines — the booked treatment(s) and any add-ons. Late fees are a
+  // single line; otherwise fall back to the primary treatment when no items.
+  const lines = o.late
+    ? [{ label: 'Late-cancellation fee', pricePence: o.pricePence }]
+    : (o.items && o.items.length ? o.items : [{ label: o.treatment, pricePence: o.pricePence }]);
+  const itemRows = lines.map((it, i) => `
+        <tr>
+          <td style="padding:11px 0 11px;${i ? 'border-top:1px solid rgba(42,36,32,0.08);' : ''}color:#3d352f;">${escape(it.label)}</td>
+          <td align="right" style="padding:11px 0 11px;${i ? 'border-top:1px solid rgba(42,36,32,0.08);' : ''}color:#3d352f;white-space:nowrap;">${fmtMoney(it.pricePence)}</td>
+        </tr>`).join('');
+  const totalRow = (label: string, value: string, strong = false) => `
+        <tr><td style="padding:8px 0;${muted}">${label}</td><td align="right" style="padding:8px 0;${strong ? 'font-weight:700;color:#2a2420;font-size:18px;' : 'color:#3d352f;'}white-space:nowrap;">${value}</td></tr>`;
+  const summaryRows = [
+    o.discountPence ? totalRow('Discount', `−${fmtMoney(o.discountPence)}`) : '',
+    o.vat ? totalRow('Net', fmtMoney(o.vat.netPence)) : '',
+    o.vat ? totalRow(`VAT (${o.vat.ratePct}%)`, fmtMoney(o.vat.vatPence)) : '',
+    totalRow('Total paid', fmtMoney(o.pricePence), true),
+  ].join('');
+  // Meta block (date / reference / clinician / payment method) — only what's known.
+  const metaRow = (label: string, value: string) => `
+        <tr><td style="padding:3px 16px 3px 0;${muted}white-space:nowrap;">${label}</td><td style="padding:3px 0;color:#3d352f;">${escape(value)}</td></tr>`;
+  const meta = [
+    o.dateLabel ? metaRow('Date', o.dateLabel) : '',
+    o.reference ? metaRow('Reference', o.reference) : '',
+    o.clinician ? metaRow('Clinician', o.clinician) : '',
+    o.paymentMethod ? metaRow('Payment', o.paymentMethod) : '',
+  ].join('');
   return emailShell({
     preheader: `Receipt — ${o.treatment}`,
     body: `${heroBand('receipt')}
-    <h1 style="font-size:24px;margin:0 0 16px;">Thank you, ${escape(o.firstName)}.</h1>
-    <p>${o.late ? 'A late-cancellation fee has been processed' : 'Your payment has been processed'} for your <strong>${escape(o.treatment)}</strong>.</p>
-    <table style="font-family:Helvetica,Arial,sans-serif;font-size:16px;color:#3d352f;line-height:2;">
-      ${vatRows}
-      <tr><td style="color:#91766e;padding-right:20px;">${o.vat ? 'Total paid' : 'Amount'}</td><td><strong>${fmtMoney(o.pricePence)}</strong></td></tr>
+    <h1 style="font-size:24px;margin:0 0 14px;">Thank you, ${escape(o.firstName)}.</h1>
+    <p style="margin:0 0 22px;">${o.late ? 'A late-cancellation fee has been processed.' : `Your payment has been received for your <strong>${escape(o.treatment)}</strong>. Here is your receipt.`}</p>
+    ${meta ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="${lc}font-size:13px;line-height:1.5;margin:0 0 18px;">${meta}</table>` : ''}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="${lc}font-size:15px;background:#fbf5ee;border:1px solid rgba(42,36,32,0.08);border-radius:12px;padding:6px 20px;">
+      <tr><td colspan="2" style="padding:14px 0 6px;font-size:10px;letter-spacing:2px;text-transform:uppercase;${muted}">Details</td></tr>
+      ${itemRows}
+      <tr><td colspan="2" style="padding:2px 0;border-top:2px solid rgba(42,36,32,0.12);"></td></tr>
+      ${summaryRows}
     </table>
-    <p style="margin-top:20px;">This is your receipt. ${o.late ? '' : 'We hope you love your results.'}</p>
-    <p>With warmth,<br>The KClinics team</p>`,
+    <p style="margin:22px 0 0;font-size:13px;${muted}">${o.vat ? 'Includes VAT at the rate shown. ' : ''}Please keep this receipt for your records.${o.late ? '' : ' We hope you love your results.'}</p>
+    <p style="margin-top:18px;">With warmth,<br>The KClinics team</p>`,
   });
 }
 

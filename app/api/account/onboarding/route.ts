@@ -13,6 +13,8 @@ export async function POST(req: Request) {
 
   const b = await req.json().catch(() => ({}));
   const { db } = await import('@/lib/db');
+  // BLD-128: evidence marketing consent (timestamp/source/version) when opt-in given.
+  const { marketingConsentFields } = await import('@/lib/consent');
   await db.client.update({
     where: { id: client.id },
     data: {
@@ -21,6 +23,7 @@ export async function POST(req: Request) {
       ...(Array.isArray(b.concerns) ? { concerns: b.concerns.map((c: string) => String(c).slice(0, 60)).slice(0, 12) } : {}),
       ...(typeof b.smsReminders === 'boolean' ? { smsReminders: b.smsReminders } : {}),
       ...(typeof b.marketingOptIn === 'boolean' ? { marketingOptIn: b.marketingOptIn } : {}),
+      ...(b.marketingOptIn === true ? marketingConsentFields('portal-onboarding') : {}),
       onboardedAt: new Date(),
     },
   });

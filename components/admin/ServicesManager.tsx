@@ -117,7 +117,7 @@ function ImportPanel({ services, treatments }: { services: Service[]; treatments
           {preview && preview.length > 0 && (
             <div className="max-h-64 overflow-y-auto rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white">
               <table className="w-full text-sm">
-                <thead><tr className="sticky top-0 bg-[var(--color-bone)] text-left text-xs uppercase text-[var(--color-stone-soft)]"><th className="p-2">Variant</th><th className="p-2">Min</th><th className="p-2">Price</th><th className="p-2">Courses</th></tr></thead>
+                <thead><tr className="sticky top-0 bg-[var(--color-bone)] text-left text-xs uppercase text-[var(--color-stone-soft)]"><th scope="col" className="p-2">Variant</th><th scope="col" className="p-2">Min</th><th scope="col" className="p-2">Price</th><th scope="col" className="p-2">Courses</th></tr></thead>
                 <tbody>
                   {preview.map((v, i) => (
                     <tr key={i} className="border-t border-[var(--color-line)]">
@@ -207,7 +207,7 @@ function ServiceCard({ service }: { service: Service }) {
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
             <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">
-              <th className="py-1 pr-2">Variant</th><th className="px-2">Min</th><th className="px-2">Price £</th><th className="px-2">Cost £</th><th className="px-2">Margin</th><th className="px-2">Status</th><th className="px-2"></th>
+              <th scope="col" className="py-1 pr-2">Variant</th><th scope="col" className="px-2">Min</th><th scope="col" className="px-2">Price £</th><th scope="col" className="px-2">Cost £</th><th scope="col" className="px-2">Margin</th><th scope="col" className="px-2">Status</th><th scope="col" className="px-2"></th>
             </tr></thead>
             <tbody>
               {service.variants.map((v) => <VariantRow key={v.id} v={v} />)}

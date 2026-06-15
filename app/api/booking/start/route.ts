@@ -113,7 +113,7 @@ export async function POST(req: Request) {
   const resourceIds = await withDbRetry(() => assignResources(d.startISO, totalDuration, treatmentSlug));
 
   const { stripe, ensureCustomer } = await import('@/lib/stripe');
-  const customerId = await ensureCustomer(client);
+  let customerId = await ensureCustomer(client);
 
   const start = new Date(d.startISO);
   const end = new Date(start.getTime() + totalDuration * 60_000);
@@ -137,7 +137,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Please confirm you are 18 or over to book a treatment.' }, { status: 400 });
   }
   const { isAdultOn } = await import('@/lib/age');
-  const dobRow = await db.client.findUnique({ where: { id: client.id }, select: { dob: true } });
+  const dobRow = await db.client.findUnique({ where: { id: client.id }, select: { dob: true, marketingOptIn: true } });
   if (!dobRow?.dob || !isAdultOn(dobRow.dob, start)) {
     return NextResponse.json({ ok: false, error: 'Clinic treatments are available to clients aged 18 or over. Please check the date of birth on your profile.' }, { status: 403 });
   }
@@ -146,25 +146,73 @@ export async function POST(req: Request) {
   const { bookingAttribution } = await import('@/lib/marketing');
   const attribution = await bookingAttribution();
 
-  const booking = await db.booking.create({
-    data: {
-      clientId: client.id,
-      treatmentSlug, treatmentTitle: title,
-      startAt: start, endAt: end, durationMin: totalDuration,
-      bufferMin: bookingFor(treatmentSlug).bufferMin ?? 0,
-      pricePence: totalPrice,
-      status: 'PENDING',
-      notes: d.notes || null,
-      refreshments,
-      allergyNote: d.allergyNote?.trim() ? encClinical(d.allergyNote.trim()) : null,
-      aftercareAckAt: d.aftercareAck ? new Date() : null,
-      stripeCustomerId: customerId,
-      practitionerId,
-      ...attribution,
-      resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,
-      items: { create: items },
-    },
+  // Same-day appointments are by request (owner decision): the client picks a
+  // genuinely-free time, but staff approve before anything is held or charged.
+  // "Today" is judged in clinic-local (London) time.
+  const londonDay = (x: Date) => x.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+  const sameDayRequest = londonDay(start) === londonDay(new Date());
+
+  // Hold the slot ATOMICALLY — re-check overlaps inside a Serializable transaction
+  // so two concurrent portal bookings can't grab the same clinician/room (mirrors
+  // app/api/booking/create). A same-day REQUESTED booking doesn't hold a slot
+  // (staff approve first), so it skips the clash rejection.
+  const bufferMin = bookingFor(treatmentSlug).bufferMin ?? 0;
+  const endBuffered = new Date(end.getTime() + bufferMin * 60_000);
+  const result = await db.$transaction(async (tx) => {
+    if (!sameDayRequest) {
+      const overlapping = await tx.booking.findMany({
+        where: { status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { lt: endBuffered }, endAt: { gt: start } },
+        select: { practitionerId: true, resources: { select: { id: true } } },
+      });
+      const practitionerClash = !!practitionerId && overlapping.some((b) => b.practitionerId === practitionerId);
+      const resourceClash = resourceIds.length > 0 && overlapping.some((b) => b.resources.some((r) => resourceIds.includes(r.id)));
+      if (practitionerClash || resourceClash) return null;
+    }
+    return tx.booking.create({
+      data: {
+        clientId: client.id,
+        treatmentSlug, treatmentTitle: title,
+        startAt: start, endAt: end, durationMin: totalDuration,
+        bufferMin,
+        pricePence: totalPrice,
+        status: sameDayRequest ? 'REQUESTED' : 'PENDING',
+        notes: d.notes || null,
+        refreshments,
+        allergyNote: d.allergyNote?.trim() ? encClinical(d.allergyNote.trim()) : null,
+        aftercareAckAt: d.aftercareAck ? new Date() : null,
+        stripeCustomerId: customerId,
+        practitionerId,
+        ...attribution,
+        resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,
+        items: { create: items },
+      },
+    });
+  }, { isolationLevel: 'Serializable' }).catch((e) => {
+    const err = e as { code?: string; message?: string };
+    if (err.code === 'P2034' || /write conflict|deadlock|could not serialize/i.test(err.message || '')) return 'CONFLICT' as const;
+    throw e;
   });
+  if (result === 'CONFLICT' || !result) {
+    return NextResponse.json({ ok: false, error: 'That time was just taken. Please choose another slot.' }, { status: 409 });
+  }
+  const booking = result;
+
+  // Same-day request: don't take a card, burn a discount, or hold the slot yet —
+  // a member of staff approves first. Notify the team and return a "requested" state.
+  if (sameDayRequest) {
+    const { logAudit } = await import('@/lib/audit');
+    await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Same-day appointment requested: ${title} on ${start.toLocaleString('en-GB')}`, meta: { totalPence: totalPrice, sameDayRequest: true } });
+    try {
+      const { notifyStaffByPermission } = await import('@/lib/notifications');
+      await notifyStaffByPermission('bookings.manage', {
+        kind: 'status',
+        title: 'Same-day appointment request',
+        body: `${client.firstName || 'A client'} requested ${title} today at ${start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}. Approve or decline.`,
+        href: `/admin/bookings/${booking.id}`,
+      });
+    } catch { /* best-effort */ }
+    return NextResponse.json({ ok: true, requested: true, bookingId: booking.id, manageToken: booking.manageToken });
+  }
 
   // Burn the welcome discount if it was the best offer used.
   if (usedWelcome && welcomeClaim) {
@@ -177,17 +225,47 @@ export async function POST(req: Request) {
   }
 
   const { logAudit } = await import('@/lib/audit');
-  await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Booking created: ${title} on ${start.toLocaleString('en-GB')}`, meta: { totalPence: totalPrice, items: items.length } });
+  await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Booking created: ${title}${sessions > 1 ? ` (course of ${sessions})` : ''} on ${start.toLocaleString('en-GB')}`, meta: { totalPence: totalPrice, items: items.length, sessions } });
+
+  // Server-side Schedule conversion (GA4 begin_checkout + Meta CAPI Schedule),
+  // deduped with the browser pixel via the booking id. The Purchase event fires
+  // later when the card is charged. Email only on marketing opt-in.
+  try {
+    const { sendSchedule } = await import('@/lib/conversions');
+    await sendSchedule({ bookingId: booking.id, valuePence: totalPrice, clientId: client.id, email: dobRow?.marketingOptIn ? client.email : null, campaign: booking.attribCampaign });
+  } catch { /* best-effort */ }
+
+  // BLD-133: if this booking came from a waitlist claim link, retire the offer.
+  if (d.waitlistToken) { const { claimWaitlist } = await import('@/lib/waitlist'); await claimWaitlist(d.waitlistToken, { clientId: client.id }); }
 
   // ── Card on file: reuse a saved card, else save one via SetupIntent ──
+  // Verify the stored customer exists under the CURRENT Stripe key, and self-heal
+  // if not. A stored id from a different key/mode (e.g. a test-mode customer id
+  // against a live key, or an account switch) is the classic cause of SetupIntent
+  // failing with "No such customer" — ensureCustomer trusts the stored id without
+  // checking. Recreating it lets the booking proceed instead of dead-ending.
   let defaultPm: string | null = null;
   try {
     const customer = await stripe().customers.retrieve(customerId);
-    if (customer && !('deleted' in customer && customer.deleted)) {
-      const dpm = (customer as { invoice_settings?: { default_payment_method?: string | { id: string } } }).invoice_settings?.default_payment_method;
-      defaultPm = typeof dpm === 'string' ? dpm : dpm?.id ?? null;
+    if (!customer || ('deleted' in customer && customer.deleted)) {
+      throw Object.assign(new Error('customer deleted'), { code: 'resource_missing' });
     }
-  } catch { /* fall through to collecting a card */ }
+    const dpm = (customer as { invoice_settings?: { default_payment_method?: string | { id: string } } }).invoice_settings?.default_payment_method;
+    defaultPm = typeof dpm === 'string' ? dpm : dpm?.id ?? null;
+  } catch (e) {
+    if ((e as { code?: string })?.code === 'resource_missing') {
+      try {
+        const fresh = await stripe().customers.create({
+          email: client.email, name: [client.firstName, client.lastName].filter(Boolean).join(' ') || undefined,
+          phone: client.phone || undefined, metadata: { clientId: client.id },
+        });
+        customerId = fresh.id;
+        await db.client.update({ where: { id: client.id }, data: { stripeCustomerId: fresh.id } }).catch(() => {});
+        await db.booking.update({ where: { id: booking.id }, data: { stripeCustomerId: fresh.id } }).catch(() => {});
+      } catch (e2) { console.error('[booking-start] customer recreate failed for', booking.id, e2); }
+    }
+    // Any other retrieve error: fall through; the SetupIntent guard below handles it.
+  }
 
   if (defaultPm) {
     await db.booking.update({ where: { id: booking.id }, data: { status: 'CONFIRMED', stripePaymentMethodId: defaultPm } });
@@ -197,11 +275,26 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, bookingId: booking.id, needCard: false, manageToken: booking.manageToken });
   }
 
-  const setupIntent = await stripe().setupIntents.create({
-    customer: customerId, usage: 'off_session', payment_method_types: ['card'],
-    metadata: { bookingId: booking.id, clientId: client.id },
-  });
-  await db.booking.update({ where: { id: booking.id }, data: { stripeSetupIntentId: setupIntent.id } });
-
-  return NextResponse.json({ ok: true, bookingId: booking.id, needCard: true, clientSecret: setupIntent.client_secret });
+  // Card setup must not be able to 500 the response. The booking is already
+  // committed (PENDING) above, so an unguarded Stripe failure here surfaced to
+  // clients as a misleading "Network error" while leaving a dangling held slot.
+  try {
+    const setupIntent = await stripe().setupIntents.create({
+      customer: customerId, usage: 'off_session', payment_method_types: ['card'],
+      metadata: { bookingId: booking.id, clientId: client.id },
+    });
+    await db.booking.update({ where: { id: booking.id }, data: { stripeSetupIntentId: setupIntent.id } });
+    return NextResponse.json({ ok: true, bookingId: booking.id, needCard: true, clientSecret: setupIntent.client_secret });
+  } catch (e) {
+    console.error('[booking-start] card setup could not start for', booking.id, e);
+    // Capture the real Stripe reason in the audit log so it's visible in the admin
+    // (no server-log access needed to diagnose, e.g. a bad key vs a missing customer).
+    const se = e as { message?: string; code?: string; type?: string };
+    const reason = [se.type, se.code, se.message].filter(Boolean).join(' · ').slice(0, 300) || 'unknown error';
+    // Release the held slot (CANCELLED is excluded from the held-slot checks) so a
+    // failed attempt doesn't block the time, then return a clean, actionable error.
+    await db.booking.update({ where: { id: booking.id }, data: { status: 'CANCELLED' } }).catch(() => {});
+    await logAudit({ action: 'BOOKING_CANCELLED', actor: 'system', clientId: client.id, bookingId: booking.id, summary: `Auto-cancelled: secure card setup could not start — ${reason}` }).catch(() => {});
+    return NextResponse.json({ ok: false, error: 'We couldn’t start secure card setup. Please try again in a moment.' }, { status: 502 });
+  }
 }

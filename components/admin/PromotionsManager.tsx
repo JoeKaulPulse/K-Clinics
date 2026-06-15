@@ -69,7 +69,7 @@ export function PromotionsManager({ universal, campaignBatches }: { universal: U
         {universal.length === 0 ? <p className="text-sm text-[var(--color-stone-soft)]">No codes yet.</p> : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[680px] text-sm">
-              <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th className="py-2">Code</th><th>Discount</th><th>Used</th><th>Window</th><th>Status</th><th></th></tr></thead>
+              <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th scope="col" className="py-2">Code</th><th scope="col">Discount</th><th scope="col">Used</th><th scope="col">Window</th><th scope="col">Status</th><th scope="col"></th></tr></thead>
               <tbody>
                 {universal.map((p) => (
                   <tr key={p.id} className="border-t border-[var(--color-line)]">

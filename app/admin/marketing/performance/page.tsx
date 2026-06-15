@@ -16,7 +16,8 @@ export default async function PerformancePage() {
   if (!sessionCan(session, 'campaigns.view') && !sessionCan(session, 'finance.view')) redirect('/admin');
 
   const { marketingPerformance } = await import('@/lib/marketing-analytics');
-  const perf = await marketingPerformance(90);
+  const { ga4Performance } = await import('@/lib/ga4-data');
+  const [perf, ga4] = await Promise.all([marketingPerformance(90), ga4Performance(90)]);
   const maxWeek = Math.max(1, ...perf.weekly.map((w) => w.revenuePence));
   const trendArrow = perf.forecast.trend === 'up' ? '↑' : perf.forecast.trend === 'down' ? '↓' : '→';
 
@@ -47,6 +48,34 @@ export default async function PerformancePage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* GA4 traffic by channel — what GA4 actually sees (sessions + conversions),
+          complementing the first-party attribution above. Live when Google is
+          connected and the GA4 property id is set. */}
+      <section className="mt-8 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="font-[family-name:var(--font-display)] text-lg">Traffic by channel <span className="text-xs font-normal text-[var(--color-stone-soft)]">· GA4 · 90 days</span></h2>
+          {ga4.configured && <span className="text-xs text-[var(--color-stone)] tabular-nums">{ga4.sessions.toLocaleString('en-GB')} sessions · {ga4.conversions.toLocaleString('en-GB')} conversions</span>}
+        </div>
+        {!ga4.configured ? (
+          <p className="text-sm text-[var(--color-stone)]">Connect Google in <Link href="/admin/marketing/connections" className="underline">Connections</Link> and set the GA4 property id (env <code className="rounded bg-[var(--color-bone)] px-1">GA4_PROPERTY_ID</code> — the numeric id, not the G-XXXX tag) to see live sessions, conversions and channel mix here.</p>
+        ) : ga4.byChannel.length === 0 ? (
+          <p className="text-sm text-[var(--color-stone)]">No GA4 traffic recorded in the last 90 days.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th className="pb-2">Channel</th><th className="pb-2 text-right">Sessions</th><th className="pb-2 text-right">Conversions</th></tr></thead>
+            <tbody>
+              {ga4.byChannel.map((c) => (
+                <tr key={c.source} className="border-t border-[var(--color-line)]">
+                  <td className="py-2">{c.source}</td>
+                  <td className="py-2 text-right tabular-nums">{c.sessions.toLocaleString('en-GB')}</td>
+                  <td className="py-2 text-right tabular-nums">{c.conversions.toLocaleString('en-GB')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </section>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">

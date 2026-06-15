@@ -5,6 +5,7 @@ import { getSession, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { BookingActions } from '@/components/admin/BookingActions';
+import { PractitionerReassign } from '@/components/admin/PractitionerReassign';
 import { RequestCardButton } from '@/components/admin/RequestCardButton';
 import { ClinicalWorkflow } from '@/components/admin/ClinicalWorkflow';
 import { ConsumablesPanel } from '@/components/admin/ConsumablesPanel';
@@ -13,6 +14,9 @@ import { BookingLocation } from '@/components/admin/BookingLocation';
 import { ConsentPanel } from '@/components/admin/ConsentPanel';
 import { BeforePhotoCapture } from '@/components/admin/BeforePhotoCapture';
 import { ReadinessPanel } from '@/components/admin/ReadinessPanel';
+import { AddTreatment } from '@/components/admin/AddTreatment';
+import { ScheduleFollowUp } from '@/components/admin/ScheduleFollowUp';
+import { SameDayRequestActions } from '@/components/admin/SameDayRequestActions';
 import { sessionCan } from '@/lib/auth';
 import { site } from '@/lib/site';
 
@@ -37,9 +41,9 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
 
   // Consent: the form mapped to this treatment + any signed/pending records.
   const { db } = await import('@/lib/db');
-  const { categoryForTreatment, ensureDefaultTemplates, isLaserTreatment } = await import('@/lib/consent');
+  const { templateKeyForTreatment, ensureDefaultTemplates, isLaserTreatment } = await import('@/lib/consent');
   await ensureDefaultTemplates();
-  const consentKey = await categoryForTreatment(b.treatmentSlug);
+  const consentKey = await templateKeyForTreatment(b.treatmentSlug);
   const isLaser = isLaserTreatment(b.treatmentSlug);
   const [consentTemplate, signedConsents, pendingConsents, beforePhotos] = await Promise.all([
     db.consentTemplate.findUnique({ where: { key: consentKey } }),
@@ -77,12 +81,38 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const visitPrefs = await db.booking.findUnique({ where: { id }, select: { refreshments: true, allergyNote: true, aftercareAckAt: true, treatmentSlug: true, startAt: true, clientId: true } });
   if (visitPrefs?.allergyNote) { const { decClinical } = await import('@/lib/clinical-crypto'); visitPrefs.allergyNote = decClinical(visitPrefs.allergyNote); }
   const { refreshmentLabel } = await import('@/lib/hospitality');
+
+  // BLD-211 — clinicians eligible to perform this treatment (competent or generalist),
+  // for the practitioner-reassign control. The currently-assigned clinician is always
+  // included so they remain visible even if competencies later changed.
+  const canManageBooking = sessionCan(session, 'bookings.manage');
+  const clinicians: { id: string; name: string }[] = [];
+  if (canManageBooking) {
+    const rows = await db.adminUser.findMany({
+      where: { isClinician: true, active: true, OR: [{ competencies: { has: b.treatmentSlug } }, { competencies: { isEmpty: true } }] },
+      orderBy: { name: 'asc' }, select: { id: true, name: true, email: true },
+    });
+    for (const r of rows) clinicians.push({ id: r.id, name: r.name || r.email });
+    if (b.practitionerId && b.practitioner && !clinicians.some((c) => c.id === b.practitionerId)) {
+      clinicians.unshift({ id: b.practitionerId, name: b.practitioner.name || b.practitioner.email });
+    }
+  }
+
   let nextRec: string | null = null;
+  // Recommended next-session date, also used to pre-fill the staff follow-up scheduler.
+  let followUpRecDate: string | null = null;
+  let followUpRecTime: string | null = null;
+  let followUpRecLabel: string | null = null;
   if (visitPrefs) {
     const { recommendedNext, formatInterval } = await import('@/lib/treatment-intervals');
     const completed = await db.booking.count({ where: { clientId: visitPrefs.clientId, treatmentSlug: visitPrefs.treatmentSlug, status: 'COMPLETED' } });
     const rec = recommendedNext(visitPrefs.treatmentSlug, completed + 1, visitPrefs.startAt);
-    if (rec) nextRec = `${formatInterval(rec.weeks)} (≈ ${rec.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})`;
+    if (rec) {
+      nextRec = `${formatInterval(rec.weeks)} (≈ ${rec.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})`;
+      followUpRecDate = rec.date.toLocaleDateString('en-CA', { timeZone: 'Europe/London' }); // YYYY-MM-DD
+      followUpRecTime = rec.date.toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour12: false, hour: '2-digit', minute: '2-digit' });
+      followUpRecLabel = formatInterval(rec.weeks);
+    }
   }
   const stockItems = canConsumables
     ? await db.stockItem.findMany({ where: { active: true }, orderBy: [{ category: 'asc' }, { name: 'asc' }], select: { id: true, name: true, unit: true, currentQty: true } })
@@ -93,6 +123,26 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const used = usedRaw.map((m) => ({
     id: m.id, itemName: m.item.name, unit: m.item.unit, qty: Math.abs(m.delta), batchNo: m.batchNo, by: m.by, at: m.createdAt.toISOString(),
   }));
+
+  // Treatments & billing — add-on line items taken on this appointment, plus the
+  // variants a clinician can add mid-session (canonical prices).
+  const canManageBk = sessionCan(session, 'bookings.manage');
+  const addOnItems = await db.bookingItem.findMany({ where: { bookingId: id, isAddon: true }, orderBy: { createdAt: 'asc' }, select: { id: true, label: true, pricePence: true } }).catch(() => []);
+  const addOnTotal = addOnItems.reduce((s, it) => s + it.pricePence, 0);
+  const basePence = Math.max(0, b.pricePence - addOnTotal);
+  // Surface the booked course/session count. Clients can book a Course of 3/6/10,
+  // but after booking only the treatment name + total showed — staff couldn't tell
+  // how many sessions were paid for. The primary (non-add-on) line item holds it.
+  const primaryItem = await db.bookingItem.findFirst({ where: { bookingId: id, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { sessions: true } }).catch(() => null);
+  const courseSessions = primaryItem?.sessions ?? 1;
+  const perSessionPence = courseSessions > 1 && basePence > 0 ? Math.round(basePence / courseSessions) : basePence;
+  const canAddTreatment = canManageBk && !b.chargedAt && !['CANCELLED', 'NO_SHOW'].includes(b.status);
+  let variantOptions: { id: string; label: string; pricePence: number }[] = [];
+  if (canAddTreatment) {
+    const { listServices } = await import('@/lib/services');
+    const svcs = await listServices(false).catch(() => []);
+    variantOptions = svcs.flatMap((s) => s.variants.map((v) => ({ id: v.id, label: `${s.name} — ${v.name}`, pricePence: v.pricePence }))).slice(0, 300);
+  }
 
   // Clinical treatment note (clinical staff only) — decrypt for display.
   const canClinical = sessionCan(session, 'clients.clinical.view');
@@ -128,6 +178,14 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             {new Date(b.startAt).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
             {' · '}{b.durationMin} min
           </p>
+          {courseSessions > 1 ? (
+            <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-[color-mix(in_oklab,var(--color-gold)_16%,transparent)] px-3 py-1 text-sm font-medium text-[var(--color-ink)]">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9h18M8 3v3M16 3v3" /></svg>
+              Course of {courseSessions} sessions{perSessionPence > 0 ? ` · ${money(perSessionPence)} per session` : ''}
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-[var(--color-stone-soft)]">Single session</p>
+          )}
         </div>
         <div className="text-right">
           <p className="font-[family-name:var(--font-display)] text-2xl">{b.pricePence > 0 ? money(b.pricePence) : 'On consultation'}</p>
@@ -136,7 +194,13 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[1.1fr_1fr]">
+      {b.status === 'REQUESTED' && canManageBk && (
+        <div className="mt-6">
+          <SameDayRequestActions bookingId={b.id} when={new Date(b.startAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} />
+        </div>
+      )}
+
+      <div className="mt-8 grid gap-8 lg:grid-cols-[1.1fr_1fr] [&>section]:min-w-0">
         <section>
           <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Client</h2>
           <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
@@ -164,17 +228,62 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
               <ul className="space-y-1.5 text-sm">
                 {b.client.assessments.map((a) => (
                   <li key={a.id} className="flex items-center justify-between gap-3">
-                    <span>{assessmentLabel(a)}</span>
-                    <span className="text-xs text-[var(--color-stone)]">{a.submittedAt ? new Date(a.submittedAt).toLocaleDateString('en-GB') : '—'}</span>
+                    <span className="min-w-0 break-words">{assessmentLabel(a)}</span>
+                    <span className="shrink-0 text-xs text-[var(--color-stone)]">{a.submittedAt ? new Date(a.submittedAt).toLocaleDateString('en-GB') : '—'}</span>
                   </li>
                 ))}
               </ul>
             )}
             <Link href={`/admin/clients/${b.clientId}`} className="mt-3 inline-block text-xs text-[var(--color-gold)] hover:underline">View full health records →</Link>
           </div>
+
+          {/* Staff: book the client's next appointment (fills this column + delivers
+              the requested follow-up scheduling). Hidden for cancelled/no-show. */}
+          {!['CANCELLED', 'NO_SHOW'].includes(b.status) && canManageBk && (
+            <ScheduleFollowUp fromBookingId={b.id} recommendedDate={followUpRecDate} recommendedTime={followUpRecTime} recommendedLabel={followUpRecLabel} />
+          )}
         </section>
 
         <section className="space-y-6">
+          {/* BLD-138: the immersive in-clinic walkthrough (arrival → wrap-up). */}
+          {!['CANCELLED', 'NO_SHOW'].includes(b.status) && sessionCan(session, 'bookings.manage') && (
+            <Link
+              href={`/admin/bookings/${b.id}/session`}
+              className="flex items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-gold)]/50 bg-[var(--color-bone)] p-5 transition-all hover:border-[var(--color-gold)] hover:shadow-[var(--shadow-soft)]"
+            >
+              <span className="min-w-0">
+                <span className="block font-[family-name:var(--font-display)] text-lg">Live appointment session</span>
+                <span className="mt-0.5 block text-sm text-[var(--color-stone)]">
+                  {b.finishedAt ? 'Completed — review the walkthrough & timings' : b.startedAt ? 'In progress — rejoin the walkthrough' : 'Run the guided client walkthrough: arrival, consent, treatment, aftercare'}
+                </span>
+              </span>
+              <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-gold)] text-white">→</span>
+            </Link>
+          )}
+          {/* Treatments & billing — itemised total; add a treatment mid-session */}
+          {!['CANCELLED', 'NO_SHOW'].includes(b.status) && (canManageBk || addOnItems.length > 0) && (
+            <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
+              <p className="eyebrow mb-3 text-[var(--color-stone)]">Treatments &amp; billing</p>
+              <div className="space-y-1.5 text-sm">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="min-w-0 break-words">{b.treatmentTitle}{courseSessions > 1 ? ` · course of ${courseSessions}` : ''}</span>
+                  <span className="shrink-0 tabular-nums text-[var(--color-stone)]">{basePence > 0 ? money(basePence) : 'On consultation'}</span>
+                </div>
+                {addOnItems.map((it) => (
+                  <div key={it.id} className="flex items-baseline justify-between gap-3">
+                    <span className="min-w-0 break-words text-[var(--color-stone)]">+ {it.label}</span>
+                    <span className="shrink-0 tabular-nums text-[var(--color-stone)]">{money(it.pricePence)}</span>
+                  </div>
+                ))}
+                <div className="flex items-baseline justify-between gap-3 border-t border-[var(--color-line)] pt-2 font-medium">
+                  <span>{b.chargedAt ? 'Charged' : 'Total to charge'}</span>
+                  <span className="tabular-nums">{money(b.chargedAt ? (b.chargedPence ?? b.pricePence) : b.pricePence)}</span>
+                </div>
+              </div>
+              {canAddTreatment && <div className="mt-4"><AddTreatment bookingId={b.id} variants={variantOptions} /></div>}
+              {b.chargedAt && addOnItems.length > 0 && <p className="mt-3 text-xs text-[var(--color-stone-soft)]">Already charged — add further treatments to a new booking.</p>}
+            </div>
+          )}
           <ReadinessPanel items={readiness.items} ready={readiness.ready} neededCount={readiness.neededCount} started={!!b.startedAt} />
           <div data-tour="clinical-workflow"><ClinicalWorkflow
             bookingId={b.id}
@@ -249,9 +358,11 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
         </ol>
       </section>
 
-      {b.practitioner && (
+      {canManageBooking ? (
+        <PractitionerReassign bookingId={b.id} current={b.practitionerId ?? null} clinicians={clinicians} />
+      ) : b.practitioner ? (
         <p className="mt-6 text-sm text-[var(--color-stone)]">Assigned clinician: <span className="font-medium text-[var(--color-ink)]">{b.practitioner.name || b.practitioner.email}</span></p>
-      )}
+      ) : null}
       {heldResources.length > 0 && (
         <p className="mt-2 text-sm text-[var(--color-stone)]">
           {heldResources.map((r) => `${r.name}${r.floor ? ` (${r.floor})` : ''}`).join(' · ')}

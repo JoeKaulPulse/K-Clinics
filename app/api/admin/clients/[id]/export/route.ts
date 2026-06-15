@@ -4,12 +4,13 @@ import { crmEnabled } from '@/lib/crm';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Subject Access Request export — a full JSON of a client's record. Clinical
-// (encrypted health) data is only included for staff who may view it.
+// Subject Access Request export — a full JSON of a client's record (Art. 15
+// UK GDPR). Clinical (encrypted health) data is only included for staff who
+// hold the revocable clients.clinical.view permission (BLD-315).
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
   const { id } = await params;
-  const { getSession, sessionCan, canViewClinical } = await import('@/lib/auth');
+  const { getSession, sessionCan } = await import('@/lib/auth');
   const session = await getSession();
   if (!sessionCan(session, 'clients.export')) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
 
@@ -19,6 +20,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     include: {
       consultations: true, interactions: true, appointments: true, bookings: true,
       emails: true, discountClaims: true, tasks: true,
+      // BLD-315: previously omitted data-subject records now included.
+      aiAnalyses: { include: { images: true } },
+      followUps: true,
+      reviews: true,
+      npsResponses: true,
+      waitlist: true,
+      referralsMade: true,
+      points: true, // loyalty ledger — the subject's own points history (BLD-315)
+      callRecords: { select: { id: true, direction: true, duration: true, callerNumber: true, answeredAt: true, endedAt: true, transcript: true, createdAt: true } },
     },
   });
   if (!c) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
@@ -30,21 +40,43 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   c.allergies = decClinical(c.allergies);
   for (const con of c.consultations) { con.concerns = decClinical(con.concerns); con.message = decClinical(con.message); con.medicalNotes = decClinical(con.medicalNotes); }
   for (const bk of c.bookings) { bk.allergyNote = decClinical(bk.allergyNote); }
+  for (const it of c.interactions) { it.detail = decClinical(it.detail); }
 
   // Strip secrets from the dump.
   const { passwordHash, resetTokenHash, resetTokenExp, ...client } = c as Record<string, unknown> & { passwordHash?: unknown; resetTokenHash?: unknown; resetTokenExp?: unknown };
   void passwordHash; void resetTokenHash; void resetTokenExp;
 
-  const out: Record<string, unknown> = { exportedAt: new Date().toISOString(), exportedBy: session!.email, client };
+  // Fetch records not declared as reverse-FK relations on Client (no include path). (BLD-315)
+  const [signedConsents, beforePhotos, chatConversations, shopOrders, consentRequests, promoRedemptions] = await Promise.all([
+    db.signedConsent.findMany({ where: { clientId: id } }),
+    db.beforePhoto.findMany({ where: { clientId: id } }),
+    db.chatConversation.findMany({ where: { clientId: id }, include: { messages: true } }),
+    db.order.findMany({ where: { clientId: id }, include: { items: true }, orderBy: { createdAt: 'desc' } }),
+    db.consentRequest.findMany({ where: { clientId: id }, orderBy: { createdAt: 'desc' } }),
+    db.promoRedemption.findMany({ where: { clientId: id }, orderBy: { createdAt: 'desc' } }),
+  ]);
 
-  if (canViewClinical(session!.role)) {
+  const out: Record<string, unknown> = {
+    exportedAt: new Date().toISOString(),
+    exportedBy: session!.email,
+    client,
+    signedConsents,
+    beforePhotos,
+    chatConversations,
+    shopOrders,
+    consentRequests,
+    promoRedemptions,
+  };
+
+  // BLD-315: use the revocable permission, not the role-based canViewClinical.
+  if (sessionCan(session, 'clients.clinical.view')) {
     const assessments = await db.healthAssessment.findMany({ where: { clientId: id }, orderBy: { submittedAt: 'desc' } });
     const { formatAssessment } = await import('@/lib/health-assessments');
     out.healthAssessments = await Promise.all(assessments.map((a) => formatAssessment(a.id)));
   }
 
   const { logAudit } = await import('@/lib/audit');
-  await logAudit({ action: 'ASSESSMENT_VIEWED', actor: session!.email, actorRole: session!.role, clientId: id, summary: 'Client data exported (SAR)' });
+  await logAudit({ action: 'DATA_EXPORTED', actor: session!.email, actorRole: session!.role, clientId: id, summary: 'Client data exported (SAR — Art. 15 UK GDPR)' });
 
   const name = [c.firstName, c.lastName].filter(Boolean).join('-').toLowerCase() || 'client';
   return new NextResponse(JSON.stringify(out, null, 2), {

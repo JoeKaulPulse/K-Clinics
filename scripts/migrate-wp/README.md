@@ -12,23 +12,57 @@ later step) health/consent forms and history.
 ## Easiest: one command
 
 ```bash
-# 0) one-time: pull, drop full-dump.sql into scripts/migrate-wp/data/, and put
-#    your secrets in scripts/migrate-wp/.env (git-ignored). Easiest way:
+# 0) one-time: pull, unzip the dump, and put your secrets in
+#    scripts/migrate-wp/.env (git-ignored). Easiest way (no install needed —
+#    npx fetches the Vercel CLI on the fly; note --environment=production,
+#    plain `env pull` would fetch development values):
 git pull
-vercel env pull scripts/migrate-wp/.env          # fills DATABASE_URL + keys
+unzip -o scripts/migrate-wp/127_0_0_1.sql.zip -d scripts/migrate-wp/data/
+npx vercel login <your-vercel-email>             # sends a verification email
+npx vercel link --yes --scope kaul-joe --project k-clinics
+npx vercel env pull --environment=production scripts/migrate-wp/.env
 #    …or create that .env by hand with DATABASE_URL=… and HEALTH_ENCRYPTION_KEY=…
+#    (values: vercel.com → k-clinics → Settings → Environment Variables)
 
-# 1) PREVIEW — writes nothing, shows the counts for all three steps
+# 1) PREVIEW — writes nothing, shows the counts for all steps
 node scripts/migrate-wp/import-all.mjs
 
-# 2) GO LIVE — writes clients + history + clinical to the database, in order
+# 2) GO LIVE — writes clients + history + staff + clinical to the database
 node scripts/migrate-wp/import-all.mjs --commit
+
+# 3) RE-RUN AFTER A BAD IMPORT — also FIXES rows the earlier import wrote badly:
+#    booking times (slot ids had been read as hours), consent signatures (kept
+#    as raw hex), care-plan/recommendation/skin-quiz text (spaces stripped),
+#    and moves consents into the proper SignedConsent e-signature records.
+node scripts/migrate-wp/import-all.mjs --commit --repair
 ```
 
-`import-all.mjs` auto-finds the dump, loads `.env`, and runs the three importers
-in the right order (stops if any step fails; skips clinical if no
-`HEALTH_ENCRYPTION_KEY`). Re-runnable — it never duplicates. The manual,
-step-by-step commands below are for when you want to run one piece at a time.
+`import-all.mjs` auto-finds the dump, loads `.env`, and runs the importers in
+the right order (stops if any step fails; skips clinical if no
+`HEALTH_ENCRYPTION_KEY`). Re-runnable — it never duplicates. `--repair` only
+ever touches migration-owned rows (source-marked); hand-entered records are
+never modified. The manual, step-by-step commands below are for when you want
+to run one piece at a time.
+
+## If `vercel env pull` gives you blank values
+
+The production secrets are marked **sensitive** in Vercel — `env pull` writes
+them as empty strings and the dashboard can't reveal them either. In that case
+don't run the import locally at all: use the server-side runner, where the
+secrets exist at runtime. It's the same importers, spawned inside the deployed
+app against the committed dump (`/api/build/migrate-wp`, authed with
+`BOARD_QUEUE_TOKEN` like the build queue):
+
+```bash
+# preview a step (writes nothing) / commit + repair a step
+curl -X POST "$BASE_URL/api/build/migrate-wp" -H "Authorization: Bearer $BOARD_QUEUE_TOKEN" \
+  -H "Content-Type: application/json" -d '{"step":"clients"}'
+curl -X POST "$BASE_URL/api/build/migrate-wp" -H "Authorization: Bearer $BOARD_QUEUE_TOKEN" \
+  -H "Content-Type: application/json" -d '{"step":"clients","commit":true,"repair":true}'
+# steps, in order: clients → history → staff → clinical
+```
+
+Each commit run is recorded in the audit log (`DATA_IMPORTED`).
 
 ## Ground rules
 
@@ -84,16 +118,28 @@ a source marker and is skipped if already imported).
 
 - **Clients** ← WordPress users + WooCommerce customers, de-duped by email. Keeps
   signup dates, names, phone (incl. `booked_phone`), DOB (`birthday`), address,
-  and marketing/SMS consent (custom columns + MailPoet + the signup checkbox).
+  and marketing/SMS consent (custom columns + MailPoet + the signup checkbox),
+  with GDPR consent provenance recorded on opted-in clients.
 - **Bookings** ← `grafik`/`grafik_dent` (COMPLETED, or CANCELLED when `del=1`).
+  `tim` is a slot id resolved through `time_consultation` (1 = 09:00 … 45 =
+  20:00) as Europe/London wall time.
 - **Reviews** ← `review_user`. **Loyalty** ← `bonus` → ClientPoints.
-- **Encrypted clinical** ← `sign_table` (consents + signature image),
-  `skviz` (skin quiz), `care_plan`(+dent), `recommendation` → HealthAssessment
-  using the app's encryption (needs `HEALTH_ENCRYPTION_KEY`).
+- **Consent forms** ← `sign_table` → **SignedConsent** (the e-signature system:
+  listed on the client record, printable certificate). Signature images decoded
+  from the dump's hex blobs and encrypted with the app's keys.
+- **Encrypted clinical** ← `skviz` (skin quiz), `care_plan`(+dent),
+  `recommendation` → HealthAssessment using the app's encryption (needs
+  `HEALTH_ENCRYPTION_KEY`).
 - **Consultations** ← `wp_db7_forms` (CF7) + Elementor form submissions.
+- **Nothing is dropped**: records that can't reach a person (guest/kiosk
+  consent signings, users deleted from WordPress before the export) attach to a
+  quarantine client — “Legacy WordPress — Unmatched records”
+  (`unmatched.wordpress@imported.kclinics.local`, tagged `legacy-quarantine`) —
+  for manual reattachment.
 - Passwords are **not** imported — clients set one via "forgot password".
 - **Not migrated** (ripped-template content/config + plumbing): `level*`,
-  `price*`, `time_consultation`, `test`, `logs`, Action Scheduler, Yoast, etc.
+  `price*`, `test`, `logs`, `photos` (filenames only — the image files live on
+  the old server, not in the dump), Action Scheduler, Yoast, etc.
 
 ## Files
 

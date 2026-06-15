@@ -18,9 +18,19 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const { db } = await import('@/lib/db');
 
+  // The public journal pages are ISR-cached (revalidate=3600); refresh them on
+  // demand so newly published/edited/removed posts appear immediately rather
+  // than after the next hourly revalidation (avoids stale listing + stale 404).
+  const revalidateJournal = async (slug?: string | null) => {
+    const { revalidatePath } = await import('next/cache');
+    revalidatePath('/journal'); revalidatePath('/sitemap.xml');
+    if (slug) revalidatePath(`/journal/${slug}`);
+  };
+
   if (body.op === 'delete') {
     if (!body.id) return NextResponse.json({ ok: false, error: 'No id.' }, { status: 400 });
-    await db.post.delete({ where: { id: body.id } }).catch(() => {});
+    const removed = await db.post.delete({ where: { id: body.id }, select: { slug: true } }).catch(() => null);
+    await revalidateJournal(removed?.slug);
     return NextResponse.json({ ok: true });
   }
 
@@ -58,9 +68,11 @@ export async function POST(req: Request) {
         where: { id: body.id },
         data: { ...data, publishedAt: status === 'PUBLISHED' ? (existing?.publishedAt ?? new Date()) : null },
       });
+      await revalidateJournal(post.slug);
       return NextResponse.json({ ok: true, id: post.id, slug: post.slug });
     }
     const post = await db.post.create({ data: { ...data, source: 'admin', publishedAt: status === 'PUBLISHED' ? new Date() : null } });
+    await revalidateJournal(post.slug);
     return NextResponse.json({ ok: true, id: post.id, slug: post.slug });
   } catch (e) {
     const msg = (e as Error)?.message || '';

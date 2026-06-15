@@ -1,7 +1,15 @@
 import type { Metadata, Viewport } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
+import { Fraunces } from 'next/font/google';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  variable: '--font-fraunces',
+  display: 'swap',
+  axes: ['SOFT', 'WONK', 'opsz'],
+});
 import './globals.css';
 import { site } from '@/lib/site';
 import { getTheme, themeToCss } from '@/lib/theme';
@@ -50,7 +58,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // colour change in the CMS re-skins the entire site (falls back to defaults).
   const theme = await getTheme();
   return (
-    <html lang="en-GB" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+    <html lang="en-GB" className={`${GeistSans.variable} ${GeistMono.variable} ${fraunces.variable}`}>
       <head>
         {/* WordPress-editable brand palette → CSS variable overrides. */}
         <style id="brand-theme" dangerouslySetInnerHTML={{ __html: themeToCss(theme) }} />

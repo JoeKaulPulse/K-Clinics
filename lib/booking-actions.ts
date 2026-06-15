@@ -23,6 +23,45 @@ export function isWithin24h(b: Pick<Booking, 'startAt'>): boolean {
 }
 
 /**
+ * Gather the rich detail for a stylised, itemised receipt: line items (primary
+ * treatment + any add-ons), clinician, clinic-local date, a short reference and
+ * the card used. All best-effort — the receipt still sends if any part fails.
+ */
+async function receiptDetail(bookingId: string, paymentMethodId?: string | null): Promise<{
+  items: { label: string; pricePence: number }[];
+  clinician: string | null;
+  dateLabel: string | null;
+  reference: string;
+  paymentMethod: string | null;
+}> {
+  const [items, bk] = await Promise.all([
+    db.bookingItem.findMany({ where: { bookingId }, orderBy: { createdAt: 'asc' }, select: { label: true, pricePence: true, discountPence: true } }).catch(() => []),
+    db.booking.findUnique({ where: { id: bookingId }, select: { startAt: true, practitioner: { select: { name: true } } } }).catch(() => null),
+  ]);
+  let paymentMethod: string | null = null;
+  if (paymentMethodId) {
+    try {
+      const pm = await stripe().paymentMethods.retrieve(paymentMethodId);
+      if (pm.card) { const b = pm.card.brand || 'card'; paymentMethod = `${b.charAt(0).toUpperCase()}${b.slice(1)} •••• ${pm.card.last4}`; }
+    } catch { /* payment-method line is optional */ }
+  }
+  let dateLabel: string | null = null;
+  if (bk) {
+    try {
+      const { fmtClinicDate, fmtClinicTime } = await import('./clinic-time');
+      dateLabel = `${fmtClinicDate(bk.startAt, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · ${fmtClinicTime(bk.startAt)}`;
+    } catch { /* date line is optional */ }
+  }
+  return {
+    items: items.map((i) => ({ label: i.label, pricePence: i.pricePence - (i.discountPence || 0) })),
+    clinician: bk?.practitioner?.name ?? null,
+    dateLabel,
+    reference: bookingId.slice(-6).toUpperCase(),
+    paymentMethod,
+  };
+}
+
+/**
  * Charge the saved card off-session. Handles SCA: if the bank requires action,
  * the booking is left flagged and the client is emailed a confirm link.
  * Returns { ok, requiresAction?, error? }.
@@ -36,6 +75,12 @@ export async function chargeBooking(
   if (!booking.stripeCustomerId || !booking.stripePaymentMethodId) {
     return { ok: false, error: 'No saved card for this booking.' };
   }
+  // BLD-147/246: idempotency. Cheap early-out on caller-supplied data; then re-fetch
+  // from DB so two concurrent staff actions that both read chargedAt:null don't both
+  // reach Stripe and create two PaymentIntents.
+  if (booking.chargedAt) return { ok: true };
+  const fresh = await db.booking.findUnique({ where: { id: booking.id }, select: { chargedAt: true } });
+  if (fresh?.chargedAt) return { ok: true };
 
   try {
     const pi = await stripe().paymentIntents.create({
@@ -47,6 +92,10 @@ export async function chargeBooking(
       confirm: true,
       description: `${opts.late ? 'Late cancellation' : 'Treatment'} — ${booking.treatmentTitle}`,
       metadata: { bookingId: booking.id, late: String(Boolean(opts.late)) },
+    }, {
+      // …and a stable idempotency key so concurrent creates collapse to ONE
+      // PaymentIntent at Stripe (one charge per booking, treatment vs late-fee).
+      idempotencyKey: `booking-charge-${booking.id}-${opts.late ? 'late' : 'treatment'}`,
     });
 
     if (pi.status === 'succeeded') {
@@ -54,7 +103,6 @@ export async function chargeBooking(
         where: { id: booking.id },
         data: { chargePaymentIntentId: pi.id, chargedPence: amountPence, chargedAt: new Date() },
       });
-      await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment receipt', status: 'SENT' } });
       // VAT breakdown on the receipt once the clinic is VAT-registered (dormant otherwise).
       let vat: { netPence: number; vatPence: number; ratePct: number } | null = null;
       try {
@@ -67,11 +115,18 @@ export async function chargeBooking(
           if (b.applied) vat = { netPence: b.netPence, vatPence: b.vatPence, ratePct: b.ratePct };
         }
       } catch { /* receipt still sends without the VAT line */ }
-      await sendEmail({
+      // Receipt email — guarded so a detail lookup or send hiccup can't 500 a
+      // charge that has ALREADY gone through, and recorded with its REAL outcome
+      // (this path previously logged SENT before the send was even attempted,
+      // masking provider/config failures like an unverified domain).
+      const detail = opts.late ? null : await receiptDetail(booking.id, booking.stripePaymentMethodId).catch(() => null);
+      const receipt = await sendEmail({
         to: booking.client.email,
         subject: opts.late ? 'Late-cancellation fee — KClinics' : `Receipt — ${booking.treatmentTitle}`,
-        html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountPence, late: opts.late, vat }),
+        html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountPence, late: opts.late, vat, ...(detail ?? {}) }),
       });
+      if (!receipt.ok) console.error('[charge] receipt email failed:', receipt.error);
+      await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment receipt', status: receipt.ok ? 'SENT' : 'FAILED', providerId: receipt.id, error: receipt.error } }).catch(() => {});
       // Books: raise the Xero invoice (+ payment). Idempotent vs the webhook path.
       try { const { pushBookingSaleToXero } = await import('@/lib/xero'); await pushBookingSaleToXero(booking.id); } catch (e) { console.error('[charge] xero push failed:', (e as Error)?.message); }
       return { ok: true };
@@ -133,17 +188,24 @@ export async function refundBooking(
       payment_intent: booking.chargePaymentIntentId,
       amount,
       metadata: { bookingId: booking.id, reason: (opts.reason || '').slice(0, 200) },
-    });
+    }, { idempotencyKey: `refund-${booking.id}-from-${booking.refundedPence ?? 0}-${amount}` });
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Refund failed at Stripe.' };
   }
 
   const totalRefunded = (booking.refundedPence ?? 0) + amount;
   const fully = totalRefunded >= (booking.chargedPence ?? 0);
-  await db.booking.update({
-    where: { id: booking.id },
+  // CAS: only the writer that advances refundedPence from the value we read runs
+  // the side-effects. Guards the race where a concurrent webhook echo or a second
+  // in-app click creates a Stripe refund with the same idempotencyKey (no-op at
+  // Stripe) but both callers reach this point — the second writer's updateMany
+  // returns count=0 and we return early, so loyalty and Xero fire exactly once.
+  // Mirrors the same pattern in the charge.refunded webhook handler.
+  const claimed = await db.booking.updateMany({
+    where: { id: booking.id, refundedPence: booking.refundedPence },
     data: { refundedPence: totalRefunded, refundedAt: new Date(), refundReason: opts.reason?.slice(0, 500) || booking.refundReason || null },
   });
+  if (claimed.count === 0) return { ok: true, refundedPence: totalRefunded };
 
   // Reverse loyalty points once the booking is fully refunded (best-effort).
   if (fully) {
@@ -190,16 +252,29 @@ export async function finalizeBookingCharge(
   if (!booking) return true;
 
   try {
+    // VAT breakdown on the receipt once the clinic is VAT-registered (dormant otherwise).
+    let vat: { netPence: number; vatPence: number; ratePct: number } | null = null;
+    try {
+      const { getVatConfig, effectiveVatClass, vatBreakdown } = await import('@/lib/vat');
+      const cfg = await getVatConfig();
+      if (cfg.registered) {
+        const { getServiceByTreatment } = await import('@/lib/services');
+        const svc = await getServiceByTreatment(booking.treatmentSlug);
+        const b = vatBreakdown(amountReceivedPence, cfg, effectiveVatClass({ vatClass: svc?.vatClass, category: svc?.category }));
+        if (b.applied) vat = { netPence: b.netPence, vatPence: b.vatPence, ratePct: b.ratePct };
+      }
+    } catch { /* receipt still sends without the VAT line */ }
+    const detail = opts.late ? null : await receiptDetail(booking.id, booking.stripePaymentMethodId);
     await sendEmail({
       to: booking.client.email,
       subject: opts.late ? 'Late-cancellation fee — KClinics' : `Receipt — ${booking.treatmentTitle}`,
-      html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountReceivedPence, late: opts.late }),
+      html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountReceivedPence, late: opts.late, vat, ...(detail ?? {}) }),
     });
     await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment receipt', status: 'SENT' } });
   } catch (e) { console.error('[charge] receipt failed:', (e as Error)?.message); }
   try { const { awardClientSpend } = await import('./client-loyalty'); await awardClientSpend(bookingId); } catch (e) { console.error('[charge] loyalty failed:', (e as Error)?.message); }
   try { const { pushBookingSaleToXero } = await import('@/lib/xero'); await pushBookingSaleToXero(bookingId); } catch (e) { console.error('[charge] xero push failed:', (e as Error)?.message); }
-  try { const { sendPurchase } = await import('./conversions'); await sendPurchase({ bookingId, valuePence: amountReceivedPence, clientId: booking.clientId, email: booking.client.email, campaign: booking.attribCampaign }); } catch (e) { console.error('[charge] conversion failed:', (e as Error)?.message); }
+  try { const { sendPurchase } = await import('./conversions'); await sendPurchase({ bookingId, valuePence: amountReceivedPence, clientId: booking.clientId, email: booking.client.email, campaign: booking.attribCampaign, gclid: booking.gclid }); } catch (e) { console.error('[charge] conversion failed:', (e as Error)?.message); }
   try { await logAudit({ action: 'PAYMENT_CHARGED', actor: 'system', summary: `Charge completed (£${(amountReceivedPence / 100).toFixed(2)})`, bookingId, clientId: booking.clientId }); } catch { /* non-fatal */ }
   return true;
 }
@@ -259,12 +334,17 @@ export async function cancelBooking(
   await db.interaction.create({
     data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Cancelled ${booking.treatmentTitle}${late ? ' (within 24h)' : ''}${charged ? ` — charged £${(charged / 100).toFixed(2)}` : feeFailed ? ' — LATE FEE FAILED (follow up)' : opts.waiveFee && late ? ' — fee waived' : ''}`, author: opts.by },
   });
+
+  // BLD-133: the slot just freed — offer it to the first matching waitlister.
+  import('@/lib/waitlist').then((m) => m.notifyOnFreedSlot(booking.treatmentSlug, booking.startAt)).catch(() => {});
   if (feeFailed) {
     await logAudit({ action: 'PAYMENT_FAILED', actor: opts.by, bookingId: booking.id, clientId: booking.clientId, summary: `Late-cancellation fee (£${(booking.pricePence / 100).toFixed(2)}) failed — follow up.` }).catch(() => {});
   }
 
   // Remove from the shared clinic calendar (Hostinger CalDAV; no-op if unconfigured).
   import('@/lib/hostinger-calendar').then((m) => m.removeBooking(booking.id)).catch(() => {});
+  // Remove from the clinician's Google Calendar too (no-op while parked).
+  import('@/lib/google-calendar').then((m) => m.removeBookingFromClinician(booking.id)).catch(() => {});
 
   // Return any loyalty points the client had applied to this booking.
   try {
@@ -274,12 +354,15 @@ export async function cancelBooking(
     console.error('[cancelBooking] points refund failed (continuing):', (e as Error)?.message);
   }
 
-  // Cancellation email (free vs late-fee).
-  await sendEmail({
+  // Cancellation email (free vs late-fee) — best-effort, with its outcome recorded
+  // so a silent provider/config failure is visible in the email log.
+  const cancelEmail = await sendEmail({
     to: booking.client.email,
     subject: `Booking cancelled — ${booking.treatmentTitle}`,
     html: tmplBookingCancelled({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, start: booking.startAt, feeCharged: charged || undefined }),
   });
+  if (!cancelEmail.ok) console.error('[cancelBooking] email failed:', cancelEmail.error);
+  await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Booking cancelled', status: cancelEmail.ok ? 'SENT' : 'FAILED', providerId: cancelEmail.id, error: cancelEmail.error } }).catch(() => {});
 
   return { ok: true, charged, requiresAction, feeFailed };
 }
@@ -298,21 +381,22 @@ export function isWithin48h(b: Pick<Booking, 'startAt'>): boolean {
 export async function rescheduleBooking(
   bookingId: string,
   newStartISO: string,
-  opts: { by: string; reason?: string },
-): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; error?: string }> {
+  opts: { by: string; reason?: string; admin?: boolean },
+): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; error?: string; code?: 'SLOT_TAKEN' }> {
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
   if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(booking.status)) {
     return { ok: false, error: 'This booking can no longer be rescheduled.' };
   }
-  if (isWithin48h(booking)) {
+  // Client self-service must give >=48h notice; staff (admin) can move any time.
+  if (!opts.admin && isWithin48h(booking)) {
     return { ok: false, error: "Reschedules require at least 48 hours' notice. Please call us on 020 8050 0750 if you need to make a late change." };
   }
 
   const newStart = new Date(newStartISO);
   if (isNaN(newStart.getTime())) return { ok: false, error: 'Invalid date.' };
   if (newStart.getTime() <= Date.now()) return { ok: false, error: 'The new appointment time must be in the future.' };
-  if (newStart.getTime() - Date.now() < RESCHEDULE_WINDOW_MS) {
+  if (!opts.admin && newStart.getTime() - Date.now() < RESCHEDULE_WINDOW_MS) {
     return { ok: false, error: 'The new appointment must be at least 48 hours from now.' };
   }
 
@@ -323,15 +407,21 @@ export async function rescheduleBooking(
   // outside opening hours or on top of another appointment (the UI only offers
   // valid slots, but the API must not trust the client).
   const { isSlotFree } = await import('@/lib/availability');
-  if (!(await isSlotFree(newStartISO, booking.durationMin, booking.treatmentSlug))) {
-    return { ok: false, error: 'That time is no longer available. Please choose another slot.' };
+  // BLD-192: an admin reschedule may move an appointment to any free time (the
+  // 48h-notice gate above already governs client self-service); a staff move must
+  // not be blocked by the public 2-hour online lead window.
+  // Exclude this booking from the clash check so a same-day move doesn't conflict
+  // with its own current slot/clinician/room (BLD reschedule self-clash).
+  if (!(await isSlotFree(newStartISO, booking.durationMin, booking.treatmentSlug, null, { excludeBookingId: bookingId, ...(opts.admin ? { leadMinutes: 0 } : {}) }))) {
+    return { ok: false, code: 'SLOT_TAKEN', error: 'That time is no longer available. Please choose another slot.' };
   }
 
   let charged = 0;
   let requiresAction = false;
 
-  // 4th+ reschedule incurs the full booking price.
-  if (booking.rescheduleCount >= MAX_FREE_RESCHEDULES && booking.pricePence > 0) {
+  // 4th+ reschedule incurs the full booking price — client self-service only;
+  // a staff/admin reschedule never charges a fee.
+  if (!opts.admin && booking.rescheduleCount >= MAX_FREE_RESCHEDULES && booking.pricePence > 0) {
     const res = await chargeBooking(booking, booking.pricePence, { late: false });
     if (!res.ok) {
       if (res.requiresAction) requiresAction = true;
@@ -369,6 +459,8 @@ export async function rescheduleBooking(
   // the existing entry — we must NOT remove it (that would drop the appointment
   // from the clinic calendar entirely).
   import('@/lib/hostinger-calendar').then((m) => m.pushBooking(booking.id)).catch(() => {});
+  // Move the clinician's Google Calendar event to the new time (no-op while parked).
+  import('@/lib/google-calendar').then((m) => m.pushBookingToClinician(booking.id)).catch(() => {});
 
   // Confirmation email (best-effort).
   await sendEmail({

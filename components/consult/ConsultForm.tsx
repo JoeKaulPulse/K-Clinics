@@ -56,14 +56,19 @@ export function ConsultForm() {
   async function submit() {
     setStatus('sending');
     setError('');
+    // Shared id so the browser Lead event de-duplicates against the server-side
+    // CAPI Lead (sent from /api/consult).
+    const eventId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
     try {
       const res = await fetch('/api/consult', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(d),
+        body: JSON.stringify({ ...d, eventId }),
       });
       const json = await res.json();
       if (json.ok) {
+        try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'generate_lead', { currency: 'GBP', value: 0 }); } catch { /* analytics best-effort */ }
+        try { (window as Window & { fbq?: (...a: unknown[]) => void }).fbq?.('track', 'Lead', {}, { eventID: eventId }); } catch { /* analytics best-effort */ }
         setStatus('done');
         return;
       }

@@ -132,6 +132,43 @@ export async function POST(req: Request) {
       await db.liveClass.delete({ where: { id: body.id } });
       return ok();
     }
+    case 'setStudentActive': {
+      // Activate / suspend a trainee's portal access. A suspended trainee loses
+      // access immediately (getCurrentStudent rejects portalActive === false);
+      // bumping sessionEpoch on suspend also revokes their outstanding JWTs, so a
+      // later reactivation doesn't silently restore a pre-suspension session.
+      if (!body.id) return bad();
+      const active = !!body.active;
+      await db.academyStudent.update({
+        where: { id: String(body.id) },
+        data: { portalActive: active, ...(active ? {} : { sessionEpoch: { increment: 1 } }) },
+      });
+      return ok();
+    }
+    case 'updateStudentNotes': {
+      if (!body.id) return bad();
+      const notes = (body.notes as string | undefined)?.slice(0, 4000) || null;
+      await db.academyStudent.update({ where: { id: String(body.id) }, data: { notes } });
+      return ok();
+    }
+    case 'updateFunding': {
+      if (!body.id) return bad();
+      const b = body as Record<string, unknown>;
+      const STATUSES = ['NEW', 'REVIEWING', 'REFERRED', 'APPROVED', 'DECLINED', 'FUNDED', 'CLOSED'];
+      await db.fundingApplication.update({
+        where: { id: String(b.id) },
+        data: {
+          ...(b.status && STATUSES.includes(b.status as string) ? { status: b.status as 'NEW' } : {}),
+          ...(b.notes !== undefined ? { notes: (b.notes as string)?.slice(0, 4000) || null } : {}),
+        },
+      });
+      return ok();
+    }
+    case 'removeFunding': {
+      if (!body.id) return bad();
+      await db.fundingApplication.delete({ where: { id: String(body.id) } });
+      return ok();
+    }
   }
   return NextResponse.json({ ok: false, error: 'Unknown op' }, { status: 400 });
 }

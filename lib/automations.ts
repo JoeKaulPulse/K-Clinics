@@ -3,6 +3,7 @@ import { db } from './db';
 import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking } from './email';
 import { site } from './site';
 import { escapeHtml } from './sanitize';
+import { marketableClientWhere } from './consent';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || site.url;
 const unsub = (token: string) => `${SITE_URL}/api/unsubscribe?t=${token}`;
@@ -20,7 +21,11 @@ type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: 
 export async function runDailyAutomations(): Promise<Tally> {
   const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, errors: 0 };
   const { staffWeeklyDigest, staffReengagement } = await import('@/lib/staff-emails');
-  await Promise.all([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t)]);
+  // BLD-120: allSettled so one failing automation can't abort the rest.
+  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t)]);
+  for (const r of results) {
+    if (r.status === 'rejected') { t.errors++; console.error('[automations] unhandled automation failure:', r.reason); }
+  }
   return t;
 }
 
@@ -31,7 +36,7 @@ async function tierNudges(t: Tally) {
     const tiers = await getTiers();
     const since = new Date(Date.now() - 30 * 864e5);
     const base = (SITE_URL || '').replace(/\/$/, '');
-    const clients = await db.client.findMany({ where: { marketingOptIn: true, unsubscribed: false, membership12moPence: { gt: 0 } }, take: 3000 });
+    const clients = await db.client.findMany({ where: { ...marketableClientWhere(), membership12moPence: { gt: 0 } }, take: 3000 });
     for (const c of clients) {
       if (!canEmail(c)) continue;
       const next = nextTier(tiers, c.membership12moPence);
@@ -72,7 +77,7 @@ async function membershipRenewal(t: Tally) {
     const hi = new Date(now - 120 * 864e5); // ~4 months ago
     const since = new Date(now - 120 * 864e5);
     const clients = await db.client.findMany({
-      where: { marketingOptIn: true, unsubscribed: false, membership12moPence: { gte: paidFloor }, lastVisitAt: { gte: lo, lte: hi } },
+      where: { ...marketableClientWhere(), membership12moPence: { gte: paidFloor }, lastVisitAt: { gte: lo, lte: hi } },
       take: 3000,
     });
     for (const c of clients) {
@@ -102,7 +107,7 @@ async function anniversaries(t: Tally) {
     const today = new Date();
     const since = new Date(Date.now() - 60 * 864e5);
     const base = (SITE_URL || '').replace(/\/$/, '');
-    const clients = await db.client.findMany({ where: { marketingOptIn: true, unsubscribed: false }, take: 5000 });
+    const clients = await db.client.findMany({ where: marketableClientWhere(), take: 5000 });
     for (const c of clients) {
       if (!canEmail(c) || !c.createdAt) continue;
       if (c.createdAt.getMonth() !== today.getMonth() || c.createdAt.getDate() !== today.getDate()) continue;
@@ -167,8 +172,11 @@ async function scheduledGiftVouchers(t: Tally) {
   }
 }
 
-function canEmail(c: { email: string; marketingOptIn: boolean; unsubscribed: boolean }) {
-  return c.email && c.marketingOptIn && !c.unsubscribed;
+function canEmail(c: { email: string; marketingOptIn: boolean; unsubscribed: boolean; marketingConsentAt?: Date | null }) {
+  // BLD-242: a lawful marketing send needs recorded consent evidence, not just
+  // the boolean — legacy opt-ins with no `marketingConsentAt` are suppressed
+  // until re-permissioned (UK GDPR Art.7). Defence-in-depth alongside the query.
+  return Boolean(c.email) && c.marketingOptIn && !c.unsubscribed && !!c.marketingConsentAt;
 }
 // Care-related (transactional) mail — sent regardless of marketing opt-in, but
 // still suppressed for a hard unsubscribe.
@@ -202,17 +210,18 @@ async function followUps(t: Tally) {
   const target = new Date(Date.now() - FOLLOW_UP_DAYS * 864e5);
   const start = new Date(target); start.setHours(0, 0, 0, 0);
   const end = new Date(target); end.setHours(23, 59, 59, 999);
-  const appts = await db.appointment.findMany({
-    where: { status: 'COMPLETED', followUpSent: false, scheduledAt: { gte: start, lte: end } },
+  // Deduplicate via emailEvent (Booking has no followUpSent flag; Appointment is the legacy model).
+  const bookings = await db.booking.findMany({
+    where: { status: 'COMPLETED', startAt: { gte: start, lte: end } },
     include: { client: true },
   });
-  for (const a of appts) {
-    if (canEmail(a.client)) {
-      const res = await sendEmail({ to: a.client.email, subject: `How are you after your ${a.treatment}?`, html: tmplFollowUp(a.client.firstName, a.treatment, unsub(a.client.unsubToken)) });
-      await logEvent(a.clientId, 'FOLLOW_UP', a.client.email, 'Post-treatment follow-up', res);
-      res.ok ? t.followUps++ : t.errors++;
-    }
-    await db.appointment.update({ where: { id: a.id }, data: { followUpSent: true } });
+  for (const a of bookings) {
+    if (!canEmail(a.client)) continue;
+    const already = await db.emailEvent.findFirst({ where: { clientId: a.clientId, kind: 'FOLLOW_UP', status: 'SENT', createdAt: { gte: start } } });
+    if (already) continue;
+    const res = await sendEmail({ to: a.client.email, subject: `How are you after your ${a.treatmentTitle}?`, html: tmplFollowUp(a.client.firstName, a.treatmentTitle, unsub(a.client.unsubToken)) });
+    await logEvent(a.clientId, 'FOLLOW_UP', a.client.email, 'Post-treatment follow-up', res);
+    res.ok ? t.followUps++ : t.errors++;
   }
 }
 
@@ -220,17 +229,18 @@ async function reviews(t: Tally) {
   const target = new Date(Date.now() - REVIEW_DAYS * 864e5);
   const start = new Date(target); start.setHours(0, 0, 0, 0);
   const end = new Date(target); end.setHours(23, 59, 59, 999);
-  const appts = await db.appointment.findMany({
-    where: { status: 'COMPLETED', reviewSent: false, scheduledAt: { gte: start, lte: end } },
+  // Deduplicate via emailEvent (Booking has no reviewSent flag; Appointment is the legacy model).
+  const bookings = await db.booking.findMany({
+    where: { status: 'COMPLETED', startAt: { gte: start, lte: end } },
     include: { client: true },
   });
-  for (const a of appts) {
-    if (canEmail(a.client)) {
-      const res = await sendEmail({ to: a.client.email, subject: 'We’d love your thoughts', html: tmplReviewRequest(a.client.firstName, unsub(a.client.unsubToken)) });
-      await logEvent(a.clientId, 'REVIEW_REQUEST', a.client.email, 'Review request', res);
-      res.ok ? t.reviews++ : t.errors++;
-    }
-    await db.appointment.update({ where: { id: a.id }, data: { reviewSent: true } });
+  for (const a of bookings) {
+    if (!canEmail(a.client)) continue;
+    const already = await db.emailEvent.findFirst({ where: { clientId: a.clientId, kind: 'REVIEW_REQUEST', status: 'SENT', createdAt: { gte: start } } });
+    if (already) continue;
+    const res = await sendEmail({ to: a.client.email, subject: "We'd love your thoughts", html: tmplReviewRequest(a.client.firstName, unsub(a.client.unsubToken)) });
+    await logEvent(a.clientId, 'REVIEW_REQUEST', a.client.email, 'Review request', res);
+    res.ok ? t.reviews++ : t.errors++;
   }
 }
 
@@ -242,7 +252,7 @@ async function winBacks(t: Tally) {
   for (const c of clients) {
     if (!canEmail(c)) continue;
     if (await sentRecently(c.id, 'WIN_BACK', 90)) continue;
-    const res = await sendEmail({ to: c.email, subject: `We’ve missed you, ${c.firstName}`, html: tmplWinBack(c.firstName, unsub(c.unsubToken)) });
+    const res = await sendEmail({ to: c.email, subject: `We've missed you, ${c.firstName}`, html: tmplWinBack(c.firstName, unsub(c.unsubToken)) });
     await logEvent(c.id, 'WIN_BACK', c.email, 'Win-back', res);
     res.ok ? t.winBacks++ : t.errors++;
   }
@@ -275,34 +285,59 @@ async function keyReencryption(t: Tally) {
   }
 }
 
-// 24-hour appointment reminder — for CONFIRMED bookings starting tomorrow.
+// BLD-126: Multi-window appointment reminders (72h / 48h / 24h).
+// 24h is always on; 72h and 48h are behind the reminder_72h / reminder_48h
+// settings so the owner can enable them progressively.
 async function reminders(t: Tally) {
-  const start = new Date(); start.setDate(start.getDate() + 1); start.setHours(0, 0, 0, 0);
-  const end = new Date(start); end.setHours(23, 59, 59, 999);
-  const bookings = await db.booking.findMany({
-    where: { status: 'CONFIRMED', remindersSent: false, startAt: { gte: start, lte: end } },
-    include: { client: true },
-  });
   const { smsConfigured, sendSms } = await import('@/lib/sms');
-  const smsOn = smsConfigured();
-  for (const b of bookings) {
-    const manageUrl = `${SITE_URL}/booking/manage?token=${b.manageToken}`;
-    if (canEmailCare(b.client)) {
-      const res = await sendEmail({
-        to: b.client.email,
-        subject: `Reminder: your ${b.treatmentTitle} is tomorrow`,
-        html: tmplAppointmentReminder({ firstName: b.client.firstName, treatment: b.treatmentTitle, start: b.startAt, manageUrl }),
-      });
-      await logEvent(b.clientId, 'APPOINTMENT_REMINDER', b.client.email, 'Appointment reminder', res);
-      res.ok ? t.reminders++ : t.errors++;
+  const smsOn = await smsConfigured();
+  const { getSetting } = await import('@/lib/settings');
+  const [r72, r48] = await Promise.all([getSetting('reminder_72h'), getSetting('reminder_48h')]);
+  const { clinicDateISO, clinicDayBounds } = await import('@/lib/clinic-time');
+
+  async function sendWindow(daysAhead: number, sentFlag: 'reminder72hSent' | 'reminder48hSent' | 'remindersSent', label: string) {
+    // Window bounds in clinic-local (Europe/London) time, not the server's TZ: on a
+    // UTC host, setHours(0,…) lands on UTC midnight, so the day boundary is an hour
+    // off and near-midnight appointments get reminded a day early/late.
+    const [yy, mm, dd] = clinicDateISO(new Date()).split('-').map(Number);
+    const targetISO = clinicDateISO(new Date(Date.UTC(yy, mm - 1, dd + daysAhead, 12)));
+    const { dayStart: start, dayEnd: end } = clinicDayBounds(targetISO);
+    const bookings = await db.booking.findMany({
+      where: { status: 'CONFIRMED', [sentFlag]: false, startAt: { gte: start, lte: end } },
+      include: { client: true },
+    });
+    for (const b of bookings) {
+      const manageUrl = `${SITE_URL}/booking/manage?token=${b.manageToken}`;
+      const emailApplicable = canEmailCare(b.client);
+      const smsApplicable = Boolean(smsOn && b.client.smsReminders && b.client.phone);
+      let delivered = false;
+      if (emailApplicable) {
+        const res = await sendEmail({
+          to: b.client.email,
+          subject: `Reminder: your ${b.treatmentTitle} is ${label}`,
+          html: tmplAppointmentReminder({ firstName: b.client.firstName, treatment: b.treatmentTitle, start: b.startAt, manageUrl }),
+        });
+        await logEvent(b.clientId, 'APPOINTMENT_REMINDER', b.client.email, `Appointment reminder (${label})`, res);
+        if (res.ok) { t.reminders++; delivered = true; } else { t.errors++; }
+      }
+      if (smsApplicable) {
+        const when = b.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+        const sms = await sendSms(b.client.phone, `KClinics reminder: your ${b.treatmentTitle} is ${label}, ${when}. Manage: ${manageUrl}`).catch(() => null);
+        if (sms?.ok) delivered = true;
+      }
+      // Latch the per-window flag only when a channel actually delivered, or when
+      // the client has no contactable channel at all (nothing to retry). A
+      // transient email/SMS failure leaves it unset so the next run retries,
+      // instead of silently burning the reminder window.
+      if (delivered || (!emailApplicable && !smsApplicable)) {
+        await db.booking.update({ where: { id: b.id }, data: { [sentFlag]: true } });
+      }
     }
-    // SMS reminder when the client opted in to text reminders.
-    if (smsOn && b.client.smsReminders && b.client.phone) {
-      const when = b.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-      await sendSms(b.client.phone, `KClinics reminder: your ${b.treatmentTitle} is tomorrow, ${when}. Manage: ${manageUrl}`).catch(() => {});
-    }
-    await db.booking.update({ where: { id: b.id }, data: { remindersSent: true } });
   }
+
+  if (r72) await sendWindow(3, 'reminder72hSent', 'in 3 days');
+  if (r48) await sendWindow(2, 'reminder48hSent', 'in 2 days');
+  await sendWindow(1, 'remindersSent', 'tomorrow');
 }
 
 // Pre-treatment health-form reminder — 2 days before, if the client has a

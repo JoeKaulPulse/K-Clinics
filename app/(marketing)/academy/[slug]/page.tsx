@@ -7,7 +7,7 @@ import { ApplyForm } from '@/components/academy/ApplyForm';
 import { pageMeta, JsonLd, breadcrumbLd, courseLd } from '@/lib/seo';
 import { ACCREDITATION_LABELS, formatFee } from '@/lib/academy';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -96,7 +96,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
             <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
               <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">Course fee</p>
               <p className="mt-1 font-[family-name:var(--font-display)] text-3xl text-[var(--color-ink)]">{formatFee(course.pricePence)}</p>
-              {course.pricePence > 0 && <p className="mt-2 text-sm text-[var(--color-stone)]">Spread the cost with <strong className="text-[var(--color-ink)]">Clearpay</strong> — ask us about instalment options. No payment is taken until your place is confirmed.</p>}
+              {course.pricePence > 0 && <p className="mt-2 text-sm text-[var(--color-stone)]">Spread the cost monthly, or check if you qualify for <Link href="/academy/funding" className="link-underline font-medium text-[var(--color-ink)]">government or council funding</Link>. No payment is taken until your place is confirmed.</p>}
             </div>
             <ApplyForm courseId={course.id} courseTitle={course.title} cohorts={cohortOptions} />
             <p className="text-center text-sm text-[var(--color-stone)]">Already training with us? <Link href="/academy/portal" className="link-underline font-medium text-[var(--color-ink)]">Trainee login</Link></p>

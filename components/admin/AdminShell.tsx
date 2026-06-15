@@ -12,96 +12,7 @@ import { CloseDownReminder } from '@/components/admin/CloseDownReminder';
 import { ReportProblem } from '@/components/admin/ReportProblem';
 import { I18nProvider } from '@/components/i18n/I18nProvider';
 import { translator, isLocale, LOCALES, LOCALE_LABELS, DEFAULT_LOCALE, type Locale } from '@/lib/i18n';
-
-type NavItem = { href: string; key: string; exact?: boolean; perm?: string; badge?: 'tasks' | 'timeoff' | 'chat' };
-type GroupIconKey = 'today' | 'clients' | 'loyalty' | 'catalogue' | 'website' | 'operations' | 'marketing' | 'finance' | 'admin';
-const navGroups: { heading?: string; icon?: GroupIconKey; items: NavItem[] }[] = [
-  { heading: 'nav.group.today', icon: 'today', items: [
-    { href: '/admin', key: 'nav.overview', exact: true, perm: 'dashboard.view' },
-    { href: '/admin/my-day', key: 'nav.myday' },
-    { href: '/admin/calendar', key: 'nav.calendar', perm: 'calendar.view' },
-    { href: '/admin/tasks', key: 'nav.tasks', badge: 'tasks' },
-    { href: '/admin/time-off', key: 'nav.timeoff', badge: 'timeoff' },
-  ] },
-  // Clients & bookings: the people and conversations. Loyalty/offers split out
-  // below so this group stays focused on records and front-desk work.
-  { heading: 'nav.group.clients', icon: 'clients', items: [
-    { href: '/admin/bookings', key: 'nav.bookings', perm: 'bookings.view' },
-    { href: '/admin/consultations', key: 'nav.consultations', perm: 'consultations.view' },
-    { href: '/admin/chat', key: 'nav.chat', perm: 'clients.view', badge: 'chat' },
-    { href: '/admin/calls', key: 'nav.calls', perm: 'calls.view' },
-    { href: '/admin/clients', key: 'nav.clients', perm: 'clients.view' },
-    { href: '/admin/reviews', key: 'nav.reviews', perm: 'reviews.manage' },
-    { href: '/admin/nps', key: 'nav.nps', perm: 'reviews.manage' },
-  ] },
-  // Loyalty & offers: everything that gives a client a price break or a perk.
-  { heading: 'nav.group.loyalty', icon: 'loyalty', items: [
-    { href: '/admin/discounts', key: 'nav.discounts', perm: 'discounts.manage' },
-    { href: '/admin/promotions', key: 'nav.promotions', perm: 'discounts.manage' },
-    { href: '/admin/rewards', key: 'nav.rewards', perm: 'rewards.view' },
-    { href: '/admin/membership', key: 'nav.membership', perm: 'discounts.manage' },
-    { href: '/admin/gift-vouchers', key: 'nav.gift', perm: 'finance.view' },
-  ] },
-  // Catalogue: what you sell — services and retail products.
-  { heading: 'nav.group.catalogue', icon: 'catalogue', items: [
-    { href: '/admin/services', key: 'nav.services', perm: 'settings.manage' },
-    { href: '/admin/products', key: 'nav.products', perm: 'settings.manage' },
-  ] },
-  // Website: the public-facing content and pages.
-  { heading: 'nav.group.website', icon: 'website', items: [
-    { href: '/admin/pages', key: 'nav.pages', perm: 'settings.manage' },
-    { href: '/admin/blocks', key: 'nav.blocks', perm: 'settings.manage' },
-    { href: '/admin/journal', key: 'nav.journal', perm: 'settings.manage' },
-    { href: '/admin/media', key: 'nav.media', perm: 'settings.manage' },
-    { href: '/admin/academy', key: 'nav.academy', perm: 'settings.manage' },
-    { href: '/admin/gallery', key: 'nav.gallery', perm: 'settings.manage' },
-    { href: '/admin/careers', key: 'nav.careers', perm: 'settings.manage' },
-  ] },
-  { heading: 'nav.group.operations', icon: 'operations', items: [
-    { href: '/admin/schedule', key: 'nav.schedule', perm: 'schedule.manage' },
-    { href: '/admin/inventory', key: 'nav.inventory', perm: 'inventory.view' },
-    { href: '/admin/reorder', key: 'nav.reorder', perm: 'inventory.view' },
-    { href: '/admin/suppliers', key: 'nav.suppliers', perm: 'suppliers.view' },
-    { href: '/admin/sops', key: 'nav.sops', perm: 'sop.manage' },
-    { href: '/admin/consent', key: 'nav.consent', perm: 'settings.manage' },
-    { href: '/admin/day-close', key: 'nav.dayclose', perm: 'dayclose.run' },
-  ] },
-  { heading: 'nav.group.marketing', icon: 'marketing', items: [
-    { href: '/admin/marketing', key: 'nav.marketing', exact: true, perm: 'campaigns.view' },
-    { href: '/admin/marketing/performance', key: 'nav.performance', perm: 'campaigns.view' },
-    { href: '/admin/marketing/campaigns', key: 'nav.campaigns', perm: 'campaigns.view' },
-    { href: '/admin/marketing/audiences', key: 'nav.audiences', perm: 'campaigns.view' },
-    { href: '/admin/marketing/email', key: 'nav.email', perm: 'campaigns.view' },
-    { href: '/admin/marketing/templates', key: 'nav.templates', perm: 'campaigns.view' },
-    { href: '/admin/automations', key: 'nav.automations', perm: 'automations.view' },
-    { href: '/admin/marketing/ab', key: 'nav.ab', perm: 'campaigns.view' },
-    { href: '/admin/marketing/insights', key: 'nav.insights', perm: 'campaigns.view' },
-    { href: '/admin/brand', key: 'nav.brand', perm: 'settings.manage' },
-    { href: '/admin/marketing/connections', key: 'nav.connections', perm: 'settings.manage' },
-    { href: '/admin/qr', key: 'nav.qr', perm: 'settings.manage' },
-  ] },
-  { heading: 'nav.group.finance', icon: 'finance', items: [
-    { href: '/admin/pos', key: 'nav.pos', perm: 'pos.use' },
-    { href: '/admin/orders', key: 'nav.orders', perm: 'finance.view' },
-    { href: '/admin/cashflow', key: 'nav.cashflow', perm: 'finance.view' },
-    { href: '/admin/reports', key: 'nav.reports', perm: 'finance.view' },
-    { href: '/admin/finance/controls', key: 'nav.financeControls', perm: 'finance.manage' },
-  ] },
-  { heading: 'nav.group.admin', icon: 'admin', items: [
-    { href: '/admin/go-live', key: 'nav.golive', perm: 'settings.manage' },
-    { href: '/admin/status', key: 'nav.status', perm: 'platform.status' },
-    { href: '/admin/build', key: 'nav.build', perm: 'build.view' },
-    { href: '/admin/staff', key: 'nav.staff', perm: 'staff.view' },
-    { href: '/admin/security', key: 'nav.security', perm: 'security.manage' },
-    { href: '/admin/activity', key: 'nav.activity', perm: 'staff.view' },
-    { href: '/admin/site', key: 'nav.site', perm: 'settings.manage' },
-    { href: '/admin/locations', key: 'nav.locations', perm: 'settings.manage' },
-    { href: '/admin/seo', key: 'nav.seo', perm: 'settings.manage' },
-    { href: '/admin/redirects', key: 'nav.redirects', perm: 'settings.manage' },
-    { href: '/admin/integrations', key: 'nav.integrations', perm: 'settings.manage' },
-    { href: '/admin/settings', key: 'nav.settings', perm: 'settings.manage' },
-  ] },
-];
+import { navGroups, type NavItem, type GroupIconKey } from '@/lib/admin-nav';
 
 // Restrained group-level iconography: a single line glyph per section so the
 // collapsed sidebar is scannable at a glance. Inherits currentColor; no per-item
@@ -114,6 +25,7 @@ function GroupIcon({ name }: { name?: GroupIconKey }) {
     loyalty: <><path d="M8.5 2.5H13V7l-6 6-4.5-4.5 6-6Z" /><circle cx="10.5" cy="5" r="0.9" /></>,
     catalogue: <><rect x="2.5" y="2.5" width="4.5" height="4.5" rx="0.8" /><rect x="9" y="2.5" width="4.5" height="4.5" rx="0.8" /><rect x="2.5" y="9" width="4.5" height="4.5" rx="0.8" /><rect x="9" y="9" width="4.5" height="4.5" rx="0.8" /></>,
     website: <><rect x="2.5" y="3" width="11" height="10" rx="1.2" /><path d="M2.5 6h11" /><circle cx="4.5" cy="4.5" r="0.4" /></>,
+    academy: <><path d="M8 2.4 14.6 5.4 8 8.4 1.4 5.4 8 2.4Z" /><path d="M4.6 6.6V9.4c0 1 1.5 1.8 3.4 1.8s3.4-.8 3.4-1.8V6.6" /><path d="M14.6 5.4v3.1" /></>,
     operations: <><circle cx="8" cy="8" r="2.2" /><path d="M8 1.8v1.8M8 12.4v1.8M1.8 8h1.8M12.4 8h1.8M3.6 3.6l1.3 1.3M11.1 11.1l1.3 1.3M12.4 3.6l-1.3 1.3M4.9 11.1l-1.3 1.3" /></>,
     marketing: <><path d="M3 6.5 11 3v10L3 9.5V6.5Z" /><path d="M3 6.5H2v3h1M5 10v2.5" /></>,
     finance: <><circle cx="8" cy="8" r="6" /><path d="M9.5 6c-.4-.6-1.1-1-2-1-1.2 0-2 .7-2 1.6 0 2 4 1 4 3 0 .9-.9 1.6-2 1.6-.9 0-1.7-.4-2.1-1" /></>,
@@ -160,6 +72,12 @@ export function AdminShell({
   const [locale, setLocale] = useState<Locale>(localeProp ?? DEFAULT_LOCALE);
   useEffect(() => { if (!localeProp) setLocale(readCookieLocale()); }, [localeProp]);
   const t = translator(locale);
+
+  // Flattened, permission-filtered page index handed to global search so the
+  // sidebar's destinations are themselves searchable ("Go to" results).
+  const navPages = groups.flatMap((g) =>
+    g.items.map((n) => ({ href: n.href, label: t(n.key), group: g.heading ? t(g.heading) : '', keywords: n.keywords || '' })),
+  );
 
   // Sidebar badges — a single lightweight request per shell mount.
   const [pendingTimeOff, setPendingTimeOff] = useState(0);
@@ -211,17 +129,40 @@ export function AdminShell({
   // Mobile menu drawer (the desktop sidebar is hidden on small screens).
   const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => { setMobileOpen(false); }, [pathname]); // close on navigation
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [mobileOpen]);
+
+  // Top-bar profile dropdown (account · language · sign out).
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { setProfileOpen(false); }, [pathname]); // close on navigation
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => { if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setProfileOpen(false); };
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onClick); document.removeEventListener('keydown', onKey); };
+  }, []);
+  // Initials for the avatar, derived from the signed-in email local-part.
+  const initials = (user || '').replace(/@.*/, '').split(/[.\-_ ]+/).filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase()).join('') || 'K';
 
   const renderLink = (n: NavItem) => (
     <Link
       key={n.href}
       href={n.href}
       data-tour={n.key}
-      className={`flex items-center justify-between gap-2 whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-2.5 text-sm transition-colors ${
-        isActive(n) ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-bone)]'
+      aria-current={isActive(n) ? 'page' : undefined}
+      className={`flex min-h-[2.75rem] items-center justify-between gap-2 whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-2.5 text-sm transition-[background-color,color,transform] duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] motion-reduce:transition-none motion-reduce:active:scale-100 lg:min-h-0 ${
+        isActive(n)
+          ? 'bg-[var(--color-ink)] font-medium text-[var(--color-porcelain)]'
+          : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)]'
       }`}
     >
-      <span>{t(n.key)}</span>
+      <span className="truncate">{t(n.key)}</span>
       {badgeCount(n.badge) > 0 && (
         <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[0.65rem] font-semibold text-amber-950">{badgeCount(n.badge)}</span>
       )}
@@ -241,113 +182,139 @@ export function AdminShell({
     router.refresh();
   }
 
+  // Brand lockup — shared by the desktop sidebar and the mobile drawer header.
+  const brand = (
+    <div className="inline-flex flex-col items-center text-[var(--color-ink)]">
+      <span className="block h-9 w-[1.35rem]"><KMark /></span>
+      <span className="mt-3 block h-[0.62rem] w-[6.75rem]"><ClinicsWordmark /></span>
+      <p className="mt-3 pl-[0.3em] text-center text-[0.66rem] font-medium uppercase tracking-[0.3em] text-[var(--color-stone)]">
+        {locationLabel}
+        <span className="text-[var(--color-stone-soft)]"> · CRM</span>
+      </p>
+    </div>
+  );
+
+  // Collapsible grouped navigation — shared by the desktop sidebar and the
+  // mobile drawer so they can never drift.
+  const navTree = (
+    <>
+      {groups.map((g, gi) => {
+        const key = groupKey(g, gi);
+        const open = openGroups.has(key);
+        const pending = groupBadge(g.items);
+        return (
+          <div key={key}>
+            <button
+              onClick={() => toggleGroup(key)}
+              aria-expanded={open}
+              className="flex w-full cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-4 pb-1 pt-4 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)] transition-colors hover:text-[var(--color-stone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
+            >
+              <svg
+                viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden
+                className={`shrink-0 text-[var(--color-stone)] transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-90' : ''}`}
+              >
+                <path d="m6 3.5 4.5 4.5L6 12.5" />
+              </svg>
+              <GroupIcon name={g.icon} />
+              <span className="flex-1 text-left">{g.heading ? t(g.heading) : ''}</span>
+              {!open && pending > 0 && (
+                <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[0.6rem] font-semibold text-amber-950">{pending}</span>
+              )}
+            </button>
+            {/* Animated accordion: grid-rows 0fr→1fr is transform-safe (no JS
+                measuring, no layout thrash) and collapses both ways smoothly. */}
+            <div className={`grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`} inert={open ? undefined : true}>
+              <div className="flex flex-col gap-0.5 overflow-hidden">{g.items.map(renderLink)}</div>
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+
   return (
     <I18nProvider locale={locale}>
-      <div className="flex min-h-screen flex-col lg:flex-row">
-        <aside className="flex shrink-0 flex-col gap-1 border-b border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 lg:w-64 lg:border-b-0 lg:border-r lg:p-6">
-          <div className="mb-7 flex justify-center px-2">
-            <div className="inline-flex flex-col items-center text-[var(--color-ink)]">
-              <span className="block h-9 w-[1.35rem]"><KMark /></span>
-              <span className="mt-3 block h-[0.62rem] w-[6.75rem]"><ClinicsWordmark /></span>
-              <p className="mt-3 pl-[0.3em] text-center text-[0.66rem] font-medium uppercase tracking-[0.3em] text-[var(--color-stone)]">
-                {locationLabel}
-                <span className="text-[var(--color-stone-soft)]"> · CRM</span>
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 px-2">
-            <div data-tour="admin-search" className="min-w-0 flex-1"><GlobalSearch placeholder={t('shell.search')} /></div>
-            <NotificationBell />
-          </div>
-
-          {/* Mobile: a menu button opening a full grouped drawer (incl. account). */}
-          <div className="lg:hidden">
-            <button
-              onClick={() => setMobileOpen((o) => !o)}
-              aria-expanded={mobileOpen}
-              className="mt-2 flex w-full items-center justify-between rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-medium text-[var(--color-ink)]"
-            >
-              <span>{t('shell.menu')}</span>
-              <span aria-hidden className="text-lg leading-none">{mobileOpen ? '✕' : '☰'}</span>
-            </button>
-            {mobileOpen && (
-              <div className="mt-2 max-h-[72vh] overflow-y-auto rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-2">
-                {groups.map((g, gi) => (
-                  <div key={groupKey(g, gi)} className="mb-2">
-                    {g.heading && <p className="flex items-center gap-1.5 px-3 pb-1 pt-2 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)]"><GroupIcon name={g.icon} />{t(g.heading)}</p>}
-                    <div className="flex flex-col gap-0.5">{g.items.map(renderLink)}</div>
-                  </div>
-                ))}
-                {/* Account: language · profile · sign out */}
-                <div className="mt-2 border-t border-[var(--color-line)] px-2 pt-3">
-                  <label className="mb-3 block">
-                    <span className="mb-1 block text-[0.65rem] uppercase tracking-[0.14em] text-[var(--color-stone)]">{t('shell.language')}</span>
-                    <select value={locale} onChange={(e) => changeLanguage(e.target.value as Locale)} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]">
-                      {LOCALES.map((l) => <option key={l} value={l}>{LOCALE_LABELS[l]}</option>)}
-                    </select>
-                  </label>
-                  {user && <p className="text-xs text-[var(--color-stone)]">{user}</p>}
-                  <div className="mt-2 flex items-center gap-3">
-                    <Link href="/admin/profile" className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">{t('shell.profile')}</Link>
-                    <span className="text-[var(--color-line)]">·</span>
-                    <button onClick={signOut} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">{t('shell.signOut')}</button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Desktop: collapsible sections (collapsed by default) */}
-          <nav data-tour="admin-nav" className="hidden flex-col gap-0.5 lg:flex">
-            {groups.map((g, gi) => {
-              const key = groupKey(g, gi);
-              const open = openGroups.has(key);
-              const pending = groupBadge(g.items);
-              return (
-                <div key={key}>
-                  <button
-                    onClick={() => toggleGroup(key)}
-                    aria-expanded={open}
-                    className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-4 pb-1 pt-4 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)] transition-colors hover:text-[var(--color-stone)]"
-                  >
-                    <span className="text-[0.7rem] leading-none text-[var(--color-stone)]">{open ? '▾' : '▸'}</span>
-                    <GroupIcon name={g.icon} />
-                    <span className="flex-1 text-left">{g.heading ? t(g.heading) : ''}</span>
-                    {!open && pending > 0 && (
-                      <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[0.6rem] font-semibold text-amber-950">{pending}</span>
-                    )}
-                  </button>
-                  {open && <div className="flex flex-col gap-0.5">{g.items.map(renderLink)}</div>}
-                </div>
-              );
-            })}
-          </nav>
-          <div className="mt-auto hidden border-t border-[var(--color-line)] pt-4 lg:block">
-            {/* Language switcher */}
-            <label className="mb-3 block px-2">
-              <span className="mb-1 block text-[0.65rem] uppercase tracking-[0.14em] text-[var(--color-stone)]">{t('shell.language')}</span>
-              <select
-                value={locale}
-                onChange={(e) => changeLanguage(e.target.value as Locale)}
-                className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]"
-              >
-                {LOCALES.map((l) => <option key={l} value={l}>{LOCALE_LABELS[l]}</option>)}
-              </select>
-            </label>
-            {user && <p className="px-2 text-xs text-[var(--color-stone)]">{user}</p>}
-            <div className="mt-2 flex items-center gap-3 px-2">
-              <Link href="/admin/profile" className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">{t('shell.profile')}</Link>
-              <span className="text-[var(--color-line)]">·</span>
-              <button onClick={signOut} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">
-                {t('shell.signOut')}
-              </button>
-            </div>
-          </div>
+      <div className="flex min-h-screen bg-[var(--color-bone)]">
+        {/* Desktop sidebar — navigation only; account moved to the top bar. */}
+        <aside className="hidden shrink-0 flex-col border-r border-[var(--color-line)] bg-[var(--color-porcelain)] lg:flex lg:w-64">
+          <div className="flex justify-center px-6 pb-5 pt-6">{brand}</div>
+          <nav data-tour="admin-nav" className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-4 pb-6">{navTree}</nav>
         </aside>
-        <main className="flex-1 p-5 md:p-8 lg:p-10">
-          {allowed.has('dayclose.run') && <CloseDownReminder />}
-          {children}
-        </main>
+
+        {/* Mobile drawer — off-canvas, opened from the top-bar hamburger. */}
+        {mobileOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
+            <div className="kc-fade-in absolute inset-0 bg-[var(--color-ink)]/45 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
+            <aside className="kc-slide-in-left absolute inset-y-0 left-0 flex w-[82%] max-w-xs flex-col bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)]">
+              <div className="flex items-center justify-between border-b border-[var(--color-line)] px-5 py-4">
+                {brand}
+                <button onClick={() => setMobileOpen(false)} aria-label="Close menu" className="flex h-10 w-10 items-center justify-center rounded-full text-[var(--color-stone)] transition-colors hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)]">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><path d="m3 3 10 10M13 3 3 13" /></svg>
+                </button>
+              </div>
+              <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-6">{navTree}</nav>
+            </aside>
+          </div>
+        )}
+
+        {/* Main column — sticky top bar (search · notifications · profile). */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-[var(--color-line)] bg-[var(--color-porcelain)]/85 px-5 backdrop-blur md:gap-3 md:px-8 lg:px-10">
+            <button
+              onClick={() => setMobileOpen(true)}
+              aria-label={t('shell.menu')}
+              aria-expanded={mobileOpen}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-ink)] transition-colors hover:bg-[var(--color-bone)] lg:hidden"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><path d="M3 5h14M3 10h14M3 15h14" /></svg>
+            </button>
+            <span className="block h-6 w-[0.9rem] shrink-0 text-[var(--color-ink)] lg:hidden"><KMark /></span>
+            <div data-tour="admin-search" className="min-w-0 flex-1"><div className="max-w-xl"><GlobalSearch placeholder={t('shell.search')} pages={navPages} /></div></div>
+            <div className="flex shrink-0 items-center gap-1 md:gap-2">
+              <NotificationBell />
+              <div ref={profileRef} className="relative">
+                <button
+                  onClick={() => setProfileOpen((o) => !o)}
+                  aria-haspopup="menu"
+                  aria-expanded={profileOpen}
+                  className="flex items-center gap-2 rounded-full p-1 transition-colors hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] md:pr-2.5"
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-porcelain)]">{initials}</span>
+                  <span className="hidden max-w-[10rem] truncate text-sm text-[var(--color-ink-soft)] md:block">{user}</span>
+                  <svg className={`hidden text-[var(--color-stone)] transition-transform md:block ${profileOpen ? 'rotate-180' : ''}`} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m4 6 4 4 4-4" /></svg>
+                </button>
+                {profileOpen && (
+                  <div role="menu" className="kc-pop absolute right-0 z-40 mt-2 w-64 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white shadow-[var(--shadow-lift)]">
+                    <div className="border-b border-[var(--color-line)] bg-[var(--color-bone)]/60 px-4 py-3">
+                      <p className="text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)]">Signed in as</p>
+                      {user && <p className="mt-0.5 truncate text-sm font-medium text-[var(--color-ink)]">{user}</p>}
+                    </div>
+                    <Link href="/admin/profile" role="menuitem" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-bone)]">
+                      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="text-[var(--color-stone)]"><circle cx="8" cy="5.5" r="2.5" /><path d="M3.5 13c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" /></svg>
+                      {t('shell.profile')}
+                    </Link>
+                    <label className="block px-4 py-2.5">
+                      <span className="mb-1 block text-[0.6rem] uppercase tracking-[0.14em] text-[var(--color-stone)]">{t('shell.language')}</span>
+                      <select value={locale} onChange={(e) => changeLanguage(e.target.value as Locale)} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]">
+                        {LOCALES.map((l) => <option key={l} value={l}>{LOCALE_LABELS[l]}</option>)}
+                      </select>
+                    </label>
+                    <button onClick={signOut} role="menuitem" className="flex w-full items-center gap-2.5 border-t border-[var(--color-line)] px-4 py-2.5 text-left text-sm text-[#b23b3b] transition-colors hover:bg-[color-mix(in_oklab,#b23b3b_10%,transparent)]">
+                      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M6 2.5H3.5v11H6M10.5 11l3-3-3-3M13 8H6.5" /></svg>
+                      {t('shell.signOut')}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </header>
+          {/* key={pathname} restarts the entrance on every navigation — a short
+              fade-up that makes page changes feel composed rather than abrupt. */}
+          <main key={pathname} className="kc-page-enter flex-1 p-5 md:p-8 lg:p-10">
+            {allowed.has('dayclose.run') && <CloseDownReminder />}
+            {children}
+          </main>
+        </div>
         {allowed.has('build.view') && <ReportProblem />}
       </div>
       <GuideHost />

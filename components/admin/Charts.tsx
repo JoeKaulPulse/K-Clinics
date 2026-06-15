@@ -14,7 +14,7 @@ export function RevenueChart({ series }: { series: { label: string; value: numbe
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
       <div className="mb-4 flex items-baseline justify-between">
         <h2 className="eyebrow">Revenue · last 14 days</h2>
-        <span className="font-[family-name:var(--font-display)] text-lg">{formatPrice(total)}</span>
+        <span className="font-[family-name:var(--font-display)] text-lg tabular-nums">{formatPrice(total)}</span>
       </div>
       {total === 0 ? (
         <p className="py-8 text-center text-sm text-[var(--color-stone)]">No charges in this period yet.</p>

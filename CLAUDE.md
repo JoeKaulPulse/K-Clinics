@@ -89,3 +89,20 @@ it as potential data loss — "will fail if duplicates exist"), so it fails ever
 deploy. Don't declare new unique constraints; enforce uniqueness structurally
 instead (sequences, lock-serialised allocation, self-healing dedupe — see
 `lib/task-refs.ts` for the pattern).
+
+## Brand rules (enforced; checked in every audit)
+
+Full rules: `docs/BRAND_GUIDELINES.md`. The non-negotiables:
+
+- The logo is the supplied **K monogram + CLINICS wordmark** (`components/brand/marks.tsx`,
+  `public/brand/`). **No strap-line under the logo.**
+- **Never typeset the brand name as plain text to emulate the logo** — in any output,
+  including exported PDFs and decks. Where the logo belongs, render the mark files.
+- Stay within the palette (`@theme` in `app/globals.css`); Fraunces for display, Geist
+  for body. Every brand/design audit checks these.
+
+## Writing tone
+
+Apply the `avoid-ai-writing` skill to all prose output (docs, reports, board replies,
+PDFs, commit bodies): plain and direct, no filler or hedging, few em-dashes, no
+promotional adjectives.

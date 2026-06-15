@@ -5,7 +5,9 @@ import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { NewBookingButton } from '@/components/admin/NewBookingButton';
+import { EmptyState } from '@/components/admin/EmptyState';
 import { bookableTreatments } from '@/lib/treatments';
+import { listServices } from '@/lib/services';
 import { getLocale } from '@/lib/locale';
 import { t } from '@/lib/i18n';
 
@@ -13,6 +15,7 @@ export const dynamic = 'force-dynamic';
 
 const FILTERS = [
   { k: 'upcoming', label: 'Upcoming' },
+  { k: 'REQUESTED', label: 'Requests' },
   { k: 'past', label: 'Past' },
   { k: 'CONFIRMED', label: 'Confirmed' },
   { k: 'COMPLETED', label: 'Completed' },
@@ -35,6 +38,29 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
   const can = await sessionPermissions();
   const locale = await getLocale();
 
+  // Specific service variants/areas per treatment category (Underarms, Full Legs…)
+  // so the phone-booking flow can pick the exact one — applying its own price +
+  // duration (BLD-189). Service name prefixed only when a category has more than
+  // one service, to keep area names clean (e.g. just "Underarms").
+  const services = await listServices().catch(() => []);
+  const serviceNamesBySlug = new Map<string, Set<string>>();
+  for (const s of services) serviceNamesBySlug.set(s.treatmentSlug, (serviceNamesBySlug.get(s.treatmentSlug) ?? new Set()).add(s.name));
+  const variantsBySlug = new Map<string, { id: string; name: string; durationMin: number; pricePence: number }[]>();
+  for (const s of services) {
+    const multi = (serviceNamesBySlug.get(s.treatmentSlug)?.size ?? 0) > 1;
+    for (const v of s.variants) {
+      const arr = variantsBySlug.get(s.treatmentSlug) ?? [];
+      arr.push({ id: v.id, name: multi ? `${s.name} — ${v.name}` : v.name, durationMin: v.durationMin, pricePence: v.pricePence });
+      variantsBySlug.set(s.treatmentSlug, arr);
+    }
+  }
+  // "Consultation" — a bookable in-clinic consultation appointment for new clients
+  // (BLD-203). First group so it's the obvious default for new-client phone calls.
+  const treatmentsForBooking = [
+    { slug: 'consultation', title: 'Consultation', group: 'Consultation', variants: [] as { id: string; name: string; durationMin: number; pricePence: number }[] },
+    ...bookableTreatments.map((tr) => ({ slug: tr.slug, title: tr.title, group: tr.group, variants: variantsBySlug.get(tr.slug) ?? [] })),
+  ];
+
   const tabHref = (k: string) => {
     const p = new URLSearchParams();
     p.set('filter', k);
@@ -51,7 +77,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-[family-name:var(--font-display)] text-3xl">{t(locale, 'nav.bookings')}</h1>
         {sessionCan(session, 'bookings.manage') && (
-          <NewBookingButton treatments={bookableTreatments.map((t) => ({ slug: t.slug, title: t.title }))} />
+          <NewBookingButton treatments={treatmentsForBooking} />
         )}
       </div>
 
@@ -69,26 +95,33 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
         <input type="hidden" name="filter" value={filter} />
         <label className="text-xs text-[var(--color-stone)]">
           Search
-          <input name="q" defaultValue={q} placeholder="Client or treatment…"
-            className="mt-1 block w-56 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+          <span className="group relative mt-1 flex items-center">
+            <span className="pointer-events-none absolute left-3 text-[var(--color-stone)] transition-colors group-focus-within:text-[var(--color-gold-deep)]">
+              <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+                <circle cx="9" cy="9" r="6.25" /><path d="m14 14 3.5 3.5" />
+              </svg>
+            </span>
+            <input name="q" defaultValue={q} placeholder="Client or treatment…"
+              className="block h-11 w-56 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] pl-9 pr-4 text-sm outline-none transition-shadow placeholder:text-[var(--color-stone-soft)] focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
+          </span>
         </label>
         <label className="text-xs text-[var(--color-stone)]">
           From
           <input type="date" name="from" defaultValue={from}
-            className="mt-1 block rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+            className="mt-1 block h-11 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 text-sm outline-none transition-shadow focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
         </label>
         <label className="text-xs text-[var(--color-stone)]">
           To
           <input type="date" name="to" defaultValue={to}
-            className="mt-1 block rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+            className="mt-1 block h-11 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 text-sm outline-none transition-shadow focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
         </label>
-        <button className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)]">Apply</button>
+        <button className="h-11 rounded-full bg-[var(--color-ink)] px-4 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-ink-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">Apply</button>
         {(q || from || to) && (
           <Link href={`/admin/bookings?filter=${filter}`} className="px-2 py-2 text-sm text-[var(--color-stone)] underline">Clear</Link>
         )}
       </form>
 
-      <div className="mt-5 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
+      <div className="mt-5 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] tabular-nums">
         <p className="px-5 pt-3 text-sm text-[var(--color-stone)]">{rows.length}{rows.length === 300 ? '+' : ''} {rows.length === 1 ? 'booking' : 'bookings'}</p>
         {/* Header row */}
         <div className={`${rowCls} mt-2 bg-[var(--color-bone)] text-xs uppercase tracking-[0.12em] text-[var(--color-stone)]`}>
@@ -97,12 +130,23 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
           <span className="hidden sm:block">Price</span>
           <span className="justify-self-end">Status</span>
         </div>
-        {rows.length === 0 && <p className="p-6 text-sm text-[var(--color-stone)]">No bookings in this view.</p>}
+        {rows.length === 0 && (
+          <EmptyState
+            title={q || from || to ? 'No bookings match' : 'No bookings in this view'}
+            hint={q || from || to ? 'Try a wider date range or clear the search.' : 'Bookings appear here once appointments are made — or add one with “New phone booking”.'}
+            icon={<><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3" /></>}
+          />
+        )}
         {rows.map((b) => (
-          <Link key={b.id} href={`/admin/bookings/${b.id}`} className={`${rowCls} hover:bg-[var(--color-bone)]`}>
+          <Link key={b.id} href={`/admin/bookings/${b.id}`} className={`${rowCls} transition-colors duration-150 ease-out hover:bg-[var(--color-bone)] active:bg-[var(--color-sand)]`}>
             <div>
               <p className="font-medium">{b.client.firstName} {b.client.lastName ?? ''}</p>
-              <p className="text-xs text-[var(--color-stone)]">{b.treatmentTitle}</p>
+              <p className="text-xs text-[var(--color-stone)]">
+                {b.treatmentTitle}
+                {(b.items?.[0]?.sessions ?? 1) > 1 && (
+                  <span className="ml-1.5 rounded-full bg-[color-mix(in_oklab,var(--color-gold)_16%,transparent)] px-1.5 py-0.5 text-[0.65rem] font-medium text-[var(--color-ink)]">Course of {b.items[0].sessions}</span>
+                )}
+              </p>
             </div>
             <p className="hidden text-sm text-[var(--color-stone)] sm:block">
               {new Date(b.startAt).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}

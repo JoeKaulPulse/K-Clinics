@@ -54,15 +54,21 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const topOf = (d: Date) => (Math.max(DAY_START, d.getHours() * 60 + d.getMinutes()) - DAY_START) * PX_PER_MIN;
   const heightOf = (s: Date, e: Date) => Math.max(22, ((e.getTime() - s.getTime()) / 60000) * PX_PER_MIN);
 
+  // Current-time indicator — only shown when viewing today.
+  const now = new Date();
+  const isToday = iso(day) === iso(now);
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const nowPx = isToday && nowMin >= DAY_START && nowMin <= DAY_END ? (nowMin - DAY_START) * PX_PER_MIN : null;
+
   return (
     <AdminShell user={session?.email} can={can} locale={locale}>
       <div className="relative flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-[family-name:var(--font-display)] text-3xl">{t(locale, 'nav.calendar')}</h1>
         <div className="flex items-center gap-2 text-sm">
-          <Link href={`/admin/calendar?date=${iso(prev)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 hover:bg-[var(--color-bone)]">←</Link>
+          <Link href={`/admin/calendar?date=${iso(prev)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 transition-colors duration-150 hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" aria-label="Previous day">←</Link>
           <span className="min-w-44 text-center font-medium">{day.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-          <Link href={`/admin/calendar?date=${iso(next)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 hover:bg-[var(--color-bone)]">→</Link>
-          <Link href="/admin/calendar" className="ml-2 rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-[var(--color-porcelain)]">Today</Link>
+          <Link href={`/admin/calendar?date=${iso(next)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 transition-colors duration-150 hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" aria-label="Next day">→</Link>
+          <Link href="/admin/calendar" className="ml-2 rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-[var(--color-porcelain)] transition-colors duration-150 hover:bg-[var(--color-ink-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">Today</Link>
           {canManageSchedule && clinicians.length > 0 && <CalendarBlockButton clinicians={columns.filter((c) => c.id).map((c) => ({ id: c.id as string, name: c.name }))} dateISO={iso(dayStart)} />}
         </div>
       </div>
@@ -96,6 +102,15 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                 <div className="relative" style={{ height: (DAY_END - DAY_START) * PX_PER_MIN }}>
                   {/* hour grid lines */}
                   {hours.map((h) => <div key={h} style={{ top: (h - DAY_START) * PX_PER_MIN }} className="absolute inset-x-0 border-t border-[var(--color-line)]/60" />)}
+                  {/* current-time indicator (today only) */}
+                  {nowPx !== null && (
+                    <div className="pointer-events-none absolute inset-x-0 z-20" style={{ top: nowPx }}>
+                      <div className="relative flex items-center">
+                        <span className="absolute -left-0.5 h-2 w-2 rounded-full bg-[var(--color-blush)]" style={{ top: '-3px' }} />
+                        <div className="h-px w-full bg-[var(--color-blush)]" />
+                      </div>
+                    </div>
+                  )}
                   {/* time off */}
                   {offs.map((t) => (
                     <div key={t.id} style={{ top: topOf(t.startAt), height: heightOf(t.startAt < dayStart ? dayStart : t.startAt, t.endAt > dayEnd ? dayEnd : t.endAt) }}
@@ -105,7 +120,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                   {items.map((b) => (
                     <Link key={b.id} href={`/admin/bookings/${b.id}`}
                       style={{ top: topOf(b.startAt), height: heightOf(b.startAt, b.endAt), borderColor: col.color || 'var(--color-gold)' }}
-                      className="absolute inset-x-1 overflow-hidden rounded-[var(--radius-sm)] border-l-2 bg-[var(--color-bone)] p-1.5 text-xs shadow-sm hover:shadow-[var(--shadow-soft)]">
+                      className="absolute inset-x-1 overflow-hidden rounded-[var(--radius-sm)] border-l-2 bg-[var(--color-bone)] p-1.5 text-xs shadow-sm transition-shadow duration-150 hover:shadow-[var(--shadow-soft)]">
                       <span className="block truncate font-medium">
                         {b.startAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} {b.treatmentTitle}
                       </span>

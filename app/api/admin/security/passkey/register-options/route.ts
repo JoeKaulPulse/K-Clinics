@@ -11,6 +11,10 @@ export async function POST(req: Request) {
   const { getSession } = await import('@/lib/auth');
   const session = await getSession();
   if (!session) return NextResponse.json({ ok: false, error: 'Sign in first.' }, { status: 403 });
+  // Passkeys are the export step-up credential — OWNER only (the header comment
+  // said so but only a signed-in check was enforced, so any staff could self-
+  // register one and then sign in passwordlessly).
+  if (session.role !== 'OWNER') return NextResponse.json({ ok: false, error: 'Owner only.' }, { status: 403 });
 
   const { generateRegistrationOptions } = await import('@simplewebauthn/server');
   const { rp, CHALLENGE_COOKIE } = await import('@/lib/webauthn');

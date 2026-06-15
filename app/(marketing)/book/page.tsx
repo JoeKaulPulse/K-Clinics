@@ -11,12 +11,18 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({
     'Book your appointment at KClinics, Islington. Create your free account for 15% off your first visit, choose your treatment and time; your card is saved securely and only charged when your service is delivered. Free cancellation up to 24 hours before.',
   path: '/book',
   keywords: ['book appointment London', 'aesthetics booking Islington', 'clinic online booking'],
+  noindex: true,
 });
 
 export const dynamic = 'force-dynamic';
 
-export default async function BookPage({ searchParams }: { searchParams: Promise<{ treatment?: string }> }) {
-  const { treatment } = await searchParams;
+export default async function BookPage({ searchParams }: { searchParams: Promise<{ treatment?: string; date?: string; wl?: string }> }) {
+  const { treatment, date, wl } = await searchParams;
+  // A waitlist claim link arrives as ?treatment=slug&date=YYYY-MM-DD&wl=token —
+  // pre-fill the offered day and carry the claim token so completing the booking
+  // retires the offer (BLD-133 phase 2).
+  const preselectDate = /^\d{4}-\d{2}-\d{2}$/.test(date || '') ? (date as string) : '';
+  const waitlistToken = wl && /^[A-Za-z0-9-]{1,64}$/.test(wl) ? wl : '';
 
   // Load everything defensively — if the database is briefly unreachable the
   // primary booking page should degrade to a "call us" view, not 500.
@@ -125,7 +131,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
               <a href={site.phoneHref} className="mt-5 inline-block rounded-full bg-[var(--color-ink)] px-6 py-3 text-sm font-medium text-[var(--color-porcelain)]">Call {site.phone}</a>
             </div>
           ) : (
-            <BookingFlow catalogue={catalogue} client={clientInfo} preselect={treatment ? (catalogue.find((s) => s.treatmentSlug === treatment)?.id ?? null) : null} />
+            <BookingFlow catalogue={catalogue} client={clientInfo} preselect={treatment ? (catalogue.find((s) => s.treatmentSlug === treatment)?.id ?? null) : null} preselectDate={preselectDate} waitlistToken={waitlistToken} />
           )}
         </Reveal>
       </section>

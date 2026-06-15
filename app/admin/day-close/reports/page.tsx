@@ -44,6 +44,8 @@ export default async function DayCloseReportsPage() {
                   <th className="px-4 py-3 font-medium">Date</th>
                   <th className="px-4 py-3 font-medium">Location</th>
                   <th className="px-4 py-3 font-medium">Card takings</th>
+                  <th className="px-4 py-3 font-medium">Cash takings</th>
+                  <th className="px-4 py-3 font-medium">Total takings</th>
                   <th className="px-4 py-3 font-medium">Variance</th>
                   <th className="px-4 py-3 font-medium">Checks</th>
                   <th className="px-4 py-3 font-medium">Closed by</th>
@@ -57,6 +59,8 @@ export default async function DayCloseReportsPage() {
                       <td className="px-4 py-3 whitespace-nowrap">{new Date(c.businessDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}</td>
                       <td className="px-4 py-3">{c.location?.name || '—'}</td>
                       <td className="px-4 py-3 tabular-nums">{money(c.expectedCardPence)}</td>
+                      <td className="px-4 py-3 tabular-nums">{money(c.cashTakingsPence ?? 0)}</td>
+                      <td className="px-4 py-3 font-medium tabular-nums">{money(c.expectedCardPence + (c.cashTakingsPence ?? 0))}</td>
                       <td className={`px-4 py-3 tabular-nums ${v === 0 ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush)]'}`}>{v === 0 ? 'Balanced' : money(v)}</td>
                       <td className="px-4 py-3 tabular-nums">{c.checklistDone}/{c.checklistTotal}</td>
                       <td className="px-4 py-3 text-[var(--color-stone)]">

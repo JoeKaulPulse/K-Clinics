@@ -9,9 +9,8 @@ export const maxDuration = 60;
 // whose scheduled time has arrived. Protected by CRON_SECRET. Idempotent: each
 // campaign is claimed (status → SENDING) before sending so it can't double-fire.
 export async function GET(req: Request) {
-  const expected = process.env.CRON_SECRET;
-  const auth = req.headers.get('authorization');
-  if (!expected || auth !== `Bearer ${expected}`) {
+  const { cronAuthorized } = await import('@/lib/cron-auth');
+  if (!cronAuthorized(req)) {
     return NextResponse.json({ ok: false, error: 'Unauthorised' }, { status: 401 });
   }
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'CRM disabled' }, { status: 503 });
@@ -21,6 +20,9 @@ export async function GET(req: Request) {
   // Email any unseen live-chat reply once the visitor has clearly left.
   let chat = { emailed: 0 };
   try { const { sweepChatEmailFollowups } = await import('@/lib/chat-email'); chat = await sweepChatEmailFollowups(); } catch { /* non-fatal */ }
+  // BLD-133: expire lapsed waitlist offers and pass the freed slot to the next person.
+  let waitlist = { expired: 0, reoffered: 0 };
+  try { const { rotateExpiredWaitlist } = await import('@/lib/waitlist'); waitlist = await rotateExpiredWaitlist(); } catch { /* non-fatal */ }
   // Mirror any board items not yet on GitHub, a small throttled batch at a time.
   // Only runs when GitHub mirroring is explicitly enabled (default OFF) and we're
   // not in a rate-limit backoff — so the board never burns GitHub's API budget on
@@ -34,5 +36,5 @@ export async function GET(req: Request) {
     const { db } = await import('@/lib/db');
     await db.setting.upsert({ where: { key: 'cron_dispatch_last' }, update: { value: new Date().toISOString() }, create: { key: 'cron_dispatch_last', value: new Date().toISOString() } });
   } catch { /* non-fatal */ }
-  return NextResponse.json({ ok: true, ...result, chatFollowups: chat.emailed, githubSynced: ghSync.synced, githubRemaining: ghSync.remaining });
+  return NextResponse.json({ ok: true, ...result, chatFollowups: chat.emailed, waitlistExpired: waitlist.expired, waitlistReoffered: waitlist.reoffered, githubSynced: ghSync.synced, githubRemaining: ghSync.remaining });
 }

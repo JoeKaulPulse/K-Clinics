@@ -12,7 +12,7 @@ if (process.env.SEED_ON_BUILD !== 'true') {
   process.exit(0);
 }
 
-for (const s of ['seed-rooms', 'seed-services', 'seed-catalogue', 'seed-academy', 'seed-lms']) {
+for (const s of ['seed-rooms', 'seed-services', 'seed-catalogue', 'seed-academy', 'seed-lms', 'seed-exam-bank']) {
   try {
     console.log(`[seeds] ${s}…`);
     execSync(`node scripts/${s}.mjs`, { stdio: 'inherit' });

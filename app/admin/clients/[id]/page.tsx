@@ -1,10 +1,12 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
-import { getSession, canViewClinical, sessionPermissions } from '@/lib/auth';
+import { getSession, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { AddNote, PinToggle, SendEmail, StatusSelect } from '@/components/admin/ClientActions';
+import { EditClientDetails } from '@/components/admin/EditClientDetails';
+import { LeaderboardCard } from '@/components/admin/LeaderboardCard';
 import { DiscountAction } from '@/components/admin/DiscountActions';
 import { AdjustClientPoints } from '@/components/admin/AdjustClientPoints';
 
@@ -31,6 +33,15 @@ import { MedicalFlagEditor } from '@/components/admin/MedicalFlagEditor';
 import { ClientTasks } from '@/components/admin/ClientTasks';
 import { DataPrivacy } from '@/components/admin/DataPrivacy';
 import { sessionCan } from '@/lib/auth';
+import { fmtClinicTime, fmtClinicDate } from '@/lib/clinic-time';
+
+const BK_BADGE: Record<string, string> = {
+  PENDING: 'bg-amber-100 text-amber-800',
+  CONFIRMED: 'bg-[color-mix(in_oklab,var(--color-jade)_14%,transparent)] text-[var(--color-jade)]',
+  COMPLETED: 'bg-[var(--color-ink)] text-[var(--color-porcelain)]',
+  CANCELLED: 'bg-[var(--color-bone)] text-[var(--color-stone-soft)]',
+  NO_SHOW: 'bg-[var(--color-blush)]/25 text-[var(--color-ink)]',
+};
 
 export const dynamic = 'force-dynamic';
 
@@ -57,21 +68,54 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
 
   const fullName = [c.firstName, c.lastName].filter(Boolean).join(' ');
 
-  // Clinical (health) data — practitioners/admins/owner only. Decrypt the latest
-  // version of each assessment type for display.
-  const clinical = canViewClinical(session?.role);
-  const clinicalAssessments: { title: string; version: number; submittedAt: Date; tampered: boolean; sourceLocale?: string; translatedNote?: string | null; items: { id: string; prompt: string; value: string; original?: string }[] }[] = [];
+  // Clinical (health) data — gated on the revocable `clients.clinical.view`
+  // permission (not role), so a permission revoke actually withholds it here too,
+  // matching the SAR export. Decrypt the latest version of each assessment type.
+  const clinical = sessionCan(session, 'clients.clinical.view');
+  const clinicalAssessments: { id: string; title: string; version: number; submittedAt: Date; tampered: boolean; current: boolean; sourceLocale?: string; translatedNote?: string | null; items: { id: string; prompt: string; value: string; original?: string }[] }[] = [];
   if (clinical && c.assessments.length) {
-    const seen = new Set<string>();
-    const latest = c.assessments.filter((a) => (seen.has(a.type) ? false : (seen.add(a.type), true)));
     const { formatAssessment } = await import('@/lib/health-assessments');
-    for (const a of latest) {
+    // Show EVERY submission, newest first — full history is retained and viewable
+    // for audit / insurer requests (BLD-193), not just the latest of each type.
+    // The newest of each type is flagged as the current one in force.
+    const ordered = [...c.assessments].sort((a, b) => +new Date(b.submittedAt) - +new Date(a.submittedAt)).slice(0, 24);
+    const seenType = new Set<string>();
+    for (const a of ordered) {
       const f = await formatAssessment(a.id);
-      if (f) clinicalAssessments.push(f);
+      if (!f) continue;
+      const current = !seenType.has(a.type);
+      seenType.add(a.type);
+      clinicalAssessments.push({ ...f, id: a.id, current });
     }
   }
 
   const can = await sessionPermissions();
+
+  // Appointments + per-client activity log. Consent state is summarised per
+  // booking (signed treatment consent on file?) so the team can drill back
+  // through a client's history from one place.
+  const bookingIds = c.bookings.map((b) => b.id);
+  const { db: dbc } = await import('@/lib/db');
+  const [consentRows, auditRows] = await Promise.all([
+    bookingIds.length
+      ? dbc.signedConsent.findMany({ where: { bookingId: { in: bookingIds }, kind: 'treatment', declined: false }, select: { bookingId: true } }).catch(() => [])
+      : Promise.resolve([]),
+    dbc.auditEvent.findMany({ where: { clientId: c.id }, orderBy: { createdAt: 'desc' }, take: 18, select: { id: true, action: true, actor: true, actorRole: true, summary: true, createdAt: true } }).catch(() => []),
+  ]);
+  const consentSet = new Set(consentRows.map((r) => r.bookingId));
+  const nowTs = new Date();
+  const inProgress = c.bookings.filter((b) => b.startedAt && !b.finishedAt);
+  const upcoming = c.bookings
+    .filter((b) => !(b.startedAt && !b.finishedAt) && b.startAt >= nowTs && (b.status === 'PENDING' || b.status === 'CONFIRMED'))
+    .sort((a, b) => +a.startAt - +b.startAt);
+  const pastBookings = c.bookings.filter((b) => !inProgress.includes(b) && !upcoming.includes(b)); // already desc by startAt
+
+  // Signed consent forms (e-signature records, incl. legacy WordPress imports).
+  // Listed from clear metadata only — the encrypted body/signature stays sealed
+  // until staff open the certificate.
+  const signedConsents: { id: string; title: string; signedAt: Date; declined: boolean; templateKey: string }[] = clinical
+    ? await dbc.signedConsent.findMany({ where: { clientId: c.id }, orderBy: { signedAt: 'desc' }, select: { id: true, title: true, signedAt: true, declined: true, templateKey: true } }).catch(() => [])
+    : [];
 
   // K Vision AI consultations (clinical — decrypt findings + photos for the clinician).
   const aiAnalyses: { id: string; createdAt: Date; summary: string | null; treatments: string[]; findings: { label: string; note: string; severity: string }[]; images: string[] }[] = [];
@@ -132,11 +176,71 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
             </span>
           </div>
         </div>
-        {sessionCan(session, 'clients.edit') && <SendEmail clientId={c.id} email={c.email} />}
+        {sessionCan(session, 'clients.edit') && (
+          <div className="flex items-center gap-2">
+            <EditClientDetails client={{ id: c.id, firstName: c.firstName, lastName: c.lastName, email: c.email, phone: c.phone, dob: c.dob ? new Date(c.dob).toISOString() : null, gender: c.gender, genderSelfDescribe: c.genderSelfDescribe, allergies: c.allergies, notes: c.notes, marketingOptIn: c.marketingOptIn }} />
+            <SendEmail clientId={c.id} email={c.email} />
+          </div>
+        )}
       </div>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-10">
+        {/* Appointments — past / current / upcoming, with consent + insights */}
+        <section>
+          <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Appointments</h2>
+          {(() => {
+            const fmtPence = (p: number) => formatPrice(p);
+            const Row = ({ b }: { b: (typeof c.bookings)[number] }) => {
+              const cancelled = b.status === 'CANCELLED' || b.status === 'NO_SHOW';
+              const consentOk = consentSet.has(b.id);
+              return (
+                <Link href={`/admin/bookings/${b.id}`} className="block rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3.5 transition-colors hover:border-[var(--color-gold)]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{b.treatmentTitle}</p>
+                      <p className="mt-0.5 text-xs text-[var(--color-stone)]">
+                        {fmtClinicDate(b.startAt, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })} · {fmtClinicTime(b.startAt)}
+                        {b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}
+                      </p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide ${BK_BADGE[b.status] ?? 'bg-[var(--color-bone)]'}`}>{b.status.toLowerCase().replace('_', ' ')}</span>
+                  </div>
+                  {/* Per-appointment insights */}
+                  <div className="mt-2 flex flex-wrap gap-1.5 text-[0.65rem]">
+                    {b.arrivedAt && !b.finishedAt && <span className="rounded-full bg-[color-mix(in_oklab,var(--color-jade)_14%,transparent)] px-2 py-0.5 text-[var(--color-jade)]">✓ Arrived</span>}
+                    {b.startedAt && !b.finishedAt && <span className="rounded-full bg-[color-mix(in_oklab,var(--color-jade)_14%,transparent)] px-2 py-0.5 text-[var(--color-jade)]">In progress</span>}
+                    {!cancelled && (
+                      <span className={`rounded-full px-2 py-0.5 ${consentOk ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : 'bg-amber-100 text-amber-800'}`}>{consentOk ? 'Consent on file' : 'Consent outstanding'}</span>
+                    )}
+                    {b.status === 'COMPLETED' && b.actualMinutes != null && (
+                      <span className="rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-[var(--color-stone)]">{b.actualMinutes}m actual{b.durationMin ? ` · ${b.durationMin}m booked` : ''}</span>
+                    )}
+                    {b.status === 'COMPLETED' && b.pricePence > 0 && (
+                      <span className={`rounded-full px-2 py-0.5 ${b.chargedAt ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : 'bg-amber-100 text-amber-800'}`}>{b.chargedAt ? 'Charged' : 'Not charged'}</span>
+                    )}
+                  </div>
+                </Link>
+              );
+            };
+            const Group = ({ title, items, accent }: { title: string; items: typeof c.bookings; accent?: boolean }) =>
+              items.length === 0 ? null : (
+                <div>
+                  <p className={`mb-2 text-xs font-semibold uppercase tracking-[0.12em] ${accent ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-stone-soft)]'}`}>{title}</p>
+                  <div className="space-y-2">{items.map((b) => <Row key={b.id} b={b} />)}</div>
+                </div>
+              );
+            if (c.bookings.length === 0) return <p className="text-sm text-[var(--color-stone)]">No appointments yet.</p>;
+            return (
+              <div className="space-y-5">
+                <Group title="In progress now" items={inProgress} accent />
+                <Group title="Upcoming" items={upcoming} accent />
+                <Group title="Past" items={pastBookings} />
+              </div>
+            );
+          })()}
+        </section>
+
         <section>
           <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Timeline</h2>
           <div className="mb-4"><AddNote clientId={c.id} clinical={clinical} /></div>
@@ -226,9 +330,12 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
             ) : (
               <div className="space-y-4">
                 {clinicalAssessments.map((a) => (
-                  <div key={a.title} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
+                  <div key={a.id} className={`rounded-[var(--radius-md)] border bg-[var(--color-porcelain)] p-4 ${a.current ? 'border-[var(--color-line)]' : 'border-dashed border-[var(--color-line)] opacity-90'}`}>
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-medium">{a.title}</p>
+                      <p className="text-sm font-medium">
+                        {a.title}
+                        <span className={`ml-2 rounded-full px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.12em] ${a.current ? 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{a.current ? 'Current' : 'Previous'}</span>
+                      </p>
                       <p className="text-xs text-[var(--color-stone-soft)]">v{a.version} · {new Date(a.submittedAt).toLocaleDateString('en-GB')}</p>
                     </div>
                     {a.tampered && <p className="mt-1 text-xs font-medium text-[var(--color-blush)]">⚠ Integrity check failed — record may have been altered.</p>}
@@ -246,6 +353,34 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                         </div>
                       ))}
                     </dl>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Clinical: signed consent forms (practitioners/admins only) */}
+        {clinical && (
+          <section>
+            <div className="mb-3 flex items-center gap-2">
+              <h2 className="font-[family-name:var(--font-display)] text-xl">Consent forms</h2>
+              <span className="rounded-full bg-[var(--color-ink)] px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.14em] text-[var(--color-gold-soft)]">Encrypted · clinical</span>
+            </div>
+            {signedConsents.length === 0 ? (
+              <p className="text-sm text-[var(--color-stone)]">No consent forms on record.</p>
+            ) : (
+              <div className="space-y-2">
+                {signedConsents.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
+                    <div>
+                      <p className="text-sm font-medium">{s.title}</p>
+                      <p className="text-xs text-[var(--color-stone-soft)]">
+                        {s.declined ? 'Declined' : 'Signed'} · {new Date(s.signedAt).toLocaleDateString('en-GB')}
+                        {s.templateKey === 'legacy_wordpress' ? ' · imported from the old site' : ''}
+                      </p>
+                    </div>
+                    <Link href={`/admin/consent/cert/${s.id}`} className="shrink-0 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:border-[var(--color-gold)]">Certificate</Link>
                   </div>
                 ))}
               </div>
@@ -370,6 +505,29 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
               ))}
             </div>
           </section>
+
+          {/* Activity log — immutable audit trail; admin-only (BLD-199). */}
+          {auditRows.length > 0 && sessionCan(session, 'staff.view') && (
+            <section>
+              <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Activity log</h2>
+              <ol className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
+                {auditRows.map((ev) => (
+                  <li key={ev.id} className="border-b border-[var(--color-line)] px-4 py-2.5 last:border-0">
+                    <p className="text-sm">{ev.summary}</p>
+                    <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">
+                      <span className="uppercase tracking-wide">{ev.action.toLowerCase().replace(/_/g, ' ')}</span>
+                      {' · '}{ev.actor}{ev.actorRole ? ` (${ev.actorRole.toLowerCase()})` : ''}
+                      {' · '}{new Date(ev.createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+
+          {sessionCan(session, 'clients.edit') && (
+            <LeaderboardCard client={{ id: c.id, optIn: c.leaderboardOptIn, photoUrl: c.leaderboardPhotoUrl, displayName: c.leaderboardDisplayName, firstName: c.firstName }} />
+          )}
 
           {sessionCan(session, 'clients.export') && <DataPrivacy clientId={c.id} canDelete={sessionCan(session, 'clients.delete')} />}
         </aside>

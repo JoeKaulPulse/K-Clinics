@@ -1,6 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db';
-import { getConnection } from '@/lib/oauth-connections';
+import { getConnection, validAccessToken } from '@/lib/oauth-connections';
+import { getSecret } from '@/lib/secrets';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Ad-spend sync. Pulls campaign-level spend from connected ad platforms and
@@ -37,15 +38,15 @@ async function metaSpend(days: number): Promise<ProviderSpend[]> {
     // Ad accounts: from the stored accountRef, else discovered from the token.
     let accountIds = (conn.accountRef ? [conn.accountRef] : []).map((a) => a.replace(/^act_/, ''));
     if (accountIds.length === 0) {
-      const r = await fetch(`https://graph.facebook.com/v19.0/me/adaccounts?fields=account_id&limit=50&access_token=${encodeURIComponent(token)}`);
+      const r = await fetch(`https://graph.facebook.com/v23.0/me/adaccounts?fields=account_id&limit=50&access_token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(10_000) });
       const j = await r.json().catch(() => ({}));
       accountIds = (j?.data ?? []).map((a: { account_id: string }) => a.account_id).filter(Boolean);
     }
     const out: ProviderSpend[] = [];
     for (const acct of accountIds) {
       const tr = encodeURIComponent(JSON.stringify({ since, until }));
-      const url = `https://graph.facebook.com/v19.0/act_${acct}/insights?level=campaign&fields=campaign_name,spend&time_range=${tr}&limit=200&access_token=${encodeURIComponent(token)}`;
-      const r = await fetch(url);
+      const url = `https://graph.facebook.com/v23.0/act_${acct}/insights?level=campaign&fields=campaign_name,spend&time_range=${tr}&limit=200&access_token=${encodeURIComponent(token)}`;
+      const r = await fetch(url, { signal: AbortSignal.timeout(10_000) });
       const j = await r.json().catch(() => ({}));
       for (const row of j?.data ?? []) {
         const spend = Number(row.spend);
@@ -59,20 +60,40 @@ async function metaSpend(days: number): Promise<ProviderSpend[]> {
 // ── Google Ads — REST searchStream (needs a developer token) ──────────────────
 async function googleSpend(days: number): Promise<ProviderSpend[]> {
   try {
-    const devToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
+    const devToken = await getSecret('GOOGLE_ADS_DEVELOPER_TOKEN');
     const conn = await getConnection('google');
-    const customerId = (conn?.accountRef || process.env.GOOGLE_ADS_CUSTOMER_ID || '').replace(/-/g, '');
+    const customerId = (conn?.accountRef || (await getSecret('GOOGLE_ADS_CUSTOMER_ID')) || '').replace(/-/g, '');
     if (!devToken || !conn?.tokens.access || !customerId) return []; // prerequisites not set up
+    // BLD-278: refresh the access token when expired (Google access tokens last
+    // ~1h). Returns the live token, persisting the refreshed one.
+    const accessToken = await validAccessToken('google', async (refreshToken) => {
+      const id = await getSecret('GOOGLE_CLIENT_ID'), secret = await getSecret('GOOGLE_CLIENT_SECRET');
+      if (!id || !secret) return null;
+      const res = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ client_id: id, client_secret: secret, refresh_token: refreshToken, grant_type: 'refresh_token' }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!res.ok) return null;
+      const j = await res.json().catch(() => null);
+      if (!j?.access_token) return null;
+      // Google doesn't return a new refresh_token on refresh — keep the existing one.
+      return { access: String(j.access_token), refresh: refreshToken, expiresAt: j.expires_in ? Date.now() + Number(j.expires_in) * 1000 : null };
+    });
+    if (!accessToken) return [];
+    const loginCustomerId = await getSecret('GOOGLE_ADS_LOGIN_CUSTOMER_ID');
     const query = `SELECT campaign.name, metrics.cost_micros FROM campaign WHERE segments.date DURING LAST_${days === 7 ? '7' : '30'}_DAYS`;
-    const r = await fetch(`https://googleads.googleapis.com/v17/customers/${customerId}/googleAds:searchStream`, {
+    const r = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/googleAds:searchStream`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${conn.tokens.access}`,
+        Authorization: `Bearer ${accessToken}`,
         'developer-token': devToken,
-        ...(process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID ? { 'login-customer-id': process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID.replace(/-/g, '') } : {}),
+        ...(loginCustomerId ? { 'login-customer-id': loginCustomerId.replace(/-/g, '') } : {}),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ query }),
+      signal: AbortSignal.timeout(10_000),
     });
     const j = await r.json().catch(() => ([]));
     const rows = Array.isArray(j) ? j.flatMap((batch: { results?: unknown[] }) => batch.results ?? []) : (j?.results ?? []);
@@ -95,7 +116,7 @@ async function tiktokSpend(days: number): Promise<ProviderSpend[]> {
     const base = 'https://business-api.tiktok.com/open_api/v1.3';
     let advertiserIds = conn.accountRef ? [conn.accountRef] : [];
     if (advertiserIds.length === 0) {
-      const r = await fetch(`${base}/oauth2/advertiser/get/`, { headers: { 'Access-Token': token } });
+      const r = await fetch(`${base}/oauth2/advertiser/get/`, { headers: { 'Access-Token': token }, signal: AbortSignal.timeout(10_000) });
       const j = await r.json().catch(() => ({}));
       advertiserIds = (j?.data?.list ?? []).map((a: { advertiser_id: string }) => a.advertiser_id).filter(Boolean);
     }
@@ -107,7 +128,7 @@ async function tiktokSpend(days: number): Promise<ProviderSpend[]> {
         dimensions: JSON.stringify(['campaign_id']), metrics: JSON.stringify(['campaign_name', 'spend']),
         start_date: since, end_date: until, page_size: '200',
       });
-      const r = await fetch(`${base}/report/integrated/get/?${params}`, { headers: { 'Access-Token': token } });
+      const r = await fetch(`${base}/report/integrated/get/?${params}`, { headers: { 'Access-Token': token }, signal: AbortSignal.timeout(10_000) });
       const j = await r.json().catch(() => ({}));
       for (const row of j?.data?.list ?? []) {
         const name = row?.metrics?.campaign_name;

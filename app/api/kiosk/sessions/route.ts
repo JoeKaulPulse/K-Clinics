@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { clientIp, hashIp, randomToken, sessionExpiry } from '@/lib/kiosk';
+import { clientIp, hashIp, randomToken, randomSecret, sessionExpiry } from '@/lib/kiosk';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,10 +35,11 @@ export async function POST(req: Request) {
     if (!clash) break;
     token = randomToken();
   }
+  const secret = randomSecret(); // BLD-159: gates the live camera feed
 
   await db.kioskSession.create({
-    data: { token, ipHash, status: 'ACTIVE', expiresAt: sessionExpiry() },
+    data: { token, secret, ipHash, status: 'ACTIVE', expiresAt: sessionExpiry() },
   });
 
-  return NextResponse.json({ ok: true, token });
+  return NextResponse.json({ ok: true, token, secret });
 }

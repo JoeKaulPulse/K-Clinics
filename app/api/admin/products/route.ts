@@ -29,6 +29,7 @@ export async function POST(req: Request) {
       const p = await db.product.create({ data: { name, slug, pricePence: pence(body.price) ?? 0, createdBy: session.email } });
       await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: `Created product “${name}”` });
       revalidatePath('/admin/products');
+      revalidatePath('/shop'); revalidatePath(`/shop/${slug}`);
       return ok({ id: p.id });
     }
     case 'update': {
@@ -49,9 +50,10 @@ export async function POST(req: Request) {
       if (typeof body.trackInventory === 'boolean') data.trackInventory = body.trackInventory;
       if (body.stockQty !== undefined) data.stockQty = int(body.stockQty);
       if (body.lowStockThreshold !== undefined) data.lowStockThreshold = int(body.lowStockThreshold);
-      await db.product.update({ where: { id: body.id }, data });
+      const updated = await db.product.update({ where: { id: body.id }, data, select: { slug: true } });
       revalidatePath('/admin/products');
       revalidatePath(`/admin/products/${body.id}`);
+      revalidatePath('/shop'); revalidatePath(`/shop/${updated.slug}`);
       return ok();
     }
     case 'adjustStock': {
@@ -67,8 +69,9 @@ export async function POST(req: Request) {
     }
     case 'remove': {
       if (!body.id) return bad();
-      await db.product.delete({ where: { id: body.id } }).catch(() => {});
+      const removed = await db.product.delete({ where: { id: body.id }, select: { slug: true } }).catch(() => null);
       revalidatePath('/admin/products');
+      revalidatePath('/shop'); if (removed?.slug) revalidatePath(`/shop/${removed.slug}`);
       return ok();
     }
     case 'giftPackages': {

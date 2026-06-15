@@ -47,7 +47,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
         spendSyncedAt={c.spendSyncedAt?.toISOString() ?? null}
       />
       <div className="mt-6">
-        <CampaignAiPanel campaignId={c.id} enabled={aiAvailable()} initial={(c.aiDraft as CampaignPack | null) ?? null} />
+        <CampaignAiPanel campaignId={c.id} enabled={await aiAvailable()} initial={(c.aiDraft as CampaignPack | null) ?? null} />
       </div>
     </AdminShell>
   );

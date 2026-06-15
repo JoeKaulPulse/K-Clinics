@@ -19,7 +19,7 @@ const csp = [
   "font-src 'self' https://fonts.gstatic.com data:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "script-src 'self' 'unsafe-inline' https://js.stripe.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://maps.googleapis.com https://maps.gstatic.com",
-  "connect-src 'self' https://api.stripe.com https://m.stripe.network https://r.stripe.com https://challenges.cloudflare.com https://maps.googleapis.com https://blob.vercel-storage.com https://*.public.blob.vercel-storage.com",
+  "connect-src 'self' https://api.stripe.com https://m.stripe.network https://r.stripe.com https://challenges.cloudflare.com https://maps.googleapis.com https://blob.vercel-storage.com https://*.public.blob.vercel-storage.com https://*.sentry.io https://sentry.io",
   "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com",
   "worker-src 'self' blob:",
   'upgrade-insecure-requests',
@@ -99,6 +99,14 @@ const nextConfig = {
       './audit/**/*',
       './docs/**/*',
       './*.tsbuildinfo',
+    ],
+  },
+  // The migration runner is the one function that DOES need the WordPress dump
+  // at runtime (it inflates it to /tmp; the import scripts themselves are
+  // bundled into the route via its static imports).
+  outputFileTracingIncludes: {
+    '/api/build/migrate-wp': [
+      './scripts/migrate-wp/127_0_0_1.sql.zip',
     ],
   },
   // Exposed to client + server so image paths from /public can be prefixed with

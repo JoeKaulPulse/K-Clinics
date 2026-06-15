@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { timingSafeEqual } from 'node:crypto';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
@@ -22,26 +23,37 @@ export async function GET(req: Request) {
 
   const { cookies } = await import('next/headers');
   const jar = await cookies();
-  if (jar.get('kc_oauth_state')?.value !== state) return to(`error=${providerId}_bad_state`);
+  // BLD-130: timing-safe comparison prevents CSRF-state oracle timing attacks.
+  const storedState = jar.get('kc_oauth_state')?.value ?? '';
+  const stateMatch = storedState.length === state.length && timingSafeEqual(Buffer.from(storedState), Buffer.from(state));
+  if (!storedState || !stateMatch) return to(`error=${providerId}_bad_state`);
+  // Bind the state to the provider it was minted for. The state is `${id}.${nonce}`
+  // (connect/route.ts), so a state issued for provider A must not be honoured on a
+  // callback that claims provider B — otherwise A's code/cookie is exchanged at B.
+  if (!state.startsWith(`${providerId}.`)) return to(`error=${providerId}_bad_state`);
 
   const { getProvider, isConfigured, REDIRECT_URI } = await import('@/lib/marketing-connections');
   const p = getProvider(providerId);
-  if (!p || !isConfigured(p)) return to(`error=${providerId}_not_configured`);
+  if (!p || !(await isConfigured(p))) return to(`error=${providerId}_not_configured`);
 
   try {
+    const { getSecret } = await import('@/lib/secrets');
     const form = new URLSearchParams({
-      client_id: process.env[p.envClientId] || '',
-      client_secret: process.env[p.envClientSecret] || '',
+      client_id: (await getSecret(p.envClientId)) || '',
+      client_secret: (await getSecret(p.envClientSecret)) || '',
       redirect_uri: `${REDIRECT_URI}?provider=${p.id}`,
       grant_type: 'authorization_code',
       code,
     });
-    const res = await fetch(p.tokenUrl, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' }, body: form });
+    const res = await fetch(p.tokenUrl, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' }, body: form, signal: AbortSignal.timeout(15_000) });
     if (!res.ok) { console.error('[marketing-oauth]', p.id, res.status, await res.text().catch(() => '')); return to(`error=${p.id}_token`); }
-    const tokens = await res.json();
+    const raw = await res.json();
 
-    const { saveConnection } = await import('@/lib/oauth-connections');
-    await saveConnection(p.id, tokens, null, p.name);
+    // BLD-278: normalise the provider response (access_token/expires_in) to our
+    // Tokens shape — previously the raw JSON was stored, so tokens.access was
+    // always undefined and the connection silently never worked.
+    const { saveConnection, normalizeTokens } = await import('@/lib/oauth-connections');
+    await saveConnection(p.id, normalizeTokens(raw), null, p.name);
     const { logAudit } = await import('@/lib/audit');
     await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: `Connected ${p.name}` });
     const { revalidatePath } = await import('next/cache');

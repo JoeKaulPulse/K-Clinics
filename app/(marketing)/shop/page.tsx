@@ -7,7 +7,7 @@ import { activeProducts, formatPence } from '@/lib/shop';
 import { crmEnabled } from '@/lib/crm';
 import { pageMeta } from '@/lib/seo';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Shop — Skincare & Products | KClinics',
