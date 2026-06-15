@@ -14,7 +14,7 @@
  */
 
 // A stylised facial sheet-mask: a serene face (closed eyes + fuller lips, cut out)
-// scaled to ~90% and centred, plus a beauty sparkle (kept full-size so it reads a
+// scaled to ~72% and centred, plus a beauty sparkle (kept full-size so it reads a
 // little larger against the slightly smaller face). One even-odd body path so it
 // fills gold by rating and renders identically in track and fill overlay.
 const FACE_BODY =
@@ -27,8 +27,8 @@ const SPARKLE = 'M17 2.6L17.7 3.6L18.7 4.3L17.7 5L17 6L16.3 5L15.3 4.3L16.3 3.6Z
 function MaskGlyph({ className }: { className: string }) {
   return (
     <svg viewBox="0 0 20 20" className={className} fill="currentColor">
-      {/* translate(1 1) scale(.9) = shrink the face 10% about the centre (10,10) */}
-      <g transform="translate(1 1) scale(0.9)">
+      {/* translate(2.8 2.8) scale(.72) = shrink the face ~28% about the centre (10,10) */}
+      <g transform="translate(2.8 2.8) scale(0.72)">
         <path fillRule="evenodd" d={FACE_BODY} />
       </g>
       <path d={SPARKLE} />
@@ -41,7 +41,7 @@ function MaskGlyph({ className }: { className: string }) {
 // mask-image uses luminance by default (white = shown, transparent = hidden). The
 // translate/scale matches the glyph so the gloss tracks the smaller face.
 const FACE_MASK =
-  "url(\"data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2020%2020'%3E%3Cg%20transform='translate(1%201)%20scale(.9)'%3E%3Cpath%20fill='%23fff'%20d='M10%202C14.8%202%2018.4%205.2%2018.4%209.4C18.4%2013%2016%2016.2%2012.5%2017.4C11.6%2017.7%2010.8%2017.9%2010%2017.9C9.2%2017.9%208.4%2017.7%207.5%2017.4C4%2016.2%201.6%2013%201.6%209.4C1.6%205.2%205.2%202%2010%202Z'/%3E%3C/g%3E%3C/svg%3E\")";
+  "url(\"data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2020%2020'%3E%3Cg%20transform='translate(2.8%202.8)%20scale(.72)'%3E%3Cpath%20fill='%23fff'%20d='M10%202C14.8%202%2018.4%205.2%2018.4%209.4C18.4%2013%2016%2016.2%2012.5%2017.4C11.6%2017.7%2010.8%2017.9%2010%2017.9C9.2%2017.9%208.4%2017.7%207.5%2017.4C4%2016.2%201.6%2013%201.6%209.4C1.6%205.2%205.2%202%2010%202Z'/%3E%3C/g%3E%3C/svg%3E\")";
 
 export function Stars({
   rating = 5,
