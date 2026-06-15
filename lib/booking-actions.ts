@@ -190,10 +190,16 @@ export async function refundBooking(
 
   const totalRefunded = (booking.refundedPence ?? 0) + amount;
   const fully = totalRefunded >= (booking.chargedPence ?? 0);
-  await db.booking.update({
-    where: { id: booking.id },
+  // CAS: only the writer that advances refundedPence from the value we read runs
+  // the side-effects. Guards the race where a concurrent webhook echo or a second
+  // in-app click creates a Stripe refund with the same idempotencyKey (no-op at
+  // Stripe) but both callers reach this point — the second writer's updateMany
+  // returns count=0 and we return early, so loyalty and Xero fire exactly once.
+  const claimed = await db.booking.updateMany({
+    where: { id: booking.id, refundedPence: booking.refundedPence },
     data: { refundedPence: totalRefunded, refundedAt: new Date(), refundReason: opts.reason?.slice(0, 500) || booking.refundReason || null },
   });
+  if (claimed.count === 0) return { ok: true, refundedPence: totalRefunded };
 
   // Reverse loyalty points once the booking is fully refunded (best-effort).
   if (fully) {

@@ -44,8 +44,29 @@ export const shippingFor = (method: string, subtotalPence: number) =>
 
 export async function nextOrderNumber(): Promise<string> {
   const { db } = await import('@/lib/db');
-  const count = await db.order.count();
-  return `KC${(1000 + count + 1).toString()}`;
+  // Atomic: INSERT seeds from the current max KC#### order number; ON CONFLICT
+  // increments the counter. Two concurrent checkouts race safely — Postgres
+  // serialises the UPSERT, so each caller gets a distinct sequence value.
+  const rows = await db.$queryRaw<[{ value: bigint }]>`
+    INSERT INTO "Setting" (key, value, "updatedAt")
+    SELECT
+      '_order_seq',
+      (GREATEST(
+        1000,
+        COALESCE(
+          (SELECT MAX(CAST(SUBSTRING(number FROM 3) AS BIGINT))
+           FROM "Order"
+           WHERE number ~ '^KC[0-9]+$'),
+          1000
+        )
+      ) + 1)::TEXT,
+      NOW()
+    ON CONFLICT (key) DO UPDATE
+      SET value      = (CAST("Setting".value AS BIGINT) + 1)::TEXT,
+          "updatedAt" = NOW()
+    RETURNING CAST(value AS BIGINT) AS value
+  `;
+  return `KC${rows[0].value}`;
 }
 
 /** Finalise a paid order: decrement stock, redeem any gift card, send the

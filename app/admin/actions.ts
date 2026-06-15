@@ -34,6 +34,10 @@ export async function eraseClientData(clientId: string) {
   if (!session || !sessionCan(session, 'clients.export')) return { ok: false, error: 'Not permitted' };
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
+  // Fetch email before the transaction so we can match legacy orders that have
+  // no clientId FK (BLD-315: Order holds name/email/phone/address, never erased).
+  const clientRow = await db.client.findUnique({ where: { id: clientId }, select: { email: true } });
+  const clientEmail = clientRow?.email;
   // Art. 17 erasure across ALL personal/special-category data, atomically. We
   // pseudonymise the Client row + strip clinical free-text from RETAINED
   // financial records (bookings/consultations kept for HMRC/lawful retention,
@@ -92,6 +96,18 @@ export async function eraseClientData(clientId: string) {
     // Legacy Appointment model (pre-Booking era) — status/schedule data only,
     // no financial retention basis, safe to hard-delete.
     db.appointment.deleteMany({ where: { clientId } }),
+    // BLD-315: Orders are retained for HMRC purposes but the PII fields
+    // (name/email/phone/shipping address) have no financial retention basis —
+    // strip them. Match by clientId OR email to catch legacy orders without the FK.
+    ...(clientEmail
+      ? [db.order.updateMany({
+          where: { OR: [{ clientId }, { email: clientEmail }] },
+          data: { email: `erased-${clientId}@redacted.invalid`, name: 'Erased', phone: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null },
+        })]
+      : [db.order.updateMany({
+          where: { clientId },
+          data: { email: `erased-${clientId}@redacted.invalid`, name: 'Erased', phone: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null },
+        })]),
   ]);
   await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
   revalidatePath(`/admin/clients/${clientId}`);

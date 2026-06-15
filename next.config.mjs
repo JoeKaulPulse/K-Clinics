@@ -1,3 +1,5 @@
+import { withSentryConfig } from '@sentry/nextjs';
+
 /** @type {import('next').NextConfig} */
 
 // When deploying to GitHub Pages we produce a fully static export served from a
@@ -133,4 +135,19 @@ const nextConfig = {
     : { redirects, headers }),
 };
 
-export default nextConfig;
+const hasSentry = Boolean(process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN);
+
+export default hasSentry
+  ? withSentryConfig(nextConfig, {
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      // Route SDK events through /api/sentry (avoids adding ingest.sentry.io to
+      // the CSP and is adblocker-resilient).
+      tunnelRoute: '/api/sentry',
+      // Only upload source maps when an auth token is present (CI/CD).
+      silent: true,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      disableSourceMapUpload: !process.env.SENTRY_AUTH_TOKEN,
+      hideSourceMaps: true,
+    })
+  : nextConfig;

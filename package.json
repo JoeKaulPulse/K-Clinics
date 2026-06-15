@@ -5,7 +5,7 @@
   "engines": {
     "node": ">=20.9.0 <23.0.0"
   },
-  "description": "K Clinics \u2014 premium aesthetics & aesthetic dentistry, Islington London.",
+  "description": "K Clinics — premium aesthetics & aesthetic dentistry, Islington London.",
   "scripts": {
     "dev": "node scripts/gen-image-manifest.mjs && next dev",
     "postinstall": "prisma generate",
@@ -29,6 +29,7 @@
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@prisma/extension-accelerate": "^3.0.1",
+    "@sentry/nextjs": "^10.57.0",
     "@simplewebauthn/browser": "^13.3.0",
     "@simplewebauthn/server": "^13.3.1",
     "@stripe/react-stripe-js": "^6.6.0",
