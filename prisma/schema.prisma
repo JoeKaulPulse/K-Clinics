@@ -166,6 +166,7 @@ enum AuditAction {
   BEFORE_PHOTO_CAPTURED
   CLIENT_DELETED
   CLIENT_EDITED
+  CLIENT_ERASED // GDPR Art. 17 right-to-erasure executed (BLD-315)
   DATA_EXPORTED
   DATA_IMPORTED // a data-migration step wrote records (e.g. WordPress import, BLD-187)
   SESSION_EDITED // a captured in-session answer was changed after first save (BLD-138)

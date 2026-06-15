@@ -27,11 +27,11 @@ export async function addNote(clientId: string, summary: string, type: string = 
 }
 
 // GDPR right-to-erasure — pseudonymise a client's personal data while keeping
-// financial/audit records intact for legal retention. Requires clients.export.
+// financial/audit records intact for legal retention. Requires clients.delete.
 export async function eraseClientData(clientId: string) {
   if (!crmEnabled) return { ok: false };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'clients.export')) return { ok: false, error: 'Not permitted' };
+  if (!session || !sessionCan(session, 'clients.delete')) return { ok: false, error: 'Not permitted' };
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
   // Art. 17 erasure across ALL personal/special-category data, atomically. We
@@ -92,8 +92,25 @@ export async function eraseClientData(clientId: string) {
     // Legacy Appointment model (pre-Booking era) — status/schedule data only,
     // no financial retention basis, safe to hard-delete.
     db.appointment.deleteMany({ where: { clientId } }),
+    // BLD-315: DiscountClaim — null the identifiers used for deduplication
+    // (emailNorm, phoneNorm). The nameDobKey is a salted hash, not re-identifiable
+    // on its own, and is kept for deduplication integrity.
+    db.discountClaim.updateMany({ where: { clientId }, data: { emailNorm: '', phoneNorm: null } }),
+    // BLD-315: Orders hold personal PII (name/email/phone/address) for fulfilment.
+    // Financial totals + line items are retained (HMRC basis); all identifying
+    // fields are stripped so the order is no longer linked to a natural person.
+    db.order.updateMany({
+      where: { clientId },
+      data: { name: 'Erased', email: `erased-${clientId}@redacted.invalid`, phone: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null },
+    }),
+    // BLD-315: GiftVouchers claimed by this client — strip purchaser + recipient PII.
+    // The voucher balance + redemption record is retained (financial basis).
+    db.giftVoucher.updateMany({
+      where: { claimedByClientId: clientId },
+      data: { purchaserName: 'Erased', purchaserEmail: `erased-${clientId}@redacted.invalid`, recipientName: null, recipientEmail: null, message: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null },
+    }),
   ]);
-  await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
+  await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR Art. 17 right-to-erasure)' });
   revalidatePath(`/admin/clients/${clientId}`);
   return { ok: true };
 }
