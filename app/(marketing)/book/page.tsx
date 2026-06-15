@@ -11,6 +11,7 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({
     'Book your appointment at KClinics, Islington. Create your free account for 15% off your first visit, choose your treatment and time; your card is saved securely and only charged when your service is delivered. Free cancellation up to 24 hours before.',
   path: '/book',
   keywords: ['book appointment London', 'aesthetics booking Islington', 'clinic online booking'],
+  noindex: true,
 });
 
 export const dynamic = 'force-dynamic';
