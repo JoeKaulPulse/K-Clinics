@@ -150,7 +150,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
         try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'add_payment_info', { currency: 'GBP', value: orderTotal / 100, items: [{ item_id: variantId, item_name: service?.name, item_category: service?.category }] }); } catch { /* analytics best-effort */ }
         try { (window as Window & { fbq?: (...a: unknown[]) => void }).fbq?.('track', 'InitiateCheckout', { currency: 'GBP', value: orderTotal / 100 }); } catch { /* analytics best-effort */ }
       } else { setStage('done'); }
-    } catch { setError('Network error. Please try again.'); }
+    } catch { setError('We couldn’t reach the server to finish your booking. Please check “My appointments” in a moment — if it isn’t there, try again.'); }
     finally { setSubmitting(false); }
   }
 
@@ -588,9 +588,19 @@ function CardStep({ bookingId, onDone, onError }: { bookingId: string; onDone: (
     setSubmitting(true); onError('');
     const { error } = await stripe.confirmSetup({ elements, redirect: 'if_required' });
     if (error) { onError(error.message || 'Card could not be saved.'); setSubmitting(false); return; }
-    const res = await fetch('/api/booking/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId }) });
-    const j = await res.json();
-    if (j.ok) onDone(); else { onError(j.error || 'Could not confirm booking.'); setSubmitting(false); }
+    // The card is saved now. Confirming is idempotent server-side (a repeat call
+    // returns the same success), so a transient failure here is safe to surface
+    // for retry without double-booking — and must not leave the button hung.
+    try {
+      const res = await fetch('/api/booking/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId }) });
+      const j = await res.json().catch(() => null);
+      if (j?.ok) { onDone(); return; }
+      onError(j?.error || 'Your card was saved, but we couldn’t finish confirming. Please tap Confirm again — you won’t be booked or charged twice.');
+      setSubmitting(false);
+    } catch {
+      onError('Your card was saved. If you don’t receive a confirmation email shortly, check “My appointments”, then tap Confirm again.');
+      setSubmitting(false);
+    }
   }
   return (
     <div>
