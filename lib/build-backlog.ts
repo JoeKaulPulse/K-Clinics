@@ -1350,10 +1350,22 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['lib/academy-content.ts. enrichCourseContentIfNeeded() picks up additions on the next daily cron run.'],
   },
   {
+    title: 'Google Workspace Directory API: manage mailboxes from admin dashboard (BLD-312)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 8,
+    detail: 'Phase A + B shipped. lib/google-workspace.ts: service-account JWT (RS256 via jose), short-TTL token cache, listWorkspaceUsers/getWorkspaceUser/createWorkspaceUser/suspendWorkspaceUser/restoreWorkspaceUser/addUserAlias/removeUserAlias/listGroups/createGroup/addGroupMember/removeGroupMember. All functions no-op when credentials absent. API routes under /api/admin/integrations/google-workspace/* gated on settings.manage with logAudit on every write. /admin/workspace page: users table (status, last login, suspend/restore, alias add/remove) + groups tab (list, create). lib/integrations.ts: Workspace card. lib/admin-nav.ts: Workspace entry. lib/secrets.ts: GOOGLE_WORKSPACE_SA_KEY, GOOGLE_WORKSPACE_ADMIN_EMAIL, GOOGLE_WORKSPACE_CUSTOMER_ID added to SECRET_DEFS. Setup: see docs/GOOGLE_WORKSPACE_MIGRATION.md section 10.',
+    notes: ['To activate: (1) In Google Cloud, enable Admin SDK API; (2) Create a service account + JSON key; (3) In Google Admin console Security -> API controls -> Domain-wide delegation, grant the client ID the Directory API scopes; (4) Paste the JSON key into Admin -> Credentials (GOOGLE_WORKSPACE_SA_KEY) and set the admin email (GOOGLE_WORKSPACE_ADMIN_EMAIL).'],
+  },
+  {
     title: 'refundBooking() race: concurrent refund clicks fire loyalty/Xero twice (BLD-355)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 9, effort: 2,
     detail: 'Replaced plain db.booking.update with a compare-and-swap db.booking.updateMany (WHERE refundedPence = <value-we-read>). If two concurrent callers reach the side-effects block (loyalty points reversal, Xero credit note, webhook re-delivery), only the first one wins the CAS; the second sees count=0 and returns early. Stripe-side idempotency was already guarded via idempotencyKey "refund-<id>-from-<refundedPence>-<amount>" -- this closes the application-layer gap. Mirrors the identical guard already present in the charge.refunded webhook handler.',
     notes: ['lib/booking-actions.ts refundBooking(). CAS pattern: db.booking.updateMany({where:{id, refundedPence: booking.refundedPence}}).'],
+  },
+  {
+    title: 'GDPR BLD-315 remaining: SAR export completeness + Art.17 erasure gaps (PR #850)', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'Six remaining BLD-315 gaps not in PR #838 or commit b074702. SAR export (Art.15): adds loyalty points, AI analysis images, shop orders, consent requests, promo redemptions. Art.17 erasure: PromoRedemption.email was exported but never nulled on erasure -- fixed. GiftVoucher purchaser erasure: claimed-by erasure now also strips purchaserName/purchaserEmail; purchased-by erasure added via email match (pre-erasure email fetched before transaction). Consultations detail page: canViewClinical(role) -> sessionCan(session, clients.clinical.view) so per-user revocations are honoured.',
+    notes: ['app/api/admin/clients/[id]/export/route.ts: points, aiAnalyses with images, shopOrders, consentRequests, promoRedemptions. app/admin/actions.ts: PromoRedemption.email null on erase, GiftVoucher purchaser fields on both claimed-by and purchased-by erasure. app/admin/consultations/[id]/page.tsx: revocable clinical gate. PR #850 (claude/bld315-sar-remaining).'],
   },
 ];
 

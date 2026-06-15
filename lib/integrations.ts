@@ -74,7 +74,7 @@ export async function getIntegrations(): Promise<Integration[]> {
     id: 'google-calendar',
     name: 'Google Calendar',
     category: 'Scheduling',
-    description: 'Syncs each clinician’s busy times so availability stays accurate automatically.',
+    description: 'Two-way: each clinician’s busy times block their booking slots, and confirmed appointments appear on their Google Calendar.',
     status: !gEnabled ? 'parked' : connectedStaff > 0 ? 'connected' : 'partial',
     detail: !gEnabled
       ? 'Parked — the clinic is on Hostinger. Set GOOGLE_INTEGRATION_ENABLED=true to re-enable on a Workspace move.'
@@ -86,6 +86,28 @@ export async function getIntegrations(): Promise<Integration[]> {
       { name: 'GOOGLE_REDIRECT_URI', set: has(process.env.GOOGLE_REDIRECT_URI) },
     ],
     manageHref: '/admin/schedule',
+    docsHref: 'https://console.cloud.google.com/apis/credentials',
+  });
+
+  // ── Google sign-in (SSO) ──
+  const { googleSsoEnabled, allowedDomains } = await import('@/lib/google-sso');
+  const ssoOn = await googleSsoEnabled();
+  items.push({
+    id: 'google-sso',
+    name: 'Google sign-in (SSO)',
+    category: 'Security',
+    description: 'Lets staff sign into the admin with their Google Workspace account. New sign-ins create a disabled account that waits for owner approval.',
+    status: ssoOn ? 'connected' : present('GOOGLE_CLIENT_ID') && present('GOOGLE_CLIENT_SECRET') ? 'partial' : 'not_configured',
+    detail: ssoOn
+      ? `On · allowed domains: ${allowedDomains().join(', ')}`
+      : 'Set GOOGLE_SSO_ENABLED=true (with the Google OAuth client) to switch on.',
+    envVars: [
+      { name: 'GOOGLE_SSO_ENABLED', set: process.env.GOOGLE_SSO_ENABLED === 'true', optional: true },
+      { name: 'GOOGLE_CLIENT_ID', set: present('GOOGLE_CLIENT_ID') },
+      { name: 'GOOGLE_CLIENT_SECRET', set: present('GOOGLE_CLIENT_SECRET') },
+      { name: 'GOOGLE_SSO_ALLOWED_DOMAINS', set: has(process.env.GOOGLE_SSO_ALLOWED_DOMAINS), optional: true },
+    ],
+    manageHref: '/admin/staff',
     docsHref: 'https://console.cloud.google.com/apis/credentials',
   });
 
@@ -231,6 +253,25 @@ export async function getIntegrations(): Promise<Integration[]> {
       { name: 'ANTHROPIC_API_KEY', set: aiKey },
     ],
     docsHref: 'https://console.deepgram.com',
+  });
+
+  // ── Google Workspace Directory API (BLD-312) ──
+  const wsKey = present('GOOGLE_WORKSPACE_SA_KEY');
+  const wsAdmin = present('GOOGLE_WORKSPACE_ADMIN_EMAIL');
+  items.push({
+    id: 'google-workspace',
+    name: 'Google Workspace (Directory API)',
+    category: 'Staff management',
+    description: 'Manage @kclinics.co.uk mailboxes, aliases and shared inboxes from the admin dashboard. Requires a service account with domain-wide delegation.',
+    status: wsKey && wsAdmin ? 'connected' : wsKey || wsAdmin ? 'partial' : 'not_configured',
+    detail: wsKey && wsAdmin ? 'Service account configured — manage mailboxes at /admin/workspace.' : wsKey ? 'Service account key set — add GOOGLE_WORKSPACE_ADMIN_EMAIL.' : wsAdmin ? 'Admin email set — add the service account JSON key.' : 'Set GOOGLE_WORKSPACE_SA_KEY and GOOGLE_WORKSPACE_ADMIN_EMAIL to enable.',
+    envVars: [
+      { name: 'GOOGLE_WORKSPACE_SA_KEY', set: wsKey },
+      { name: 'GOOGLE_WORKSPACE_ADMIN_EMAIL', set: wsAdmin },
+      { name: 'GOOGLE_WORKSPACE_CUSTOMER_ID', set: present('GOOGLE_WORKSPACE_CUSTOMER_ID'), optional: true },
+    ],
+    manageHref: '/admin/workspace',
+    docsHref: '/docs/GOOGLE_WORKSPACE_MIGRATION.md',
   });
 
   // ── Security & encryption ──

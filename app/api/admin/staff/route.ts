@@ -103,6 +103,20 @@ export async function POST(req: Request) {
     if (revoke) data.permRevoke = clean(revoke);
     if (typeof active === 'boolean') data.active = active;
     if (password) data.passwordHash = await hashPassword(password);
+    // Link (or clear) this account's Google sign-in. Lets an owner merge a
+    // Workspace email that differs from the login email into the right record;
+    // clearing it also unlinks any previously bound Google identity.
+    if (typeof body.googleEmail === 'string') {
+      const ge = body.googleEmail.trim().toLowerCase();
+      if (!ge) {
+        data.googleEmail = null;
+        data.googleSub = null;
+      } else {
+        const clash = await db.adminUser.findFirst({ where: { id: { not: id }, OR: [{ googleEmail: ge }, { email: ge }] }, select: { id: true } });
+        if (clash) return NextResponse.json({ ok: false, error: 'Another staff member already uses that Google email.' }, { status: 409 });
+        data.googleEmail = ge;
+      }
+    }
     // Role/permission/password/active are baked into the target's session JWT.
     // Bump their revocation epoch so the change takes effect immediately —
     // otherwise a demoted user keeps elevated access until their token expires.

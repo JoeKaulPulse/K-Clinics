@@ -151,6 +151,24 @@ export async function POST(req: Request) {
       await db.academyStudent.update({ where: { id: String(body.id) }, data: { notes } });
       return ok();
     }
+    case 'updateFunding': {
+      if (!body.id) return bad();
+      const b = body as Record<string, unknown>;
+      const STATUSES = ['NEW', 'REVIEWING', 'REFERRED', 'APPROVED', 'DECLINED', 'FUNDED', 'CLOSED'];
+      await db.fundingApplication.update({
+        where: { id: String(b.id) },
+        data: {
+          ...(b.status && STATUSES.includes(b.status as string) ? { status: b.status as 'NEW' } : {}),
+          ...(b.notes !== undefined ? { notes: (b.notes as string)?.slice(0, 4000) || null } : {}),
+        },
+      });
+      return ok();
+    }
+    case 'removeFunding': {
+      if (!body.id) return bad();
+      await db.fundingApplication.delete({ where: { id: String(body.id) } });
+      return ok();
+    }
   }
   return NextResponse.json({ ok: false, error: 'Unknown op' }, { status: 400 });
 }

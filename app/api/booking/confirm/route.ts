@@ -42,6 +42,8 @@ export async function POST(req: Request) {
 
   // Push to the shared clinic calendar (Hostinger CalDAV; no-op until configured).
   import('@/lib/hostinger-calendar').then((m) => m.pushBooking(booking.id)).catch(() => {});
+  // Mirror onto the assigned clinician's Google Calendar (no-op while parked).
+  import('@/lib/google-calendar').then((m) => m.pushBookingToClinician(booking.id)).catch(() => {});
 
   return NextResponse.json({ ok: true, manageToken: booking.manageToken });
 }

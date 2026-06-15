@@ -128,9 +128,9 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
 
   const dateNav = (
     <div className="flex items-center gap-2">
-      <Link href={`/admin/my-day?d=${iso(prev)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm hover:bg-[var(--color-bone)]" aria-label="Previous day">←</Link>
-      <Link href="/admin/my-day" className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:bg-[var(--color-bone)]">{uk ? 'Сьогодні' : 'Today'}</Link>
-      <Link href={`/admin/my-day?d=${iso(next)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm hover:bg-[var(--color-bone)]" aria-label="Next day">→</Link>
+      <Link href={`/admin/my-day?d=${iso(prev)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm transition-colors duration-150 hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" aria-label="Previous day">←</Link>
+      <Link href="/admin/my-day" className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm transition-colors duration-150 hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">{uk ? 'Сьогодні' : 'Today'}</Link>
+      <Link href={`/admin/my-day?d=${iso(next)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm transition-colors duration-150 hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" aria-label="Next day">→</Link>
     </div>
   );
 
