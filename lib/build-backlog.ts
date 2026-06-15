@@ -1241,6 +1241,30 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Added optional locationId String? to KioskSession (plain scope tag matching the FacilityDoc/ContractorVisit pattern -- no FK, no Location model touch, additive schema change). /kiosk/display accepts a ?location=<slug> search param: it resolves the Location.id by slug and stamps it on the new session at creation. Admin > QR codes page now shows a "Per-location display links" section listing all active locations with their /kiosk/display?location=<slug> URL so staff can point each site\'s storefront screen at the right link without any deploy. Sessions without locationId continue to work as before.',
     notes: ['schema.prisma: locationId String? + @@index([locationId]) on KioskSession. app/kiosk/display/page.tsx: searchParams.location -> db.location.findUnique({where:{slug}}) -> session.locationId. app/admin/qr/page.tsx: db.location.findMany(active) -> per-location link list. Consistent with FacilityDoc.locationId and ContractorVisit.locationId patterns.'],
   },
+  {
+    title: 'Order number race: replace count() with atomic Setting counter (BLD-332)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 5, effort: 1,
+    detail: 'nextOrderNumber() in lib/shop.ts used db.order.count() then KC${1000+count+1}. Two concurrent checkouts could read the same count and mint the same KC#### number. Fixed with a single atomic PostgreSQL upsert: INSERT ... ON CONFLICT (key) DO UPDATE SET value = CAST(value AS INTEGER) + 1 on a _order_seq Setting row. The RETURNING value guarantees each caller gets a unique number without any schema change or @unique constraint.',
+    notes: ['lib/shop.ts:60-75. No schema change; Setting key _order_seq is self-initialising at 1001. Serialised by Postgres row-level locking on the Setting PK.'],
+  },
+  {
+    title: 'Shop field leakage: exclude costPence/barcode from public product reads (BLD-316)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 3, effort: 1,
+    detail: 'activeProducts() and validateCart() in lib/shop.ts fetched all Product columns, including costPence (cost of goods / margin) and barcode (internal SKU detail). Added explicit select to both queries, returning only the fields needed by the storefront. Also adds .nvmrc pinning node 20.9.0.',
+    notes: ['lib/shop.ts activeProducts() + validateCart(). .nvmrc: 20.9.0.'],
+  },
+  {
+    title: 'GDPR SAR/erasure completeness: permission, audit action, SAR parity, DiscountClaim, Order, GiftVoucher (BLD-315)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'Six Art.15/17 gaps closed. (1) eraseClientData permission changed from clients.export to clients.delete (irreversible destructive). (2) Audit action changed from NOTE_ADDED to CLIENT_ERASED (added to AuditAction enum). (3) SAR export include expanded to add aiAnalyses, reviews, npsResponses, followUps, waitlist, callRecords, referralsMade. (4) Clinical gate in export changed from canViewClinical(role) to sessionCan(session, clients.clinical.view) so individual revocations are honoured. (5) DiscountClaim emailNorm/phoneNorm/nameDobKey nullified on erase. (6) Order name/email/phone/ship* and GiftVoucher purchaser/recipient/ship* fields stripped on erase.',
+    notes: ['prisma/schema.prisma: CLIENT_ERASED added to AuditAction enum. app/admin/actions.ts: permission + audit action + 3 new $transaction ops. app/api/admin/clients/[id]/export/route.ts: expanded include + sessionCan gate + DATA_EXPORTED action.'],
+  },
+  {
+    title: 'Sentry error tracking integration (BLD-348)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'Integrated @sentry/nextjs for production error aggregation. instrumentation.ts registers Sentry on both nodejs and edge runtimes via register(); onRequestError hook captures every server request error. instrumentation-client.ts initialises client-side Sentry with session replay. sentry.server.config.ts + sentry.edge.config.ts read SENTRY_DSN env var; no-op when unset so builds and tests pass without a DSN. app/global-error.tsx reports root boundary errors via Sentry.captureException(). CSP connect-src updated to allow *.sentry.io. To activate: set SENTRY_DSN (server) and NEXT_PUBLIC_SENTRY_DSN (client) in Vercel env.',
+    notes: ['instrumentation.ts, instrumentation-client.ts, sentry.server.config.ts, sentry.edge.config.ts, app/global-error.tsx, next.config.mjs CSP. No withSentryConfig wrapper (instrumentation API is sufficient for App Router). @sentry/nextjs added to dependencies.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
