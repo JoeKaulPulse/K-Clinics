@@ -3095,6 +3095,7 @@ model BuildItem {
   blocker         String? // current blocker note (when status = BLOCKED)
   githubUrl       String?
   githubNumber    Int?
+  githubClosed    Boolean           @default(false) // mirror issue closed once the item shipped/closed (board cleanup)
   isPublic        Boolean           @default(false) // surfaces on a future public roadmap
   // Prioritisation (persisted so ideas can be scored/triaged in-app, not just in code).
   value           Int? // business worth 1–10
