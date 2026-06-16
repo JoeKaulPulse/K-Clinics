@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
   // When marking an order as REFUNDED, issue the actual Stripe refund first.
   if (body.status === 'REFUNDED') {
-    const order = await db.order.findUnique({ where: { id: body.id }, select: { stripePaymentIntentId: true, totalPence: true, status: true } });
+    const order = await db.order.findUnique({ where: { id: body.id }, select: { stripePaymentIntentId: true, totalPence: true, status: true, giftCardCode: true, giftCardPence: true } });
     if (!order) return NextResponse.json({ ok: false, error: 'Order not found.' }, { status: 404 });
     if (order.status === 'REFUNDED') return NextResponse.json({ ok: false, error: 'Order already refunded.' }, { status: 409 });
     if (order.stripePaymentIntentId) {
@@ -32,6 +32,12 @@ export async function POST(req: Request) {
       } catch (e) {
         return NextResponse.json({ ok: false, error: (e as Error).message || 'Refund failed at Stripe.' }, { status: 502 });
       }
+    }
+    // BLD-393: restore the gift-card balance debited at checkout (it was permanently
+    // lost on refund — only the card portion was refunded via Stripe above).
+    if (order.giftCardCode && order.giftCardPence && order.giftCardPence > 0) {
+      try { const { creditVoucher } = await import('@/lib/gift-vouchers'); await creditVoucher(order.giftCardCode, order.giftCardPence); }
+      catch (e) { console.error('[orders] gift-card balance restore failed for', body.id, (e as Error)?.message); }
     }
   }
 
