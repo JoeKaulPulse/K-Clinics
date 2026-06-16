@@ -32,6 +32,24 @@ async function rateGate(): Promise<void> {
 const isRateLimited = (m: string): boolean => /too many requests|rate.?limit|\b429\b/i.test(m);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// The email pipeline: every send acquires a slot before going out, so we stay at or
+// below Resend's 5/sec at ALL times. (1) the in-process gate paces sends within an
+// instance; (2) a shared limiter (Upstash when configured, Postgres fallback) caps the
+// total across every serverless instance — a send WAITS for a free slot rather than
+// failing. The 429 retry below is the final backstop.
+async function acquireSendSlot(): Promise<void> {
+  await rateGate(); // smooth within this instance
+  try {
+    const { rateLimit } = await import('@/lib/security/rate-limit');
+    const deadline = Date.now() + 30_000;
+    // ≤4 per rolling second globally (headroom under the cap). Poll for a slot, don't fail.
+    while (Date.now() < deadline) {
+      if ((await rateLimit('resend-send', 4, 1)).allowed) return;
+      await sleep(250);
+    }
+  } catch { /* limiter unavailable — the in-process gate + retry still protect us */ }
+}
+
 export async function sendEmail(opts: {
   to: string;
   subject: string;
@@ -64,7 +82,7 @@ export async function sendEmail(opts: {
     ...(opts.headers ? { headers: opts.headers } : {}),
   };
   for (let attempt = 0; attempt < 3; attempt++) {
-    await rateGate();
+    await acquireSendSlot();
     try {
       // BLD-281: cap the Resend call so a hanging API can't pin the serverless
       // function to its maxDuration — booking/notify flows degrade fast instead.
