@@ -35,10 +35,12 @@ Sign in to both consoles as `webmaster@kclinics.co.uk`.
 > (`iam.disableServiceAccountKeyCreation` — Google's secure-by-default org policy),
 > an **Organization Policy Administrator** must allow keys, scoped to just this
 > project so the rest of the org stays protected:
-> 1. The org owner grants `roles/orgpolicy.policyAdmin` (**Organization Policy
->    Administrator**) to `webmaster@kclinics.co.uk` (or themselves) at the
->    **Organisation** level (IAM, Organisation scope → Grant access). Without it,
->    **Manage policy** stays greyed out.
+> 1. Grant **Organization Policy Administrator** (`roles/orgpolicy.policyAdmin`) to
+>    `webmaster@kclinics.co.uk`. **Project Owner can do this on the project itself**
+>    (IAM & Admin → IAM → Grant access) — no org owner needed. Project Owner does
+>    *not* include `orgpolicy.policy.set`, which is why **Manage policy** is greyed
+>    and "Set policy" is denied. (An org-level grant by the owner also works; if the
+>    project override is itself blocked, the owner sets it at the Organisation scope.)
 > 2. On the project, open **"Disable service account key creation"**. The **managed**
 >    constraint may already show *Not enforced* while the **legacy**
 >    `iam.disableServiceAccountKeyCreation` is the one still active — click
