@@ -37,13 +37,16 @@ Sign in to both consoles as `webmaster@kclinics.co.uk`.
 > project so the rest of the org stays protected:
 > 1. The org owner grants `roles/orgpolicy.policyAdmin` (**Organization Policy
 >    Administrator**) to `webmaster@kclinics.co.uk` (or themselves) at the
->    **Organisation** level (IAM, Organisation scope → Grant access).
-> 2. Switch scope to the **KClinics project** → **IAM & Admin → Organization
->    Policies** → open **"Disable service account key creation"** → **Manage policy
->    → Customize → Add rule → Enforcement: Off → Set policy**.
+>    **Organisation** level (IAM, Organisation scope → Grant access). Without it,
+>    **Manage policy** stays greyed out.
+> 2. On the project, open **"Disable service account key creation"**. The **managed**
+>    constraint may already show *Not enforced* while the **legacy**
+>    `iam.disableServiceAccountKeyCreation` is the one still active — click
+>    **"View legacy constraint"** in the blue banner and override *that*:
+>    **Manage policy → Override parent's policy → Enforcement: Off → Set policy**.
 > 3. Retry **Keys → Add key → JSON**.
-> 4. **Recommended:** set that policy back to **Inherit parent's policy** afterwards
->    — the one key you created keeps working, but no further keys can be made.
+> 4. **Recommended:** set the constraint back to **Inherit parent's policy**
+>    afterwards — the one key keeps working, but no further keys can be made.
 >
 > Prefer no key at all? The keyless alternative is **Workload Identity Federation**
 > from Vercel (OIDC → STS → impersonate, signing the delegation JWT via the IAM
