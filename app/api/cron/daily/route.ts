@@ -233,16 +233,19 @@ export async function GET(req: Request) {
 
   const cronDurationMs = Date.now() - cronStartedAt;
 
-  // BLD-349: push failure summary to a webhook channel when configured.
-  // Set CRON_ALERT_WEBHOOK_URL (Slack/Discord/Make/Zapier) in Vercel env.
+  // BLD-349/400: never let a cron failure be silent. Always report to Sentry (the
+  // error aggregator — no-op until SENTRY_DSN is set) so failures surface without
+  // any extra config, and additionally push a summary to the ops webhook channel
+  // when CRON_ALERT_WEBHOOK_URL (Slack/Discord/Make/Zapier) is configured in Vercel.
   if (failures > 0) {
+    const summary = `[kclinics cron] ${failures} failure(s) in ${Math.round(cronDurationMs / 1000)}s — check Vercel logs`;
+    try {
+      const Sentry = await import('@sentry/nextjs');
+      Sentry.captureMessage(summary, 'error');
+    } catch { /* Sentry not available — non-fatal */ }
     const webhookUrl = process.env.CRON_ALERT_WEBHOOK_URL;
     if (webhookUrl) {
-      const body = JSON.stringify({
-        text: `[kclinics cron] ${failures} failure(s) in ${Math.round(cronDurationMs / 1000)}s — check Vercel logs`,
-        failures,
-        durationMs: cronDurationMs,
-      });
+      const body = JSON.stringify({ text: summary, failures, durationMs: cronDurationMs });
       fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }).catch(() => {});
     }
   }
