@@ -19,12 +19,25 @@ function Check({ checked, onChange, label }: { checked: boolean; onChange: (v: b
   );
 }
 
+function urlBase64ToUint8Array(base64: string) {
+  const padding = '='.repeat((4 - (base64.length % 4)) % 4);
+  const b64 = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(b64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+type PushState = 'unsupported' | 'unconfigured' | 'off' | 'on' | 'busy';
+
 export function NotificationPreferences() {
   const [cats, setCats] = useState<Cat[]>([]);
   const [prefs, setPrefs] = useState<Prefs>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [push, setPush] = useState<PushState>('busy');
+  const [pubKey, setPubKey] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/admin/notifications/prefs')
@@ -51,6 +64,43 @@ export function NotificationPreferences() {
     const j = await fetch('/api/admin/notifications/prefs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json()).catch(() => null);
     setSaving(false);
     if (j?.ok) { setSaved(true); setTimeout(() => setSaved(false), 2500); }
+  }
+
+  useEffect(() => {
+    (async () => {
+      if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) { setPush('unsupported'); return; }
+      const j = await fetch('/api/admin/notifications/push').then((r) => r.json()).catch(() => null);
+      if (!j?.enabled || !j?.publicKey) { setPush('unconfigured'); return; }
+      setPubKey(j.publicKey);
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const sub = reg ? await reg.pushManager.getSubscription() : null;
+        setPush(sub ? 'on' : 'off');
+      } catch { setPush('off'); }
+    })();
+  }, []);
+
+  async function enablePush() {
+    if (!pubKey) return;
+    setPush('busy');
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+      if ((await Notification.requestPermission()) !== 'granted') { setPush('off'); return; }
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(pubKey) });
+      const j = sub.toJSON();
+      await fetch('/api/admin/notifications/push', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: j.endpoint, keys: j.keys }) });
+      setPush('on');
+    } catch { setPush('off'); }
+  }
+  async function disablePush() {
+    setPush('busy');
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      const sub = reg ? await reg.pushManager.getSubscription() : null;
+      if (sub) { await fetch('/api/admin/notifications/push', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) }); await sub.unsubscribe(); }
+      setPush('off');
+    } catch { setPush('off'); }
   }
 
   if (loading) return <p className="mt-6 text-sm text-[var(--color-stone)]">Loading…</p>;
@@ -100,6 +150,23 @@ export function NotificationPreferences() {
             <Check checked={prefs.chatSound ?? false} onChange={(v) => setPrefs((p) => ({ ...p, chatSound: v }))} label="Chat sound" />
             <span className="text-[var(--color-stone)]">Play a sound for new chat messages</span>
           </label>
+        </div>
+      </section>
+
+      <section className={`${card} p-5`}>
+        <h2 className="font-[family-name:var(--font-display)] text-lg">Browser push</h2>
+        <p className="mt-1 text-sm text-[var(--color-stone)]">Urgent alerts and new chat messages as a desktop/phone notification, even when this tab is closed. Set per device.</p>
+        <div className="mt-3 text-sm">
+          {push === 'unsupported' && <span className="text-[var(--color-stone)]">This browser doesn’t support push notifications.</span>}
+          {push === 'unconfigured' && <span className="text-[var(--color-stone)]">Push isn’t switched on for the clinic yet (an owner adds a VAPID key in Vercel).</span>}
+          {push === 'busy' && <span className="text-[var(--color-stone)]">Checking…</span>}
+          {push === 'off' && <button onClick={enablePush} className="rounded-full border border-[var(--color-line)] px-4 py-2 hover:bg-[var(--color-bone)]">Enable on this device</button>}
+          {push === 'on' && (
+            <span className="flex items-center gap-3">
+              <span className="text-[var(--color-jade)]">Enabled on this device</span>
+              <button onClick={disablePush} className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">Turn off</button>
+            </span>
+          )}
         </div>
       </section>
 

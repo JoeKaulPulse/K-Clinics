@@ -135,6 +135,12 @@ async function createFor(user: { id: string; email?: string; notifPrefs?: unknow
     await db.staffNotification.create({ data: { userId: user.id, ...data } });
   }
   await maybeEmail(user.email, prefs, category, priority, n);
+  // Web-push (Phase 4): urgent everywhere + new messages, to devices the user has
+  // enabled. Quiet hours hold non-urgent; a muted category gets no push. No-op until
+  // a VAPID keypair is set, so this is inert by default.
+  if ((priority === 'urgent' || category === 'messages') && (priority === 'urgent' || (!inQuietHours(prefs) && inAppEnabled(prefs, category)))) {
+    try { const { sendPush } = await import('@/lib/push'); await sendPush(user.id, { title: n.title, body: n.body, href: n.href, tag: n.groupKey }); } catch { /* non-fatal */ }
+  }
 }
 
 /** Notify a staff member by email. No-ops cleanly if the email isn't a known
