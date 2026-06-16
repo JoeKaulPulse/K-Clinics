@@ -42,6 +42,9 @@ export default async function AutomationsPage() {
     db.emailEvent.findFirst({ where: { status: 'FAILED', campaignId: null }, orderBy: { createdAt: 'desc' }, select: { subject: true, error: true } }),
   ]);
   const countFor = (kind: string) => counts.filter((c) => c.kind === kind).reduce((s, c) => s + c._count._all, 0);
+  // Distinguish a rate-limit (key is fine, we sent too fast) from a real config gap,
+  // so the fix shown is the right one.
+  const rateLimited = /too many requests|rate.?limit|\b429\b/i.test(lastFail?.error || '');
 
   const settingEnabled: Record<string, boolean> = {
     reminder_72h: Boolean(r72),
@@ -60,10 +63,16 @@ export default async function AutomationsPage() {
         <div className="mt-6 rounded-[var(--radius-lg)] border border-red-300 bg-red-50 p-5 text-red-900">
           <p className="font-[family-name:var(--font-display)] text-lg">{failedComms} transactional email{failedComms === 1 ? '' : 's'} failed to send in the last 7 days</p>
           <p className="mt-1 text-sm">
-            Booking confirmations, receipts and reminders only send when the email provider is configured.
+            {rateLimited
+              ? 'These hit Resend’s limit of 5 requests/second during a burst (e.g. the nightly reminder run) — the API key is fine, the sends were just too fast.'
+              : 'Booking confirmations, receipts and reminders only send when the email provider is configured.'}
             {lastFail?.error ? <> Latest failure{lastFail.subject ? ` (${lastFail.subject})` : ''}: <span className="font-mono text-xs">{lastFail.error}</span>.</> : null}
           </p>
-          <p className="mt-2 text-sm">Fix in <strong>Settings → Credentials</strong>: set <code>RESEND_API_KEY</code> and verify the sending domain in Resend.</p>
+          <p className="mt-2 text-sm">
+            {rateLimited
+              ? <>A send throttle (≈4.5/sec) and automatic retry are now in place, so this should clear on the next run. If it persists, raise the rate limit on your Resend plan.</>
+              : <>Fix in <strong>Settings → Credentials</strong>: set <code>RESEND_API_KEY</code> and verify the sending domain in Resend.</>}
+          </p>
         </div>
       )}
 
