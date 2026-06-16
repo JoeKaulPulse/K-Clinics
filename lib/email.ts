@@ -15,6 +15,23 @@ const MAIL_HOST = (() => { try { return new URL(site.url).hostname.replace(/^www
 
 export type SendResult = { ok: boolean; id?: string; error?: string };
 
+// Resend allows 5 requests/second. A burst (e.g. the nightly cron fanning out
+// reminders + digests via Promise.all) trips that 429 limit, which is why
+// confirmations/receipts/reminders were "failing" even though the key is valid.
+// An in-process gate spaces every send (~4.5/sec, safely under the cap); if one
+// still slips through under concurrent load, we back off and retry.
+const SEND_GAP_MS = 220;
+let lastSendAt = 0;
+async function rateGate(): Promise<void> {
+  const now = Date.now();
+  const at = Math.max(now, lastSendAt + SEND_GAP_MS);
+  lastSendAt = at;
+  const wait = at - now;
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+}
+const isRateLimited = (m: string): boolean => /too many requests|rate.?limit|\b429\b/i.test(m);
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export async function sendEmail(opts: {
   to: string;
   subject: string;
@@ -35,32 +52,43 @@ export async function sendEmail(opts: {
   const FROM = (await getSecret('EMAIL_FROM')) || `KClinics <hello@mail.${MAIL_HOST}>`;
   const REPLY_TO = (await getSecret('EMAIL_REPLY_TO')) || `KClinics <replies@reply.mail.${MAIL_HOST}>`;
   const FROM_ADDRESS = (FROM.match(/<([^>]+)>/)?.[1] || FROM).trim();
-  try {
-    const from = opts.from?.trim() ? opts.from.trim() : opts.fromName?.trim() ? `${opts.fromName.trim()} <${FROM_ADDRESS}>` : FROM;
-    const attachments = [...(brandAttachments(opts.html).attachments || []), ...(opts.attachments || [])];
-    // BLD-281: cap the Resend call so a hanging API can't pin the serverless
-    // function to its maxDuration — booking/notify flows degrade fast instead.
-    const TIMEOUT = Symbol('timeout');
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const result = await Promise.race([
-      resend.emails.send({
-        from,
-        to: opts.to,
-        subject: opts.subject,
-        html: opts.html,
-        replyTo: opts.replyTo || REPLY_TO,
-        ...(attachments.length ? { attachments } : {}),
-        ...(opts.headers ? { headers: opts.headers } : {}),
-      }),
-      new Promise<typeof TIMEOUT>((resolve) => { timer = setTimeout(() => resolve(TIMEOUT), 10_000); }),
-    ]).finally(() => { if (timer) clearTimeout(timer); });
-    if (result === TIMEOUT) return { ok: false, error: 'Email send timed out after 10s' };
-    const { data, error } = result;
-    if (error) return { ok: false, error: String(error.message || error) };
-    return { ok: true, id: data?.id };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'send failed' };
+  const from = opts.from?.trim() ? opts.from.trim() : opts.fromName?.trim() ? `${opts.fromName.trim()} <${FROM_ADDRESS}>` : FROM;
+  const attachments = [...(brandAttachments(opts.html).attachments || []), ...(opts.attachments || [])];
+  const payload = {
+    from,
+    to: opts.to,
+    subject: opts.subject,
+    html: opts.html,
+    replyTo: opts.replyTo || REPLY_TO,
+    ...(attachments.length ? { attachments } : {}),
+    ...(opts.headers ? { headers: opts.headers } : {}),
+  };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await rateGate();
+    try {
+      // BLD-281: cap the Resend call so a hanging API can't pin the serverless
+      // function to its maxDuration — booking/notify flows degrade fast instead.
+      const TIMEOUT = Symbol('timeout');
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const result = await Promise.race([
+        resend.emails.send(payload),
+        new Promise<typeof TIMEOUT>((resolve) => { timer = setTimeout(() => resolve(TIMEOUT), 10_000); }),
+      ]).finally(() => { if (timer) clearTimeout(timer); });
+      if (result === TIMEOUT) return { ok: false, error: 'Email send timed out after 10s' };
+      const { data, error } = result;
+      if (error) {
+        const msg = String(error.message || error);
+        if (isRateLimited(msg) && attempt < 2) { await sleep(1100 * (attempt + 1)); continue; }
+        return { ok: false, error: msg };
+      }
+      return { ok: true, id: data?.id };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'send failed';
+      if (isRateLimited(msg) && attempt < 2) { await sleep(1100 * (attempt + 1)); continue; }
+      return { ok: false, error: msg };
+    }
   }
+  return { ok: false, error: 'Email rate-limited — retried and gave up' };
 }
 
 // The brand marks ride along as inline (cid:) attachments — embedded from
