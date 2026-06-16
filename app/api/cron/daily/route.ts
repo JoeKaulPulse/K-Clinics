@@ -213,10 +213,11 @@ export async function GET(req: Request) {
   // even if nobody opens it after a deploy (it used to seed only on first view).
   let board = { created: 0, skipped: 0 };
   try {
-    const { seedBacklog, assignOwnerInputTasks, reconcileBacklog } = await import('@/lib/build-board');
+    const { seedBacklog, assignOwnerInputTasks, reconcileBacklog, backfillCloseShippedMirrors } = await import('@/lib/build-board');
     board = await seedBacklog();
     await assignOwnerInputTasks();
     await reconcileBacklog();
+    await backfillCloseShippedMirrors().catch(() => {}); // close mirror issues for already-shipped items (board cleanup)
     // Reference IDs for anything just seeded (and the nightly self-heal for both boards).
     const { ensureBuildRefs, ensureTaskRefs } = await import('@/lib/task-refs');
     await ensureBuildRefs(board.created > 0);

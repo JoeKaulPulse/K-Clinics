@@ -511,6 +511,8 @@ export async function updateBuildItem(id: string, patch: Patch, actor: string) {
   const updated = await db.buildItem.update({ where: { id }, data: { ...data, events: { create: events } }, include: ITEM_INCLUDE });
   // Dependency auto-flow: when this item reaches a done state, free anything that was waiting on it.
   if (patch.status && patch.status !== prev.status && DONE_STATES.includes(patch.status)) await unblockDependents(id).catch(() => {});
+  // Board cleanup: a shipped item's mirror GitHub issue is closed so the issue list stops showing done work as open.
+  if (patch.status === 'SHIPPED' && prev.status !== 'SHIPPED') await closeMirrorIssue(updated).catch(() => {});
   // Notify: the new assignee on reassignment; the reporter when their item moves.
   const { notifyStaff } = await import('@/lib/notifications');
   if (patch.assignee && patch.assignee !== prev.assignee && patch.assignee !== 'claude') {
@@ -656,6 +658,7 @@ export async function signoffItem(id: string, actor: string) {
     include: withDetail,
   });
   await unblockDependents(id).catch(() => {}); // closing may free dependents
+  await closeMirrorIssue(out).catch(() => {}); // board cleanup: close the mirror issue on sign-off
   return out;
 }
 
@@ -942,6 +945,58 @@ async function ghComment(issueNumber: number, body: string): Promise<boolean> {
   });
   await noteGhResponse(res);
   return res.ok;
+}
+
+// ── Mirror cleanup ───────────────────────────────────────────────────────────
+// The board is the source of truth; GitHub issues are a mirror. They used to be
+// created on report but never closed on ship, so the issue list filled with done
+// work shown as "open". These close the mirror issue when an item reaches a
+// terminal state, and back-fill the ones that shipped before this existed.
+
+/** Close a mirror GitHub issue (best-effort; idempotent on GitHub's side). */
+async function ghCloseIssue(issueNumber: number): Promise<boolean> {
+  const cfg = await getGithubConfig();
+  if (!cfg) return false;
+  const res = await fetch(`https://api.github.com/repos/${cfg.repo}/issues/${issueNumber}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ state: 'closed', state_reason: 'completed' }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  await noteGhResponse(res);
+  return res.ok;
+}
+
+/** When an item reaches a terminal state, close its mirror issue once. Governed
+ *  (skipped when mirroring is off / backed off) so it never competes with PR work. */
+async function closeMirrorIssue(item: { id: string; githubNumber: number | null; githubClosed?: boolean }): Promise<void> {
+  if (!item.githubNumber || item.githubClosed) return;
+  if (!(await githubMirrorEnabled()) || (await ghBackoffActive())) return;
+  const ok = await ghCloseIssue(item.githubNumber).catch(() => false);
+  if (ok) await db.buildItem.update({ where: { id: item.id }, data: { githubClosed: true } }).catch(() => {});
+}
+
+/** Self-healing backfill: close the mirror issues for items that are already
+ *  SHIPPED/CLOSED but whose issue is still open. Bounded + spaced for GitHub's
+ *  secondary rate limit; the githubClosed flag makes it self-terminating. Runs
+ *  from the daily cron, so the existing backlog clears without anyone acting. */
+export async function backfillCloseShippedMirrors(max = 60): Promise<{ closed: number; remaining: number }> {
+  if (!(await githubMirrorEnabled()) || (await ghBackoffActive()) || !(await getGithubConfig())) return { closed: 0, remaining: 0 };
+  const rows = await db.buildItem.findMany({
+    where: { status: { in: ['SHIPPED', 'CLOSED'] }, githubNumber: { not: null }, githubClosed: false },
+    select: { id: true, githubNumber: true },
+    orderBy: { shippedAt: 'asc' },
+    take: max,
+  });
+  let closed = 0;
+  for (const r of rows) {
+    if (await ghBackoffActive()) break; // GitHub started pushing back — stop for now
+    const ok = await ghCloseIssue(r.githubNumber!).catch(() => false);
+    if (ok) { await db.buildItem.update({ where: { id: r.id }, data: { githubClosed: true } }).catch(() => {}); closed++; }
+    await new Promise((res) => setTimeout(res, 350)); // space out (secondary rate limit)
+  }
+  const remaining = await db.buildItem.count({ where: { status: { in: ['SHIPPED', 'CLOSED'] }, githubNumber: { not: null }, githubClosed: false } });
+  return { closed, remaining };
 }
 
 /** Should we spend a GitHub call to wake Claude now? Only if mirroring is on, not
