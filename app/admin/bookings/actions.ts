@@ -171,6 +171,11 @@ export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 
       } catch (e) {
         console.error('[bookings] no-show notice failed:', (e as Error)?.message);
       }
+      // Let the diary know a client didn't show (the staff member who marked it is skipped).
+      try {
+        const { notifyStaffByPermission } = await import('@/lib/notifications');
+        await notifyStaffByPermission('bookings.manage', { kind: 'status', category: 'bookings', priority: 'normal', title: `No-show: ${b.treatmentTitle}`, body: b.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }), href: `/admin/bookings/${b.id}` }, session.email);
+      } catch { /* non-fatal */ }
     }
     if (status === 'COMPLETED') {
       await db.client.update({ where: { id: b.clientId }, data: { lastVisitAt: new Date() } });

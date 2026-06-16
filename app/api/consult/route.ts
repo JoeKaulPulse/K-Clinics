@@ -69,7 +69,7 @@ export async function POST(req: Request) {
       },
     });
 
-    await db.consultation.create({
+    const consultation = await db.consultation.create({
       data: {
         clientId: client.id,
         category: data.category,
@@ -90,6 +90,14 @@ export async function POST(req: Request) {
         detail: data.message ? encClinical(data.message) : null,
       },
     });
+
+    // Tell the team a new enquiry came in. Non-clinical summary only (name + category +
+    // treatments); the concerns/message stay encrypted and gated on the consultation page.
+    try {
+      const { notifyStaffByPermission } = await import('@/lib/notifications');
+      const who = [client.firstName, client.lastName].filter(Boolean).join(' ') || 'A new enquiry';
+      await notifyStaffByPermission('clients.view', { kind: 'status', category: 'messages', priority: 'high', title: `New consultation enquiry: ${data.category}`, body: `${who}${data.treatments?.length ? ` · ${data.treatments.slice(0, 3).join(', ')}` : ''}`, href: `/admin/consultations/${consultation.id}` });
+    } catch { /* non-fatal */ }
 
     // Server-side Lead conversion (GA4 + Meta CAPI) — ad-blocker-proof, deduped
     // with the browser pixel via the shared eventId. Email only on marketing opt-in.

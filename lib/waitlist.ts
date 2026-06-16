@@ -75,6 +75,11 @@ export async function notifyOnFreedSlot(treatmentSlug: string, slotStart: Date):
       <p style="font-size:13px;color:#91766e;">If it's already gone, you'll stay on the waitlist for the next opening. This link only works for you.</p>`;
     await sendEmail({ to: entry.client.email, subject: `A ${entry.treatmentTitle} slot just opened`, html: emailShell({ body, preheader: `A space opened on ${when} — claim it within 6 hours.`, unsubUrl: entry.client.unsubToken ? `${SITE_URL}/unsubscribe/${entry.client.unsubToken}` : undefined }) });
     await db.emailEvent.create({ data: { clientId: entry.clientId, kind: 'MANUAL', to: entry.client.email, subject: 'Waitlist slot opened', status: 'SENT' } }).catch(() => {});
+    // A freed slot was matched to a waitlister — let the diary know a booking may land.
+    try {
+      const { notifyStaffByPermission } = await import('@/lib/notifications');
+      await notifyStaffByPermission('bookings.view', { kind: 'status', category: 'bookings', priority: 'normal', title: `Waitlist slot offered: ${entry.treatmentTitle}`, body: `${entry.client.firstName || 'A client'} · ${when}`, href: '/admin/waitlist' });
+    } catch { /* non-fatal */ }
     return true;
   } catch (e) {
     console.error('[waitlist] notify failed (non-fatal):', (e as Error)?.message);
