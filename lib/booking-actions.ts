@@ -226,6 +226,10 @@ export async function refundBooking(
   // Books: raise the matching Xero credit note (+ cash refund), best-effort.
   try { const { pushBookingRefundToXero } = await import('@/lib/xero'); await pushBookingRefundToXero(booking.id, amount, opts.reason); } catch { /* non-fatal */ }
 
+  try {
+    const { notifyStaffByPermission } = await import('@/lib/notifications');
+    await notifyStaffByPermission('finance.view', { kind: 'status', category: 'finance', priority: 'normal', title: `Refund processed: ${booking.treatmentTitle}`, body: `£${(amount / 100).toFixed(2)} refunded`, href: `/admin/bookings/${booking.id}` });
+  } catch { /* non-fatal */ }
   return { ok: true, refundedPence: totalRefunded };
 }
 
@@ -364,6 +368,11 @@ export async function cancelBooking(
   if (!cancelEmail.ok) console.error('[cancelBooking] email failed:', cancelEmail.error);
   await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Booking cancelled', status: cancelEmail.ok ? 'SENT' : 'FAILED', providerId: cancelEmail.id, error: cancelEmail.error } }).catch(() => {});
 
+  try {
+    const { notifyStaffByPermission } = await import('@/lib/notifications');
+    const when = booking.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    await notifyStaffByPermission('bookings.view', { kind: 'status', category: 'bookings', priority: 'high', title: `Booking cancelled: ${booking.treatmentTitle}`, body: `${booking.client.firstName || 'A client'} · ${when}`, href: `/admin/bookings/${booking.id}` });
+  } catch { /* non-fatal */ }
   return { ok: true, charged, requiresAction, feeFailed };
 }
 
@@ -476,5 +485,10 @@ export async function rescheduleBooking(
     }),
   }).catch(() => {});
 
+  try {
+    const { notifyStaffByPermission } = await import('@/lib/notifications');
+    const when = newStart.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    await notifyStaffByPermission('bookings.view', { kind: 'status', category: 'bookings', priority: 'high', title: `Booking rescheduled: ${booking.treatmentTitle}`, body: `${booking.client.firstName || 'A client'} · now ${when}`, href: `/admin/bookings/${booking.id}` });
+  } catch { /* non-fatal */ }
   return { ok: true, charged, requiresAction };
 }

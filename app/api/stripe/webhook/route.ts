@@ -62,7 +62,12 @@ export async function POST(req: Request) {
         const bookingId = pi.metadata?.bookingId;
         if (bookingId) {
           const { recordChargeFailure } = await import('@/lib/booking-actions');
-          await recordChargeFailure(bookingId, pi.last_payment_error?.message || 'The card was declined.');
+          const reason = pi.last_payment_error?.message || 'The card was declined.';
+          await recordChargeFailure(bookingId, reason);
+          try {
+            const { notifyStaffByPermission } = await import('@/lib/notifications');
+            await notifyStaffByPermission('finance.view', { kind: 'status', category: 'finance', priority: 'urgent', title: 'Payment failed', body: reason.slice(0, 140), href: `/admin/bookings/${bookingId}` });
+          } catch { /* non-fatal */ }
         }
         break;
       }

@@ -226,6 +226,22 @@ export async function GET(req: Request) {
     failures++; console.error('[cron] build-board seed failed (continuing):', (e as Error)?.message);
   }
 
+  // Low-stock alert: one collapsing row per inventory manager until restocked/read.
+  try {
+    const { db } = await import('@/lib/db');
+    const items = await db.stockItem.findMany({ where: { active: true, lowStockAt: { gt: 0 } }, select: { name: true, currentQty: true, lowStockAt: true } });
+    const low = items.filter((i) => i.currentQty <= i.lowStockAt);
+    if (low.length) {
+      const { notifyStaffByPermission } = await import('@/lib/notifications');
+      await notifyStaffByPermission('inventory.view', {
+        kind: 'status', category: 'inventory', priority: 'high', groupKey: 'inventory:low-stock',
+        title: `${low.length} item${low.length === 1 ? '' : 's'} low on stock`,
+        body: low.slice(0, 4).map((i) => i.name).join(', ') + (low.length > 4 ? '…' : ''),
+        href: '/admin/inventory',
+      });
+    }
+  } catch { /* non-fatal */ }
+
   // Record the run so the status page can show job freshness.
   try {
     const { db } = await import('@/lib/db');
