@@ -949,6 +949,7 @@ model AdminUser {
 
   locale                 String  @default("en") // CRM UI language (en | uk)
   preferredDashboardView String? // PRJ-63: OWNER/ADMIN can pin a role-view to land on (null = role default)
+  notifPrefs             Json? // per-user notification preferences (in-app/email per category, quiet hours, digest, chat sound). Null = defaults. See lib/notifications.ts
 
   // ── Two-factor authentication (TOTP) ────────────────────────────────────
   totpSecret     String? // encrypted base32 secret (lib/crypto keyring)
@@ -3243,6 +3244,9 @@ model StaffNotification {
   user      AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
   kind      String // assigned | comment | status | idea_feedback | mention | system
+  category  String? // messages | bookings | clinical | finance | reviews | inventory | team | academy | marketing | system (derived when unset)
+  priority  String    @default("normal") // low | normal | high | urgent
+  groupKey  String? // collapse a burst into one row (e.g. chat:<conversationId>); the latest write updates the row
   title     String
   body      String?   @db.Text
   href      String? // where clicking takes you (e.g. /admin/build)
@@ -3251,6 +3255,7 @@ model StaffNotification {
 
   @@index([userId, readAt])
   @@index([userId, createdAt])
+  @@index([userId, groupKey])
 }
 
 // ── Storefront "Skin & Smile" QR kiosk campaign ──────────────────────────────

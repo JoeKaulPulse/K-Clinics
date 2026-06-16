@@ -72,6 +72,17 @@ export async function POST(req: Request) {
       summary: `${validKind.toLowerCase()} ${status === 'APPROVED' ? 'booked' : 'requested'} ${s.toLocaleDateString('en-GB')}–${e.toLocaleDateString('en-GB')}`,
       meta: { timeOffId: row.id },
     });
+    // A request that needs approval pings the approvers (the requester's own
+    // approved entries don't notify anyone).
+    if (status === 'PENDING') {
+      const { notifyStaffByPermission } = await import('@/lib/notifications');
+      await notifyStaffByPermission('schedule.manage', {
+        kind: 'status', category: 'team', priority: 'high',
+        title: `Time-off request from ${session.email.split('@')[0]}`,
+        body: `${validKind.toLowerCase()} · ${s.toLocaleDateString('en-GB')}–${e.toLocaleDateString('en-GB')}`,
+        href: '/admin/time-off',
+      }, session.email).catch(() => {});
+    }
     return NextResponse.json({ ok: true, status });
   }
 

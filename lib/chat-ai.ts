@@ -155,6 +155,15 @@ async function handOver(conversationId: string, visitorEmail: string | null, ope
     : `${opening} Our team isn't online at the moment (hours: ${hoursText()}). I've passed this to them and they'll follow up${visitorEmail ? ' by email' : ' here'} as soon as we reopen. In the meantime you can call ${site.phone} or book online at ${site.booking.path}.`;
   const handoverMsg = await db.chatMessage.create({ data: { conversationId, sender: 'AI', author: 'K (assistant)', body: note } });
   await db.chatConversation.update({ where: { id: conversationId }, data: { mode: 'STAFF', status: 'OPEN', lastMessageAt: new Date(), staffUnread: { increment: 1 } } });
+  // In-app alert: a live visitor needs a person now (urgent, collapses per conversation).
+  try {
+    const { notifyStaffByPermission } = await import('@/lib/notifications');
+    await notifyStaffByPermission('clients.view', {
+      kind: 'comment', category: 'messages', priority: 'urgent',
+      title: 'Live chat needs a person', body: (reason || 'A visitor asked for a human').slice(0, 140),
+      href: `/admin/chat?c=${conversationId}`, groupKey: `chat:${conversationId}`,
+    });
+  } catch { /* non-fatal */ }
   // If the visitor left their email and has stepped away, email them this note too.
   try { const { emailChatMessage } = await import('@/lib/chat-email'); await emailChatMessage(handoverMsg.id); } catch { /* non-fatal */ }
   try {
