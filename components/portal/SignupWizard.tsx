@@ -19,7 +19,7 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
 
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
-  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', gender: '', genderSelfDescribe: '', password: '', marketingOptIn: true, consent: false, company: '' });
+  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', gender: '', genderSelfDescribe: '', password: '', marketingOptIn: false, consent: false, company: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState<null | { granted: boolean; code?: string; percent: number; reason?: string }>(null);

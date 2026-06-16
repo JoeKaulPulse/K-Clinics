@@ -27,9 +27,9 @@ export async function logAudit(opts: {
         meta: opts.meta ? (opts.meta as object) : undefined,
       },
     });
-  } catch {
-    // Auditing must never break the primary action; failures are swallowed
-    // (and would surface via monitoring in production).
+  } catch (err) {
+    // Auditing must never break the primary action, but failures must be visible.
+    console.error('[audit] auditEvent.create failed:', (err as Error)?.message);
   }
 }
 

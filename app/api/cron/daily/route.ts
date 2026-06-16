@@ -235,6 +235,8 @@ export async function GET(req: Request) {
 
   // BLD-349: push failure summary to a webhook channel when configured.
   // Set CRON_ALERT_WEBHOOK_URL (Slack/Discord/Make/Zapier) in Vercel env.
+  // BLD-400: fall back to Sentry when the webhook URL is absent so failures
+  // are never silently swallowed.
   if (failures > 0) {
     const webhookUrl = process.env.CRON_ALERT_WEBHOOK_URL;
     if (webhookUrl) {
@@ -244,6 +246,12 @@ export async function GET(req: Request) {
         durationMs: cronDurationMs,
       });
       fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }).catch(() => {});
+    } else {
+      try {
+        const Sentry = await import('@sentry/nextjs');
+        Sentry.captureMessage(`[cron/daily] ${failures} failure(s) in ${Math.round(cronDurationMs / 1000)}s`, { level: 'error', extra: { failures, durationMs: cronDurationMs } });
+      } catch { /* Sentry not configured — at least log to console */ }
+      console.error(`[cron/daily] ${failures} failure(s) in ${Math.round(cronDurationMs / 1000)}s — configure CRON_ALERT_WEBHOOK_URL or SENTRY_DSN to receive alerts`);
     }
   }
 
