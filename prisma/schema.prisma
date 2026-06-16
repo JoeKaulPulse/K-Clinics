@@ -950,6 +950,7 @@ model AdminUser {
   locale                 String  @default("en") // CRM UI language (en | uk)
   preferredDashboardView String? // PRJ-63: OWNER/ADMIN can pin a role-view to land on (null = role default)
   notifPrefs             Json? // per-user notification preferences (in-app/email per category, quiet hours, digest, chat sound). Null = defaults. See lib/notifications.ts
+  pushSubscriptions      PushSubscription[]
 
   // ── Two-factor authentication (TOTP) ────────────────────────────────────
   totpSecret     String? // encrypted base32 secret (lib/crypto keyring)
@@ -3256,6 +3257,22 @@ model StaffNotification {
   @@index([userId, readAt])
   @@index([userId, createdAt])
   @@index([userId, groupKey])
+}
+
+// Web-push subscription (one per browser/device a user enables). Phase 4. Dedup is
+// structural via the subscribe route (deleteMany by endpoint, then create) — no
+// @unique, per the non-destructive deploy gate.
+model PushSubscription {
+  id        String    @id @default(cuid())
+  user      AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  endpoint  String    @db.Text
+  p256dh    String    @db.Text
+  auth      String
+  ua        String? // user-agent label so a user can recognise the device
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 // ── Storefront "Skin & Smile" QR kiosk campaign ──────────────────────────────
