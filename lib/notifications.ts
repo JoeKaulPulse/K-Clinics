@@ -78,10 +78,40 @@ export type NotifInput = {
   category?: Category; priority?: Priority; groupKey?: string;
 };
 
+/** Is it the recipient's quiet hours now? (clinic-local time; overnight ranges wrap). */
+function inQuietHours(prefs: NotifPrefs, now = new Date()): boolean {
+  const q = prefs.quietHours;
+  if (!q?.start || !q?.end) return false;
+  const hhmm = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hour12: false }).format(now);
+  return q.start <= q.end ? hhmm >= q.start && hhmm < q.end : hhmm >= q.start || hhmm < q.end;
+}
+
+const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] || c);
+
+/** Phase 2 email: a copy when the recipient opted the category into email and the
+ *  item is high/urgent. Urgent ignores quiet hours; high is held during them (the
+ *  digest catches it). Best-effort; never blocks the in-app row. */
+async function maybeEmail(email: string | undefined, prefs: NotifPrefs, category: Category, priority: Priority, n: NotifInput): Promise<void> {
+  if (!email || !emailEnabled(prefs, category)) return;
+  if (priority !== 'urgent' && priority !== 'high') return;
+  if (priority !== 'urgent' && inQuietHours(prefs)) return;
+  try {
+    const { sendEmail, tmplManual } = await import('@/lib/email');
+    const base = process.env.NEXT_PUBLIC_BASE_URL || 'https://kclinics.co.uk';
+    const link = n.href ? `${base}${n.href}` : null;
+    const html = tmplManual(
+      `<h2 style="margin:0 0 8px">${escapeHtml(n.title)}</h2>` +
+      (n.body ? `<p style="margin:0 0 12px">${escapeHtml(n.body)}</p>` : '') +
+      (link ? `<p><a href="${link}">Open in the admin →</a></p>` : ''),
+    );
+    await sendEmail({ to: email, subject: n.title.slice(0, 120), html });
+  } catch { /* non-fatal */ }
+}
+
 /** The single creator: categorises, prioritises, honours the user's per-category
- *  in-app preference (urgent overrides), collapses bursts on a groupKey, and
- *  de-dupes an identical unread within 10 minutes. Best-effort. */
-async function createFor(user: { id: string; notifPrefs?: unknown }, n: NotifInput): Promise<void> {
+ *  in-app preference (urgent overrides), collapses bursts on a groupKey, de-dupes
+ *  an identical unread within 10 minutes, then emails per Phase 2. Best-effort. */
+async function createFor(user: { id: string; email?: string; notifPrefs?: unknown }, n: NotifInput): Promise<void> {
   const category = n.category ?? deriveCategory(n.kind, n.href);
   const priority = n.priority ?? derivePriority(n.kind);
   const prefs = mergePrefs(user.notifPrefs);
@@ -90,20 +120,21 @@ async function createFor(user: { id: string; notifPrefs?: unknown }, n: NotifInp
     category, priority, kind: n.kind,
     title: n.title.slice(0, 200), body: n.body?.slice(0, 1000) || null, href: n.href?.slice(0, 300) || null,
   };
-  // Collapse a burst (same groupKey, still unread) into one updating row.
+  // Collapse a burst (same groupKey, still unread) into one updating row — no re-email.
   if (n.groupKey) {
     const existing = await db.staffNotification.findFirst({ where: { userId: user.id, groupKey: n.groupKey, readAt: null }, select: { id: true } });
     if (existing) { await db.staffNotification.update({ where: { id: existing.id }, data: { ...data, createdAt: new Date() } }); return; }
     await db.staffNotification.create({ data: { userId: user.id, groupKey: n.groupKey, ...data } });
-    return;
+  } else {
+    // De-dupe: skip an identical unread notification raised in the last 10 minutes.
+    const dupe = await db.staffNotification.findFirst({
+      where: { userId: user.id, kind: n.kind, title: data.title, href: data.href, readAt: null, createdAt: { gte: new Date(Date.now() - 10 * 60 * 1000) } },
+      select: { id: true },
+    });
+    if (dupe) return;
+    await db.staffNotification.create({ data: { userId: user.id, ...data } });
   }
-  // De-dupe: skip an identical unread notification raised in the last 10 minutes.
-  const dupe = await db.staffNotification.findFirst({
-    where: { userId: user.id, kind: n.kind, title: data.title, href: data.href, readAt: null, createdAt: { gte: new Date(Date.now() - 10 * 60 * 1000) } },
-    select: { id: true },
-  });
-  if (dupe) return;
-  await db.staffNotification.create({ data: { userId: user.id, ...data } });
+  await maybeEmail(user.email, prefs, category, priority, n);
 }
 
 /** Notify a staff member by email. No-ops cleanly if the email isn't a known
@@ -115,7 +146,7 @@ export async function notifyStaff(email: string | null | undefined, n: NotifInpu
     if (actorEmail && to === actorEmail.trim().toLowerCase()) return;
     const user = await db.adminUser.findUnique({ where: { email: to }, select: { id: true, active: true, notifPrefs: true } });
     if (!user || !user.active) return;
-    await createFor(user, n);
+    await createFor({ id: user.id, email: to, notifPrefs: user.notifPrefs }, n);
   } catch (e) {
     console.error('[notifications] create failed (non-fatal)', (e as Error)?.message);
   }
@@ -126,9 +157,9 @@ export async function notifyStaff(email: string | null | undefined, n: NotifInpu
 export async function notifyStaffById(userId: string | null | undefined, n: NotifInput, actorUserId?: string): Promise<void> {
   try {
     if (!userId || (actorUserId && userId === actorUserId)) return;
-    const user = await db.adminUser.findUnique({ where: { id: userId }, select: { id: true, active: true, notifPrefs: true } });
+    const user = await db.adminUser.findUnique({ where: { id: userId }, select: { id: true, active: true, email: true, notifPrefs: true } });
     if (!user || !user.active) return;
-    await createFor(user, n);
+    await createFor({ id: user.id, email: user.email, notifPrefs: user.notifPrefs }, n);
   } catch (e) {
     console.error('[notifications] notifyStaffById failed (non-fatal)', (e as Error)?.message);
   }
@@ -147,7 +178,7 @@ export async function notifyStaffByPermission(permission: string, n: NotifInput,
       if (u.role === 'OWNER') return true;
       return effectivePermissions({ role: u.role, permGrant: u.permGrant, permRevoke: u.permRevoke }).has(permission);
     });
-    await Promise.all(recipients.map((u) => createFor(u, n).catch(() => {})));
+    await Promise.all(recipients.map((u) => createFor({ id: u.id, email: u.email, notifPrefs: u.notifPrefs }, n).catch(() => {})));
     return recipients.length;
   } catch (e) {
     console.error('[notifications] notifyStaffByPermission failed (non-fatal)', (e as Error)?.message);

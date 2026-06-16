@@ -112,6 +112,10 @@ export async function eraseClientData(clientId: string) {
     db.promoRedemption.updateMany({ where: { clientId }, data: { email: null } }),
   ]);
   await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
+  try {
+    const { notifyStaffByPermission } = await import('@/lib/notifications');
+    await notifyStaffByPermission('settings.manage', { kind: 'status', category: 'system', priority: 'high', title: 'Client data erased (GDPR)', body: `Right-to-erasure completed by ${session.email.split('@')[0]}`, href: '/admin/clients' }, session.email);
+  } catch { /* non-fatal */ }
   revalidatePath(`/admin/clients/${clientId}`);
   return { ok: true };
 }

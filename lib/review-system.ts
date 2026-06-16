@@ -145,5 +145,15 @@ export async function submitReview(token: string, rating: number, title: string,
   });
   const { logAudit } = await import('@/lib/audit');
   await logAudit({ action: 'REVIEW_RECEIVED', actor: 'client', clientId: review.clientId, bookingId: review.bookingId, summary: `Review submitted · ${r}★` });
+  // A low rating needs a prompt reply; a good one is routine.
+  try {
+    const { notifyStaffByPermission } = await import('@/lib/notifications');
+    await notifyStaffByPermission('reviews.manage', {
+      kind: 'status', category: 'reviews', priority: r <= 3 ? 'high' : 'normal',
+      title: `New ${r}★ review${r <= 3 ? ' — needs a reply' : ''}`,
+      body: (title.trim() || body.trim() || '').slice(0, 140) || undefined,
+      href: '/admin/reviews',
+    });
+  } catch { /* non-fatal */ }
   return { ok: true, rating: r };
 }

@@ -69,6 +69,16 @@ async function sendBookingConfirmation(bookingId: string): Promise<void> {
   const firstName = c.firstName;
   const name = [c.firstName, c.lastName].filter(Boolean).join(' ');
 
+  // Tell the clinic a booking is confirmed: the assigned clinician (if any) plus
+  // whoever runs the diary. Front-desk-safe body (name + time, no clinical detail).
+  try {
+    const { notifyStaffById, notifyStaffByPermission } = await import('@/lib/notifications');
+    const when = booking.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const note = { kind: 'status' as const, category: 'bookings' as const, priority: 'high' as const, title: `Booking confirmed: ${booking.treatmentTitle}`, body: `${name || 'A client'} · ${when}`, href: `/admin/bookings/${booking.id}` };
+    if (booking.practitionerId) await notifyStaffById(booking.practitionerId, note);
+    await notifyStaffByPermission('bookings.view', note); // dedup means the clinician isn't pinged twice
+  } catch { /* non-fatal */ }
+
   // First appointment? (this booking plus any other confirmed/completed)
   const priorCount = await db.booking.count({
     where: { clientId: c.id, id: { not: booking.id }, status: { in: ['CONFIRMED', 'COMPLETED'] } },
