@@ -93,5 +93,13 @@ export async function POST(req: Request) {
     where: { id: convo.id },
     data: { status: 'OPEN', mode: 'STAFF', lastMessageAt: new Date(), lastVisitorSeenAt: new Date(), staffUnread: { increment: 1 } },
   });
+  try {
+    const { notifyStaffByPermission } = await import('@/lib/notifications');
+    await notifyStaffByPermission('clients.view', {
+      kind: 'comment', category: 'messages', priority: 'high',
+      title: 'New chat message (email reply)', body: message.slice(0, 140),
+      href: `/admin/chat?c=${convo.id}`, groupKey: `chat:${convo.id}`,
+    });
+  } catch { /* non-fatal */ }
   return new Response('ok');
 }

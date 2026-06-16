@@ -46,7 +46,7 @@ export async function POST(req: Request) {
     const token = clean(b.token, 60);
     const body = clean(b.message);
     if (!token || !body) return NextResponse.json({ ok: false, error: 'Bad request.' }, { status: 400 });
-    const convo = await db.chatConversation.findUnique({ where: { token }, select: { id: true, mode: true } });
+    const convo = await db.chatConversation.findUnique({ where: { token }, select: { id: true, mode: true, visitorName: true } });
     if (!convo) return NextResponse.json({ ok: false, error: 'Conversation not found.' }, { status: 404 });
     await db.$transaction([
       db.chatMessage.create({ data: { conversationId: convo.id, sender: 'VISITOR', body } }),
@@ -54,6 +54,16 @@ export async function POST(req: Request) {
       // the assistant replies and escalates (bumping unread) only if needed.
       db.chatConversation.update({ where: { id: convo.id }, data: { status: 'OPEN', lastMessageAt: new Date(), lastVisitorSeenAt: new Date(), ...(convo.mode === 'STAFF' ? { staffUnread: { increment: 1 } } : {}) } }),
     ]);
+    // When a human is handling the chat, ping the team that the visitor replied
+    // (collapses per conversation so a flurry of messages is one updating row).
+    if (convo.mode === 'STAFF') {
+      const { notifyStaffByPermission } = await import('@/lib/notifications');
+      await notifyStaffByPermission('clients.view', {
+        kind: 'comment', category: 'messages', priority: 'high',
+        title: `New message from ${convo.visitorName?.trim() || 'a visitor'}`, body: body.slice(0, 140),
+        href: `/admin/chat?c=${convo.id}`, groupKey: `chat:${convo.id}`,
+      }).catch(() => {});
+    }
     if (convo.mode === 'AI') {
       const { maybeAutoReply } = await import('@/lib/chat-ai');
       await maybeAutoReply(convo.id);
