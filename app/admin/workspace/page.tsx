@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { AdminShell } from '@/components/admin/AdminShell';
+import { WorkspaceSeatAudit } from '@/components/admin/WorkspaceSeatAudit';
 
 type WorkspaceUser = {
   email: string;
@@ -162,6 +163,8 @@ export default function WorkspacePage() {
             Manage @kclinics.co.uk mailboxes, aliases and shared inboxes via the Directory API.
           </p>
         </div>
+
+        <WorkspaceSeatAudit />
 
         {configured === false && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
