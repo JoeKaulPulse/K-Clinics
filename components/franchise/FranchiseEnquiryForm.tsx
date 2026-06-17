@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { site } from '@/lib/site';
 import { Button, ArrowIcon } from '@/components/ui/Button';
+import { trackLead } from '@/lib/analytics-events';
 
 /** Franchise enquiry — records the lead via /api/consult (same pipeline as the
  *  contact form) so it lands in the CRM and notifies the clinic. */
@@ -36,6 +37,7 @@ export function FranchiseEnquiryForm() {
         body: JSON.stringify({ firstName: firstName || 'Franchise', lastName: rest.join(' ') || undefined, email, phone: phone || undefined, category: 'general', message, consent: true, company }),
       });
       const j = await res.json().catch(() => ({ ok: false }));
+      if (j.ok) trackLead();
       setStatus(j.ok ? 'sent' : 'error');
     } catch {
       setStatus('error');

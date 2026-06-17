@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { treatments } from '@/lib/treatments';
 import { site } from '@/lib/site';
 import { Button, ArrowIcon } from '@/components/ui/Button';
+import { trackLead } from '@/lib/analytics-events';
 
 type Data = {
   category: 'aesthetics' | 'dentistry' | 'both' | 'general';
@@ -67,8 +68,7 @@ export function ConsultForm() {
       });
       const json = await res.json();
       if (json.ok) {
-        try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'generate_lead', { currency: 'GBP', value: 0 }); } catch { /* analytics best-effort */ }
-        try { (window as Window & { fbq?: (...a: unknown[]) => void }).fbq?.('track', 'Lead', {}, { eventID: eventId }); } catch { /* analytics best-effort */ }
+        trackLead({ eventId });
         setStatus('done');
         return;
       }
