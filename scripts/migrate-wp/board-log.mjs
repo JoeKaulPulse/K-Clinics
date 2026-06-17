@@ -1,5 +1,6 @@
-// One-off: logs this session's WordPress-import cleanup work to the Build & Issues
-// board via the token-authed queue (POST $BASE_URL/api/build/queue).
+// One-off: logs this session's work to the Build & Issues board via the
+// token-authed queue (POST $BASE_URL/api/build/queue). Carries two items:
+// the WordPress-import cleanup, and the phone-booking emails + call walkthrough.
 //
 // The Claude web session can't reach kclinics.co.uk (egress allowlist: HTTP 403),
 // so this carries the log and can be posted from a machine that CAN reach the site:
@@ -32,6 +33,22 @@ const items = [
       '- "debil"-type medical flags are hand-entered, not imported — clear on the client page.',
       '',
       'Status: PAUSED, awaiting owner. Next: owner runs junk-scan, reviews the CSV, approves which buckets to remove; then build the purge step (delete approved buckets, skip has_activity rows; dry-run then --commit).',
+    ].join('\n'),
+  },
+  {
+    type: 'TASK',
+    urgency: 'P2',
+    title: 'Phone-booking: auto-send booking confirmation + call walkthrough (delivered, awaiting review)',
+    detail: [
+      'Owner request (WhatsApp): a phone/walk-in booking should send the client the same emails as the online flow, and reception wants a guided walkthrough to log the call and trigger those emails as they go.',
+      '',
+      'Delivered on branch claude/wonderful-edison-nlgfz0 (PR #1024):',
+      '- 0897f3a — createManualBooking now calls notifyBookingConfirmed() like the online flow, so a phone booking auto-sends the booking confirmation, which already carries the "Complete my forms" health-form link (→ /account/assessments). With the account-invite/card link the modal already sends, a new phone client now gets the two-email sequence: create-your-account, then confirmation + health form. No double-send — createManualBooking was not previously a caller.',
+      '- 07167dc — the "New phone booking" modal post-booking step is now a "Call walkthrough": the read-to-client script (now mentions the confirmation + health form); the two client emails as explicit steps with live status + Resend; and a "Log the call" step (identity / consent / cancellation-policy ticks + free-text notes) saved to the client record as a CALL interaction. Adds server actions logCallNote + resendBookingConfirmation (both bookings.manage).',
+      '',
+      'Gates: npx tsc --noEmit and next lint clean. NOT visually verified (no Chromium this session) — needs an eyeball before merge.',
+      '',
+      'Open question for owner: the confirmation currently fires when the booking is created (status is already CONFIRMED), before any card is saved. If it should instead wait until the card link is used, that is a one-line move.',
     ].join('\n'),
   },
 ];
