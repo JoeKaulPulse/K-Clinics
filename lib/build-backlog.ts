@@ -1457,6 +1457,36 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'app/(marketing)/[slug]/page.tsx generateMetadata: dentistry treatment pages now served with noindex when site.dentistryLive is false, preventing inactive booking pages with placeholder CTAs from being crawled and indexed.',
     notes: ['app/(marketing)/[slug]/page.tsx generateMetadata, site.dentistryLive flag.'],
   },
+  {
+    title: 'Manage-booking links broken -- reminder emails and portal use ?token= but /booking/manage reads ?t= (BLD-454)', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude',
+    value: 9, effort: 1,
+    detail: 'lib/automations.ts reminder email manageUrl and app/account/appointments/page.tsx portal Manage-booking link both built URLs with ?token= param; /booking/manage reads ?t=, so tapping the link landed with no booking loaded. Fixed both callers to use ?t=.',
+    notes: ['lib/automations.ts manageUrl line ~361. app/account/appointments/page.tsx Link href.'],
+  },
+  {
+    title: 'Meta CAPI purchase event sent without marketing consent -- UK GDPR Art.6 breach (BLD-455)', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude',
+    value: 9, effort: 1,
+    detail: 'lib/booking-actions.ts finalizeBookingCharge(): sendPurchase was called with email: booking.client.email unconditionally, sending the SHA-256-hashed email to Meta CAPI regardless of marketingOptIn. Fixed: email is now only passed if booking.client.marketingOptIn is true, matching the guard already present in app/admin/bookings/actions.ts.',
+    notes: ['lib/booking-actions.ts finalizeBookingCharge(), sendPurchase call.'],
+  },
+  {
+    title: 'Above-fold treatment images missing priority prop -- LCP regression on homepage (BLD-457)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 1,
+    detail: 'app/(marketing)/page.tsx dual-discipline section: the two MediaArt cards (laser-hair-removal, veneers) are LCP candidates on desktop but lacked the priority prop, causing Next.js to lazy-load them. Added priority to both MediaArt calls.',
+    notes: ['app/(marketing)/page.tsx dual-discipline MediaArt map.'],
+  },
+  {
+    title: '/book page has noindex:true -- primary booking page invisible to search engines (BLD-458)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 1,
+    detail: 'app/(marketing)/book/page.tsx generateMetadata: removed noindex: true so the keyword-rich bottom-funnel booking page is no longer excluded from organic search.',
+    notes: ['app/(marketing)/book/page.tsx generateMetadata pageMeta call.'],
+  },
+  {
+    title: 'Add root app/error.tsx -- uncaught render errors bypass all recovery boundaries (BLD-460)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 1,
+    detail: 'Created app/error.tsx following the Sentry.captureException + reset button pattern used in app/admin/error.tsx. Catches render errors for pages directly under app/ that would otherwise skip segment-level boundaries.',
+    notes: ['app/error.tsx (new file).'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

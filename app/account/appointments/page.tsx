@@ -79,7 +79,7 @@ export default async function AppointmentsPage() {
                   <a href={`/api/account/calendar/${b.manageToken}`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
                     {t('appt.addCalendar')}
                   </a>
-                  <Link href={`/booking/manage?token=${b.manageToken}`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
+                  <Link href={`/booking/manage?t=${b.manageToken}`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
                     {t('appt.reschedule')}
                   </Link>
                   {b.pricePence > 0 && (
