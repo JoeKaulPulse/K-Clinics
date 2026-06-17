@@ -175,7 +175,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
           <span className="inline-block rounded-full bg-[var(--color-bone)] px-3 py-1 text-xs uppercase tracking-[0.16em]">{b.status}</span>
           <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl">{b.treatmentTitle}</h1>
           <p className="mt-1 text-[var(--color-stone)]">
-            {new Date(b.startAt).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+            {new Date(b.startAt).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
             {' · '}{b.durationMin} min
           </p>
           {courseSessions > 1 ? (
@@ -196,7 +196,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
 
       {b.status === 'REQUESTED' && canManageBk && (
         <div className="mt-6">
-          <SameDayRequestActions bookingId={b.id} when={new Date(b.startAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} />
+          <SameDayRequestActions bookingId={b.id} when={new Date(b.startAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })} />
         </div>
       )}
 

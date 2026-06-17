@@ -7,6 +7,7 @@ import { getLocale } from '@/lib/locale';
 import { t } from '@/lib/i18n';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { CalendarBlockButton } from '@/components/admin/CalendarBlockButton';
+import { clinicMinutesOfDay } from '@/lib/clinic-time';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,13 +52,15 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const can = await sessionPermissions();
 
   const locale = await getLocale();
-  const topOf = (d: Date) => (Math.max(DAY_START, d.getHours() * 60 + d.getMinutes()) - DAY_START) * PX_PER_MIN;
+  // Position by clinic-local minutes (Europe/London) so the diary isn't an hour
+  // off during BST on the UTC server (matches the time labels). (BLD-448)
+  const topOf = (d: Date) => (Math.max(DAY_START, clinicMinutesOfDay(d)) - DAY_START) * PX_PER_MIN;
   const heightOf = (s: Date, e: Date) => Math.max(22, ((e.getTime() - s.getTime()) / 60000) * PX_PER_MIN);
 
   // Current-time indicator — only shown when viewing today.
   const now = new Date();
   const isToday = iso(day) === iso(now);
-  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const nowMin = clinicMinutesOfDay(now);
   const nowPx = isToday && nowMin >= DAY_START && nowMin <= DAY_END ? (nowMin - DAY_START) * PX_PER_MIN : null;
 
   return (
@@ -122,7 +125,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                       style={{ top: topOf(b.startAt), height: heightOf(b.startAt, b.endAt), borderColor: col.color || 'var(--color-gold)' }}
                       className="absolute inset-x-1 overflow-hidden rounded-[var(--radius-sm)] border-l-2 bg-[var(--color-bone)] p-1.5 text-xs shadow-sm transition-shadow duration-150 hover:shadow-[var(--shadow-soft)]">
                       <span className="block truncate font-medium">
-                        {b.startAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} {b.treatmentTitle}
+                        {b.startAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })} {b.treatmentTitle}
                       </span>
                       <span className="block truncate text-[var(--color-stone)]">
                         {b.client.firstName} {b.client.lastName ?? ''} {b.client.medicalFlag ? '⚠' : ''}

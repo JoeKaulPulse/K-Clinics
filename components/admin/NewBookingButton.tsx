@@ -46,7 +46,7 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
   const [matches, setMatches] = useState<Found[]>([]);
   const [selected, setSelected] = useState<Found | null>(null);
   const [selectedGroup, setSelectedGroup] = useState(firstGroup);
-  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', treatmentSlug: firstSlug, variantId: treatments.find((t) => t.slug === firstSlug)?.variants?.[0]?.id ?? '', asConsultation: false, date: '', time: '10:00', notes: '' });
+  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', treatmentSlug: firstSlug, variantId: treatments.find((t) => t.slug === firstSlug)?.variants?.[0]?.id ?? '', asConsultation: false, sessions: 1, date: '', time: '10:00', notes: '' });
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD((p) => ({ ...p, [k]: v }));
   // The standalone "Consultation" category is already a consultation; the toggle
   // is for booking a *real* treatment category as a consultation (BLD-208).
@@ -88,7 +88,7 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
         lastName: selected?.lastName || d.lastName,
         email: selected?.email || d.email,
         phone: selected?.phone || d.phone,
-        treatmentSlug: d.treatmentSlug, variantId: d.asConsultation ? undefined : (d.variantId || undefined), asConsultation: d.asConsultation, startISO, notes: d.notes, override,
+        treatmentSlug: d.treatmentSlug, variantId: d.asConsultation ? undefined : (d.variantId || undefined), asConsultation: d.asConsultation, sessions: d.sessions, startISO, notes: d.notes, override,
       });
       if (r.ok) setResult(r as Result);
       else { setError(r.error || 'Could not create booking.'); setClash(Boolean(r.clash)); }
@@ -165,7 +165,14 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
             {!isConsultationCat && (
               <label className="flex items-center gap-2 text-sm text-[var(--color-stone)]">
                 <input type="checkbox" checked={d.asConsultation} onChange={(e) => set('asConsultation', e.target.checked)} />
-                Book as a consultation <span className="text-[var(--color-stone-soft)]">(30 min · on consultation)</span>
+                Book as a consultation <span className="text-[var(--color-stone-soft)]">(15 min · on consultation)</span>
+              </label>
+            )}
+            {/* BLD-409: book a course of N sessions in one go. */}
+            {!isConsultationCat && !d.asConsultation && (
+              <label className="flex items-center justify-between gap-3 text-sm text-[var(--color-stone)]">
+                Number of sessions
+                <input type="number" min={1} max={50} value={d.sessions} onChange={(e) => set('sessions', Math.max(1, Math.min(50, Math.round(Number(e.target.value) || 1))))} className={`${f} w-24`} />
               </label>
             )}
             <div className="grid grid-cols-2 gap-3">

@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
-import { formatPrice, bookableTreatments } from '@/lib/treatments';
+import { formatPrice } from '@/lib/treatments';
+import { loadBookingTreatments } from '@/lib/services';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { RevenueChart, TopTreatments } from '@/components/admin/Charts';
@@ -219,7 +220,7 @@ export default async function AdminOverview() {
   const locale = await getLocale();
 
   // ── Front-of-house essentials: the next client arrival (clock/weather above) ──
-  const treatments = bookableTreatments.map((t) => ({ slug: t.slug, title: t.title, group: t.group }));
+  const treatments = await loadBookingTreatments();
   const endOfToday = new Date(now); endOfToday.setHours(23, 59, 59, 999);
   const nextBk = canBookings
     ? await db.booking.findFirst({

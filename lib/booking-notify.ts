@@ -73,7 +73,7 @@ async function sendBookingConfirmation(bookingId: string): Promise<void> {
   // whoever runs the diary. Front-desk-safe body (name + time, no clinical detail).
   try {
     const { notifyStaffById, notifyStaffByPermission } = await import('@/lib/notifications');
-    const when = booking.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const when = booking.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
     const note = { kind: 'status' as const, category: 'bookings' as const, priority: 'high' as const, title: `Booking confirmed: ${booking.treatmentTitle}`, body: `${name || 'A client'} · ${when}`, href: `/admin/bookings/${booking.id}` };
     if (booking.practitionerId) await notifyStaffById(booking.practitionerId, note);
     await notifyStaffByPermission('bookings.view', note); // dedup means the clinician isn't pinged twice
@@ -134,7 +134,7 @@ async function sendBookingConfirmation(bookingId: string): Promise<void> {
   if (c.smsReminders && c.phone) {
     const { smsConfigured, sendSms } = await import('@/lib/sms');
     if (await smsConfigured()) {
-      const when = booking.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      const when = booking.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
       const arrive = firstVisit ? ' Please arrive 15 mins early for your first visit.' : '';
       tasks.push(sendSms(c.phone, `KClinics: your ${booking.treatmentTitle} is booked for ${when}.${arrive} Manage: ${manageUrl}`));
     }

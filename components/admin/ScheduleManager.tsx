@@ -279,7 +279,7 @@ function TimeOff({ staff, onChange }: { staff: Staff; onChange: () => void }) {
           <li key={t.id} className="flex items-center justify-between py-2.5 text-sm">
             <span>
               <span className="rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-xs">{t.kind.toLowerCase()}</span>{' '}
-              {new Date(t.startAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} – {new Date(t.endAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              {new Date(t.startAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })} – {new Date(t.endAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
               {t.reason ? ` · ${t.reason}` : ''}
             </span>
             <button disabled={busy} onClick={() => remove(t.id)} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)] disabled:opacity-50">Remove</button>
