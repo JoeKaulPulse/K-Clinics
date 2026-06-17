@@ -1,4 +1,5 @@
 import 'server-only';
+import { ACADEMY_TENANT_MODELS } from '@/lib/tenant-scope';
 
 // ClinicOS multi-tenancy — Ring 0 (see docs/PLATFORM_SAAS_PLAN.md v0.4, BLD-35).
 // K Clinics is tenant #1. The Academy tables carry a nullable `tenantId`; this
@@ -139,11 +140,18 @@ export async function backfillAcademyTenant(): Promise<{ stamped: number; comple
  *  throws into the cron. */
 export async function backfillAcademyTenantIfNeeded(): Promise<{ ran: boolean; stamped: number; complete: boolean }> {
   const { db } = await import('@/lib/db');
+  // The "done" marker encodes the number of models the backfill covered, not a bare
+  // boolean. Extending ACADEMY_TENANT_MODELS therefore auto-invalidates a stale
+  // marker and forces one clean re-run. (The Ring 0.1 marker was set for 13 models
+  // and wrongly suppressed the later 22-model backfill, leaving NULL stragglers —
+  // ExamQuestion/PastPaper were never covered, plus gap-window rows in others. This
+  // prevents that class of bug recurring whenever the model set grows.)
+  const doneValue = `complete:${ACADEMY_TENANT_MODELS.size}`;
   const done = await db.setting.findUnique({ where: { key: DONE_KEY } }).catch(() => null);
-  if (done?.value === 'true') return { ran: false, stamped: 0, complete: true };
+  if (done?.value === doneValue) return { ran: false, stamped: 0, complete: true };
   const { stamped, complete } = await backfillAcademyTenant();
   if (complete) {
-    await db.setting.upsert({ where: { key: DONE_KEY }, update: { value: 'true' }, create: { key: DONE_KEY, value: 'true' } }).catch(() => {});
+    await db.setting.upsert({ where: { key: DONE_KEY }, update: { value: doneValue }, create: { key: DONE_KEY, value: doneValue } }).catch(() => {});
   }
   return { ran: true, stamped, complete };
 }
