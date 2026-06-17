@@ -12,7 +12,10 @@ const str = (v: unknown) => (typeof v === 'string' ? v : '');
 const linkArr = (v: unknown) => (Array.isArray(v) ? (v as { label?: unknown; url?: unknown }[]).map((x) => ({ label: str(x?.label).slice(0, 160), url: str(x?.url).slice(0, 500) })).filter((x) => x.label && x.url) : []);
 const strList = (v: unknown) => (Array.isArray(v) ? (v as unknown[]).map((x) => str(x).slice(0, 300)).filter(Boolean) : []);
 // BLD-407: Blob URLs embed the original filename so can exceed 300 chars — use a generous ceiling.
-const urlList = (v: unknown) => (Array.isArray(v) ? (v as unknown[]).map((x) => str(x).slice(0, 600)).filter(Boolean) : []);
+// Only accept absolute http(s) URLs: these are rendered to students as <a href>, so a
+// stored javascript:/data: URL would be a stored-XSS vector (React doesn't sanitise href).
+const isHttpUrl = (s: string) => /^https?:\/\//i.test(s.trim());
+const urlList = (v: unknown) => (Array.isArray(v) ? (v as unknown[]).map((x) => str(x).slice(0, 600).trim()).filter((s) => s && isHttpUrl(s)) : []);
 
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
