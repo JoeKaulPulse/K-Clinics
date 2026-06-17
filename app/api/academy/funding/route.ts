@@ -38,7 +38,7 @@ export async function POST(req: Request) {
 
   const { db } = await import('@/lib/db');
   const { currentTenantId } = await import('@/lib/tenant');
-  const tenantId = await currentTenantId().catch(() => null);
+  const tenantId = await currentTenantId();
 
   const app = await db.fundingApplication.create({
     data: {

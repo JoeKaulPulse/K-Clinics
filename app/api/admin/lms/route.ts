@@ -25,6 +25,8 @@ export async function POST(req: Request) {
 
   const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const { db } = await import('@/lib/db');
+  const { currentTenantId } = await import('@/lib/tenant');
+  const tenantId = await currentTenantId();
   const ok = (extra: object = {}) => NextResponse.json({ ok: true, ...extra });
   const bad = (e = 'Bad request') => NextResponse.json({ ok: false, error: e }, { status: 400 });
 
@@ -43,7 +45,7 @@ export async function POST(req: Request) {
     case 'createModule': {
       if (!b.courseId) return bad();
       const order = await db.courseModule.count({ where: { courseId: String(b.courseId) } });
-      const m = await db.courseModule.create({ data: { courseId: String(b.courseId), title: str(b.title).slice(0, 160) || 'New module', summary: str(b.summary).slice(0, 300) || null, order } });
+      const m = await db.courseModule.create({ data: { tenantId, courseId: String(b.courseId), title: str(b.title).slice(0, 160) || 'New module', summary: str(b.summary).slice(0, 300) || null, order } });
       return ok({ id: m.id });
     }
     case 'updateModule': {
@@ -66,7 +68,7 @@ export async function POST(req: Request) {
     case 'createLesson': {
       if (!b.moduleId) return bad();
       const order = await db.lesson.count({ where: { moduleId: String(b.moduleId) } });
-      const l = await db.lesson.create({ data: { moduleId: String(b.moduleId), title: str(b.title).slice(0, 160) || 'New lesson', order, body: '' } });
+      const l = await db.lesson.create({ data: { tenantId, moduleId: String(b.moduleId), title: str(b.title).slice(0, 160) || 'New lesson', order, body: '' } });
       return ok({ id: l.id });
     }
     case 'updateLesson': {
@@ -111,7 +113,7 @@ export async function POST(req: Request) {
       const data = { title: str(b.title).slice(0, 160) || 'Module assessment', passMark: Math.min(100, Math.max(1, num(b.passMark, 70))) };
       const existing = await db.quiz.findUnique({ where: { moduleId: String(b.moduleId) }, select: { id: true } });
       if (existing) { await db.quiz.update({ where: { id: existing.id }, data }); return ok({ id: existing.id }); }
-      const q = await db.quiz.create({ data: { ...data, moduleId: String(b.moduleId) } });
+      const q = await db.quiz.create({ data: { ...data, tenantId, moduleId: String(b.moduleId) } });
       return ok({ id: q.id });
     }
     case 'deleteQuiz': {
@@ -124,7 +126,7 @@ export async function POST(req: Request) {
     case 'createQuestion': {
       if (!b.quizId) return bad();
       const order = await db.quizQuestion.count({ where: { quizId: String(b.quizId) } });
-      const q = await db.quizQuestion.create({ data: { quizId: String(b.quizId), order, prompt: 'New question', type: 'SINGLE', options: ['Option 1', 'Option 2'], correct: [0] } });
+      const q = await db.quizQuestion.create({ data: { tenantId, quizId: String(b.quizId), order, prompt: 'New question', type: 'SINGLE', options: ['Option 1', 'Option 2'], correct: [0] } });
       return ok({ id: q.id });
     }
     case 'updateQuestion': {

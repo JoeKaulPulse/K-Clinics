@@ -159,15 +159,8 @@ export async function GET(req: Request) {
     failures++; console.error('[cron] clinical-encryption backfill failed (continuing):', (e as Error)?.message);
   }
 
-  // ClinicOS Ring 0: stamp the K Clinics tenant onto any Academy rows still NULL,
-  // then flag complete so it stops scanning. Self-healing, idempotent, best-effort.
-  let academyTenant = { ran: false, stamped: 0, complete: false };
-  try {
-    const { backfillAcademyTenantIfNeeded } = await import('@/lib/tenant');
-    academyTenant = await backfillAcademyTenantIfNeeded();
-  } catch (e) {
-    failures++; console.error('[cron] academy-tenant backfill failed (continuing):', (e as Error)?.message);
-  }
+  // (ClinicOS Ring 0 academy-tenant backfill retired in Ring 1c — tenantId is now
+  // NOT NULL, so no row can be tenant-less and there is nothing to backfill.)
 
   // Exam practice: self-healing bootstrap of the question bank from course
   // quizzes + a specimen paper per course, once. Best-effort, idempotent.
@@ -269,7 +262,7 @@ export async function GET(req: Request) {
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, retention, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, academyTenant, examBank, gamification, authored, courseContent },
+    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, retention, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, examBank, gamification, authored, courseContent },
     { status: failures === 0 ? 200 : 500 },
   );
 }

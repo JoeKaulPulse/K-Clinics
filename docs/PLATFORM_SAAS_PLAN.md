@@ -520,10 +520,10 @@ Grounded in a full map of the context (file:line verified).
 **Status (17 Jun, later) — Ring 1 approved and being applied incrementally.** Owner set `USE_MIGRATIONS=true` and approved Ring 1; decisions: uniques first / NOT NULL deferred, apply direct to prod, driven via the Vercel deploy. Now split into safe, separately-deployable steps:
 - **1a — migrations-regime flip (no schema change).** `prisma/migrations/0_init/` is the committed baseline; `scripts/db-sync.mjs` self-adopts it on the first `USE_MIGRATIONS=true` deploy (`migrate resolve --applied 0_init`, no DDL) then `migrate deploy`. Empty DBs still build from `0_init`. De-risks the flip in isolation.
 - **1b — per-tenant uniques.** `prisma/migrations/20260617180000_academy_per_tenant_uniques/` drops the global `email`/`slug` uniques and adds `@@unique([tenantId, …])` on `AcademyStudent`/`Course`/`Vacancy`; companion `schema.prisma` edits + ~8 `findUnique`→`findFirst` read-path conversions and the composite-key upsert in `lib/academy-auth.ts`. Applies after 1a; `tsc` clean.
-- **1c — `tenantId NOT NULL`** — deferred (the extension + backfill already populate it; avoids a ~35-site create cascade now). Reference SQL retained in `platform-migrations/ring1/0001`.
-- **1d — RLS** — deferred; needs the per-transaction `app.tenant_id` GUC plumbing and a Neon-branch rehearsal first (`platform-migrations/ring1/0002`).
+- **1c — `tenantId NOT NULL`.** `prisma/migrations/20260617190000_academy_tenant_not_null/` sets `tenantId NOT NULL` on all 22 Academy tables; `schema.prisma` made the field required; `tenantId` threaded through ~26 create sites (request-scoped via `currentTenantId()`, course-scoped in the cron content/exam-bank seeders, `student.tenantId` in learner writes). The now-obsolete Ring 0 backfill retired (`lib/tenant.ts` + the cron call removed). **Hard precondition: zero NULL `tenantId` first** — the prod backfill cron (1065) must have run; verify with `scripts/verify-tenant-backfill.mjs` (section 1 all ✓) before merging, or the `SET NOT NULL` fails the deploy.
+- **1d — RLS** — the only remaining deferred piece; needs the per-transaction `app.tenant_id` GUC plumbing and a Neon-branch rehearsal first (`platform-migrations/ring1/0002`).
 
-Sequencing: deploy 1a, confirm green, then 1b. Recommended: run `scripts/verify-tenant-backfill.mjs` and take a PITR snapshot before merging 1b. The live booking/admin schema is untouched — only the Academy tables' indexes change.
+Sequencing: 1a → 1b shipped. 1c merges **only after** the backfill has driven NULLs to zero on prod (verify first; PITR snapshot recommended). The live booking/admin schema is untouched throughout — only the Academy tables change.
 
 ---
 

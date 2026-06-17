@@ -16,6 +16,8 @@ export async function POST(req: Request) {
 
   const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const { db } = await import('@/lib/db');
+  const { currentTenantId } = await import('@/lib/tenant');
+  const tenantId = await currentTenantId();
   const ok = (extra: object = {}) => NextResponse.json({ ok: true, ...extra });
   const bad = (e = 'Bad request') => NextResponse.json({ ok: false, error: e }, { status: 400 });
 
@@ -40,7 +42,7 @@ export async function POST(req: Request) {
       };
       if (!data.prompt) return bad('Add a question.');
       if (b.id) { await db.examQuestion.update({ where: { id: String(b.id) }, data }); return ok(); }
-      const q = await db.examQuestion.create({ data });
+      const q = await db.examQuestion.create({ data: { ...data, tenantId } });
       return ok({ id: q.id });
     }
     case 'toggleQuestion': {
@@ -66,7 +68,7 @@ export async function POST(req: Request) {
       for (const m of modules) {
         for (const q of m.quiz?.questions ?? []) {
           if (existing.has(q.prompt)) continue;
-          await db.examQuestion.create({ data: { courseId, topic: m.title, difficulty: 'STANDARD', examBoard: board, prompt: q.prompt, type: q.type, options: q.options as object, correct: q.correct as object, explanation: q.explanation, tip: q.tip } });
+          await db.examQuestion.create({ data: { tenantId, courseId, topic: m.title, difficulty: 'STANDARD', examBoard: board, prompt: q.prompt, type: q.type, options: q.options as object, correct: q.correct as object, explanation: q.explanation, tip: q.tip } });
           existing.add(q.prompt); created++;
         }
       }
@@ -82,7 +84,7 @@ export async function POST(req: Request) {
       };
       if (!data.title) return bad('Add a title.');
       if (b.id) { await db.pastPaper.update({ where: { id: String(b.id) }, data }); return ok(); }
-      const p = await db.pastPaper.create({ data });
+      const p = await db.pastPaper.create({ data: { ...data, tenantId } });
       return ok({ id: p.id });
     }
     case 'deletePaper': {

@@ -1,5 +1,6 @@
 import 'server-only';
 import { db } from '@/lib/db';
+import { currentTenantId } from '@/lib/tenant';
 
 // ── Exam practice ────────────────────────────────────────────────────────────
 // A test-anytime question bank (ExamQuestion) plus historic specimen papers
@@ -52,7 +53,8 @@ export async function recordPractice(studentId: string, { courseId, topic, total
   const t = Math.max(0, Math.min(Math.round(total) || 0, 100));
   const c = Math.max(0, Math.min(Math.round(correct) || 0, t));
   const scorePct = t > 0 ? Math.round((c / t) * 100) : 0;
-  await db.practiceAttempt.create({ data: { studentId, courseId: courseId || null, topic: topic || null, total: t, correct: c, scorePct } });
+  const tenantId = await currentTenantId();
+  await db.practiceAttempt.create({ data: { tenantId, studentId, courseId: courseId || null, topic: topic || null, total: t, correct: c, scorePct } });
   let newBadges: { key: string; name: string; icon: string }[] = [];
   if (c > 0) {
     const { scoreAndBadge, XP } = await import('@/lib/academy-gamification');
@@ -70,7 +72,7 @@ const BOOTSTRAP_KEY = 'exam_bank_bootstrapped';
 export async function bootstrapExamBankIfNeeded(): Promise<{ ran: boolean; created: number }> {
   const done = await db.setting.findUnique({ where: { key: BOOTSTRAP_KEY } }).catch(() => null);
   if (done?.value === 'true') return { ran: false, created: 0 };
-  const courses = await db.course.findMany({ select: { id: true, title: true, accreditations: true } });
+  const courses = await db.course.findMany({ select: { id: true, title: true, accreditations: true, tenantId: true } });
   let created = 0;
   for (const c of courses) {
     const board = Array.isArray(c.accreditations) && c.accreditations.length ? c.accreditations[0] : null;
@@ -78,13 +80,13 @@ export async function bootstrapExamBankIfNeeded(): Promise<{ ran: boolean; creat
       const modules = await db.courseModule.findMany({ where: { courseId: c.id }, select: { title: true, quiz: { select: { questions: { select: { prompt: true, type: true, options: true, correct: true, explanation: true, tip: true } } } } } });
       for (const m of modules) {
         for (const qq of m.quiz?.questions ?? []) {
-          await db.examQuestion.create({ data: { courseId: c.id, topic: m.title, difficulty: 'STANDARD', examBoard: board, prompt: qq.prompt, type: qq.type, options: qq.options as object, correct: qq.correct as object, explanation: qq.explanation, tip: qq.tip } });
+          await db.examQuestion.create({ data: { tenantId: c.tenantId, courseId: c.id, topic: m.title, difficulty: 'STANDARD', examBoard: board, prompt: qq.prompt, type: qq.type, options: qq.options as object, correct: qq.correct as object, explanation: qq.explanation, tip: qq.tip } });
           created++;
         }
       }
     }
     if ((await db.pastPaper.count({ where: { courseId: c.id } })) === 0) {
-      await db.pastPaper.create({ data: { courseId: c.id, title: `${c.title} — specimen exam paper`, examBoard: board, description: 'A specimen paper showing the style, length and command words to expect. Use it to practise timing and exam technique. Your tutor will attach the official paper link here.' } }).catch(() => {});
+      await db.pastPaper.create({ data: { tenantId: c.tenantId, courseId: c.id, title: `${c.title} — specimen exam paper`, examBoard: board, description: 'A specimen paper showing the style, length and command words to expect. Use it to practise timing and exam technique. Your tutor will attach the official paper link here.' } }).catch(() => {});
     }
   }
   await db.setting.upsert({ where: { key: BOOTSTRAP_KEY }, update: { value: 'true' }, create: { key: BOOTSTRAP_KEY, value: 'true' } }).catch(() => {});

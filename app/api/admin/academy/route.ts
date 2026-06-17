@@ -16,6 +16,8 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const { db } = await import('@/lib/db');
+  const { currentTenantId } = await import('@/lib/tenant');
+  const tenantId = await currentTenantId();
   const ok = (extra: object = {}) => NextResponse.json({ ok: true, ...extra });
   const bad = () => NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
 
@@ -54,7 +56,7 @@ export async function POST(req: Request) {
       if (b.id) { const u = await db.course.update({ where: { id: String(b.id) }, data, select: { slug: true } }); slug = u.slug; }
       else {
         const order = await db.course.count();
-        const c = await db.course.create({ data: { ...data, slug: `${slugify(data.title)}-${Date.now().toString(36).slice(-4)}`, order }, select: { slug: true } });
+        const c = await db.course.create({ data: { ...data, tenantId, slug: `${slugify(data.title)}-${Date.now().toString(36).slice(-4)}`, order }, select: { slug: true } });
         slug = c.slug;
       }
       await revalidateAcademy(slug);
@@ -87,7 +89,7 @@ export async function POST(req: Request) {
         accessEndAt: b.accessEndAt ? new Date(b.accessEndAt as string) : null,
       };
       if (b.id) await db.cohort.update({ where: { id: String(b.id) }, data });
-      else await db.cohort.create({ data: { ...data, courseId: String(b.courseId) } });
+      else await db.cohort.create({ data: { ...data, tenantId, courseId: String(b.courseId) } });
       return ok();
     }
     case 'removeCohort': {
@@ -126,7 +128,7 @@ export async function POST(req: Request) {
         description: (b.description as string)?.trim() || null,
       };
       if (b.id) await db.liveClass.update({ where: { id: String(b.id) }, data });
-      else await db.liveClass.create({ data: { ...data, courseId: String(b.courseId) } });
+      else await db.liveClass.create({ data: { ...data, tenantId, courseId: String(b.courseId) } });
       return ok();
     }
     case 'removeLiveClass': {

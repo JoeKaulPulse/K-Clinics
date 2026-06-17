@@ -10,20 +10,23 @@ applied **incrementally** through versioned migrations, not all at once.
 |---|---|---|
 | **1a — migrations-regime flip** | applied | `prisma/migrations/0_init/` baseline + the self-adopt guard in `scripts/db-sync.mjs` |
 | **1b — per-tenant uniques** (`@@unique([tenantId, email/slug])`, drop the global uniques) | applied | `prisma/migrations/20260617180000_academy_per_tenant_uniques/` + the matching `schema.prisma` edits |
-| **1c — `tenantId NOT NULL`** | **deferred** | the NOT NULL section of `0001_academy_tenant_constraints.sql` (reference) |
+| **1c — `tenantId NOT NULL`** | applied | `prisma/migrations/20260617190000_academy_tenant_not_null/` + the ~26-site create cascade; the Ring 0 backfill retired |
 | **1d — RLS** | **deferred (needs rehearsal + app GUC plumbing)** | `0002_academy_rls.sql` |
 
-The `*.sql` files in **this** directory are design references for the deferred
-steps. They sit **outside** `prisma/migrations/`, so no deploy runs them; the
-applied work lives in real migration folders under `prisma/migrations/`.
+The `*.sql` file in **this** directory (`0002`) is a design reference for the one
+remaining deferred step (RLS). It sits **outside** `prisma/migrations/`, so no
+deploy runs it; the applied work lives in real migration folders under
+`prisma/migrations/`. (`0001` is fully superseded — its uniques became 1b's real
+migration and its NOT NULL became 1c's; it is kept only for its rollback notes.)
 
-### Why NOT NULL was deferred (owner decision)
-The Ring 0.2 query extension stamps `tenantId` on every Academy create and the
-cron backfill fills legacy rows, so the column is already populated in practice.
-Making it `NOT NULL` adds a required `tenantId` to ~35 create call-sites for a
-marginal DB-level guarantee. It is deferred to the RLS phase, where the create/
-seed cascade is done once alongside the GUC plumbing. The NOT NULL SQL is kept in
-`0001_…` as the reference for that step.
+### 1c — NOT NULL (initially deferred, then applied)
+Originally deferred because the Ring 0.2 extension + backfill already populate
+`tenantId`, making `NOT NULL` a marginal guarantee for a ~26-site create cascade.
+The owner subsequently chose to finish it. As the expand/contract "contract" step
+it both sets the column `NOT NULL` and retires the backfill (whose
+`where: { tenantId: null }` no longer type-checks once the column is non-null).
+**It must merge only after the prod backfill has cleared every NULL** (verify
+below) — otherwise `SET NOT NULL` fails the deploy.
 
 ## Verifier — run before applying any of the deferred steps
 
@@ -83,6 +86,7 @@ must only be run with the GUC plumbing removed from the app.
 
 - Ring 0.1 — `Tenant` model + nullable `tenantId` + self-healing backfill — **merged**.
 - Ring 0.2 (BLD-300) — central query scoping + resolver + CI isolation guard — **merged**.
-- Ring 1a — migrations flip (baseline + self-adopt) — **PR up**.
-- Ring 1b — per-tenant uniques — **PR up** (applies after 1a).
-- Ring 1c (NOT NULL) + 1d (RLS) — **deferred**, referenced here.
+- Ring 1a — migrations flip (baseline + self-adopt) — **merged**.
+- Ring 1b — per-tenant uniques — **merged**.
+- Ring 1c — `tenantId NOT NULL` + create-site cascade + backfill retired — **PR up** (merge after the prod backfill clears NULLs).
+- Ring 1d — RLS — **deferred** (needs GUC plumbing + rehearsal); `0002` here.

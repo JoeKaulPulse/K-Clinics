@@ -2446,30 +2446,30 @@ export async function enrichCourseContentIfNeeded(): Promise<{ modules: number; 
   let modules = 0, lessons = 0, questions = 0;
 
   for (const cc of NEW_MODULES) {
-    const course = await db.course.findFirst({ where: { slug: cc.courseSlug }, select: { id: true } }).catch(() => null);
+    const course = await db.course.findFirst({ where: { slug: cc.courseSlug }, select: { id: true, tenantId: true } }).catch(() => null);
     if (!course) continue;
     for (const m of cc.modules) {
       let mod = await db.courseModule.findFirst({ where: { courseId: course.id, title: m.title }, select: { id: true } });
       if (!mod) {
         const order = await db.courseModule.count({ where: { courseId: course.id } });
-        mod = await db.courseModule.create({ data: { courseId: course.id, title: m.title, summary: m.summary ?? null, order }, select: { id: true } });
+        mod = await db.courseModule.create({ data: { tenantId: course.tenantId, courseId: course.id, title: m.title, summary: m.summary ?? null, order }, select: { id: true } });
         modules++;
       }
       for (let li = 0; li < m.lessons.length; li++) {
         const l = m.lessons[li];
         const exists = await db.lesson.findFirst({ where: { moduleId: mod.id, title: l.title }, select: { id: true } });
         if (exists) continue;
-        await db.lesson.create({ data: { moduleId: mod.id, title: l.title, order: li, durationMin: l.durationMin ?? null, body: bodyFromSteps(l.steps), objectives: l.objectives ?? [], studyTips: l.studyTips ?? [], examRefs: l.examRefs ?? [], steps: l.steps as object } });
+        await db.lesson.create({ data: { tenantId: course.tenantId, moduleId: mod.id, title: l.title, order: li, durationMin: l.durationMin ?? null, body: bodyFromSteps(l.steps), objectives: l.objectives ?? [], studyTips: l.studyTips ?? [], examRefs: l.examRefs ?? [], steps: l.steps as object } });
         lessons++;
       }
       if (m.quiz && m.quiz.questions.length) {
         let quiz = await db.quiz.findUnique({ where: { moduleId: mod.id }, select: { id: true } });
-        if (!quiz) quiz = await db.quiz.create({ data: { moduleId: mod.id, title: m.quiz.title ?? `${m.title} assessment`, passMark: m.quiz.passMark ?? 70 }, select: { id: true } });
+        if (!quiz) quiz = await db.quiz.create({ data: { tenantId: course.tenantId, moduleId: mod.id, title: m.quiz.title ?? `${m.title} assessment`, passMark: m.quiz.passMark ?? 70 }, select: { id: true } });
         const existing = new Set((await db.quizQuestion.findMany({ where: { quizId: quiz.id }, select: { prompt: true } })).map((q) => q.prompt));
         let order = existing.size;
         for (const q of m.quiz.questions) {
           if (existing.has(q.prompt)) continue;
-          await db.quizQuestion.create({ data: { quizId: quiz.id, order: order++, prompt: q.prompt, type: q.type ?? 'SINGLE', options: q.options as object, correct: q.correct as object, explanation: q.explanation ?? null, tip: q.tip ?? null } });
+          await db.quizQuestion.create({ data: { tenantId: course.tenantId, quizId: quiz.id, order: order++, prompt: q.prompt, type: q.type ?? 'SINGLE', options: q.options as object, correct: q.correct as object, explanation: q.explanation ?? null, tip: q.tip ?? null } });
           questions++;
         }
       }
@@ -2477,13 +2477,13 @@ export async function enrichCourseContentIfNeeded(): Promise<{ modules: number; 
   }
 
   for (const slug of [...new Set(NEW_EXAM_QUESTIONS.map((q) => q.courseSlug))]) {
-    const course = await db.course.findFirst({ where: { slug }, select: { id: true, accreditations: true } }).catch(() => null);
+    const course = await db.course.findFirst({ where: { slug }, select: { id: true, accreditations: true, tenantId: true } }).catch(() => null);
     if (!course) continue;
     const board = Array.isArray(course.accreditations) && course.accreditations.length ? course.accreditations[0] : null;
     const existing = new Set((await db.examQuestion.findMany({ where: { courseId: course.id }, select: { prompt: true } })).map((q) => q.prompt));
     for (const q of NEW_EXAM_QUESTIONS.filter((x) => x.courseSlug === slug)) {
       if (existing.has(q.prompt)) continue;
-      await db.examQuestion.create({ data: { courseId: course.id, topic: q.topic ?? null, difficulty: q.difficulty ?? 'STANDARD', examBoard: q.examBoard ?? board, prompt: q.prompt, type: q.type ?? 'SINGLE', options: q.options as object, correct: q.correct as object, explanation: q.explanation ?? null, tip: q.tip ?? null } });
+      await db.examQuestion.create({ data: { tenantId: course.tenantId, courseId: course.id, topic: q.topic ?? null, difficulty: q.difficulty ?? 'STANDARD', examBoard: q.examBoard ?? board, prompt: q.prompt, type: q.type ?? 'SINGLE', options: q.options as object, correct: q.correct as object, explanation: q.explanation ?? null, tip: q.tip ?? null } });
       existing.add(q.prompt); questions++;
     }
   }
