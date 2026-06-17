@@ -26,6 +26,23 @@ const db = new PrismaClient({
 const READ_OPS = ['findMany', 'findFirst', 'count'];
 const WINDOW_MS = 3000; // validation throws well within this; a pending connect = valid
 
+const isValidationError = (e) => e?.constructor?.name === 'PrismaClientValidationError';
+const raceValidation = (run) => Promise.race([run, new Promise((r) => setTimeout(() => r('window'), WINDOW_MS))]);
+
+// Warm up the WASM engine AND self-test the detector: a deliberately-invalid query
+// (unknown field) MUST surface as a ValidationError within the window. If it does
+// not, the engine's first-query init is slower than the window — which could let a
+// real broken filter falsely pass — so fail loudly instead of trusting the result.
+const selfTest = await raceValidation(
+  Promise.resolve()
+    .then(() => db.course.findMany({ where: { __definitely_not_a_field__: 1 } }))
+    .then(() => 'no-error', (e) => (isValidationError(e) ? 'caught' : 'other-error')),
+);
+if (selfTest !== 'caught') {
+  console.log(`❌ guard self-test failed (got "${selfTest}") — validation is slower than ${WINDOW_MS}ms or the detector is broken; raise WINDOW_MS.`);
+  process.exit(2);
+}
+
 const probes = [...ACADEMY_TENANT_MODELS].flatMap((model) =>
   READ_OPS.map((op) => {
     const args = applyTenantScope(model, op, { where: {} }, 'tenant-probe');
