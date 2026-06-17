@@ -97,6 +97,18 @@ if (useMigrations) {
   // ── SAFE PATH: versioned migrations ────────────────────────────────────────
   // `prisma migrate deploy` applies only the pending .sql files in
   // prisma/migrations/. It never drops data and never requires --accept-data-loss.
+
+  // Only the PRODUCTION deploy applies migrations. A preview/development build may
+  // point at the production database, and must never mutate prod schema — least of
+  // all apply a migration before the owner has snapshotted. Such builds skip schema
+  // sync entirely; production stays the single migrator. (Local / non-Vercel runs,
+  // where VERCEL_ENV is unset, are allowed so the schema can be migrated manually.)
+  const vercelEnv = process.env.VERCEL_ENV;
+  if (vercelEnv && vercelEnv !== 'production') {
+    console.log(`[db-sync] USE_MIGRATIONS: '${vercelEnv}' deploy — skipping migrations (production is the only migrator).`);
+    process.exit(0);
+  }
+
   const env = { ...process.env, DATABASE_URL: dbUrl };
 
   // Adopt the existing schema as the baseline on the first migrations deploy (see
