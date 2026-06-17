@@ -1409,6 +1409,30 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Added pdfUrls String[] field to Lesson model. Extended academy blob-token route to accept application/pdf (up to 500 MB, same Vercel Blob store as lesson videos). CurriculumManager lesson editor shows a PDF attachment panel -- admins upload PDFs, see a list with View/Remove per file, and the URLs are saved via updateLesson. Student-side ImmersiveCourse LessonStep shows a Lesson resources panel with PDF icon links for view/download. Refs BLD-407.',
     notes: ['prisma/schema.prisma Lesson.pdfUrls, app/api/admin/academy/blob-token/route.ts, lib/lms.ts, app/api/admin/lms/route.ts, components/admin/CurriculumManager.tsx, app/admin/academy/[courseId]/page.tsx, components/academy/ImmersiveCourse.tsx.'],
   },
+  {
+    title: 'Team page: 404 + noindex when all static entries are placeholders (BLD-397)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 1,
+    detail: 'lib/team.ts: added publishedTeam filter -- excludes entries whose credentials contain "[" (placeholder brackets like "[GMC reg.]"). app/(marketing)/team/page.tsx: calls notFound() when no DB team AND publishedTeam.length === 0, preventing placeholder GMC/GDC numbers from being served to the public. generateMetadata now sets noindex: true in the same condition so pre-existing cached pages are deindexed. (BLD-397)',
+    notes: ['lib/team.ts publishedTeam export. app/(marketing)/team/page.tsx notFound() gate and noindex.'],
+  },
+  {
+    title: 'Privacy policy: add Xero, TrueLayer, Yay.com, Google as disclosed processors (BLD-398)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 2,
+    detail: 'lib/info-pages.ts: updated "Sharing your data" and "International transfers" blocks to name Xero (accounting/financial records), TrueLayer (bank feed), Yay.com (calls/recordings, UK-only), and Google (Calendar, Workspace) as data processors. UK GDPR Art. 13/14 requires disclosure of all processors. (BLD-398)',
+    notes: ['lib/info-pages.ts lines 74-75.'],
+  },
+  {
+    title: 'Dentistry treatment pages: noindex when dentistryLive=false (BLD-403)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'app/(marketing)/[slug]/page.tsx: generateMetadata passes noindex: t.category === "dentistry" && !site.dentistryLive to pageMeta. Prevents inactive dentistry treatment pages from being indexed while the dentistry offering is not yet live. (BLD-403)',
+    notes: ['app/(marketing)/[slug]/page.tsx generateMetadata.'],
+  },
+  {
+    title: 'Health record showing "debil" on booking page (BLD-423)', type: 'ERROR', urgency: 'P0', status: 'AWAITING_SIGNOFF', assignee: 'joe@kaulindustries.com',
+    value: 5, effort: 1,
+    detail: 'The "debil" text visible in the Health & Consent section on booking cmqgpmg8e00000aj83k71c015 is the literal content of that client\'s medicalFlag database field -- not a rendering bug. The code correctly decrypts and displays the flag. To fix: open the client record, clear or correct the Medical Flag field. See board comment for step-by-step instructions. (BLD-423)',
+    notes: ['Data fix required. Admin -> Clients -> find client -> Medical Flag field -> clear or correct.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

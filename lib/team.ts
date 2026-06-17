@@ -40,3 +40,7 @@ export const team: Practitioner[] = [
 ];
 
 export const getPractitioner = (slug: string) => team.find((p) => p.slug === slug);
+
+// Only entries with real registration numbers (no placeholder brackets) are
+// ready for public indexing. (BLD-397)
+export const publishedTeam = team.filter((p) => !p.credentials.includes('['));

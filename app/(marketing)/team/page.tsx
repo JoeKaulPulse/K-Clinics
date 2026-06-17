@@ -2,18 +2,26 @@ import type { Metadata } from 'next';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
-import { team as fallbackTeam } from '@/lib/team';
+import { notFound } from 'next/navigation';
+import { publishedTeam } from '@/lib/team';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 import type { TeamMember } from '@/lib/team-data';
 
-export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'Our Team — Expert Clinicians & Practitioners | KClinics London',
-  description:
-    'Meet the KClinics team — qualified aesthetic doctors, laser specialists and cosmetic dentists, with their experience, ratings and specialisms, delivering safe, artful results in Islington, London.',
-  path: '/team',
-  keywords: ['KClinics team', 'aesthetic doctor London', 'cosmetic dentist Islington', 'laser specialist London'],
-});
+export async function generateMetadata(): Promise<Metadata> {
+  let hasPublished = publishedTeam.length > 0;
+  if (!hasPublished) {
+    try { const { clinicians, support } = await (await import('@/lib/team-data')).publicTeam(); hasPublished = clinicians.length + support.length > 0; } catch { /* DB optional */ }
+  }
+  return pageMeta({
+    title: 'Our Team — Expert Clinicians & Practitioners | KClinics London',
+    description:
+      'Meet the KClinics team — qualified aesthetic doctors, laser specialists and cosmetic dentists, with their experience, ratings and specialisms, delivering safe, artful results in Islington, London.',
+    path: '/team',
+    keywords: ['KClinics team', 'aesthetic doctor London', 'cosmetic dentist Islington', 'laser specialist London'],
+    noindex: !hasPublished,
+  });
+}
 
 export const revalidate = 600; // ISR: cached, revalidated in the background
 
@@ -33,6 +41,10 @@ export default async function TeamPage() {
   let support: TeamMember[] = [];
   try { ({ clinicians, support } = await (await import('@/lib/team-data')).publicTeam()); } catch { /* DB optional */ }
   const hasDbTeam = clinicians.length + support.length > 0;
+
+  // Return 404 when there is no DB team and all static entries are placeholder
+  // (credentials still contain brackets like "[GMC reg.]"). (BLD-397)
+  if (!hasDbTeam && publishedTeam.length === 0) notFound();
 
   return (
     <>
@@ -64,11 +76,11 @@ export default async function TeamPage() {
           )}
         </>
       ) : (
-        // Graceful fallback until staff enable their public profiles in the CRM.
+        // Graceful fallback: show static entries that have real registration numbers.
         <section className="container-lux section">
           <h2 className="sr-only">Our team</h2>
           <Stagger className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {fallbackTeam.map((p) => (
+            {publishedTeam.map((p) => (
               <StaggerItem key={p.slug}>
                 <div className="h-full rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-7">
                   <h3 className="font-[family-name:var(--font-display)] text-2xl">{p.name}</h3>
