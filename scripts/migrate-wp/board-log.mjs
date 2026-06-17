@@ -1,6 +1,7 @@
 // One-off: logs this session's work to the Build & Issues board via the
-// token-authed queue (POST $BASE_URL/api/build/queue). Carries two items:
-// the WordPress-import cleanup, and the phone-booking emails + call walkthrough.
+// token-authed queue (POST $BASE_URL/api/build/queue). Carries three items:
+// the WordPress-import cleanup, the phone-booking emails + call walkthrough,
+// and the P0 backlog audit (15 of 20 P0s already fixed in code — close them).
 //
 // The Claude web session can't reach kclinics.co.uk (egress allowlist: HTTP 403),
 // so this carries the log and can be posted from a machine that CAN reach the site:
@@ -49,6 +50,37 @@ const items = [
       'Gates: npx tsc --noEmit and next lint clean. NOT visually verified (no Chromium this session) — needs an eyeball before merge.',
       '',
       'Open question for owner: the confirmation currently fires when the booking is created (status is already CONFIRMED), before any card is saved. If it should instead wait until the card link is used, that is a one-line move.',
+    ].join('\n'),
+  },
+  {
+    type: 'TASK',
+    urgency: 'P1',
+    title: 'P0 backlog audit 2026-06-17: 15 of 20 P0s already fixed in code — close them',
+    detail: [
+      'Read every open P0 (20) against the current code. 15 are already implemented but the board item was never closed. CLOSE these (ref — proof):',
+      '- BLD-411 (#1004) shop/confirm returns 402 when no PaymentIntent — app/api/shop/confirm/route.ts:19.',
+      '- BLD-393 (#865) gift-card balance restored on refund via creditVoucher — app/api/admin/orders/route.ts:38.',
+      '- BLD-392 (#864) signup marketing opt-in defaults false — components/portal/SignupWizard.tsx:23.',
+      '- BLD-159 (#574) kiosk SSE secret-gated + 3-connection cap — app/api/kiosk/sessions/[token]/stream/route.ts:31.',
+      '- BLD-192 (#578) staff phone booking uses a 15-min past grace, not the 2h public lead — lib/availability.ts:360 + create-action.ts:104.',
+      '- BLD-329 (#863) availability slot maths use Europe/London clinic-time helpers — lib/availability.ts:6.',
+      '- BLD-406/BLD-189 (#996/#576) consultation is 15 min + sub-service variant dropdown is live — create-action.ts:73. OWNER ACTION: populate variants in Admin > Services.',
+      '- BLD-203 (#579) Consultation is bookable in manual booking — app/admin/bookings/page.tsx:60.',
+      '- BLD-407 (#997) lesson PDF upload (admin) + learner download — CurriculumManager + ImmersiveCourse.',
+      '- BLD-190 (#577) health forms are managed at /admin/health-forms.',
+      '- BLD-405 (#995) client form no longer crashes on custom questions — AssessmentRunner option guards. NOTE: the reorder/section FEATURE is still open (see below).',
+      '- AUDIT C1 (#452) slot allocation now in a Serializable transaction — app/api/booking/create/route.ts:121.',
+      '- AUDIT C2 (#453) right-to-erasure now covers every table — app/admin/actions.ts:50.',
+      '- (#341) deploy resilience: withDbRetry wraps the booking/client hot paths + lib/db.ts pooler.',
+      '',
+      'GENUINELY OPEN (5) — none is a quick fix:',
+      '- AUDIT C3 (#454) encrypt health + contact PII at rest — still plaintext (allergies, medicalFlag, allergyNote, medicalNotes, concerns, message). Large: needs design (DOB/phone are used for client matching) + an owner-run backfill.',
+      '- BLD-138 (#514) clinician appointment-view — large feature/epic, needs scoping.',
+      '- BLD-187 (#575) WordPress re-migrate — in flight (cleanup tooling shipped; awaiting owner review of junk-scan CSV).',
+      '- BLD-405 (#995) reorder questions + move between sections — admin feature, not yet built.',
+      '- BLD-423 (#1005) health record shows "debil" / not rendering — needs the screenshot + the live record to reproduce.',
+      '',
+      'Epic #451 (Security & Compliance Remediation) should stay open until C3 (#454) lands; its C1 + C2 are done.',
     ].join('\n'),
   },
 ];
