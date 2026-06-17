@@ -183,14 +183,21 @@ export async function refundBooking(
   if (!(amount > 0)) return { ok: false, error: 'Enter an amount to refund.' };
   if (amount > remaining) return { ok: false, error: `Only ${(remaining / 100).toFixed(2)} is left to refund on this booking.` };
 
-  try {
-    await stripe().refunds.create({
-      payment_intent: booking.chargePaymentIntentId,
-      amount,
-      metadata: { bookingId: booking.id, reason: (opts.reason || '').slice(0, 200) },
-    }, { idempotencyKey: `refund-${booking.id}-from-${booking.refundedPence ?? 0}-${amount}` });
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Refund failed at Stripe.' };
+  // External/cash payments are recorded with chargePaymentIntentId = "ext_cash" /
+  // "ext_card" — there's no Stripe charge to reverse (the money was taken at the till),
+  // so skip Stripe and just record the refund below; staff hand the cash back. Calling
+  // Stripe here failed with "No such payment_intent: 'ext_cash'".
+  const isExternalPayment = (booking.chargePaymentIntentId || '').startsWith('ext_');
+  if (!isExternalPayment) {
+    try {
+      await stripe().refunds.create({
+        payment_intent: booking.chargePaymentIntentId,
+        amount,
+        metadata: { bookingId: booking.id, reason: (opts.reason || '').slice(0, 200) },
+      }, { idempotencyKey: `refund-${booking.id}-from-${booking.refundedPence ?? 0}-${amount}` });
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : 'Refund failed at Stripe.' };
+    }
   }
 
   const totalRefunded = (booking.refundedPence ?? 0) + amount;

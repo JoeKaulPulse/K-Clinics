@@ -34,7 +34,11 @@ export async function addCustomQuestion(input: { questionnaireKey: string; promp
   if (!prompt) return { ok: false, error: 'Enter the question wording.' };
   const fieldType = isFieldType(input.fieldType) ? input.fieldType : 'text';
   const needsOptions = fieldType === 'single' || fieldType === 'multi';
-  const options = needsOptions ? parseOptions(input.optionsText || '') : null;
+  // BLD-405: boolean always gets built-in Yes/No options so the AssessmentRunner
+  // Field component never receives a boolean question with null options.
+  const options = fieldType === 'boolean'
+    ? [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]
+    : needsOptions ? parseOptions(input.optionsText || '') : null;
   if (needsOptions && (!options || options.length < 2)) return { ok: false, error: 'Add at least two options (one per line).' };
 
   const { db } = await import('@/lib/db');

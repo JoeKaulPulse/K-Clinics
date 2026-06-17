@@ -34,7 +34,7 @@ export async function createManualBooking(input: {
   phone?: string;
   treatmentSlug: string;
   variantId?: string;
-  /** Book this treatment category as a consultation (BLD-208): 30 min, £0. */
+  /** Book this treatment category as a consultation (BLD-208): 15 min, £0. */
   asConsultation?: boolean;
   startISO: string;
   notes?: string;
@@ -47,7 +47,7 @@ export async function createManualBooking(input: {
   }
   // "Consultation" is a reserved pseudo-treatment (not in the marketing catalogue)
   // so staff can book an in-clinic consultation appointment for a new client
-  // (BLD-203): 30 minutes, on-consultation (£0), any free room/clinician.
+  // (BLD-203): 15 minutes, on-consultation (£0), any free room/clinician.
   const isConsultation = input.treatmentSlug === 'consultation';
   const treatment = isConsultation ? null : getTreatment(input.treatmentSlug);
   if (!isConsultation && !treatment) return { ok: false, error: 'Unknown treatment.' };
@@ -69,7 +69,8 @@ export async function createManualBooking(input: {
   // When the booker picks one, use ITS duration/price and record a billing line
   // item; otherwise fall back to the category's generic duration + "from" price.
   // A consultation booking — the standalone "Consultation" (BLD-203) OR any
-  // treatment category booked as a consultation (BLD-208) — is 30 min, £0.
+  // treatment category booked as a consultation (BLD-208) — is 15 min, £0.
+  // BLD-406: changed from 30 to 15 minutes per clinic workflow.
   const consultBooking = isConsultation || (!!treatment && !!input.asConsultation);
   const { durationMin: baseDuration, bufferMin } = bookingFor(input.treatmentSlug);
   let durationMin = baseDuration;
@@ -80,7 +81,7 @@ export async function createManualBooking(input: {
   const { getVariant, lowestPenceForTreatment } = await import('@/lib/services');
   const variant = !consultBooking && input.variantId ? await getVariant(input.variantId) : null;
   if (consultBooking) {
-    durationMin = 30;
+    durationMin = 15;
     pricePence = 0;
     bookingTitle = treatment ? `${treatment.title} — Consultation` : 'Consultation';
     itemLabel = bookingTitle;

@@ -27,9 +27,10 @@ export async function logAudit(opts: {
         meta: opts.meta ? (opts.meta as object) : undefined,
       },
     });
-  } catch {
-    // Auditing must never break the primary action; failures are swallowed
-    // (and would surface via monitoring in production).
+  } catch (e) {
+    // BLD-394: auditing must never break the primary action, but silent swallowing
+    // hides compliance gaps. Log so monitoring/Sentry surfaces it.
+    console.error('[audit] write failed — compliance gap:', (e as Error)?.message, { action: opts.action, actor: opts.actor });
   }
 }
 

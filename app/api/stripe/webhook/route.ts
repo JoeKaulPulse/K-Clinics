@@ -128,7 +128,9 @@ export async function POST(req: Request) {
     console.error('webhook handler error', e);
     // Return 500 for revenue-critical events so Stripe retries rather than
     // silently dropping the event on a transient DB failure.
-    const critical = event.type === 'payment_intent.succeeded' || event.type === 'charge.refunded';
+    // BLD-412: setup_intent.succeeded must also retry — a 200 on DB failure
+    // tells Stripe "delivered", losing the saved card permanently.
+    const critical = event.type === 'payment_intent.succeeded' || event.type === 'charge.refunded' || event.type === 'setup_intent.succeeded';
     if (critical) return NextResponse.json({ received: false, error: 'Handler failed' }, { status: 500 });
   }
 

@@ -1907,6 +1907,7 @@ model Lesson {
   minSeconds  Int? // minimum dwell time before the lesson can be marked complete
   citations   Json? // [{ label, url }]
   resources   Json? // [{ label, url }]
+  pdfUrls     String[]         @default([]) // BLD-407: uploaded PDF attachments (Vercel Blob URLs)
   progress    LessonProgress[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
