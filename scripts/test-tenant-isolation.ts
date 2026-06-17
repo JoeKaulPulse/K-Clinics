@@ -108,21 +108,20 @@ check('findUnique / update / delete are not rewritten', () => {
   }
 });
 
-// 7. Cross-tenant isolation: a tenant's filter matches its own rows + legacy NULLs,
-//    and NEVER another tenant's stamped rows.
+// 7. Cross-tenant isolation: a tenant's filter matches exactly its own rows
+//    (strict equality now tenantId is NOT NULL), and NEVER another tenant's.
 check('a tenant filter excludes another tenant rows', () => {
   const rows = [
     { id: 'a', tenantId: 'T1' },
     { id: 'b', tenantId: 'T2' },
-    { id: 'c', tenantId: null },
   ];
   const scopeFor = (t: string) => applyTenantScope('course', 'findMany', undefined, t).where as Where;
 
   const t1 = rows.filter((r) => matchesWhere(scopeFor('T1'), r)).map((r) => r.id);
   const t2 = rows.filter((r) => matchesWhere(scopeFor('T2'), r)).map((r) => r.id);
 
-  assert.deepEqual(t1, ['a', 'c'], 'T1 sees its own row + legacy NULL, not T2');
-  assert.deepEqual(t2, ['b', 'c'], 'T2 sees its own row + legacy NULL, not T1');
+  assert.deepEqual(t1, ['a'], 'T1 sees only its own row, not T2');
+  assert.deepEqual(t2, ['b'], 'T2 sees only its own row, not T1');
   assert.ok(!t1.includes('b'), 'T1 must not see T2 data');
   assert.ok(!t2.includes('a'), 'T2 must not see T1 data');
 });
