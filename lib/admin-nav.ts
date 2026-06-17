@@ -68,6 +68,7 @@ export const navGroups: NavGroup[] = [
     { href: '/admin/academy', key: 'nav.academy', exact: true, perm: 'settings.manage', keywords: 'courses curriculum modules lessons quizzes lms training learning catalogue' },
     { href: '/admin/academy/enrolments', key: 'nav.enrolments', perm: 'settings.manage', keywords: 'applications applicants enrol enrolments pipeline offers payments clearpay trainees' },
     { href: '/admin/academy/students', key: 'nav.students', perm: 'settings.manage', keywords: 'trainees learners students portal progress accounts lessons quizzes completion' },
+    { href: '/admin/academy/homework', key: 'nav.homework', perm: 'settings.manage', keywords: 'homework assignments submissions review feedback tutor assessor marking files uploads' },
     { href: '/admin/academy/practice', key: 'nav.examPractice', perm: 'settings.manage', keywords: 'practice question bank exam past papers specimen mock quiz revision test knowledge' },
     { href: '/admin/academy/live-classes', key: 'nav.liveClasses', perm: 'settings.manage', keywords: 'live online classes google meet sessions webinar zoom schedule' },
     { href: '/admin/careers', key: 'nav.careers', perm: 'settings.manage', keywords: 'jobs vacancies hiring recruitment applications' },

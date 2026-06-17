@@ -7,6 +7,7 @@ import { buildLessonFlow, coerceSteps, type FlowStep, type SayStep, type TeachSt
 import { Illustration, matchIllustration, type IlloKey, type IlloLevel } from '@/components/academy/Illustrations';
 import { AmbientBackdrop } from '@/components/academy/AmbientBackdrop';
 import { ExplainerPlayer } from '@/components/academy/ExplainerPlayer';
+import { HomeworkPanel } from '@/components/academy/HomeworkPanel';
 import { academyLevel } from '@/lib/academy-levels';
 import { isMascotMuted, setMascotMuted } from '@/components/academy/mascotVoice';
 import type { CourseLearning, LessonView, QuizView } from '@/lib/lms';
@@ -315,6 +316,8 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
           </ul>
         </div>
       )}
+
+      {lesson.requiresHomework && <HomeworkPanel lessonId={lesson.id} submission={lesson.submission} />}
     </div>
   );
 }

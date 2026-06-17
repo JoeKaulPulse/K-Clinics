@@ -7,11 +7,12 @@ import { db } from '@/lib/db';
 // server: the player receives questions without them; grading happens here.
 
 export type LinkRef = { label: string; url: string };
+export type HomeworkSubmissionView = { files: string[]; note: string | null; status: string; feedback: string | null };
 export type LessonView = {
   id: string; title: string; order: number; durationMin: number | null; minSeconds: number | null;
   videoUrl: string | null; imageUrl: string | null; body: string;
   keyPoints: string[]; objectives: string[]; studyTips: string[]; homework: string | null;
-  examRefs: string[]; steps: unknown; citations: LinkRef[]; resources: LinkRef[]; pdfUrls: string[]; pdfNoDownload: string[]; done: boolean;
+  examRefs: string[]; steps: unknown; citations: LinkRef[]; resources: LinkRef[]; pdfUrls: string[]; pdfNoDownload: string[]; requiresHomework: boolean; submission: HomeworkSubmissionView | null; done: boolean;
 };
 export type QuizQuestionView = { id: string; order: number; prompt: string; type: string; options: string[]; tip: string | null; imageUrl: string | null; correct?: number[]; explanation?: string | null };
 export type QuizView = { id: string; title: string; passMark: number; questionCount: number; bestScore: number | null; passed: boolean; questions: QuizQuestionView[] };
@@ -46,7 +47,7 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
   const enrol = await db.enrolment.findFirst({ where: { studentId, courseId: course.id, status: { in: ['PAID', 'ENROLLED', 'COMPLETED'] } }, select: { preCourseAckAt: true } });
   const preCourseAck = !!enrol?.preCourseAckAt;
 
-  const [modules, doneRows, attempts] = await Promise.all([
+  const [modules, doneRows, attempts, homeworkRows] = await Promise.all([
     db.courseModule.findMany({
       where: { courseId: course.id },
       orderBy: { order: 'asc' },
@@ -57,9 +58,11 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
     }),
     db.lessonProgress.findMany({ where: { studentId, lesson: { module: { courseId: course.id } } }, select: { lessonId: true } }),
     db.quizAttempt.findMany({ where: { studentId, quiz: { module: { courseId: course.id } } }, select: { quizId: true, scorePct: true, passed: true } }),
+    db.homeworkSubmission.findMany({ where: { studentId, lesson: { module: { courseId: course.id } } }, select: { lessonId: true, files: true, note: true, status: true, feedback: true } }),
   ]);
 
   const doneSet = new Set(doneRows.map((d) => d.lessonId));
+  const subByLesson = new Map(homeworkRows.map((h) => [h.lessonId, { files: h.files, note: h.note, status: h.status as string, feedback: h.feedback }]));
   const bestByQuiz = new Map<string, { best: number; passed: boolean }>();
   for (const a of attempts) {
     const cur = bestByQuiz.get(a.quizId);
@@ -75,7 +78,7 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
         id: l.id, title: l.title, order: l.order, durationMin: l.durationMin, minSeconds: l.minSeconds,
         videoUrl: l.videoUrl, imageUrl: l.imageUrl, body: l.body,
         keyPoints: strArr(l.keyPoints), objectives: strArr(l.objectives), studyTips: strArr(l.studyTips),
-        homework: l.homework, examRefs: strArr(l.examRefs), steps: l.steps, citations: arr(l.citations), resources: arr(l.resources), pdfUrls: strArr(l.pdfUrls), pdfNoDownload: strArr(l.pdfNoDownload), done,
+        homework: l.homework, examRefs: strArr(l.examRefs), steps: l.steps, citations: arr(l.citations), resources: arr(l.resources), pdfUrls: strArr(l.pdfUrls), pdfNoDownload: strArr(l.pdfNoDownload), requiresHomework: l.requiresHomework, submission: subByLesson.get(l.id) ?? null, done,
       };
     });
     let quiz: QuizView | null = null;
@@ -191,7 +194,7 @@ export async function getCoursePreview(courseId: string): Promise<CourseLearning
       id: l.id, title: l.title, order: l.order, durationMin: l.durationMin, minSeconds: l.minSeconds,
       videoUrl: l.videoUrl, imageUrl: l.imageUrl, body: l.body,
       keyPoints: strArr(l.keyPoints), objectives: strArr(l.objectives), studyTips: strArr(l.studyTips),
-      homework: l.homework, examRefs: strArr(l.examRefs), steps: l.steps, citations: arr(l.citations), resources: arr(l.resources), pdfUrls: strArr(l.pdfUrls), pdfNoDownload: strArr(l.pdfNoDownload), done: false,
+      homework: l.homework, examRefs: strArr(l.examRefs), steps: l.steps, citations: arr(l.citations), resources: arr(l.resources), pdfUrls: strArr(l.pdfUrls), pdfNoDownload: strArr(l.pdfNoDownload), requiresHomework: l.requiresHomework, submission: null, done: false,
     }));
     const quiz: QuizView | null = m.quiz ? {
       id: m.quiz.id, title: m.quiz.title, passMark: m.quiz.passMark, questionCount: m.quiz.questions.length, bestScore: null, passed: false,

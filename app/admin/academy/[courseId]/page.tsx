@@ -44,7 +44,7 @@ export default async function CurriculumPage({ params }: { params: Promise<{ cou
         body: l.body, keyPoints: Array.isArray(l.keyPoints) ? l.keyPoints : [],
         objectives: Array.isArray(l.objectives) ? l.objectives : [],
         studyTips: Array.isArray(l.studyTips) ? l.studyTips : [],
-        homework: l.homework, examRefs: Array.isArray(l.examRefs) ? l.examRefs : [],
+        homework: l.homework, requiresHomework: l.requiresHomework, examRefs: Array.isArray(l.examRefs) ? l.examRefs : [],
         citations: (l.citations as { label: string; url: string }[] | null) ?? [],
         resources: (l.resources as { label: string; url: string }[] | null) ?? [],
         pdfUrls: Array.isArray(l.pdfUrls) ? (l.pdfUrls as string[]) : [],

@@ -56,6 +56,7 @@ export const DICT: Record<string, Entry> = {
   'nav.academy': { en: 'Courses', uk: 'Курси' },
   'nav.enrolments': { en: 'Applications', uk: 'Заявки' },
   'nav.students': { en: 'Trainees', uk: 'Слухачі' },
+  'nav.homework': { en: 'Homework', uk: 'Домашнє завдання' },
   'nav.examPractice': { en: 'Exam practice', uk: 'Підготовка до іспитів' },
   'nav.liveClasses': { en: 'Live classes', uk: 'Онлайн-заняття' },
   'nav.careers': { en: 'Careers', uk: 'Кар’єра' },

@@ -84,6 +84,7 @@ export async function POST(req: Request) {
           objectives: strList(b.objectives),
           studyTips: strList(b.studyTips),
           homework: str(b.homework).slice(0, 4000) || null,
+          requiresHomework: !!b.requiresHomework,
           examRefs: strList(b.examRefs),
           citations: linkArr(b.citations),
           resources: linkArr(b.resources),
