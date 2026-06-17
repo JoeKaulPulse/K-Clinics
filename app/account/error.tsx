@@ -1,6 +1,10 @@
 'use client';
 
-export default function AccountError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
+import { useEffect } from 'react';
+import * as Sentry from '@sentry/nextjs';
+
+export default function AccountError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  useEffect(() => { Sentry.captureException(error); }, [error]); // BLD-420
   return (
     <div className="grid min-h-[70vh] place-items-center p-6 text-center">
       <div className="max-w-md">
