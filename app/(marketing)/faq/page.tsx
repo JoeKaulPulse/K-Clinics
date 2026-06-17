@@ -17,7 +17,7 @@ export default function FaqPage() {
   return (
     <>
       <JsonLd
-        data={[faqLd(allGeneralFaqs), breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'FAQ', path: '/faq' }])]}
+        data={[...(allGeneralFaqs.length ? [faqLd(allGeneralFaqs)] : []), breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'FAQ', path: '/faq' }])]}
       />
       <PageHero
         eyebrow="Everything explained"
