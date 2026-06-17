@@ -25,8 +25,11 @@ Originally deferred because the Ring 0.2 extension + backfill already populate
 The owner subsequently chose to finish it. As the expand/contract "contract" step
 it both sets the column `NOT NULL` and retires the backfill (whose
 `where: { tenantId: null }` no longer type-checks once the column is non-null).
-**It must merge only after the prod backfill has cleared every NULL** (verify
-below) — otherwise `SET NOT NULL` fails the deploy.
+The migration is **self-sufficient**: it backfills any remaining NULLs to the
+default tenant (resolved from the `Tenant` table — portable) before the
+`SET NOT NULL`, in one transaction. So there is **no merge precondition** — it
+can't fail on pre-existing NULLs. (The verifier below is still a useful sanity
+check, and a PITR snapshot before any prod schema change remains good practice.)
 
 ## Verifier — run before applying any of the deferred steps
 
