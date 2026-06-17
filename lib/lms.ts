@@ -30,11 +30,21 @@ const strArr = (v: unknown): string[] => (Array.isArray(v) ? (v as string[]) : [
 
 /** Is the student allowed into a course's content? (paid / enrolled / completed) */
 export async function studentCanAccess(studentId: string, courseId: string): Promise<boolean> {
-  const e = await db.enrolment.findFirst({
+  const enrols = await db.enrolment.findMany({
     where: { studentId, courseId, status: { in: ['PAID', 'ENROLLED', 'COMPLETED'] } },
-    select: { id: true },
+    select: { cohort: { select: { accessStartAt: true, accessEndAt: true } } },
   });
-  return Boolean(e);
+  // BLD-408: a cohort can set a course-access window. Access is granted if any
+  // enrolment is currently in-window — no dates set means always open, so existing
+  // cohorts are unchanged. Before accessStartAt it's not yet available; after
+  // accessEndAt it has expired.
+  const now = Date.now();
+  return enrols.some((e) => {
+    const start = e.cohort?.accessStartAt, end = e.cohort?.accessEndAt;
+    if (start && now < start.getTime()) return false;
+    if (end && now > end.getTime()) return false;
+    return true;
+  });
 }
 
 /** Full learning view for a student: content + progress (no correct answers). */
