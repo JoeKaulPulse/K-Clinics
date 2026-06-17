@@ -1,5 +1,6 @@
 import 'server-only';
 import { db } from '@/lib/db';
+import { currentTenantId } from '@/lib/tenant';
 
 // ── Native LMS engine ────────────────────────────────────────────────────────
 // Course content (modules → lessons + a module quiz), per-student progress,
@@ -120,10 +121,11 @@ export async function completeLesson(studentId: string, lessonId: string, second
   if (!(await studentCanAccess(studentId, lesson.module.courseId))) return { ok: false };
   const secs = Math.max(0, Math.min(Math.round(secondsSpent) || 0, 6 * 60 * 60)); // cap at 6h to ignore idle tabs
   const firstTime = !(await db.lessonProgress.findUnique({ where: { studentId_lessonId: { studentId, lessonId } }, select: { id: true } }));
+  const tenantId = await currentTenantId();
   await db.lessonProgress.upsert({
     where: { studentId_lessonId: { studentId, lessonId } },
     update: secs > 0 ? { secondsSpent: { increment: secs } } : {},
-    create: { studentId, lessonId, secondsSpent: secs },
+    create: { tenantId, studentId, lessonId, secondsSpent: secs },
   });
   let newBadges: { key: string; name: string; icon: string }[] = [];
   if (firstTime) {
@@ -163,7 +165,8 @@ export async function gradeQuiz(studentId: string, quizId: string, answers: Reco
   const scorePct = Math.round((correctCount / quiz.questions.length) * 100);
   const passed = scorePct >= quiz.passMark;
   const priorPass = passed ? await db.quizAttempt.findFirst({ where: { studentId, quizId, passed: true }, select: { id: true } }) : null;
-  await db.quizAttempt.create({ data: { studentId, quizId, scorePct, passed, answers: answers as object } });
+  const tenantId = await currentTenantId();
+  await db.quizAttempt.create({ data: { tenantId, studentId, quizId, scorePct, passed, answers: answers as object } });
   let newBadges: { key: string; name: string; icon: string }[] = [];
   if (passed && !priorPass) {
     const { scoreAndBadge, XP } = await import('@/lib/academy-gamification');

@@ -26,8 +26,10 @@ export async function POST(req: Request) {
   if (!(await enforceRateLimit(req, 'careers-apply', 5, 600))) return NextResponse.json({ ok: false, error: 'Too many submissions — please try again shortly.' }, { status: 429 });
 
   const { db } = await import('@/lib/db');
+  const { currentTenantId } = await import('@/lib/tenant');
+  const tenantId = await currentTenantId();
   const app = await db.jobApplication.create({
-    data: { vacancyId: d.vacancyId || null, roleTitle: d.roleTitle, name: d.name, email: d.email.toLowerCase(), phone: d.phone || null, coverNote: d.coverNote || null, cvUrl: d.cvUrl || null },
+    data: { tenantId, vacancyId: d.vacancyId || null, roleTitle: d.roleTitle, name: d.name, email: d.email.toLowerCase(), phone: d.phone || null, coverNote: d.coverNote || null, cvUrl: d.cvUrl || null },
   });
 
   try {

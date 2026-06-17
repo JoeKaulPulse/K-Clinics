@@ -1,5 +1,6 @@
 import 'server-only';
 import { db } from '@/lib/db';
+import { currentTenantId } from '@/lib/tenant';
 
 // ── Academy gamification ─────────────────────────────────────────────────────
 // XP earned across lessons, quizzes and practice; badges for milestones; and
@@ -62,9 +63,10 @@ function meetsBadge(key: string, s: Stats): boolean {
 export async function awardXp(studentId: string, kind: string, points: number, courseId?: string | null, note?: string): Promise<void> {
   if (!points) return;
   try {
+    const tenantId = await currentTenantId();
     await db.$transaction([
       db.academyStudent.update({ where: { id: studentId }, data: { xp: { increment: points } } }),
-      db.pointEvent.create({ data: { studentId, kind, points, courseId: courseId ?? null, note: note ?? null } }),
+      db.pointEvent.create({ data: { tenantId, studentId, kind, points, courseId: courseId ?? null, note: note ?? null } }),
     ]);
   } catch { /* gamification must not break the underlying action */ }
 }
@@ -78,10 +80,11 @@ export async function checkAndAwardBadges(studentId: string): Promise<string[]> 
     ]);
     const have = new Set(owned.map((b) => b.badgeKey));
     const awarded: string[] = [];
+    const tenantId = await currentTenantId();
     for (const b of BADGES) {
       if (have.has(b.key) || !meetsBadge(b.key, stats)) continue;
       try {
-        await db.studentBadge.create({ data: { studentId, badgeKey: b.key } });
+        await db.studentBadge.create({ data: { tenantId, studentId, badgeKey: b.key } });
         await awardXp(studentId, 'BADGE', b.bonus, null, b.name);
         awarded.push(b.key);
       } catch { /* unique race — already awarded */ }

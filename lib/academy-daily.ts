@@ -1,5 +1,6 @@
 import 'server-only';
 import { db } from '@/lib/db';
+import { currentTenantId } from '@/lib/tenant';
 
 // Daily tasks + the "beauty box" — a Duolingo-style chest a trainee unlocks by
 // completing a few tasks in a day, opens for a bonus, and that drives a streak.
@@ -12,10 +13,11 @@ const dayStr = (d = new Date()): string => d.toISOString().slice(0, 10);
 /** Count a meaningful task (a completed lesson, passed quiz, or practice set). */
 export async function recordDailyTask(studentId: string): Promise<void> {
   try {
+    const tenantId = await currentTenantId();
     await db.dailyActivity.upsert({
       where: { studentId_day: { studentId, day: dayStr() } },
       update: { tasks: { increment: 1 } },
-      create: { studentId, day: dayStr(), tasks: 1 },
+      create: { tenantId, studentId, day: dayStr(), tasks: 1 },
     });
   } catch { /* best-effort — never breaks the underlying action */ }
 }

@@ -29,7 +29,7 @@ export async function POST(req: Request) {
   if (existing) {
     await db.homeworkSubmission.update({ where: { id: existing.id }, data: { files, note, status: 'SUBMITTED', feedback: null, reviewedBy: null, reviewedAt: null } });
   } else {
-    await db.homeworkSubmission.create({ data: { studentId: student.id, lessonId, files, note } });
+    await db.homeworkSubmission.create({ data: { tenantId: student.tenantId, studentId: student.id, lessonId, files, note } });
   }
 
   try {

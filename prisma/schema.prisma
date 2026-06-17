@@ -1780,7 +1780,7 @@ model Tenant {
 
 model AcademyStudent {
   id             String    @id @default(cuid())
-  tenantId       String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  tenantId       String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   firstName      String
   lastName       String?
   email          String
@@ -1821,7 +1821,7 @@ model AcademyStudent {
 // admin WebAuthnCredential flow (lib/webauthn) but for AcademyStudent.
 model StudentPasskey {
   id           String         @id @default(cuid())
-  tenantId     String? // ClinicOS multi-tenant (Ring 0)
+  tenantId     String // ClinicOS multi-tenant (Ring 0)
   student      AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
   studentId    String
   credentialId String         @unique // base64url
@@ -1838,7 +1838,7 @@ model StudentPasskey {
 
 model Course {
   id             String   @id @default(cuid())
-  tenantId       String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  tenantId       String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   slug           String
   title          String
   level          String? // e.g. "Level 4"
@@ -1879,7 +1879,7 @@ model Course {
 
 model CourseModule {
   id        String   @id @default(cuid())
-  tenantId  String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  tenantId  String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   courseId  String
   title     String
@@ -1896,7 +1896,7 @@ model CourseModule {
 
 model Lesson {
   id          String           @id @default(cuid())
-  tenantId    String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  tenantId    String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   module      CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   moduleId    String
   title       String
@@ -1938,7 +1938,7 @@ enum HomeworkStatus {
 // @unique, to stay within the additive deploy gate).
 model HomeworkSubmission {
   id         String         @id @default(cuid())
-  tenantId   String?
+  tenantId   String
   student    AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
   studentId  String
   lesson     Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
@@ -1959,7 +1959,7 @@ model HomeworkSubmission {
 
 model Quiz {
   id        String         @id @default(cuid())
-  tenantId  String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  tenantId  String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   module    CourseModule   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   moduleId  String         @unique
   title     String
@@ -1974,7 +1974,7 @@ model Quiz {
 
 model QuizQuestion {
   id          String  @id @default(cuid())
-  tenantId    String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  tenantId    String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   quiz        Quiz    @relation(fields: [quizId], references: [id], onDelete: Cascade)
   quizId      String
   order       Int     @default(0)
@@ -1992,7 +1992,7 @@ model QuizQuestion {
 
 model LessonProgress {
   id           String         @id @default(cuid())
-  tenantId     String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  tenantId     String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   student      AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
   studentId    String
   lesson       Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
@@ -2007,7 +2007,7 @@ model LessonProgress {
 
 model QuizAttempt {
   id        String         @id @default(cuid())
-  tenantId  String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  tenantId  String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
   studentId String
   quiz      Quiz           @relation(fields: [quizId], references: [id], onDelete: Cascade)
@@ -2025,7 +2025,7 @@ model QuizAttempt {
 
 model ExamQuestion {
   id          String   @id @default(cuid())
-  tenantId    String? // ClinicOS multi-tenant (Ring 0)
+  tenantId    String // ClinicOS multi-tenant (Ring 0)
   course      Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
   courseId    String?
   topic       String? // e.g. "Anatomy & Physiology"
@@ -2048,7 +2048,7 @@ model ExamQuestion {
 
 model PastPaper {
   id          String   @id @default(cuid())
-  tenantId    String? // ClinicOS multi-tenant (Ring 0)
+  tenantId    String // ClinicOS multi-tenant (Ring 0)
   course      Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
   courseId    String?
   title       String
@@ -2067,7 +2067,7 @@ model PastPaper {
 
 model PracticeAttempt {
   id        String         @id @default(cuid())
-  tenantId  String? // ClinicOS multi-tenant (Ring 0)
+  tenantId  String // ClinicOS multi-tenant (Ring 0)
   student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
   studentId String
   courseId  String? // course the practice was drawn from (no FK constraint needed)
@@ -2086,7 +2086,7 @@ model PracticeAttempt {
 
 model PointEvent {
   id        String         @id @default(cuid())
-  tenantId  String? // ClinicOS multi-tenant (Ring 0)
+  tenantId  String // ClinicOS multi-tenant (Ring 0)
   student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
   studentId String
   kind      String // LESSON | QUIZ | PRACTICE | BADGE | BONUS
@@ -2101,7 +2101,7 @@ model PointEvent {
 
 model StudentBadge {
   id        String         @id @default(cuid())
-  tenantId  String? // ClinicOS multi-tenant (Ring 0)
+  tenantId  String // ClinicOS multi-tenant (Ring 0)
   student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
   studentId String
   badgeKey  String // matches a key in lib/academy-gamification BADGES
@@ -2116,7 +2116,7 @@ model StudentBadge {
 // tasks in a day). One row per student per UTC day.
 model DailyActivity {
   id        String         @id @default(cuid())
-  tenantId  String? // ClinicOS multi-tenant (Ring 0)
+  tenantId  String // ClinicOS multi-tenant (Ring 0)
   student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
   studentId String
   day       String // YYYY-MM-DD (UTC)
@@ -2132,7 +2132,7 @@ model DailyActivity {
 
 model LiveClass {
   id          String    @id @default(cuid())
-  tenantId    String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  tenantId    String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
   courseId    String
   title       String
@@ -2156,7 +2156,7 @@ enum CohortStatus {
 
 model Cohort {
   id        String       @id @default(cuid())
-  tenantId  String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  tenantId  String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   course    Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
   courseId  String
   startAt   DateTime
@@ -2188,7 +2188,7 @@ enum EnrolmentStatus {
 
 model Enrolment {
   id        String          @id @default(cuid())
-  tenantId  String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  tenantId  String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   course    Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
   courseId  String
   cohort    Cohort?         @relation(fields: [cohortId], references: [id], onDelete: SetNull)
@@ -2236,7 +2236,7 @@ enum FundingStatus {
 
 model FundingApplication {
   id       String  @id @default(cuid())
-  tenantId String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  tenantId String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
 
   // Applicant.
   name  String
@@ -2342,7 +2342,7 @@ model AiAnalysisImage {
 // ── Careers — live vacancies (admin-managed) + applications ──────────────────
 model Vacancy {
   id          String   @id @default(cuid())
-  tenantId    String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  tenantId    String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   slug        String
   title       String
   department  String? // Clinical · Front of house · Management …
@@ -2365,7 +2365,7 @@ model Vacancy {
 
 model JobApplication {
   id        String   @id @default(cuid())
-  tenantId  String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  tenantId  String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   vacancy   Vacancy? @relation(fields: [vacancyId], references: [id], onDelete: SetNull)
   vacancyId String?
   roleTitle String // snapshot (so it survives a deleted vacancy)

@@ -32,8 +32,9 @@ export async function POST(req: Request) {
       };
       if (b.id) await db.vacancy.update({ where: { id: String(b.id) }, data });
       else {
+        const { currentTenantId } = await import('@/lib/tenant');
         const order = await db.vacancy.count();
-        await db.vacancy.create({ data: { ...data, slug: `${slugify(data.title)}-${Date.now().toString(36).slice(-4)}`, order, createdBy: session.email } });
+        await db.vacancy.create({ data: { ...data, tenantId: await currentTenantId(), slug: `${slugify(data.title)}-${Date.now().toString(36).slice(-4)}`, order, createdBy: session.email } });
       }
       return ok();
     }

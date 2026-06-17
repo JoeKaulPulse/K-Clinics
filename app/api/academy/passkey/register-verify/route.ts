@@ -31,6 +31,7 @@ export async function POST(req: Request) {
   const { credential } = verification.registrationInfo;
   await db.studentPasskey.create({
     data: {
+      tenantId: student.tenantId,
       studentId: student.id,
       credentialId: credential.id,
       publicKey: Buffer.from(credential.publicKey),
