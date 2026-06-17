@@ -202,14 +202,17 @@ function Field({ q, value, set, pick }: { q: Question; value: unknown; set: (id:
 
   if (q.type === 'multi') {
     const arr = (Array.isArray(value) ? value : []) as string[];
+    // BLD-405: guard against custom multi questions saved without options (prevents runtime crash).
+    const opts = q.options ?? [];
     const toggle = (v: string) => {
       if (v === 'none') return set(q.id, arr.includes('none') ? [] : ['none']);
       const next = arr.filter((x) => x !== 'none');
       set(q.id, next.includes(v) ? next.filter((x) => x !== v) : [...next, v]);
     };
+    if (opts.length === 0) return <p className="text-sm text-[var(--color-stone)]">No options configured for this question.</p>;
     return (
       <div className="flex flex-wrap gap-2.5">
-        {q.options!.map((o) => {
+        {opts.map((o) => {
           const on = arr.includes(o.value);
           return (
             <button

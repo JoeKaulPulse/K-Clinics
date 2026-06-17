@@ -165,7 +165,20 @@ export async function destroyAcademySession() {
 
 export async function getAcademySession(): Promise<AcademySession | null> {
   const token = (await cookies()).get(ACADEMY_COOKIE)?.value;
-  return verifyAcademyToken(token);
+  const session = await verifyAcademyToken(token);
+  if (!session) return null;
+  // BLD-421: validate the token epoch against the student's current sessionEpoch so a
+  // password reset / sign-out-everywhere revokes outstanding academy JWTs immediately.
+  // Fail closed on a DB outage (don't trust the signed claims). Mirrors getSession/getClientSession.
+  try {
+    const { db } = await import('@/lib/db');
+    const s = await db.academyStudent.findUnique({ where: { id: session.sub }, select: { sessionEpoch: true } });
+    if (!s) return null;
+    if ((session.epoch ?? 0) !== (s.sessionEpoch ?? 0)) return null;
+  } catch {
+    return null;
+  }
+  return session;
 }
 
 /** The list of permission keys for the current session (for nav gating). */

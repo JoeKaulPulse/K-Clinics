@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import { Fraunces } from 'next/font/google';
-import { SpeedInsights } from '@vercel/speed-insights/next';
+import { ConsentedSpeedInsights } from '@/components/marketing/ConsentedSpeedInsights';
 
 const fraunces = Fraunces({
   subsets: ['latin'],
@@ -67,7 +67,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <style>{`[style*="opacity:0"]{opacity:1!important;transform:none!important;filter:none!important}`}</style>
         </noscript>
       </head>
-      <body>{children}<SpeedInsights /></body>
+      <body>{children}<ConsentedSpeedInsights /></body>
     </html>
   );
 }

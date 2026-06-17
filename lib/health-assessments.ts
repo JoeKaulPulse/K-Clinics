@@ -139,8 +139,13 @@ export async function readAssessment(id: string) {
     version: row.version,
     questionnaireKey: row.questionnaireKey,
   }, row.integrityHash);
-  const data = decryptJson<{ answers: Record<string, unknown>; questionnaire: { key: string; version: number } }>(
-    row.cipher,
-  );
+  // BLD-423: if the cipher is missing or corrupt (e.g. legacy import without encryption),
+  // return null rather than throwing — the caller skips the row instead of crashing the page.
+  let data: { answers: Record<string, unknown>; questionnaire: { key: string; version: number } };
+  try {
+    data = decryptJson<{ answers: Record<string, unknown>; questionnaire: { key: string; version: number } }>(row.cipher);
+  } catch {
+    return null;
+  }
   return { ...row, tampered: !ok, ...data };
 }
