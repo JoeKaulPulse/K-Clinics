@@ -36,6 +36,8 @@ export async function createManualBooking(input: {
   variantId?: string;
   /** Book this treatment category as a consultation (BLD-208): 15 min, £0. */
   asConsultation?: boolean;
+  /** Course size — book N sessions in one go (BLD-409). Defaults to 1. */
+  sessions?: number;
   startISO: string;
   notes?: string;
   override?: boolean;
@@ -94,6 +96,11 @@ export async function createManualBooking(input: {
   } else {
     pricePence = await lowestPenceForTreatment(input.treatmentSlug);
   }
+  // BLD-409: book a course of N sessions at once. The booking is one slot (this
+  // appointment); the course size + total price live on the primary line item
+  // (the detail page reads item.sessions). Consultations are always single.
+  const sessions = consultBooking ? 1 : Math.max(1, Math.min(50, Math.round(Number(input.sessions) || 1)));
+  const totalPence = (pricePence ?? 0) * sessions;
   const end = new Date(start.getTime() + durationMin * 60000);
 
   const { db } = await import('@/lib/db');
@@ -124,14 +131,14 @@ export async function createManualBooking(input: {
       endAt: end,
       durationMin,
       bufferMin: bufferMin ?? 0,
-      pricePence: pricePence ?? 0,
+      pricePence: totalPence,
       status: 'CONFIRMED',
       notes: input.notes || null,
       practitionerId,
       resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,
       // Primary line item so the itemised receipt + billing reflect the exact
       // service/area chosen (not just the category).
-      items: { create: [{ variantId: chosenVariantId, treatmentSlug: input.treatmentSlug, label: itemLabel, sessions: 1, durationMin, pricePence: pricePence ?? 0, isAddon: false }] },
+      items: { create: [{ variantId: chosenVariantId, treatmentSlug: input.treatmentSlug, label: itemLabel, sessions, durationMin, pricePence: totalPence, isAddon: false }] },
     },
   });
   await db.interaction.create({
