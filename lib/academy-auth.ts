@@ -30,7 +30,7 @@ export async function signupStudent(input: AcademySignup): Promise<{ ok: boolean
   const { currentTenantId } = await import('@/lib/tenant');
   const tenantId = await currentTenantId();
   const student = await db.academyStudent.upsert({
-    where: { email },
+    where: { tenantId_email: { tenantId, email } }, // per-tenant unique (Ring 1) — replaces the global email unique
     update: { firstName: input.firstName, lastName: input.lastName || undefined, phone: input.phone || undefined, dob, ageDeclaredAt: new Date(), passwordHash, portalActive: true },
     create: { tenantId, email, firstName: input.firstName, lastName: input.lastName || null, phone: input.phone || null, dob, ageDeclaredAt: new Date(), passwordHash, portalActive: true },
   });

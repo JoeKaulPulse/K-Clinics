@@ -54,7 +54,7 @@ export const AUTHORED_FLOWS: { courseSlug: string; lessonTitle: string; steps: S
 export async function enrichAuthoredStepsIfNeeded(): Promise<{ updated: number }> {
   let updated = 0;
   for (const f of AUTHORED_FLOWS) {
-    const course = await db.course.findUnique({ where: { slug: f.courseSlug }, select: { id: true } }).catch(() => null);
+    const course = await db.course.findFirst({ where: { slug: f.courseSlug }, select: { id: true } }).catch(() => null);
     if (!course) continue;
     const lessons = await db.lesson.findMany({ where: { title: f.lessonTitle, module: { courseId: course.id } }, select: { id: true, steps: true } });
     for (const l of lessons) {

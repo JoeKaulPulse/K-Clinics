@@ -15,14 +15,26 @@ Versioned migrations (`prisma migrate`) give:
 - No surprise column drops — destructive changes require deliberate action
 - A deployment record in the `_prisma_migrations` table
 
-## Getting started (one-time setup)
+## Baseline & flip (how this repo is set up)
 
-1. Ensure `DATABASE_URL` points to a copy/snapshot of the production database
-2. Run: `npx prisma migrate dev --name init`
-3. This creates `prisma/migrations/TIMESTAMP_init/migration.sql` — the baseline
-4. Commit the new directory
-5. Set `USE_MIGRATIONS=true` in Vercel environment variables
-6. All future deploys will use `prisma migrate deploy` instead of `db push`
+The production database was built by `prisma db push`, so it has the full schema
+but no migration history. The flip to versioned migrations is handled without any
+manual prod command:
+
+1. `0_init/migration.sql` is the committed baseline — the entire current schema,
+   generated with `prisma migrate diff --from-empty --to-schema prisma/schema.prisma`.
+2. On the first deploy with `USE_MIGRATIONS=true`, `scripts/db-sync.mjs` detects
+   "schema present, no `_prisma_migrations` history" and runs
+   `prisma migrate resolve --applied 0_init` — this **records** `0_init` as applied
+   **without running its DDL** (the tables already exist). It then runs
+   `prisma migrate deploy`, which now sees `0_init` as done and applies only the
+   later migrations.
+3. On a genuinely empty database (e.g. a fresh branch) the guard skips adoption,
+   so `migrate deploy` runs `0_init` and builds the schema from scratch.
+
+So the flip is a no-op on prod data: it adopts the existing schema as the
+baseline, then applies real migrations on top. All future schema changes go
+through `prisma migrate dev` locally and `prisma migrate deploy` on deploy.
 
 ## Workflow for schema changes
 

@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   if (!slug) return NextResponse.json({ ok: false, error: 'Missing course.' }, { status: 400 });
 
   const { db } = await import('@/lib/db');
-  const course = await db.course.findUnique({ where: { slug }, select: { id: true } });
+  const course = await db.course.findFirst({ where: { slug }, select: { id: true } });
   if (!course) return NextResponse.json({ ok: false, error: 'Course not found.' }, { status: 404 });
 
   await db.enrolment.updateMany({

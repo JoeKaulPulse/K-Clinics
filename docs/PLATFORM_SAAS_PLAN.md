@@ -517,7 +517,13 @@ Grounded in a full map of the context (file:line verified).
 - `scripts/verify-tenant-backfill.mjs` — read-only; the owner runs it against prod/snapshot to confirm zero NULL `tenantId` and no would-be unique-constraint duplicates before anything is promoted.
 - `prisma/platform-migrations/ring1/README.md` — preconditions, the promotion procedure (baseline + `USE_MIGRATIONS=true` + companion `schema.prisma` edits), rollback, and the role/GUC caveats.
 
-Applying Ring 1 is held pending the owner's go-ahead and a platform-staging environment; the live track stays on additive `db push`.
+**Status (17 Jun, later) — Ring 1 approved and being applied incrementally.** Owner set `USE_MIGRATIONS=true` and approved Ring 1; decisions: uniques first / NOT NULL deferred, apply direct to prod, driven via the Vercel deploy. Now split into safe, separately-deployable steps:
+- **1a — migrations-regime flip (no schema change).** `prisma/migrations/0_init/` is the committed baseline; `scripts/db-sync.mjs` self-adopts it on the first `USE_MIGRATIONS=true` deploy (`migrate resolve --applied 0_init`, no DDL) then `migrate deploy`. Empty DBs still build from `0_init`. De-risks the flip in isolation.
+- **1b — per-tenant uniques.** `prisma/migrations/20260617180000_academy_per_tenant_uniques/` drops the global `email`/`slug` uniques and adds `@@unique([tenantId, …])` on `AcademyStudent`/`Course`/`Vacancy`; companion `schema.prisma` edits + ~8 `findUnique`→`findFirst` read-path conversions and the composite-key upsert in `lib/academy-auth.ts`. Applies after 1a; `tsc` clean.
+- **1c — `tenantId NOT NULL`** — deferred (the extension + backfill already populate it; avoids a ~35-site create cascade now). Reference SQL retained in `platform-migrations/ring1/0001`.
+- **1d — RLS** — deferred; needs the per-transaction `app.tenant_id` GUC plumbing and a Neon-branch rehearsal first (`platform-migrations/ring1/0002`).
+
+Sequencing: deploy 1a, confirm green, then 1b. Recommended: run `scripts/verify-tenant-backfill.mjs` and take a PITR snapshot before merging 1b. The live booking/admin schema is untouched — only the Academy tables' indexes change.
 
 ---
 

@@ -33,8 +33,42 @@
 // integration exposes several env vars — we pick a direct one, preferring the
 // non-pooling variants.
 import { execSync } from 'node:child_process';
+import { Pool } from 'pg';
 
 const isPages = process.env.GHPAGES === 'true';
+
+// One-time migration-baseline detection. A database originally built by
+// `prisma db push` has the full schema but the `0_init` baseline is NOT recorded
+// as applied, so the first `migrate deploy` would try to run 0_init and fail on
+// already-existing tables. We detect that (schema present, baseline not recorded)
+// and `migrate resolve --applied 0_init` it — which records the baseline WITHOUT
+// running its DDL. On a genuinely empty database (no schema) we skip, so
+// `migrate deploy` runs 0_init normally and builds the schema.
+//
+// NB we key off "is 0_init recorded?", not "does _prisma_migrations exist?": a
+// `migrate deploy` run with no migration files (e.g. enabling USE_MIGRATIONS
+// before the migration files are merged) creates an EMPTY _prisma_migrations
+// table, which must NOT be mistaken for an established history.
+async function probeBaselineState(connectionString) {
+  const pool = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 5_000 });
+  try {
+    // "Tenant" is a sentinel app table (PascalCase, quoted); _prisma_migrations is
+    // lower-case. to_regclass returns NULL when the table is absent.
+    const meta = await pool.query(`SELECT to_regclass('public."Tenant"') AS sentinel, to_regclass('public._prisma_migrations') AS migtable`);
+    const schemaPresent = Boolean(meta.rows[0]?.sentinel);
+    const migTableExists = Boolean(meta.rows[0]?.migtable);
+    let baselineApplied = false;
+    if (migTableExists) {
+      const r = await pool.query(
+        `SELECT 1 FROM "_prisma_migrations" WHERE migration_name = '0_init' AND finished_at IS NOT NULL AND rolled_back_at IS NULL LIMIT 1`,
+      );
+      baselineApplied = (r.rowCount ?? 0) > 0;
+    }
+    return { schemaPresent, baselineApplied };
+  } finally {
+    await pool.end().catch(() => {});
+  }
+}
 
 function pickDirectUrl() {
   const candidates = [
@@ -76,7 +110,41 @@ if (useMigrations) {
   // ── SAFE PATH: versioned migrations ────────────────────────────────────────
   // `prisma migrate deploy` applies only the pending .sql files in
   // prisma/migrations/. It never drops data and never requires --accept-data-loss.
+
+  // Only the PRODUCTION deploy applies migrations. A preview/development build may
+  // point at the production database, and must never mutate prod schema — least of
+  // all apply a migration before the owner has snapshotted. Such builds skip schema
+  // sync entirely; production stays the single migrator. (Local / non-Vercel runs,
+  // where VERCEL_ENV is unset, are allowed so the schema can be migrated manually.)
+  const vercelEnv = process.env.VERCEL_ENV;
+  if (vercelEnv && vercelEnv !== 'production') {
+    console.log(`[db-sync] USE_MIGRATIONS: '${vercelEnv}' deploy — skipping migrations (production is the only migrator).`);
+    process.exit(0);
+  }
+
   const env = { ...process.env, DATABASE_URL: dbUrl };
+
+  // Adopt the existing schema as the baseline on the first migrations deploy (see
+  // probeBaselineState). Best-effort: any failure here just falls through to
+  // migrate deploy, which will surface a clear error if a baseline really was needed.
+  try {
+    const { schemaPresent, baselineApplied } = await probeBaselineState(dbUrl);
+    if (schemaPresent && !baselineApplied) {
+      console.log('[db-sync] existing schema, baseline 0_init not yet recorded — adopting it (resolve --applied 0_init, no DDL run)…');
+      try {
+        execSync('npx prisma migrate resolve --applied 0_init', { stdio: 'inherit', env });
+      } catch (e) {
+        console.warn('[db-sync] baseline resolve did not apply (may already be baselined):', e?.message || e);
+      }
+    } else if (baselineApplied) {
+      console.log('[db-sync] baseline 0_init already recorded — skipping adoption.');
+    } else {
+      console.log('[db-sync] empty database — migrate deploy will create the schema from 0_init.');
+    }
+  } catch (e) {
+    console.warn('[db-sync] baseline probe failed (continuing to migrate deploy):', e?.message || e);
+  }
+
   const ATTEMPTS = 5;
   const BACKOFF = [15, 30, 45, 60];
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {

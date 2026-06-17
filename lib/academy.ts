@@ -50,7 +50,7 @@ export async function listCourses(includeInactive = false): Promise<CourseView[]
 }
 
 export async function getCourse(slug: string): Promise<CourseView | null> {
-  const c = await db.course.findUnique({ where: { slug } });
+  const c = await db.course.findFirst({ where: { slug } }); // per-tenant slug (Ring 1) — tenant scope injected by the db extension
   if (!c || !c.active) return null;
   return toView(c, await cohortsWithRemaining(c.id));
 }
