@@ -7,6 +7,7 @@ import { buildLessonFlow, coerceSteps, type FlowStep, type SayStep, type TeachSt
 import { Illustration, matchIllustration, type IlloKey, type IlloLevel } from '@/components/academy/Illustrations';
 import { AmbientBackdrop } from '@/components/academy/AmbientBackdrop';
 import { ExplainerPlayer } from '@/components/academy/ExplainerPlayer';
+import { HomeworkPanel } from '@/components/academy/HomeworkPanel';
 import { academyLevel } from '@/lib/academy-levels';
 import { isMascotMuted, setMascotMuted } from '@/components/academy/mascotVoice';
 import type { CourseLearning, LessonView, QuizView } from '@/lib/lms';
@@ -301,12 +302,13 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
             {lesson.pdfUrls.map((url) => {
               const raw = url.split('/').pop() ?? 'Document';
               const name = (() => { try { return decodeURIComponent(raw); } catch { return raw; } })().replace(/^\d+-/, '');
+              const viewOnly = lesson.pdfNoDownload?.includes(url) ?? false;
               return (
                 <li key={url}>
-                  <a href={url} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 text-sm text-white/80 transition-colors hover:text-[var(--color-gold)]">
+                  <a href={url} target="_blank" rel="noreferrer" {...(viewOnly ? {} : { download: name })} className="flex items-center gap-2.5 text-sm text-white/80 transition-colors hover:text-[var(--color-gold)]">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0 text-[var(--color-gold)]/70"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" /></svg>
                     <span className="truncate">{name}</span>
-                    <span className="ml-auto shrink-0 text-[0.65rem] text-white/30">PDF</span>
+                    <span className="ml-auto shrink-0 text-[0.65rem] text-white/30">{viewOnly ? 'View only' : 'Download'}</span>
                   </a>
                 </li>
               );
@@ -314,6 +316,8 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
           </ul>
         </div>
       )}
+
+      {lesson.requiresHomework && <HomeworkPanel lessonId={lesson.id} submission={lesson.submission} />}
     </div>
   );
 }

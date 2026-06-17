@@ -36,6 +36,7 @@ export default async function CurriculumPage({ params }: { params: Promise<{ cou
     title: course.title,
     objectives: Array.isArray(course.objectives) ? course.objectives : [],
     welcome: course.welcome,
+    preCourseInfo: course.preCourseInfo,
     modules: course.modules.map((m) => ({
       id: m.id, title: m.title, summary: m.summary,
       lessons: m.lessons.map((l) => ({
@@ -43,10 +44,11 @@ export default async function CurriculumPage({ params }: { params: Promise<{ cou
         body: l.body, keyPoints: Array.isArray(l.keyPoints) ? l.keyPoints : [],
         objectives: Array.isArray(l.objectives) ? l.objectives : [],
         studyTips: Array.isArray(l.studyTips) ? l.studyTips : [],
-        homework: l.homework, examRefs: Array.isArray(l.examRefs) ? l.examRefs : [],
+        homework: l.homework, requiresHomework: l.requiresHomework, examRefs: Array.isArray(l.examRefs) ? l.examRefs : [],
         citations: (l.citations as { label: string; url: string }[] | null) ?? [],
         resources: (l.resources as { label: string; url: string }[] | null) ?? [],
         pdfUrls: Array.isArray(l.pdfUrls) ? (l.pdfUrls as string[]) : [],
+        pdfNoDownload: Array.isArray(l.pdfNoDownload) ? (l.pdfNoDownload as string[]) : [],
       })),
       quiz: m.quiz ? {
         id: m.quiz.id, title: m.quiz.title, passMark: m.quiz.passMark,

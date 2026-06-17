@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       if (!b.courseId) return bad();
       await db.course.update({
         where: { id: String(b.courseId) },
-        data: { objectives: strList(b.objectives), welcome: str(b.welcome).slice(0, 2000) || null },
+        data: { objectives: strList(b.objectives), welcome: str(b.welcome).slice(0, 2000) || null, preCourseInfo: str(b.preCourseInfo).slice(0, 20000) || null },
       });
       return ok();
     }
@@ -84,10 +84,12 @@ export async function POST(req: Request) {
           objectives: strList(b.objectives),
           studyTips: strList(b.studyTips),
           homework: str(b.homework).slice(0, 4000) || null,
+          requiresHomework: !!b.requiresHomework,
           examRefs: strList(b.examRefs),
           citations: linkArr(b.citations),
           resources: linkArr(b.resources),
           pdfUrls: urlList(b.pdfUrls),
+          pdfNoDownload: urlList(b.pdfNoDownload),
         },
       });
       return ok();

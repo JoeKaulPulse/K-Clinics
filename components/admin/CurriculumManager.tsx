@@ -4,11 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type Link = { label: string; url: string };
-type Lesson = { id: string; title: string; durationMin: number | null; minSeconds: number | null; videoUrl: string | null; imageUrl: string | null; body: string; keyPoints: string[]; objectives: string[]; studyTips: string[]; homework: string | null; examRefs: string[]; citations: Link[]; resources: Link[]; pdfUrls: string[] };
+type Lesson = { id: string; title: string; durationMin: number | null; minSeconds: number | null; videoUrl: string | null; imageUrl: string | null; body: string; keyPoints: string[]; objectives: string[]; studyTips: string[]; homework: string | null; examRefs: string[]; citations: Link[]; resources: Link[]; pdfUrls: string[]; pdfNoDownload: string[]; requiresHomework: boolean };
 type Question = { id: string; prompt: string; type: string; options: string[]; correct: number[]; explanation: string | null; tip: string | null; imageUrl: string | null };
 type Quiz = { id: string; title: string; passMark: number; questions: Question[] };
 type Module = { id: string; title: string; summary: string | null; lessons: Lesson[]; quiz: Quiz | null };
-type Course = { id: string; title: string; objectives: string[]; welcome: string | null; modules: Module[] };
+type Course = { id: string; title: string; objectives: string[]; welcome: string | null; preCourseInfo: string | null; modules: Module[] };
 
 const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
 const label = 'block text-xs font-medium text-[var(--color-stone)]';
@@ -45,6 +45,7 @@ function CourseMeta({ course, busy, act }: { course: Course; busy: boolean; act:
   const [open, setOpen] = useState(false);
   const [objectives, setObjectives] = useState(listToText(course.objectives));
   const [welcome, setWelcome] = useState(course.welcome ?? '');
+  const [preCourseInfo, setPreCourseInfo] = useState(course.preCourseInfo ?? '');
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
       <div className="flex items-center gap-3 p-4">
@@ -56,7 +57,8 @@ function CourseMeta({ course, busy, act }: { course: Course; busy: boolean; act:
         <div className="space-y-3 border-t border-[var(--color-line)] p-4">
           <label className={label}>Welcome message (shown when a trainee first opens the course)<textarea rows={3} className={`${field} mt-1`} value={welcome} onChange={(e) => setWelcome(e.target.value)} placeholder="Welcome to your Level 4 course. Over the next weeks you'll…" /></label>
           <label className={label}>Course objectives / goals (one per line)<textarea rows={4} className={`${field} mt-1`} value={objectives} onChange={(e) => setObjectives(e.target.value)} placeholder={'Understand laser–tissue interaction\nPass the VTCT Level 4 external exam'} /></label>
-          <button onClick={() => act({ op: 'updateCourseMeta', courseId: course.id, objectives: textToList(objectives), welcome })} disabled={busy} className={btnDark}>Save course goals</button>
+          <label className={label}>Pre-course information — mandatory; learners must read &amp; acknowledge before any lessons (BLD-445). Leave blank for no gate.<textarea rows={6} className={`${field} mt-1`} value={preCourseInfo} onChange={(e) => setPreCourseInfo(e.target.value)} placeholder={'Important — please read before starting your course.\n\nAcademy information, learner responsibilities, course requirements, policies and terms…'} /></label>
+          <button onClick={() => act({ op: 'updateCourseMeta', courseId: course.id, objectives: textToList(objectives), welcome, preCourseInfo })} disabled={busy} className={btnDark}>Save course goals</button>
         </div>
       )}
     </div>
@@ -110,27 +112,42 @@ function ModuleCard({ module: m, index, total, busy, act, onMove }: { module: Mo
 
 function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: Lesson; index: number; total: number; busy: boolean; act: Act; lessonIds: string[] }) {
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ title: l.title, durationMin: l.durationMin ?? '', minSeconds: l.minSeconds ?? '', videoUrl: l.videoUrl ?? '', imageUrl: l.imageUrl ?? '', body: l.body, keyPoints: listToText(l.keyPoints), objectives: listToText(l.objectives), studyTips: listToText(l.studyTips), homework: l.homework ?? '', examRefs: listToText(l.examRefs), citations: linksToText(l.citations), resources: linksToText(l.resources), pdfUrls: l.pdfUrls });
+  const [f, setF] = useState({ title: l.title, durationMin: l.durationMin ?? '', minSeconds: l.minSeconds ?? '', videoUrl: l.videoUrl ?? '', imageUrl: l.imageUrl ?? '', body: l.body, keyPoints: listToText(l.keyPoints), objectives: listToText(l.objectives), studyTips: listToText(l.studyTips), homework: l.homework ?? '', examRefs: listToText(l.examRefs), citations: linksToText(l.citations), resources: linksToText(l.resources), pdfUrls: l.pdfUrls, pdfNoDownload: l.pdfNoDownload ?? [], requiresHomework: l.requiresHomework });
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((s) => ({ ...s, [k]: v }));
   const move = (d: number) => { const ids = [...lessonIds]; const j = index + d; if (j < 0 || j >= ids.length) return; [ids[index], ids[j]] = [ids[j], ids[index]]; act({ op: 'reorderLessons', ids }); };
   const [uploading, setUploading] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [pct, setPct] = useState(0);
+  // BLD-444: client-direct upload to Vercel Blob, hardened so it can't sit on
+  // "Uploading…" forever — sanitise the filename (spaces / # / ? in the pathname
+  // break the upload URL), report real progress, and abort after 3 minutes with a
+  // clear error instead of hanging. The surfaced message reveals the true cause.
+  async function putFile(file: File, folder: string): Promise<string> {
+    const { upload } = await import('@vercel/blob/client');
+    const safe = file.name.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/-+/g, '-').slice(-120) || 'file';
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 180_000);
+    try {
+      const blob = await upload(`${folder}/${Date.now()}-${safe}`, file, {
+        access: 'public',
+        handleUploadUrl: '/api/admin/academy/blob-token',
+        abortSignal: controller.signal,
+        onUploadProgress: (p) => setPct(Math.round(p.percentage)),
+      });
+      return blob.url;
+    } finally { clearTimeout(timer); setPct(0); }
+  }
+  const uploadErr = (e: unknown) => ((e as Error)?.name === 'AbortError' ? 'timed out after 3 min — check the connection or file size' : (e as Error)?.message || 'unknown');
   async function uploadVideo(file: File) {
     setUploading(true);
-    try {
-      const { upload } = await import('@vercel/blob/client');
-      const blob = await upload(`academy/${Date.now()}-${file.name}`, file, { access: 'public', handleUploadUrl: '/api/admin/academy/blob-token' });
-      setF((s) => ({ ...s, videoUrl: blob.url }));
-    } catch (e) { alert('Upload failed: ' + ((e as Error)?.message || 'unknown')); }
+    try { const url = await putFile(file, 'academy'); setF((s) => ({ ...s, videoUrl: url })); }
+    catch (e) { alert('Upload failed: ' + uploadErr(e)); }
     finally { setUploading(false); }
   }
   async function uploadPdf(file: File) {
     setUploadingPdf(true);
-    try {
-      const { upload } = await import('@vercel/blob/client');
-      const blob = await upload(`academy/pdf/${Date.now()}-${file.name}`, file, { access: 'public', handleUploadUrl: '/api/admin/academy/blob-token' });
-      setF((s) => ({ ...s, pdfUrls: [...s.pdfUrls, blob.url] }));
-    } catch (e) { alert('PDF upload failed: ' + ((e as Error)?.message || 'unknown')); }
+    try { const url = await putFile(file, 'academy/pdf'); setF((s) => ({ ...s, pdfUrls: [...s.pdfUrls, url] })); }
+    catch (e) { alert('PDF upload failed: ' + uploadErr(e)); }
     finally { setUploadingPdf(false); }
   }
 
@@ -153,7 +170,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
               <div className="mt-1 flex gap-2">
                 <input className={`${field} flex-1`} value={f.videoUrl} onChange={(e) => set('videoUrl', e.target.value)} placeholder="https://youtube… or upload →" />
                 <label className={`shrink-0 cursor-pointer rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-1.5 text-xs ${uploading ? 'opacity-60' : 'hover:border-[var(--color-gold)]'}`}>
-                  {uploading ? 'Uploading…' : 'Upload'}
+                  {uploading ? `Uploading ${pct}%` : 'Upload'}
                   <input type="file" accept="video/*,image/*" className="hidden" disabled={uploading} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadVideo(file); e.currentTarget.value = ''; }} />
                 </label>
               </div>
@@ -166,6 +183,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
             <label className={label}>Study &amp; exam tips (one per line, Duolingo-style)<textarea rows={3} className={`${field} mt-1`} value={f.studyTips} onChange={(e) => set('studyTips', e.target.value)} placeholder={'Examiners love the 28-day turnover figure\nRemember: melanocytes MAKE melanin'} /></label>
           </div>
           <label className={label}>Homework / assignment (Markdown, shown after the lesson)<textarea rows={3} className={`${field} mt-1`} value={f.homework} onChange={(e) => set('homework', e.target.value)} placeholder="Label a diagram of the skin layers and bring it to the practical day." /></label>
+          <label className="flex items-center gap-2 text-xs text-[var(--color-stone)]"><input type="checkbox" checked={f.requiresHomework} onChange={(e) => set('requiresHomework', e.target.checked)} /> Require learners to submit homework files for this lesson (BLD-446)</label>
           <label className={label}>Key points (one per line)<textarea rows={3} className={`${field} mt-1`} value={f.keyPoints} onChange={(e) => set('keyPoints', e.target.value)} /></label>
           <label className={label}>Maps to exam / syllabus (one per line — e.g. &ldquo;VTCT Level 4 Unit UV40539, LO1&rdquo;)<textarea rows={2} className={`${field} mt-1`} value={f.examRefs} onChange={(e) => set('examRefs', e.target.value)} /></label>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -174,7 +192,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
               <p className={label}>PDF attachments &amp; further reading (Label | URL, one per line)</p>
               <textarea rows={3} className={`${field} mt-1 text-xs`} value={f.resources} onChange={(e) => set('resources', e.target.value)} placeholder="My Guide | https://…" />
               <label className={`mt-1.5 inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs ${uploadingPdf ? 'opacity-60 pointer-events-none' : 'hover:border-[var(--color-gold)]'}`}>
-                {uploadingPdf ? 'Uploading…' : '↑ Upload PDF'}
+                {uploadingPdf ? `Uploading ${pct}%` : '↑ Upload PDF'}
                 <input type="file" accept="application/pdf" className="hidden" disabled={uploadingPdf} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadPdf(file); e.currentTarget.value = ''; }} />
               </label>
             </div>
@@ -184,21 +202,27 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
             <div className="space-y-1.5">
               {f.pdfUrls.map((url, i) => {
                 const name = decodeURIComponent(url.split('/').pop() ?? url).replace(/^\d+-/, '');
+                const canDownload = !f.pdfNoDownload.includes(url);
                 return (
                   <div key={url} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-xs">
                     <span className="flex-1 truncate text-[var(--color-stone)]">{name}</span>
+                    {/* BLD-443: per-file download permission (off = view only). */}
+                    <label className="flex shrink-0 items-center gap-1 text-[var(--color-stone)]" title="Let learners download this file (unticked = view only)">
+                      <input type="checkbox" checked={canDownload} onChange={(e) => setF((s) => ({ ...s, pdfNoDownload: e.target.checked ? s.pdfNoDownload.filter((u) => u !== url) : [...s.pdfNoDownload, url] }))} />
+                      Download
+                    </label>
                     <a href={url} target="_blank" rel="noreferrer" className="shrink-0 text-[var(--color-gold)] hover:underline">View</a>
-                    <button type="button" onClick={() => setF((s) => ({ ...s, pdfUrls: s.pdfUrls.filter((_, j) => j !== i) }))} className="shrink-0 text-[var(--color-blush)] hover:underline">Remove</button>
+                    <button type="button" onClick={() => setF((s) => ({ ...s, pdfUrls: s.pdfUrls.filter((_, j) => j !== i), pdfNoDownload: s.pdfNoDownload.filter((u) => u !== url) }))} className="shrink-0 text-[var(--color-blush)] hover:underline">Remove</button>
                   </div>
                 );
               })}
               <label className={`inline-flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-line)] px-3 py-1.5 text-xs ${uploadingPdf ? 'opacity-60' : 'hover:border-[var(--color-gold)]'}`}>
-                {uploadingPdf ? 'Uploading…' : '+ Attach PDF'}
+                {uploadingPdf ? `Uploading ${pct}%` : '+ Attach PDF'}
                 <input type="file" accept="application/pdf" className="hidden" disabled={uploadingPdf} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadPdf(file); e.currentTarget.value = ''; }} />
               </label>
             </div>
           </div>
-          <button onClick={() => act({ op: 'updateLesson', id: l.id, title: f.title, durationMin: f.durationMin, minSeconds: f.minSeconds, videoUrl: f.videoUrl, imageUrl: f.imageUrl, body: f.body, keyPoints: textToList(f.keyPoints), objectives: textToList(f.objectives), studyTips: textToList(f.studyTips), homework: f.homework, examRefs: textToList(f.examRefs), citations: textToLinks(f.citations), resources: textToLinks(f.resources), pdfUrls: f.pdfUrls })} disabled={busy} className={btnDark}>Save lesson</button>
+          <button onClick={() => act({ op: 'updateLesson', id: l.id, title: f.title, durationMin: f.durationMin, minSeconds: f.minSeconds, videoUrl: f.videoUrl, imageUrl: f.imageUrl, body: f.body, keyPoints: textToList(f.keyPoints), objectives: textToList(f.objectives), studyTips: textToList(f.studyTips), homework: f.homework, examRefs: textToList(f.examRefs), citations: textToLinks(f.citations), resources: textToLinks(f.resources), pdfUrls: f.pdfUrls, pdfNoDownload: f.pdfNoDownload, requiresHomework: f.requiresHomework })} disabled={busy} className={btnDark}>Save lesson</button>
         </div>
       )}
     </div>

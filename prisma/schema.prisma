@@ -1805,6 +1805,7 @@ model AcademyStudent {
   badges           StudentBadge[]
   dailyActivity    DailyActivity[]
   passkeys         StudentPasskey[]
+  homeworkSubmissions HomeworkSubmission[]
 
   @@index([createdAt])
   @@index([xp])
@@ -1847,6 +1848,7 @@ model Course {
   outcomes       String[] @default([]) // "what you'll learn" bullets
   objectives     String[] @default([]) // course-level learning goals/objectives
   welcome        String? // intro shown when a student first opens the course
+  preCourseInfo  String?  @db.Text // BLD-445: mandatory pre-course "please read" page; learners acknowledge before any lessons
   prerequisites  String?
   thinkificUrl   String? // theory platform link (shown in trainee portal)
   heroImage      String?
@@ -1902,17 +1904,51 @@ model Lesson {
   objectives  String[]         @default([]) // "by the end you will…" shown at lesson start
   studyTips   String[]         @default([]) // exam tips / memory aids surfaced in-lesson
   homework    String? // assignment to complete after the lesson (markdown)
+  requiresHomework Boolean     @default(false) // BLD-446: learner must submit homework files for this lesson
   examRefs    String[]         @default([]) // real exam/syllabus references this maps to
   steps       Json? // authored bite-size flow [{kind:'teach'|'say'|'ask', …}]; when null the player auto-chunks `body`
   minSeconds  Int? // minimum dwell time before the lesson can be marked complete
   citations   Json? // [{ label, url }]
   resources   Json? // [{ label, url }]
   pdfUrls     String[]         @default([]) // BLD-407: uploaded PDF attachments (Vercel Blob URLs)
+  pdfNoDownload String[]       @default([]) // BLD-443: subset of pdfUrls marked view-only (no download offered)
   progress    LessonProgress[]
+  homeworkSubmissions HomeworkSubmission[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
   @@index([moduleId, order])
+  @@index([tenantId])
+}
+
+enum HomeworkStatus {
+  SUBMITTED
+  REVIEWED
+  APPROVED
+  NEEDS_REVISION
+}
+
+// BLD-446: a learner's homework submission for a lesson. One logical submission
+// per student+lesson — resubmission updates it (enforced in app code, not a DB
+// @unique, to stay within the additive deploy gate).
+model HomeworkSubmission {
+  id         String         @id @default(cuid())
+  tenantId   String?
+  student    AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId  String
+  lesson     Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId   String
+  files      String[]       @default([]) // Vercel Blob URLs (pdf / doc / docx / images)
+  note       String? // optional learner note
+  status     HomeworkStatus @default(SUBMITTED)
+  feedback   String? // tutor feedback
+  reviewedBy String? // staff email
+  reviewedAt DateTime?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@index([lessonId, status])
+  @@index([studentId])
   @@index([tenantId])
 }
 
@@ -2164,6 +2200,7 @@ model Enrolment {
   pricePence Int             @default(0)
   paidPence  Int             @default(0)
   notes      String?
+  preCourseAckAt DateTime? // BLD-445: when the learner acknowledged the pre-course information page
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
 
