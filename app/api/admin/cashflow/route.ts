@@ -17,6 +17,12 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const { db } = await import('@/lib/db');
 
+  // BLD-326: audit every cashflow / cash-reserve mutation (actor + op).
+  if (['config', 'drivers', 'createEntry', 'deleteEntry', 'createReserve', 'updateReserve', 'deleteReserve'].includes(body.op)) {
+    const { logAudit } = await import('@/lib/audit');
+    await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: `Cashflow ${String(body.op)}${body.label ? `: ${String(body.label).slice(0, 80)}` : ''}${body.name ? `: ${String(body.name).slice(0, 80)}` : ''}` }).catch(() => {});
+  }
+
   if (body.op === 'config') {
     const { setFinanceConfig } = await import('@/lib/cashflow');
     await setFinanceConfig({

@@ -261,6 +261,22 @@ async function maybeQualifyReferral(clientId: string, bookingId: string, spendPe
   await db.referral.update({ where: { id: ref.id }, data: { status: 'QUALIFIED', qualifiedAt: new Date(), rewardedAt: new Date() } });
   await awardClientPoints({ clientId: ref.referrerId, points: LOYALTY.referralReward, category: 'REFERRAL', reason: 'A friend you referred completed their first treatment', referralId: ref.id });
   await awardClientPoints({ clientId, points: LOYALTY.referralReward, category: 'REFERRAL', reason: 'Welcome bonus for joining via a friend', referralId: ref.id });
+
+  // BLD-422: tell both parties the referral reward landed (was credited silently).
+  try {
+    const [referrer, referee] = await Promise.all([
+      db.client.findUnique({ where: { id: ref.referrerId }, select: { email: true, firstName: true, unsubscribed: true } }),
+      db.client.findUnique({ where: { id: clientId }, select: { email: true, firstName: true, unsubscribed: true } }),
+    ]);
+    const { sendEmail, tmplManual } = await import('@/lib/email');
+    const pts = LOYALTY.referralReward;
+    if (referrer?.email && !referrer.unsubscribed) {
+      await sendEmail({ to: referrer.email, subject: 'Your referral reward has landed', html: tmplManual(`<p>Hi ${referrer.firstName || 'there'},</p><p>Great news — a friend you referred has completed their first treatment, so we've added <strong>${pts} loyalty points</strong> to your account as a thank-you. Redeem them as money off a future visit.</p><p>Thank you for spreading the word.</p>`) });
+    }
+    if (referee?.email && !referee.unsubscribed) {
+      await sendEmail({ to: referee.email, subject: 'Your welcome bonus is here', html: tmplManual(`<p>Hi ${referee.firstName || 'there'},</p><p>Welcome to K Clinics! As you joined through a friend, we've added <strong>${pts} loyalty points</strong> to your account — redeemable as money off your next visit.</p>`) });
+    }
+  } catch { /* email is best-effort */ }
 }
 
 // ── Redemption ─────────────────────────────────────────────────────────────

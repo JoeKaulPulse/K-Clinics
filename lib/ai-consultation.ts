@@ -196,20 +196,30 @@ Use 1–4 phases and 1–2 treatments each — fewer when little is needed (a si
 type Parsed = { refused?: boolean; confidence?: number; needsExpert?: boolean; summary?: string; findings?: unknown; phases?: unknown; worthConsidering?: unknown; _model: string; _in?: number; _out?: number };
 
 async function callClaude(key: string, model: string, system: string, content: object[]): Promise<Parsed | null> {
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model, max_tokens: 1100, system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content }] }),
-      signal: AbortSignal.timeout(25_000),
-    });
-    if (!res.ok) { console.error('[get-my-plan] anthropic', res.status, await res.text().catch(() => '')); return null; }
-    const j = await res.json();
-    const text = j?.content?.find((c: { type: string }) => c.type === 'text')?.text ?? '';
-    const obj = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
-    return { ...obj, _model: model, _in: j?.usage?.input_tokens, _out: j?.usage?.output_tokens };
-  } catch (e) {
-    console.error('[get-my-plan] call failed:', (e as Error)?.message);
-    return null;
+  // BLD-334: one bounded retry on a transient failure (network error / timeout /
+  // 5xx). A 4xx is not retried (it won't succeed), and a failed call never
+  // produced a completion, so retrying can't double-bill.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model, max_tokens: 1100, system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content }] }),
+        signal: AbortSignal.timeout(25_000),
+      });
+      if (!res.ok) {
+        if (res.status >= 500 && attempt === 0) { await new Promise((r) => setTimeout(r, 600)); continue; }
+        console.error('[get-my-plan] anthropic', res.status, await res.text().catch(() => '')); return null;
+      }
+      const j = await res.json();
+      const text = j?.content?.find((c: { type: string }) => c.type === 'text')?.text ?? '';
+      const obj = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
+      return { ...obj, _model: model, _in: j?.usage?.input_tokens, _out: j?.usage?.output_tokens };
+    } catch (e) {
+      if (attempt === 0) { await new Promise((r) => setTimeout(r, 600)); continue; }
+      console.error('[get-my-plan] call failed:', (e as Error)?.message);
+      return null;
+    }
   }
+  return null;
 }
