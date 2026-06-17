@@ -141,10 +141,48 @@ export async function createManualBooking(input: {
   // Staff incentive: reward the prior practitioner for a secured repeat booking.
   try { const { awardForRebooking } = await import('@/lib/gamification'); await awardForRebooking(booking.id); } catch { /* non-fatal */ }
 
+  // Send the client their booking confirmation — the same email the online flow
+  // sends, which carries the "complete your pre-treatment health forms" link
+  // (→ /account/assessments). The account-invite / card link is sent separately
+  // by the booking modal, so a new phone client gets two emails: the account
+  // invite, then this confirmation. notifyBookingConfirmed never throws and
+  // records its own EmailEvent, so a comms hiccup can't break the booking.
+  await (await import('@/lib/booking-notify')).notifyBookingConfirmed(booking.id);
+
   const hasCard = !!(await db.booking.findFirst({ where: { clientId: client.id, stripePaymentMethodId: { not: null } }, select: { id: true } }));
 
   revalidatePath('/admin/bookings');
   return { ok: true, bookingId: booking.id, manageToken: booking.manageToken, hasCard, clientFirstName: client.firstName, clientEmail: client.email, clientHasEmail: !!client.email };
+}
+
+// Walkthrough: log the call to the client's record (notes, consent ticks, outcome)
+// as a CALL interaction, so a phone booking leaves a trail like any other contact.
+export async function logCallNote(bookingId: string, note: string): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to log calls.' };
+  const body = (note || '').trim();
+  if (!body) return { ok: false, error: 'Nothing to save.' };
+  const { db } = await import('@/lib/db');
+  const b = await db.booking.findUnique({ where: { id: bookingId }, select: { clientId: true } });
+  if (!b) return { ok: false, error: 'Booking not found.' };
+  await db.interaction.create({ data: { clientId: b.clientId, type: 'CALL', summary: body.slice(0, 2000), author: session.email } });
+  return { ok: true };
+}
+
+// Walkthrough: re-send the booking confirmation (carries the health-forms link) on
+// demand — e.g. the client didn't get it, or the rep wants to trigger it as a step.
+export async function resendBookingConfirmation(bookingId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to send this.' };
+  if (!bookingId) return { ok: false, error: 'Missing booking.' };
+  try {
+    await (await import('@/lib/booking-notify')).notifyBookingConfirmed(bookingId);
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'Could not send the confirmation.' };
+  }
 }
 
 // Staff: schedule a follow-up appointment for the same client + treatment as an

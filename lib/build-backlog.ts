@@ -769,6 +769,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Bring across existing client records.',
     notes: ['Needs owner input: where the old records live (system/CSV/paper), rough volume, and what to bring across. Then I can write an importer.'],
   },
+  {
+    title: 'Migrated clients have no way into their account — add passwordless activation email', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'A booking moved onto the new site (manual/migrated booking) creates a Client with no password, and the only email sent was the token-based "Save a card" link — so the client could secure their appointment but had no route into the /account portal (no password, and self-service "forgot password" deliberately refuses accounts that have no password set). Fix: when staff send the card request to a passwordless client, send ONE combined welcome email instead — it greets them, shows their upcoming appointment, and gives a single passwordless magic link (/account/activate) that signs them in and lands them on the card-save step. The link reuses the existing reset-token columns (no schema change), stays valid 7 days, sets portalActive, and they can set a password later from their profile. Complements S7 (the client-data importer).',
+    notes: ['Shipped: lib/email.ts tmplAccountInvite (welcome + appointment + one "Open my account" CTA); lib/client-auth.ts createAccountInvite/activateAccount (reuse resetTokenHash/Exp, 7-day TTL, portalActive on activate, password stays optional); app/account/activate route handler (IP rate-limited, signs in, redirects to the soonest card-needing booking or the dashboard); /account/activate added to the middleware public allowlist; app/api/admin/bookings/request-card branches to the combined invite for passwordless clients across email + SMS; the portal login page shows a friendly "call us for a fresh link" notice when an activation link has expired. Owner chose passwordless magic-link + one combined email.'],
+  },
 
   // ── Security & Compliance Audit Remediation ─────────────────────────────────
   // The 10-area audit (audit/ on the branch) found 3 Critical + 14 High (unique,
