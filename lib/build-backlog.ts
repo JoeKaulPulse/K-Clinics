@@ -1367,6 +1367,42 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Six remaining BLD-315 gaps not in PR #838 or commit b074702. SAR export (Art.15): adds loyalty points, AI analysis images, shop orders, consent requests, promo redemptions. Art.17 erasure: PromoRedemption.email was exported but never nulled on erasure -- fixed. GiftVoucher purchaser erasure: claimed-by erasure now also strips purchaserName/purchaserEmail; purchased-by erasure added via email match (pre-erasure email fetched before transaction). Consultations detail page: canViewClinical(role) -> sessionCan(session, clients.clinical.view) so per-user revocations are honoured.',
     notes: ['app/api/admin/clients/[id]/export/route.ts: points, aiAnalyses with images, shopOrders, consentRequests, promoRedemptions. app/admin/actions.ts: PromoRedemption.email null on erase, GiftVoucher purchaser fields on both claimed-by and purchased-by erasure. app/admin/consultations/[id]/page.tsx: revocable clinical gate. PR #850 (claude/bld315-sar-remaining).'],
   },
+  {
+    title: 'Shop confirm skips Stripe verification when stripePaymentIntentId is missing (BLD-411)', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude',
+    value: 9, effort: 2,
+    detail: 'app/api/shop/confirm/route.ts: added explicit 402 rejection when order.stripePaymentIntentId is null. Previously the Stripe check was inside if (stripePaymentIntentId) so a missing PI id (DB write failure after Stripe returned) caused finalizeOrder to run with no payment evidence. Now returns 402 Payment not found. before any finalization. The Stripe verify block is now unconditional (always runs when the id is present).',
+    notes: ['app/api/shop/confirm/route.ts line 18.'],
+  },
+  {
+    title: 'setup_intent.succeeded DB failures return 200 -- Stripe will not retry, saved card lost (BLD-412)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 1,
+    detail: 'app/api/stripe/webhook/route.ts line 131: added setup_intent.succeeded to the critical events set that returns 500 on DB failure. Without this, a transient DB error during setup_intent.succeeded returns 200, Stripe marks it delivered and never retries -- the payment method is not stored and the booking stays unchargeable.',
+    notes: ['app/api/stripe/webhook/route.ts critical const.'],
+  },
+  {
+    title: 'logAudit() silently swallows all write failures -- compliance gaps invisible (BLD-394)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 1,
+    detail: 'lib/audit.ts: catch block now calls console.error with the failure message and opts.action/actor so Sentry/monitoring surfaces audit table outages. The primary action is still never blocked (swallowing behaviour preserved). Ref BLD-394.',
+    notes: ['lib/audit.ts logAudit() catch block.'],
+  },
+  {
+    title: 'Health form -- custom boolean questions crash portal with null options (BLD-405)', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 2,
+    detail: 'Two fixes: (1) app/admin/health-forms/actions.ts addCustomQuestion(): boolean fieldType now auto-injects [{value:yes,label:Yes},{value:no,label:No}] options instead of null, matching the behaviour of built-in boolean questions. (2) components/portal/AssessmentRunner.tsx Field(): for single/boolean types, falls back to built-in Yes/No options when q.options is undefined/null (defensive guard for rows saved before this fix). This eliminates the TypeError crash that showed "Something went wrong. We couldnt load this just now." in the client portal.',
+    notes: ['app/admin/health-forms/actions.ts needsOptions. components/portal/AssessmentRunner.tsx Field.'],
+  },
+  {
+    title: 'Sentry DSN not validated at startup -- all unhandled errors silently dropped if unset (BLD-415)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 9, effort: 2,
+    detail: 'instrumentation.ts register(): added console.warn when neither SENTRY_DSN nor NEXT_PUBLIC_SENTRY_DSN is set, so the missing config is visible in Vercel function logs. .env.example: added SENTRY_DSN and NEXT_PUBLIC_SENTRY_DSN entries with explanatory comments.',
+    notes: ['instrumentation.ts. .env.example Sentry section.'],
+  },
+  {
+    title: 'Booking: change consultation duration to 15 min; sub-service selection already live (BLD-406)', type: 'TASK', urgency: 'P0', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 1,
+    detail: 'app/admin/bookings/create-action.ts: consultation durationMin changed from 30 to 15 (both the standalone Consultation slug and any treatment booked as a consultation via asConsultation:true). Sub-service selection (part 2 of BLD-406) is already implemented -- the NewBookingButton shows a variant dropdown when a treatment category has variants configured. Owner action required to populate sub-services: Admin -> Services, expand each treatment category (Laser Hair Removal, Facials, Body Treatments etc.), and add the specific procedures as variants with their own duration and price.',
+    notes: ['app/admin/bookings/create-action.ts line 83. Owner: add variants in Admin -> Services for the sub-service dropdown to appear.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

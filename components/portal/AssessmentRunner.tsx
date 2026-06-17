@@ -174,9 +174,11 @@ function Centered({ children }: { children: React.ReactNode }) {
 
 function Field({ q, value, set, pick }: { q: Question; value: unknown; set: (id: string, v: unknown) => void; pick: (id: string, v: unknown) => void }) {
   if (q.type === 'single' || q.type === 'boolean') {
+    // BLD-405: guard against custom boolean questions saved before the options fix.
+    const opts = q.options ?? (q.type === 'boolean' ? [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }] : []);
     return (
       <div className="grid gap-3 sm:grid-cols-2">
-        {q.options!.map((o) => {
+        {opts.map((o) => {
           const on = value === o.value;
           return (
             <button
