@@ -15,12 +15,12 @@ function Board({ title, rows, blurb }: { title: string; rows: LeaderRow[]; blurb
       {blurb && <p className="mt-1 text-sm text-[var(--color-stone)]">{blurb}</p>}
       <ol className="mt-4 space-y-1.5">
         {rows.length === 0 ? (
-          <li className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] p-5 text-sm text-[var(--color-stone-soft)]">No rankings yet — earn XP by completing lessons, passing assessments and practising.</li>
+          <li className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] p-5 text-sm text-[var(--color-stone)]">No rankings yet — earn XP by completing lessons, passing assessments and practising.</li>
         ) : rows.map((r) => (
           <li key={r.studentId} className={`flex items-center gap-3 rounded-[var(--radius-lg)] border px-4 py-3 ${r.isMe ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/8' : 'border-[var(--color-line)] bg-[var(--color-porcelain)]'}`}>
             <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm font-semibold ${r.rank <= 3 ? 'bg-[var(--color-gold)] text-white' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{r.rank}</span>
             <span className="flex-1 text-sm font-medium">{r.name}{r.isMe && <span className="ml-1.5 text-xs text-[var(--color-gold)]">you</span>}</span>
-            {r.badges > 0 && <span className="text-xs text-[var(--color-stone-soft)]">🏅 {r.badges}</span>}
+            {r.badges > 0 && <span className="text-xs text-[var(--color-stone)]">🏅 {r.badges}</span>}
             <span className="tabular-nums text-sm font-semibold text-[var(--color-ink)]">{r.xp.toLocaleString()} XP</span>
           </li>
         ))}

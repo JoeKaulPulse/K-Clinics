@@ -38,7 +38,7 @@ export default function CartPage() {
           </ul>
           <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
             <div className="flex items-center justify-between text-sm"><span className="text-[var(--color-stone)]">Subtotal</span><span className="font-medium">{money(subtotalPence)}</span></div>
-            <p className="mt-1 text-xs text-[var(--color-stone-soft)]">Shipping &amp; any gift card applied at checkout.</p>
+            <p className="mt-1 text-xs text-[var(--color-stone)]">Shipping &amp; any gift card applied at checkout.</p>
             <Link href="/shop/checkout" className="mt-5 block"><Button variant="gold" size="lg" className="w-full">Checkout <ArrowIcon /></Button></Link>
             <Link href="/shop" className="mt-3 block text-center text-sm text-[var(--color-stone)] hover:underline">Continue shopping</Link>
           </div>

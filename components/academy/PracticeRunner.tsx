@@ -73,7 +73,7 @@ export function PracticeRunner({ courses }: { courses: Course[] }) {
         <p className="font-[family-name:var(--font-display)] text-xl">Test your knowledge</p>
         <p className="mt-1 text-sm text-[var(--color-stone)]">A fresh set of exam-style questions, drawn at random. Practise as often as you like.</p>
         <div className="mt-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-stone-soft)]">Course</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">Course</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {courses.map((c) => (
               <button key={c.id} onClick={() => setCourseId(c.id)} className={`rounded-full border px-4 py-2 text-sm transition-colors ${courseId === c.id ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}>
@@ -83,7 +83,7 @@ export function PracticeRunner({ courses }: { courses: Course[] }) {
           </div>
         </div>
         <div className="mt-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-stone-soft)]">How many questions</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">How many questions</p>
           <div className="mt-2 flex gap-2">
             {[10, 20, 30].map((n) => (
               <button key={n} onClick={() => setCount(n)} className={`rounded-full border px-4 py-2 text-sm transition-colors ${count === n ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}>{n}</button>
@@ -119,7 +119,7 @@ export function PracticeRunner({ courses }: { courses: Course[] }) {
   if (!q) return null;
   return (
     <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
-      <div className="flex items-center justify-between text-xs text-[var(--color-stone-soft)]">
+      <div className="flex items-center justify-between text-xs text-[var(--color-stone)]">
         <span className="uppercase tracking-wide">Practice</span>
         <span className="tabular-nums">{qi + 1} / {questions.length} · {correctCount} correct</span>
       </div>

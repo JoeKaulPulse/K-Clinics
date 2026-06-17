@@ -32,13 +32,13 @@ export default async function PracticePage() {
           <p className="mt-1 text-sm text-[var(--color-stone)]">Historic and specimen papers to practise with.</p>
           <div className="mt-4 space-y-3">
             {papers.length === 0 ? (
-              <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] p-5 text-sm text-[var(--color-stone-soft)]">Specimen papers will be added here as your course approaches its exam.</p>
+              <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] p-5 text-sm text-[var(--color-stone)]">Specimen papers will be added here as your course approaches its exam.</p>
             ) : papers.map((p) => (
               <div key={p.id} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-medium">{p.title}</p>
-                    <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">{[p.examBoard, p.year, p.courseTitle].filter(Boolean).join(' · ')}</p>
+                    <p className="mt-0.5 text-xs text-[var(--color-stone)]">{[p.examBoard, p.year, p.courseTitle].filter(Boolean).join(' · ')}</p>
                   </div>
                   {p.fileUrl && <a href={p.fileUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Open ↗</a>}
                 </div>
