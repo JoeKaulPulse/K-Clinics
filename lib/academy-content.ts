@@ -2446,7 +2446,7 @@ export async function enrichCourseContentIfNeeded(): Promise<{ modules: number; 
   let modules = 0, lessons = 0, questions = 0;
 
   for (const cc of NEW_MODULES) {
-    const course = await db.course.findUnique({ where: { slug: cc.courseSlug }, select: { id: true } }).catch(() => null);
+    const course = await db.course.findFirst({ where: { slug: cc.courseSlug }, select: { id: true } }).catch(() => null);
     if (!course) continue;
     for (const m of cc.modules) {
       let mod = await db.courseModule.findFirst({ where: { courseId: course.id, title: m.title }, select: { id: true } });
@@ -2477,7 +2477,7 @@ export async function enrichCourseContentIfNeeded(): Promise<{ modules: number; 
   }
 
   for (const slug of [...new Set(NEW_EXAM_QUESTIONS.map((q) => q.courseSlug))]) {
-    const course = await db.course.findUnique({ where: { slug }, select: { id: true, accreditations: true } }).catch(() => null);
+    const course = await db.course.findFirst({ where: { slug }, select: { id: true, accreditations: true } }).catch(() => null);
     if (!course) continue;
     const board = Array.isArray(course.accreditations) && course.accreditations.length ? course.accreditations[0] : null;
     const existing = new Set((await db.examQuestion.findMany({ where: { courseId: course.id }, select: { prompt: true } })).map((q) => q.prompt));

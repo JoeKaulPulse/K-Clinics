@@ -27,7 +27,7 @@ async function main() {
 
   let created = 0;
   for (const cc of lmsCourses) {
-    const course = await db.course.findUnique({ where: { slug: cc.courseSlug }, select: { id: true } });
+    const course = await db.course.findFirst({ where: { slug: cc.courseSlug }, select: { id: true } }); // slug is per-tenant unique now (Ring 1)
     if (!course) { console.log(`[seed-lms] course not found: ${cc.courseSlug}`); continue; }
     if ((await db.courseModule.count({ where: { courseId: course.id } })) > 0) continue; // seed once
 

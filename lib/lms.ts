@@ -49,7 +49,9 @@ export async function studentCanAccess(studentId: string, courseId: string): Pro
 
 /** Full learning view for a student: content + progress (no correct answers). */
 export async function getCourseLearning(slug: string, studentId: string): Promise<CourseLearning | null> {
-  const course = await db.course.findUnique({ where: { slug }, select: { id: true, slug: true, title: true, level: true, welcome: true, objectives: true, preCourseInfo: true } });
+  // findFirst (not findUnique): slug is unique per-tenant now (@@unique([tenantId, slug]));
+  // the tenant scope is injected by the db extension (lib/tenant-scope.ts).
+  const course = await db.course.findFirst({ where: { slug }, select: { id: true, slug: true, title: true, level: true, welcome: true, objectives: true, preCourseInfo: true } });
   if (!course) return null;
   if (!(await studentCanAccess(studentId, course.id))) return null;
 

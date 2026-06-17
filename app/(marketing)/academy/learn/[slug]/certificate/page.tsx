@@ -26,7 +26,7 @@ export default async function CertificatePage({ params }: { params: Promise<{ sl
   if (!learning.certificateEligible) redirect(`/academy/learn/${slug}`);
 
   const { db } = await import('@/lib/db');
-  const course = await db.course.findUnique({ where: { slug }, select: { accreditations: true } });
+  const course = await db.course.findFirst({ where: { slug }, select: { accreditations: true } });
   const name = [student.firstName, student.lastName].filter(Boolean).join(' ');
   const ref = `KA-${slug.slice(0, 6).toUpperCase()}-${student.id.slice(-6).toUpperCase()}`;
 

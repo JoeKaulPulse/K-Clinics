@@ -1783,7 +1783,7 @@ model AcademyStudent {
   tenantId       String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
   firstName      String
   lastName       String?
-  email          String    @unique
+  email          String
   dob            DateTime?
   ageDeclaredAt  DateTime? // confirmed 16+ at signup
   goals          String?
@@ -1810,6 +1810,7 @@ model AcademyStudent {
   passkeys         StudentPasskey[]
   homeworkSubmissions HomeworkSubmission[]
 
+  @@unique([tenantId, email]) // ClinicOS Ring 1 (BLD-301): per-tenant email — replaces the global @unique
   @@index([createdAt])
   @@index([xp])
   @@index([tenantId])
@@ -1838,7 +1839,7 @@ model StudentPasskey {
 model Course {
   id             String   @id @default(cuid())
   tenantId       String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
-  slug           String   @unique
+  slug           String
   title          String
   level          String? // e.g. "Level 4"
   summary        String? // one-liner for cards
@@ -1869,6 +1870,7 @@ model Course {
   pastPapers    PastPaper[]
   fundingApplications FundingApplication[]
 
+  @@unique([tenantId, slug]) // ClinicOS Ring 1 (BLD-301): per-tenant slug — replaces the global @unique
   @@index([active, order])
   @@index([tenantId])
 }
@@ -2341,7 +2343,7 @@ model AiAnalysisImage {
 model Vacancy {
   id          String   @id @default(cuid())
   tenantId    String? // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
-  slug        String   @unique
+  slug        String
   title       String
   department  String? // Clinical · Front of house · Management …
   location    String? // defaults to the clinic locality
@@ -2356,6 +2358,7 @@ model Vacancy {
 
   applications JobApplication[]
 
+  @@unique([tenantId, slug]) // ClinicOS Ring 1 (BLD-301): per-tenant slug — replaces the global @unique
   @@index([active, order])
   @@index([tenantId])
 }

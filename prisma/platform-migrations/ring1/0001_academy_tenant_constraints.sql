@@ -1,5 +1,12 @@
 -- ClinicOS Ring 1 (BLD-301) — Academy per-tenant constraints.
 --
+-- ⚠ PARTIALLY SUPERSEDED. The per-tenant UNIQUE part of this file (section 2) has
+--   been applied for real via the versioned migration
+--   prisma/migrations/20260617180000_academy_per_tenant_uniques/. What remains
+--   live here is the `tenantId NOT NULL` part (section 1), which is DEFERRED to
+--   the RLS phase (see ./README.md). This file is kept as the reference for that
+--   step + the rollback.
+--
 -- ⚠ NOT APPLIED by any deploy. This directory is documentation/design only; it
 --   is outside prisma/migrations/, so neither `prisma db push` nor
 --   `prisma migrate deploy` ever runs it. See ./README.md for the apply path.

@@ -1,66 +1,50 @@
 # ClinicOS Ring 1 — Academy tenant constraints (BLD-301)
 
-Reviewed SQL for the Ring 1 step of the platform plan
-(`docs/PLATFORM_SAAS_PLAN.md`): make `tenantId` `NOT NULL`, add per-tenant
-uniqueness, and add Row-Level Security as the database backstop for tenant
-isolation.
+Ring 1 hardens the Academy tables for multi-tenancy: per-tenant uniqueness,
+`tenantId NOT NULL`, and Row-Level Security as the database backstop. It is being
+applied **incrementally** through versioned migrations, not all at once.
 
-## These files are NOT applied by any deploy
+## What has shipped vs what is held here
 
-This directory sits **outside** `prisma/migrations/`, so:
-
-- `prisma db push` (the current live deploy path) never reads it.
-- `prisma migrate deploy` (the `USE_MIGRATIONS=true` path) never reads it.
-
-They are a design artifact for review. Nothing here touches production until the
-owner deliberately promotes it (steps below). This matches the "safe Ring 1 prep
-only" decision: the constraints are authored and reviewable, but the live deploy
-regime and the production database are untouched.
-
-| File | What it does | Extra precondition beyond the verifier |
+| Step | State | Where |
 |---|---|---|
-| `0001_academy_tenant_constraints.sql` | `tenantId NOT NULL` on all 22 Academy tables; swaps the global `email`/`slug` uniques for per-tenant composite uniques | — |
-| `0002_academy_rls.sql` | Enables + forces RLS and installs a `tenant_isolation` policy per table | **App must set `app.tenant_id` per transaction first** (see below) — otherwise the live Academy returns zero rows |
-| `../../scripts/verify-tenant-backfill.mjs` | Read-only check that the preconditions hold | run it before promoting anything |
+| **1a — migrations-regime flip** | applied | `prisma/migrations/0_init/` baseline + the self-adopt guard in `scripts/db-sync.mjs` |
+| **1b — per-tenant uniques** (`@@unique([tenantId, email/slug])`, drop the global uniques) | applied | `prisma/migrations/20260617180000_academy_per_tenant_uniques/` + the matching `schema.prisma` edits |
+| **1c — `tenantId NOT NULL`** | **deferred** | the NOT NULL section of `0001_academy_tenant_constraints.sql` (reference) |
+| **1d — RLS** | **deferred (needs rehearsal + app GUC plumbing)** | `0002_academy_rls.sql` |
 
-## Why this can't ride the live `db push` gate
+The `*.sql` files in **this** directory are design references for the deferred
+steps. They sit **outside** `prisma/migrations/`, so no deploy runs them; the
+applied work lives in real migration folders under `prisma/migrations/`.
 
-`scripts/db-sync.mjs` runs `prisma db push` without `--accept-data-loss`. That
-gate **refuses** both new `@unique` on an existing table and `NOT NULL` additions
-(Prisma flags them as potential data loss), so every deploy would fail. The whole
-point of Ring 1 is to move the platform track onto **versioned migrations**
-(ADR-004), where this SQL is applied as a reviewed migration instead.
+### Why NOT NULL was deferred (owner decision)
+The Ring 0.2 query extension stamps `tenantId` on every Academy create and the
+cron backfill fills legacy rows, so the column is already populated in practice.
+Making it `NOT NULL` adds a required `tenantId` to ~35 create call-sites for a
+marginal DB-level guarantee. It is deferred to the RLS phase, where the create/
+seed cascade is done once alongside the GUC plumbing. The NOT NULL SQL is kept in
+`0001_…` as the reference for that step.
 
-Do **not** add the companion `@@unique` / required-`tenantId` edits to
-`prisma/schema.prisma` while the live deploy is still on `db push` — that alone
-would break deploys. The schema edits happen only at promotion time (step 3).
+## Verifier — run before applying any of the deferred steps
 
-## Preconditions (verify before promoting)
+```
+DATABASE_URL='postgres://…' node scripts/verify-tenant-backfill.mjs
+```
 
-1. **Backfill complete + no duplicates.** Run, against the production DB or a
-   fresh snapshot/branch:
+Read-only. It must report **ALL GREEN**:
+- zero NULL `tenantId` in every Academy table — the precondition for `NOT NULL` (1c);
+- no duplicate `(tenantId, email)` / `(tenantId, slug)` — the precondition for the
+  composite uniques (1b; already verified clean since the old global uniques
+  guaranteed it for a single tenant).
 
-   ```
-   DATABASE_URL='postgres://…' node scripts/verify-tenant-backfill.mjs
-   ```
+If not green, let the cron backfill (`backfillAcademyTenantIfNeeded` in
+`lib/tenant.ts`) finish, or resolve the duplicates it lists, then re-run.
 
-   It must report **ALL GREEN**. If not, let the daily-cron backfill
-   (`backfillAcademyTenantIfNeeded` in `lib/tenant.ts`) finish, or resolve the
-   duplicate rows it lists, then re-run.
-
-2. **Snapshot / PITR bookmark recorded** (plan §6.4) before any DDL.
-
-3. **A non-owner runtime DB role** exists for the app, plus a separate
-   `BYPASSRLS`/owner role for migrations and audited break-glass (plan §7.3).
-   `FORCE ROW LEVEL SECURITY` binds even the table owner, so the live app must not
-   connect as the owner once `0002` is applied.
-
-## RLS needs an app change first (don't skip this)
+## RLS (1d) needs an app change first — don't skip this
 
 `0002` denies every row unless the connection has set `app.tenant_id` for the
 current transaction. The app does not do this yet. Before applying `0002`, ship
-the Ring 1 app change that wraps Academy DB work in a transaction that sets the
-GUC, e.g.:
+the change that wraps Academy DB work in a transaction that sets the GUC:
 
 ```ts
 await db.$transaction(async (tx) => {
@@ -71,36 +55,34 @@ await db.$transaction(async (tx) => {
 
 The `true` (transaction-local) argument is required: Accelerate/PgBouncer
 multiplex one physical connection across requests, so a session-level `SET` would
-leak a tenant id into the next request. Applying `0002` **before** this ships will
-make every Academy query return nothing.
+leak a tenant id into the next request. `FORCE ROW LEVEL SECURITY` binds even the
+table owner, so the app should connect as a non-owner role, with a separate
+`BYPASSRLS`/owner role for migrations and audited break-glass (plan §7.3).
+**Applying `0002` before the app sets the GUC empties the live Academy.** RLS
+should be rehearsed on a Neon branch with the cross-tenant isolation suite before
+it reaches production.
 
-## Promotion procedure (when the owner is ready to flip)
+## How a deferred step gets applied
 
-1. Create the migrations baseline if it does not exist yet
-   (`npx prisma migrate dev --name init` against a prod-schema copy — see
-   `prisma/migrations/README.md`), commit it, and set `USE_MIGRATIONS=true`.
-2. Run the verifier (above) — must be all green.
-3. Make the companion `schema.prisma` edits: drop `?` on `tenantId` for the 22
-   models; replace the field-level `@unique` on `AcademyStudent.email`,
-   `Course.slug`, `Vacancy.slug` with `@@unique([tenantId, …])`.
-4. `npx prisma migrate dev --name academy_tenant_constraints` — confirm the
-   generated SQL matches `0001` here, adjust if Prisma names an index differently.
-5. Ship the RLS app change (GUC per transaction) and verify on staging.
-6. Add `0002`'s contents as a manual migration step (RLS is not expressible in the
-   Prisma schema) in the same or a following reviewed migration.
-7. Apply on platform-staging first; run the cross-tenant isolation suite
-   (extend `scripts/test-tenant-isolation.ts` with a live two-tenant DB check)
-   before anything reaches production.
+1. Run the verifier — must be all green.
+2. Take a PITR snapshot / record the bookmark (plan §6.4).
+3. Make the `schema.prisma` edits (for NOT NULL: drop `?` on `tenantId`; RLS is
+   not expressible in the schema) and `npx prisma migrate dev --name …` to
+   generate the migration; for RLS, add `0002`'s SQL as a manual migration step.
+4. For RLS: rehearse on a Neon branch + run the isolation suite first.
+5. Merge → the deploy's `migrate deploy` applies it.
 
 ## Rollback
 
-Each SQL file ends with a commented rollback block. `0001` is fully reversible
-(drop the composite indexes, recreate the globals, drop `NOT NULL`). `0002`
-rollback (`DISABLE ROW LEVEL SECURITY`) re-opens the tables and must only be run
-with the GUC plumbing removed from the app.
+Each `*.sql` file ends with a commented rollback block. The applied 1b migration
+is reversible by dropping the composite indexes and recreating the global ones
+(see `0001`'s rollback block). `0002` rollback (`DISABLE ROW LEVEL SECURITY`)
+must only be run with the GUC plumbing removed from the app.
 
 ## Status
 
 - Ring 0.1 — `Tenant` model + nullable `tenantId` + self-healing backfill — **merged**.
 - Ring 0.2 (BLD-300) — central query scoping + resolver + CI isolation guard — **merged**.
-- Ring 1 (BLD-301) — this directory: reviewed SQL **authored, not applied**.
+- Ring 1a — migrations flip (baseline + self-adopt) — **PR up**.
+- Ring 1b — per-tenant uniques — **PR up** (applies after 1a).
+- Ring 1c (NOT NULL) + 1d (RLS) — **deferred**, referenced here.
