@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import type { PrismaPromise } from '@prisma/client';
 import { withAccelerate } from '@prisma/extension-accelerate';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -46,7 +47,7 @@ function resolveDirectUrl(): string | undefined {
 
 const log = process.env.NODE_ENV === 'development' ? (['warn', 'error'] as const) : (['error'] as const);
 
-// ── ClinicOS multi-tenancy — Ring 0.2 (BLD-300) ──────────────────────────────
+// ── ClinicOS multi-tenancy — Ring 0.2 (BLD-300) + Ring 1d RLS (BLD-301) ───────
 // Scope every Academy query to the current tenant, centrally, instead of editing
 // ~100 call sites (PLATFORM_SAAS_PLAN.md §6.3 step 3). The hook is applied as the
 // OUTERMOST extension so it rewrites args before Accelerate computes its cache key
@@ -55,6 +56,16 @@ const log = process.env.NODE_ENV === 'development' ? (['warn', 'error'] as const
 // today → currentTenantId() returns the default id and the injected filter
 // matches every row, so the live site is unchanged. RLS is the Ring 1 backstop
 // for by-id ops the hook intentionally leaves alone (see lib/tenant-scope.ts).
+//
+// Ring 1d (RLS) — gated on ACADEMY_RLS=1: in addition to the app-level filter,
+// each Academy query sets the Postgres `app.tenant_id` GUC for its transaction, so
+// the tenant_isolation policy (0002_academy_rls.sql) returns only this tenant's
+// rows — the database backstop, including for the by-id ops the app filter leaves
+// open. The flag stays OFF in prod until RLS is actually enabled on the tables
+// (see prisma/platform-migrations/ring1/RLS_ROLLOUT.md); until then this branch is
+// never taken and behaviour is byte-for-byte unchanged.
+const ACADEMY_RLS = process.env.ACADEMY_RLS === '1';
+
 const tenantExtension = {
   name: 'clinicos-tenant-scope',
   query: {
@@ -63,7 +74,22 @@ const tenantExtension = {
         if (!isAcademyModel(model)) return query(args);
         const { currentTenantId } = await import('@/lib/tenant');
         const tenantId = await currentTenantId();
-        return query(applyTenantScope(model, operation, args as Record<string, unknown> | undefined, tenantId));
+        const scoped = applyTenantScope(model, operation, args as Record<string, unknown> | undefined, tenantId);
+        if (!ACADEMY_RLS) return query(scoped);
+        // RLS path. The policy admits a row only when the connection has set
+        // `app.tenant_id` for the current transaction, so batch [ set GUC, scoped
+        // query ] into ONE transaction — both run on the same pooled connection.
+        // Transaction-local (the `true` arg) is required under Accelerate/PgBouncer
+        // connection multiplexing, where a session-level SET would leak a tenant id
+        // into the next request. This is Prisma's documented RLS extension pattern:
+        // `query(scoped)` is the terminal operation, so it neither re-enters this
+        // hook nor sets the GUC twice. Invariant (verified, holds today): no Academy
+        // query runs inside a caller's interactive $transaction, so this never nests.
+        const [, result] = await db.$transaction([
+          db.$executeRawUnsafe(`SELECT set_config('app.tenant_id', $1, true)`, tenantId),
+          query(scoped) as PrismaPromise<unknown>,
+        ]);
+        return result;
       },
     },
   },
