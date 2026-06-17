@@ -30,3 +30,7 @@ jobs:
       # catches an injected filter that tsc can't (e.g. { tenantId: null } on a
       # NOT NULL column, which took the live Academy down once). No DB needed.
       - run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/test-scope-query-valid.mjs
+      # ClinicOS RLS-seam guard (BLD-301, Ring 1d): the app-side GUC plumbing must
+      # stay a prod no-op until RLS ships (flag defaults OFF) and the GUC it sets
+      # must match the name/scope the RLS policy reads. No DB needed.
+      - run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/test-rls-seam.mjs

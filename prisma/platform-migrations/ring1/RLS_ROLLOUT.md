@@ -30,37 +30,50 @@ pooling — but it means every tenant-scoped unit of work must be a transaction.
 
 ## App-side plumbing — the seam
 
-Wrap Academy DB work in an interactive transaction that sets the GUC first:
+Wrap Academy DB work in an interactive transaction that sets the GUC first. This
+is now shipped in **`lib/tenant-tx.ts`** (behind the `ACADEMY_RLS` flag, OFF by
+default — a prod no-op until RLS is enabled):
 
 ```ts
-// lib/tenant.ts (to add at the conversion stage)
-export async function withTenantTx<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
-  const tenantId = await currentTenantId();
+// lib/tenant-tx.ts (shipped, Stage 2a)
+export async function withTenantTx<T>(fn: (client: TenantClient) => Promise<T>): Promise<T> {
+  const { db } = await import('@/lib/db');
+  if (!academyRlsEnabled()) return fn(db);          // flag OFF → unchanged behaviour
+  const tenantId = await (await import('@/lib/tenant')).currentTenantId();
+  const { sql, params } = tenantGucStatement(tenantId);
   return db.$transaction(async (tx) => {
-    await tx.$executeRawUnsafe(`SELECT set_config('app.tenant_id', $1, true)`, tenantId);
+    await tx.$executeRawUnsafe(sql, ...params);
     return fn(tx);
   });
 }
 ```
 
 Then every Academy read/write becomes `withTenantTx((tx) => tx.course.findMany(…))`.
+The flag-off passthrough means converting a call site changes nothing in prod, so
+the conversion can land incrementally ahead of the RLS enable.
 
 **This is all-or-nothing per table:** once a table has `FORCE ROW LEVEL SECURITY`,
 *every* query to it must set the GUC or it returns nothing. So the entire Academy
 query surface (~97 sites — the inventory behind `ACADEMY_TENANT_MODELS`) must be
 converted **before** RLS is enabled on those tables.
 
-### Mechanism options (decide at the conversion stage, after the rehearsal)
+### Mechanism options — decided
 1. **Explicit `withTenantTx` at each call site** — reliable, documented, but ~97
    edits and each read becomes an interactive transaction (extra round-trip).
-2. **Auto-wrap in the Ring 0.2 db extension** — the `$allOperations` hook batches
-   `[ set_config, query(args) ]` into one array-form `$transaction`, so no call-site
-   changes. Lower churn, but unproven here and has edge cases (a query already
-   inside an interactive `$transaction` would nest → error). **Must be validated on
-   a branch** before trusting it.
+2. **Auto-wrap in the Ring 0.2 db extension** — the `$allOperations` hook would
+   batch `[ set_config, query(args) ]` into one array-form `$transaction`, so no
+   call-site changes. Lower churn, but **ruled out**: the hook would have to turn
+   each query into its own transaction, which breaks the **array-form transactions
+   Academy code already uses** — `awardXp()` in `lib/academy-gamification.ts` does
+   `db.$transaction([ db.academyStudent.update(…), db.pointEvent.create(…) ])`, and
+   an element of an array-form `$transaction` cannot itself be an interactive
+   transaction (nested → error). The GUC must be set ONCE per unit of work, at the
+   transaction boundary — only option 1 does that.
 
-Recommendation: validate option 2 on a branch (it's near-zero-churn); fall back to
-option 1 if nested-transaction or perf issues appear.
+**Decision: option 1.** The seam (`withTenantTx`, `lib/tenant-tx.ts`) is shipped as
+Stage 2a behind the OFF-by-default `ACADEMY_RLS` flag. Stage 2b converts the call
+sites (route handlers / lib unit-of-work boundaries, incl. the existing array-form
+`db.$transaction([…])` Academy calls) to `withTenantTx`, validated on a branch.
 
 ## Roles
 - The runtime app must connect as a **non-owner** role. `FORCE ROW LEVEL SECURITY`
@@ -99,5 +112,10 @@ behave the same anyway (the GUC is harmless when RLS is off).
 
 ## Status
 - Rehearsal harness (`scripts/rehearse-rls.mjs`) + this plan — **authored**; run the
-  rehearsal next.
-- Query-layer conversion + prod RLS-enable — **staged**, gated on the rehearsal.
+  rehearsal next (owner, on a Neon branch — see step 1).
+- GUC seam + `ACADEMY_RLS` flag (`lib/tenant-tx.ts`) + no-DB CI guard
+  (`scripts/test-rls-seam.mjs`) — **shipped (Stage 2a)**; a prod no-op (flag OFF).
+  Auto-wrap (option 2) ruled out — see §"Mechanism options".
+- Stage 2b — convert the ~97 Academy call sites to `withTenantTx` — **staged**,
+  validated on a branch.
+- Prod RLS-enable — **staged**, gated on the rehearsal + Stage 2b.
