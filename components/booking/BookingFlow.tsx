@@ -10,6 +10,7 @@ import { demoSlots } from '@/lib/availability-client';
 import { DemoCard } from '@/components/booking/DemoCard';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { REFRESHMENTS } from '@/lib/hospitality';
+import { trackPurchase } from '@/lib/analytics-events';
 
 type Course = { sessions: number; totalPence: number };
 type Variant = { id: string; name: string; durationMin: number; pricePence: number; offerPence: number | null; offerName: string | null; courses: Course[] };
@@ -537,16 +538,13 @@ function RequestReceived({ firstName, treatment, slot }: { firstName: string; tr
 
 function Done({ firstName, treatment, slot, orderTotal, variantId, category, bookingId }: { firstName: string; treatment?: string; slot: string; orderTotal: number; variantId: string; category?: string; bookingId?: string }) {
   useEffect(() => {
-    try {
-      (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'purchase', {
-        currency: 'GBP', value: orderTotal / 100,
-        items: [{ item_id: variantId, item_name: treatment, item_category: category }],
-      });
-    } catch { /* analytics best-effort */ }
-    try {
-      // eventID = booking id so this de-duplicates against the server-side CAPI Schedule.
-      (window as Window & { fbq?: (...a: unknown[]) => void }).fbq?.('track', 'Schedule', { currency: 'GBP', value: orderTotal / 100 }, bookingId ? { eventID: bookingId } : undefined);
-    } catch { /* analytics best-effort */ }
+    // GA4 `purchase` + Meta `Schedule` (pre-charge); eventId = booking id so the
+    // browser Pixel de-duplicates against the server-side CAPI Schedule.
+    trackPurchase({
+      valuePence: orderTotal,
+      eventId: bookingId || undefined,
+      detail: { items: [{ item_id: variantId, item_name: treatment, item_category: category }] },
+    });
   }, []);
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-10 text-center md:p-16">
