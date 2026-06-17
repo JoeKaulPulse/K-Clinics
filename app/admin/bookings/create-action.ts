@@ -141,6 +141,14 @@ export async function createManualBooking(input: {
   // Staff incentive: reward the prior practitioner for a secured repeat booking.
   try { const { awardForRebooking } = await import('@/lib/gamification'); await awardForRebooking(booking.id); } catch { /* non-fatal */ }
 
+  // Send the client their booking confirmation — the same email the online flow
+  // sends, which carries the "complete your pre-treatment health forms" link
+  // (→ /account/assessments). The account-invite / card link is sent separately
+  // by the booking modal, so a new phone client gets two emails: the account
+  // invite, then this confirmation. notifyBookingConfirmed never throws and
+  // records its own EmailEvent, so a comms hiccup can't break the booking.
+  await (await import('@/lib/booking-notify')).notifyBookingConfirmed(booking.id);
+
   const hasCard = !!(await db.booking.findFirst({ where: { clientId: client.id, stripePaymentMethodId: { not: null } }, select: { id: true } }));
 
   revalidatePath('/admin/bookings');
