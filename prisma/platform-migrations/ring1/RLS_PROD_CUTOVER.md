@@ -130,3 +130,31 @@ So a fresh database, a Neon branch, or `db-sync` also gets RLS:
   a known id from another tenant returns nothing instead of the row.
 - Onboarding a second tenant (Ring 2) is now safe at the database layer, not just
   the application layer.
+
+## Dress rehearsal — local (2026-06-17, Postgres 16)
+
+The whole sequence was rehearsed against a throwaway Postgres with the real two-role
+model, so the procedure (not just the policy) is validated:
+
+- **Roles (step 4)** — `clinic_migrator` (table owner) and `clinic_app` (runtime),
+  both `NOSUPERUSER NOBYPASSRLS`, provisioned with the SQL above.
+- **Seed** — 300 courses + 1500 enrolments under the default tenant, plus a second
+  tenant, to exercise reads with real row counts.
+- **Enable (step 3)** — `clinic_migrator` applied `0002` (22 `tenant_isolation`
+  policies). The live suite (`scripts/test-tenant-isolation-live.ts`) was then run
+  **as `clinic_app`** (the non-owner runtime role): all assertions ✓ — A sees only
+  A, B only B, cross-tenant `findUnique` → null, cross-tenant write blocked.
+- **Verify (step 5)** — as `clinic_app`: the GUC-set path returned all 300 of the
+  tenant's courses (RLS admits), the no-GUC path returned 0 (deny-by-default) —
+  confirming the flag is exactly what keeps reads working once RLS binds.
+- **Rollback** — the DO-block above, run by `clinic_migrator`, dropped to 0 policies
+  and reads recovered immediately (300 rows, plain).
+- **Latency** — the `set_config` + query batch added **~0.9 ms per Academy query**
+  over loopback (baseline 4.05 ms → 4.92 ms on a 300-row read). Over Accelerate the
+  batch is still one round-trip, so the real-world delta is in the same ballpark;
+  re-measure on the branch under the flag before prod.
+
+Not yet exercised locally (needs the branch DB + a preview): the real `lib/db.ts`
+hook (the rehearsal uses a faithful copy, since `lib/db.ts` imports `server-only`)
+and the Accelerate pooled path. That is the preview-app pass in step 3, and the only
+part of this runbook still to confirm before the prod cutover.

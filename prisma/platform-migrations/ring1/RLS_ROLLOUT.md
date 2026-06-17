@@ -147,11 +147,15 @@ behave the same anyway (the GUC is harmless when RLS is off).
 - Live two-tenant isolation suite (`scripts/test-tenant-isolation-live.ts`) —
   **authored and validated** on Postgres 16 (all assertions ✓, no residue). Ready
   to run against the Neon branch in step 3.
-- Production cutover runbook (`RLS_PROD_CUTOVER.md`) — **authored**; the rollback
-  DO-block was validated on Postgres 16 (after `0002`: 22 policies → after rollback:
-  0 policies, 0 RLS-enabled tables).
-- Remaining before prod: enable `0002` on a Neon branch + run the live suite and
-  the preview app, measure latency (step 3); provision the non-owner app role +
-  BYPASSRLS migration role (step 4); then the cutover per the runbook — flag-first,
-  PITR, enable `0002` (step 5). Steps 3–5 need a branch DB and owner decisions on
-  roles / timing.
+- Production cutover runbook (`RLS_PROD_CUTOVER.md`) — **authored and dress-rehearsed
+  end-to-end** on Postgres 16 with the real two-role model: roles provisioned (step
+  4), `0002` enabled by the owner role, the live suite run as the non-owner app role
+  (all ✓), reads verified under RLS (GUC → 300 rows, no-GUC → 0), and the rollback
+  block recovers reads. Flag overhead measured at ~0.9 ms/query (loopback). See the
+  runbook's "Dress rehearsal" section.
+- Remaining before prod (the only parts needing the branch DB / owner): the
+  **preview-app pass** — wire a preview with `ACADEMY_RLS=1` to an RLS-enabled branch
+  to exercise the real `lib/db.ts` hook + the Accelerate pooled path and re-measure
+  latency (step 3); confirm the role Accelerate connects as (step 4); then run the
+  flag-first cutover with a PITR snapshot (step 5). The procedure, policy, role model
+  and rollback are all validated; what's left is executing it against real infra.
