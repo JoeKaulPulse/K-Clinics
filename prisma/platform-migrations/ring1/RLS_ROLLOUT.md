@@ -122,9 +122,14 @@ option 1 if nested-transaction or perf issues appear.
    the invariant is what matters — **the app's connection string must resolve to a
    role that is neither the table owner nor `BYPASSRLS`**, or `FORCE` is moot.
    Confirm what role Accelerate actually connects as before enabling RLS on prod.
-5. **Enable RLS on prod**: promote `0002` to a real migration, flip `ACADEMY_RLS=1`
-   in the same release (so the GUC plumbing is live the moment RLS is), PITR
-   snapshot first. Watch the Academy closely.
+5. **Enable RLS on prod** — follow `RLS_PROD_CUTOVER.md` (the day-of runbook).
+   In short: ship `ACADEMY_RLS=1` **first** as its own release and let it bake (the
+   GUC plumbing is then harmless until RLS exists), take a PITR snapshot, then apply
+   `0002` as the owner role over a direct connection. Flag-first removes the outage
+   window that "flip both in one release" leaves while the old flag-off version is
+   still draining. Rollback is the `0002` disable block (instant, no deploy); make
+   it reproducible afterwards by promoting `0002` to a real migration +
+   `migrate resolve --applied`.
 
 ## Rollback
 `ALTER TABLE … NO FORCE ROW LEVEL SECURITY; ALTER TABLE … DISABLE ROW LEVEL
@@ -142,8 +147,11 @@ behave the same anyway (the GUC is harmless when RLS is off).
 - Live two-tenant isolation suite (`scripts/test-tenant-isolation-live.ts`) —
   **authored and validated** on Postgres 16 (all assertions ✓, no residue). Ready
   to run against the Neon branch in step 3.
+- Production cutover runbook (`RLS_PROD_CUTOVER.md`) — **authored**; the rollback
+  DO-block was validated on Postgres 16 (after `0002`: 22 policies → after rollback:
+  0 policies, 0 RLS-enabled tables).
 - Remaining before prod: enable `0002` on a Neon branch + run the live suite and
   the preview app, measure latency (step 3); provision the non-owner app role +
-  BYPASSRLS migration role (step 4); flip `ACADEMY_RLS=1` + RLS on prod in one
-  release with a PITR snapshot (step 5). Steps 3–5 need a branch DB and owner
-  decisions on roles / timing.
+  BYPASSRLS migration role (step 4); then the cutover per the runbook — flag-first,
+  PITR, enable `0002` (step 5). Steps 3–5 need a branch DB and owner decisions on
+  roles / timing.
