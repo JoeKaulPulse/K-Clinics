@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { withAccelerate } from '@prisma/extension-accelerate';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { isAcademyModel, applyTenantScope } from '@/lib/tenant-scope';
 
 // ── Database client ──────────────────────────────────────────────────────────
 // Prisma Postgres is meant to be reached through Prisma's connection *pooler*
@@ -45,29 +46,61 @@ function resolveDirectUrl(): string | undefined {
 
 const log = process.env.NODE_ENV === 'development' ? (['warn', 'error'] as const) : (['error'] as const);
 
-function makeClient() {
+// ── ClinicOS multi-tenancy — Ring 0.2 (BLD-300) ──────────────────────────────
+// Scope every Academy query to the current tenant, centrally, instead of editing
+// ~100 call sites (PLATFORM_SAAS_PLAN.md §6.3 step 3). The hook is applied as the
+// OUTERMOST extension so it rewrites args before Accelerate computes its cache key
+// (cache stays tenant-partitioned). Non-Academy models short-circuit immediately
+// — no tenant lookup, no behaviour change for booking/CRM/etc. Single tenant
+// today → currentTenantId() returns the default id and the injected filter
+// matches every row, so the live site is unchanged. RLS is the Ring 1 backstop
+// for by-id ops the hook intentionally leaves alone (see lib/tenant-scope.ts).
+const tenantExtension = {
+  name: 'clinicos-tenant-scope',
+  query: {
+    $allModels: {
+      async $allOperations({ model, operation, args, query }: { model: string; operation: string; args: unknown; query: (a: unknown) => Promise<unknown> }) {
+        if (!isAcademyModel(model)) return query(args);
+        const { currentTenantId } = await import('@/lib/tenant');
+        const tenantId = await currentTenantId();
+        return query(applyTenantScope(model, operation, args as Record<string, unknown> | undefined, tenantId));
+      },
+    },
+  },
+} as const;
+
+// A client we can chain a second `$extends` onto without TS re-instantiating the
+// (already deep) Accelerate-extended type — applying two extensions through the
+// full generic signature trips TS2589 "excessively deep". The runtime object is
+// unchanged; only the static type is widened for the second hop.
+type Extendable = { $extends: (ext: unknown) => unknown };
+
+function makeClient(): PrismaClient {
   const pooled = resolvePooledUrl();
+  let base: Extendable;
   if (pooled) {
     // Route every runtime query through the Accelerate pooler.
-    return new PrismaClient({ accelerateUrl: pooled, log: [...log] }).$extends(withAccelerate());
+    base = new PrismaClient({ accelerateUrl: pooled, log: [...log] }).$extends(withAccelerate()) as unknown as Extendable;
+  } else {
+    // Direct connection path: use the pg driver adapter. pg's Pool is lazy —
+    // it does not connect until the first query, so this is safe to construct
+    // even when no DATABASE_URL is configured (e.g. during static builds or CI
+    // without a database). It will fail at query time, not at import time.
+    //
+    // pg + PrismaPg are static imports (bundled via transpilePackages in
+    // next.config.mjs). The previous dynamic require()s were invisible to
+    // Turbopack's tracer and broke in the deployed lambda.
+    const direct = resolveDirectUrl();
+    const onServerless = Boolean(process.env.VERCEL) || process.env.NODE_ENV === 'production';
+    const pool = new Pool({
+      ...(direct ? { connectionString: direct } : {}),
+      ...(onServerless ? { max: 1, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 15_000 } : {}),
+    });
+    const adapter = new PrismaPg(pool);
+    base = new PrismaClient({ adapter, log: [...log] }) as unknown as Extendable;
   }
-
-  // Direct connection path: use the pg driver adapter. pg's Pool is lazy —
-  // it does not connect until the first query, so this is safe to construct
-  // even when no DATABASE_URL is configured (e.g. during static builds or CI
-  // without a database). It will fail at query time, not at import time.
-  //
-  // pg + PrismaPg are static imports (bundled via transpilePackages in
-  // next.config.mjs). The previous dynamic require()s were invisible to
-  // Turbopack's tracer and broke in the deployed lambda.
-  const direct = resolveDirectUrl();
-  const onServerless = Boolean(process.env.VERCEL) || process.env.NODE_ENV === 'production';
-  const pool = new Pool({
-    ...(direct ? { connectionString: direct } : {}),
-    ...(onServerless ? { max: 1, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 15_000 } : {}),
-  });
-  const adapter = new PrismaPg(pool);
-  return new PrismaClient({ adapter, log: [...log] });
+  // Apply the tenant-scope hook last → outermost.
+  return base.$extends(tenantExtension) as unknown as PrismaClient;
 }
 
 // The Accelerate-extended client is a structural superset of PrismaClient for
