@@ -252,7 +252,7 @@ export default async function HomePage() {
 
       {/* FAQ — answers the top search questions (rich-result eligible) */}
       <section className="section container-lux">
-        <JsonLdHome data={faqLd(allGeneralFaqs.map((f) => ({ q: f.q, a: f.a })))} />
+        {allGeneralFaqs.length > 0 && <JsonLdHome data={faqLd(allGeneralFaqs.map((f) => ({ q: f.q, a: f.a })))} />}
         <div className="grid gap-x-16 gap-y-10 lg:grid-cols-[0.8fr_1.2fr]">
           <SectionHeading
             eyebrow="Good to know"

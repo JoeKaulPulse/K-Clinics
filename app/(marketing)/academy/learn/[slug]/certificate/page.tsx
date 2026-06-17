@@ -7,7 +7,7 @@ import { PrintButton } from '@/components/academy/PrintButton';
 import { ACCREDITATION_LABELS } from '@/lib/academy';
 import { pageMeta } from '@/lib/seo';
 
-export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: 'Certificate — K Academy', description: 'Your K Academy certificate of completion.', path: '/academy/learn' });
+export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: 'Certificate — K Academy', description: 'Your K Academy certificate of completion.', path: '/academy/learn/certificate', noindex: true }); // BLD-341: per-learner certificate — never index
 export const dynamic = 'force-dynamic';
 
 const fmt = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });

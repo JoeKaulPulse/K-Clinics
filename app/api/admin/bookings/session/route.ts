@@ -33,6 +33,8 @@ export async function POST(req: Request) {
 
   const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, status: true, finishedAt: true } });
   if (!booking) return bad('Booking not found.', 404);
+  // BLD-336: never run appointment-session actions against a cancelled booking.
+  if (booking.status === 'CANCELLED') return bad('This booking was cancelled — no session actions are allowed.', 409);
 
   switch (op) {
     // Create (or resume) the session; the opener becomes the active staff.

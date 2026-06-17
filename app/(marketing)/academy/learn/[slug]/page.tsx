@@ -5,7 +5,7 @@ import { crmEnabled } from '@/lib/crm';
 import { CourseExperience } from '@/components/academy/CourseExperience';
 import { pageMeta } from '@/lib/seo';
 
-export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: 'Course — K Academy', description: 'Your K Academy course.', path: '/academy/learn' });
+export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: 'Course — K Academy', description: 'Your K Academy course.', path: '/academy/learn', noindex: true }); // BLD-341: per-learner page — never index
 export const dynamic = 'force-dynamic';
 
 export default async function LearnPage({ params }: { params: Promise<{ slug: string }> }) {
