@@ -84,7 +84,19 @@ async function shoot(page, name, label) {
 
 // Attach console + network-failure listeners to a page; returns a getter for issues.
 function watch(page, area) {
-  page.on('console', (m) => { if (m.type() === 'error') note('P2', area, `console error: ${m.text().slice(0, 200)}`); });
+  page.on('console', (m) => {
+    if (m.type() !== 'error') return;
+    const text = m.text();
+    // "Failed to load resource: …" is Chromium echoing a network failure with no
+    // URL attached. The response handler below already records first-party 4xx/5xx
+    // with the actual URL, and deliberately ignores third-party failures — e.g.
+    // js.stripe.com or the Google Maps embed being blocked by a sandboxed network
+    // gateway (`x-deny-reason: host_not_allowed`), which are not site defects.
+    // Dropping the contentless echo removes those false positives without losing
+    // any first-party signal.
+    if (/^Failed to load resource\b/.test(text)) return;
+    note('P2', area, `console error: ${text.slice(0, 200)}`);
+  });
   page.on('pageerror', (e) => note('P1', area, `page exception: ${(e?.message || e).toString().slice(0, 200)}`));
   page.on('response', (r) => { if (r.status() >= 500) note('P1', area, `${r.status()} on ${r.url().replace(BASE, '')}`); else if (r.status() >= 400 && r.url().startsWith(BASE)) note('P2', area, `${r.status()} on ${r.url().replace(BASE, '')}`); });
 }

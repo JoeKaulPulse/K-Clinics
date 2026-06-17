@@ -92,4 +92,4 @@ must only be run with the GUC plumbing removed from the app.
 - Ring 1a — migrations flip (baseline + self-adopt) — **merged**.
 - Ring 1b — per-tenant uniques — **merged**.
 - Ring 1c — `tenantId NOT NULL` (self-backfilling) + create-site cascade + backfill retired — **merged**.
-- Ring 1d — RLS — **rehearsal track**: `scripts/rehearse-rls.mjs` (safe, rolled-back proof of the policy + GUC mechanism) + `RLS_ROLLOUT.md` (the staged plan) authored; run the rehearsal next, then the query-layer conversion + prod enable. `0002` is the policy SQL.
+- Ring 1d — RLS — **rehearsal track**: `scripts/rehearse-rls.mjs` (safe, rolled-back proof of the policy + GUC mechanism) + `RLS_ROLLOUT.md` (the staged plan) authored. Rehearsal **run and passing** on Postgres 16 (as a non-bypass owner role, all 7 ✓); the harness now refuses to run under a SUPERUSER/`BYPASSRLS` role, the one role config that would misreport. Next: the query-layer GUC conversion (behind `ACADEMY_RLS=1`), then a Neon-branch enable + isolation suite, then prod. `0002` is the policy SQL.
