@@ -68,7 +68,10 @@ export function coerceSteps(raw: unknown): FlowStep[] | null {
   return out.length ? out : null;
 }
 
-const CARD_MAX = 215;
+// BLD-449: keep written content continuous — a normal paragraph reads as one
+// card; only a genuinely long paragraph is split (on sentence boundaries) so the
+// scrollable card stays readable, instead of fragmenting every 1–2 sentences.
+const CARD_MAX = 900;
 
 function splitSentences(p: string): string[] {
   return p.split(/(?<=[.!?])\s+(?=[A-Z(])/).map((s) => s.trim()).filter(Boolean);
@@ -76,11 +79,14 @@ function splitSentences(p: string): string[] {
 
 /** Group a paragraph's sentences into short cards (≤ ~2 sentences / CARD_MAX chars). */
 function paragraphCards(p: string): string[] {
+  // BLD-449: a whole paragraph is one card so written content reads continuously;
+  // only split a paragraph that's longer than a full card, on sentence boundaries.
+  if (p.length <= CARD_MAX) return [p];
   const cards: string[] = [];
   let cur = '';
   for (const s of splitSentences(p)) {
     const next = cur ? `${cur} ${s}` : s;
-    if (cur && (next.length > CARD_MAX || cur.split(/[.!?]/).filter(Boolean).length >= 2)) { cards.push(cur); cur = s; }
+    if (cur && next.length > CARD_MAX) { cards.push(cur); cur = s; }
     else cur = next;
   }
   if (cur) cards.push(cur);

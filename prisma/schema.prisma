@@ -2156,6 +2156,8 @@ model Cohort {
   courseId  String
   startAt   DateTime
   endAt     DateTime?
+  accessStartAt DateTime? // BLD-408: course access opens for this cohort (null = open as soon as enrolled)
+  accessEndAt   DateTime? // BLD-408: course access expires for this cohort (null = never expires)
   capacity  Int          @default(8)
   location  String?
   trainer   String?

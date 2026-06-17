@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-export type Cohort = { id: string; startAt: string; endAt: string | null; capacity: number; location: string | null; trainer: string | null; status: string };
+export type Cohort = { id: string; startAt: string; endAt: string | null; accessStartAt: string | null; accessEndAt: string | null; capacity: number; location: string | null; trainer: string | null; status: string };
 export type Course = { id: string; slug: string; title: string; level: string | null; summary: string | null; description: string | null; pricePence: number; depositPence: number | null; durationText: string | null; format: string | null; accreditations: string[]; outcomes: string[]; prerequisites: string | null; thinkificUrl: string | null; featured: boolean; active: boolean; cohorts: Cohort[] };
 export type Enrolment = { id: string; courseId: string; courseTitle: string; cohortId: string | null; applicantName: string; applicantEmail: string; applicantPhone: string | null; experience: string | null; financeInterest: boolean; status: string; pricePence: number; paidPence: number; notes: string | null; createdAt: string };
 
@@ -156,38 +156,59 @@ function CourseForm({ course, onDone }: { course?: Course; onDone: () => void })
 function Cohorts({ course }: { course: Course }) {
   const router = useRouter();
   const [add, setAdd] = useState(false);
-  const [c, setC] = useState({ startAt: '', endAt: '', capacity: '8', location: 'Islington', trainer: '' });
+  const [c, setC] = useState({ startAt: '', endAt: '', accessStartAt: '', accessEndAt: '', capacity: '8', location: 'Islington', trainer: '' });
   async function act(payload: object) { await post(payload); router.refresh(); }
   async function save() {
     if (!c.startAt) return;
-    await post({ op: 'upsertCohort', courseId: course.id, startAt: c.startAt, endAt: c.endAt || null, capacity: Number(c.capacity), location: c.location, trainer: c.trainer });
-    setAdd(false); setC({ startAt: '', endAt: '', capacity: '8', location: 'Islington', trainer: '' }); router.refresh();
+    await post({ op: 'upsertCohort', courseId: course.id, startAt: c.startAt, endAt: c.endAt || null, accessStartAt: c.accessStartAt || null, accessEndAt: c.accessEndAt || null, capacity: Number(c.capacity), location: c.location, trainer: c.trainer });
+    setAdd(false); setC({ startAt: '', endAt: '', accessStartAt: '', accessEndAt: '', capacity: '8', location: 'Islington', trainer: '' }); router.refresh();
   }
   return (
     <div className="mt-3 border-t border-[var(--color-line)] pt-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">Cohorts / practical dates</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">Cohorts — practical dates &amp; course-access window</p>
         <button onClick={() => setAdd((v) => !v)} className="text-xs text-[var(--color-gold)] hover:underline">{add ? 'Cancel' : '+ Add cohort'}</button>
       </div>
       {add && (
         <div className="mt-2 flex flex-wrap items-end gap-2">
-          <input type="date" value={c.startAt} onChange={(e) => setC({ ...c, startAt: e.target.value })} className={field} />
-          <input type="date" value={c.endAt} onChange={(e) => setC({ ...c, endAt: e.target.value })} className={field} />
+          <label className="text-[0.6rem] text-[var(--color-stone)]">Practical from<input type="date" value={c.startAt} onChange={(e) => setC({ ...c, startAt: e.target.value })} className={field} /></label>
+          <label className="text-[0.6rem] text-[var(--color-stone)]">to<input type="date" value={c.endAt} onChange={(e) => setC({ ...c, endAt: e.target.value })} className={field} /></label>
+          <label className="text-[0.6rem] text-[var(--color-stone)]">Access opens<input type="date" value={c.accessStartAt} onChange={(e) => setC({ ...c, accessStartAt: e.target.value })} className={field} /></label>
+          <label className="text-[0.6rem] text-[var(--color-stone)]">Access expires<input type="date" value={c.accessEndAt} onChange={(e) => setC({ ...c, accessEndAt: e.target.value })} className={field} /></label>
           <input value={c.capacity} onChange={(e) => setC({ ...c, capacity: e.target.value })} className={`${field} w-16`} placeholder="cap" />
           <input value={c.trainer} onChange={(e) => setC({ ...c, trainer: e.target.value })} className={`${field} w-32`} placeholder="trainer" />
           <button onClick={save} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-porcelain)]">Add</button>
         </div>
       )}
       {course.cohorts.length > 0 && (
-        <ul className="mt-2 space-y-1 text-sm">
-          {course.cohorts.map((h) => (
-            <li key={h.id} className="flex items-center justify-between gap-2">
-              <span>{fmtDate(h.startAt)}{h.endAt ? `–${fmtDate(h.endAt)}` : ''} · {h.capacity} places{h.trainer ? ` · ${h.trainer}` : ''} · {h.status}</span>
-              <button onClick={() => { if (confirm('Remove cohort?')) act({ op: 'removeCohort', id: h.id }); }} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
-            </li>
-          ))}
+        <ul className="mt-2 space-y-1.5 text-sm">
+          {course.cohorts.map((h) => <CohortRow key={h.id} courseId={course.id} cohort={h} onRemove={() => { if (confirm('Remove cohort?')) act({ op: 'removeCohort', id: h.id }); }} />)}
         </ul>
       )}
     </div>
+  );
+}
+
+function CohortRow({ courseId, cohort: h, onRemove }: { courseId: string; cohort: Cohort; onRemove: () => void }) {
+  const router = useRouter();
+  const init = (d: string | null) => (d ? d.slice(0, 10) : '');
+  const [aStart, setAStart] = useState(init(h.accessStartAt));
+  const [aEnd, setAEnd] = useState(init(h.accessEndAt));
+  const [busy, setBusy] = useState(false);
+  const dirty = aStart !== init(h.accessStartAt) || aEnd !== init(h.accessEndAt);
+  async function saveAccess() {
+    setBusy(true);
+    await post({ op: 'upsertCohort', id: h.id, courseId, startAt: h.startAt, endAt: h.endAt, accessStartAt: aStart || null, accessEndAt: aEnd || null, capacity: h.capacity, location: h.location, trainer: h.trainer, status: h.status });
+    setBusy(false); router.refresh();
+  }
+  return (
+    <li className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span className="text-[var(--color-ink-soft)]">{fmtDate(h.startAt)}{h.endAt ? `–${fmtDate(h.endAt)}` : ''} · {h.capacity} places{h.trainer ? ` · ${h.trainer}` : ''} · {h.status}</span>
+      <label className="text-[0.6rem] text-[var(--color-stone)]" title="Course access opens">access<input type="date" value={aStart} onChange={(e) => setAStart(e.target.value)} className={`${field} ml-1`} /></label>
+      <span className="text-[var(--color-stone-soft)]">→</span>
+      <input type="date" value={aEnd} onChange={(e) => setAEnd(e.target.value)} className={field} title="Course access expires" />
+      {dirty && <button onClick={saveAccess} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-2.5 py-1 text-[0.65rem] text-[var(--color-porcelain)] disabled:opacity-50">{busy ? '…' : 'Save'}</button>}
+      <button onClick={onRemove} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
+    </li>
   );
 }

@@ -83,6 +83,8 @@ export async function POST(req: Request) {
         trainer: (b.trainer as string)?.trim() || null,
         status: ['OPEN', 'FULL', 'CLOSED'].includes(b.status as string) ? (b.status as 'OPEN') : 'OPEN',
         notes: (b.notes as string)?.trim() || null,
+        accessStartAt: b.accessStartAt ? new Date(b.accessStartAt as string) : null,
+        accessEndAt: b.accessEndAt ? new Date(b.accessEndAt as string) : null,
       };
       if (b.id) await db.cohort.update({ where: { id: String(b.id) }, data });
       else await db.cohort.create({ data: { ...data, courseId: String(b.courseId) } });
