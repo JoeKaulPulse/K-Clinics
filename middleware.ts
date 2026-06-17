@@ -126,18 +126,26 @@ export async function middleware(req: NextRequest) {
     return res;
   }
 
-  // Public marketing pages — capture first-touch marketing attribution from ad/
-  // UTM params (campaign tags only — no personal data), then continue.
+  // Public marketing pages. Attribution and audience-segment cookies are
+  // non-essential (PECR reg. 6): only set them once the visitor has consented.
+  // The consent banner mirrors the choice into a server-readable first-party
+  // cookie (kc_analytics_consent=1), so we can gate at the edge — pre-consent we
+  // set nothing (BLD-464). Strictly-necessary cookies above are unaffected.
   const res = NextResponse.next();
-  const attrib = attributionFromUrl(req.nextUrl);
-  if (attrib && !req.cookies.get(ATTRIB_COOKIE)) {
-    res.cookies.set(ATTRIB_COOKIE, JSON.stringify(attrib), { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: ATTRIB_MAX_AGE });
-  }
-  // Audience personalisation: remember the ad-declared segment (content only,
-  // no personal data) so the personalised rail adapts across the visit.
-  const seg = segmentFromUrl(req.nextUrl);
-  if (seg) {
-    res.cookies.set(SEG_COOKIE, seg, { sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: SEG_MAX_AGE });
+  const consented = req.cookies.get('kc_analytics_consent')?.value === '1';
+  if (consented) {
+    // First-touch marketing attribution from ad/UTM params (campaign tags only —
+    // no personal data).
+    const attrib = attributionFromUrl(req.nextUrl);
+    if (attrib && !req.cookies.get(ATTRIB_COOKIE)) {
+      res.cookies.set(ATTRIB_COOKIE, JSON.stringify(attrib), { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: ATTRIB_MAX_AGE });
+    }
+    // Audience personalisation: remember the ad-declared segment (content only,
+    // no personal data) so the personalised rail adapts across the visit.
+    const seg = segmentFromUrl(req.nextUrl);
+    if (seg) {
+      res.cookies.set(SEG_COOKIE, seg, { sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: SEG_MAX_AGE });
+    }
   }
   return res;
 }
