@@ -25,3 +25,8 @@ jobs:
       # ClinicOS tenant-isolation guard (BLD-300): no DB needed; fails if Academy
       # query scoping regresses or the scoped-model set drifts from the schema.
       - run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/test-tenant-isolation.ts
+      # ClinicOS scope-validity guard (BLD-300/301): constructs each scoped Academy
+      # read against the generated client and fails on a Prisma ValidationError —
+      # catches an injected filter that tsc can't (e.g. { tenantId: null } on a
+      # NOT NULL column, which took the live Academy down once). No DB needed.
+      - run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/test-scope-query-valid.mjs
