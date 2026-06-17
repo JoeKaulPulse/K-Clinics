@@ -2,7 +2,7 @@ import 'server-only';
 import Link from 'next/link';
 import { sessionCan, type Session } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { bookableTreatments } from '@/lib/treatments';
+import { loadBookingTreatments } from '@/lib/services';
 import { getRoomsForDay, getRoomPrepFor, clinicDay } from '@/lib/room-prep';
 import { fmtClinicTime } from '@/lib/clinic-time';
 import { postAppointmentUpsells } from '@/lib/upsell';
@@ -88,7 +88,7 @@ export async function ReceptionistView({ session }: { session: Session }) {
     // allergies / medicalFlag intentionally omitted — front-of-house sees no clinical data.
   } : null;
 
-  const treatments = bookableTreatments.map((t) => ({ slug: t.slug, title: t.title, group: t.group }));
+  const treatments = await loadBookingTreatments();
   const arrivedCount = arrivals.filter((a) => a.arrived && !a.done).length;
   const toCome = arrivals.filter((a) => !a.done).length;
 

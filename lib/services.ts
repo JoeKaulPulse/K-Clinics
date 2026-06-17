@@ -2,6 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import { db } from '@/lib/db';
 import { crmEnabled } from '@/lib/crm';
+import { bookableTreatments } from '@/lib/treatments';
 
 // ── Service catalogue + offer pricing ────────────────────────────────────────
 // The CRM-managed catalogue (Service → ServiceVariant) with special offers.
@@ -71,6 +72,32 @@ export async function listServices(includeInactive = false): Promise<ServiceView
     id: s.id, slug: s.slug, treatmentSlug: s.treatmentSlug, name: s.name, category: s.category, vatClass: s.vatClass, active: s.active, status: toServiceStatus(s.status),
     variants: s.variants.map(toVariant),
   }));
+}
+
+export type BookingTreatment = { slug: string; title: string; group: string; variants: { id: string; name: string; durationMin: number; pricePence: number }[] };
+
+/** The treatment list for the staff "New phone booking" modal: a Consultation
+ *  option first (BLD-203), then every bookable treatment category with its
+ *  specific service variants/areas (BLD-189), each with its own price + duration.
+ *  Shared by every entry point — the Bookings page, the dashboard Quick Actions
+ *  and the reception view — so all three stay identical (BLD-447). */
+export async function loadBookingTreatments(): Promise<BookingTreatment[]> {
+  const services = await listServices().catch(() => []);
+  const namesBySlug = new Map<string, Set<string>>();
+  for (const s of services) namesBySlug.set(s.treatmentSlug, (namesBySlug.get(s.treatmentSlug) ?? new Set()).add(s.name));
+  const variantsBySlug = new Map<string, BookingTreatment['variants']>();
+  for (const s of services) {
+    const multi = (namesBySlug.get(s.treatmentSlug)?.size ?? 0) > 1;
+    for (const v of s.variants) {
+      const arr = variantsBySlug.get(s.treatmentSlug) ?? [];
+      arr.push({ id: v.id, name: multi ? `${s.name} — ${v.name}` : v.name, durationMin: v.durationMin, pricePence: v.pricePence });
+      variantsBySlug.set(s.treatmentSlug, arr);
+    }
+  }
+  return [
+    { slug: 'consultation', title: 'Consultation', group: 'Consultation', variants: [] },
+    ...bookableTreatments.map((tr) => ({ slug: tr.slug, title: tr.title, group: tr.group, variants: variantsBySlug.get(tr.slug) ?? [] })),
+  ];
 }
 
 export async function getServiceByTreatment(treatmentSlug: string): Promise<ServiceView | null> {

@@ -6,8 +6,7 @@ import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { NewBookingButton } from '@/components/admin/NewBookingButton';
 import { EmptyState } from '@/components/admin/EmptyState';
-import { bookableTreatments } from '@/lib/treatments';
-import { listServices } from '@/lib/services';
+import { loadBookingTreatments } from '@/lib/services';
 import { getLocale } from '@/lib/locale';
 import { t } from '@/lib/i18n';
 
@@ -42,24 +41,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
   // so the phone-booking flow can pick the exact one — applying its own price +
   // duration (BLD-189). Service name prefixed only when a category has more than
   // one service, to keep area names clean (e.g. just "Underarms").
-  const services = await listServices().catch(() => []);
-  const serviceNamesBySlug = new Map<string, Set<string>>();
-  for (const s of services) serviceNamesBySlug.set(s.treatmentSlug, (serviceNamesBySlug.get(s.treatmentSlug) ?? new Set()).add(s.name));
-  const variantsBySlug = new Map<string, { id: string; name: string; durationMin: number; pricePence: number }[]>();
-  for (const s of services) {
-    const multi = (serviceNamesBySlug.get(s.treatmentSlug)?.size ?? 0) > 1;
-    for (const v of s.variants) {
-      const arr = variantsBySlug.get(s.treatmentSlug) ?? [];
-      arr.push({ id: v.id, name: multi ? `${s.name} — ${v.name}` : v.name, durationMin: v.durationMin, pricePence: v.pricePence });
-      variantsBySlug.set(s.treatmentSlug, arr);
-    }
-  }
-  // "Consultation" — a bookable in-clinic consultation appointment for new clients
-  // (BLD-203). First group so it's the obvious default for new-client phone calls.
-  const treatmentsForBooking = [
-    { slug: 'consultation', title: 'Consultation', group: 'Consultation', variants: [] as { id: string; name: string; durationMin: number; pricePence: number }[] },
-    ...bookableTreatments.map((tr) => ({ slug: tr.slug, title: tr.title, group: tr.group, variants: variantsBySlug.get(tr.slug) ?? [] })),
-  ];
+  const treatmentsForBooking = await loadBookingTreatments();
 
   const tabHref = (k: string) => {
     const p = new URLSearchParams();
