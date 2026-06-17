@@ -21,6 +21,11 @@ export async function POST(req: Request) {
   const treatment = getTreatment(treatmentSlug);
   if (!treatment) return NextResponse.json({ ok: false, error: 'Unknown treatment.' }, { status: 400 });
 
+  // BLD-467: throttle this public endpoint — it find-or-creates Client rows for
+  // unknown emails, so without a limit it lets anyone spray the DB with records.
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'waitlist', 5, 600))) return NextResponse.json({ ok: false, error: 'Please try again shortly.' }, { status: 429 });
+
   // Date window: a specific day, or a range; default to the next 28 days.
   const from = b.fromDate ? new Date(b.fromDate) : new Date();
   const to = b.toDate ? new Date(b.toDate) : new Date(Date.now() + 28 * 864e5);
