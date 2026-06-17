@@ -47,6 +47,9 @@ enum EmailKind {
   NO_SHOW
   STAFF_DIGEST
   STAFF_NUDGE
+  AFTERCARE
+  SATISFACTION
+  REBOOK_NUDGE
 }
 
 enum EmailStatus {

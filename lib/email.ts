@@ -343,6 +343,52 @@ export function tmplReviewRequest(firstName: string, link: string, treatment?: s
   });
 }
 
+// BLD-354: post-booking nurture sequence — day-0 aftercare, day-14 satisfaction
+// check, day-45 re-book prompt (triggered on a COMPLETED booking in lib/automations).
+export function tmplAftercare(firstName: string, treatment: string, unsubUrl: string) {
+  return emailShell({
+    preheader: 'Your aftercare and what to expect',
+    unsubUrl,
+    body: `${heroBand('followup')}
+    <h1 style="font-size:24px;margin:0 0 16px;">Thank you for visiting us, ${escape(firstName)}.</h1>
+    <p>It was a pleasure to welcome you for your ${escape(treatment)}. Here is a little aftercare to help you get the very best results:</p>
+    <ul style="margin:0 0 18px;padding-left:20px;line-height:1.7;">
+      <li>Keep the area clean and avoid heat, heavy exercise and direct sun for 24–48 hours.</li>
+      <li>Stay hydrated, and pause active skincare (retinol, acids) for a few days unless we advised otherwise.</li>
+      <li>A little redness or sensitivity is normal and usually settles quickly.</li>
+    </ul>
+    <p>If anything doesn't feel right, just reply to this email — it reaches our team and we are always here to help.</p>
+    <p style="margin:28px 0;">${btn(site.url + '/account/assessments', 'Your aftercare &amp; forms')}</p>
+    <p>With warmth,<br>The KClinics team</p>`,
+  });
+}
+
+export function tmplSatisfaction(firstName: string, treatment: string, unsubUrl: string) {
+  return emailShell({
+    preheader: 'How are your results coming along?',
+    unsubUrl,
+    body: `${heroBand('followup')}
+    <h1 style="font-size:24px;margin:0 0 16px;">How are you getting on, ${escape(firstName)}?</h1>
+    <p>It's been a couple of weeks since your ${escape(treatment)}, and we wanted to check you are happy with how things are settling.</p>
+    <p>If you have any questions — or anything you'd like us to take a look at — just reply and our team will help.</p>
+    <p style="margin:28px 0;">${btn(site.url + site.booking.path, 'Book a check-in or your next visit')}</p>
+    <p>With warmth,<br>The KClinics team</p>`,
+  });
+}
+
+export function tmplRebook(firstName: string, treatment: string, unsubUrl: string) {
+  return emailShell({
+    preheader: 'Keep your results going',
+    unsubUrl,
+    body: `${heroBand('winback')}
+    <h1 style="font-size:24px;margin:0 0 16px;">Time to top up, ${escape(firstName)}?</h1>
+    <p>It's been about six weeks since your ${escape(treatment)}. For many treatments this is the sweet spot to book your next session and keep your results looking their best.</p>
+    <p>We'd love to welcome you back — and if you'd like a complementary treatment to enhance your results, just ask and we'll tailor something for you.</p>
+    <p style="margin:28px 0;">${btn(site.url + site.booking.path, 'Book your next visit')}</p>
+    <p>With warmth,<br>The KClinics team</p>`,
+  });
+}
+
 export function tmplManual(bodyHtml: string, unsubUrl?: string) {
   return emailShell({ body: bodyHtml, unsubUrl });
 }

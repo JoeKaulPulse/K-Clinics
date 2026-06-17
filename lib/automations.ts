@@ -1,6 +1,6 @@
 import 'server-only';
 import { db } from './db';
-import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking } from './email';
+import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking, tmplAftercare, tmplSatisfaction, tmplRebook } from './email';
 import { site } from './site';
 import { escapeHtml } from './sanitize';
 import { marketableClientWhere } from './consent';
@@ -11,18 +11,22 @@ const unsub = (token: string) => `${SITE_URL}/api/unsubscribe?t=${token}`;
 // Config (days) — tune freely.
 const FOLLOW_UP_DAYS = 3;
 const REVIEW_DAYS = 7;
+// BLD-354: post-booking nurture sequence.
+const AFTERCARE_HOURS = 36; // day-0: welcome + aftercare within ~a day of the visit
+const SATISFACTION_DAYS = 14; // day-14: satisfaction check-in
+const REBOOK_DAYS = 45; // day-45: upsell / re-book prompt
 const WIN_BACK_MONTHS = 6;
 
 const TIER_NUDGE_PENCE = 20000;   // nudge clients within £200 of the next tier
 const ANNIVERSARY_POINTS = 1000;  // bonus points on a membership anniversary
 
-type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; errors: number };
+type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; errors: number };
 
 export async function runDailyAutomations(): Promise<Tally> {
-  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, errors: 0 };
+  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, errors: 0 };
   const { staffWeeklyDigest, staffReengagement } = await import('@/lib/staff-emails');
   // BLD-120: allSettled so one failing automation can't abort the rest.
-  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t)]);
+  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t)]);
   for (const r of results) {
     if (r.status === 'rejected') { t.errors++; console.error('[automations] unhandled automation failure:', r.reason); }
   }
@@ -241,6 +245,53 @@ async function reviews(t: Tally) {
     const res = await sendEmail({ to: a.client.email, subject: "We'd love your thoughts", html: tmplReviewRequest(a.client.firstName, unsub(a.client.unsubToken)) });
     await logEvent(a.clientId, 'REVIEW_REQUEST', a.client.email, 'Review request', res);
     res.ok ? t.reviews++ : t.errors++;
+  }
+}
+
+// BLD-354: post-booking nurture — day-0 welcome + aftercare (a service message,
+// so care-class consent), within ~36h of a completed visit. Deduped per booking.
+async function aftercare(t: Tally) {
+  const since = new Date(Date.now() - AFTERCARE_HOURS * 36e5);
+  const bookings = await db.booking.findMany({ where: { status: 'COMPLETED', startAt: { gte: since, lte: new Date() } }, include: { client: true } });
+  for (const b of bookings) {
+    if (!canEmailCare(b.client)) continue;
+    const dup = await db.emailEvent.findFirst({ where: { clientId: b.clientId, kind: 'AFTERCARE', status: 'SENT', meta: { path: ['bookingId'], equals: b.id } } });
+    if (dup) continue;
+    const res = await sendEmail({ to: b.client.email, subject: `Your aftercare for ${b.treatmentTitle}`, html: tmplAftercare(b.client.firstName, b.treatmentTitle, unsub(b.client.unsubToken)) });
+    await db.emailEvent.create({ data: { clientId: b.clientId, kind: 'AFTERCARE', to: b.client.email, subject: 'Aftercare', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { bookingId: b.id } } }).catch(() => {});
+    res.ok ? t.aftercare++ : t.errors++;
+  }
+}
+
+// BLD-354: day-14 satisfaction check-in (marketing-gated). Deduped per booking.
+async function satisfaction(t: Tally) {
+  const target = new Date(Date.now() - SATISFACTION_DAYS * 864e5);
+  const start = new Date(target); start.setHours(0, 0, 0, 0);
+  const end = new Date(target); end.setHours(23, 59, 59, 999);
+  const bookings = await db.booking.findMany({ where: { status: 'COMPLETED', startAt: { gte: start, lte: end } }, include: { client: true } });
+  for (const b of bookings) {
+    if (!canEmail(b.client)) continue;
+    const dup = await db.emailEvent.findFirst({ where: { clientId: b.clientId, kind: 'SATISFACTION', status: 'SENT', meta: { path: ['bookingId'], equals: b.id } } });
+    if (dup) continue;
+    const res = await sendEmail({ to: b.client.email, subject: `How are your results, ${b.client.firstName}?`, html: tmplSatisfaction(b.client.firstName, b.treatmentTitle, unsub(b.client.unsubToken)) });
+    await db.emailEvent.create({ data: { clientId: b.clientId, kind: 'SATISFACTION', to: b.client.email, subject: 'Satisfaction check', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { bookingId: b.id } } }).catch(() => {});
+    res.ok ? t.satisfaction++ : t.errors++;
+  }
+}
+
+// BLD-354: day-45 upsell / re-book prompt (marketing-gated). Deduped per booking.
+async function rebookNudge(t: Tally) {
+  const target = new Date(Date.now() - REBOOK_DAYS * 864e5);
+  const start = new Date(target); start.setHours(0, 0, 0, 0);
+  const end = new Date(target); end.setHours(23, 59, 59, 999);
+  const bookings = await db.booking.findMany({ where: { status: 'COMPLETED', startAt: { gte: start, lte: end } }, include: { client: true } });
+  for (const b of bookings) {
+    if (!canEmail(b.client)) continue;
+    const dup = await db.emailEvent.findFirst({ where: { clientId: b.clientId, kind: 'REBOOK_NUDGE', status: 'SENT', meta: { path: ['bookingId'], equals: b.id } } });
+    if (dup) continue;
+    const res = await sendEmail({ to: b.client.email, subject: 'Time to top up your results?', html: tmplRebook(b.client.firstName, b.treatmentTitle, unsub(b.client.unsubToken)) });
+    await db.emailEvent.create({ data: { clientId: b.clientId, kind: 'REBOOK_NUDGE', to: b.client.email, subject: 'Re-book nudge', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { bookingId: b.id } } }).catch(() => {});
+    res.ok ? t.rebookNudges++ : t.errors++;
   }
 }
 
