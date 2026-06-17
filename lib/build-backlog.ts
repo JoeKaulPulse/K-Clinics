@@ -1409,6 +1409,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Added pdfUrls String[] field to Lesson model. Extended academy blob-token route to accept application/pdf (up to 500 MB, same Vercel Blob store as lesson videos). CurriculumManager lesson editor shows a PDF attachment panel -- admins upload PDFs, see a list with View/Remove per file, and the URLs are saved via updateLesson. Student-side ImmersiveCourse LessonStep shows a Lesson resources panel with PDF icon links for view/download. Refs BLD-407.',
     notes: ['prisma/schema.prisma Lesson.pdfUrls, app/api/admin/academy/blob-token/route.ts, lib/lms.ts, app/api/admin/lms/route.ts, components/admin/CurriculumManager.tsx, app/admin/academy/[courseId]/page.tsx, components/academy/ImmersiveCourse.tsx.'],
   },
+  {
+    title: 'Health Record Not Rendering -- readAssessment crashes page on corrupt cipher (BLD-423)', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 1,
+    detail: 'lib/health-assessments.ts readAssessment(): decryptJson was not wrapped in try/catch, so any health assessment with a missing or corrupt cipher would throw and crash the entire /admin/clients/[id] page (all assessments hidden). Fix: decryptJson now wrapped in try/catch returning null on failure; app/admin/clients/[id]/page.tsx formatAssessment loop also wrapped in try/catch so one bad record skips rather than breaks the page.',
+    notes: ['lib/health-assessments.ts readAssessment(). app/admin/clients/[id]/page.tsx formatAssessment loop.'],
+  },
+  {
+    title: 'Health form -- multi-type custom questions crash portal with null options (BLD-405 multi)', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 1,
+    detail: 'components/portal/AssessmentRunner.tsx Field() multi branch: q.options!.map() threw a runtime TypeError when options was null/undefined (e.g. a multi question saved before validation was in place). Boolean questions already had a guard; multi did not. Fix: add null guard opts = q.options ?? []; early-return a user-facing message when opts is empty rather than crashing the whole form.',
+    notes: ['components/portal/AssessmentRunner.tsx Field() function, multi branch line ~212.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

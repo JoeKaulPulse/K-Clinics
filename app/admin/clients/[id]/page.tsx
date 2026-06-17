@@ -81,7 +81,10 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
     const ordered = [...c.assessments].sort((a, b) => +new Date(b.submittedAt) - +new Date(a.submittedAt)).slice(0, 24);
     const seenType = new Set<string>();
     for (const a of ordered) {
-      const f = await formatAssessment(a.id);
+      // BLD-423: wrap each assessment in its own try/catch so one corrupt cipher
+      // doesn't crash the whole client page (readAssessment returns null on error).
+      let f: Awaited<ReturnType<typeof formatAssessment>> | null = null;
+      try { f = await formatAssessment(a.id); } catch { /* skip corrupt record */ }
       if (!f) continue;
       const current = !seenType.has(a.type);
       seenType.add(a.type);

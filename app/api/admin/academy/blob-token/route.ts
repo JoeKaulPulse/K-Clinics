@@ -4,10 +4,10 @@ import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
 
-// Client-direct upload for academy lesson media (videos + images). Uploading
-// straight from the browser to Vercel Blob bypasses the ~4.5 MB serverless body
-// limit (course videos can be large) and accepts iPhone formats. Requires
-// settings.manage; the curriculum editor saves the returned URL onto the lesson.
+// Client-direct upload for academy lesson media (videos, images, PDF attachments).
+// Uploading straight from the browser to Vercel Blob bypasses the ~4.5 MB serverless
+// body limit (course videos can be large) and accepts iPhone formats. Requires
+// settings.manage; the curriculum editor saves the returned URL onto the lesson. (BLD-407)
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
   const { requirePermission } = await import('@/lib/auth');

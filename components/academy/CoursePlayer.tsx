@@ -158,7 +158,10 @@ function LessonPanel({ lesson, done, onComplete }: { lesson: LessonView; done: b
             <div><p className="eyebrow mb-2 text-xs">References</p><ul className="space-y-1 text-sm">{lesson.citations.map((c, i) => <li key={i}><a href={c.url} target="_blank" rel="noopener noreferrer" className="link-underline text-[var(--color-ink-soft)]">{c.label} ↗</a></li>)}</ul></div>
           )}
           {lesson.resources.length > 0 && (
-            <div><p className="eyebrow mb-2 text-xs">Further reading</p><ul className="space-y-1 text-sm">{lesson.resources.map((c, i) => <li key={i}><a href={c.url} target="_blank" rel="noopener noreferrer" className="link-underline text-[var(--color-ink-soft)]">{c.label} ↗</a></li>)}</ul></div>
+            <div><p className="eyebrow mb-2 text-xs">Further reading</p><ul className="space-y-1 text-sm">{lesson.resources.map((c, i) => {
+              const isPdf = /\.pdf(\?|$)/i.test(c.url);
+              return <li key={i}>{isPdf ? (<a href={c.url} download target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 link-underline text-[var(--color-ink-soft)]"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>{c.label} ↓</a>) : (<a href={c.url} target="_blank" rel="noopener noreferrer" className="link-underline text-[var(--color-ink-soft)]">{c.label} ↗</a>)}</li>;
+            })}</ul></div>
           )}
         </div>
       )}
