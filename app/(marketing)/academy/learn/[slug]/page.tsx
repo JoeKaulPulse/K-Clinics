@@ -35,6 +35,16 @@ export default async function LearnPage({ params }: { params: Promise<{ slug: st
     );
   }
 
+  // BLD-445: the mandatory pre-course information must be acknowledged first.
+  if (learning.course.preCourseInfo && !learning.preCourseAck) {
+    const { PreCourseGate } = await import('@/components/academy/PreCourseGate');
+    return (
+      <section className="container-lux py-[calc(var(--header-h,5.25rem)+2rem)]">
+        <PreCourseGate slug={slug} title={learning.course.title} level={learning.course.level} content={learning.course.preCourseInfo} />
+      </section>
+    );
+  }
+
   return (
     <section className="container-lux py-[calc(var(--header-h,5.25rem)+2rem)]">
       <CourseExperience learning={learning} slug={slug} xp={standing.xp} register={register} />

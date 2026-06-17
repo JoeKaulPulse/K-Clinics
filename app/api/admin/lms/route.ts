@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       if (!b.courseId) return bad();
       await db.course.update({
         where: { id: String(b.courseId) },
-        data: { objectives: strList(b.objectives), welcome: str(b.welcome).slice(0, 2000) || null },
+        data: { objectives: strList(b.objectives), welcome: str(b.welcome).slice(0, 2000) || null, preCourseInfo: str(b.preCourseInfo).slice(0, 20000) || null },
       });
       return ok();
     }

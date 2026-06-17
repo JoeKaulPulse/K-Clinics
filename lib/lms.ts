@@ -17,10 +17,11 @@ export type QuizQuestionView = { id: string; order: number; prompt: string; type
 export type QuizView = { id: string; title: string; passMark: number; questionCount: number; bestScore: number | null; passed: boolean; questions: QuizQuestionView[] };
 export type ModuleView = { id: string; title: string; summary: string | null; order: number; lessons: LessonView[]; quiz: QuizView | null; complete: boolean };
 export type CourseLearning = {
-  course: { id: string; slug: string; title: string; level: string | null; welcome: string | null; objectives: string[] };
+  course: { id: string; slug: string; title: string; level: string | null; welcome: string | null; objectives: string[]; preCourseInfo: string | null };
   modules: ModuleView[];
   progressPct: number;
   certificateEligible: boolean;
+  preCourseAck: boolean;
 };
 
 const arr = (v: unknown): LinkRef[] => (Array.isArray(v) ? (v as LinkRef[]).filter((x) => x && x.label) : []);
@@ -37,9 +38,13 @@ export async function studentCanAccess(studentId: string, courseId: string): Pro
 
 /** Full learning view for a student: content + progress (no correct answers). */
 export async function getCourseLearning(slug: string, studentId: string): Promise<CourseLearning | null> {
-  const course = await db.course.findUnique({ where: { slug }, select: { id: true, slug: true, title: true, level: true, welcome: true, objectives: true } });
+  const course = await db.course.findUnique({ where: { slug }, select: { id: true, slug: true, title: true, level: true, welcome: true, objectives: true, preCourseInfo: true } });
   if (!course) return null;
   if (!(await studentCanAccess(studentId, course.id))) return null;
+
+  // BLD-445: has the learner acknowledged the mandatory pre-course page?
+  const enrol = await db.enrolment.findFirst({ where: { studentId, courseId: course.id, status: { in: ['PAID', 'ENROLLED', 'COMPLETED'] } }, select: { preCourseAckAt: true } });
+  const preCourseAck = !!enrol?.preCourseAckAt;
 
   const [modules, doneRows, attempts] = await Promise.all([
     db.courseModule.findMany({
@@ -89,7 +94,7 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
 
   const progressPct = totalUnits ? Math.round((doneUnits / totalUnits) * 100) : 0;
   const certificateEligible = moduleViews.length > 0 && moduleViews.every((m) => m.complete);
-  return { course, modules: moduleViews, progressPct, certificateEligible };
+  return { course, modules: moduleViews, progressPct, certificateEligible, preCourseAck };
 }
 
 /** Mark a lesson complete (idempotent). Verifies access. `secondsSpent` (the
@@ -174,7 +179,7 @@ export async function checkQuizAnswer(studentId: string, quizId: string, questio
  *  no student/progress and WITH answer keys (so the immersive player can grade
  *  client-side). Guard the caller with settings.manage — never expose to trainees. */
 export async function getCoursePreview(courseId: string): Promise<CourseLearning | null> {
-  const course = await db.course.findUnique({ where: { id: courseId }, select: { id: true, slug: true, title: true, level: true, welcome: true, objectives: true } });
+  const course = await db.course.findUnique({ where: { id: courseId }, select: { id: true, slug: true, title: true, level: true, welcome: true, objectives: true, preCourseInfo: true } });
   if (!course) return null;
   const modules = await db.courseModule.findMany({
     where: { courseId },
@@ -197,7 +202,7 @@ export async function getCoursePreview(courseId: string): Promise<CourseLearning
     } : null;
     return { id: m.id, title: m.title, summary: m.summary, order: m.order, lessons, quiz, complete: false };
   });
-  return { course, modules: moduleViews, progressPct: 0, certificateEligible: false };
+  return { course, modules: moduleViews, progressPct: 0, certificateEligible: false, preCourseAck: true };
 }
 
 /** Lean progress % for one course (for the portal list). 0–100, or null if the

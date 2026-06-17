@@ -1847,6 +1847,7 @@ model Course {
   outcomes       String[] @default([]) // "what you'll learn" bullets
   objectives     String[] @default([]) // course-level learning goals/objectives
   welcome        String? // intro shown when a student first opens the course
+  preCourseInfo  String?  @db.Text // BLD-445: mandatory pre-course "please read" page; learners acknowledge before any lessons
   prerequisites  String?
   thinkificUrl   String? // theory platform link (shown in trainee portal)
   heroImage      String?
@@ -2165,6 +2166,7 @@ model Enrolment {
   pricePence Int             @default(0)
   paidPence  Int             @default(0)
   notes      String?
+  preCourseAckAt DateTime? // BLD-445: when the learner acknowledged the pre-course information page
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
 
