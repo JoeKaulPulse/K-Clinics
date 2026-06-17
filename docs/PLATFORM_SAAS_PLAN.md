@@ -511,7 +511,13 @@ Grounded in a full map of the context (file:line verified).
 - **Central scoping** (`lib/db.ts` + `lib/tenant-scope.ts`): a Prisma `$extends` query hook injects `tenantId` into the `where` of every Academy read/bulk-write and stamps it onto creates — applied as the outermost extension so Accelerate's cache stays tenant-partitioned. Non-Academy models short-circuit (no tenant lookup, untouched). The injected filter (`tenantId = X OR tenantId IS NULL`) tolerates rows the backfill has not yet stamped, so single-tenant reads are unchanged; rows stamped for a real second tenant are never NULL, so isolation between tenants holds. By-unique ops (`findUnique`/`update`/`delete`) are left for the Ring 1 RLS backstop; email lookups in `lib/academy-auth.ts` moved to `findFirst` so they are scoped.
 - **CI isolation guard** (`scripts/test-tenant-isolation.ts`, wired into the typecheck workflow): runs with no DB; fails the build if the scoped-model set drifts from the schema's `tenantId` columns, if a read stops being scoped or a create stops being stamped, or if one tenant's filter matches another tenant's rows.
 
-Ring 1 (BLD-301) next: flip the platform track to versioned migrations, add `@@unique([tenantId, …])`, `NOT NULL` on `tenantId`, and RLS policies as reviewed SQL.
+**Status (17 Jun) — Ring 1 (BLD-301) prep authored (not applied).** Reviewed, not-yet-applied SQL + a precondition verifier are committed under `prisma/platform-migrations/ring1/` (deliberately outside `prisma/migrations/`, so neither `db push` nor `migrate deploy` runs them — the live deploy regime is untouched):
+- `0001_academy_tenant_constraints.sql` — `tenantId NOT NULL` on all 22 Academy tables + swaps the global `email`/`slug` uniques for per-tenant composite uniques.
+- `0002_academy_rls.sql` — enables/forces RLS and installs a `tenant_isolation` policy per table, gated on the app setting `app.tenant_id` per transaction (an app change that must ship first, documented in the README).
+- `scripts/verify-tenant-backfill.mjs` — read-only; the owner runs it against prod/snapshot to confirm zero NULL `tenantId` and no would-be unique-constraint duplicates before anything is promoted.
+- `prisma/platform-migrations/ring1/README.md` — preconditions, the promotion procedure (baseline + `USE_MIGRATIONS=true` + companion `schema.prisma` edits), rollback, and the role/GUC caveats.
+
+Applying Ring 1 is held pending the owner's go-ahead and a platform-staging environment; the live track stays on additive `db push`.
 
 ---
 
