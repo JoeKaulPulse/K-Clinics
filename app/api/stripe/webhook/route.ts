@@ -27,6 +27,14 @@ export async function POST(req: Request) {
         const pi = event.data.object;
         const bookingId = pi.metadata?.bookingId;
         if (bookingId) {
+          // BLD-396: guard against underpayment on full-balance booking charges.
+          if (pi.metadata?.kind === 'booking_balance') {
+            const bk = await db.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true } });
+            if (bk && (pi.amount_received ?? 0) < bk.pricePence) {
+              console.error('[webhook] booking balance underpayment — not finalising:', { received: pi.amount_received, expected: bk.pricePence, bookingId });
+              break;
+            }
+          }
           // Idempotent: records the charge, emails the receipt and credits loyalty
           // if it hasn't already been finalised synchronously. This is the backstop
           // that completes an SCA charge once the client authenticates via /booking/pay.

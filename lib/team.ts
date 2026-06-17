@@ -40,3 +40,7 @@ export const team: Practitioner[] = [
 ];
 
 export const getPractitioner = (slug: string) => team.find((p) => p.slug === slug);
+
+// Entries whose credentials still contain placeholder brackets are not yet
+// ready for public indexing.
+export const publishedTeam = team.filter((p) => !p.credentials.includes('['));

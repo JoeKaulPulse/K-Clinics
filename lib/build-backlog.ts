@@ -1421,6 +1421,36 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'components/portal/AssessmentRunner.tsx Field() multi branch: q.options!.map() threw a runtime TypeError when options was null/undefined (e.g. a multi question saved before validation was in place). Boolean questions already had a guard; multi did not. Fix: add null guard opts = q.options ?? []; early-return a user-facing message when opts is empty rather than crashing the whole form.',
     notes: ['components/portal/AssessmentRunner.tsx Field() function, multi branch line ~212.'],
   },
+  {
+    title: 'Meta Pixel blocked by CSP -- connect.facebook.net missing from script-src/connect-src (BLD-395)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 1,
+    detail: 'next.config.mjs CSP: connect.facebook.net missing from script-src (pixel script blocked) and connect.facebook.net + graph.facebook.com missing from connect-src (pixel events blocked). Fixed by adding those origins to the relevant directives.',
+    notes: ['next.config.mjs script-src and connect-src directives.'],
+  },
+  {
+    title: 'Stripe booking-balance underpayment not rejected -- manipulated Checkout can confirm on short payment (BLD-396)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 2,
+    detail: 'app/api/stripe/webhook/route.ts payment_intent.succeeded handler: no amount check for booking_balance kind. A client with devtools access could pay less than the booking price and the webhook would confirm the booking. Fix: look up booking.pricePence when kind=booking_balance; if amount_received < pricePence break without finalising.',
+    notes: ['app/api/stripe/webhook/route.ts payment_intent.succeeded case, booking_balance guard.'],
+  },
+  {
+    title: '/team page indexes placeholder GMC/GDC numbers -- medical site risk (BLD-397)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'lib/team.ts: added publishedTeam filter (excludes entries whose credentials contain "[" brackets -- i.e. placeholder registration numbers). app/(marketing)/team/page.tsx: returns 404 and noindex when no published team members exist; only publishedTeam entries appear in the static fallback grid.',
+    notes: ['lib/team.ts publishedTeam. app/(marketing)/team/page.tsx.'],
+  },
+  {
+    title: 'Privacy policy missing Xero, TrueLayer, Yay.com, Google as data processors -- UK GDPR Art.13/14 gap (BLD-398)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'lib/info-pages.ts Privacy Policy "Sharing your data" and "International transfers" sections updated to name Xero (accounting), TrueLayer (bank feed/payments), Yay.com (calls/recordings) and Google (Calendar + Workspace) as data processors, with notes on UK/US transfer safeguards and Xero AU data processing.',
+    notes: ['lib/info-pages.ts Privacy Policy Sharing/International sections.'],
+  },
+  {
+    title: 'Inactive dentistry treatment pages indexed while dentistryLive=false (BLD-403)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 5, effort: 1,
+    detail: 'app/(marketing)/[slug]/page.tsx generateMetadata: dentistry treatment pages now served with noindex when site.dentistryLive is false, preventing inactive booking pages with placeholder CTAs from being crawled and indexed.',
+    notes: ['app/(marketing)/[slug]/page.tsx generateMetadata, site.dentistryLive flag.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
