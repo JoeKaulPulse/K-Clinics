@@ -33,7 +33,7 @@ export function Logo({
       <span aria-hidden className={`logo__k block ${kBox}`}>
         <KMark />
       </span>
-      <span aria-hidden className={`hidden sm:block ${wordmark}`}>
+      <span aria-hidden className={`block ${wordmark}`}>
         <ClinicsWordmark />
       </span>
       <span className="sr-only">{site.name}</span>

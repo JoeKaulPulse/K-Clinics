@@ -54,13 +54,13 @@ export default async function CertificatePage({ params }: { params: Promise<{ sl
           {learning.course.level && <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[var(--color-gold)]">{learning.course.level}</p>}
 
           {course?.accreditations.length ? (
-            <p className="mx-auto mt-6 max-w-md text-[0.7rem] uppercase tracking-[0.14em] text-[var(--color-stone-soft)]">{course.accreditations.map((a) => ACCREDITATION_LABELS[a] ?? a).join(' · ')}</p>
+            <p className="mx-auto mt-6 max-w-md text-[0.7rem] uppercase tracking-[0.14em] text-[var(--color-stone)]">{course.accreditations.map((a) => ACCREDITATION_LABELS[a] ?? a).join(' · ')}</p>
           ) : null}
 
           <div className="mt-9 flex flex-wrap items-end justify-between gap-6 border-t border-[var(--color-line)] pt-6 text-left text-xs text-[var(--color-stone)]">
-            <div><span className="block uppercase tracking-wide text-[var(--color-stone-soft)]">Date</span><span className="text-[var(--color-ink)]">{fmt(new Date())}</span></div>
-            <div><span className="block uppercase tracking-wide text-[var(--color-stone-soft)]">Reference</span><span className="font-[family-name:var(--font-mono,monospace)] text-[var(--color-ink)]">{ref}</span></div>
-            <div className="text-right"><span className="block uppercase tracking-wide text-[var(--color-stone-soft)]">Awarded by</span><span className="text-[var(--color-ink)]">K Academy, London</span></div>
+            <div><span className="block uppercase tracking-wide text-[var(--color-stone)]">Date</span><span className="text-[var(--color-ink)]">{fmt(new Date())}</span></div>
+            <div><span className="block uppercase tracking-wide text-[var(--color-stone)]">Reference</span><span className="font-[family-name:var(--font-mono,monospace)] text-[var(--color-ink)]">{ref}</span></div>
+            <div className="text-right"><span className="block uppercase tracking-wide text-[var(--color-stone)]">Awarded by</span><span className="text-[var(--color-ink)]">K Academy, London</span></div>
           </div>
         </div>
 

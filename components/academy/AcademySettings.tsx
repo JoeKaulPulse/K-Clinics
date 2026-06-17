@@ -68,7 +68,7 @@ export function AcademySettings({ passkeys: initial }: { passkeys: Passkey[] }) 
           <ul className="mt-4 space-y-2">
             {passkeys.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm">
-                <span>{p.name}<span className="block text-xs text-[var(--color-stone-soft)]">Added {fmt(p.createdAt)}{p.lastUsedAt ? ` · last used ${fmt(p.lastUsedAt)}` : ''}</span></span>
+                <span>{p.name}<span className="block text-xs text-[var(--color-stone)]">Added {fmt(p.createdAt)}{p.lastUsedAt ? ` · last used ${fmt(p.lastUsedAt)}` : ''}</span></span>
                 <button onClick={() => remove(p.id)} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
               </li>
             ))}
