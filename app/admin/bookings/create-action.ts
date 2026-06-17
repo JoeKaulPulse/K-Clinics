@@ -149,7 +149,20 @@ export async function createManualBooking(input: {
   // records its own EmailEvent, so a comms hiccup can't break the booking.
   await (await import('@/lib/booking-notify')).notifyBookingConfirmed(booking.id);
 
-  const hasCard = !!(await db.booking.findFirst({ where: { clientId: client.id, stripePaymentMethodId: { not: null } }, select: { id: true } }));
+  // BLD-410: reuse a card already on file. If the client saved a card on a prior
+  // booking, copy it (+ the Stripe customer) onto this one — so reception isn't
+  // asked to collect it again and the new booking is immediately card-protected
+  // and chargeable. No Stripe call needed: the payment method stays attached to
+  // the same customer; we just reference it.
+  const priorCard = await db.booking.findFirst({
+    where: { clientId: client.id, id: { not: booking.id }, stripePaymentMethodId: { not: null } },
+    orderBy: { createdAt: 'desc' },
+    select: { stripePaymentMethodId: true, stripeCustomerId: true },
+  });
+  if (priorCard?.stripePaymentMethodId) {
+    await db.booking.update({ where: { id: booking.id }, data: { stripePaymentMethodId: priorCard.stripePaymentMethodId, stripeCustomerId: priorCard.stripeCustomerId ?? undefined } });
+  }
+  const hasCard = !!priorCard?.stripePaymentMethodId;
 
   revalidatePath('/admin/bookings');
   return { ok: true, bookingId: booking.id, manageToken: booking.manageToken, hasCard, clientFirstName: client.firstName, clientEmail: client.email, clientHasEmail: !!client.email };
