@@ -13,9 +13,19 @@ const CAPTCHA_AFTER = 3;               // failures → require a CAPTCHA challen
 export type Portal = 'admin' | 'client' | 'academy';
 
 export function clientIp(req: Request): string {
+  // Prefer the platform-set headers: on Vercel x-vercel-forwarded-for / x-real-ip are
+  // stamped by the edge and can't be spoofed past the proxy. The raw X-Forwarded-For is
+  // client-controllable on its left (an attacker prepends fake IPs to dodge per-IP rate
+  // limiting / lockout), so if only XFF is present use the LAST hop — the proxy-appended
+  // real client — not the first. (BLD-416)
+  const platform = req.headers.get('x-vercel-forwarded-for') || req.headers.get('x-real-ip');
+  if (platform) return platform.split(',').pop()!.trim();
   const xff = req.headers.get('x-forwarded-for');
-  if (xff) return xff.split(',')[0].trim();
-  return req.headers.get('x-real-ip') || 'unknown';
+  if (xff) {
+    const parts = xff.split(',').map((s) => s.trim()).filter(Boolean);
+    if (parts.length) return parts[parts.length - 1];
+  }
+  return 'unknown';
 }
 
 export async function recordSecurity(type: string, portal: Portal, identifier?: string | null, req?: Request, meta?: object) {
