@@ -293,6 +293,26 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
           {cur.kind === 'ask' && <AskMicro step={cur} onContinue={advanceMicro} />}
         </motion.div>
       </AnimatePresence>
+
+      {lesson.pdfUrls.length > 0 && (
+        <div className="mt-6 rounded-[var(--radius-lg)] border border-white/10 bg-white/5 p-4">
+          <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-white/40">Lesson resources</p>
+          <ul className="space-y-2">
+            {lesson.pdfUrls.map((url) => {
+              const name = decodeURIComponent(url.split('/').pop() ?? 'Document').replace(/^\d+-/, '');
+              return (
+                <li key={url}>
+                  <a href={url} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 text-sm text-white/80 transition-colors hover:text-[var(--color-gold)]">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0 text-[var(--color-gold)]/70"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" /></svg>
+                    <span className="truncate">{name}</span>
+                    <span className="ml-auto shrink-0 text-[0.65rem] text-white/30">PDF</span>
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

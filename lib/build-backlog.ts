@@ -1403,6 +1403,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'app/admin/bookings/create-action.ts: consultation durationMin changed from 30 to 15 (both the standalone Consultation slug and any treatment booked as a consultation via asConsultation:true). Sub-service selection (part 2 of BLD-406) is already implemented -- the NewBookingButton shows a variant dropdown when a treatment category has variants configured. Owner action required to populate sub-services: Admin -> Services, expand each treatment category (Laser Hair Removal, Facials, Body Treatments etc.), and add the specific procedures as variants with their own duration and price.',
     notes: ['app/admin/bookings/create-action.ts line 83. Owner: add variants in Admin -> Services for the sub-service dropdown to appear.'],
   },
+  {
+    title: 'Course lessons: PDF attachment upload and download (BLD-407)', type: 'TASK', urgency: 'P0', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 3,
+    detail: 'Added pdfUrls String[] field to Lesson model. Extended academy blob-token route to accept application/pdf (up to 500 MB, same Vercel Blob store as lesson videos). CurriculumManager lesson editor shows a PDF attachment panel -- admins upload PDFs, see a list with View/Remove per file, and the URLs are saved via updateLesson. Student-side ImmersiveCourse LessonStep shows a Lesson resources panel with PDF icon links for view/download. Refs BLD-407.',
+    notes: ['prisma/schema.prisma Lesson.pdfUrls, app/api/admin/academy/blob-token/route.ts, lib/lms.ts, app/api/admin/lms/route.ts, components/admin/CurriculumManager.tsx, app/admin/academy/[courseId]/page.tsx, components/academy/ImmersiveCourse.tsx.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

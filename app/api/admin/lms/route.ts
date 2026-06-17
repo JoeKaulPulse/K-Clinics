@@ -82,6 +82,7 @@ export async function POST(req: Request) {
           examRefs: strList(b.examRefs),
           citations: linkArr(b.citations),
           resources: linkArr(b.resources),
+          pdfUrls: strList(b.pdfUrls),
         },
       });
       return ok();

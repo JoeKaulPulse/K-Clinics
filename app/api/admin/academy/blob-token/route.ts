@@ -24,6 +24,7 @@ export async function POST(req: Request) {
         allowedContentTypes: [
           'video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v', 'video/3gpp',
           'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/heic', 'image/heif',
+          'application/pdf', // BLD-407: lesson PDF attachments
         ],
         maximumSizeInBytes: 500 * 1024 * 1024, // 500 MB — generous for HD course videos
         addRandomSuffix: true,
