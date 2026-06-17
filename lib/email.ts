@@ -377,6 +377,30 @@ export function tmplCardRequest(o: { firstName: string; treatment: string; start
   });
 }
 
+// Migration welcome: a client whose booking was moved onto the new site (created
+// via a manual/migrated booking) has no password yet, so the plain "Save a card"
+// link left them with no way into their account. This single email does it all —
+// welcomes them, shows their upcoming appointment, and gives one passwordless link
+// that signs them in and lands them on the card-save step. No password is emailed;
+// they can set one later from their profile if they want.
+export function tmplAccountInvite(o: { firstName: string; treatment: string; start: Date; activateUrl: string }) {
+  return emailShell({
+    preheader: 'Your KClinics account is ready — open it to confirm your appointment',
+    body: `<h1 style="font-size:24px;margin:0 0 16px;">Welcome to the new KClinics, ${escape(o.firstName)}.</h1>
+    <p>We've moved your care across to our new website and your account is ready. Here's your upcoming appointment:</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;background:#efe3d7;border-radius:10px;">
+      <tr><td style="padding:16px 18px;font-size:15px;">
+        <div style="font-weight:600;color:#2a2420;">${escape(o.treatment)}</div>
+        <div style="color:#7d6259;margin-top:4px;">${fmtWhen(o.start)}</div>
+      </td></tr>
+    </table>
+    <p>Tap below to open your account — no password needed. You can securely save a card to confirm this appointment (no payment is taken now), and set a password for next time if you'd like one.</p>
+    <p style="margin:28px 0;">${btn(o.activateUrl, 'Open my account')}</p>
+    <p style="font-size:14px;color:#91766e;">This is a private link just for you — please don't share it.</p>
+    <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
 // Security notice sent whenever an account password changes — so the owner of
 // the inbox is alerted even if they didn't make the change.
 export function tmplPasswordChanged(firstName: string) {

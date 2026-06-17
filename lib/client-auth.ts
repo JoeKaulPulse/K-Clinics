@@ -280,6 +280,49 @@ async function notifyPasswordChanged(email: string, firstName: string): Promise<
 }
 export { notifyPasswordChanged };
 
+// ── Passwordless account activation (migration magic link) ──────────────────
+// A client whose booking was moved onto the new site has no password, so the
+// self-service reset above refuses them (it only emails accounts that already
+// have a password). These two helpers give such a client a way in: staff issue
+// a one-time activation link, and clicking it signs them in. We reuse the same
+// reset-token columns (no schema change → safe under the additive deploy gate).
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days — covers a "next week" migration window
+
+/** Issue a passwordless activation token for a client (typically one migrated in
+ *  with no password). Stores the hashed token + expiry on the client and returns
+ *  the plaintext token; the caller builds the /account/activate link. Returns null
+ *  if the client doesn't exist. */
+export async function createAccountInvite(clientId: string): Promise<string | null> {
+  const exists = await db.client.findUnique({ where: { id: clientId }, select: { id: true } });
+  if (!exists) return null;
+  const token = crypto.randomBytes(32).toString('hex');
+  await db.client.update({
+    where: { id: clientId },
+    data: { resetTokenHash: sha256(token), resetTokenExp: new Date(Date.now() + INVITE_TTL_MS) },
+  });
+  return token;
+}
+
+/** Consume an activation magic link: validate the token and mark the portal active.
+ *  Does NOT require or set a password (it stays optional — they can add one later
+ *  from their profile). The token remains valid until expiry so a click on a second
+ *  device still works; setting a password (self-service reset / profile) clears it.
+ *  Returns the minimal client identity so the caller can open a portal session. */
+export async function activateAccount(
+  clientId: string,
+  token: string,
+): Promise<{ ok: true; client: { id: string; email: string; firstName: string; sessionEpoch: number } } | { ok: false }> {
+  if (!clientId || !token) return { ok: false };
+  const client = await db.client.findUnique({
+    where: { id: clientId },
+    select: { id: true, email: true, firstName: true, sessionEpoch: true, resetTokenHash: true, resetTokenExp: true },
+  });
+  if (!client?.resetTokenHash || !client.resetTokenExp || client.resetTokenExp < new Date()) return { ok: false };
+  if (!hashesEqual(sha256(token), client.resetTokenHash)) return { ok: false };
+  await db.client.update({ where: { id: client.id }, data: { portalActive: true } });
+  return { ok: true, client: { id: client.id, email: client.email, firstName: client.firstName, sessionEpoch: client.sessionEpoch } };
+}
+
 /** Resolve the signed-in client (server components / route handlers).
  *  Wrapped in React `cache()` so the many callers within a single request
  *  (page + nested server components + helpers) share ONE DB lookup instead of

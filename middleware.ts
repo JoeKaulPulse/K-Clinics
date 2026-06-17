@@ -9,6 +9,7 @@ const PUBLIC_ACCOUNT = new Set([
   '/account/signup',
   '/account/forgot-password',
   '/account/reset',
+  '/account/activate', // passwordless migration magic link — signs the client in itself
 ]);
 
 // Academy pages that are publicly accessible without a trainee session.
