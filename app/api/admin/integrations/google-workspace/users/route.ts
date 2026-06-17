@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession, sessionCan } from '@/lib/auth';
-import { listWorkspaceUsers, createWorkspaceUser } from '@/lib/google-workspace';
+import { listWorkspaceUsersResult, createWorkspaceUser } from '@/lib/google-workspace';
 
 export async function GET() {
   const session = await getSession();
   if (!session || !sessionCan(session, 'settings.manage')) {
     return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }
-  const users = await listWorkspaceUsers();
-  return NextResponse.json({ ok: true, users });
+  const r = await listWorkspaceUsersResult();
+  if (!r.ok) return NextResponse.json({ ok: false, configured: r.configured, error: r.error ?? 'Failed to load users.' });
+  return NextResponse.json({ ok: true, users: r.users });
 }
 
 export async function POST(req: NextRequest) {

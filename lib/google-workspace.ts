@@ -34,57 +34,89 @@ const WRITE_SCOPES = [
   'https://www.googleapis.com/auth/admin.directory.group.member',
 ].join(' ');
 
-async function directoryToken(scopes: string): Promise<string | null> {
+// Map Google's terse token/API errors to actionable setup guidance — the common
+// first-time failures (delegation not authorised, Admin SDK off, wrong admin).
+function hint(reason: string): string {
+  const r = reason.toLowerCase();
+  if (r.includes('unauthorized_client') || r.includes('not authorized') || r.includes('unauthorized'))
+    return 'The service account isn’t authorised for the Directory scopes in domain-wide delegation. In admin.google.com → Security → Access and data control → API controls → Domain-wide delegation, add the service account’s Client ID with admin.directory.user(.readonly) and admin.directory.group(.readonly).';
+  if (r.includes('invalid_grant'))
+    return 'Google rejected the sign-in (invalid_grant). Check GOOGLE_WORKSPACE_ADMIN_EMAIL is a real super-admin in this Workspace and that the service-account key is current.';
+  if (r.includes('access_denied') || r.includes('forbidden') || r.includes('403'))
+    return 'Access denied (403). The impersonated admin may lack directory rights, or the Admin SDK API isn’t enabled on the Cloud project.';
+  if (r.includes('not found') || r.includes('404'))
+    return 'Not found (404) — check GOOGLE_WORKSPACE_CUSTOMER_ID, or leave it unset to use my_customer.';
+  return reason;
+}
+
+// Token mint that captures the real failure reason. directoryToken stays a thin
+// wrapper so the existing write paths (dirFetch) are unchanged.
+async function directoryTokenDetailed(scopes: string): Promise<{ token?: string; error?: string }> {
   const cached = tokenCache.get(scopes);
-  if (cached && cached.expiresAt > Date.now() + 60_000) return cached.token;
+  if (cached && cached.expiresAt > Date.now() + 60_000) return { token: cached.token };
 
   const [saKeyRaw, adminEmail] = await Promise.all([
     getSecret('GOOGLE_WORKSPACE_SA_KEY'),
     getSecret('GOOGLE_WORKSPACE_ADMIN_EMAIL'),
   ]);
-  if (!saKeyRaw || !adminEmail) return null;
+  if (!saKeyRaw || !adminEmail) return { error: 'Service-account key or admin email not set.' };
 
   let saKey: { client_email: string; private_key: string };
   try {
     saKey = JSON.parse(saKeyRaw);
   } catch {
-    return null;
+    return { error: 'The service-account key isn’t valid JSON — paste the entire downloaded file.' };
   }
-  if (!saKey.client_email || !saKey.private_key) return null;
+  if (!saKey.client_email || !saKey.private_key) return { error: 'The service-account key is missing client_email or private_key.' };
 
   let privateKey: CryptoKey;
   try {
     privateKey = await importPKCS8(saKey.private_key, 'RS256');
   } catch {
-    return null;
+    return { error: 'Could not read the private key in the service-account JSON.' };
   }
 
-  const assertion = await new SignJWT({ scope: scopes })
-    .setProtectedHeader({ alg: 'RS256' })
-    .setIssuer(saKey.client_email)
-    .setAudience('https://oauth2.googleapis.com/token')
-    .setSubject(adminEmail)
-    .setIssuedAt()
-    .setExpirationTime('1h')
-    .sign(privateKey);
+  let assertion: string;
+  try {
+    assertion = await new SignJWT({ scope: scopes })
+      .setProtectedHeader({ alg: 'RS256' })
+      .setIssuer(saKey.client_email)
+      .setAudience('https://oauth2.googleapis.com/token')
+      .setSubject(adminEmail)
+      .setIssuedAt()
+      .setExpirationTime('1h')
+      .sign(privateKey);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Could not sign the service-account token.' };
+  }
 
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion,
-    }),
-    signal: AbortSignal.timeout(10_000),
-  });
+  let res: Response;
+  try {
+    res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        assertion,
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Network error reaching the Google token endpoint.' };
+  }
 
-  if (!res.ok) return null;
-  const j = await res.json().catch(() => null);
-  if (!j?.access_token) return null;
+  const j = (await res.json().catch(() => null)) as { access_token?: string; expires_in?: number; error?: string; error_description?: string } | null;
+  if (!res.ok || !j?.access_token) {
+    return { error: hint(String(j?.error_description || j?.error || `HTTP ${res.status}`)) };
+  }
 
   const ttl = j.expires_in ? Number(j.expires_in) * 1000 : 3_600_000;
   tokenCache.set(scopes, { token: String(j.access_token), expiresAt: Date.now() + ttl });
-  return j.access_token as string;
+  return { token: j.access_token };
+}
+
+async function directoryToken(scopes: string): Promise<string | null> {
+  return (await directoryTokenDetailed(scopes)).token ?? null;
 }
 
 async function customer(): Promise<string> {
@@ -162,6 +194,27 @@ export async function listWorkspaceUsers(): Promise<WorkspaceUser[]> {
   return users.map(parseUser);
 }
 
+// Like listWorkspaceUsers, but reports *why* it failed so the UI can show the real
+// reason (e.g. "delegation not authorised") instead of a misleading empty list.
+export async function listWorkspaceUsersResult(): Promise<{ ok: boolean; configured: boolean; users: WorkspaceUser[]; error?: string }> {
+  if (!(await workspaceConfigured())) return { ok: false, configured: false, users: [] };
+  const tok = await directoryTokenDetailed(READ_SCOPES);
+  if (!tok.token) return { ok: false, configured: true, users: [], error: tok.error };
+  const c = await customer();
+  let res: Response;
+  try {
+    res = await fetch(`https://admin.googleapis.com/admin/directory/v1/users?customer=${c}&maxResults=500&orderBy=email&projection=full`, {
+      headers: { Authorization: `Bearer ${tok.token}` },
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (e) {
+    return { ok: false, configured: true, users: [], error: e instanceof Error ? e.message : 'Network error contacting Google.' };
+  }
+  const j = (await res.json().catch(() => null)) as { users?: Record<string, unknown>[]; error?: { message?: string } } | null;
+  if (!res.ok) return { ok: false, configured: true, users: [], error: hint(String(j?.error?.message || `HTTP ${res.status}`)) };
+  return { ok: true, configured: true, users: (j?.users ?? []).map(parseUser) };
+}
+
 export async function getWorkspaceUser(email: string): Promise<WorkspaceUser | null> {
   const res = await dirFetch('GET', `/users/${encodeURIComponent(email)}?projection=full`);
   if (!res?.ok) return null;
@@ -220,6 +273,32 @@ export async function listGroups(): Promise<WorkspaceGroup[]> {
     description: g.description ? String(g.description) : undefined,
     directMembersCount: g.directMembersCount != null ? Number(g.directMembersCount) : undefined,
   }));
+}
+
+// Diagnostic counterpart to listGroups (see listWorkspaceUsersResult).
+export async function listGroupsResult(): Promise<{ ok: boolean; configured: boolean; groups: WorkspaceGroup[]; error?: string }> {
+  if (!(await workspaceConfigured())) return { ok: false, configured: false, groups: [] };
+  const tok = await directoryTokenDetailed(READ_SCOPES);
+  if (!tok.token) return { ok: false, configured: true, groups: [], error: tok.error };
+  const c = await customer();
+  let res: Response;
+  try {
+    res = await fetch(`https://admin.googleapis.com/admin/directory/v1/groups?customer=${c}&maxResults=200&orderBy=email`, {
+      headers: { Authorization: `Bearer ${tok.token}` },
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (e) {
+    return { ok: false, configured: true, groups: [], error: e instanceof Error ? e.message : 'Network error contacting Google.' };
+  }
+  const j = (await res.json().catch(() => null)) as { groups?: Record<string, unknown>[]; error?: { message?: string } } | null;
+  if (!res.ok) return { ok: false, configured: true, groups: [], error: hint(String(j?.error?.message || `HTTP ${res.status}`)) };
+  const groups = (j?.groups ?? []).map((g) => ({
+    email: String(g.email ?? ''),
+    name: String(g.name ?? ''),
+    description: g.description ? String(g.description) : undefined,
+    directMembersCount: g.directMembersCount != null ? Number(g.directMembersCount) : undefined,
+  }));
+  return { ok: true, configured: true, groups };
 }
 
 export async function createGroup(email: string, name: string, description?: string): Promise<WorkspaceGroup | null> {

@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession, sessionCan } from '@/lib/auth';
-import { listGroups, createGroup } from '@/lib/google-workspace';
+import { listGroupsResult, createGroup } from '@/lib/google-workspace';
 
 export async function GET() {
   const session = await getSession();
   if (!session || !sessionCan(session, 'settings.manage')) {
     return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }
-  const groups = await listGroups();
-  return NextResponse.json({ ok: true, groups });
+  const r = await listGroupsResult();
+  if (!r.ok) return NextResponse.json({ ok: false, configured: r.configured, error: r.error ?? 'Failed to load groups.' });
+  return NextResponse.json({ ok: true, groups: r.groups });
 }
 
 export async function POST(req: NextRequest) {
