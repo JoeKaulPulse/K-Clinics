@@ -91,5 +91,5 @@ must only be run with the GUC plumbing removed from the app.
 - Ring 0.2 (BLD-300) — central query scoping + resolver + CI isolation guard — **merged**.
 - Ring 1a — migrations flip (baseline + self-adopt) — **merged**.
 - Ring 1b — per-tenant uniques — **merged**.
-- Ring 1c — `tenantId NOT NULL` + create-site cascade + backfill retired — **PR up** (merge after the prod backfill clears NULLs).
-- Ring 1d — RLS — **deferred** (needs GUC plumbing + rehearsal); `0002` here.
+- Ring 1c — `tenantId NOT NULL` (self-backfilling) + create-site cascade + backfill retired — **merged**.
+- Ring 1d — RLS — **rehearsal track**: `scripts/rehearse-rls.mjs` (safe, rolled-back proof of the policy + GUC mechanism) + `RLS_ROLLOUT.md` (the staged plan) authored; run the rehearsal next, then the query-layer conversion + prod enable. `0002` is the policy SQL.
