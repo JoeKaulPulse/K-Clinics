@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type Link = { label: string; url: string };
-type Lesson = { id: string; title: string; durationMin: number | null; minSeconds: number | null; videoUrl: string | null; imageUrl: string | null; body: string; keyPoints: string[]; objectives: string[]; studyTips: string[]; homework: string | null; examRefs: string[]; citations: Link[]; resources: Link[]; pdfUrls: string[] };
+type Lesson = { id: string; title: string; durationMin: number | null; minSeconds: number | null; videoUrl: string | null; imageUrl: string | null; body: string; keyPoints: string[]; objectives: string[]; studyTips: string[]; homework: string | null; examRefs: string[]; citations: Link[]; resources: Link[]; pdfUrls: string[]; pdfNoDownload: string[] };
 type Question = { id: string; prompt: string; type: string; options: string[]; correct: number[]; explanation: string | null; tip: string | null; imageUrl: string | null };
 type Quiz = { id: string; title: string; passMark: number; questions: Question[] };
 type Module = { id: string; title: string; summary: string | null; lessons: Lesson[]; quiz: Quiz | null };
@@ -110,7 +110,7 @@ function ModuleCard({ module: m, index, total, busy, act, onMove }: { module: Mo
 
 function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: Lesson; index: number; total: number; busy: boolean; act: Act; lessonIds: string[] }) {
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ title: l.title, durationMin: l.durationMin ?? '', minSeconds: l.minSeconds ?? '', videoUrl: l.videoUrl ?? '', imageUrl: l.imageUrl ?? '', body: l.body, keyPoints: listToText(l.keyPoints), objectives: listToText(l.objectives), studyTips: listToText(l.studyTips), homework: l.homework ?? '', examRefs: listToText(l.examRefs), citations: linksToText(l.citations), resources: linksToText(l.resources), pdfUrls: l.pdfUrls });
+  const [f, setF] = useState({ title: l.title, durationMin: l.durationMin ?? '', minSeconds: l.minSeconds ?? '', videoUrl: l.videoUrl ?? '', imageUrl: l.imageUrl ?? '', body: l.body, keyPoints: listToText(l.keyPoints), objectives: listToText(l.objectives), studyTips: listToText(l.studyTips), homework: l.homework ?? '', examRefs: listToText(l.examRefs), citations: linksToText(l.citations), resources: linksToText(l.resources), pdfUrls: l.pdfUrls, pdfNoDownload: l.pdfNoDownload ?? [] });
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((s) => ({ ...s, [k]: v }));
   const move = (d: number) => { const ids = [...lessonIds]; const j = index + d; if (j < 0 || j >= ids.length) return; [ids[index], ids[j]] = [ids[j], ids[index]]; act({ op: 'reorderLessons', ids }); };
   const [uploading, setUploading] = useState(false);
@@ -199,11 +199,17 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
             <div className="space-y-1.5">
               {f.pdfUrls.map((url, i) => {
                 const name = decodeURIComponent(url.split('/').pop() ?? url).replace(/^\d+-/, '');
+                const canDownload = !f.pdfNoDownload.includes(url);
                 return (
                   <div key={url} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-xs">
                     <span className="flex-1 truncate text-[var(--color-stone)]">{name}</span>
+                    {/* BLD-443: per-file download permission (off = view only). */}
+                    <label className="flex shrink-0 items-center gap-1 text-[var(--color-stone)]" title="Let learners download this file (unticked = view only)">
+                      <input type="checkbox" checked={canDownload} onChange={(e) => setF((s) => ({ ...s, pdfNoDownload: e.target.checked ? s.pdfNoDownload.filter((u) => u !== url) : [...s.pdfNoDownload, url] }))} />
+                      Download
+                    </label>
                     <a href={url} target="_blank" rel="noreferrer" className="shrink-0 text-[var(--color-gold)] hover:underline">View</a>
-                    <button type="button" onClick={() => setF((s) => ({ ...s, pdfUrls: s.pdfUrls.filter((_, j) => j !== i) }))} className="shrink-0 text-[var(--color-blush)] hover:underline">Remove</button>
+                    <button type="button" onClick={() => setF((s) => ({ ...s, pdfUrls: s.pdfUrls.filter((_, j) => j !== i), pdfNoDownload: s.pdfNoDownload.filter((u) => u !== url) }))} className="shrink-0 text-[var(--color-blush)] hover:underline">Remove</button>
                   </div>
                 );
               })}
@@ -213,7 +219,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
               </label>
             </div>
           </div>
-          <button onClick={() => act({ op: 'updateLesson', id: l.id, title: f.title, durationMin: f.durationMin, minSeconds: f.minSeconds, videoUrl: f.videoUrl, imageUrl: f.imageUrl, body: f.body, keyPoints: textToList(f.keyPoints), objectives: textToList(f.objectives), studyTips: textToList(f.studyTips), homework: f.homework, examRefs: textToList(f.examRefs), citations: textToLinks(f.citations), resources: textToLinks(f.resources), pdfUrls: f.pdfUrls })} disabled={busy} className={btnDark}>Save lesson</button>
+          <button onClick={() => act({ op: 'updateLesson', id: l.id, title: f.title, durationMin: f.durationMin, minSeconds: f.minSeconds, videoUrl: f.videoUrl, imageUrl: f.imageUrl, body: f.body, keyPoints: textToList(f.keyPoints), objectives: textToList(f.objectives), studyTips: textToList(f.studyTips), homework: f.homework, examRefs: textToList(f.examRefs), citations: textToLinks(f.citations), resources: textToLinks(f.resources), pdfUrls: f.pdfUrls, pdfNoDownload: f.pdfNoDownload })} disabled={busy} className={btnDark}>Save lesson</button>
         </div>
       )}
     </div>

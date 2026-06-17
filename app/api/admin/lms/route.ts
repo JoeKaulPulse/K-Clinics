@@ -88,6 +88,7 @@ export async function POST(req: Request) {
           citations: linkArr(b.citations),
           resources: linkArr(b.resources),
           pdfUrls: urlList(b.pdfUrls),
+          pdfNoDownload: urlList(b.pdfNoDownload),
         },
       });
       return ok();

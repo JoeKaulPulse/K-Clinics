@@ -11,7 +11,7 @@ export type LessonView = {
   id: string; title: string; order: number; durationMin: number | null; minSeconds: number | null;
   videoUrl: string | null; imageUrl: string | null; body: string;
   keyPoints: string[]; objectives: string[]; studyTips: string[]; homework: string | null;
-  examRefs: string[]; steps: unknown; citations: LinkRef[]; resources: LinkRef[]; pdfUrls: string[]; done: boolean;
+  examRefs: string[]; steps: unknown; citations: LinkRef[]; resources: LinkRef[]; pdfUrls: string[]; pdfNoDownload: string[]; done: boolean;
 };
 export type QuizQuestionView = { id: string; order: number; prompt: string; type: string; options: string[]; tip: string | null; imageUrl: string | null; correct?: number[]; explanation?: string | null };
 export type QuizView = { id: string; title: string; passMark: number; questionCount: number; bestScore: number | null; passed: boolean; questions: QuizQuestionView[] };
@@ -70,7 +70,7 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
         id: l.id, title: l.title, order: l.order, durationMin: l.durationMin, minSeconds: l.minSeconds,
         videoUrl: l.videoUrl, imageUrl: l.imageUrl, body: l.body,
         keyPoints: strArr(l.keyPoints), objectives: strArr(l.objectives), studyTips: strArr(l.studyTips),
-        homework: l.homework, examRefs: strArr(l.examRefs), steps: l.steps, citations: arr(l.citations), resources: arr(l.resources), pdfUrls: strArr(l.pdfUrls), done,
+        homework: l.homework, examRefs: strArr(l.examRefs), steps: l.steps, citations: arr(l.citations), resources: arr(l.resources), pdfUrls: strArr(l.pdfUrls), pdfNoDownload: strArr(l.pdfNoDownload), done,
       };
     });
     let quiz: QuizView | null = null;
@@ -186,7 +186,7 @@ export async function getCoursePreview(courseId: string): Promise<CourseLearning
       id: l.id, title: l.title, order: l.order, durationMin: l.durationMin, minSeconds: l.minSeconds,
       videoUrl: l.videoUrl, imageUrl: l.imageUrl, body: l.body,
       keyPoints: strArr(l.keyPoints), objectives: strArr(l.objectives), studyTips: strArr(l.studyTips),
-      homework: l.homework, examRefs: strArr(l.examRefs), steps: l.steps, citations: arr(l.citations), resources: arr(l.resources), pdfUrls: strArr(l.pdfUrls), done: false,
+      homework: l.homework, examRefs: strArr(l.examRefs), steps: l.steps, citations: arr(l.citations), resources: arr(l.resources), pdfUrls: strArr(l.pdfUrls), pdfNoDownload: strArr(l.pdfNoDownload), done: false,
     }));
     const quiz: QuizView | null = m.quiz ? {
       id: m.quiz.id, title: m.quiz.title, passMark: m.quiz.passMark, questionCount: m.quiz.questions.length, bestScore: null, passed: false,
