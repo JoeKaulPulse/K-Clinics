@@ -170,7 +170,14 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
           <label className={label}>Maps to exam / syllabus (one per line — e.g. &ldquo;VTCT Level 4 Unit UV40539, LO1&rdquo;)<textarea rows={2} className={`${field} mt-1`} value={f.examRefs} onChange={(e) => set('examRefs', e.target.value)} /></label>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className={label}>References (one per line: Label | https://url)<textarea rows={3} className={`${field} mt-1 text-xs`} value={f.citations} onChange={(e) => set('citations', e.target.value)} /></label>
-            <label className={label}>Further reading (Label | https://url)<textarea rows={3} className={`${field} mt-1 text-xs`} value={f.resources} onChange={(e) => set('resources', e.target.value)} /></label>
+            <div>
+              <p className={label}>PDF attachments &amp; further reading (Label | URL, one per line)</p>
+              <textarea rows={3} className={`${field} mt-1 text-xs`} value={f.resources} onChange={(e) => set('resources', e.target.value)} placeholder="My Guide | https://…" />
+              <label className={`mt-1.5 inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs ${uploadingPdf ? 'opacity-60 pointer-events-none' : 'hover:border-[var(--color-gold)]'}`}>
+                {uploadingPdf ? 'Uploading…' : '↑ Upload PDF'}
+                <input type="file" accept="application/pdf" className="hidden" disabled={uploadingPdf} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadPdf(file); e.currentTarget.value = ''; }} />
+              </label>
+            </div>
           </div>
           <div>
             <p className={`${label} mb-1.5`}>PDF attachments (learners can view / download)</p>
