@@ -299,7 +299,8 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
           <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-white/40">Lesson resources</p>
           <ul className="space-y-2">
             {lesson.pdfUrls.map((url) => {
-              const name = decodeURIComponent(url.split('/').pop() ?? 'Document').replace(/^\d+-/, '');
+              const raw = url.split('/').pop() ?? 'Document';
+              const name = (() => { try { return decodeURIComponent(raw); } catch { return raw; } })().replace(/^\d+-/, '');
               return (
                 <li key={url}>
                   <a href={url} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 text-sm text-white/80 transition-colors hover:text-[var(--color-gold)]">
