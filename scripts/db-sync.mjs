@@ -38,20 +38,33 @@ import { Pool } from 'pg';
 const isPages = process.env.GHPAGES === 'true';
 
 // One-time migration-baseline detection. A database originally built by
-// `prisma db push` has the full schema but NO `_prisma_migrations` history, so the
-// first `migrate deploy` would try to run the 0_init migration and fail on
-// already-existing tables. We detect that case (schema present, history absent)
+// `prisma db push` has the full schema but the `0_init` baseline is NOT recorded
+// as applied, so the first `migrate deploy` would try to run 0_init and fail on
+// already-existing tables. We detect that (schema present, baseline not recorded)
 // and `migrate resolve --applied 0_init` it — which records the baseline WITHOUT
 // running its DDL. On a genuinely empty database (no schema) we skip, so
-// `migrate deploy` runs 0_init normally and builds the schema. Probe is a single
-// quick query on one connection.
-async function probeSchema(connectionString) {
+// `migrate deploy` runs 0_init normally and builds the schema.
+//
+// NB we key off "is 0_init recorded?", not "does _prisma_migrations exist?": a
+// `migrate deploy` run with no migration files (e.g. enabling USE_MIGRATIONS
+// before the migration files are merged) creates an EMPTY _prisma_migrations
+// table, which must NOT be mistaken for an established history.
+async function probeBaselineState(connectionString) {
   const pool = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 5_000 });
   try {
-    // `_prisma_migrations` is lower-case (no quotes); "Tenant" is a sentinel app
-    // table (PascalCase, quoted). to_regclass returns NULL when the table is absent.
-    const r = await pool.query(`SELECT to_regclass('public._prisma_migrations') AS mig, to_regclass('public."Tenant"') AS sentinel`);
-    return { migrationsTableExists: Boolean(r.rows[0]?.mig), schemaPresent: Boolean(r.rows[0]?.sentinel) };
+    // "Tenant" is a sentinel app table (PascalCase, quoted); _prisma_migrations is
+    // lower-case. to_regclass returns NULL when the table is absent.
+    const meta = await pool.query(`SELECT to_regclass('public."Tenant"') AS sentinel, to_regclass('public._prisma_migrations') AS migtable`);
+    const schemaPresent = Boolean(meta.rows[0]?.sentinel);
+    const migTableExists = Boolean(meta.rows[0]?.migtable);
+    let baselineApplied = false;
+    if (migTableExists) {
+      const r = await pool.query(
+        `SELECT 1 FROM "_prisma_migrations" WHERE migration_name = '0_init' AND finished_at IS NOT NULL AND rolled_back_at IS NULL LIMIT 1`,
+      );
+      baselineApplied = (r.rowCount ?? 0) > 0;
+    }
+    return { schemaPresent, baselineApplied };
   } finally {
     await pool.end().catch(() => {});
   }
@@ -112,19 +125,19 @@ if (useMigrations) {
   const env = { ...process.env, DATABASE_URL: dbUrl };
 
   // Adopt the existing schema as the baseline on the first migrations deploy (see
-  // probeSchema). Best-effort: any failure here just falls through to migrate
-  // deploy, which will surface a clear error if a baseline really was needed.
+  // probeBaselineState). Best-effort: any failure here just falls through to
+  // migrate deploy, which will surface a clear error if a baseline really was needed.
   try {
-    const probe = await probeSchema(dbUrl);
-    if (!probe.migrationsTableExists && probe.schemaPresent) {
-      console.log('[db-sync] existing schema with no migration history — adopting baseline (resolve --applied 0_init, no DDL run)…');
+    const { schemaPresent, baselineApplied } = await probeBaselineState(dbUrl);
+    if (schemaPresent && !baselineApplied) {
+      console.log('[db-sync] existing schema, baseline 0_init not yet recorded — adopting it (resolve --applied 0_init, no DDL run)…');
       try {
         execSync('npx prisma migrate resolve --applied 0_init', { stdio: 'inherit', env });
       } catch (e) {
         console.warn('[db-sync] baseline resolve did not apply (may already be baselined):', e?.message || e);
       }
-    } else if (probe.migrationsTableExists) {
-      console.log('[db-sync] migration history present — skipping baseline adoption.');
+    } else if (baselineApplied) {
+      console.log('[db-sync] baseline 0_init already recorded — skipping adoption.');
     } else {
       console.log('[db-sync] empty database — migrate deploy will create the schema from 0_init.');
     }
