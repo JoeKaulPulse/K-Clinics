@@ -358,7 +358,7 @@ async function reminders(t: Tally) {
       include: { client: true },
     });
     for (const b of bookings) {
-      const manageUrl = `${SITE_URL}/booking/manage?token=${b.manageToken}`;
+      const manageUrl = `${SITE_URL}/booking/manage?t=${b.manageToken}`;
       const emailApplicable = canEmailCare(b.client);
       const smsApplicable = Boolean(smsOn && b.client.smsReminders && b.client.phone);
       let delivered = false;
