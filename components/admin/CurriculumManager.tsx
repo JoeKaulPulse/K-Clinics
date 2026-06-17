@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type Link = { label: string; url: string };
-type Lesson = { id: string; title: string; durationMin: number | null; minSeconds: number | null; videoUrl: string | null; imageUrl: string | null; body: string; keyPoints: string[]; objectives: string[]; studyTips: string[]; homework: string | null; examRefs: string[]; citations: Link[]; resources: Link[] };
+type Lesson = { id: string; title: string; durationMin: number | null; minSeconds: number | null; videoUrl: string | null; imageUrl: string | null; body: string; keyPoints: string[]; objectives: string[]; studyTips: string[]; homework: string | null; examRefs: string[]; citations: Link[]; resources: Link[]; pdfUrls: string[] };
 type Question = { id: string; prompt: string; type: string; options: string[]; correct: number[]; explanation: string | null; tip: string | null; imageUrl: string | null };
 type Quiz = { id: string; title: string; passMark: number; questions: Question[] };
 type Module = { id: string; title: string; summary: string | null; lessons: Lesson[]; quiz: Quiz | null };
@@ -110,10 +110,11 @@ function ModuleCard({ module: m, index, total, busy, act, onMove }: { module: Mo
 
 function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: Lesson; index: number; total: number; busy: boolean; act: Act; lessonIds: string[] }) {
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ title: l.title, durationMin: l.durationMin ?? '', minSeconds: l.minSeconds ?? '', videoUrl: l.videoUrl ?? '', imageUrl: l.imageUrl ?? '', body: l.body, keyPoints: listToText(l.keyPoints), objectives: listToText(l.objectives), studyTips: listToText(l.studyTips), homework: l.homework ?? '', examRefs: listToText(l.examRefs), citations: linksToText(l.citations), resources: linksToText(l.resources) });
+  const [f, setF] = useState({ title: l.title, durationMin: l.durationMin ?? '', minSeconds: l.minSeconds ?? '', videoUrl: l.videoUrl ?? '', imageUrl: l.imageUrl ?? '', body: l.body, keyPoints: listToText(l.keyPoints), objectives: listToText(l.objectives), studyTips: listToText(l.studyTips), homework: l.homework ?? '', examRefs: listToText(l.examRefs), citations: linksToText(l.citations), resources: linksToText(l.resources), pdfUrls: l.pdfUrls });
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((s) => ({ ...s, [k]: v }));
   const move = (d: number) => { const ids = [...lessonIds]; const j = index + d; if (j < 0 || j >= ids.length) return; [ids[index], ids[j]] = [ids[j], ids[index]]; act({ op: 'reorderLessons', ids }); };
   const [uploading, setUploading] = useState(false);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
   async function uploadVideo(file: File) {
     setUploading(true);
     try {
@@ -122,6 +123,15 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
       setF((s) => ({ ...s, videoUrl: blob.url }));
     } catch (e) { alert('Upload failed: ' + ((e as Error)?.message || 'unknown')); }
     finally { setUploading(false); }
+  }
+  async function uploadPdf(file: File) {
+    setUploadingPdf(true);
+    try {
+      const { upload } = await import('@vercel/blob/client');
+      const blob = await upload(`academy/pdf/${Date.now()}-${file.name}`, file, { access: 'public', handleUploadUrl: '/api/admin/academy/blob-token' });
+      setF((s) => ({ ...s, pdfUrls: [...s.pdfUrls, blob.url] }));
+    } catch (e) { alert('PDF upload failed: ' + ((e as Error)?.message || 'unknown')); }
+    finally { setUploadingPdf(false); }
   }
 
   return (
@@ -162,7 +172,26 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
             <label className={label}>References (one per line: Label | https://url)<textarea rows={3} className={`${field} mt-1 text-xs`} value={f.citations} onChange={(e) => set('citations', e.target.value)} /></label>
             <label className={label}>Further reading (Label | https://url)<textarea rows={3} className={`${field} mt-1 text-xs`} value={f.resources} onChange={(e) => set('resources', e.target.value)} /></label>
           </div>
-          <button onClick={() => act({ op: 'updateLesson', id: l.id, title: f.title, durationMin: f.durationMin, minSeconds: f.minSeconds, videoUrl: f.videoUrl, imageUrl: f.imageUrl, body: f.body, keyPoints: textToList(f.keyPoints), objectives: textToList(f.objectives), studyTips: textToList(f.studyTips), homework: f.homework, examRefs: textToList(f.examRefs), citations: textToLinks(f.citations), resources: textToLinks(f.resources) })} disabled={busy} className={btnDark}>Save lesson</button>
+          <div>
+            <p className={`${label} mb-1.5`}>PDF attachments (learners can view / download)</p>
+            <div className="space-y-1.5">
+              {f.pdfUrls.map((url, i) => {
+                const name = decodeURIComponent(url.split('/').pop() ?? url).replace(/^\d+-/, '');
+                return (
+                  <div key={url} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-xs">
+                    <span className="flex-1 truncate text-[var(--color-stone)]">{name}</span>
+                    <a href={url} target="_blank" rel="noreferrer" className="shrink-0 text-[var(--color-gold)] hover:underline">View</a>
+                    <button type="button" onClick={() => setF((s) => ({ ...s, pdfUrls: s.pdfUrls.filter((_, j) => j !== i) }))} className="shrink-0 text-[var(--color-blush)] hover:underline">Remove</button>
+                  </div>
+                );
+              })}
+              <label className={`inline-flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-line)] px-3 py-1.5 text-xs ${uploadingPdf ? 'opacity-60' : 'hover:border-[var(--color-gold)]'}`}>
+                {uploadingPdf ? 'Uploading…' : '+ Attach PDF'}
+                <input type="file" accept="application/pdf" className="hidden" disabled={uploadingPdf} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadPdf(file); e.currentTarget.value = ''; }} />
+              </label>
+            </div>
+          </div>
+          <button onClick={() => act({ op: 'updateLesson', id: l.id, title: f.title, durationMin: f.durationMin, minSeconds: f.minSeconds, videoUrl: f.videoUrl, imageUrl: f.imageUrl, body: f.body, keyPoints: textToList(f.keyPoints), objectives: textToList(f.objectives), studyTips: textToList(f.studyTips), homework: f.homework, examRefs: textToList(f.examRefs), citations: textToLinks(f.citations), resources: textToLinks(f.resources), pdfUrls: f.pdfUrls })} disabled={busy} className={btnDark}>Save lesson</button>
         </div>
       )}
     </div>

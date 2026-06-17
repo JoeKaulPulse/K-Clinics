@@ -11,6 +11,8 @@ const num = (v: unknown, d = 0) => { const n = Math.round(Number(v)); return Num
 const str = (v: unknown) => (typeof v === 'string' ? v : '');
 const linkArr = (v: unknown) => (Array.isArray(v) ? (v as { label?: unknown; url?: unknown }[]).map((x) => ({ label: str(x?.label).slice(0, 160), url: str(x?.url).slice(0, 500) })).filter((x) => x.label && x.url) : []);
 const strList = (v: unknown) => (Array.isArray(v) ? (v as unknown[]).map((x) => str(x).slice(0, 300)).filter(Boolean) : []);
+// BLD-407: Blob URLs embed the original filename so can exceed 300 chars — use a generous ceiling.
+const urlList = (v: unknown) => (Array.isArray(v) ? (v as unknown[]).map((x) => str(x).slice(0, 600)).filter(Boolean) : []);
 
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
@@ -82,6 +84,7 @@ export async function POST(req: Request) {
           examRefs: strList(b.examRefs),
           citations: linkArr(b.citations),
           resources: linkArr(b.resources),
+          pdfUrls: urlList(b.pdfUrls),
         },
       });
       return ok();

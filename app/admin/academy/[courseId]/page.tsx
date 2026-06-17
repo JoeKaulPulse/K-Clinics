@@ -46,6 +46,7 @@ export default async function CurriculumPage({ params }: { params: Promise<{ cou
         homework: l.homework, examRefs: Array.isArray(l.examRefs) ? l.examRefs : [],
         citations: (l.citations as { label: string; url: string }[] | null) ?? [],
         resources: (l.resources as { label: string; url: string }[] | null) ?? [],
+        pdfUrls: Array.isArray(l.pdfUrls) ? (l.pdfUrls as string[]) : [],
       })),
       quiz: m.quiz ? {
         id: m.quiz.id, title: m.quiz.title, passMark: m.quiz.passMark,
