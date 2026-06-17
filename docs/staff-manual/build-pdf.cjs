@@ -81,7 +81,7 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
   :root{
     --ink:#2a2420; --ink-soft:#3d352f; --espresso:#4a3f37; --porcelain:#f6ece3; --bone:#efe3d7;
     --sand:#e3d3c4; --stone:#7d6259; --stone-soft:#b7a294; --gold:#a98a6d; --gold-soft:#c2a589;
-    --gold-bright:#dcc4a8; --gold-deep:#856a4a; --jade:#2f7152; --blush:#cdb4a3;
+    --gold-bright:#dcc4a8; --gold-deep:#816748; --jade:#2f7152; --blush:#cdb4a3;
     --line:rgba(42,36,32,.14);
   }
   *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}

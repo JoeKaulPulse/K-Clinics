@@ -132,7 +132,7 @@ ${note('How to know you’re done', 'Open the Connection Centre and press <b>Re-
 
 const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Geist:wght@300;400;500;600&display=swap');
-:root{--ink:#2a2420;--ink-soft:#3d352f;--porcelain:#f6ece3;--bone:#efe3d7;--sand:#e3d3c4;--stone:#7d6259;--stone-soft:#b7a294;--gold:#a98a6d;--gold-soft:#c2a589;--gold-bright:#dcc4a8;--gold-deep:#856a4a;--jade:#2f7152;--line:rgba(42,36,32,.14);}
+:root{--ink:#2a2420;--ink-soft:#3d352f;--porcelain:#f6ece3;--bone:#efe3d7;--sand:#e3d3c4;--stone:#7d6259;--stone-soft:#b7a294;--gold:#a98a6d;--gold-soft:#c2a589;--gold-bright:#dcc4a8;--gold-deep:#816748;--jade:#2f7152;--line:rgba(42,36,32,.14);}
 *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 html,body{margin:0;padding:0;}
 body{font-family:'Geist',-apple-system,Helvetica,Arial,sans-serif;color:var(--ink);font-size:10.4px;line-height:1.55;}
