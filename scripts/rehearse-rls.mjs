@@ -38,6 +38,26 @@ async function main() {
   const pool = new Pool({ connectionString: URL, max: 1, connectionTimeoutMillis: 15_000 });
   const c = await pool.connect();
   console.log('ClinicOS Ring 1d — RLS rehearsal (transaction is rolled back at the end)\n');
+
+  // Preflight: RLS is skipped entirely for SUPERUSER and BYPASSRLS roles (even
+  // with FORCE ROW LEVEL SECURITY). Run as one of those and every assertion below
+  // fails — all rows stay visible regardless of the GUC — which looks like a
+  // broken policy but is really the wrong connecting role. Refuse rather than emit
+  // a misleading verdict. The runtime app role is non-bypass by design, so this
+  // also rehearses the *role* requirement, not just the policy.
+  const role = (await c.query(
+    `SELECT current_user AS name, rolsuper, rolbypassrls
+       FROM pg_roles WHERE rolname = current_user`)).rows[0];
+  if (role?.rolsuper || role?.rolbypassrls) {
+    console.error(
+      `Connected as "${role.name}", which ${role.rolsuper ? 'is a SUPERUSER' : 'has BYPASSRLS'}. ` +
+      `RLS is bypassed for this role, so the rehearsal cannot validate isolation.\n` +
+      `Re-run as an ordinary role (NOSUPERUSER, NOBYPASSRLS) that owns the Academy tables.\n` +
+      `A Neon branch's default owner role works; a local "postgres" superuser does not.`);
+    c.release(); await pool.end().catch(() => {});
+    process.exit(2);
+  }
+
   try {
     await c.query('BEGIN');
 

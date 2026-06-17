@@ -78,6 +78,16 @@ option 1 if nested-transaction or perf issues appear.
    Runs entirely inside a rolled-back transaction (no persistent change). Asserts:
    GUC=A → only A's rows; GUC=B → only B's; unset → zero; cross-tenant INSERT
    blocked by `WITH CHECK`. **Must be all ✓** before proceeding.
+
+   **Connect as an ordinary role** (NOSUPERUSER, NOBYPASSRLS) that owns the Academy
+   tables — RLS is skipped for SUPERUSER/`BYPASSRLS` roles even under `FORCE`, so
+   running as one makes every assertion fail (looks like a broken policy, isn't).
+   A Neon branch's default owner role qualifies; a local `postgres` superuser does
+   not. The harness preflights this and refuses to run under a bypass role.
+
+   Rehearsed clean on Postgres 16 as a non-bypass owner role — all 7 ✓ (the policy
+   and GUC mechanism are sound; the failure mode above was reproduced and is the
+   connecting-role gotcha, now guarded).
 2. **Convert the query layer** to set the GUC (option 1 or 2 above), behind a flag
    (e.g. `ACADEMY_RLS=1`) so it is a no-op in prod until RLS is actually enabled.
    `tsc` + the isolation guard stay green.
@@ -98,6 +108,10 @@ be paired with turning the GUC plumbing flag off, or queries that still expect R
 behave the same anyway (the GUC is harmless when RLS is off).
 
 ## Status
-- Rehearsal harness (`scripts/rehearse-rls.mjs`) + this plan — **authored**; run the
-  rehearsal next.
-- Query-layer conversion + prod RLS-enable — **staged**, gated on the rehearsal.
+- Rehearsal harness (`scripts/rehearse-rls.mjs`) + this plan — **authored and run**:
+  rehearsed on Postgres 16 as a non-bypass owner role, all 7 assertions ✓. Added a
+  preflight that refuses to run under a SUPERUSER/`BYPASSRLS` role (the one way the
+  rehearsal produces a misleading result).
+- Query-layer conversion + prod RLS-enable — **staged**, now unblocked by the
+  passing rehearsal. The remaining gate before prod is the Neon-branch enable + the
+  live two-tenant isolation suite (step 3).
