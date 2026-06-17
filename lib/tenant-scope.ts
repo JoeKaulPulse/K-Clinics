@@ -51,19 +51,14 @@ export function isAcademyModel(model: string | undefined | null): boolean {
   return !!model && ACADEMY_TENANT_MODELS.has(modelKey(model));
 }
 
-/** The tenant filter injected into a query's `where`.
- *
- *  It matches this tenant's rows OR legacy rows the backfill has not yet stamped
- *  (`tenantId` is NULL). With a single tenant every Academy row is either the
- *  default tenant or NULL, so this matches *all* rows → identical behaviour to
- *  no filter. Once Ring 1 makes `tenantId` NOT NULL the NULL arm is dead and the
- *  filter becomes strict equality. Keeping the NULL arm now means a row created
- *  before its tenant stamp (e.g. a nested write) is never invisible to its own
- *  single tenant — correctness over the transition window, not isolation theatre
- *  (isolation between *real* tenants holds: a row stamped for tenant B is never
- *  NULL, so it never matches tenant A's filter). */
-export function tenantScopeFilter(tenantId: string): { OR: Array<{ tenantId: string | null }> } {
-  return { OR: [{ tenantId }, { tenantId: null }] };
+/** The tenant filter injected into a query's `where`: strict equality on
+ *  `tenantId`. Ring 1c made `tenantId` NOT NULL, so a NULL arm is both unnecessary
+ *  (no row is tenant-less) and INVALID — Prisma rejects `{ tenantId: null }` on a
+ *  required field ("Argument `tenantId` is missing"), which throws on every scoped
+ *  Academy read. Strict equality matches exactly this tenant's rows and never
+ *  another tenant's. */
+export function tenantScopeFilter(tenantId: string): { tenantId: string } {
+  return { tenantId };
 }
 
 // Operation classification. Prisma operation names are stable across the client.
