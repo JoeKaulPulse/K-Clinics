@@ -58,7 +58,7 @@ export function DailyGoal({ status }: { status: Status }) {
         </button>
       </div>
       <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--color-line)]"><div className="h-full rounded-full bg-[var(--color-gold)] transition-[width] duration-500" style={{ width: `${pct}%` }} /></div>
-      <p className="mt-2 text-xs text-[var(--color-stone-soft)]">{opened ? 'Box opened — nice. Come back tomorrow.' : ready ? 'You hit today’s goal — open your beauty box!' : `${status.goal - status.tasks} more task${status.goal - status.tasks === 1 ? '' : 's'} to unlock today’s box.`}</p>
+      <p className="mt-2 text-xs text-[var(--color-stone)]">{opened ? 'Box opened — nice. Come back tomorrow.' : ready ? 'You hit today’s goal — open your beauty box!' : `${status.goal - status.tasks} more task${status.goal - status.tasks === 1 ? '' : 's'} to unlock today’s box.`}</p>
 
       <AnimatePresence>
         {overlay && (

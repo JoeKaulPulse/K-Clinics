@@ -89,7 +89,7 @@ export default async function AcademyPage() {
                     <span className="text-sm font-medium text-[var(--color-ink)]">{formatFee(c.pricePence)}</span>
                     <span className="text-sm text-[var(--color-gold)] group-hover:underline">View course →</span>
                   </div>
-                  {c.accreditations.length > 0 && <p className="mt-2 text-[0.7rem] uppercase tracking-wide text-[var(--color-stone-soft)]">{c.accreditations.map((a) => ACCREDITATION_LABELS[a] ?? a).join(' · ')}</p>}
+                  {c.accreditations.length > 0 && <p className="mt-2 text-[0.7rem] uppercase tracking-wide text-[var(--color-stone)]">{c.accreditations.map((a) => ACCREDITATION_LABELS[a] ?? a).join(' · ')}</p>}
                 </Link>
               </Reveal>
             ))}
