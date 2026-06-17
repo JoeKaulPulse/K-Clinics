@@ -22,3 +22,6 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npx tsc --noEmit
+      # ClinicOS tenant-isolation guard (BLD-300): no DB needed; fails if Academy
+      # query scoping regresses or the scoped-model set drifts from the schema.
+      - run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/test-tenant-isolation.ts

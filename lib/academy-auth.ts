@@ -19,7 +19,10 @@ export async function signupStudent(input: AcademySignup): Promise<{ ok: boolean
   // Age gate: the academy accepts students aged 16 or over.
   const { meetsMinAge, MIN_STUDENT_AGE } = await import('@/lib/age');
   if (!input.dob || !meetsMinAge(input.dob, MIN_STUDENT_AGE)) return { ok: false, error: 'You must be 16 or over to join the academy.' };
-  const existing = await db.academyStudent.findUnique({ where: { email }, select: { passwordHash: true } });
+  // findFirst (not findUnique) so the tenant scope is injected: email is globally
+  // unique today but becomes per-tenant in Ring 1, and a unique `where` cannot be
+  // tenant-scoped. (BLD-300)
+  const existing = await db.academyStudent.findFirst({ where: { email }, select: { passwordHash: true } });
   if (existing?.passwordHash) return { ok: false, error: 'An account already exists for this email. Try signing in.' };
 
   const passwordHash = await hashPassword(input.password);
@@ -38,7 +41,7 @@ export async function signupStudent(input: AcademySignup): Promise<{ ok: boolean
 }
 
 export async function loginStudent(email: string, password: string): Promise<{ ok: boolean; error?: string }> {
-  const student = await db.academyStudent.findUnique({ where: { email: email.trim().toLowerCase() }, select: { id: true, email: true, firstName: true, passwordHash: true, sessionEpoch: true } });
+  const student = await db.academyStudent.findFirst({ where: { email: email.trim().toLowerCase() }, select: { id: true, email: true, firstName: true, passwordHash: true, sessionEpoch: true } });
   if (!student?.passwordHash || !(await verifyPassword(password, student.passwordHash))) return { ok: false, error: 'Invalid email or password.' };
   await db.academyStudent.update({ where: { id: student.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
   await createAcademySession({ sub: student.id, email: student.email, firstName: student.firstName, epoch: student.sessionEpoch });
@@ -71,7 +74,7 @@ export async function bumpAcademyEpoch(studentId: string): Promise<void> {
 /** Begin a password reset for an academy trainee. Always resolves ok:true
  *  (no account enumeration); sends a one-hour link only if the account exists. */
 export async function requestAcademyPasswordReset(email: string): Promise<{ ok: true }> {
-  const student = await db.academyStudent.findUnique({ where: { email: email.trim().toLowerCase() }, select: { id: true, email: true, firstName: true, passwordHash: true } });
+  const student = await db.academyStudent.findFirst({ where: { email: email.trim().toLowerCase() }, select: { id: true, email: true, firstName: true, passwordHash: true } });
   if (student?.passwordHash) {
     const token = crypto.randomBytes(32).toString('hex');
     await db.academyStudent.update({

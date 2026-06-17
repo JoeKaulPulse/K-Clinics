@@ -504,7 +504,14 @@ Grounded in a full map of the context (file:line verified).
 
 *Done when: this addendum is merged as v0.4, ADR-016 + §17 rows logged, and the Phase 0 task list is on the board under BLD-35.*
 
-**Status (13 Jun):** v0.4 merged; Ring 0.1 (Tenant model + `tenantId` across the 13 Academy tables + self-healing cron backfill) merged to `main`. Ring 0.2 next.
+**Status (13 Jun):** v0.4 merged; Ring 0.1 (Tenant model + `tenantId` across the Academy tables + self-healing cron backfill) merged to `main`.
+
+**Status (17 Jun) — Ring 0.2 (BLD-300) built.** Every Academy query is now tenant-scoped centrally, with zero behaviour change for the single live tenant:
+- **Tenant resolver** (`lib/tenant.ts`): `currentTenantId()` returns the K Clinics default via a single-tenant fast path (no request introspection while only one tenant exists); once a second tenant is onboarded it resolves by request host (custom domain / subdomain → `Tenant`), falling back to the default. A per-tenant JWT claim stays a Ring 2 refinement.
+- **Central scoping** (`lib/db.ts` + `lib/tenant-scope.ts`): a Prisma `$extends` query hook injects `tenantId` into the `where` of every Academy read/bulk-write and stamps it onto creates — applied as the outermost extension so Accelerate's cache stays tenant-partitioned. Non-Academy models short-circuit (no tenant lookup, untouched). The injected filter (`tenantId = X OR tenantId IS NULL`) tolerates rows the backfill has not yet stamped, so single-tenant reads are unchanged; rows stamped for a real second tenant are never NULL, so isolation between tenants holds. By-unique ops (`findUnique`/`update`/`delete`) are left for the Ring 1 RLS backstop; email lookups in `lib/academy-auth.ts` moved to `findFirst` so they are scoped.
+- **CI isolation guard** (`scripts/test-tenant-isolation.ts`, wired into the typecheck workflow): runs with no DB; fails the build if the scoped-model set drifts from the schema's `tenantId` columns, if a read stops being scoped or a create stops being stamped, or if one tenant's filter matches another tenant's rows.
+
+Ring 1 (BLD-301) next: flip the platform track to versioned migrations, add `@@unique([tenantId, …])`, `NOT NULL` on `tenantId`, and RLS policies as reviewed SQL.
 
 ---
 
