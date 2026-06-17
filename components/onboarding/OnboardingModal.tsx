@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 
 export type OnbStep =
@@ -22,6 +22,28 @@ export function OnboardingModal({ title, intro, steps, initial, endpoint, onClos
   const step = steps[i];
   const last = i === steps.length - 1;
 
+  // BLD-418: dialog accessibility — keep focus inside while open, Esc to close,
+  // and restore focus to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null;
+    const focusables = () => Array.from(dialogRef.current?.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])') ?? []).filter((n) => n.offsetParent !== null);
+    const el = dialogRef.current;
+    if (el && !el.contains(document.activeElement)) (focusables()[0] ?? el).focus();
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') { e.preventDefault(); closeRef.current(false); return; }
+      if (e.key !== 'Tab') return;
+      const f = focusables(); if (f.length === 0) return;
+      const first = f[0], lastEl = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); lastEl.focus(); }
+      else if (!e.shiftKey && document.activeElement === lastEl) { e.preventDefault(); first.focus(); }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('keydown', onKey); prev?.focus?.(); };
+  }, []);
+
   async function finish() {
     setBusy(true);
     await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(vals) }).catch(() => {});
@@ -31,8 +53,8 @@ export function OnboardingModal({ title, intro, steps, initial, endpoint, onClos
   const next = () => (last ? finish() : setI(i + 1));
 
   return (
-    <div className="fixed inset-0 z-[210] flex items-center justify-center bg-[var(--color-ink)]/80 p-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-xl overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)]">
+    <div onClick={() => onClose(false)} className="fixed inset-0 z-[210] flex items-center justify-center bg-[var(--color-ink)]/80 p-4 backdrop-blur-sm">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} onClick={(e) => e.stopPropagation()} className="relative w-full max-w-xl overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)] outline-none">
         {/* Progress */}
         <div className="h-1.5 w-full bg-[var(--color-bone)]"><div className="h-full bg-[var(--color-gold)] transition-all" style={{ width: `${((i + 1) / steps.length) * 100}%` }} /></div>
 

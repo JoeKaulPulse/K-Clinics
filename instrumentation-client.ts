@@ -10,6 +10,8 @@ if (dsn) {
     sendDefaultPii: false,
     replaysOnErrorSampleRate: 1.0,
     replaysSessionSampleRate: 0.01,
-    integrations: [Sentry.replayIntegration()],
+    // BLD-325: mask all text + inputs and block media in session replay so no
+    // client/clinical PII is ever captured in a recording.
+    integrations: [Sentry.replayIntegration({ maskAllText: true, maskAllInputs: true, blockAllMedia: true })],
   });
 }
