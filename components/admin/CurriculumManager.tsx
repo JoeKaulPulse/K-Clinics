@@ -115,22 +115,37 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
   const move = (d: number) => { const ids = [...lessonIds]; const j = index + d; if (j < 0 || j >= ids.length) return; [ids[index], ids[j]] = [ids[j], ids[index]]; act({ op: 'reorderLessons', ids }); };
   const [uploading, setUploading] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [pct, setPct] = useState(0);
+  // BLD-444: client-direct upload to Vercel Blob, hardened so it can't sit on
+  // "Uploading…" forever — sanitise the filename (spaces / # / ? in the pathname
+  // break the upload URL), report real progress, and abort after 3 minutes with a
+  // clear error instead of hanging. The surfaced message reveals the true cause.
+  async function putFile(file: File, folder: string): Promise<string> {
+    const { upload } = await import('@vercel/blob/client');
+    const safe = file.name.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/-+/g, '-').slice(-120) || 'file';
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 180_000);
+    try {
+      const blob = await upload(`${folder}/${Date.now()}-${safe}`, file, {
+        access: 'public',
+        handleUploadUrl: '/api/admin/academy/blob-token',
+        abortSignal: controller.signal,
+        onUploadProgress: (p) => setPct(Math.round(p.percentage)),
+      });
+      return blob.url;
+    } finally { clearTimeout(timer); setPct(0); }
+  }
+  const uploadErr = (e: unknown) => ((e as Error)?.name === 'AbortError' ? 'timed out after 3 min — check the connection or file size' : (e as Error)?.message || 'unknown');
   async function uploadVideo(file: File) {
     setUploading(true);
-    try {
-      const { upload } = await import('@vercel/blob/client');
-      const blob = await upload(`academy/${Date.now()}-${file.name}`, file, { access: 'public', handleUploadUrl: '/api/admin/academy/blob-token' });
-      setF((s) => ({ ...s, videoUrl: blob.url }));
-    } catch (e) { alert('Upload failed: ' + ((e as Error)?.message || 'unknown')); }
+    try { const url = await putFile(file, 'academy'); setF((s) => ({ ...s, videoUrl: url })); }
+    catch (e) { alert('Upload failed: ' + uploadErr(e)); }
     finally { setUploading(false); }
   }
   async function uploadPdf(file: File) {
     setUploadingPdf(true);
-    try {
-      const { upload } = await import('@vercel/blob/client');
-      const blob = await upload(`academy/pdf/${Date.now()}-${file.name}`, file, { access: 'public', handleUploadUrl: '/api/admin/academy/blob-token' });
-      setF((s) => ({ ...s, pdfUrls: [...s.pdfUrls, blob.url] }));
-    } catch (e) { alert('PDF upload failed: ' + ((e as Error)?.message || 'unknown')); }
+    try { const url = await putFile(file, 'academy/pdf'); setF((s) => ({ ...s, pdfUrls: [...s.pdfUrls, url] })); }
+    catch (e) { alert('PDF upload failed: ' + uploadErr(e)); }
     finally { setUploadingPdf(false); }
   }
 
@@ -153,7 +168,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
               <div className="mt-1 flex gap-2">
                 <input className={`${field} flex-1`} value={f.videoUrl} onChange={(e) => set('videoUrl', e.target.value)} placeholder="https://youtube… or upload →" />
                 <label className={`shrink-0 cursor-pointer rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-1.5 text-xs ${uploading ? 'opacity-60' : 'hover:border-[var(--color-gold)]'}`}>
-                  {uploading ? 'Uploading…' : 'Upload'}
+                  {uploading ? `Uploading ${pct}%` : 'Upload'}
                   <input type="file" accept="video/*,image/*" className="hidden" disabled={uploading} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadVideo(file); e.currentTarget.value = ''; }} />
                 </label>
               </div>
@@ -174,7 +189,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
               <p className={label}>PDF attachments &amp; further reading (Label | URL, one per line)</p>
               <textarea rows={3} className={`${field} mt-1 text-xs`} value={f.resources} onChange={(e) => set('resources', e.target.value)} placeholder="My Guide | https://…" />
               <label className={`mt-1.5 inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs ${uploadingPdf ? 'opacity-60 pointer-events-none' : 'hover:border-[var(--color-gold)]'}`}>
-                {uploadingPdf ? 'Uploading…' : '↑ Upload PDF'}
+                {uploadingPdf ? `Uploading ${pct}%` : '↑ Upload PDF'}
                 <input type="file" accept="application/pdf" className="hidden" disabled={uploadingPdf} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadPdf(file); e.currentTarget.value = ''; }} />
               </label>
             </div>
@@ -193,7 +208,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
                 );
               })}
               <label className={`inline-flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-line)] px-3 py-1.5 text-xs ${uploadingPdf ? 'opacity-60' : 'hover:border-[var(--color-gold)]'}`}>
-                {uploadingPdf ? 'Uploading…' : '+ Attach PDF'}
+                {uploadingPdf ? `Uploading ${pct}%` : '+ Attach PDF'}
                 <input type="file" accept="application/pdf" className="hidden" disabled={uploadingPdf} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadPdf(file); e.currentTarget.value = ''; }} />
               </label>
             </div>
