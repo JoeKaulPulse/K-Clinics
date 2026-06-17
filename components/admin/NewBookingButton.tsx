@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
-import { createManualBooking, searchClientsForBooking } from '@/app/admin/bookings/create-action';
+import { createManualBooking, searchClientsForBooking, logCallNote, resendBookingConfirmation } from '@/app/admin/bookings/create-action';
 
 type Variant = { id: string; name: string; durationMin: number; pricePence: number };
 type Treatment = { slug: string; title: string; group: string; variants?: Variant[] };
@@ -100,7 +100,7 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
       <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }} transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
         className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-[var(--radius-xl)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)] sm:rounded-[var(--radius-xl)] md:p-8">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="font-[family-name:var(--font-display)] text-2xl">{result ? 'Booking created' : 'New phone booking'}</h2>
+          <h2 className="font-[family-name:var(--font-display)] text-2xl">{result ? 'Call walkthrough' : 'New phone booking'}</h2>
           <button onClick={onClose} aria-label="Close" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>
         </div>
 
@@ -188,17 +188,58 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
   );
 }
 
-function DoneView({ result, treatmentTitle, whenLabel, onClose, router }: { result: Result; treatmentTitle: string; whenLabel: string; onClose: () => void; router: ReturnType<typeof useRouter> }) {
-  const [sent, setSent] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
-  const canSendLink = !result.hasCard && result.clientHasEmail;
+// A small send/resend button that reflects its own request state.
+function SendBtn({ state, onClick, label = 'Send' }: { state: 'idle' | 'sending' | 'sent' | 'error'; onClick: () => void; label?: string }) {
+  const txt = state === 'sending' ? 'Sending…' : state === 'sent' ? 'Resend' : state === 'error' ? 'Retry' : label;
+  return (
+    <button onClick={onClick} disabled={state === 'sending'} className="shrink-0 rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs font-medium hover:border-[var(--color-gold)] disabled:opacity-50">{txt}</button>
+  );
+}
 
+const TICKS: Record<string, string> = {
+  id: 'Identity & DOB confirmed',
+  consent: 'Consent to email + SMS captured',
+  policy: 'Cancellation policy explained',
+};
+
+function DoneView({ result, treatmentTitle, whenLabel, onClose, router }: { result: Result; treatmentTitle: string; whenLabel: string; onClose: () => void; router: ReturnType<typeof useRouter> }) {
+  const canEmail = !!result.clientHasEmail;
+  const canSendLink = !result.hasCard && canEmail;
+
+  // ① Create-your-account + card link (passwordless clients get the magic link).
+  const [linkState, setLinkState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   async function sendLink() {
-    setSent('sending');
+    setLinkState('sending');
     const r = await fetch('/api/admin/bookings/request-card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId: result.bookingId, channel: 'email' }) }).then((x) => x.json()).catch(() => ({ ok: false }));
-    setSent(r.ok ? 'sent' : 'error');
+    setLinkState(r.ok ? 'sent' : 'error');
   }
-  // Auto-send the secure card link once, when there's no card on file.
+  // Auto-send the account + card link once on open, when there's no card on file.
   useEffect(() => { if (canSendLink) sendLink(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+
+  // ② Booking confirmation + health-form link — already sent server-side on create.
+  const [confState, setConfState] = useState<'idle' | 'sending' | 'sent' | 'error'>(canEmail ? 'sent' : 'error');
+  async function resendConf() {
+    setConfState('sending');
+    const r = await resendBookingConfirmation(result.bookingId);
+    setConfState(r.ok ? 'sent' : 'error');
+  }
+
+  // ③ Log the call to the client's record.
+  const [checks, setChecks] = useState<Record<string, boolean>>({});
+  const [note, setNote] = useState('');
+  const [noteState, setNoteState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const hasSomething = note.trim().length > 0 || Object.values(checks).some(Boolean);
+  async function saveNote() {
+    const ticked = Object.keys(TICKS).filter((k) => checks[k]).map((k) => `✓ ${TICKS[k]}`);
+    const composed = [ticked.join('\n'), note.trim()].filter(Boolean).join('\n');
+    if (!composed) return;
+    setNoteState('saving');
+    const r = await logCallNote(result.bookingId, composed);
+    setNoteState(r.ok ? 'saved' : 'error');
+  }
+
+  const row = 'flex items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5';
+  const sub = 'block text-xs text-[var(--color-stone)]';
 
   return (
     <div className="space-y-4">
@@ -214,25 +255,67 @@ function DoneView({ result, treatmentTitle, whenLabel, onClose, router }: { resu
             : <li>“I’ll send a secure link to your email to save a card — <strong>no payment is taken now</strong>; it confirms your spot and covers our cancellation policy.”</li>}
           <li>“Cancellations within 24 hours may incur a fee of up to the treatment price.”</li>
           <li>“For your security we <strong>never take card details over the phone</strong> — only through that secure link.”</li>
-          <li>“You’ll get a reminder before your appointment.”</li>
-          <li><em>“Is everything correct, and do I have your consent to email the link and reminders?”</em></li>
+          <li>“You’ll also get a booking confirmation and a short health form to complete before your visit.”</li>
+          <li><em>“Is everything correct, and do I have your consent to email the link, confirmation and reminders?”</em></li>
         </ul>
       </div>
 
-      {/* Card link status */}
-      {result.hasCard ? (
-        <p className="rounded-[var(--radius-sm)] bg-[var(--color-jade)]/12 px-4 py-3 text-sm text-[var(--color-jade)]">✓ Card already on file — the reservation is confirmed.</p>
-      ) : canSendLink ? (
-        <div className="rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] px-4 py-3 text-sm">
-          {sent === 'sending' && 'Sending secure card link…'}
-          {sent === 'sent' && <>📧 Secure card link sent to <strong>{result.clientEmail}</strong> — ask them to tap it to save their card and confirm. <button onClick={sendLink} className="ml-1 text-[var(--color-gold-deep)] underline">Resend</button></>}
-          {sent === 'error' && <>Couldn’t send the link. <button onClick={sendLink} className="text-[var(--color-gold-deep)] underline">Try again</button></>}
-        </div>
-      ) : (
-        <p className="rounded-[var(--radius-sm)] bg-amber-50 px-4 py-3 text-sm text-amber-800">No email on file — add one on the booking page to send the secure card link.</p>
-      )}
+      {/* Emails — triggered as you go through the call */}
+      <div className="space-y-2">
+        <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--color-stone)]">Emails to the client</p>
 
-      <div className="flex justify-end gap-3">
+        <div className={row}>
+          <span className="text-sm">
+            <strong>1. Create-your-account + card link</strong>
+            <span className={sub}>
+              {result.hasCard ? 'Card already on file — reservation confirmed.'
+                : !canEmail ? 'No email on file — add one on the booking page.'
+                : linkState === 'sending' ? 'Sending…'
+                : linkState === 'sent' ? `Sent to ${result.clientEmail}`
+                : linkState === 'error' ? 'Send failed.' : 'Ready to send.'}
+            </span>
+          </span>
+          {result.hasCard
+            ? <span className="shrink-0 rounded-full bg-[var(--color-jade)]/15 px-2 py-0.5 text-[0.6rem] text-[var(--color-jade)]">card on file</span>
+            : canEmail ? <SendBtn state={linkState} onClick={sendLink} /> : null}
+        </div>
+
+        <div className={row}>
+          <span className="text-sm">
+            <strong>2. Booking confirmation + health form</strong>
+            <span className={sub}>
+              {!canEmail ? 'No email on file.'
+                : confState === 'sending' ? 'Sending…'
+                : confState === 'error' ? 'Send failed.'
+                : `Sent to ${result.clientEmail} — includes “Complete my forms”.`}
+            </span>
+          </span>
+          {canEmail ? <SendBtn state={confState} onClick={resendConf} label="Resend" /> : null}
+        </div>
+      </div>
+
+      {/* Log the call */}
+      <div className="space-y-2">
+        <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--color-stone)]">Log the call</p>
+        <div className="space-y-1.5">
+          {Object.entries(TICKS).map(([k, label]) => (
+            <label key={k} className="flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
+              <input type="checkbox" checked={!!checks[k]} onChange={(e) => setChecks((p) => ({ ...p, [k]: e.target.checked }))} />
+              {label}
+            </label>
+          ))}
+        </div>
+        <textarea className={f} rows={2} placeholder="Call notes / outcome (saved to the client’s record)…" value={note} onChange={(e) => setNote(e.target.value)} />
+        <div className="flex items-center gap-3">
+          <button onClick={saveNote} disabled={!hasSomething || noteState === 'saving'} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] disabled:opacity-50">
+            {noteState === 'saving' ? 'Saving…' : noteState === 'saved' ? 'Saved ✓' : 'Save to client record'}
+          </button>
+          {noteState === 'saved' && <span className="text-xs text-[var(--color-jade)]">Logged to the client’s timeline.</span>}
+          {noteState === 'error' && <span className="text-xs text-red-600">Couldn’t save — try again.</span>}
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-3 border-t border-[var(--color-line)] pt-4">
         <button onClick={onClose} className="px-4 py-2.5 text-sm text-[var(--color-stone)]">Close</button>
         <button onClick={() => { router.push(`/admin/bookings/${result.bookingId}`); router.refresh(); }} className="rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)]">Open booking →</button>
       </div>
