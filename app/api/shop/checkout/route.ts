@@ -51,9 +51,15 @@ export async function POST(req: Request) {
   }
   const totalPence = Math.max(0, grossPence - giftCardPence);
 
+  // BLD-466: attribute the order ONLY to the caller's authenticated portal
+  // session — never trust a clientId from the request body (anyone could claim
+  // another client's account). No session → guest order (null clientId).
+  const { getClientSession } = await import('@/lib/auth');
+  const clientId = (await getClientSession())?.sub ?? null;
+
   const order = await db.order.create({
     data: {
-      number: await nextOrderNumber(), clientId: body.clientId || null, email, name, phone: body.phone ? String(body.phone).slice(0, 40) : null,
+      number: await nextOrderNumber(), clientId, email, name, phone: body.phone ? String(body.phone).slice(0, 40) : null,
       method, shipName: method === 'ship' ? (body.shipName || name).slice(0, 120) : null,
       shipLine1: method === 'ship' ? String(body.shipLine1).slice(0, 160) : null, shipLine2: method === 'ship' ? (body.shipLine2 ? String(body.shipLine2).slice(0, 160) : null) : null,
       shipCity: method === 'ship' ? (body.shipCity ? String(body.shipCity).slice(0, 80) : null) : null, shipPostcode: method === 'ship' ? String(body.shipPostcode).slice(0, 12) : null,
