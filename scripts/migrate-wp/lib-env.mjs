@@ -18,10 +18,17 @@ function load(file) {
     const k = line.slice(0, eq).trim();
     let v = line.slice(eq + 1).trim();
     if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
-    if (k && !(k in process.env)) process.env[k] = v;
+    // Skip BLANK values: `vercel env pull` writes sensitive vars (DATABASE_URL,
+    // HEALTH_ENCRYPTION_KEY…) as empty strings. Setting them empty would shadow the
+    // real value in a later file, so an empty value never claims the slot.
+    if (k && v !== '' && !(k in process.env)) process.env[k] = v;
   }
   return true;
 }
+// Load EVERY candidate (don't stop at the first): a stale scripts/migrate-wp/.env
+// from `vercel env pull` carries the secrets as blanks, so we skip those (above) and
+// fall through to the app's real .env.local for anything still unset. Values already
+// in process.env (set by import-all, or inline on the command line) always win.
 for (const f of [path.join(here, '.env'), path.join(repoRoot, '.env.production.local'), path.join(repoRoot, '.env.production'), path.join(repoRoot, '.env.local'), path.join(repoRoot, '.env')]) {
-  if (load(f)) break;
+  load(f);
 }
