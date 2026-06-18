@@ -46,7 +46,7 @@ export function InventoryManager({ items, expiring, canManage, uk, hasISClinical
                   const order = Math.ceil(shortfall / i.moq) * i.moq;
                   return (
                     <li key={i.id}>
-                      {i.name} — <span className="font-medium text-[var(--color-blush)]">{i.currentQty} {i.unit}</span>{' '}
+                      {i.name} — <span className="font-medium text-[var(--color-blush)] tabular-nums">{i.currentQty} {i.unit}</span>{' '}
                       <span className="text-xs">→ {L('order', 'замовити')} <span className="font-medium">{order}</span> ({L('MOQ', 'МОЗ')} {i.moq})</span>
                     </li>
                   );
@@ -143,7 +143,7 @@ function ItemRow({ item, canManage, uk }: { item: Item; canManage: boolean; uk: 
         </div>
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <div className={`font-[family-name:var(--font-display)] text-lg leading-none ${low ? 'text-[var(--color-blush)]' : ''}`}>{item.currentQty}</div>
+            <div className={`font-[family-name:var(--font-display)] text-lg leading-none tabular-nums ${low ? 'text-[var(--color-blush)]' : ''}`}>{item.currentQty}</div>
             <div className="text-xs text-[var(--color-stone)]">{item.unit}</div>
           </div>
           {canManage && (

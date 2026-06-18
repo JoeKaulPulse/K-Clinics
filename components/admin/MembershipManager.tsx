@@ -58,7 +58,7 @@ export function MembershipManager({ rows }: { rows: TierRow[] }) {
             <div className="flex flex-wrap items-center gap-3">
               <span className="h-4 w-4 rounded-full" style={{ background: t.color || 'var(--color-gold)' }} />
               <input value={t.name} onChange={(e) => set(t.id, { name: e.target.value })} className={`${field} max-w-[12rem]`} />
-              <span className="rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-xs text-[var(--color-stone)]">{t.members} members</span>
+              <span className="rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-xs text-[var(--color-stone)] tabular-nums">{t.members} members</span>
               <label className="ml-auto flex items-center gap-1.5 text-xs text-[var(--color-stone)]">
                 <input type="checkbox" checked={t.active} onChange={(e) => set(t.id, { active: e.target.checked })} className="h-3.5 w-3.5 accent-[var(--color-gold)]" /> Active
               </label>

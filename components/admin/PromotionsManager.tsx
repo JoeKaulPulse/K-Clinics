@@ -75,7 +75,7 @@ export function PromotionsManager({ universal, campaignBatches }: { universal: U
                   <tr key={p.id} className="border-t border-[var(--color-line)]">
                     <td className="py-2"><span className="font-[family-name:var(--font-mono,monospace)] font-medium">{p.code}</span>{p.label && <span className="block text-xs text-[var(--color-stone)]">{p.label}</span>}</td>
                     <td>{value(p)}{p.treatmentSlugs.length ? <span className="block text-xs text-[var(--color-stone)]">{p.treatmentSlugs.length} treatment(s)</span> : ''}</td>
-                    <td>{p.redeemedCount}{p.maxRedemptions ? ` / ${p.maxRedemptions}` : ''}</td>
+                    <td className="tabular-nums">{p.redeemedCount}{p.maxRedemptions ? ` / ${p.maxRedemptions}` : ''}</td>
                     <td className="text-xs text-[var(--color-stone)]">{fmtDate(p.startsAt) || '—'} → {fmtDate(p.expiresAt) || 'no end'}</td>
                     <td><span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-medium uppercase ${p.active ? 'bg-emerald-100 text-emerald-800' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{p.active ? 'active' : 'off'}</span></td>
                     <td className="text-right">

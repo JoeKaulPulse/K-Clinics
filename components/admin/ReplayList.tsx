@@ -23,7 +23,7 @@ export function ReplayList({ rows }: { rows: ReplayRow[] }) {
                   <td className="p-2">{new Date(r.startedAt).toLocaleString('en-GB')}</td>
                   <td className="p-2 font-mono text-xs">{r.path}</td>
                   <td className="p-2">{r.device ?? '—'}</td>
-                  <td className="p-2">{Math.round(r.durationMs / 1000)}s · {r.eventCount} ev</td>
+                  <td className="p-2 tabular-nums">{Math.round(r.durationMs / 1000)}s · {r.eventCount} ev</td>
                   <td className="p-2 text-right"><button onClick={() => setOpenId(r.id)} disabled={r.eventCount < 2} className="rounded-full bg-[var(--color-ink)] px-3 py-1 text-xs text-[var(--color-porcelain)] disabled:opacity-40">Play</button></td>
                 </tr>
               ))}

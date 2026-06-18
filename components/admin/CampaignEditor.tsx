@@ -154,7 +154,7 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
       <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{label}</p>
-      <p className="mt-1 font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">{value}</p>
+      <p className="mt-1 font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)] tabular-nums">{value}</p>
       {sub && <p className="text-[0.65rem] text-[var(--color-stone)]">{sub}</p>}
     </div>
   );

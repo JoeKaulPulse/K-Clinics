@@ -75,7 +75,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
           { label: L('Published', 'Опубліковано'), value: countOf('PUBLISHED') },
         ].map((s) => (
           <div key={s.label} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
-            <div className={`font-[family-name:var(--font-display)] text-2xl ${s.tone || ''}`}>{s.value}</div>
+            <div className={`font-[family-name:var(--font-display)] text-2xl tabular-nums ${s.tone || ''}`}>{s.value}</div>
             <div className="mt-1 text-xs text-[var(--color-stone)]">{s.label}</div>
           </div>
         ))}

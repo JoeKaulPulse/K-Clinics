@@ -38,7 +38,7 @@ export function CashflowManager({ cfg, drivers, consumablesMonthly, months, rese
           { label: L('Lowest operating point', 'Найнижча точка'), value: gbp(summary.lowestOperating), tone: summary.everBelowFloor ? 'text-[var(--color-blush)]' : '' },
         ].map((s) => (
           <div key={s.label} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
-            <div className={`font-[family-name:var(--font-display)] text-2xl ${s.tone}`}>{s.value}</div>
+            <div className={`font-[family-name:var(--font-display)] text-2xl ${s.tone} tabular-nums`}>{s.value}</div>
             <div className="mt-1 text-xs text-[var(--color-stone)]">{s.label}</div>
           </div>
         ))}
@@ -53,7 +53,7 @@ export function CashflowManager({ cfg, drivers, consumablesMonthly, months, rese
       <section>
         <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">{L('Monthly projection', 'Помісячний прогноз')}</h2>
         <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
-          <table className="w-full min-w-[760px] text-sm">
+          <table className="w-full min-w-[760px] text-sm tabular-nums">
             <thead className="bg-[var(--color-bone)] text-xs uppercase tracking-wide text-[var(--color-stone)]">
               <tr>
                 {[L('Month', 'Місяць'), L('Income', 'Дохід'), L('of which booked', 'із них заброньовано'), L('Expenses', 'Витрати'), L('Net', 'Чистий'), L('To reserves', 'У резерви'), L('Operating', 'Операційні'), L('Reserves', 'Резерви')].map((h) => (
@@ -112,7 +112,7 @@ function LiveBalances({ balances, canManage, uk }: { balances: Balance[]; canMan
             </div>
             {b.connected ? (
               <>
-                <div className="mt-1 font-[family-name:var(--font-display)] text-2xl">{gbp(b.availablePence)}</div>
+                <div className="mt-1 font-[family-name:var(--font-display)] text-2xl tabular-nums">{gbp(b.availablePence)}</div>
                 {b.pendingPence > 0 && <p className="text-xs text-[var(--color-stone)]">{gbp(b.pendingPence)} {L('pending', 'в очікуванні')}</p>}
               </>
             ) : (
@@ -252,7 +252,7 @@ function Reserves({ reserves, canManage, uk }: { reserves: Reserve[]; canManage:
             <div key={r.id} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
               <div className="flex items-center justify-between gap-2">
                 <span className="flex items-center gap-2 text-sm font-medium"><span className="h-2.5 w-2.5 rounded-full" style={{ background: r.color || 'var(--color-jade)' }} />{r.name}</span>
-                <span className="text-sm">{gbp(r.endPence)}{r.targetPence > 0 ? ` / ${gbp(r.targetPence)}` : ''}</span>
+                <span className="text-sm tabular-nums">{gbp(r.endPence)}{r.targetPence > 0 ? ` / ${gbp(r.targetPence)}` : ''}</span>
               </div>
               {r.targetPence > 0 && (
                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-bone)]">
@@ -312,7 +312,7 @@ function Entries({ entries, canManage, uk }: { entries: Entry[]; canManage: bool
               <span className="text-xs text-[var(--color-stone)]">{e.category} · {cadenceLabel(e.cadence)}</span>
             </span>
             <span className="flex items-center gap-3">
-              <span className={e.type === 'INCOME' ? 'text-[var(--color-jade)]' : 'text-[var(--color-stone)]'}>{gbp(e.amountPence)}</span>
+              <span className={`${e.type === 'INCOME' ? 'text-[var(--color-jade)]' : 'text-[var(--color-stone)]'} tabular-nums`}>{gbp(e.amountPence)}</span>
               {canManage && <button onClick={() => del(e.id)} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)]">✕</button>}
             </span>
           </div>

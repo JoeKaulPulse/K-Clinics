@@ -20,7 +20,7 @@ export function SeoDashboard({ audit }: { audit: Audit }) {
       <section className="grid gap-5 md:grid-cols-[260px_1fr]">
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 text-center">
           <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">Site health</p>
-          <p className={`mt-2 font-[family-name:var(--font-display)] text-6xl ${tone(audit.health)}`}>{audit.health}</p>
+          <p className={`mt-2 font-[family-name:var(--font-display)] text-6xl tabular-nums ${tone(audit.health)}`}>{audit.health}</p>
           <p className="text-sm text-[var(--color-stone)]">out of 100</p>
           <div className="mt-4 flex justify-center gap-4 text-xs text-[var(--color-stone)]">
             <span><strong className="text-[var(--color-ink)]">{audit.counts.total}</strong> pages</span>
@@ -33,7 +33,7 @@ export function SeoDashboard({ audit }: { audit: Audit }) {
           <div className="space-y-3">
             {CATS.map(([k, label]) => (
               <div key={k}>
-                <div className="mb-1 flex justify-between text-sm"><span>{label}</span><span className={tone(audit.byCategory[k])}>{audit.byCategory[k]}</span></div>
+                <div className="mb-1 flex justify-between text-sm"><span>{label}</span><span className={`${tone(audit.byCategory[k])} tabular-nums`}>{audit.byCategory[k]}</span></div>
                 <div className="h-2 overflow-hidden rounded-full bg-[var(--color-sand)]"><div className={`h-full ${bg(audit.byCategory[k])}`} style={{ width: `${audit.byCategory[k]}%` }} /></div>
               </div>
             ))}
@@ -65,7 +65,7 @@ function PageRow({ p }: { p: PageScore }) {
         <span className="hidden shrink-0 gap-3 text-xs text-[var(--color-stone)] sm:flex">
           {CATS.map(([k, label]) => <span key={k} className={tone(p[k as keyof PageScore] as number)}>{label.split(' ')[0]} {p[k as keyof PageScore] as number}</span>)}
         </span>
-        <span className={`shrink-0 text-sm font-semibold ${tone(p.overall)}`}>{p.overall}</span>
+        <span className={`shrink-0 text-sm font-semibold tabular-nums ${tone(p.overall)}`}>{p.overall}</span>
       </button>
       {open && <PageEditor p={p} />}
     </div>

@@ -71,9 +71,9 @@ export function CampaignsList({ rows, canManage }: { rows: CampaignRow[]; canMan
                     <span className="block text-xs text-[var(--color-stone)]">{r.goal} · {r.channels.length} channel{r.channels.length === 1 ? '' : 's'}</span>
                   </td>
                   <td className="p-3"><span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-medium ${STATUS_STYLE[r.status] ?? ''}`}>{r.status}</span></td>
-                  <td className="p-3">{r.bookings}</td>
-                  <td className="p-3">{money(r.revenuePence)}</td>
-                  <td className="p-3">{r.roi == null ? '—' : `${r.roi}%`}</td>
+                  <td className="p-3 tabular-nums">{r.bookings}</td>
+                  <td className="p-3 tabular-nums">{money(r.revenuePence)}</td>
+                  <td className="p-3 tabular-nums">{r.roi == null ? '—' : `${r.roi}%`}</td>
                 </tr>
               ))}
             </tbody>
