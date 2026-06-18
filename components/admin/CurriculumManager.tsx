@@ -117,11 +117,13 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
   const move = (d: number) => { const ids = [...lessonIds]; const j = index + d; if (j < 0 || j >= ids.length) return; [ids[index], ids[j]] = [ids[j], ids[index]]; act({ op: 'reorderLessons', ids }); };
   const [uploading, setUploading] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
-  const [pct, setPct] = useState(0);
   // BLD-444: client-direct upload to Vercel Blob, hardened so it can't sit on
   // "Uploading…" forever — sanitise the filename (spaces / # / ? in the pathname
-  // break the upload URL), report real progress, and abort after 3 minutes with a
-  // clear error instead of hanging. The surfaced message reveals the true cause.
+  // break the upload URL) and abort after 3 minutes with a clear error.
+  // BLD-485: onUploadProgress is intentionally omitted. The @vercel/blob/client v2
+  // streaming path (ReadableStream + duplex:'half' fetch) hangs on Safari and
+  // certain Chrome versions. Without it the SDK falls back to a plain File-body
+  // fetch which is reliable across all browsers; progress shows "Uploading…".
   async function putFile(file: File, folder: string): Promise<string> {
     const { upload } = await import('@vercel/blob/client');
     const safe = file.name.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/-+/g, '-').slice(-120) || 'file';
@@ -132,10 +134,9 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
         access: 'public',
         handleUploadUrl: '/api/admin/academy/blob-token',
         abortSignal: controller.signal,
-        onUploadProgress: (p) => setPct(Math.round(p.percentage)),
       });
       return blob.url;
-    } finally { clearTimeout(timer); setPct(0); }
+    } finally { clearTimeout(timer); }
   }
   const uploadErr = (e: unknown) => ((e as Error)?.name === 'AbortError' ? 'timed out after 3 min — check the connection or file size' : (e as Error)?.message || 'unknown');
   // Build the full save payload from a given form state snapshot.
@@ -180,7 +181,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
               <div className="mt-1 flex gap-2">
                 <input className={`${field} flex-1`} value={f.videoUrl} onChange={(e) => set('videoUrl', e.target.value)} placeholder="https://youtube… or upload →" />
                 <label className={`shrink-0 cursor-pointer rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-1.5 text-xs ${uploading ? 'opacity-60' : 'hover:border-[var(--color-gold)]'}`}>
-                  {uploading ? (pct > 0 ? `Uploading ${pct}%` : 'Uploading...') : 'Upload'}
+                  {uploading ? 'Uploading...' : 'Upload'}
                   <input type="file" accept="video/*,image/*" className="hidden" disabled={uploading} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadVideo(file); e.currentTarget.value = ''; }} />
                 </label>
               </div>
@@ -202,7 +203,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
               <p className={label}>PDF attachments &amp; further reading (Label | URL, one per line)</p>
               <textarea rows={3} className={`${field} mt-1 text-xs`} value={f.resources} onChange={(e) => set('resources', e.target.value)} placeholder="My Guide | https://…" />
               <label className={`mt-1.5 inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs ${uploadingPdf ? 'opacity-60 pointer-events-none' : 'hover:border-[var(--color-gold)]'}`}>
-                {uploadingPdf ? (pct > 0 ? `Uploading ${pct}%` : 'Uploading...') : '↑ Upload PDF'}
+                {uploadingPdf ? 'Uploading...' : '↑ Upload PDF'}
                 <input type="file" accept="application/pdf" className="hidden" disabled={uploadingPdf} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadPdf(file); e.currentTarget.value = ''; }} />
               </label>
             </div>
@@ -227,7 +228,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
                 );
               })}
               <label className={`inline-flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-line)] px-3 py-1.5 text-xs ${uploadingPdf ? 'opacity-60' : 'hover:border-[var(--color-gold)]'}`}>
-                {uploadingPdf ? (pct > 0 ? `Uploading ${pct}%` : 'Uploading...') : '+ Attach PDF'}
+                {uploadingPdf ? 'Uploading...' : '+ Attach PDF'}
                 <input type="file" accept="application/pdf" className="hidden" disabled={uploadingPdf} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadPdf(file); e.currentTarget.value = ''; }} />
               </label>
             </div>

@@ -154,13 +154,16 @@ Use 1–4 phases and 1–2 treatments each — fewer when little is needed (a si
   }
 
   // Budget guardrail: trim the most expensive in-plan treatment into "extras"
-  // until the core plan fits the budget (always keep at least one treatment).
+  // until the core plan fits the budget. BLD-335: the old guard stopped at
+  // count<=1, leaving a single over-budget treatment in the "core" plan — false
+  // promise. Now we trim fully; an empty phase-list is an honest answer when no
+  // single treatment fits the budget (all move to extras / worth-considering).
   let planTotal = phases.reduce((s, p) => s + p.phaseTotalPence, 0);
   if (opts.budgetPence) {
     let guard = 0;
     while (planTotal > opts.budgetPence && guard++ < 12) {
       const count = phases.reduce((s, p) => s + p.treatments.length, 0);
-      if (count <= 1) break;
+      if (count <= 0) break;
       let bestPh = -1, bestI = -1, bestPrice = -1;
       phases.forEach((p, pi) => p.treatments.forEach((t, ti) => { if (t.totalPence > bestPrice) { bestPrice = t.totalPence; bestPh = pi; bestI = ti; } }));
       if (bestPh < 0) break;

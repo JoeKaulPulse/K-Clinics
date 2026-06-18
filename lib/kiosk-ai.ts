@@ -247,13 +247,17 @@ const num01 = (n: unknown): number | null => {
 };
 
 /** Parse + enforce one raw observation; null when invalid. */
-function sanitiseObservation(raw: unknown, photoCount: number): KioskObservation | null {
+// BLD-336: validIndices is the set of photo indexes that actually fetched; an
+// observation pointing at a purged/failed photo is dropped (photoIndex is
+// validated against submitted count first, then against the fetched set).
+function sanitiseObservation(raw: unknown, photoCount: number, validIndices?: Set<number>): KioskObservation | null {
   if (!raw || typeof raw !== 'object') return null;
   const o = raw as Record<string, unknown>;
   const area = o.area === 'skin' || o.area === 'smile' ? o.area : null;
   if (!area) return null;
   const photoIndex = Math.round(Number(o.photoIndex));
   if (!Number.isFinite(photoIndex) || photoIndex < 0 || photoIndex >= photoCount) return null;
+  if (validIndices && !validIndices.has(photoIndex)) return null;
   const label = String(o.label || '').trim().slice(0, 24);
   const detail = String(o.detail || '').trim().slice(0, 90);
   if (!label || !detail) return null;
@@ -352,8 +356,9 @@ export async function analyzeKioskPhotosV2(photoUrls: string[]): Promise<KioskAi
       bestPhotoIndex = photos[0].idx;
     }
 
+    const validIndices = new Set(photos.map((p) => p.idx));
     const observations = (Array.isArray(obj.observations) ? obj.observations : [])
-      .map((o: unknown) => sanitiseObservation(o, urls.length))
+      .map((o: unknown) => sanitiseObservation(o, urls.length, validIndices))
       .filter((o: KioskObservation | null): o is KioskObservation => !!o)
       .slice(0, 6);
 
