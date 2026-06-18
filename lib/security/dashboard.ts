@@ -90,8 +90,29 @@ export async function threatSummary(): Promise<ThreatSummary> {
     .filter((g) => g._count._all >= 5 && g.identifier)
     .map((g) => ({ identifier: g.identifier as string, fails: g._count._all }))
     .sort((a, b) => b.fails - a.fails);
-  const topIps = ipGroups
+  // Top offending IPs over 7 days — but only failures since the IP was last
+  // "cleared" (an UNLOCK event). This makes the Clear button visibly drop an IP
+  // off the list, and mirrors the lockout guard (failsSince in
+  // lib/security/guard.ts), which likewise ignores failures predating an UNLOCK.
+  const ipCandidates = ipGroups
     .map((g) => ({ ip: g.ip as string, fails: g._count._all }))
+    .filter((g) => g.fails >= 3);
+  const ipUnlocks = ipCandidates.length
+    ? await db.securityEvent.groupBy({
+        by: ['ip'],
+        where: { type: 'UNLOCK', ip: { in: ipCandidates.map((g) => g.ip) } },
+        _max: { createdAt: true },
+      }).catch(() => [] as { ip: string | null; _max: { createdAt: Date | null } }[])
+    : [];
+  const clearedAt = new Map(ipUnlocks.map((u) => [u.ip as string, u._max.createdAt]));
+  const topIps = (await Promise.all(ipCandidates.map(async (g) => {
+    const cleared = clearedAt.get(g.ip);
+    // No clear, or cleared before the 7-day window: the raw count already counts
+    // only post-clear failures. Otherwise recount strictly after the clear.
+    if (!cleared || cleared < since7d) return g;
+    const fails = await db.securityEvent.count({ where: { type: 'LOGIN_FAIL', ip: g.ip, createdAt: { gte: cleared } } }).catch(() => g.fails);
+    return { ip: g.ip, fails };
+  })))
     .filter((g) => g.fails >= 3)
     .sort((a, b) => b.fails - a.fails)
     .slice(0, 8);
