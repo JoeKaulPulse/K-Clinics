@@ -1511,6 +1511,38 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'prisma/seed.mjs: added QA demo user creation (four roles: PRACTITIONER, RECEPTION, DEVELOPER, CONTRACTOR) using qa-<role>@kaulindustries.com emails. Guarded by SEED_QA_ROLES=true env var so it never runs in production by default. Notify permissions (timetracking keys) and contractor task assignment notification were already shipped in an earlier slice.',
     notes: ['prisma/seed.mjs. Run: SEED_QA_ROLES=true SEED_QA_PASSWORD=<pw> node prisma/seed.mjs'],
   },
+  {
+    title: 'Academy content batch 11 -- Laser Safety, Skin Analysis, Evidence & Audit (BLD-311)', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1128),
+    value: 8, effort: 5,
+    detail: '3 new modules added to lib/academy-content.ts: L2 Laser Safety & Equipment (2 lessons + 6-question quiz: Class 3B/4 hazards, controlled areas, PPE, eye protection); L4 Skin Analysis Techniques (2 lessons + 6-question quiz: pre-cleanse assessment, skin type vs condition, magnifying lamp, documentation); L5-7 Evidence-Based Practice & Clinical Audit (2 lessons + 6-question quiz: evidence hierarchy, red flags, 5-step audit cycle, re-audit). Plus batch 11 exam bank: 16 new questions across all three areas.',
+    notes: ['lib/academy-content.ts (SHA 5525053). enrichCourseContentIfNeeded() picks up additions on the next cron run.'],
+  },
+  {
+    title: 'Kiosk campaign: share-gated claim UX + AI caption in share text (PRJ-1.14)', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1128),
+    project: 'skin-smile-kiosk',
+    value: 9, effort: 2,
+    detail: 'Campaign launch: owner brief is brand awareness + bookings via share-to-claim discount (up to 25%). Gap: ClaimReward showed the form immediately with no share gate in the UI; users hitting claim before sharing got a confusing server error. Fix: ShareButtons now fires onShared callback on every share action; ClaimReward shows a locked card ("Share to unlock") until hasShared; KioskSessionFlow wires state. Also: result GET route now returns shareCaption so the AI-written first-person caption appears in WhatsApp/X/native share text.',
+    notes: [
+      'components/kiosk/ShareButtons.tsx, ResultCard.tsx, ClaimReward.tsx, KioskSessionFlow.tsx (SHA 19b17b6).',
+      'app/api/kiosk/results/[id]/route.ts -- added shareCaption to select.',
+      'Server-side share gate (claimKioskDiscount validates session.status === SHARED) was already correct; this PR adds the matching UI gate.',
+    ],
+  },
+  {
+    title: 'Academy cohort names + student list per cohort (BLD-484)', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1131),
+    value: 7, effort: 3,
+    detail: 'Cohort model gets a nullable name field. Admin academy UI: add-cohort form has a name input; each cohort row shows the name as its label (falls back to date), has an inline name editor, and a collapsible student list (name, email, status) with Remove from cohort action. Applications enrolment dropdown now shows cohort names. Schema change is additive (String?).',
+    notes: [
+      'prisma/schema.prisma, app/api/admin/academy/route.ts, components/admin/AcademyManager.tsx, app/admin/academy/enrolments/page.tsx, app/admin/academy/page.tsx (SHA 69c0ef5 on claude/cohort-management-484).',
+      'Student list on /admin/academy courses overview always shows 0 -- enrolments not fetched there; full data is on /admin/academy/enrolments.',
+    ],
+  },
+  {
+    title: '/team page driven by live staff records + public-profile toggle (BLD-487)', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1129),
+    value: 8, effort: 2,
+    detail: 'Owner trigger: /team must show real staff photos and correct GMC/GDC numbers, not placeholder content. Fix: /team now driven solely by publicTeam() query (AdminUser where active=true AND publicProfile=true); empty state shows "coming soon" card + noindex. StaffManager gets a team-page count banner and per-row public-profile toggle explaining deactivation behaviour.',
+    notes: ['app/(marketing)/team/page.tsx, components/admin/StaffManager.tsx (SHA 556250b on claude/team-staff-link-487).'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
