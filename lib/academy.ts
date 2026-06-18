@@ -15,7 +15,9 @@ export const formatFee = (pence: number | null | undefined) =>
 export type CohortView = { id: string; startAt: Date; endAt: Date | null; capacity: number; location: string | null; trainer: string | null; status: string; remaining: number };
 export type CourseView = {
   id: string; slug: string; title: string; level: string | null; summary: string | null; description: string | null;
-  pricePence: number; depositPence: number | null; durationText: string | null; format: string | null;
+  pricePence: number; depositPence: number | null;
+  promoPrice: number | null; promoStartAt: Date | null; promoEndAt: Date | null;
+  durationText: string | null; format: string | null;
   accreditations: string[]; outcomes: string[]; prerequisites: string | null; thinkificUrl: string | null;
   heroImage: string | null; featured: boolean; cohorts: CohortView[];
 };
@@ -37,8 +39,16 @@ async function cohortsWithRemaining(courseId: string): Promise<CohortView[]> {
   }));
 }
 
-const toView = (c: { id: string; slug: string; title: string; level: string | null; summary: string | null; description: string | null; pricePence: number; depositPence: number | null; durationText: string | null; format: string | null; accreditations: string[]; outcomes: string[]; prerequisites: string | null; thinkificUrl: string | null; heroImage: string | null; featured: boolean }, cohorts: CohortView[] = []): CourseView =>
-  ({ ...c, cohorts });
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const toView = (c: any, cohorts: CohortView[] = []): CourseView =>
+  ({
+    id: c.id, slug: c.slug, title: c.title, level: c.level, summary: c.summary, description: c.description,
+    pricePence: c.pricePence, depositPence: c.depositPence,
+    promoPrice: c.promoPrice ?? null, promoStartAt: c.promoStartAt ?? null, promoEndAt: c.promoEndAt ?? null,
+    durationText: c.durationText, format: c.format, accreditations: c.accreditations, outcomes: c.outcomes,
+    prerequisites: c.prerequisites, thinkificUrl: c.thinkificUrl, heroImage: c.heroImage, featured: c.featured,
+    cohorts,
+  });
 
 /** Active courses for the public academy (featured first, then order). */
 export async function listCourses(includeInactive = false): Promise<CourseView[]> {

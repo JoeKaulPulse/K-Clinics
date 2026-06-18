@@ -1512,13 +1512,13 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['prisma/seed.mjs. Run: SEED_QA_ROLES=true SEED_QA_PASSWORD=<pw> node prisma/seed.mjs'],
   },
   {
-    title: 'Academy content batch 11 -- Laser Safety, Skin Analysis, Evidence & Audit (BLD-311)', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1128),
+    title: 'Academy content batch 11 -- Laser Safety, Skin Analysis, Evidence & Audit (BLD-311)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1128),
     value: 8, effort: 5,
     detail: '3 new modules added to lib/academy-content.ts: L2 Laser Safety & Equipment (2 lessons + 6-question quiz: Class 3B/4 hazards, controlled areas, PPE, eye protection); L4 Skin Analysis Techniques (2 lessons + 6-question quiz: pre-cleanse assessment, skin type vs condition, magnifying lamp, documentation); L5-7 Evidence-Based Practice & Clinical Audit (2 lessons + 6-question quiz: evidence hierarchy, red flags, 5-step audit cycle, re-audit). Plus batch 11 exam bank: 16 new questions across all three areas.',
     notes: ['lib/academy-content.ts (SHA 5525053). enrichCourseContentIfNeeded() picks up additions on the next cron run.'],
   },
   {
-    title: 'Kiosk campaign: share-gated claim UX + AI caption in share text (PRJ-1.14)', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1128),
+    title: 'Kiosk campaign: share-gated claim UX + AI caption in share text (PRJ-1.14)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1128),
     project: 'skin-smile-kiosk',
     value: 9, effort: 2,
     detail: 'Campaign launch: owner brief is brand awareness + bookings via share-to-claim discount (up to 25%). Gap: ClaimReward showed the form immediately with no share gate in the UI; users hitting claim before sharing got a confusing server error. Fix: ShareButtons now fires onShared callback on every share action; ClaimReward shows a locked card ("Share to unlock") until hasShared; KioskSessionFlow wires state. Also: result GET route now returns shareCaption so the AI-written first-person caption appears in WhatsApp/X/native share text.',
@@ -1529,7 +1529,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: 'Academy cohort names + student list per cohort (BLD-484)', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1131),
+    title: 'Academy cohort names + student list per cohort (BLD-484)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1131),
     value: 7, effort: 3,
     detail: 'Cohort model gets a nullable name field. Admin academy UI: add-cohort form has a name input; each cohort row shows the name as its label (falls back to date), has an inline name editor, and a collapsible student list (name, email, status) with Remove from cohort action. Applications enrolment dropdown now shows cohort names. Schema change is additive (String?).',
     notes: [
@@ -1538,19 +1538,33 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: '/team page driven by live staff records + public-profile toggle (BLD-487)', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1129),
+    title: '/team page driven by live staff records + public-profile toggle (BLD-487)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1134),
     value: 8, effort: 2,
     detail: 'Owner trigger: /team must show real staff photos and correct GMC/GDC numbers, not placeholder content. Fix: /team now driven solely by publicTeam() query (AdminUser where active=true AND publicProfile=true); empty state shows "coming soon" card + noindex. StaffManager gets a team-page count banner and per-row public-profile toggle explaining deactivation behaviour.',
     notes: [
-      'app/(marketing)/team/page.tsx, components/admin/StaffManager.tsx (SHA 556250b on claude/team-staff-link-487).',
-      'Security fix (SHA bcd472c): login email removed from publicTeam() select and team card -- it was the credential username, exposed as a mailto: link. publicPhone stays. Found by Opus 4.8 review.',
+      'app/(marketing)/team/page.tsx, components/admin/StaffManager.tsx (SHA 556250b -- feat already on main).',
+      'Security fix (SHA 7fe45b3, PR #1134): login email removed from publicTeam() select and team card -- it was the credential username, exposed as a mailto: link. publicPhone stays. Found by Opus 4.8 review.',
+      'PR #1129 was based on a stale branch and closed; PR #1134 carries only the security fix commit on a clean base.',
     ],
   },
   {
-    title: 'Live Appointment Session -- Remove Addon Treatments + Session Photos (BLD-479, BLD-480)', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1132),
+    title: 'Live Appointment Session -- Remove Addon Treatments + Session Photos (BLD-479, BLD-480)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1135),
     value: 7, effort: 3,
     detail: 'BLD-479: Photo uploads in the live session runner -- BeforePhotoCapture integrated pre-start and in-treatment for laser gate compliance. BLD-480: Staff can now remove an add-on treatment mid-session via removeAddonTreatment() server action; guarded against charged or non-addon items; adjusts pricePence + durationMin; logs SESSION_EDITED audit event. AddonList component with per-item Remove/confirm dialog.',
-    notes: ['app/admin/bookings/clinical-actions.ts, app/admin/bookings/[id]/session/page.tsx, components/admin/session/SessionRunner.tsx (SHA 479cbc1 on claude/booking-session-improvements-479-480).'],
+    notes: [
+      'app/admin/bookings/clinical-actions.ts, app/admin/bookings/[id]/session/page.tsx, components/admin/session/SessionRunner.tsx (SHA 8aeb194 on claude/booking-session-improvements-479-480-v2).',
+      'PR #1132 was based on a stale branch and closed; PR #1135 is a clean cherry-pick on current main.',
+    ],
+  },
+  {
+    title: 'Academy course promotional pricing + homepage banner (BLD-490)', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1136),
+    value: 7, effort: 3,
+    detail: 'Admin sets a promo price (pence) and optional start/end dates per course. Public course page shows promo price (gold) + struck-through original when active. Academy homepage shows a gold banner when any course has an active promo. Active promo = promoPrice set AND (promoStartAt null OR <= now) AND (promoEndAt null OR >= now). Includes migration file for the 3 new Course columns.',
+    notes: [
+      'prisma/schema.prisma (promoPrice Int?, promoStartAt DateTime?, promoEndAt DateTime? added to Course -- additive, nullable).',
+      'prisma/migrations/20260618150000_course_promo_pricing/migration.sql -- idempotent ADD COLUMN IF NOT EXISTS.',
+      'lib/academy-utils.ts (new, getActivePromo() helper), lib/academy.ts (CourseView extended), app/api/admin/academy/route.ts, components/admin/AcademyManager.tsx, app/(marketing)/academy/[slug]/page.tsx, app/(marketing)/academy/page.tsx (SHAs 6097bcb + 949f7f8).',
+    ],
   },
   {
     title: 'Academy route ops lack tenantId scope guard (BLD-484 Opus finding)', type: 'ERROR', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',

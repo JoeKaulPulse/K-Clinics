@@ -22,7 +22,10 @@ export default async function AdminAcademyApplicationsPage() {
 
   const coursesView = courses.map((c) => ({
     id: c.id, slug: c.slug, title: c.title, level: c.level, summary: c.summary, description: c.description,
-    pricePence: c.pricePence, depositPence: c.depositPence, durationText: c.durationText, format: c.format,
+    pricePence: c.pricePence, depositPence: c.depositPence,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    promoPrice: (c as any).promoPrice ?? null, promoStartAt: (c as any).promoStartAt?.toISOString() ?? null, promoEndAt: (c as any).promoEndAt?.toISOString() ?? null,
+    durationText: c.durationText, format: c.format,
     accreditations: c.accreditations, outcomes: c.outcomes, prerequisites: c.prerequisites, thinkificUrl: c.thinkificUrl,
     featured: c.featured, active: c.active,
     cohorts: c.cohorts.map((h) => ({ id: h.id, startAt: h.startAt.toISOString(), endAt: h.endAt?.toISOString() ?? null, accessStartAt: h.accessStartAt?.toISOString() ?? null, accessEndAt: h.accessEndAt?.toISOString() ?? null, capacity: h.capacity, location: h.location, trainer: h.trainer, name: h.name ?? null, status: h.status })),
