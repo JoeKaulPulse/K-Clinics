@@ -138,10 +138,9 @@ function Card({ m }: { m: TeamMember }) {
         </div>
       )}
 
-      {(m.email || m.phone) && (
-        <div className="mt-5 flex flex-wrap gap-x-5 gap-y-1 border-t border-[var(--color-line)] pt-4 text-sm">
-          {m.email && <a href={`mailto:${m.email}`} className="text-[var(--color-ink)] hover:text-[var(--color-gold)]">✉ {m.email}</a>}
-          {m.phone && <a href={`tel:${m.phone.replace(/\s/g, '')}`} className="text-[var(--color-ink)] hover:text-[var(--color-gold)]">☏ {m.phone}</a>}
+      {m.phone && (
+        <div className="mt-5 border-t border-[var(--color-line)] pt-4 text-sm">
+          <a href={`tel:${m.phone.replace(/\s/g, '')}`} className="text-[var(--color-ink)] hover:text-[var(--color-gold)]">☏ {m.phone}</a>
         </div>
       )}
     </div>
