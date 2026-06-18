@@ -32,7 +32,9 @@ export type RoomDay = {
   cleanedAt: string | null;
   cleanedBy: string | null;
   note: string | null;
-  occupiedNow: boolean;
+  occupiedNow: boolean; // a live booking is in the room right now
+  occupiedManual: boolean; // staff marked the room occupied (BLD-506)
+  occupiedBy: string | null; // staff email who marked it occupied
   current: RoomBookingLite | null;
   next: RoomBookingLite | null;
 };
@@ -66,6 +68,16 @@ export async function setRoomPrep(roomId: string, date: Date, status: RoomPrepSt
     where: { roomId_date: { roomId, date } },
     create: { roomId, date, status, note: note ?? null, cleanedAt: ready ? new Date() : null, cleanedBy: ready ? by : null },
     update: { status, ...(note !== undefined ? { note } : {}), cleanedAt: ready ? new Date() : null, cleanedBy: ready ? by : null },
+  });
+}
+
+/** Mark a room manually occupied/vacant for a day (BLD-506). Orthogonal to the
+ *  prep/cleanliness state — it only sets the occupancy flag + who/when. */
+export async function setRoomOccupied(roomId: string, date: Date, occupied: boolean, by: string) {
+  return db.roomPrep.upsert({
+    where: { roomId_date: { roomId, date } },
+    create: { roomId, date, status: 'DIRTY', occupied, occupiedAt: occupied ? new Date() : null, occupiedBy: occupied ? by : null },
+    update: { occupied, occupiedAt: occupied ? new Date() : null, occupiedBy: occupied ? by : null },
   });
 }
 
@@ -116,6 +128,8 @@ export async function getRoomsForDay(opts: { locationId?: string | null; date?: 
       cleanedBy: prep?.cleanedBy ?? null,
       note: prep?.note ?? null,
       occupiedNow: !!currentBk,
+      occupiedManual: !!prep?.occupied,
+      occupiedBy: prep?.occupiedBy ?? null,
       current: currentBk ? lite(currentBk) : null,
       next: nextBk ? lite(nextBk) : null,
     };
