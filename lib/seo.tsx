@@ -332,11 +332,16 @@ export function itemListLd(name: string, items: { name: string; path: string }[]
   };
 }
 
+// BLD-342: never emit an empty FAQPage. Google flags a FAQPage with no
+// mainEntity as invalid structured data, so return null when there are no
+// FAQs and let JsonLd / the callers drop it.
 export function faqLd(faqs: { q: string; a: string }[]) {
+  const items = (faqs || []).filter((f) => f?.q && f?.a);
+  if (!items.length) return null;
   return {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
-    mainEntity: faqs.map((f) => ({
+    mainEntity: items.map((f) => ({
       '@type': 'Question',
       name: f.q,
       acceptedAnswer: { '@type': 'Answer', text: f.a },
@@ -418,8 +423,13 @@ export function articleLd(a: {
 /** Renders a JSON-LD <script> tag. The JSON is escaped so attacker-controlled
  *  content (e.g. a review body) can't break out of the <script> context — a
  *  stored-XSS guard, since JSON.stringify alone doesn't escape < / > / &. */
-export function JsonLd({ data }: { data: object | object[] }) {
-  const json = JSON.stringify(data)
+export function JsonLd({ data }: { data: object | null | undefined | (object | null | undefined)[] }) {
+  // Drop null/undefined nodes (e.g. an empty faqLd) so we never render an empty
+  // or partial JSON-LD block (BLD-342).
+  const nodes = (Array.isArray(data) ? data : [data]).filter(Boolean) as object[];
+  if (!nodes.length) return null;
+  const payload = nodes.length === 1 ? nodes[0] : nodes;
+  const json = JSON.stringify(payload)
     .replace(/</g, "\\u003c")
     .replace(/>/g, "\\u003e")
     .replace(/&/g, "\\u0026")
