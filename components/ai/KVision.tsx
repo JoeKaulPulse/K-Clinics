@@ -6,10 +6,10 @@ import { KMark } from '@/components/brand/marks';
 
 type Stage = 'intro' | 'budget' | 'consent' | 'capture' | 'auth' | 'analysing' | 'results';
 type Finding = { area: string; label: string; note: string; severity: 'mild' | 'moderate' | 'notable' };
-type PlanTreatment = { slug: string; title: string; sessions: number; intervalWeeks: number; reason: string; fromPence: number; totalPence: number; href: string };
+type PlanTreatment = { slug: string; title: string; sessions: number; intervalWeeks: number; reason: string; fromPence: number; totalPence: number; estimated?: boolean; href: string };
 type Phase = { title: string; timing: string; startISO: string; expect: string; treatments: PlanTreatment[]; phaseTotalPence: number };
 type Extra = { slug: string; title: string; fromPence: number; reason: string; href: string };
-type Result = { summary: string; findings: Finding[]; phases: Phase[]; planTotalPence: number; extras: Extra[]; confidence: number };
+type Result = { summary: string; findings: Finding[]; phases: Phase[]; planTotalPence: number; aboveBudget?: boolean; extras: Extra[]; confidence: number };
 type Photo = { id: string; area: string; dataUrl: string };
 type Budget = { label: string; pence: number | null };
 
@@ -253,7 +253,7 @@ function Results({ result, budget, onRestart }: { result: Result; budget: Budget
                       <p className="mt-1 text-sm text-[#cdbfae]">{t.reason}</p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="text-sm text-[#9a8f80]">{money(t.totalPence)}</p>
+                      <p className="text-sm text-[#9a8f80]">{t.estimated && t.totalPence > 0 ? `from ${money(t.totalPence)}` : money(t.totalPence)}</p>
                       <a href={t.href} className="mt-1 inline-block rounded-full bg-[var(--color-gold,#c8a96a)] px-4 py-1.5 text-sm font-medium text-[#0c0b0a]">Book →</a>
                     </div>
                   </div>
@@ -268,8 +268,9 @@ function Results({ result, budget, onRestart }: { result: Result; budget: Budget
       {/* Total */}
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-5">
         <div>
-          <p className="text-sm text-[#9a8f80]">Plan total{budget?.pence ? ` · within your ${budget.label} budget` : ''}</p>
-          <p className="font-[family-name:var(--font-display)] text-2xl">{money(result.planTotalPence)}</p>
+          <p className="text-sm text-[#9a8f80]">Plan total{budget?.pence ? (result.aboveBudget ? ` · above your ${budget.label} budget` : ` · within your ${budget.label} budget`) : ''}</p>
+          <p className="font-[family-name:var(--font-display)] text-2xl">{result.phases.some((p) => p.treatments.some((t) => t.estimated)) && result.planTotalPence > 0 ? `from ${money(result.planTotalPence)}` : money(result.planTotalPence)}</p>
+          {result.aboveBudget && <p className="mt-1 text-xs text-[#cdbfae]">This is the smallest effective plan for what we saw — it sits a little above your chosen budget. You can start with one step, or spread the cost with Clearpay.</p>}
         </div>
         {result.phases[0]?.treatments[0] && <a href={result.phases[0].treatments[0].href} className="rounded-full bg-[var(--color-gold,#c8a96a)] px-7 py-3 text-sm font-medium text-[#0c0b0a] transition-transform hover:scale-[1.03]">Book your first step →</a>}
       </div>
