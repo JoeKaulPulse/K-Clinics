@@ -12,7 +12,6 @@ export type TeamMember = {
   title: string | null;
   credentials: string | null;
   photoUrl: string | null;
-  email: string | null;
   phone: string | null;
   bio: string | null;
   yearsExperience: number | null;
@@ -26,7 +25,7 @@ export async function publicTeam(): Promise<{ clinicians: TeamMember[]; support:
   const staff = await db.adminUser.findMany({
     where: { active: true, publicProfile: true },
     orderBy: [{ isClinician: 'desc' }, { profileOrder: 'asc' }, { name: 'asc' }],
-    select: { id: true, name: true, title: true, credentials: true, photoUrl: true, email: true, publicPhone: true, bio: true, yearsExperience: true, isClinician: true, competencies: true },
+    select: { id: true, name: true, title: true, credentials: true, photoUrl: true, publicPhone: true, bio: true, yearsExperience: true, isClinician: true, competencies: true },
   });
   if (staff.length === 0) return { clinicians: [], support: [] };
 
@@ -43,7 +42,7 @@ export async function publicTeam(): Promise<{ clinicians: TeamMember[]; support:
     const r = ratings.get(s.id);
     return {
       id: s.id, name: s.name || 'Team member', title: s.title, credentials: s.credentials, photoUrl: s.photoUrl,
-      email: s.email, phone: s.publicPhone, bio: s.bio, yearsExperience: s.yearsExperience,
+      phone: s.publicPhone, bio: s.bio, yearsExperience: s.yearsExperience,
       rating: r?.avg ? Math.round(r.avg * 10) / 10 : null, reviewCount: r?.count ?? 0,
       services: s.competencies.map((slug) => getTreatment(slug)?.title).filter((t): t is string => !!t),
       isClinician: s.isClinician,
