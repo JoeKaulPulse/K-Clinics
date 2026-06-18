@@ -911,6 +911,20 @@ export function tmplAppointmentReminder(o: { firstName: string; treatment: strin
   });
 }
 
+// Consent signing link sent directly to the client (BLD-505): staff issue a
+// consent form from the appointment and email the private signing link.
+export function tmplConsentRequest(o: { firstName: string; formTitle: string; url: string }) {
+  return emailShell({
+    preheader: 'Please read and sign your consent form before your treatment',
+    body: `${heroBand('forms')}
+    <h1 style="font-size:24px;margin:0 0 16px;">One quick step before your treatment, ${escape(o.firstName)}.</h1>
+    <p>Before your appointment at KClinics, please read and sign your consent form: <strong>${escape(o.formTitle)}</strong>. It takes less than a minute and can be done on your phone.</p>
+    <p style="margin:28px 0;">${btn(o.url, 'Read &amp; sign my consent form')}</p>
+    <p style="font-size:14px;color:#91766e;">This is a private link just for you — please don't share it. Your signed form is stored securely and sealed to your record.</p>
+    <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
 export function tmplFormReminder(o: { firstName: string; treatment: string; start: Date; formsUrl: string }) {
   return emailShell({
     preheader: 'Please complete your pre-treatment forms',

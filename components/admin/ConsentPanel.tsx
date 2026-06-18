@@ -27,12 +27,16 @@ export function ConsentPanel({ bookingId, clientId, treatmentForm, templates, si
   const defaultKey = recommendedKey ?? pendingTreatmentKey ?? options[0]?.key ?? '';
 
   const [selectedKey, setSelectedKey] = useState(defaultKey);
+  const [token, setToken] = useState<string | null>(() => pendingForKey(defaultKey)?.token ?? null);
   const [link, setLink] = useState<string | null>(() => {
     const p = pendingForKey(defaultKey);
     return p ? `${baseUrl}/sign/${p.token}` : null;
   });
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [emailing, setEmailing] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'sent' | 'error'>('idle');
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   const treatmentSigned = signed.find((s) => s.kind === 'treatment');
 
@@ -41,8 +45,10 @@ export function ConsentPanel({ bookingId, clientId, treatmentForm, templates, si
   function onSelect(key: string) {
     setSelectedKey(key);
     setCopied(false);
+    setEmailStatus('idle'); setEmailError(null);
     const p = pendingForKey(key);
     setLink(p ? `${baseUrl}/sign/${p.token}` : null);
+    setToken(p?.token ?? null);
   }
 
   async function generate() {
@@ -51,9 +57,21 @@ export function ConsentPanel({ bookingId, clientId, treatmentForm, templates, si
     const res = await fetch('/api/admin/consent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'createRequest', clientId, bookingId, templateKey: selectedKey, kind: 'treatment' }) });
     const j = await res.json().catch(() => ({}));
     setBusy(false);
-    if (j.ok) { setLink(j.url); router.refresh(); }
+    if (j.ok) { setLink(j.url); setToken(j.token ?? null); setEmailStatus('idle'); setEmailError(null); router.refresh(); }
   }
   function copy() { if (link) { navigator.clipboard?.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1200); } }
+
+  // Email the signing link straight to the client (BLD-505). The server looks up
+  // the client's email from the request token, so nothing sensitive is sent here.
+  async function emailToClient() {
+    if (!token) return;
+    setEmailing(true); setEmailStatus('idle'); setEmailError(null);
+    const res = await fetch('/api/admin/consent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'emailRequest', token }) });
+    const j = await res.json().catch(() => ({}));
+    setEmailing(false);
+    if (j.ok) setEmailStatus('sent');
+    else { setEmailStatus('error'); setEmailError(j.error || 'The email could not be sent. Copy the link instead.'); }
+  }
 
   return (
     <div>
@@ -96,7 +114,10 @@ export function ConsentPanel({ bookingId, clientId, treatmentForm, templates, si
                 <div className="flex flex-wrap gap-2">
                   <a href={link} target="_blank" rel="noopener noreferrer" className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)]">Open to sign on this device</a>
                   <button onClick={copy} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)]">{copied ? 'Copied ✓' : 'Copy phone link'}</button>
+                  <button onClick={emailToClient} disabled={emailing || !token} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">{emailing ? 'Sending…' : emailStatus === 'sent' ? 'Emailed ✓' : 'Email to client'}</button>
                 </div>
+                {emailStatus === 'sent' && <p className="text-xs text-[var(--color-jade)]">✓ Signing link emailed to the client.</p>}
+                {emailStatus === 'error' && <p className="text-xs text-[var(--color-blush)]">{emailError}</p>}
                 <p className="break-all font-mono text-[0.65rem] text-[var(--color-stone)]">{link}</p>
               </div>
             ) : (
