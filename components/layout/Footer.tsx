@@ -134,8 +134,8 @@ export function Footer({ config }: { config: SiteConfig }) {
           <span className="text-white/15">·</span>
           <CookieSettingsLink />
           <span className="hidden md:inline text-white/15">·</span>
-          {/* ICO data-protection registration — shown publicly for transparency/compliance. */}
-          <p>© {year} {legalName}{companyNumber ? ` · Registered in England & Wales, company no. ${companyNumber}` : ''} · ICO reg. ZC153001. All rights reserved.</p>
+          {/* ICO data-protection registration + UK trade mark — shown publicly for transparency/compliance (BLD-503). */}
+          <p>© {year} {legalName}{companyNumber ? ` · Registered in England & Wales, company no. ${companyNumber}` : ''} · ICO reg. ZC153001 · Trade Mark No. UK00004210472. All rights reserved.</p>
         </div>
       </div>
     </footer>
