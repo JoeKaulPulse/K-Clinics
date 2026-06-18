@@ -259,7 +259,9 @@ export function KioskSessionFlow({
               className="mt-1 h-5 w-5 accent-[var(--color-gold)]"
             />
             <span className="text-sm">
-              I agree to share my photo for AI analysis and consent to my result being shown on this device.
+              I agree to share my photo for AI analysis and consent to my result being shown on this device. My photo is
+              sent to our AI provider Anthropic (processed on servers in the US) to generate the result, and is deleted
+              within 30 days.
             </span>
           </label>
           <p className="mt-4 text-center text-xs text-[var(--color-stone-soft)]">
