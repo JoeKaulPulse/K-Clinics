@@ -70,6 +70,40 @@ export async function addTreatmentToBooking(bookingId: string, variantId: string
   return { ok: true };
 }
 
+// Remove an add-on treatment from an appointment (before charge). Only
+// removes items where isAddon: true — the primary treatment is never touched.
+// Decrements the booking price + duration in the same transaction.
+export async function removeAddonTreatment(bookingId: string, itemId: string) {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'Not permitted' };
+  if (!bookingId || !itemId) return { ok: false, error: 'Missing booking or item ID.' };
+  const { db } = await import('@/lib/db');
+  const { logAudit } = await import('@/lib/audit');
+
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { chargedAt: true, clientId: true, status: true } });
+  if (!booking) return { ok: false, error: 'Booking not found.' };
+  if (booking.chargedAt) return { ok: false, error: 'This appointment is already paid — the add-on cannot be removed.' };
+  if (booking.status === 'CANCELLED' || booking.status === 'NO_SHOW') return { ok: false, error: 'This appointment is cancelled.' };
+
+  const item = await db.bookingItem.findUnique({ where: { id: itemId }, select: { isAddon: true, label: true, pricePence: true, durationMin: true, bookingId: true } });
+  if (!item) return { ok: false, error: 'Item not found.' };
+  if (item.bookingId !== bookingId) return { ok: false, error: 'Item does not belong to this booking.' };
+  if (!item.isAddon) return { ok: false, error: 'Only add-on treatments can be removed.' };
+
+  await db.$transaction([
+    db.bookingItem.delete({ where: { id: itemId } }),
+    db.booking.update({
+      where: { id: bookingId },
+      data: { pricePence: { decrement: item.pricePence }, durationMin: { decrement: item.durationMin } },
+    }),
+  ]);
+  await logAudit({ action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId, summary: `Removed add-on ${item.label} (-£${(item.pricePence / 100).toFixed(2)})` });
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath(`/admin/bookings/${bookingId}/session`);
+  return { ok: true };
+}
+
 // Clinician confirms they've reviewed the SOP for this appointment.
 export async function acknowledgeSop(bookingId: string) {
   if (!crmEnabled) return { ok: false };
