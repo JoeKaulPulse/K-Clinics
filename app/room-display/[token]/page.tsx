@@ -30,6 +30,15 @@ export default async function RoomDisplay({ params }: { params: Promise<{ token:
   const next = bookings.find((b) => b.startAt > now && !b.finishedAt && b !== current);
   const who = (n?: string | null) => (n || 'Guest');
 
+  // Manual occupancy (BLD-506): staff mark who is in the room, so the screen reads
+  // "Occupied" even when there is no booking (walk-in, consultation, prep).
+  const { clinicDay } = await import('@/lib/room-prep');
+  const prep = await db.roomPrep.findUnique({
+    where: { roomId_date: { roomId: device.roomId, date: clinicDay(now) } },
+    select: { occupied: true },
+  }).catch(() => null);
+  const manuallyOccupied = !current && !!prep?.occupied;
+
   return (
     <main className="grid min-h-dvh place-items-center bg-[#1a1714] p-[5vmin] text-[#f3ece2]">
       {/* Kiosk auto-refresh — keep the panel live without any client bundle. */}
@@ -45,6 +54,13 @@ export default async function RoomDisplay({ params }: { params: Promise<{ token:
             <h1 className="mt-[4vmin] font-[family-name:var(--font-display)] text-[10vmin] leading-none">{who(current.client?.firstName)}</h1>
             <p className="mt-[3vmin] text-[3.4vmin] text-[#cdbfa9]">{current.treatmentTitle}</p>
             <p className="mt-[1.5vmin] text-[3vmin] tabular-nums text-[#9c8f7c]">{fmt(current.startAt)} – {fmt(current.endAt)}</p>
+          </div>
+        ) : manuallyOccupied ? (
+          <div className="mt-[6vmin]">
+            <p className="inline-flex items-center gap-3 rounded-full bg-[#c0392b]/20 px-5 py-2 text-[2.6vmin] uppercase tracking-[0.2em] text-[#e8a99f]">
+              <span className="h-3 w-3 rounded-full bg-[#e8a99f]" /> Occupied
+            </p>
+            <h1 className="mt-[4vmin] font-[family-name:var(--font-display)] text-[8vmin] leading-tight text-[#cdbfa9]">In use</h1>
           </div>
         ) : (
           <div className="mt-[6vmin]">

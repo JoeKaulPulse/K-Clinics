@@ -61,5 +61,18 @@ export function RoomPrepStatus({
     finally { if (live.current) setBusyId(null); }
   }, [refresh]);
 
-  return <RoomAvailabilityBoard rooms={rooms} canManage={canManage} busyId={busyId} onSet={onSet} />;
+  const onOccupy = useCallback(async (roomId: string, occupied: boolean) => {
+    setBusyId(roomId);
+    setRooms((prev) => prev.map((r) => (r.id === roomId ? { ...r, occupiedManual: occupied } : r))); // optimistic
+    try {
+      await fetch('/api/admin/rooms/prep', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId, occupied }),
+      });
+      await refresh();
+    } catch { /* next poll reconciles */ }
+    finally { if (live.current) setBusyId(null); }
+  }, [refresh]);
+
+  return <RoomAvailabilityBoard rooms={rooms} canManage={canManage} busyId={busyId} onSet={onSet} onOccupy={onOccupy} />;
 }

@@ -1350,6 +1350,12 @@ model RoomPrep {
   cleanedAt DateTime?
   cleanedBy String? // staff email who set it READY
   note      String?
+  // Manual occupancy (BLD-506): clinicians/reception mark who is in the room, so
+  // the room-display screens show "Occupied" even without a booking. Orthogonal to
+  // cleanliness (a room can be READY and occupied). Additive, defaulted.
+  occupied   Boolean   @default(false)
+  occupiedAt DateTime?
+  occupiedBy String? // staff email who marked it occupied
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
