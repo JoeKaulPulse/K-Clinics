@@ -256,6 +256,16 @@ export async function finishAppointment(bookingId: string) {
   await db.client.update({ where: { id: b.clientId }, data: { lastVisitAt: finishedAt } });
   await logAudit({ action: 'APPOINTMENT_COMPLETED', actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId, summary: `Appointment completed${actualMinutes ? ` (${actualMinutes} min actual vs ${b.durationMin} booked)` : ''}` });
 
+  // Auto-clear any manual "occupied" flag on this booking's room(s) — the client
+  // has left, so the in-room screen returns to Available without a manual Vacant
+  // tap (BLD-506). Best-effort — never blocks finishing.
+  try {
+    const { clearOccupiedForBooking } = await import('@/lib/room-prep');
+    await clearOccupiedForBooking(bookingId);
+  } catch (e) {
+    console.error('[finishAppointment] clear room occupancy failed (continuing):', (e as Error)?.message);
+  }
+
   // Post-treatment review request (best-effort — never blocks finishing).
   try {
     const { getSetting } = await import('@/lib/settings');
