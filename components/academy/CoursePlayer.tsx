@@ -82,7 +82,7 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
                   return (
                     <li key={l.id}>
                       <button onClick={() => setSel({ type: 'lesson', moduleId: m.id, lessonId: l.id })} className={`flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-1.5 text-left text-sm transition-colors ${active ? 'bg-[var(--color-bone)] text-[var(--color-ink)]' : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-bone)]'}`}>
-                        <span className={`text-xs ${doneLessons.has(l.id) ? 'text-[var(--color-gold)]' : 'text-[var(--color-stone-soft)]'}`}>{doneLessons.has(l.id) ? '✓' : '○'}</span>
+                        <span className={`text-xs ${doneLessons.has(l.id) ? 'text-[var(--color-gold)]' : 'text-[var(--color-stone)]'}`}>{doneLessons.has(l.id) ? '✓' : '○'}</span>
                         <span className="flex-1">{l.title}</span>
                       </button>
                     </li>
@@ -91,7 +91,7 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
                 {m.quiz && (
                   <li>
                     <button onClick={() => setSel({ type: 'quiz', moduleId: m.id })} className={`flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-1.5 text-left text-sm transition-colors ${sel?.type === 'quiz' && sel.moduleId === m.id ? 'bg-[var(--color-bone)] text-[var(--color-ink)]' : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-bone)]'}`}>
-                      <span className={`text-xs ${quizState[m.quiz.id]?.passed ? 'text-[var(--color-gold)]' : 'text-[var(--color-stone-soft)]'}`}>{quizState[m.quiz.id]?.passed ? '✓' : '◆'}</span>
+                      <span className={`text-xs ${quizState[m.quiz.id]?.passed ? 'text-[var(--color-gold)]' : 'text-[var(--color-stone)]'}`}>{quizState[m.quiz.id]?.passed ? '✓' : '◆'}</span>
                       <span className="flex-1 font-medium">{m.quiz.title}</span>
                     </button>
                   </li>

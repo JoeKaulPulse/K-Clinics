@@ -41,7 +41,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           {p.images[0]
             // eslint-disable-next-line @next/next/no-img-element
             ? <img src={p.images[0]} alt={p.name} className="aspect-square w-full object-cover" />
-            : <span className="grid aspect-square place-items-center text-5xl text-[var(--color-stone-soft)]">▦</span>}
+            : <span className="grid aspect-square place-items-center text-5xl text-[var(--color-stone)]">▦</span>}
           {p.images.length > 1 && (
             <div className="flex gap-2 p-3">
               {p.images.slice(1, 5).map((u, i) => (

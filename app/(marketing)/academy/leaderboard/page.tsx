@@ -62,7 +62,7 @@ export default async function LeaderboardPage() {
             {g.BADGES.map((b) => {
               const has = earned.has(b.key);
               return (
-                <span key={b.key} title={`${b.name} — ${b.description}`} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${has ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 text-[var(--color-ink)]' : 'border-[var(--color-line)] text-[var(--color-stone-soft)] opacity-60'}`}>
+                <span key={b.key} title={`${b.name} — ${b.description}`} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${has ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 text-[var(--color-ink)]' : 'border-[var(--color-line)] text-[var(--color-stone)] opacity-60'}`}>
                   <span className={has ? '' : 'grayscale'}>{b.icon}</span> {b.name}
                 </span>
               );

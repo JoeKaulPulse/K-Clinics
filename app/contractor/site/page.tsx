@@ -62,7 +62,7 @@ export default async function ContractorSitePage() {
           <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl">Hello, {firstName}</h1>
         </div>
         <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-center">
-          <p className="text-[0.65rem] uppercase tracking-[0.12em] text-[var(--color-stone-soft)]">On site for</p>
+          <p className="text-[0.65rem] uppercase tracking-[0.12em] text-[var(--color-stone)]">On site for</p>
           <p className="text-lg">
             <VisitTimer since={visit.checkedInAt.toISOString()} />
           </p>
@@ -76,12 +76,12 @@ export default async function ContractorSitePage() {
       )}
 
       <section className="mt-8">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-stone-soft)]">Your jobs</h2>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-stone)]">Your jobs</h2>
         <ContractorTaskList tasks={tasks} />
       </section>
 
       <section className="mt-10">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-stone-soft)]">Building plans &amp; instructions</h2>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-stone)]">Building plans &amp; instructions</h2>
         <FacilityDocsViewer docs={docs} />
       </section>
 

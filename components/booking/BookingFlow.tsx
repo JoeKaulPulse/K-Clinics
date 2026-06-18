@@ -17,7 +17,7 @@ type Variant = { id: string; name: string; durationMin: number; pricePence: numb
 type Service = { id: string; slug: string; treatmentSlug: string; name: string; category: string; audience: string; variants: Variant[] };
 type ClientInfo = { signedIn: boolean; firstName: string; email: string; gender: string | null; smsReminders: boolean; hasPhone: boolean; welcomeEligible: boolean };
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-stone-soft)] focus:border-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)]';
 const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
 const money = (p: number) => (p <= 0 ? 'On consultation' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`);
 

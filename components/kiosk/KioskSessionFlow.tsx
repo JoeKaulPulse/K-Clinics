@@ -231,7 +231,7 @@ export function KioskSessionFlow({
           <p className="mt-4 text-[var(--color-blush)]">
             Strike three poses on the big screen, and our AI rates your skin &amp; smile and personalises treatments just for you.
           </p>
-          <p className="mt-3 text-sm text-[var(--color-stone-soft)]">Takes about 60 seconds.</p>
+          <p className="mt-3 text-sm text-[var(--color-stone)]">Takes about 60 seconds.</p>
           <button
             onClick={() => setStep('consent')}
             className="mt-8 w-full rounded-[var(--radius-md)] bg-[var(--color-gold)] px-6 py-4 text-lg font-medium text-[var(--color-ink)] transition hover:opacity-90"
@@ -264,7 +264,7 @@ export function KioskSessionFlow({
               within 30 days.
             </span>
           </label>
-          <p className="mt-4 text-center text-xs text-[var(--color-stone-soft)]">
+          <p className="mt-4 text-center text-xs text-[var(--color-stone)]">
             This experience is for adults only.
           </p>
           {error && <p className="mt-3 text-center text-sm text-[var(--color-blush)]">{error}</p>}
@@ -311,7 +311,7 @@ export function KioskSessionFlow({
                   alt={POSES[s.poseIdx]?.title ?? `Pose ${s.poseIdx + 1}`}
                   className="aspect-[3/4] w-full rounded-[var(--radius-md)] object-cover"
                 />
-                <figcaption className="mt-1.5 text-[0.65rem] uppercase tracking-wide text-[var(--color-stone-soft)]">
+                <figcaption className="mt-1.5 text-[0.65rem] uppercase tracking-wide text-[var(--color-stone)]">
                   {POSES[s.poseIdx]?.title ?? `Pose ${s.poseIdx + 1}`}
                 </figcaption>
                 {uploads < MAX_UPLOADS && (
@@ -385,7 +385,7 @@ export function KioskSessionFlow({
           <p className="mt-3 text-sm text-[var(--color-blush)]">
             Every photo from your session has already been deleted.
           </p>
-          <p className="mt-3 text-sm text-[var(--color-stone-soft)]">
+          <p className="mt-3 text-sm text-[var(--color-stone)]">
             If you’re 18 or over, come and say hello in the clinic — we’d love to meet you.
           </p>
           <a
@@ -418,7 +418,7 @@ export function KioskSessionFlow({
             <input type="file" accept="image/*" capture="user" onChange={onPick} className="hidden" />
           </label>
 
-          <label className="mt-3 block w-full cursor-pointer text-sm text-[var(--color-stone-soft)] underline">
+          <label className="mt-3 block w-full cursor-pointer text-sm text-[var(--color-stone)] underline">
             or choose from gallery
             <input type="file" accept="image/*" onChange={onPick} className="hidden" />
           </label>
