@@ -5,6 +5,7 @@ import { Reveal } from '@/components/motion/Reveal';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 import { ACCREDITATION_LABELS, formatFee } from '@/lib/academy';
+import { getActivePromo } from '@/lib/academy-utils';
 import { site } from '@/lib/site';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
@@ -27,6 +28,13 @@ export default async function AcademyPage() {
   const { listCourses } = await import('@/lib/academy');
   const courses = await listCourses().catch(() => []);
 
+  // Find the lowest active promo price across all courses (for the banner).
+  const lowestPromo = courses.reduce<number | null>((best, c) => {
+    const p = getActivePromo(c);
+    if (p == null) return best;
+    return best == null || p < best ? p : best;
+  }, null);
+
   return (
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Academy', path: '/academy' }])} />
@@ -42,6 +50,20 @@ export default async function AcademyPage() {
           <Button href="/academy/portal" variant="outline">Trainee login</Button>
         </div>
       </PageHero>
+
+      {/* Promo banner — shown only when at least one course has an active promo */}
+      {lowestPromo != null && (
+        <div className="bg-[var(--color-gold-deep)] text-[var(--color-porcelain)]">
+          <div className="container-lux flex flex-wrap items-center justify-between gap-3 py-3">
+            <p className="text-sm font-medium">
+              Special offer: courses from {formatFee(lowestPromo)} — limited time.
+            </p>
+            <a href="#courses" className="shrink-0 text-sm underline underline-offset-2 hover:no-underline">
+              See courses
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* Accreditation badges */}
       <section className="container-lux pt-12">
@@ -79,20 +101,30 @@ export default async function AcademyPage() {
           <p className="mt-8 text-[var(--color-stone)]">Our course schedule is being finalised — <Link href="/academy/portal" className="link-underline">register your interest</Link> and we’ll be in touch.</p>
         ) : (
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {courses.map((c) => (
-              <Reveal key={c.id}>
-                <Link href={`/academy/${c.slug}`} className="group flex h-full flex-col rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6 transition-colors hover:border-[var(--color-gold)]">
-                  {c.level && <span className="text-xs uppercase tracking-[0.16em] text-[var(--color-gold)]">{c.level}</span>}
-                  <h3 className="mt-1 font-[family-name:var(--font-display)] text-xl leading-tight">{c.title}</h3>
-                  {c.summary && <p className="mt-2 flex-1 text-sm text-[var(--color-ink-soft)]">{c.summary}</p>}
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className="text-sm font-medium text-[var(--color-ink)]">{formatFee(c.pricePence)}</span>
-                    <span className="text-sm text-[var(--color-gold)] group-hover:underline">View course →</span>
-                  </div>
-                  {c.accreditations.length > 0 && <p className="mt-2 text-[0.7rem] uppercase tracking-wide text-[var(--color-stone)]">{c.accreditations.map((a) => ACCREDITATION_LABELS[a] ?? a).join(' · ')}</p>}
-                </Link>
-              </Reveal>
-            ))}
+            {courses.map((c) => {
+              const promo = getActivePromo(c);
+              return (
+                <Reveal key={c.id}>
+                  <Link href={`/academy/${c.slug}`} className="group flex h-full flex-col rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6 transition-colors hover:border-[var(--color-gold)]">
+                    {c.level && <span className="text-xs uppercase tracking-[0.16em] text-[var(--color-gold)]">{c.level}</span>}
+                    <h3 className="mt-1 font-[family-name:var(--font-display)] text-xl leading-tight">{c.title}</h3>
+                    {c.summary && <p className="mt-2 flex-1 text-sm text-[var(--color-ink-soft)]">{c.summary}</p>}
+                    <div className="mt-4 flex items-center justify-between">
+                      {promo ? (
+                        <span className="flex items-baseline gap-1.5">
+                          <span className="text-sm font-medium text-[var(--color-gold-deep)]">{formatFee(promo)}</span>
+                          <span className="text-xs text-[var(--color-stone)] line-through">{formatFee(c.pricePence)}</span>
+                        </span>
+                      ) : (
+                        <span className="text-sm font-medium text-[var(--color-ink)]">{formatFee(c.pricePence)}</span>
+                      )}
+                      <span className="text-sm text-[var(--color-gold)] group-hover:underline">View course →</span>
+                    </div>
+                    {c.accreditations.length > 0 && <p className="mt-2 text-[0.7rem] uppercase tracking-wide text-[var(--color-stone)]">{c.accreditations.map((a) => ACCREDITATION_LABELS[a] ?? a).join(' · ')}</p>}
+                  </Link>
+                </Reveal>
+              );
+            })}
           </div>
         )}
       </section>

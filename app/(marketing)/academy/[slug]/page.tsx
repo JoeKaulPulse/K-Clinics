@@ -6,6 +6,7 @@ import { Reveal } from '@/components/motion/Reveal';
 import { ApplyForm } from '@/components/academy/ApplyForm';
 import { pageMeta, JsonLd, breadcrumbLd, courseLd } from '@/lib/seo';
 import { ACCREDITATION_LABELS, formatFee } from '@/lib/academy';
+import { getActivePromo } from '@/lib/academy-utils';
 
 export const revalidate = 3600;
 
@@ -30,6 +31,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
   if (!course) notFound();
 
   const cohortOptions = course.cohorts.map((h) => ({ id: h.id, label: `${fmt(h.startAt.toISOString())}${h.remaining <= 3 ? ` · ${h.remaining} places left` : ''}` }));
+  const activePromo = getActivePromo(course);
 
   return (
     <>
@@ -95,7 +97,15 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
           <div className="space-y-6 lg:sticky lg:top-28">
             <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
               <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">Course fee</p>
-              <p className="mt-1 font-[family-name:var(--font-display)] text-3xl text-[var(--color-ink)]">{formatFee(course.pricePence)}</p>
+              {activePromo ? (
+                <div className="mt-1 flex flex-wrap items-baseline gap-3">
+                  <span className="font-[family-name:var(--font-display)] text-3xl text-[var(--color-gold-deep)]">{formatFee(activePromo)}</span>
+                  <span className="text-lg text-[var(--color-stone)] line-through">{formatFee(course.pricePence)}</span>
+                  <span className="rounded-full bg-[var(--color-gold)]/15 px-2.5 py-0.5 text-xs font-medium text-[var(--color-gold-deep)]">Special offer</span>
+                </div>
+              ) : (
+                <p className="mt-1 font-[family-name:var(--font-display)] text-3xl text-[var(--color-ink)]">{formatFee(course.pricePence)}</p>
+              )}
               {course.pricePence > 0 && <p className="mt-2 text-sm text-[var(--color-stone)]">Spread the cost monthly, or check if you qualify for <Link href="/academy/funding" className="link-underline font-medium text-[var(--color-ink)]">government or council funding</Link>. No payment is taken until your place is confirmed.</p>}
             </div>
             <ApplyForm courseId={course.id} courseTitle={course.title} cohorts={cohortOptions} />

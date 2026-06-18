@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export type Cohort = { id: string; startAt: string; endAt: string | null; accessStartAt: string | null; accessEndAt: string | null; capacity: number; location: string | null; trainer: string | null; name: string | null; status: string };
-export type Course = { id: string; slug: string; title: string; level: string | null; summary: string | null; description: string | null; pricePence: number; depositPence: number | null; durationText: string | null; format: string | null; accreditations: string[]; outcomes: string[]; prerequisites: string | null; thinkificUrl: string | null; featured: boolean; active: boolean; cohorts: Cohort[] };
+export type Course = { id: string; slug: string; title: string; level: string | null; summary: string | null; description: string | null; pricePence: number; depositPence: number | null; promoPrice: number | null; promoStartAt: string | null; promoEndAt: string | null; durationText: string | null; format: string | null; accreditations: string[]; outcomes: string[]; prerequisites: string | null; thinkificUrl: string | null; featured: boolean; active: boolean; cohorts: Cohort[] };
 export type Enrolment = { id: string; courseId: string; courseTitle: string; cohortId: string | null; applicantName: string; applicantEmail: string; applicantPhone: string | null; experience: string | null; financeInterest: boolean; status: string; pricePence: number; paidPence: number; notes: string | null; createdAt: string };
 
 const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
@@ -113,6 +113,9 @@ function CourseForm({ course, onDone }: { course?: Course; onDone: () => void })
   const [f, setF] = useState({
     title: course?.title ?? '', level: course?.level ?? '', summary: course?.summary ?? '', description: course?.description ?? '',
     price: course ? String(course.pricePence / 100) : '', deposit: course?.depositPence ? String(course.depositPence / 100) : '',
+    promoPrice: course?.promoPrice ? String(course.promoPrice / 100) : '',
+    promoStartAt: course?.promoStartAt ? course.promoStartAt.slice(0, 10) : '',
+    promoEndAt: course?.promoEndAt ? course.promoEndAt.slice(0, 10) : '',
     durationText: course?.durationText ?? '', format: course?.format ?? '', accreditations: (course?.accreditations ?? []).join(', '),
     outcomes: (course?.outcomes ?? []).join('\n'), prerequisites: course?.prerequisites ?? '', thinkificUrl: course?.thinkificUrl ?? '',
     featured: course?.featured ?? false,
@@ -126,6 +129,9 @@ function CourseForm({ course, onDone }: { course?: Course; onDone: () => void })
     await post({
       op: 'upsertCourse', id: course?.id, title: f.title, level: f.level, summary: f.summary, description: f.description,
       pricePence: Math.round(Number(f.price || 0) * 100), depositPence: f.deposit ? Math.round(Number(f.deposit) * 100) : null,
+      promoPrice: f.promoPrice ? Math.round(Number(f.promoPrice) * 100) : null,
+      promoStartAt: f.promoStartAt || null,
+      promoEndAt: f.promoEndAt || null,
       durationText: f.durationText, format: f.format, accreditations: f.accreditations.split(','), outcomes: f.outcomes.split('\n'),
       prerequisites: f.prerequisites, thinkificUrl: f.thinkificUrl, featured: f.featured, active: course?.active ?? true,
     });
@@ -139,6 +145,9 @@ function CourseForm({ course, onDone }: { course?: Course; onDone: () => void })
       {L('Level', <input value={f.level} onChange={(e) => set('level', e.target.value)} placeholder="Level 4" className={`${field} w-full`} />)}
       {L('Price £', <input value={f.price} onChange={(e) => set('price', e.target.value)} className={`${field} w-full`} />)}
       {L('Deposit £ (optional)', <input value={f.deposit} onChange={(e) => set('deposit', e.target.value)} className={`${field} w-full`} />)}
+      {L('Promo price £ (optional)', <input value={f.promoPrice} onChange={(e) => set('promoPrice', e.target.value)} placeholder="Leave blank to disable" className={`${field} w-full`} />)}
+      {L('Promo starts (optional, blank = immediate)', <input type="date" value={f.promoStartAt} onChange={(e) => set('promoStartAt', e.target.value)} className={`${field} w-full`} />)}
+      {L('Promo ends (optional, blank = never)', <input type="date" value={f.promoEndAt} onChange={(e) => set('promoEndAt', e.target.value)} className={`${field} w-full`} />)}
       <div className="sm:col-span-2">{L('Summary (card one-liner)', <input value={f.summary} onChange={(e) => set('summary', e.target.value)} className={`${field} w-full`} />)}</div>
       <div className="sm:col-span-2">{L('Description', <textarea value={f.description} onChange={(e) => set('description', e.target.value)} rows={3} className={`${field} w-full`} />)}</div>
       {L('Duration text', <input value={f.durationText} onChange={(e) => set('durationText', e.target.value)} placeholder="2 practical days + theory + exam" className={`${field} w-full`} />)}

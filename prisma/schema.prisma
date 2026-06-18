@@ -1856,6 +1856,9 @@ model Course {
   description    String? // long form (markdown-ish)
   pricePence     Int      @default(0)
   depositPence   Int? // optional deposit to reserve a place
+  promoPrice     Int? // pence — promotional price when set (BLD-490)
+  promoStartAt   DateTime? // if null, promo is immediate (BLD-490)
+  promoEndAt     DateTime? // if null, promo never expires (BLD-490)
   durationText   String? // e.g. "2 practical days + online theory + exam"
   format         String? // e.g. "Blended: Thinkific theory + practical + VTCT exam"
   accreditations String[] @default([]) // OFQUAL | VTCT | CPD
