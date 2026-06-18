@@ -425,7 +425,7 @@ export async function rescheduleBooking(
   newStartISO: string,
   opts: { by: string; reason?: string; admin?: boolean },
 ): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; error?: string; code?: 'SLOT_TAKEN' }> {
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true, resources: { select: { id: true } } } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
   if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(booking.status)) {
     return { ok: false, error: 'This booking can no longer be rescheduled.' };
@@ -444,18 +444,46 @@ export async function rescheduleBooking(
 
   const newEnd = new Date(newStart.getTime() + booking.durationMin * 60 * 1000);
 
-  // The chosen time must be a genuinely free, in-hours slot — the same guard every
-  // booking-creation path uses. Without this a crafted POST could move a booking
-  // outside opening hours or on top of another appointment (the UI only offers
-  // valid slots, but the API must not trust the client).
-  const { isSlotFree } = await import('@/lib/availability');
-  // BLD-192: an admin reschedule may move an appointment to any free time (the
-  // 48h-notice gate above already governs client self-service); a staff move must
-  // not be blocked by the public 2-hour online lead window.
-  // Exclude this booking from the clash check so a same-day move doesn't conflict
-  // with its own current slot/clinician/room (BLD reschedule self-clash).
-  if (!(await isSlotFree(newStartISO, booking.durationMin, booking.treatmentSlug, null, { excludeBookingId: bookingId, ...(opts.admin ? { leadMinutes: 0 } : {}) }))) {
-    return { ok: false, code: 'SLOT_TAKEN', error: 'That time is no longer available. Please choose another slot.' };
+  // BLD-502: validate the new time without false-rejecting genuinely free slots.
+  //
+  // A STAFF/admin reschedule may move an appointment to any time (BLD-105 intent:
+  // "staff can move any time"). The only hard rule is not creating a real
+  // double-booking. The full public availability gate (isSlotFree) over-rejects
+  // here: with staff-availability enforcement on, a treatment with no matching
+  // clinician competency (e.g. a consultation) falls through to a clinic-wide
+  // "one appointment at a time" check, so a slot that is clearly free on the
+  // calendar is refused. So for staff we check only a true clash on THIS booking's
+  // own clinician or room(s); for client self-service we keep the strict gate.
+  if (opts.admin) {
+    const resourceIds = booking.resources.map((r) => r.id);
+    const newBusyEndMs = newEnd.getTime() + booking.bufferMin * 60_000;
+    // Nothing exclusive to clash on (no clinician, no room/equipment) → any future
+    // time is fine (this is the consultation case BLD-502 was about).
+    if (booking.practitionerId || resourceIds.length) {
+      const windowStart = new Date(newStart.getTime() - 24 * 60 * 60 * 1000);
+      const candidates = await db.booking.findMany({
+        where: {
+          id: { not: bookingId },
+          status: { in: ['PENDING', 'CONFIRMED'] },
+          startAt: { gte: windowStart, lte: new Date(newBusyEndMs) },
+          OR: [
+            ...(booking.practitionerId ? [{ practitionerId: booking.practitionerId }] : []),
+            ...(resourceIds.length ? [{ resources: { some: { id: { in: resourceIds } } } }] : []),
+          ],
+        },
+        select: { startAt: true, endAt: true, bufferMin: true },
+      });
+      const clash = candidates.some((b) => newStart.getTime() < b.endAt.getTime() + b.bufferMin * 60_000 && newBusyEndMs > b.startAt.getTime());
+      if (clash) return { ok: false, code: 'SLOT_TAKEN', error: 'That time clashes with another appointment for the same clinician, room or equipment. Please choose another slot.' };
+    }
+  } else {
+    // Client self-service: the chosen time must be a genuinely free, in-hours slot
+    // — the same guard every public booking path uses (the API must not trust the
+    // client). Exclude this booking so a same-day move doesn't clash with itself.
+    const { isSlotFree } = await import('@/lib/availability');
+    if (!(await isSlotFree(newStartISO, booking.durationMin, booking.treatmentSlug, null, { excludeBookingId: bookingId }))) {
+      return { ok: false, code: 'SLOT_TAKEN', error: 'That time is no longer available. Please choose another slot.' };
+    }
   }
 
   let charged = 0;
