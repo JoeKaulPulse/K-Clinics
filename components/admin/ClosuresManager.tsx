@@ -69,7 +69,7 @@ export function ClosuresManager({ closures, locations, multiLocation }: { closur
                 <span>
                   <span className="font-medium">{sameDay ? fmt(c.startAt) : `${fmt(c.startAt)} – ${fmt(c.endAt)}`}</span>
                   {c.reason ? ` · ${c.reason}` : ''}
-                  {multiLocation && <span className="text-[var(--color-stone-soft)]"> · {locName(c.locationId)}</span>}
+                  {multiLocation && <span className="text-[var(--color-stone)]"> · {locName(c.locationId)}</span>}
                 </span>
                 <button onClick={() => remove(c.id)} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
               </li>

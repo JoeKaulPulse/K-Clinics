@@ -50,8 +50,8 @@ export function ContractorTasks({ tasks, showAssignee = false }: { tasks: Contra
             <p className={`text-sm font-medium ${t.status === 'DONE' ? 'line-through' : ''}`}>{t.title}</p>
             {t.description && <p className="mt-0.5 text-sm text-[var(--color-stone)]">{t.description}</p>}
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-              {t.dueLabel && <span className={t.overdue && t.status !== 'DONE' ? 'font-medium text-[#b23b3b]' : 'text-[var(--color-stone-soft)]'}>Due {t.dueLabel}{t.overdue && t.status !== 'DONE' ? ' · overdue' : ''}</span>}
-              {showAssignee && t.assigneeName && <span className="text-[var(--color-stone-soft)]">· {t.assigneeName}</span>}
+              {t.dueLabel && <span className={t.overdue && t.status !== 'DONE' ? 'font-medium text-[#b23b3b]' : 'text-[var(--color-stone)]'}>Due {t.dueLabel}{t.overdue && t.status !== 'DONE' ? ' · overdue' : ''}</span>}
+              {showAssignee && t.assigneeName && <span className="text-[var(--color-stone)]">· {t.assigneeName}</span>}
             </div>
           </div>
           <button

@@ -74,7 +74,7 @@ function Row({ s, first, onChange }: { s: Secret; first: boolean; onChange: (s: 
       </div>
 
       {s.envOnly ? (
-        <span className="text-xs text-[var(--color-stone-soft)]">Managed in hosting</span>
+        <span className="text-xs text-[var(--color-stone)]">Managed in hosting</span>
       ) : (
         <div className="flex items-center gap-2">
           <input

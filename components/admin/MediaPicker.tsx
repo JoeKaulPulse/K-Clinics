@@ -75,7 +75,7 @@ export function MediaGrid({ onPick, compact }: { onPick?: (asset: Asset) => void
         className={`cursor-pointer rounded-[var(--radius-lg)] border-2 border-dashed p-6 text-center transition-colors ${drag ? 'border-[var(--color-gold)] bg-[var(--color-bone)]' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}
       >
         <p className="text-sm font-medium">{busy ? 'Uploading…' : 'Drop images here, or click to upload'}</p>
-        <p className="mt-1 text-xs text-[var(--color-stone-soft)]">PNG, JPG, WebP, SVG · up to 8 MB each</p>
+        <p className="mt-1 text-xs text-[var(--color-stone)]">PNG, JPG, WebP, SVG · up to 8 MB each</p>
         <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => upload(e.target.files)} />
       </div>
       {err && <p className="mt-3 text-sm text-[#c0392b]">{err}</p>}
@@ -88,7 +88,7 @@ export function MediaGrid({ onPick, compact }: { onPick?: (asset: Asset) => void
       {assets.length > 0 && (
         <div className="mt-4 flex items-center justify-between gap-3">
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search images…" className="w-56 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
-          <span className="text-xs text-[var(--color-stone-soft)]">{shown.length} of {assets.length}</span>
+          <span className="text-xs text-[var(--color-stone)]">{shown.length} of {assets.length}</span>
         </div>
       )}
 
@@ -117,7 +117,7 @@ export function MediaGrid({ onPick, compact }: { onPick?: (asset: Asset) => void
                     onBlur={(e) => { if (e.target.value !== (a.alt || '')) saveAlt(a.id, e.target.value); }}
                     className="w-full rounded-[var(--radius-sm)] border border-transparent bg-[var(--color-bone)] px-2 py-1 text-xs outline-none focus:border-[var(--color-gold)]"
                   />
-                  <p className="mt-1 truncate text-[0.65rem] text-[var(--color-stone-soft)]">{fmtSize(a.size)}{a.width ? ` · ${a.width}×${a.height}` : ''}</p>
+                  <p className="mt-1 truncate text-[0.65rem] text-[var(--color-stone)]">{fmtSize(a.size)}{a.width ? ` · ${a.width}×${a.height}` : ''}</p>
                 </div>
               )}
             </div>
@@ -139,13 +139,13 @@ export function MediaField({ value, onChange, label }: { value: string; onChange
           {value
             ? // eslint-disable-next-line @next/next/no-img-element
             <img src={value} alt="" className="h-full w-full object-cover" />
-            : <span className="text-[0.6rem] text-[var(--color-stone-soft)]">None</span>}
+            : <span className="text-[0.6rem] text-[var(--color-stone)]">None</span>}
         </div>
         <div className="flex-1">
           <input className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={value} placeholder="https://… or choose from library" onChange={(e) => onChange(e.target.value)} />
         </div>
         <button type="button" onClick={() => setOpen(true)} className="shrink-0 rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Library</button>
-        {value && <button type="button" onClick={() => onChange('')} className="shrink-0 text-sm text-[var(--color-stone-soft)] hover:text-[#c0392b]">Clear</button>}
+        {value && <button type="button" onClick={() => onChange('')} className="shrink-0 text-sm text-[var(--color-stone)] hover:text-[#c0392b]">Clear</button>}
       </div>
 
       {open && (

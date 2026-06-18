@@ -45,7 +45,7 @@ export function FacilityDocsViewer({ docs, canManage = false }: { docs: Facility
     <div className="space-y-7">
       {groups.map((g) => (
         <section key={g.type}>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-stone-soft)]">{TYPE_LABEL[g.type] ?? g.type}</p>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-stone)]">{TYPE_LABEL[g.type] ?? g.type}</p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {g.items.map((d) => (
               <div key={d.id} className="group relative overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">

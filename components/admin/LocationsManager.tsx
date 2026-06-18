@@ -55,7 +55,7 @@ function Card({ loc, uk }: { loc: Loc; uk: boolean }) {
           <p className="mt-2 text-sm text-[var(--color-stone)]">
             {[loc.addressLine, loc.city, loc.postcode].filter(Boolean).join(', ') || L('No address set', 'Адресу не вказано')}
           </p>
-          <p className="mt-1 text-xs text-[var(--color-stone-soft)]">{[loc.phone, loc.email].filter(Boolean).join(' · ')}</p>
+          <p className="mt-1 text-xs text-[var(--color-stone)]">{[loc.phone, loc.email].filter(Boolean).join(' · ')}</p>
           <div className="mt-3 flex items-center gap-4 text-xs">
             <span className="text-[var(--color-stone)]">{loc.staffCount} {L('clinician(s)', 'клініцист(ів)')}</span>
             {!loc.isPrimary && <button onClick={setPrimary} className="text-[var(--color-gold)] hover:underline">{L('Make primary', 'Зробити основною')}</button>}

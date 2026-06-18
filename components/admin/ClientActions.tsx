@@ -90,7 +90,7 @@ export function PinToggle({ noteId, clientId, pinned }: { noteId: string; client
       disabled={pending}
       onClick={() => start(() => togglePinNote(noteId, clientId, !pinned))}
       title={pinned ? 'Unpin' : 'Pin to top'}
-      className={`text-xs transition-colors disabled:opacity-50 ${pinned ? 'text-[var(--color-gold)]' : 'text-[var(--color-stone-soft)] hover:text-[var(--color-ink)]'}`}
+      className={`text-xs transition-colors disabled:opacity-50 ${pinned ? 'text-[var(--color-gold)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}
     >
       {pinned ? '★ Pinned' : '☆ Pin'}
     </button>

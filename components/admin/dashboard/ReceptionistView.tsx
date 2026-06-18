@@ -159,7 +159,7 @@ export async function ReceptionistView({ session }: { session: Session }) {
               <div key={u.bookingId} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-4">
                 <div className="flex items-baseline justify-between gap-2">
                   <Link href={`/admin/clients/${u.clientId}`} className="text-sm font-medium hover:text-[var(--color-gold)]">{u.clientName}</Link>
-                  <span className="text-xs text-[var(--color-stone-soft)]">just finished {u.treatment}</span>
+                  <span className="text-xs text-[var(--color-stone)]">just finished {u.treatment}</span>
                 </div>
                 <ul className="mt-3 space-y-2.5">
                   {u.suggestions.map((s, i) => (

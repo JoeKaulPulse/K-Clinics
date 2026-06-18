@@ -67,7 +67,7 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
 
       <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
         {filtered.length === 0 ? (
-          <p className="p-6 text-sm text-[var(--color-stone-soft)]">No suppliers yet.</p>
+          <p className="p-6 text-sm text-[var(--color-stone)]">No suppliers yet.</p>
         ) : (
           <table className="w-full text-sm">
             <thead className="border-b border-[var(--color-line)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]">
@@ -76,11 +76,11 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
             <tbody>
               {filtered.map((s) => (
                 <tr key={s.id} onClick={() => openEdit(s.id)} className={`cursor-pointer border-b border-[var(--color-line)] last:border-0 hover:bg-[var(--color-bone)] ${!s.active ? 'opacity-50' : ''}`}>
-                  <td className="px-4 py-2.5 font-medium">{s.name}{!s.active && <span className="ml-2 text-[0.6rem] uppercase text-[var(--color-stone-soft)]">inactive</span>}</td>
+                  <td className="px-4 py-2.5 font-medium">{s.name}{!s.active && <span className="ml-2 text-[0.6rem] uppercase text-[var(--color-stone)]">inactive</span>}</td>
                   <td className="px-4 py-2.5 text-[var(--color-stone)]">{s.category || '—'}</td>
                   <td className="px-4 py-2.5 text-[var(--color-stone)]">{s.contactName || s.email || '—'}</td>
                   <td className="px-4 py-2.5 text-[var(--color-stone)]">{s.phone || '—'}</td>
-                  <td className="px-4 py-2.5">{s.xeroContactId ? <span className="rounded-full bg-[var(--color-jade)]/15 px-2 py-0.5 text-[0.6rem] font-medium text-[var(--color-jade)]">linked</span> : <span className="text-[var(--color-stone-soft)]">—</span>}</td>
+                  <td className="px-4 py-2.5">{s.xeroContactId ? <span className="rounded-full bg-[var(--color-jade)]/15 px-2 py-0.5 text-[0.6rem] font-medium text-[var(--color-jade)]">linked</span> : <span className="text-[var(--color-stone)]">—</span>}</td>
                 </tr>
               ))}
             </tbody>
@@ -127,14 +127,14 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
                   <p className={label}>Xero bills</p>
                   {editing.xeroContactId
                     ? <button onClick={() => loadBills(editing.id!)} className="text-xs font-medium text-[var(--color-gold)] hover:underline">Load bills →</button>
-                    : <span className="text-xs text-[var(--color-stone-soft)]">Add a Xero contact ID to see bills</span>}
+                    : <span className="text-xs text-[var(--color-stone)]">Add a Xero contact ID to see bills</span>}
                 </div>
                 {billsMsg && <p className="mt-1 text-sm text-[var(--color-stone)]">{billsMsg}</p>}
                 {bills && bills.length > 0 && (
                   <ul className="mt-2 divide-y divide-[var(--color-line)] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white text-sm">
                     {bills.map((bl, i) => (
                       <li key={i} className="flex items-center justify-between px-3 py-2">
-                        <span>{bl.invoiceNumber} · {bl.date ? new Date(bl.date).toLocaleDateString('en-GB') : '—'} <span className="text-[var(--color-stone-soft)]">({bl.status})</span></span>
+                        <span>{bl.invoiceNumber} · {bl.date ? new Date(bl.date).toLocaleDateString('en-GB') : '—'} <span className="text-[var(--color-stone)]">({bl.status})</span></span>
                         <span className="font-medium">£{bl.total.toFixed(2)}{bl.amountDue > 0 && <span className="ml-1 text-[var(--color-blush)]">· £{bl.amountDue.toFixed(2)} due</span>}</span>
                       </li>
                     ))}

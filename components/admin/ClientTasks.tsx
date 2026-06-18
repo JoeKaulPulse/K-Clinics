@@ -46,7 +46,7 @@ export function ClientTasks({ clientId, tasks }: { clientId: string; tasks: Task
               <button onClick={() => complete(t.id)} title="Mark done" className="mt-0.5 h-4 w-4 shrink-0 rounded-full border border-[var(--color-stone-soft)] hover:border-[var(--color-gold)]" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm">{t.title}</p>
-                <p className="text-xs text-[var(--color-stone-soft)]">
+                <p className="text-xs text-[var(--color-stone)]">
                   {t.priority.toLowerCase()}{t.dueAt ? ` · ${new Date(t.dueAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}{t.assigneeName ? ` · ${t.assigneeName}` : ''}
                 </p>
               </div>

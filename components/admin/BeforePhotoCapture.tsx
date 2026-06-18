@@ -77,7 +77,7 @@ export function BeforePhotoCapture({ bookingId, clientId, photos, optOutSigned, 
 
   return (
     <div>
-      <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Before &amp; after photo <span className={`text-xs font-normal ${required ? 'text-[var(--color-blush)]' : 'text-[var(--color-stone-soft)]'}`}>· {required ? 'required for laser' : 'optional'}</span></h2>
+      <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Before &amp; after photo <span className={`text-xs font-normal ${required ? 'text-[var(--color-blush)]' : 'text-[var(--color-stone)]'}`}>· {required ? 'required for laser' : 'optional'}</span></h2>
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
         <div className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/15 px-3 py-2 text-xs text-[var(--color-ink)]">
           ⚠ Capture stays in this secure system — it is <strong>never saved to this device</strong>. <strong>No intimate areas</strong> may be photographed.

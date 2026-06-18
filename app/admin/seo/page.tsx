@@ -36,7 +36,7 @@ export default async function SeoPage() {
         {/* Organic search — live top queries from Search Console (when connected). */}
         <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="font-[family-name:var(--font-display)] text-lg">Organic search <span className="text-xs font-normal text-[var(--color-stone-soft)]">· Search Console · 28 days</span></h2>
+            <h2 className="font-[family-name:var(--font-display)] text-lg">Organic search <span className="text-xs font-normal text-[var(--color-stone)]">· Search Console · 28 days</span></h2>
             {gsc.configured && <span className="text-xs text-[var(--color-stone)] tabular-nums">{gsc.totals.clicks.toLocaleString('en-GB')} clicks · {gsc.totals.impressions.toLocaleString('en-GB')} impressions · {pct(gsc.totals.ctr)} CTR</span>}
           </div>
           {!gsc.configured ? (
@@ -45,7 +45,7 @@ export default async function SeoPage() {
             <p className="text-sm text-[var(--color-stone)]">No Search Console data for the last 28 days.</p>
           ) : (
             <table className="w-full text-sm">
-              <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th className="pb-2">Query</th><th className="pb-2 text-right">Clicks</th><th className="pb-2 text-right">Impr.</th><th className="pb-2 text-right">CTR</th><th className="pb-2 text-right">Pos.</th></tr></thead>
+              <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th className="pb-2">Query</th><th className="pb-2 text-right">Clicks</th><th className="pb-2 text-right">Impr.</th><th className="pb-2 text-right">CTR</th><th className="pb-2 text-right">Pos.</th></tr></thead>
               <tbody>
                 {gsc.topQueries.map((q) => (
                   <tr key={q.query} className="border-t border-[var(--color-line)]">

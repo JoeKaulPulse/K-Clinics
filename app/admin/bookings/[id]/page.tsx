@@ -184,7 +184,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
               Course of {courseSessions} sessions{perSessionPence > 0 ? ` · ${money(perSessionPence)} per session` : ''}
             </p>
           ) : (
-            <p className="mt-2 text-sm text-[var(--color-stone-soft)]">Single session</p>
+            <p className="mt-2 text-sm text-[var(--color-stone)]">Single session</p>
           )}
         </div>
         <div className="text-right">
@@ -207,7 +207,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             <Link href={`/admin/clients/${b.clientId}`} className="font-medium hover:text-[var(--color-gold)]">{name}</Link>
             <p className="mt-1 text-sm text-[var(--color-stone)]">{b.client.email}{b.client.phone ? ` · ${b.client.phone}` : ''}</p>
             {(() => { const n = (b.notes || '').replace(/\s*\[wp:[^\]]+\]/g, '').trim(); return n ? <p className="mt-3 whitespace-pre-line border-t border-[var(--color-line)] pt-3 text-sm">{n}</p> : null; })()}
-            <p className="mt-3 text-xs text-[var(--color-stone-soft)]">
+            <p className="mt-3 text-xs text-[var(--color-stone)]">
               Card {b.stripePaymentMethodId ? 'saved ✓' : 'not saved'} · booked {new Date(b.createdAt).toLocaleDateString('en-GB')}
             </p>
             {!b.stripePaymentMethodId && !['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(b.status) && sessionCan(session, 'bookings.charge') && (
@@ -281,7 +281,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
                 </div>
               </div>
               {canAddTreatment && <div className="mt-4"><AddTreatment bookingId={b.id} variants={variantOptions} /></div>}
-              {b.chargedAt && addOnItems.length > 0 && <p className="mt-3 text-xs text-[var(--color-stone-soft)]">Already charged — add further treatments to a new booking.</p>}
+              {b.chargedAt && addOnItems.length > 0 && <p className="mt-3 text-xs text-[var(--color-stone)]">Already charged — add further treatments to a new booking.</p>}
             </div>
           )}
           <ReadinessPanel items={readiness.items} ready={readiness.ready} neededCount={readiness.neededCount} started={!!b.startedAt} />
@@ -350,7 +350,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             <li key={e.id} className="relative">
               <span className="absolute -left-[1.45rem] top-1.5 h-2.5 w-2.5 rounded-full bg-[var(--color-gold)]" />
               <p className="text-sm font-medium">{e.summary}</p>
-              <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">
+              <p className="mt-0.5 text-xs text-[var(--color-stone)]">
                 {new Date(e.createdAt).toLocaleString('en-GB')} · {e.action.toLowerCase().replace(/_/g, ' ')} · {e.actor}
               </p>
             </li>
@@ -371,7 +371,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
 
       {visitPrefs && (visitPrefs.refreshments.length > 0 || visitPrefs.allergyNote || nextRec || visitPrefs.aftercareAckAt) && (
         <div className="mt-6 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)] p-4 text-sm">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">Visit prep</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-stone)]">Visit prep</p>
           {visitPrefs.refreshments.length > 0 && <p>☕ Refreshments: <span className="font-medium text-[var(--color-ink)]">{visitPrefs.refreshments.map(refreshmentLabel).join(', ')}</span></p>}
           {visitPrefs.allergyNote && <p className="text-[var(--color-blush)]">⚠ Allergies/dietary: <span className="font-medium">{visitPrefs.allergyNote}</span></p>}
           <p className="text-[var(--color-stone)]">Aftercare agreed: {visitPrefs.aftercareAckAt ? `Yes (${visitPrefs.aftercareAckAt.toLocaleDateString('en-GB')})` : 'Not yet'}</p>

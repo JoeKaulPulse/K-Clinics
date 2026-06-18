@@ -60,11 +60,11 @@ export function StudentsManager({ students }: { students: StudentRow[] }) {
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-sm text-[var(--color-stone-soft)]">{students.length === 0 ? 'No trainee accounts yet. Trainees appear here once they sign up to the portal.' : 'No trainees match your search.'}</p>
+        <p className="text-sm text-[var(--color-stone)]">{students.length === 0 ? 'No trainee accounts yet. Trainees appear here once they sign up to the portal.' : 'No trainees match your search.'}</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[860px] text-sm">
-            <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">
+            <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]">
               <th scope="col" className="py-1 pr-2">Trainee</th><th scope="col" className="px-2">Enrolments</th><th scope="col" className="px-2">Progress</th><th scope="col" className="px-2">XP</th><th scope="col" className="px-2">Joined</th><th scope="col" className="px-2">Last login</th><th scope="col" className="px-2">Access</th>
             </tr></thead>
             <tbody>
@@ -73,11 +73,11 @@ export function StudentsManager({ students }: { students: StudentRow[] }) {
                   <td className="py-2 pr-2">
                     <span className="font-medium">{s.firstName} {s.lastName ?? ''}</span>
                     {!s.portalActive && <span className="ml-1 rounded-full bg-[var(--color-blush)]/15 px-1.5 py-0.5 text-[0.6rem] text-[var(--color-blush)]">Suspended</span>}
-                    <span className="block text-xs text-[var(--color-stone-soft)]">{s.email}{s.phone ? ` · ${s.phone}` : ''}</span>
+                    <span className="block text-xs text-[var(--color-stone)]">{s.email}{s.phone ? ` · ${s.phone}` : ''}</span>
                     <NoteEditor notes={s.notes} onSave={(notes) => act({ op: 'updateStudentNotes', id: s.id, notes })} />
                   </td>
                   <td className="px-2">
-                    {s.enrolments.length === 0 ? <span className="text-xs text-[var(--color-stone-soft)]">—</span> : (
+                    {s.enrolments.length === 0 ? <span className="text-xs text-[var(--color-stone)]">—</span> : (
                       <span className="flex flex-col gap-1">
                         {s.enrolments.map((e, i) => (
                           <span key={i} className="text-xs">
@@ -88,7 +88,7 @@ export function StudentsManager({ students }: { students: StudentRow[] }) {
                     )}
                   </td>
                   <td className="px-2 text-xs text-[var(--color-stone)]">{s.lessonsCompleted} lesson{s.lessonsCompleted === 1 ? '' : 's'}<br />{s.quizAttempts} quiz attempt{s.quizAttempts === 1 ? '' : 's'}</td>
-                  <td className="px-2"><span className="font-medium text-[var(--color-ink)]">{s.xp.toLocaleString()}</span>{s.badges > 0 && <span className="block text-xs text-[var(--color-stone-soft)]">🏅 {s.badges}</span>}</td>
+                  <td className="px-2"><span className="font-medium text-[var(--color-ink)]">{s.xp.toLocaleString()}</span>{s.badges > 0 && <span className="block text-xs text-[var(--color-stone)]">🏅 {s.badges}</span>}</td>
                   <td className="px-2 text-xs text-[var(--color-stone)]">{fmtDate(s.createdAt)}</td>
                   <td className="px-2 text-xs text-[var(--color-stone)]">{fmtDate(s.lastLoginAt)}</td>
                   <td className="px-2">
@@ -112,7 +112,7 @@ function NoteEditor({ notes, onSave }: { notes: string | null; onSave: (notes: s
   const [val, setVal] = useState(notes ?? '');
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="mt-1 block text-left text-xs text-[var(--color-stone-soft)] hover:text-[var(--color-gold)]">
+      <button onClick={() => setOpen(true)} className="mt-1 block text-left text-xs text-[var(--color-stone)] hover:text-[var(--color-gold)]">
         {notes ? `Note: ${notes.length > 60 ? notes.slice(0, 60) + '…' : notes}` : '+ Add note'}
       </button>
     );
@@ -121,7 +121,7 @@ function NoteEditor({ notes, onSave }: { notes: string | null; onSave: (notes: s
     <span className="mt-1 flex items-center gap-1.5">
       <input autoFocus value={val} onChange={(e) => setVal(e.target.value)} placeholder="Internal note" className="w-52 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1 text-xs" />
       <button onClick={() => { onSave(val); setOpen(false); }} className="text-xs text-[var(--color-gold)] hover:underline">Save</button>
-      <button onClick={() => { setVal(notes ?? ''); setOpen(false); }} className="text-xs text-[var(--color-stone-soft)] hover:underline">Cancel</button>
+      <button onClick={() => { setVal(notes ?? ''); setOpen(false); }} className="text-xs text-[var(--color-stone)] hover:underline">Cancel</button>
     </span>
   );
 }

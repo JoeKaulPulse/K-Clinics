@@ -41,8 +41,8 @@ export function BlocksList({ blocks }: { blocks: Row[] }) {
       <div className="mt-6 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
         {blocks.length === 0 ? <p className="p-6 text-sm text-[var(--color-stone)]">No reusable blocks yet.</p> : blocks.map((b) => (
           <Link key={b.id} href={`/admin/blocks/${b.id}`} className="flex items-center justify-between border-b border-[var(--color-line)] px-5 py-3.5 last:border-0 hover:bg-[var(--color-bone)]">
-            <span><span className="font-medium">{b.name}</span><span className="ml-2 text-sm text-[var(--color-stone-soft)]">{b.type}</span></span>
-            <span className="text-xs text-[var(--color-stone-soft)]">{new Date(b.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+            <span><span className="font-medium">{b.name}</span><span className="ml-2 text-sm text-[var(--color-stone)]">{b.type}</span></span>
+            <span className="text-xs text-[var(--color-stone)]">{new Date(b.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
           </Link>
         ))}
       </div>

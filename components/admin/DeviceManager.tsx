@@ -105,7 +105,7 @@ export function DeviceManager({ devices, providers, rooms = [] }: { devices: Dev
                 {d.kind === 'DISPLAY' && d.roomId ? ` · ${rooms.find((r) => r.id === d.roomId)?.name ?? 'room'}` : ''}
               </p>
               {d.kind === 'DISPLAY' && d.token && (
-                <p className="mt-1 text-xs text-[var(--color-stone-soft)]">Point the screen at <a href={`/room-display/${d.token}`} target="_blank" rel="noreferrer" className="break-all text-[var(--color-gold)] underline">/room-display/{d.token}</a></p>
+                <p className="mt-1 text-xs text-[var(--color-stone)]">Point the screen at <a href={`/room-display/${d.token}`} target="_blank" rel="noreferrer" className="break-all text-[var(--color-gold)] underline">/room-display/{d.token}</a></p>
               )}
             </div>
             <div className="flex shrink-0 items-center gap-2">

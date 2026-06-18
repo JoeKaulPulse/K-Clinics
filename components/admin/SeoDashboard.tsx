@@ -60,7 +60,7 @@ function PageRow({ p }: { p: PageScore }) {
         <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold text-white ${gradeTone(p.grade)}`}>{p.grade}</span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium text-[var(--color-ink)]">{p.path}{p.overridden && <span className="ml-2 rounded-full bg-[var(--color-gold)]/15 px-1.5 py-0.5 text-[0.6rem] text-[var(--color-gold)]">custom</span>}</span>
-          <span className="block truncate text-xs text-[var(--color-stone-soft)]">{p.title}</span>
+          <span className="block truncate text-xs text-[var(--color-stone)]">{p.title}</span>
         </span>
         <span className="hidden shrink-0 gap-3 text-xs text-[var(--color-stone)] sm:flex">
           {CATS.map(([k, label]) => <span key={k} className={tone(p[k as keyof PageScore] as number)}>{label.split(' ')[0]} {p[k as keyof PageScore] as number}</span>)}
@@ -120,8 +120,8 @@ function PageEditor({ p }: { p: PageScore }) {
         </ul>
       )}
       <div className="grid gap-3">
-        <label className="text-xs text-[var(--color-stone)]">Title <span className="text-[var(--color-stone-soft)]">({f.title.length} chars)</span><input className={field} value={f.title} onChange={(e) => set('title', e.target.value)} /></label>
-        <label className="text-xs text-[var(--color-stone)]">Meta description <span className="text-[var(--color-stone-soft)]">({f.description.length} chars)</span><textarea rows={2} className={field} value={f.description} onChange={(e) => set('description', e.target.value)} /></label>
+        <label className="text-xs text-[var(--color-stone)]">Title <span className="text-[var(--color-stone)]">({f.title.length} chars)</span><input className={field} value={f.title} onChange={(e) => set('title', e.target.value)} /></label>
+        <label className="text-xs text-[var(--color-stone)]">Meta description <span className="text-[var(--color-stone)]">({f.description.length} chars)</span><textarea rows={2} className={field} value={f.description} onChange={(e) => set('description', e.target.value)} /></label>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-xs text-[var(--color-stone)]">Focus keyword<input className={field} value={f.focusKeyword} onChange={(e) => set('focusKeyword', e.target.value)} /></label>
           <label className="text-xs text-[var(--color-stone)]">Canonical URL (optional)<input className={field} value={f.canonical} onChange={(e) => set('canonical', e.target.value)} placeholder="leave blank for default" /></label>
@@ -142,7 +142,7 @@ function PageEditor({ p }: { p: PageScore }) {
           loading="lazy"
           className="w-full max-w-[400px] rounded-[var(--radius-sm)] border border-[var(--color-line)]"
         />
-        <p className="mt-1 text-[0.7rem] text-[var(--color-stone-soft)]">How this page looks when shared on WhatsApp, iMessage, LinkedIn, X & Slack. Leave OG image blank to auto-generate from the title + description.</p>
+        <p className="mt-1 text-[0.7rem] text-[var(--color-stone)]">How this page looks when shared on WhatsApp, iMessage, LinkedIn, X & Slack. Leave OG image blank to auto-generate from the title + description.</p>
       </div>
       {recs.length > 0 && (
         <div className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-bone)] p-3">
@@ -156,7 +156,7 @@ function PageEditor({ p }: { p: PageScore }) {
         {p.overridden && <button onClick={clear} className="text-xs text-[var(--color-blush)] hover:underline">Remove override</button>}
         {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
       </div>
-      <p className="mt-2 text-[0.7rem] text-[var(--color-stone-soft)]">A live preview crawl reads the rendered page; scores update on save and reload.</p>
+      <p className="mt-2 text-[0.7rem] text-[var(--color-stone)]">A live preview crawl reads the rendered page; scores update on save and reload.</p>
     </div>
   );
 }

@@ -44,7 +44,7 @@ export function BrandKitManager({ initial }: { initial: BrandKit }) {
               <div className="min-w-0 flex-1">
                 <input value={c.name} onChange={(e) => setColor(i, { name: e.target.value })} placeholder="Name" className="w-full bg-transparent text-sm font-medium outline-none" />
                 <input value={c.role} onChange={(e) => setColor(i, { role: e.target.value })} placeholder="Where it's used" className="w-full bg-transparent text-xs text-[var(--color-stone)] outline-none" />
-                <span className="font-mono text-[0.65rem] uppercase text-[var(--color-stone-soft)]">{c.hex}</span>
+                <span className="font-mono text-[0.65rem] uppercase text-[var(--color-stone)]">{c.hex}</span>
               </div>
               <button onClick={() => removeColor(i)} className="shrink-0 text-xs text-[var(--color-blush)] hover:underline">✕</button>
             </div>

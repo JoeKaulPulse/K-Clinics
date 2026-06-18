@@ -93,7 +93,7 @@ export function PosTerminal({ products }: { products: P[] }) {
                 <button key={p.id} onClick={() => !out && add(p.id)} disabled={out} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3 text-left transition-shadow hover:shadow-[var(--shadow-soft)] disabled:opacity-40">
                   <div className="font-medium leading-tight">{p.name}</div>
                   <div className="mt-1 text-sm text-[var(--color-gold-deep)]">{money(p.pricePence)}</div>
-                  <div className="mt-0.5 text-[0.7rem] text-[var(--color-stone-soft)]">{out ? 'Out of stock' : p.trackInventory ? `${p.stockQty} in stock` : 'In stock'}{p.ageRestricted ? ' · 18+' : ''}</div>
+                  <div className="mt-0.5 text-[0.7rem] text-[var(--color-stone)]">{out ? 'Out of stock' : p.trackInventory ? `${p.stockQty} in stock` : 'In stock'}{p.ageRestricted ? ' · 18+' : ''}</div>
                 </button>
               );
             })}

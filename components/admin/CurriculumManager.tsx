@@ -51,7 +51,7 @@ function CourseMeta({ course, busy, act }: { course: Course; busy: boolean; act:
       <div className="flex items-center gap-3 p-4">
         <button onClick={() => setOpen((v) => !v)} className="text-[var(--color-stone)]">{open ? '▾' : '▸'}</button>
         <span className="flex-1 font-[family-name:var(--font-display)] text-lg">Course goals &amp; welcome</span>
-        <span className="text-xs text-[var(--color-stone-soft)]">{course.objectives.length} objective(s){course.welcome ? ' · welcome set' : ''}</span>
+        <span className="text-xs text-[var(--color-stone)]">{course.objectives.length} objective(s){course.welcome ? ' · welcome set' : ''}</span>
       </div>
       {open && (
         <div className="space-y-3 border-t border-[var(--color-line)] p-4">
@@ -76,9 +76,9 @@ function ModuleCard({ module: m, index, total, busy, act, onMove }: { module: Mo
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
       <div className="flex flex-wrap items-center gap-3 p-4">
         <button onClick={() => setOpen((v) => !v)} className="text-[var(--color-stone)]">{open ? '▾' : '▸'}</button>
-        <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-stone-soft)]">Module {index + 1}</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">Module {index + 1}</span>
         <span className="flex-1 font-[family-name:var(--font-display)] text-lg">{m.title}</span>
-        <span className="text-xs text-[var(--color-stone-soft)]">{m.lessons.length} lessons · {m.quiz ? `${m.quiz.questions.length} Q` : 'no quiz'}</span>
+        <span className="text-xs text-[var(--color-stone)]">{m.lessons.length} lessons · {m.quiz ? `${m.quiz.questions.length} Q` : 'no quiz'}</span>
         <button onClick={() => onMove(-1)} disabled={busy || index === 0} className={btnGhost}>↑</button>
         <button onClick={() => onMove(1)} disabled={busy || index === total - 1} className={btnGhost}>↓</button>
         <button onClick={() => { if (confirm('Delete this module and all its lessons/quiz?')) act({ op: 'deleteModule', id: m.id }); }} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline">Delete</button>
@@ -304,7 +304,7 @@ function QuestionRow({ q, index, total, busy, act, ids }: { q: Question; index: 
                 <option value="TRUEFALSE">True / False</option>
               </select>
             </label>
-            <span className="self-end pb-2 text-xs text-[var(--color-stone-soft)]">{type === 'MULTI' ? 'Tick all correct answers' : 'Select the one correct answer'}</span>
+            <span className="self-end pb-2 text-xs text-[var(--color-stone)]">{type === 'MULTI' ? 'Tick all correct answers' : 'Select the one correct answer'}</span>
           </div>
           <div>
             <p className={label}>Options</p>

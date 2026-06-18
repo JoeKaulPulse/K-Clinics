@@ -163,14 +163,14 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
                   onDrop={(e) => { e.preventDefault(); if (dragId) reorder(dragId, sec.id); setDragId(null); setOverId(null); }}
                 >
                   <div className="flex items-center gap-2 px-3 py-3">
-                    <button draggable onDragStart={() => setDragId(sec.id)} onDragEnd={() => { setDragId(null); setOverId(null); }} className="cursor-grab text-[var(--color-stone-soft)] hover:text-[var(--color-ink)] active:cursor-grabbing" title="Drag to reorder" aria-label="Drag to reorder">⠿</button>
+                    <button draggable onDragStart={() => setDragId(sec.id)} onDragEnd={() => { setDragId(null); setOverId(null); }} className="cursor-grab text-[var(--color-stone)] hover:text-[var(--color-ink)] active:cursor-grabbing" title="Drag to reorder" aria-label="Drag to reorder">⠿</button>
                     <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[var(--radius-sm)] bg-[var(--color-bone)] text-sm text-[var(--color-stone)]">{isRef ? '⟐' : def?.glyph ?? '▢'}</span>
                     <button onClick={() => !isRef && setOpenId(open ? null : sec.id)} className="min-w-0 flex-1 text-left">
                       <span className="font-medium">{isRef ? 'Reusable block' : def?.label ?? sec.type}</span>
                       {sec.hidden && <span className="ml-2 rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">Hidden</span>}
-                      <span className="ml-2 truncate text-sm text-[var(--color-stone-soft)]">{isRef ? reuseName(refId) : sectionSummary(sec)}</span>
+                      <span className="ml-2 truncate text-sm text-[var(--color-stone)]">{isRef ? reuseName(refId) : sectionSummary(sec)}</span>
                     </button>
-                    <span className="flex items-center gap-1.5 text-[var(--color-stone-soft)]">
+                    <span className="flex items-center gap-1.5 text-[var(--color-stone)]">
                       <button onClick={() => toggleHide(sec.id)} title={sec.hidden ? 'Show' : 'Hide'} aria-label="Toggle visibility" className="hover:text-[var(--color-ink)]">{sec.hidden ? '◌' : '◉'}</button>
                       {!isRef && <button onClick={() => duplicate(i)} title="Duplicate" aria-label="Duplicate" className="hover:text-[var(--color-ink)]">⧉</button>}
                       <button onClick={() => moveSec(i, -1)} aria-label="Up" className="hover:text-[var(--color-ink)] disabled:opacity-30" disabled={i === 0}>▲</button>
@@ -208,7 +208,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
             <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] p-10 text-center">
               <p className="text-sm text-[var(--color-stone)]">This page is empty.</p>
               {seed && seed.length > 0 && <button onClick={() => { setSections(seed); setOpenId(seed[0]?.id ?? null); }} className="mt-4 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)]">Start from the current page content</button>}
-              <p className="mt-3 text-xs text-[var(--color-stone-soft)]">{seed && seed.length > 0 ? 'Loads the existing content as editable sections, or use “＋ Section”.' : 'Use “＋ Section” above to add your first section.'}</p>
+              <p className="mt-3 text-xs text-[var(--color-stone)]">{seed && seed.length > 0 ? 'Loads the existing content as editable sections, or use “＋ Section”.' : 'Use “＋ Section” above to add your first section.'}</p>
             </div>
           )}
         </div>
@@ -229,7 +229,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
                 <iframe key={nonce} src={`/preview/${initial.id}`} title="Live preview" className="h-[78vh] w-full" />
               </div>
             </div>
-            <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Edits autosave to the draft and refresh here. Click Publish to go live.</p>
+            <p className="mt-2 text-xs text-[var(--color-stone)]">Edits autosave to the draft and refresh here. Click Publish to go live.</p>
           </div>
         ) : (
           <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
@@ -241,9 +241,9 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
             <div className={`${card} p-4`}>
               <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-stone)]">Schedule</h3>
               <div className="space-y-3">
-                <div><label className="mb-1 block text-xs text-[var(--color-stone)]">Go live at <span className="text-[var(--color-stone-soft)]">(optional)</span></label><input type="datetime-local" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={publishAt} onChange={(e) => setPublishAt(e.target.value)} /></div>
-                <div><label className="mb-1 block text-xs text-[var(--color-stone)]">Take down at <span className="text-[var(--color-stone-soft)]">(optional)</span></label><input type="datetime-local" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={unpublishAt} onChange={(e) => setUnpublishAt(e.target.value)} /></div>
-                <p className="text-xs text-[var(--color-stone-soft)]">Set a future go-live, then press Publish to schedule. Windows apply within a few minutes.</p>
+                <div><label className="mb-1 block text-xs text-[var(--color-stone)]">Go live at <span className="text-[var(--color-stone)]">(optional)</span></label><input type="datetime-local" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={publishAt} onChange={(e) => setPublishAt(e.target.value)} /></div>
+                <div><label className="mb-1 block text-xs text-[var(--color-stone)]">Take down at <span className="text-[var(--color-stone)]">(optional)</span></label><input type="datetime-local" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={unpublishAt} onChange={(e) => setUnpublishAt(e.target.value)} /></div>
+                <p className="text-xs text-[var(--color-stone)]">Set a future go-live, then press Publish to schedule. Windows apply within a few minutes.</p>
               </div>
             </div>
 
@@ -261,7 +261,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
 
             <div className={`${card} p-4`}>
               <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-stone)]">Version history</h3>
-              {revisions.length === 0 ? <p className="text-sm text-[var(--color-stone-soft)]">Publishing creates restore points.</p> : (
+              {revisions.length === 0 ? <p className="text-sm text-[var(--color-stone)]">Publishing creates restore points.</p> : (
                 <ul className="space-y-2">
                   {revisions.map((r) => (
                     <li key={r.id} className="flex items-center justify-between gap-2 border-b border-[var(--color-line)] pb-2 text-sm last:border-0">
@@ -274,7 +274,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
             </div>
             <div className={`${card} p-4`}>
               <h3 className="mb-3 flex items-center justify-between text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-stone)]">Audit {audit.length === 0 && <span className="text-[var(--color-jade)]">✓ all good</span>}</h3>
-              {audit.length === 0 ? <p className="text-sm text-[var(--color-stone-soft)]">No accessibility or SEO issues found.</p> : (
+              {audit.length === 0 ? <p className="text-sm text-[var(--color-stone)]">No accessibility or SEO issues found.</p> : (
                 <ul className="space-y-2 text-sm">
                   {audit.map((a, i) => (
                     <li key={i} className="flex gap-2"><span className={a.level === 'warn' ? 'text-[#c0392b]' : 'text-[var(--color-gold)]'}>{a.level === 'warn' ? '!' : '○'}</span><span className="text-[var(--color-ink-soft)]">{a.text}</span></li>
@@ -285,7 +285,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
 
             <div className="flex flex-wrap gap-4">
               <button onClick={duplicatePage} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">Duplicate page</button>
-              <button onClick={del} className="text-sm text-[var(--color-stone-soft)] hover:text-[#c0392b]">Delete page</button>
+              <button onClick={del} className="text-sm text-[var(--color-stone)] hover:text-[#c0392b]">Delete page</button>
             </div>
           </aside>
         )}
@@ -304,13 +304,13 @@ function Adder({ open, onToggle, onPick, reusables = [], onPickRef }: { open: bo
             {SECTION_DEFS.map((d) => (
               <button key={d.type} onClick={() => onPick(d.type)} className="flex items-start gap-2 rounded-[var(--radius-sm)] p-2 text-left hover:bg-[var(--color-bone)]">
                 <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[var(--radius-sm)] bg-[var(--color-bone)] text-sm text-[var(--color-stone)]">{d.glyph}</span>
-                <span><span className="block text-sm font-medium">{d.label}</span><span className="block text-xs text-[var(--color-stone-soft)]">{d.description}</span></span>
+                <span><span className="block text-sm font-medium">{d.label}</span><span className="block text-xs text-[var(--color-stone)]">{d.description}</span></span>
               </button>
             ))}
           </div>
           {reusables.length > 0 && (
             <div className="mt-2 border-t border-[var(--color-line)] pt-2">
-              <p className="px-2 pb-1 text-[0.6rem] uppercase tracking-[0.12em] text-[var(--color-stone-soft)]">Reusable blocks</p>
+              <p className="px-2 pb-1 text-[0.6rem] uppercase tracking-[0.12em] text-[var(--color-stone)]">Reusable blocks</p>
               <div className="grid gap-1">
                 {reusables.map((r) => (
                   <button key={r.id} onClick={() => onPickRef?.(r.id)} className="flex items-center gap-2 rounded-[var(--radius-sm)] p-2 text-left hover:bg-[var(--color-bone)]">

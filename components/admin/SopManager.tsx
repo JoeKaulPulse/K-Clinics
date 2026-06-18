@@ -22,7 +22,7 @@ export function SopManager({ items }: { items: Item[] }) {
             {i.source === 'db' ? (
               <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.6rem] ${activeSlug === i.slug ? 'bg-white/20' : 'bg-[var(--color-gold)]/20'}`}>custom</span>
             ) : (
-              <span className={`shrink-0 text-[0.6rem] ${activeSlug === i.slug ? 'text-white/60' : 'text-[var(--color-stone-soft)]'}`}>default</span>
+              <span className={`shrink-0 text-[0.6rem] ${activeSlug === i.slug ? 'text-white/60' : 'text-[var(--color-stone)]'}`}>default</span>
             )}
           </button>
         ))}

@@ -103,7 +103,7 @@ export function FundingApplications({ applications }: { applications: FundingVie
               className={`${field} w-full`}
             />
           </div>
-          <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Received {fmtDate(r.createdAt)}</p>
+          <p className="mt-2 text-xs text-[var(--color-stone)]">Received {fmtDate(r.createdAt)}</p>
         </div>
       ))}
     </div>

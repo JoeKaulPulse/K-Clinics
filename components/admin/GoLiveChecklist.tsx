@@ -124,7 +124,7 @@ export function GoLiveChecklist({ groups: initial }: { groups: GoLiveGroup[] }) 
                           className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-white px-3 py-1 text-xs font-medium text-[var(--color-ink)] transition-colors hover:border-[var(--color-gold)] hover:bg-[var(--color-bone)]"
                         >
                           {l.label}
-                          <span aria-hidden className="text-[var(--color-stone-soft)]">{l.external ? '↗' : '→'}</span>
+                          <span aria-hidden className="text-[var(--color-stone)]">{l.external ? '↗' : '→'}</span>
                         </a>
                       ))}
                     </div>

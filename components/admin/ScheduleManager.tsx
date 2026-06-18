@@ -160,7 +160,7 @@ function Editor({ staff, treatments, googleConfigured, locations, multiLocation 
               <input type="time" value={r.start} disabled={!r.on} onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, start: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40" />
               <span className="text-[var(--color-stone)]">–</span>
               <input type="time" value={r.end} disabled={!r.on} onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, end: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40" />
-              <span className="ml-2 hidden text-xs text-[var(--color-stone-soft)] sm:inline">break</span>
+              <span className="ml-2 hidden text-xs text-[var(--color-stone)] sm:inline">break</span>
               <input type="time" value={r.breakStart} disabled={!r.on} title="Break start (optional)" onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, breakStart: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40" />
               <span className="text-[var(--color-stone)]">–</span>
               <input type="time" value={r.breakEnd} disabled={!r.on} title="Break end (optional)" onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, breakEnd: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40" />
@@ -173,7 +173,7 @@ function Editor({ staff, treatments, googleConfigured, locations, multiLocation 
             </div>
           ))}
         </div>
-        <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Set an optional daily break (e.g. lunch) — no bookings will be offered during it.</p>
+        <p className="mt-2 text-xs text-[var(--color-stone)]">Set an optional daily break (e.g. lunch) — no bookings will be offered during it.</p>
         <button onClick={saveSchedule} className="mt-4 rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)]">Save hours</button>
         {msg && <span className="ml-3 text-sm text-[var(--color-stone)]">{msg}</span>}
       </section>

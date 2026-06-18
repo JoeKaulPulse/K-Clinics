@@ -84,7 +84,7 @@ export function ClinicalEncryptionBackfill() {
                 <li key={k}>{FIELD_LABELS[k] ?? k} — {n}</li>
               ))}
             </ul>
-            <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Press the button once more — when it reports nothing left to upgrade, every historic record is encrypted.</p>
+            <p className="mt-2 text-xs text-[var(--color-stone)]">Press the button once more — when it reports nothing left to upgrade, every historic record is encrypted.</p>
           </div>
         )}
       </div>

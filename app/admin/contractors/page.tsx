@@ -67,7 +67,7 @@ export default async function ContractorsPage() {
         <div className="space-y-6 lg:col-span-2">
           {/* On site now */}
           <section className={sectionCls}>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-stone-soft)]">On site now</h2>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-stone)]">On site now</h2>
             {onSite.length === 0 ? (
               <p className="text-sm text-[var(--color-stone)]">No contractors signed in right now.</p>
             ) : (
@@ -76,7 +76,7 @@ export default async function ContractorsPage() {
                   <li key={v.id} className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/30 px-4 py-3">
                     <div>
                       <p className="text-sm font-medium">{v.contractor.name}{v.contractor.company ? ` · ${v.contractor.company}` : ''}</p>
-                      <p className="text-xs text-[var(--color-stone-soft)]">Checked in {dateTimeFmt.format(v.checkedInAt)}</p>
+                      <p className="text-xs text-[var(--color-stone)]">Checked in {dateTimeFmt.format(v.checkedInAt)}</p>
                     </div>
                     <ForceCheckOutButton visitId={v.id} />
                   </li>
@@ -87,7 +87,7 @@ export default async function ContractorsPage() {
 
           {/* Awaiting approval */}
           <section className={sectionCls}>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-stone-soft)]">Awaiting approval</h2>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-stone)]">Awaiting approval</h2>
             {pending.length === 0 ? (
               <p className="text-sm text-[var(--color-stone)]">Nothing waiting. New self-registrations appear here.</p>
             ) : (
@@ -96,7 +96,7 @@ export default async function ContractorsPage() {
                   <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/30 px-4 py-3">
                     <div className="min-w-0">
                       <p className="text-sm font-medium">{c.name}</p>
-                      <p className="text-xs text-[var(--color-stone-soft)]">
+                      <p className="text-xs text-[var(--color-stone)]">
                         {[c.company, c.tradeType, c.email, c.phone].filter(Boolean).join(' · ') || 'No details given'}
                       </p>
                     </div>
@@ -112,7 +112,7 @@ export default async function ContractorsPage() {
 
           {/* Full list */}
           <section className={sectionCls}>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-stone-soft)]">All contractors</h2>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-stone)]">All contractors</h2>
             {contractors.length === 0 ? (
               <p className="text-sm text-[var(--color-stone)]">No contractor profiles yet.</p>
             ) : (
@@ -125,7 +125,7 @@ export default async function ContractorsPage() {
                           {c.name}
                           <span className={`ml-2 rounded-full px-2 py-0.5 text-[0.65rem] font-medium ${STATUS_CLS[c.status]}`}>{STATUS_LABEL[c.status]}</span>
                         </p>
-                        <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">
+                        <p className="mt-0.5 text-xs text-[var(--color-stone)]">
                           {[c.company, c.tradeType, c.email, c.phone].filter(Boolean).join(' · ') || 'No details given'}
                         </p>
                       </div>
@@ -147,13 +147,13 @@ export default async function ContractorsPage() {
         {/* Reception QR */}
         <aside>
           <section className={`${sectionCls} lg:sticky lg:top-6`}>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-stone-soft)]">Reception QR</h2>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-stone)]">Reception QR</h2>
             {qr ? (
               <div className="mx-auto max-w-[220px] [&>svg]:h-auto [&>svg]:w-full [&>svg]:rounded-[var(--radius-md)] [&>svg]:border [&>svg]:border-[var(--color-line)]" dangerouslySetInnerHTML={{ __html: qr }} />
             ) : (
               <p className="text-sm text-[var(--color-stone)]">QR unavailable.</p>
             )}
-            <p className="mt-3 break-all text-center text-xs text-[var(--color-stone-soft)]">{receptionUrl}</p>
+            <p className="mt-3 break-all text-center text-xs text-[var(--color-stone)]">{receptionUrl}</p>
             <div className="mt-4 rounded-[var(--radius-md)] border border-dashed border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3 text-xs text-[var(--color-stone)]">
               <p className="font-medium text-[var(--color-ink)]">Print &amp; place at reception</p>
               <p className="mt-1">Contractors scan this to sign in for their visit. New people register on the spot; you approve them above.</p>

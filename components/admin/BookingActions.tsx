@@ -148,7 +148,7 @@ export function BookingActions({
               <p className="mt-2 text-xs text-[var(--color-stone)]">Up to {money(remainingRefund)} refundable · until {new Date(refundableUntil!).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}. Goes back to the card used.</p>
             </div>
           )}
-          {remainingRefund > 0 && !windowOpen && <p className="mt-2 text-xs text-[var(--color-stone-soft)]">The refund window for this payment has passed — refund in Stripe directly if still possible.</p>}
+          {remainingRefund > 0 && !windowOpen && <p className="mt-2 text-xs text-[var(--color-stone)]">The refund window for this payment has passed — refund in Stripe directly if still possible.</p>}
         </div>
       )}
 

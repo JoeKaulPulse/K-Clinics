@@ -47,7 +47,7 @@ function TestCard({ t, canManage }: { t: AbTestRow; canManage: boolean }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-[family-name:var(--font-display)] text-lg">{t.name}</h2>
-          <p className="text-xs text-[var(--color-stone-soft)]">code: <span className="font-mono">{t.slug}</span></p>
+          <p className="text-xs text-[var(--color-stone)]">code: <span className="font-mono">{t.slug}</span></p>
         </div>
         {canManage && (
           <div className="flex items-center gap-2">

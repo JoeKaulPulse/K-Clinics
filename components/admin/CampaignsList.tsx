@@ -16,7 +16,7 @@ const STATUS_STYLE: Record<string, string> = {
   SCHEDULED: 'bg-blue-100 text-blue-800',
   ACTIVE: 'bg-green-100 text-green-800',
   PAUSED: 'bg-amber-100 text-amber-800',
-  ENDED: 'bg-[var(--color-bone)] text-[var(--color-stone-soft)]',
+  ENDED: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
 };
 
 export function CampaignsList({ rows, canManage }: { rows: CampaignRow[]; canManage: boolean }) {
@@ -60,7 +60,7 @@ export function CampaignsList({ rows, canManage }: { rows: CampaignRow[]; canMan
       ) : (
         <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
           <table className="w-full text-sm">
-            <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">
+            <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]">
               <th scope="col" className="p-3">Campaign</th><th scope="col" className="p-3">Status</th><th scope="col" className="p-3">Bookings</th><th scope="col" className="p-3">Revenue</th><th scope="col" className="p-3">ROI</th>
             </tr></thead>
             <tbody>
@@ -68,7 +68,7 @@ export function CampaignsList({ rows, canManage }: { rows: CampaignRow[]; canMan
                 <tr key={r.id} className="border-t border-[var(--color-line)] hover:bg-[var(--color-bone)]/50">
                   <td className="p-3">
                     <Link href={`/admin/marketing/campaigns/${r.id}`} className="font-medium hover:text-[var(--color-gold)]">{r.name}</Link>
-                    <span className="block text-xs text-[var(--color-stone-soft)]">{r.goal} · {r.channels.length} channel{r.channels.length === 1 ? '' : 's'}</span>
+                    <span className="block text-xs text-[var(--color-stone)]">{r.goal} · {r.channels.length} channel{r.channels.length === 1 ? '' : 's'}</span>
                   </td>
                   <td className="p-3"><span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-medium ${STATUS_STYLE[r.status] ?? ''}`}>{r.status}</span></td>
                   <td className="p-3">{r.bookings}</td>

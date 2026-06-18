@@ -49,7 +49,7 @@ export function ArrivalsBoard({ initialArrivals, canManage }: { initialArrivals:
           <Link href={`/admin/bookings/${r.id}`} className="group min-w-0 flex-1">
             <span className="block truncate text-sm font-medium group-hover:text-[var(--color-gold)]">{r.client}</span>
             <span className="block truncate text-xs text-[var(--color-stone)]">{r.treatment}{r.room ? ` · ${r.room}` : ''}</span>
-            <span className="text-[0.65rem] text-[var(--color-stone-soft)] opacity-0 transition-opacity group-hover:opacity-100">Open appointment →</span>
+            <span className="text-[0.65rem] text-[var(--color-stone)] opacity-0 transition-opacity group-hover:opacity-100">Open appointment →</span>
           </Link>
           <Link href={`/admin/clients/${r.clientId}`} title="Open client profile" className="hidden shrink-0 rounded-full border border-[var(--color-line)] px-2.5 py-1.5 text-xs text-[var(--color-stone)] hover:bg-[var(--color-bone)] sm:inline-block">Profile</Link>
           {r.done ? (

@@ -117,7 +117,7 @@ function UploadForm() {
 }
 
 function Cases({ items }: { items: Item[] }) {
-  if (items.length === 0) return <p className="text-sm text-[var(--color-stone-soft)]">No cases yet. Add your first above.</p>;
+  if (items.length === 0) return <p className="text-sm text-[var(--color-stone)]">No cases yet. Add your first above.</p>;
   return (
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
       <h2 className="mb-4 font-[family-name:var(--font-display)] text-xl">Cases</h2>
@@ -146,7 +146,7 @@ function Case({ it }: { it: Item }) {
           <span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-wide ${it.published ? 'bg-emerald-100 text-emerald-800' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{it.published ? 'Live' : 'Hidden'}</span>
         </div>
         {it.caption && <p className="mt-1 text-xs text-[var(--color-stone)]">{it.caption}</p>}
-        <p className="mt-1 text-[0.65rem] uppercase tracking-wide text-[var(--color-stone-soft)]">{it.consent ? '✓ Consent confirmed' : '⚠ No consent on file'}</p>
+        <p className="mt-1 text-[0.65rem] uppercase tracking-wide text-[var(--color-stone)]">{it.consent ? '✓ Consent confirmed' : '⚠ No consent on file'}</p>
         <div className="mt-3 flex items-center justify-between gap-2 text-xs">
           <label className="inline-flex items-center gap-1.5">
             <input type="checkbox" checked={it.published} disabled={busy || !it.consent} onChange={(e) => act({ op: 'toggle', id: it.id, published: e.target.checked })} className="h-4 w-4 accent-[var(--color-gold)]" />

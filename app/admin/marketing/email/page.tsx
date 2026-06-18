@@ -123,14 +123,14 @@ export default async function EmailDashboard() {
 
       {canSend && pendingRows.length > 0 && (
         <section className="mt-8">
-          <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">Drafts &amp; scheduled</h2>
+          <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-[var(--color-stone)]">Drafts &amp; scheduled</h2>
           <EmailCampaignRows rows={pendingRows} />
         </section>
       )}
 
       <section className="mt-8 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
         <table className="w-full text-sm">
-          <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th className="p-3">Campaign</th><th className="p-3">Date</th><th className="p-3">Sent</th><th className="p-3">Opens</th><th className="p-3">Clicks</th><th className="p-3"></th></tr></thead>
+          <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th className="p-3">Campaign</th><th className="p-3">Date</th><th className="p-3">Sent</th><th className="p-3">Opens</th><th className="p-3">Clicks</th><th className="p-3"></th></tr></thead>
           <tbody>
             {campaigns.length === 0 ? (
               <tr><td colSpan={6} className="p-6 text-center text-sm text-[var(--color-stone)]">No emails sent yet. <Link href="/admin/marketing/email/new" className="text-[var(--color-gold)] underline">Send your first →</Link></td></tr>
@@ -138,7 +138,7 @@ export default async function EmailDashboard() {
               const s = stat.get(c.id) ?? { sent: 0, opened: 0, clicked: 0 };
               return (
                 <tr key={c.id} className="border-t border-[var(--color-line)]">
-                  <td className="p-3 font-medium">{c.name}<span className="block text-xs text-[var(--color-stone-soft)]">{c.subject}</span></td>
+                  <td className="p-3 font-medium">{c.name}<span className="block text-xs text-[var(--color-stone)]">{c.subject}</span></td>
                   <td className="p-3 text-xs text-[var(--color-stone)]">{new Date(c.sentAt ?? c.createdAt).toLocaleDateString('en-GB')}</td>
                   <td className="p-3">{s.sent}</td>
                   <td className="p-3">{s.sent ? `${pct(s.opened, s.sent)}%` : '—'}</td>
@@ -155,10 +155,10 @@ export default async function EmailDashboard() {
         {/* Performance by audience */}
         {audienceRows.length > 0 && (
           <section>
-            <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">Performance by audience <span className="normal-case text-[var(--color-stone-soft)]">· 90 days</span></h2>
+            <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-[var(--color-stone)]">Performance by audience <span className="normal-case text-[var(--color-stone)]">· 90 days</span></h2>
             <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
               <table className="w-full text-sm">
-                <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th className="p-3">Audience</th><th className="p-3">Sent</th><th className="p-3">Opens</th><th className="p-3">Clicks</th></tr></thead>
+                <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th className="p-3">Audience</th><th className="p-3">Sent</th><th className="p-3">Opens</th><th className="p-3">Clicks</th></tr></thead>
                 <tbody>
                   {audienceRows.map((a) => (
                     <tr key={a.label} className="border-t border-[var(--color-line)]">
@@ -177,7 +177,7 @@ export default async function EmailDashboard() {
         {/* Top clicked links */}
         {topLinks.length > 0 && (
           <section>
-            <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">Top clicked links</h2>
+            <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-[var(--color-stone)]">Top clicked links</h2>
             <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
               <table className="w-full text-sm">
                 <tbody>
@@ -194,7 +194,7 @@ export default async function EmailDashboard() {
         )}
       </div>
 
-      <p className="mt-4 text-xs text-[var(--color-stone-soft)]">Opens &amp; clicks require the Resend webhook + tracking to be enabled (point it at <code>/api/webhooks/resend</code>).</p>
+      <p className="mt-4 text-xs text-[var(--color-stone)]">Opens &amp; clicks require the Resend webhook + tracking to be enabled (point it at <code>/api/webhooks/resend</code>).</p>
     </AdminShell>
   );
 }
@@ -202,7 +202,7 @@ export default async function EmailDashboard() {
 function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
-      <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone-soft)]">{label}</p>
+      <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{label}</p>
       <p className="mt-2 font-[family-name:var(--font-display)] text-3xl text-[var(--color-ink)]">{value}</p>
       {sub && <p className="text-xs text-[var(--color-stone)]">{sub}</p>}
     </div>

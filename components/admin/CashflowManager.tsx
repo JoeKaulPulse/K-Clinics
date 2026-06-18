@@ -66,10 +66,10 @@ export function CashflowManager({ cfg, drivers, consumablesMonthly, months, rese
                 <tr key={i} className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)]">
                   <td className="px-4 py-2.5 font-medium">{m.label}</td>
                   <td className="px-4 py-2.5 text-right text-[var(--color-jade)]">{gbp(m.incomePence)}</td>
-                  <td className="px-4 py-2.5 text-right text-[var(--color-stone-soft)]" title={L('Confirmed/pending bookings', 'Підтверджені/очікувані записи')}>{m.committedPence > 0 ? gbp(m.committedPence) : '—'}</td>
+                  <td className="px-4 py-2.5 text-right text-[var(--color-stone)]" title={L('Confirmed/pending bookings', 'Підтверджені/очікувані записи')}>{m.committedPence > 0 ? gbp(m.committedPence) : '—'}</td>
                   <td className="px-4 py-2.5 text-right text-[var(--color-stone)]">{gbp(m.expensePence)}</td>
                   <td className={`px-4 py-2.5 text-right ${m.netPence < 0 ? 'text-[var(--color-blush)]' : ''}`}>{gbp(m.netPence)}</td>
-                  <td className="px-4 py-2.5 text-right text-[var(--color-stone-soft)]">{gbp(m.reserveContribPence)}</td>
+                  <td className="px-4 py-2.5 text-right text-[var(--color-stone)]">{gbp(m.reserveContribPence)}</td>
                   <td className={`px-4 py-2.5 text-right font-medium ${m.belowFloor ? 'text-[var(--color-blush)]' : ''}`}>{gbp(m.operatingPence)}{m.belowFloor ? ' ⚠' : ''}</td>
                   <td className="px-4 py-2.5 text-right text-[var(--color-jade)]">{gbp(m.reservesPence)}</td>
                 </tr>
@@ -113,7 +113,7 @@ function LiveBalances({ balances, canManage, uk }: { balances: Balance[]; canMan
             {b.connected ? (
               <>
                 <div className="mt-1 font-[family-name:var(--font-display)] text-2xl">{gbp(b.availablePence)}</div>
-                {b.pendingPence > 0 && <p className="text-xs text-[var(--color-stone-soft)]">{gbp(b.pendingPence)} {L('pending', 'в очікуванні')}</p>}
+                {b.pendingPence > 0 && <p className="text-xs text-[var(--color-stone)]">{gbp(b.pendingPence)} {L('pending', 'в очікуванні')}</p>}
               </>
             ) : (
               <p className="mt-2 text-xs text-[var(--color-stone)]">{b.detail || L('Not connected', 'Не підключено')}</p>
@@ -207,7 +207,7 @@ function DriversPanel({ drivers, consumablesMonthly, canManage, uk }: { drivers:
         </div>
       )}
       {open && (
-        <p className="mt-3 text-xs text-[var(--color-stone-soft)]">
+        <p className="mt-3 text-xs text-[var(--color-stone)]">
           {L('Visitors and search rank will auto-populate once Analytics/Search Console are connected; bank, Stripe and Xero balances arrive with those integrations (coming next).',
              'Відвідувачі та позиції оновлюватимуться після підключення Аналітики; баланси банку, Stripe і Xero — з наступними інтеграціями.')}
         </p>
@@ -259,7 +259,7 @@ function Reserves({ reserves, canManage, uk }: { reserves: Reserve[]; canManage:
                   <div className="h-full rounded-full" style={{ width: `${pct}%`, background: r.color || 'var(--color-jade)' }} />
                 </div>
               )}
-              <div className="mt-2 flex items-center justify-between text-xs text-[var(--color-stone-soft)]">
+              <div className="mt-2 flex items-center justify-between text-xs text-[var(--color-stone)]">
                 <span>{L('Now', 'Зараз')} {gbp(r.startPence)} · +{gbp(r.monthlyContributionPence)}/{L('mo', 'міс')}</span>
                 {canManage && <button onClick={() => del(r.id)} className="hover:text-[var(--color-blush)]">{L('Delete', 'Видалити')}</button>}
               </div>
@@ -309,11 +309,11 @@ function Entries({ entries, canManage, uk }: { entries: Entry[]; canManage: bool
             <span className="flex items-center gap-2">
               <span className={`h-2 w-2 rounded-full ${e.type === 'INCOME' ? 'bg-[var(--color-jade)]' : 'bg-[var(--color-blush)]'}`} />
               <span className="font-medium">{e.label}</span>
-              <span className="text-xs text-[var(--color-stone-soft)]">{e.category} · {cadenceLabel(e.cadence)}</span>
+              <span className="text-xs text-[var(--color-stone)]">{e.category} · {cadenceLabel(e.cadence)}</span>
             </span>
             <span className="flex items-center gap-3">
               <span className={e.type === 'INCOME' ? 'text-[var(--color-jade)]' : 'text-[var(--color-stone)]'}>{gbp(e.amountPence)}</span>
-              {canManage && <button onClick={() => del(e.id)} className="text-xs text-[var(--color-stone-soft)] hover:text-[var(--color-blush)]">✕</button>}
+              {canManage && <button onClick={() => del(e.id)} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)]">✕</button>}
             </span>
           </div>
         ))}

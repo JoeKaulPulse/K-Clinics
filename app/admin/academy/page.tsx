@@ -52,7 +52,7 @@ export default async function AdminAcademyPage() {
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((c) => (
           <Link key={c.href} href={c.href} className="group rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 transition-colors hover:border-[var(--color-gold)]">
-            <span className="text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">{c.label}</span>
+            <span className="text-xs uppercase tracking-wide text-[var(--color-stone)]">{c.label}</span>
             <span className="mt-1 block font-[family-name:var(--font-display)] text-3xl text-[var(--color-ink)]">{c.value}</span>
             <span className="text-xs text-[var(--color-stone)]">{c.sub}</span>
             <span className="mt-2 block text-xs text-[var(--color-gold)] opacity-0 transition-opacity group-hover:opacity-100">Open →</span>

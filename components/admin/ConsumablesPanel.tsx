@@ -35,8 +35,8 @@ export function ConsumablesPanel({ bookingId, items, used }: { bookingId: string
             <li key={u.id} className="flex items-center justify-between gap-3 py-2 text-sm">
               <span>
                 <span className="font-medium">{u.qty} {u.unit}</span> · {u.itemName}
-                {u.batchNo ? <span className="text-[var(--color-stone-soft)]"> · batch {u.batchNo}</span> : ''}
-                {u.by ? <span className="text-xs text-[var(--color-stone-soft)]"> · {u.by}</span> : ''}
+                {u.batchNo ? <span className="text-[var(--color-stone)]"> · batch {u.batchNo}</span> : ''}
+                {u.by ? <span className="text-xs text-[var(--color-stone)]"> · {u.by}</span> : ''}
               </span>
               <button onClick={() => start(async () => { await removeConsumable(u.id, bookingId); })} disabled={pending} className="shrink-0 text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)] disabled:opacity-50">Remove</button>
             </li>

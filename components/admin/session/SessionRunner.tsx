@@ -280,7 +280,7 @@ export function SessionRunner(p: Props) {
             })}
           </ol>
           {!presenting && (
-            <p className="mt-4 px-3 text-[11px] leading-relaxed text-[var(--color-stone-soft)]">
+            <p className="mt-4 px-3 text-[11px] leading-relaxed text-[var(--color-stone)]">
               Live on every device — hand the client to the next team member and their screen is already on the right step.
             </p>
           )}
@@ -306,13 +306,13 @@ export function SessionRunner(p: Props) {
               <div className="mt-8 space-y-6">
                 {!activeHere ? (
                   <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] bg-[var(--color-bone)]/40 p-8 text-center">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-stone-soft)]">{STATION_LABEL[STEP_STATION[step]]} station</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-stone)]">{STATION_LABEL[STEP_STATION[step]]} station</p>
                     <p className="mt-3 text-lg">The <span className="font-medium">{STATION_LABEL[STEP_STATION[step]]}</span> team is with {p.client.firstName} — <span className="font-medium">{def.label}</span>.</p>
                     <p className="mt-2 text-sm text-[var(--color-stone)]">This stage happens at the {STATION_LABEL[STEP_STATION[step]]} station. Your screen picks up again when it returns to the {STATION_LABEL[station as 'reception' | 'room']}.</p>
                     {live.startedAt && !live.finishedAt && step === 'treatment' && (
                       <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-porcelain)]"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--color-gold-bright)]" aria-hidden /><span className="tabular-nums">{fmtClock(treatmentElapsed)}</span></p>
                     )}
-                    <button type="button" onClick={() => pickStation('full')} className="mt-5 block w-full text-xs text-[var(--color-stone-soft)] underline-offset-2 hover:underline">Switch this device to Full view</button>
+                    <button type="button" onClick={() => pickStation('full')} className="mt-5 block w-full text-xs text-[var(--color-stone)] underline-offset-2 hover:underline">Switch this device to Full view</button>
                   </div>
                 ) : (<>
                 {step === 'arrival' && <ArrivalStep p={p} presenting={presenting} onBegin={() => goTo('safety')} />}

@@ -26,7 +26,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div>
-      <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--color-stone-soft)]">{label}</p>
+      <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--color-stone)]">{label}</p>
       <div className="mt-1 flex items-center gap-2">
         <code className="min-w-0 flex-1 truncate rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-xs text-[var(--color-ink)]">{value}</code>
         <button
@@ -124,7 +124,7 @@ function LocationSetup({ onReady }: { onReady: () => void }) {
         <p className="text-sm font-medium text-[var(--color-ink)]">We found your business</p>
         <div className="mt-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2">
           <p className="text-sm font-medium">{l.title}</p>
-          {l.address && <p className="text-xs text-[var(--color-stone-soft)]">{l.address}</p>}
+          {l.address && <p className="text-xs text-[var(--color-stone)]">{l.address}</p>}
         </div>
         {err && <p className="mt-2 text-xs text-[var(--color-blush)]">{err}</p>}
         <button onClick={() => choose(l.ref)} disabled={busy} className="mt-3 rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Importing reviews…' : 'Use this & import reviews'}</button>
@@ -141,7 +141,7 @@ function LocationSetup({ onReady }: { onReady: () => void }) {
             <input type="radio" name="gloc" checked={chosen === l.ref} onChange={() => setChosen(l.ref)} className="mt-1 accent-[var(--color-gold-deep)]" />
             <span className="min-w-0">
               <span className="block text-sm font-medium">{l.title}</span>
-              {l.address && <span className="block text-xs text-[var(--color-stone-soft)]">{l.address}</span>}
+              {l.address && <span className="block text-xs text-[var(--color-stone)]">{l.address}</span>}
             </span>
           </label>
         ))}
@@ -326,7 +326,7 @@ function GoogleReviewCard({ review, onChange }: { review: GReview; onChange: () 
       <div className="flex flex-wrap items-center gap-2">
         <Stars n={review.starRating} />
         <span className="text-sm font-medium">{review.reviewerName || 'Google reviewer'}</span>
-        {review.createTime && <span className="text-xs text-[var(--color-stone-soft)]">{new Date(review.createTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
+        {review.createTime && <span className="text-xs text-[var(--color-stone)]">{new Date(review.createTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
       </div>
       {review.comment && <p className="mt-2 text-sm text-[var(--color-ink-soft)]">{review.comment}</p>}
 
@@ -352,7 +352,7 @@ function GoogleReviewCard({ review, onChange }: { review: GReview; onChange: () 
           <button onClick={() => { setText(review.replyComment || ''); setOpen(true); }} className="text-xs font-medium text-[var(--color-gold-deep)] hover:underline">
             {review.replyComment ? 'Edit reply' : 'Reply'}
           </button>
-          <button onClick={removeReview} disabled={busy} className="text-xs text-[var(--color-stone-soft)] hover:text-[var(--color-blush)] hover:underline disabled:opacity-50">Remove</button>
+          <button onClick={removeReview} disabled={busy} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)] hover:underline disabled:opacity-50">Remove</button>
         </div>
       )}
     </div>

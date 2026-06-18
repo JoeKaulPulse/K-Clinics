@@ -41,7 +41,7 @@ export function ClinicalNote({ bookingId, initial, savedBy, savedAt }: {
         </button>
         {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
         {savedAt && !dirty && (
-          <span className="text-xs text-[var(--color-stone-soft)]">Last saved {new Date(savedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}{savedBy ? ` · ${savedBy}` : ''}</span>
+          <span className="text-xs text-[var(--color-stone)]">Last saved {new Date(savedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}{savedBy ? ` · ${savedBy}` : ''}</span>
         )}
       </div>
     </section>

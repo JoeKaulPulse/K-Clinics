@@ -149,7 +149,7 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
         </div>
         <p className="truncate text-xs text-[var(--color-stone)]">{b.treatmentTitle}</p>
         {showClinician && b.practitioner?.name && (
-          <p className="text-xs text-[var(--color-stone-soft)]">{b.practitioner.name}</p>
+          <p className="text-xs text-[var(--color-stone)]">{b.practitioner.name}</p>
         )}
         {b.location?.name && (
           <p className="flex items-center gap-1 text-xs text-[var(--color-stone)]">

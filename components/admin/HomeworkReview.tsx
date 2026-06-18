@@ -45,7 +45,7 @@ function ReviewCard({ row, onSaved }: { row: Row; onSaved: () => void }) {
           {row.files.map((u) => <li key={u}><a href={u} target="_blank" rel="noreferrer" className="rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:border-[var(--color-gold)]">↓ {fileName(u)}</a></li>)}
         </ul>
       )}
-      {row.note && <p className="mt-2 text-sm text-[var(--color-stone)]"><span className="text-[var(--color-stone-soft)]">Learner note:</span> {row.note}</p>}
+      {row.note && <p className="mt-2 text-sm text-[var(--color-stone)]"><span className="text-[var(--color-stone)]">Learner note:</span> {row.note}</p>}
       <div className="mt-3 grid gap-2 sm:grid-cols-[190px_1fr]">
         <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm">
           {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
@@ -55,7 +55,7 @@ function ReviewCard({ row, onSaved }: { row: Row; onSaved: () => void }) {
       <div className="mt-2 flex items-center gap-3">
         <button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Saving…' : 'Save review'}</button>
         {saved && <span className="text-xs text-[var(--color-jade)]">Saved ✓</span>}
-        {row.reviewedBy && <span className="text-xs text-[var(--color-stone-soft)]">Last reviewed by {row.reviewedBy.split('@')[0]}</span>}
+        {row.reviewedBy && <span className="text-xs text-[var(--color-stone)]">Last reviewed by {row.reviewedBy.split('@')[0]}</span>}
       </div>
     </div>
   );

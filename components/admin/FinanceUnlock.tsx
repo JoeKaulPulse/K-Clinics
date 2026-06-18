@@ -67,14 +67,14 @@ export function FinanceUnlock({ hasPin, next }: { hasPin: boolean; next: string 
       </button>
       {mode === 'unlock' && (
         <>
-          <div className="my-4 flex items-center gap-3 text-xs text-[var(--color-stone-soft)]"><span className="h-px flex-1 bg-[var(--color-line)]" />or<span className="h-px flex-1 bg-[var(--color-line)]" /></div>
+          <div className="my-4 flex items-center gap-3 text-xs text-[var(--color-stone)]"><span className="h-px flex-1 bg-[var(--color-line)]" />or<span className="h-px flex-1 bg-[var(--color-line)]" /></div>
           <button onClick={passkeyUnlock} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-full border border-[var(--color-line)] bg-white px-6 py-3 text-sm font-medium text-[var(--color-ink)] disabled:opacity-50">
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="9" cy="8" r="3.5" /><path d="M2.5 19a6.5 6.5 0 0 1 11.2-4.5M16 14l4.5 4.5M20.5 14 16 18.5" /></svg>
             Use Face ID / passkey
           </button>
         </>
       )}
-      <p className="mt-4 text-xs text-[var(--color-stone-soft)]">Keep your PIN private — it protects clinic financials.</p>
+      <p className="mt-4 text-xs text-[var(--color-stone)]">Keep your PIN private — it protects clinic financials.</p>
     </div>
   );
 }

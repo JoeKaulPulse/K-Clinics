@@ -69,7 +69,7 @@ export function RewardsCatalogue({
                 </div>
                 <div className="mt-4 flex items-center justify-between gap-2 pt-3">
                   <span className="font-[family-name:var(--font-display)] text-lg text-[var(--color-gold)]">{r.costPoints} <span className="text-xs text-[var(--color-stone)]">{L('pts', 'балів')}</span></span>
-                  {r.stock != null && <span className="text-[0.7rem] text-[var(--color-stone-soft)]">{out ? L('Out of stock', 'Немає в наявності') : `${r.stock} ${L('left', 'залишилось')}`}</span>}
+                  {r.stock != null && <span className="text-[0.7rem] text-[var(--color-stone)]">{out ? L('Out of stock', 'Немає в наявності') : `${r.stock} ${L('left', 'залишилось')}`}</span>}
                 </div>
                 <button
                   onClick={() => redeem(r.id)}

@@ -34,7 +34,7 @@ export function ConsentPanel({ bookingId, clientId, treatmentForm, signed, pendi
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
         {treatmentSigned ? (
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm"><span className="text-[var(--color-jade)]">✓ Signed</span> · {treatmentSigned.title} <span className="text-xs text-[var(--color-stone-soft)]">· {new Date(treatmentSigned.signedAt).toLocaleString('en-GB')}</span></p>
+            <p className="text-sm"><span className="text-[var(--color-jade)]">✓ Signed</span> · {treatmentSigned.title} <span className="text-xs text-[var(--color-stone)]">· {new Date(treatmentSigned.signedAt).toLocaleString('en-GB')}</span></p>
             {canClinical && <Link href={`/admin/consent/cert/${treatmentSigned.id}`} className="shrink-0 text-xs text-[var(--color-gold)] hover:underline">Certificate →</Link>}
           </div>
         ) : !treatmentForm ? (
@@ -50,7 +50,7 @@ export function ConsentPanel({ bookingId, clientId, treatmentForm, signed, pendi
                       <a href={link} target="_blank" rel="noopener noreferrer" className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)]">Open to sign on this device</a>
                       <button onClick={copy} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)]">{copied ? 'Copied ✓' : 'Copy phone link'}</button>
                     </div>
-                    <p className="break-all font-mono text-[0.65rem] text-[var(--color-stone-soft)]">{link}</p>
+                    <p className="break-all font-mono text-[0.65rem] text-[var(--color-stone)]">{link}</p>
                   </div>
                 ) : (
                   <button onClick={generate} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Creating…' : 'Create signing link'}</button>
@@ -63,7 +63,7 @@ export function ConsentPanel({ bookingId, clientId, treatmentForm, signed, pendi
         {/* Any other signed forms (e.g. photo opt-out) */}
         {signed.filter((s) => s.kind !== 'treatment').map((s) => (
           <div key={s.id} className="mt-2 flex items-center justify-between gap-3 border-t border-[var(--color-line)] pt-2">
-            <p className="text-sm">{s.declined ? '⚠ ' : '✓ '}{s.title} <span className="text-xs text-[var(--color-stone-soft)]">· {new Date(s.signedAt).toLocaleString('en-GB')}</span></p>
+            <p className="text-sm">{s.declined ? '⚠ ' : '✓ '}{s.title} <span className="text-xs text-[var(--color-stone)]">· {new Date(s.signedAt).toLocaleString('en-GB')}</span></p>
             {canClinical && <Link href={`/admin/consent/cert/${s.id}`} className="shrink-0 text-xs text-[var(--color-gold)] hover:underline">Certificate →</Link>}
           </div>
         ))}

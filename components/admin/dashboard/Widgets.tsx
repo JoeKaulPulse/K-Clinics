@@ -165,7 +165,7 @@ export function EmptyWidget({
       <p className="font-medium text-[var(--color-ink)]">{title}</p>
       {hint && <p className="max-w-prose text-sm text-[var(--color-stone)]">{hint}</p>}
       {tone === 'soon' && (
-        <span className="mt-1 rounded-full bg-[var(--color-porcelain)] px-2.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-stone-soft)]">
+        <span className="mt-1 rounded-full bg-[var(--color-porcelain)] px-2.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-stone)]">
           Coming soon
         </span>
       )}

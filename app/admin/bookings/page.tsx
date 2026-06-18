@@ -84,7 +84,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
               </svg>
             </span>
             <input name="q" defaultValue={q} placeholder="Client or treatment…"
-              className="block h-11 w-56 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] pl-9 pr-4 text-sm outline-none transition-shadow placeholder:text-[var(--color-stone-soft)] focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
+              className="block h-11 w-56 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] pl-9 pr-4 text-sm outline-none transition-shadow placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
           </span>
         </label>
         <label className="text-xs text-[var(--color-stone)]">

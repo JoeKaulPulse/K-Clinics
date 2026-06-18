@@ -38,8 +38,8 @@ function FieldInput({ field: f, value, data, onChange }: { field: Field; value: 
             <img src={src} alt="" className="block max-h-52 w-full object-cover" style={{ objectPosition: pos }} />
             <span className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[var(--color-gold)] shadow" style={{ left: x, top: y }} />
           </div>
-        ) : <p className="text-xs text-[var(--color-stone-soft)]">Add an image above, then click it to set the focal point.</p>}
-        {f.help && <p className="mt-1 text-xs text-[var(--color-stone-soft)]">{f.help}</p>}
+        ) : <p className="text-xs text-[var(--color-stone)]">Add an image above, then click it to set the focal point.</p>}
+        {f.help && <p className="mt-1 text-xs text-[var(--color-stone)]">{f.help}</p>}
       </div>
     );
   }
@@ -80,7 +80,7 @@ function FieldInput({ field: f, value, data, onChange }: { field: Field; value: 
       <div>
         <label className={lbl}>{f.label}</label>
         <textarea className={`${fld} min-h-[80px]`} value={String(value ?? '')} placeholder={f.placeholder} onChange={(e) => onChange(e.target.value)} />
-        {f.help && <p className="mt-1 text-xs text-[var(--color-stone-soft)]">{f.help}</p>}
+        {f.help && <p className="mt-1 text-xs text-[var(--color-stone)]">{f.help}</p>}
       </div>
     );
   }
@@ -98,9 +98,9 @@ function FieldInput({ field: f, value, data, onChange }: { field: Field; value: 
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-xs text-[var(--color-stone)]">{(f.itemLabel || 'item')} {i + 1}</span>
                 <span className="flex items-center gap-1">
-                  <button onClick={() => onChange(move(items, i, -1))} aria-label="Up" className="text-[var(--color-stone-soft)] hover:text-[var(--color-ink)]">▲</button>
-                  <button onClick={() => onChange(move(items, i, 1))} aria-label="Down" className="text-[var(--color-stone-soft)] hover:text-[var(--color-ink)]">▼</button>
-                  <button onClick={() => onChange(items.filter((_, j) => j !== i))} aria-label="Remove" className="ml-1 text-[var(--color-stone-soft)] hover:text-[#c0392b]">✕</button>
+                  <button onClick={() => onChange(move(items, i, -1))} aria-label="Up" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">▲</button>
+                  <button onClick={() => onChange(move(items, i, 1))} aria-label="Down" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">▼</button>
+                  <button onClick={() => onChange(items.filter((_, j) => j !== i))} aria-label="Remove" className="ml-1 text-[var(--color-stone)] hover:text-[#c0392b]">✕</button>
                 </span>
               </div>
               <div className="space-y-3">
@@ -121,7 +121,7 @@ function FieldInput({ field: f, value, data, onChange }: { field: Field; value: 
     <div>
       <label className={lbl}>{f.label}</label>
       <input className={fld} value={String(value ?? '')} placeholder={f.placeholder} onChange={(e) => onChange(e.target.value)} />
-      {f.help && <p className="mt-1 text-xs text-[var(--color-stone-soft)]">{f.help}</p>}
+      {f.help && <p className="mt-1 text-xs text-[var(--color-stone)]">{f.help}</p>}
     </div>
   );
 }

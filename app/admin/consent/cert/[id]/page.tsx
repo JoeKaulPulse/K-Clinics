@@ -61,13 +61,13 @@ export default async function CertificatePage({ params }: { params: Promise<{ id
               {data.acknowledgements.map((a, i) => <li key={i}>{a.checked ? '☑' : '☐'} {a.label}</li>)}
             </ul>
             <div className="mt-6">
-              <p className="text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">Signature</p>
+              <p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">Signature</p>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={data.signatureDataUrl} alt="Signature" className="mt-1 h-28 rounded border border-[var(--color-line)] bg-white" />
             </div>
           </>
         )}
-        <p className="mt-6 text-center text-[0.7rem] text-[var(--color-stone-soft)]">This is an immutable record held under the clinic’s encrypted Health Data store. Any alteration invalidates the certificate ID above.</p>
+        <p className="mt-6 text-center text-[0.7rem] text-[var(--color-stone)]">This is an immutable record held under the clinic’s encrypted Health Data store. Any alteration invalidates the certificate ID above.</p>
       </div>
       <script dangerouslySetInnerHTML={{ __html: "document.querySelector('[data-print]')?.addEventListener('click',()=>window.print())" }} />
     </main>
@@ -77,7 +77,7 @@ export default async function CertificatePage({ params }: { params: Promise<{ id
 function Field({ label, value, mono, full }: { label: string; value: string; mono?: boolean; full?: boolean }) {
   return (
     <div className={full ? 'col-span-2' : ''}>
-      <dt className="text-[0.65rem] uppercase tracking-wide text-[var(--color-stone-soft)]">{label}</dt>
+      <dt className="text-[0.65rem] uppercase tracking-wide text-[var(--color-stone)]">{label}</dt>
       <dd className={`text-[var(--color-ink)] ${mono ? 'break-all font-mono text-xs' : ''}`}>{value}</dd>
     </div>
   );
