@@ -61,6 +61,52 @@ export async function POST(req: Request) {
         if ((pi.metadata?.kind === 'gift_voucher' || pi.metadata?.kind === 'gift_package') && pi.metadata?.voucherId) {
           try { const { confirmVoucher } = await import('@/lib/gift-vouchers'); await confirmVoucher(pi.metadata.voucherId); } catch (e) { console.error('[webhook] voucher confirm failed:', (e as Error)?.message); }
         }
+        // BLD-399 (BLD-409 course context): a Buy-Now-Pay-Later course pre-payment
+        // succeeded (Klarna/Clearpay via hosted Checkout). Mark the booking PRE-PAID
+        // so NO card-on-file charge is taken for it. Correctness-critical:
+        //  • idempotent — no-op if already pre-paid;
+        //  • validates currency (GBP) and that the full course total was received;
+        //  • derives the method from the charge (klarna / afterpay_clearpay → bnpl).
+        if (pi.metadata?.kind === 'course_prepaid' && pi.metadata?.bookingId) {
+          const courseBookingId = pi.metadata.bookingId;
+          const booking = await db.booking.findUnique({ where: { id: courseBookingId }, select: { prepaidVia: true, clientId: true } });
+          if (!booking) {
+            console.error('[webhook] course_prepaid skipped — booking not found:', courseBookingId);
+          } else if (booking.prepaidVia) {
+            // Already pre-paid (redelivery / double-fire) — nothing to do.
+          } else {
+            const { courseTotalPence } = await import('@/lib/booking-actions');
+            const course = await courseTotalPence(courseBookingId);
+            const received = pi.amount_received ?? 0;
+            if (!course || pi.currency !== 'gbp' || received < course.pence) {
+              // Underpayment / wrong currency — do NOT mark paid; leave it for staff.
+              console.error('[webhook] course pre-payment not validated — not marking paid:', { received, expected: course?.pence, currency: pi.currency, bookingId: courseBookingId });
+            } else {
+              // Method: klarna → 'klarna', afterpay_clearpay → 'clearpay', else 'bnpl'.
+              // The PI carries the charge id (latest_charge); fetch it for the method.
+              let method = 'bnpl';
+              try {
+                const chargeId = typeof pi.latest_charge === 'string' ? pi.latest_charge : pi.latest_charge?.id;
+                const type = chargeId ? (await stripe().charges.retrieve(chargeId)).payment_method_details?.type : undefined;
+                if (type === 'klarna') method = 'klarna';
+                else if (type === 'afterpay_clearpay') method = 'clearpay';
+              } catch (e) { console.error('[webhook] course pre-payment method lookup failed (defaulting to bnpl):', (e as Error)?.message); }
+              // Claim idempotently: only the writer that flips prepaidVia from null
+              // runs the side-effects, guarding webhook redeliveries.
+              const claimed = await db.booking.updateMany({
+                where: { id: courseBookingId, prepaidVia: null },
+                data: { prepaidVia: method, prepaidPence: received, prepaidAt: new Date(), prepaidCheckoutId: pi.metadata.checkoutId || undefined, status: 'CONFIRMED' },
+              });
+              if (claimed.count > 0) {
+                try {
+                  const { logAudit } = await import('@/lib/audit');
+                  await logAudit({ action: 'PAYMENT_CHARGED', actor: 'stripe-webhook', bookingId: courseBookingId, clientId: booking.clientId, summary: `Course pre-paid via ${method} — £${(received / 100).toFixed(2)}`, meta: { kind: 'course_prepaid', method, amountPence: received, paymentIntentId: pi.id } });
+                } catch { /* non-fatal */ }
+                try { await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Course pre-paid in full via ${method} — £${(received / 100).toFixed(2)}`, author: 'stripe-webhook' } }); } catch { /* non-fatal */ }
+              }
+            }
+          }
+        }
         break;
       }
       case 'payment_intent.payment_failed': {
@@ -138,7 +184,16 @@ export async function POST(req: Request) {
     // silently dropping the event on a transient DB failure.
     // BLD-412: setup_intent.succeeded must also retry — a 200 on DB failure
     // tells Stripe "delivered", losing the saved card permanently.
-    const critical = event.type === 'payment_intent.succeeded' || event.type === 'charge.refunded' || event.type === 'setup_intent.succeeded';
+    // BLD-399: a course pre-payment (course_prepaid) is real money — a DB failure
+    // while marking it PRE-PAID must also retry, not silently drop the payment.
+    // (payment_intent.succeeded already covers it; the explicit kind check keeps
+    // the intent clear and survives any future narrowing of the type test.)
+    const pmtKind = event.type.startsWith('payment_intent.') ? (event.data.object as { metadata?: { kind?: string } }).metadata?.kind : undefined;
+    const critical =
+      event.type === 'payment_intent.succeeded' ||
+      event.type === 'charge.refunded' ||
+      event.type === 'setup_intent.succeeded' ||
+      pmtKind === 'course_prepaid';
     if (critical) return NextResponse.json({ received: false, error: 'Handler failed' }, { status: 500 });
   }
 
