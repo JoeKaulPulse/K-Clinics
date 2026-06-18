@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # full history so the migration-drift guard can diff against origin/main
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
@@ -34,3 +36,8 @@ jobs:
       # stay a prod no-op until RLS ships (flag defaults OFF) and the GUC it sets
       # must match the name/scope the RLS policy reads. No DB needed.
       - run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/test-rls-seam.mjs
+      # Schema/migration drift guard: a datamodel change to prisma/schema.prisma
+      # must ship with a matching migration file, so the live DB can never fall
+      # behind the code (which took /admin/bookings down — Booking.prepaid* was
+      # added with no migration, BLD-399). No DB needed; pure datamodel + git diff.
+      - run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-migration-drift.mjs
