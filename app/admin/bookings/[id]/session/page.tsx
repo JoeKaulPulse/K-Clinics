@@ -22,7 +22,7 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
     include: {
       client: { select: { id: true, firstName: true, lastName: true, email: true, medicalFlag: true } },
       practitioner: { select: { name: true } },
-      items: { select: { label: true, isAddon: true } },
+      items: { select: { id: true, label: true, pricePence: true, isAddon: true } },
       liveSession: { select: { id: true } },
     },
   });
@@ -38,10 +38,13 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
   const consentKey = await templateKeyForTreatment(b.treatmentSlug);
   const isLaser = isLaserTreatment(b.treatmentSlug);
 
-  const [consentTemplate, pendingConsents] = await Promise.all([
+  const [consentTemplate, pendingConsents, beforePhotos, optOutConsent] = await Promise.all([
     db.consentTemplate.findUnique({ where: { key: consentKey }, select: { key: true, title: true, active: true } }),
     db.consentRequest.findMany({ where: { bookingId: b.id, status: 'PENDING' }, select: { token: true, kind: true } }),
+    db.beforePhoto.findMany({ where: { bookingId: b.id }, orderBy: { createdAt: 'asc' }, select: { id: true, area: true, capturedBy: true, createdAt: true } }),
+    db.signedConsent.findFirst({ where: { bookingId: b.id, kind: 'photo_opt_out' }, select: { id: true } }),
   ]);
+  const optOutSigned = !!optOutConsent;
 
   const { getSettings } = await import('@/lib/settings');
   const S = await getSettings();
@@ -130,8 +133,16 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
           startAt: b.startAt.toISOString(),
           durationMin: b.durationMin,
           pricePence: b.pricePence,
+          chargedAt: b.chargedAt?.toISOString() ?? null,
           refreshments: b.refreshments.map((r) => refreshmentLabel(r)),
-          addOns: b.items.filter((i) => i.isAddon).map((i) => i.label),
+          addOns: b.items.filter((i) => i.isAddon).map((i) => ({ id: i.id, label: i.label, pricePence: i.pricePence })),
+        }}
+        photos={{
+          items: beforePhotos.map((p) => ({ id: p.id, area: p.area, capturedBy: p.capturedBy, createdAt: p.createdAt.toISOString() })),
+          optOutSigned,
+          baseUrl,
+          canManage: sessionCan(session, 'bookings.manage'),
+          isLaser,
         }}
         client={{
           id: b.client.id,
