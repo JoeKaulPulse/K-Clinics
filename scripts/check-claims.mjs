@@ -20,8 +20,9 @@ const TARGET_FILES = ['lib/treatments.ts', 'lib/treatments-imported.ts', 'lib/te
 
 // severity: HIGH = likely breach, fix now · MED = review/substantiate.
 const RULES = [
-  { re: /\b(botox|juv[eé]derm|dysport|bocouture|azzalure|restylane|profhilo)\b/i, sev: 'HIGH', why: 'Names a prescription-only medicine (POM) — CAP 12.12 prohibits advertising POMs to the public.', fix: 'Use a generic description e.g. "anti-wrinkle injections".' },
+  { re: /\b(botox|juv[eé]derm|dysport|bocouture|azzalure|restylane|profhilo|kybella|belkyra)\b/i, sev: 'HIGH', why: 'Names a prescription-only medicine (POM) — CAP 12.12 prohibits advertising POMs to the public.', fix: 'Use a generic description e.g. "anti-wrinkle injections" / "fat-dissolving injections".' },
   { re: /\bbotulinum\b/i, sev: 'HIGH', why: 'Names the POM substance.', fix: 'Refer to "anti-wrinkle / wrinkle-relaxing injections".' },
+  { re: /\bdeoxycholic acid\b/i, sev: 'HIGH', why: 'Names the POM substance (fat-dissolving injectable).', fix: 'Refer to "fat-dissolving injections".' },
   { re: /\bpainless\b/i, sev: 'HIGH', why: 'Absolute comfort claim — indefensible (pain varies).', fix: '"comfortable" / "designed to minimise discomfort".' },
   { re: /\bscar[-\s]?free\b/i, sev: 'HIGH', why: 'Absolute outcome claim.', fix: '"low-scarring" / "minimal scarring".' },
   { re: /\b(100%\s*safe|completely safe|totally safe|risk[-\s]?free)\b/i, sev: 'HIGH', why: 'Absolute safety claim.', fix: '"carefully performed by trained clinicians".' },
@@ -32,8 +33,10 @@ const RULES = [
   { re: /\b(miracle|cure|eliminates?\b)/i, sev: 'MED', why: 'Cure/miracle language.', fix: '"helps reduce / improve".' },
 ];
 
-// Internal refs that aren't public ad copy: slug/key definitions and URL paths.
-const IGNORE = [/slug:\s*["']botox/i, /["']botox["']\s*:/i, /href:\s*["'][^"']*\/botox/i, /\/botox\b/i];
+// Internal refs that aren't public ad copy (slug/key definitions, URL paths) can
+// be exempted here. Empty now that the POM-brand pages are removed at source and
+// the compliance config lives in lib/compliance.ts (outside this scan's scope).
+const IGNORE = [];
 
 function walk(dir, acc) {
   let entries; try { entries = readdirSync(dir); } catch { return acc; }
