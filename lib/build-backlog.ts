@@ -1488,10 +1488,10 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['app/error.tsx (new file).'],
   },
   {
-    title: 'Visual-QA: fix false P1 timeout on kiosk session and result pages (BLD-328)', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude',
+    title: 'Visual-QA: fix false P1 timeout on kiosk display/session/result pages (BLD-328)', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude',
     value: 3, effort: 1,
-    detail: 'scripts/visual-qa.mjs: two inline page.goto calls for /kiosk/<token> and /kiosk/result/<slug> were using waitUntil:networkidle, which never settled on pages with animation timers or live camera SSE. Changed both to waitUntil:load (matching the already-fixed /kiosk/display call from BLD-346) so genuine failures are not masked by false P1 timeouts.',
-    notes: ['scripts/visual-qa.mjs lines 137 and 188.'],
+    detail: 'scripts/visual-qa.mjs: (1) kiosk/<token> and /kiosk/result/<slug> inline goto calls changed from networkidle to load; (2) /kiosk/display changed from load to domcontentloaded — the SSE channel + animation timers prevent the load event from ever firing on that page, causing a recurring false P1 30s timeout every QA run.',
+    notes: ['scripts/visual-qa.mjs lines 137, 188, and 212.'],
   },
   {
     title: 'Newsletter mid-page capture: homepage, dentistry, packages (BLD-353)', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude',
@@ -1510,6 +1510,53 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     value: 3, effort: 2,
     detail: 'prisma/seed.mjs: added QA demo user creation (four roles: PRACTITIONER, RECEPTION, DEVELOPER, CONTRACTOR) using qa-<role>@kaulindustries.com emails. Guarded by SEED_QA_ROLES=true env var so it never runs in production by default. Notify permissions (timetracking keys) and contractor task assignment notification were already shipped in an earlier slice.',
     notes: ['prisma/seed.mjs. Run: SEED_QA_ROLES=true SEED_QA_PASSWORD=<pw> node prisma/seed.mjs'],
+  },
+  {
+    title: 'Academy content batch 11 -- Laser Safety, Skin Analysis, Evidence & Audit (BLD-311)', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1128),
+    value: 8, effort: 5,
+    detail: '3 new modules added to lib/academy-content.ts: L2 Laser Safety & Equipment (2 lessons + 6-question quiz: Class 3B/4 hazards, controlled areas, PPE, eye protection); L4 Skin Analysis Techniques (2 lessons + 6-question quiz: pre-cleanse assessment, skin type vs condition, magnifying lamp, documentation); L5-7 Evidence-Based Practice & Clinical Audit (2 lessons + 6-question quiz: evidence hierarchy, red flags, 5-step audit cycle, re-audit). Plus batch 11 exam bank: 16 new questions across all three areas.',
+    notes: ['lib/academy-content.ts (SHA 5525053). enrichCourseContentIfNeeded() picks up additions on the next cron run.'],
+  },
+  {
+    title: 'Kiosk campaign: share-gated claim UX + AI caption in share text (PRJ-1.14)', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1128),
+    project: 'skin-smile-kiosk',
+    value: 9, effort: 2,
+    detail: 'Campaign launch: owner brief is brand awareness + bookings via share-to-claim discount (up to 25%). Gap: ClaimReward showed the form immediately with no share gate in the UI; users hitting claim before sharing got a confusing server error. Fix: ShareButtons now fires onShared callback on every share action; ClaimReward shows a locked card ("Share to unlock") until hasShared; KioskSessionFlow wires state. Also: result GET route now returns shareCaption so the AI-written first-person caption appears in WhatsApp/X/native share text.',
+    notes: [
+      'components/kiosk/ShareButtons.tsx, ResultCard.tsx, ClaimReward.tsx, KioskSessionFlow.tsx (SHA 19b17b6).',
+      'app/api/kiosk/results/[id]/route.ts -- added shareCaption to select.',
+      'Server-side share gate (claimKioskDiscount validates session.status === SHARED) was already correct; this PR adds the matching UI gate.',
+    ],
+  },
+  {
+    title: 'Academy cohort names + student list per cohort (BLD-484)', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1131),
+    value: 7, effort: 3,
+    detail: 'Cohort model gets a nullable name field. Admin academy UI: add-cohort form has a name input; each cohort row shows the name as its label (falls back to date), has an inline name editor, and a collapsible student list (name, email, status) with Remove from cohort action. Applications enrolment dropdown now shows cohort names. Schema change is additive (String?).',
+    notes: [
+      'prisma/schema.prisma, app/api/admin/academy/route.ts, components/admin/AcademyManager.tsx, app/admin/academy/enrolments/page.tsx, app/admin/academy/page.tsx (SHA 69c0ef5 on claude/cohort-management-484).',
+      'Student list on /admin/academy courses overview always shows 0 -- enrolments not fetched there; full data is on /admin/academy/enrolments.',
+    ],
+  },
+  {
+    title: '/team page driven by live staff records + public-profile toggle (BLD-487)', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1129),
+    value: 8, effort: 2,
+    detail: 'Owner trigger: /team must show real staff photos and correct GMC/GDC numbers, not placeholder content. Fix: /team now driven solely by publicTeam() query (AdminUser where active=true AND publicProfile=true); empty state shows "coming soon" card + noindex. StaffManager gets a team-page count banner and per-row public-profile toggle explaining deactivation behaviour.',
+    notes: [
+      'app/(marketing)/team/page.tsx, components/admin/StaffManager.tsx (SHA 556250b on claude/team-staff-link-487).',
+      'Security fix (SHA bcd472c): login email removed from publicTeam() select and team card -- it was the credential username, exposed as a mailto: link. publicPhone stays. Found by Opus 4.8 review.',
+    ],
+  },
+  {
+    title: 'Live Appointment Session -- Remove Addon Treatments + Session Photos (BLD-479, BLD-480)', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1132),
+    value: 7, effort: 3,
+    detail: 'BLD-479: Photo uploads in the live session runner -- BeforePhotoCapture integrated pre-start and in-treatment for laser gate compliance. BLD-480: Staff can now remove an add-on treatment mid-session via removeAddonTreatment() server action; guarded against charged or non-addon items; adjusts pricePence + durationMin; logs SESSION_EDITED audit event. AddonList component with per-item Remove/confirm dialog.',
+    notes: ['app/admin/bookings/clinical-actions.ts, app/admin/bookings/[id]/session/page.tsx, components/admin/session/SessionRunner.tsx (SHA 479cbc1 on claude/booking-session-improvements-479-480).'],
+  },
+  {
+    title: 'Academy route ops lack tenantId scope guard (BLD-484 Opus finding)', type: 'ERROR', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    value: 5, effort: 2,
+    detail: 'Opus 4.8 review found updateEnrolment, removeCohort, removeEnrolment in app/api/admin/academy/route.ts use db.enrolment.update/delete({ where: { id } }) with no tenantId filter. Create paths set tenantId. A permitted admin in one tenant could mutate another tenants enrolment/cohort by ID. Route is auth-gated (requirePermission). Fix: add tenantId filter to every update/delete where clause. Predates BLD-484; affects all existing ops.',
+    notes: ['Logged from Opus 4.8 review of BLD-484 (2026-06-18). Low practical risk on single-clinic deploy; must be fixed before multi-tenant or if other clinics are onboarded.'],
   },
 ];
 

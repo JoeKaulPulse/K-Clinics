@@ -11,13 +11,15 @@ type Props = {
   /** Clinic Instagram handle appended to the caption. */
   instagramHandle?: string;
   origin?: string;
+  /** Called once after any successful share action (fires alongside countShare). */
+  onShared?: () => void;
 };
 
 // Social share row. Every share also pings the share API (if we have a resultId)
 // to increment the counter — and a successful native share keeps the SHARED
 // claim-gate satisfied. Uses the Web Share API where available; when the device
 // can share files, we attach the branded share-card PNG from /results/[id]/card.
-export function ShareButtons({ resultId, shareSlug, skinScore, shareCaption, instagramHandle = '@kclinics', origin }: Props) {
+export function ShareButtons({ resultId, shareSlug, skinScore, shareCaption, instagramHandle = '@kclinics', origin, onShared }: Props) {
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -30,6 +32,7 @@ export function ShareButtons({ resultId, shareSlug, skinScore, shareCaption, ins
   function countShare() {
     if (!resultId) return;
     fetch(`/api/kiosk/results/${resultId}/share`, { method: 'POST' }).catch(() => {});
+    onShared?.();
   }
 
   async function copyLink() {

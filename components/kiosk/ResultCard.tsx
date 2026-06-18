@@ -36,11 +36,14 @@ export function ResultCard({
   origin,
   claimHref,
   showShare = true,
+  onShared,
 }: {
   result: KioskResultView;
   origin?: string;
   claimHref?: string;
   showShare?: boolean;
+  /** Bubbled up from ShareButtons after any successful share action. */
+  onShared?: () => void;
 }) {
   const annotations = (result.annotations ?? []).filter(
     (a) =>
@@ -100,6 +103,7 @@ export function ResultCard({
             skinScore={result.skinScore}
             shareCaption={result.shareCaption}
             origin={origin}
+            onShared={onShared}
           />
         </div>
       )}

@@ -5,7 +5,7 @@ import { useState } from 'react';
 // Share-to-claim reward: after sharing, the visitor enters their name + email to
 // create an account and receive a single-use discount code (issued + emailed by
 // /api/kiosk/results/[id]/claim, which is share-gated server-side).
-export function ClaimReward({ resultId }: { resultId: string }) {
+export function ClaimReward({ resultId, hasShared = false }: { resultId: string; hasShared?: boolean }) {
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -24,6 +24,19 @@ export function ClaimReward({ resultId }: { resultId: string }) {
       else setError(r.error || 'Could not claim — please try again.');
     } catch { setError('Network error — please try again.'); }
     finally { setBusy(false); }
+  }
+
+  if (!hasShared) {
+    return (
+      <div className="mx-auto mt-5 w-full max-w-md rounded-[var(--radius-lg)] bg-[var(--color-porcelain)]/20 border border-[var(--color-gold-soft)]/30 p-6 text-center text-[var(--color-porcelain)]">
+        <p className="font-[family-name:var(--font-display)] text-xl">🎁 Unlock your reward</p>
+        <p className="mt-2 text-sm text-[var(--color-blush)]">Share your score above — then come back here to claim a discount off your first treatment.</p>
+        <div className="mt-4 flex items-center justify-center gap-2 text-[var(--color-stone-soft)] text-xs">
+          <span className="text-lg">↑</span>
+          <span>Share to unlock</span>
+        </div>
+      </div>
+    );
   }
 
   if (done) {
