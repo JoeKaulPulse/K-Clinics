@@ -43,18 +43,18 @@ export function ApplyForm({ courseId, courseTitle, cohorts }: { courseId: string
       <h3 className="font-[family-name:var(--font-display)] text-2xl">Apply for this course</h3>
       <p className="mt-1 text-sm text-[var(--color-stone)]">Tell us a little about you and we’ll confirm your place and next steps.</p>
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2"><label className={label}>Full name *</label><input className={field} value={f.name} onChange={(e) => set('name', e.target.value)} /></div>
-        <div><label className={label}>Email *</label><input type="email" className={field} value={f.email} onChange={(e) => set('email', e.target.value)} /></div>
-        <div><label className={label}>Phone</label><input type="tel" className={field} value={f.phone} onChange={(e) => set('phone', e.target.value)} /></div>
+        <div className="sm:col-span-2"><label htmlFor="apply-name" className={label}>Full name *</label><input id="apply-name" autoComplete="name" className={field} value={f.name} onChange={(e) => set('name', e.target.value)} /></div>
+        <div><label htmlFor="apply-email" className={label}>Email *</label><input id="apply-email" type="email" autoComplete="email" className={field} value={f.email} onChange={(e) => set('email', e.target.value)} /></div>
+        <div><label htmlFor="apply-phone" className={label}>Phone</label><input id="apply-phone" type="tel" autoComplete="tel" className={field} value={f.phone} onChange={(e) => set('phone', e.target.value)} /></div>
         {cohorts.length > 0 && (
-          <div className="sm:col-span-2"><label className={label}>Preferred start date</label>
-            <select className={field} value={f.cohortId} onChange={(e) => set('cohortId', e.target.value)}>
+          <div className="sm:col-span-2"><label htmlFor="apply-cohort" className={label}>Preferred start date</label>
+            <select id="apply-cohort" className={field} value={f.cohortId} onChange={(e) => set('cohortId', e.target.value)}>
               <option value="">No preference</option>
               {cohorts.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
             </select>
           </div>
         )}
-        <div className="sm:col-span-2"><label className={label}>Your background / experience</label><textarea rows={3} className={field} value={f.experience} onChange={(e) => set('experience', e.target.value)} placeholder="Current qualifications, clinical/beauty experience, goals…" /></div>
+        <div className="sm:col-span-2"><label htmlFor="apply-exp" className={label}>Your background / experience</label><textarea id="apply-exp" rows={3} className={field} value={f.experience} onChange={(e) => set('experience', e.target.value)} placeholder="Current qualifications, clinical/beauty experience, goals…" /></div>
         <input type="text" tabIndex={-1} autoComplete="off" value={f.company} onChange={(e) => set('company', e.target.value)} className="absolute -left-[9999px] h-0 w-0" aria-hidden />
         <label className="flex items-start gap-3 text-sm text-[var(--color-stone)] sm:col-span-2">
           <input type="checkbox" checked={f.financeInterest} onChange={(e) => set('financeInterest', e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />

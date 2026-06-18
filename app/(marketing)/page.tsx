@@ -285,20 +285,20 @@ export default async function HomePage() {
             <p className="mt-6 text-lede leading-relaxed text-[var(--color-stone)]">
               Moments from Farringdon and Barbican, our Islington clinic is a calm, private sanctuary designed for one purpose — to make you feel extraordinary.
             </p>
-            <dl className="mt-9 space-y-5 text-[var(--color-ink-soft)]">
-              <div>
+            {/* Each direct child is a <div> wrapping one dt/dd pair — the valid
+                HTML5 grouping for <dl> (no div-in-div, which axe flags). */}
+            <dl className="mt-9 grid max-w-md grid-cols-2 gap-x-12 gap-y-5 text-[var(--color-ink-soft)]">
+              <div className="col-span-2">
                 <dt className="eyebrow mb-1.5">Address</dt>
                 <dd>{site.address.street}, {site.address.locality}, {site.address.region} {site.address.postalCode}</dd>
               </div>
-              <div className="flex gap-12">
-                <div>
-                  <dt className="eyebrow mb-1.5">Call</dt>
-                  <dd><a href={site.phoneHref} className="link-underline">{site.phone}</a></dd>
-                </div>
-                <div>
-                  <dt className="eyebrow mb-1.5">Email</dt>
-                  <dd><a href={site.emailHref} className="link-underline">{site.email}</a></dd>
-                </div>
+              <div>
+                <dt className="eyebrow mb-1.5">Call</dt>
+                <dd><a href={site.phoneHref} className="link-underline">{site.phone}</a></dd>
+              </div>
+              <div>
+                <dt className="eyebrow mb-1.5">Email</dt>
+                <dd><a href={site.emailHref} className="link-underline">{site.email}</a></dd>
               </div>
             </dl>
             <div className="mt-9">
