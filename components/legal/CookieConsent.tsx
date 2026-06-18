@@ -82,7 +82,7 @@ export function CookieConsent() {
           )}
 
           <div className="mt-4 flex flex-wrap gap-2.5">
-            <button onClick={() => decide(true, true)} className="rounded-full bg-[var(--color-gold)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">
+            <button onClick={() => decide(true, true)} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">
               Accept all
             </button>
             <button onClick={() => decide(false, false)} className="rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium hover:bg-[var(--color-bone)]">

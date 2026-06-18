@@ -63,7 +63,7 @@ export const articles: Article[] = [
     category: 'Injectables',
     readMinutes: 5,
     published: '2026-02-24',
-    keywords: ['anti-wrinkle injections London', 'natural botox results', 'how long do anti-wrinkle injections last'],
+    keywords: ['anti-wrinkle injections London', 'natural anti-wrinkle results', 'how long do anti-wrinkle injections last'],
     image: 'HydraFacial-Anti-Ageing.png',
     related: ['cosmetic-injections'],
     blocks: [

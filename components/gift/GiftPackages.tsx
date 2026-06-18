@@ -34,7 +34,7 @@ export function GiftPackages({ packages, physicalEnabled = false, physicalFeePen
               <h3 className="font-[family-name:var(--font-display)] text-xl">{p.name}</h3>
               {blurb && <p className="mt-2 line-clamp-3 text-sm text-[var(--color-ink-soft)]">{blurb}</p>}
               <p className="mt-3 text-lg font-medium text-[var(--color-ink)]">{money(p.pricePence)}</p>
-              <button onClick={() => setSelected(p)} className="mt-4 inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-gold)] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--color-ink)]">Gift this →</button>
+              <button onClick={() => setSelected(p)} className="mt-4 inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-gold-deep)] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--color-ink)]">Gift this →</button>
             </div>
           </div>
         );
