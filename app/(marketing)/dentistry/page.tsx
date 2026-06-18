@@ -9,6 +9,7 @@ import { dentistry, groupByGroup } from '@/lib/treatments';
 import { withCardOverrides } from '@/lib/treatment-content';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
+import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
 
 // ISR: refresh hourly so any live "from" prices on the cards stay current.
 export const revalidate = 3600;
@@ -86,6 +87,9 @@ export default async function DentistryPage() {
           </div>
         </section>
       ))}
+
+      {/* BLD-353: mid-page newsletter capture */}
+      <NewsletterCapture />
 
       {comingSoon && (
         <section id="interest" className="scroll-mt-28 bg-[var(--color-bone)] section">

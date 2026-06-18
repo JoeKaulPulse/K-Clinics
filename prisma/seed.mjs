@@ -20,6 +20,26 @@ async function main() {
     create: { email: email.toLowerCase(), passwordHash, name, role: 'OWNER' },
   });
   console.log(`✓ Admin ready: ${user.email}`);
+
+  // BLD-285: QA demo users — one per role for dashboard and permission testing.
+  // Only created when SEED_QA_ROLES=true (never run in production by default).
+  if (process.env.SEED_QA_ROLES !== 'true') return;
+  const QA_PASSWORD = process.env.SEED_QA_PASSWORD || 'QaDemo!2025';
+  const qaHash = await bcrypt.hash(QA_PASSWORD, 10);
+  const qaRoles = [
+    { email: 'qa-practitioner@kaulindustries.com', name: 'QA Practitioner', role: 'PRACTITIONER' },
+    { email: 'qa-reception@kaulindustries.com',    name: 'QA Reception',    role: 'RECEPTION' },
+    { email: 'qa-developer@kaulindustries.com',    name: 'QA Developer',    role: 'DEVELOPER' },
+    { email: 'qa-contractor@kaulindustries.com',   name: 'QA Contractor',   role: 'CONTRACTOR' },
+  ];
+  for (const u of qaRoles) {
+    await db.adminUser.upsert({
+      where: { email: u.email },
+      update: { passwordHash: qaHash, name: u.name },
+      create: { email: u.email, passwordHash: qaHash, name: u.name, role: u.role },
+    });
+    console.log(`✓ QA demo ready: ${u.email} (${u.role})`);
+  }
 }
 
 main().finally(() => db.$disconnect());

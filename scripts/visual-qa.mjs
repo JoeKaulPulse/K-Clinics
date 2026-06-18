@@ -134,7 +134,7 @@ async function kioskFlow(browser) {
   const page = await ctx.newPage();
   watch(page, area);
   try {
-    await page.goto(`${BASE}/kiosk/${token}`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.goto(`${BASE}/kiosk/${token}`, { waitUntil: 'load', timeout: 30000 }); // BLD-328: session page has live camera SSE
     await page.waitForTimeout(800);
     await shoot(page, 'kiosk-2-mobile', 'Mobile session entry');
   } catch (e) { note('P2', area, `mobile page load: ${(e?.message || e).toString().slice(0, 140)}`); }
@@ -185,7 +185,7 @@ async function kioskFlow(browser) {
       const c2 = await browser.newContext(CONTEXT_OPTS);
       const p2 = await c2.newPage();
       watch(p2, 'kiosk-result');
-      await p2.goto(`${BASE}/kiosk/result/${slug}`, { waitUntil: 'networkidle', timeout: 30000 });
+      await p2.goto(`${BASE}/kiosk/result/${slug}`, { waitUntil: 'load', timeout: 30000 }); // BLD-328: result page may have animation timers
       await p2.waitForTimeout(800);
       await shoot(p2, 'kiosk-3-result', 'Shareable result card');
       await c2.close();

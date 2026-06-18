@@ -24,6 +24,7 @@ import { treatments, getTreatment } from '@/lib/treatments';
 import { packages } from '@/lib/packages';
 import { site } from '@/lib/site';
 import { JsonLd, breadcrumbLd, aggregateRatingLd } from '@/lib/seo';
+import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
 
 // ISR: refresh hourly so live "from" prices on the featured cards stay current.
 export const revalidate = 3600;
@@ -228,6 +229,9 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      {/* BLD-353: mid-page newsletter capture */}
+      <NewsletterCapture />
 
       {/* Offer / membership */}
       <section className="section container-lux">
