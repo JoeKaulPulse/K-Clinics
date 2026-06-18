@@ -121,29 +121,39 @@ function toMessages(turns: ChatTurn[]): { role: 'user' | 'assistant'; content: s
 }
 
 async function callHaiku(key: string, system: string, messages: { role: 'user' | 'assistant'; content: string }[]): Promise<{ reply: string; escalate: boolean; reason: string } | null> {
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: HAIKU,
-        max_tokens: 400,
-        system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
-        messages,
-      }),
-      signal: AbortSignal.timeout(25_000),
-    });
-    if (!res.ok) { console.error('[chat-ai] anthropic', res.status, await res.text().catch(() => '')); return null; }
-    const j = await res.json();
-    const text = j?.content?.find((c: { type: string }) => c.type === 'text')?.text ?? '';
-    const obj = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
-    const reply = typeof obj.reply === 'string' ? obj.reply.trim().slice(0, 1200) : '';
-    if (!reply) return null;
-    return { reply, escalate: !!obj.escalate, reason: String(obj.reason || '').slice(0, 200) };
-  } catch (e) {
-    console.error('[chat-ai] call failed:', (e as Error)?.message);
-    return null;
+  // BLD-334: one bounded retry on a transient failure (network / timeout / 5xx).
+  // A 4xx is not retried (it won't succeed), and a failed call never produced a
+  // completion, so retrying can't double-bill.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: HAIKU,
+          max_tokens: 400,
+          system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+          messages,
+        }),
+        signal: AbortSignal.timeout(25_000),
+      });
+      if (!res.ok) {
+        if (res.status >= 500 && attempt === 0) { await new Promise((r) => setTimeout(r, 600)); continue; }
+        console.error('[chat-ai] anthropic', res.status, await res.text().catch(() => '')); return null;
+      }
+      const j = await res.json();
+      const text = j?.content?.find((c: { type: string }) => c.type === 'text')?.text ?? '';
+      const obj = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
+      const reply = typeof obj.reply === 'string' ? obj.reply.trim().slice(0, 1200) : '';
+      if (!reply) return null;
+      return { reply, escalate: !!obj.escalate, reason: String(obj.reason || '').slice(0, 200) };
+    } catch (e) {
+      if (attempt === 0) { await new Promise((r) => setTimeout(r, 600)); continue; }
+      console.error('[chat-ai] call failed:', (e as Error)?.message);
+      return null;
+    }
   }
+  return null;
 }
 
 // Hand the conversation to staff: flip to STAFF mode, post a hand-over note as

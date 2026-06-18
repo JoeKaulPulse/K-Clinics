@@ -24,27 +24,37 @@ export type CampaignPack = {
 async function callHaiku<T>(system: string, user: string, maxTokens = 1600): Promise<T | null> {
   const key = await getSecret('ANTHROPIC_API_KEY');
   if (!key) return null;
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: HAIKU, max_tokens: maxTokens,
-        system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
-        messages: [{ role: 'user', content: user }],
-      }),
-      // Bound a hung upstream so the admin marketing request can't hang to the
-      // platform's function limit (consultation/chat/kiosk already cap at 25-30s).
-      signal: AbortSignal.timeout(25_000),
-    });
-    if (!res.ok) { console.error('[ai-marketing] anthropic', res.status, await res.text().catch(() => '')); return null; }
-    const j = await res.json();
-    const text = j?.content?.find((c: { type: string }) => c.type === 'text')?.text ?? '';
-    return JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)) as T;
-  } catch (e) {
-    console.error('[ai-marketing] call failed:', (e as Error)?.message);
-    return null;
+  // BLD-334: one bounded retry on a transient failure (network / timeout / 5xx).
+  // A 4xx is not retried; a failed call never produced a completion so retrying
+  // can't double-bill.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: HAIKU, max_tokens: maxTokens,
+          system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+          messages: [{ role: 'user', content: user }],
+        }),
+        // Bound a hung upstream so the admin marketing request can't hang to the
+        // platform's function limit (consultation/chat/kiosk already cap at 25-30s).
+        signal: AbortSignal.timeout(25_000),
+      });
+      if (!res.ok) {
+        if (res.status >= 500 && attempt === 0) { await new Promise((r) => setTimeout(r, 600)); continue; }
+        console.error('[ai-marketing] anthropic', res.status, await res.text().catch(() => '')); return null;
+      }
+      const j = await res.json();
+      const text = j?.content?.find((c: { type: string }) => c.type === 'text')?.text ?? '';
+      return JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)) as T;
+    } catch (e) {
+      if (attempt === 0) { await new Promise((r) => setTimeout(r, 600)); continue; }
+      console.error('[ai-marketing] call failed:', (e as Error)?.message);
+      return null;
+    }
   }
+  return null;
 }
 
 /** Compact, real service menu so the AI references genuine treatments + prices. */
