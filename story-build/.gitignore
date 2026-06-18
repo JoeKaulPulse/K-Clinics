@@ -1,0 +1,10 @@
+# Generated / heavy artefacts — the pipeline reproduces these.
+capture/
+frames/
+out/
+recon/
+broll/
+assets/*.jpg
+assets/*.png
+assets/*.wav
+*.log

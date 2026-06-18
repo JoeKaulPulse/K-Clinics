@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&display=swap" rel="stylesheet">
+<style>
+@font-face{font-family:'GeistV';src:url('file:///home/user/K-Clinics/node_modules/geist/dist/fonts/geist-sans/Geist-Variable.woff2') format('woff2');font-weight:100 900;font-display:block;}
+@font-face{font-family:'GeistMonoV';src:url('file:///home/user/K-Clinics/node_modules/geist/dist/fonts/geist-mono/GeistMono-Variable.woff2') format('woff2');font-weight:100 900;font-display:block;}
+:root{
+  --ink:#2a2420; --ink-soft:#3d352f; --espresso:#4a3f37;
+  --porcelain:#f6ece3; --bone:#efe3d7;
+  --stone:#7d6259; --stone-soft:#b7a294;
+  --gold:#a98a6d; --gold-soft:#c2a589; --gold-bright:#dcc4a8; --gold-deep:#816748;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;}
+html,body{background:#000;}
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden;background:#191310;
+  font-family:'GeistV',sans-serif;color:var(--porcelain);}
+/* background plate */
+#bg{position:absolute;inset:-4%;background-size:cover;background-position:center;opacity:0;will-change:transform,opacity;}
+#bggrad{position:absolute;inset:0;opacity:0;
+  background:
+    radial-gradient(120% 90% at 50% 8%, rgba(169,138,109,.16) 0%, transparent 55%),
+    linear-gradient(180deg, rgba(20,15,12,.55) 0%, rgba(20,15,12,.30) 38%, rgba(20,15,12,.72) 100%);}
+/* phone */
+#phone{position:absolute;left:156px;top:176px;width:768px;height:1576px;border-radius:74px;
+  transform-origin:540px 964px;will-change:transform;
+  background:#0e0b09;}
+#phoneshadow{position:absolute;left:156px;top:176px;width:768px;height:1576px;border-radius:74px;
+  box-shadow:0 60px 120px -30px rgba(0,0,0,.7), 0 20px 50px -20px rgba(0,0,0,.55);opacity:0;
+  transform-origin:540px 964px;will-change:transform,opacity;}
+#bezel{position:absolute;inset:0;border-radius:74px;background:linear-gradient(150deg,#231c17,#0e0b09 60%);
+  padding:14px;opacity:0;}
+#screen{position:absolute;left:170px;top:190px;width:740px;height:1548px;border-radius:60px;overflow:hidden;
+  transform-origin:540px 964px;background:var(--porcelain);will-change:transform;}
+.scr{position:absolute;top:0;left:0;width:740px;height:auto;will-change:transform,opacity;opacity:0;}
+#notch{position:absolute;left:50%;top:206px;width:150px;height:30px;border-radius:18px;background:#0e0b09;
+  transform:translateX(-50%);opacity:0;z-index:5;}
+/* cursor + ripple */
+#cursor{position:absolute;left:0;top:0;width:54px;height:54px;opacity:0;z-index:30;
+  filter:drop-shadow(0 4px 8px rgba(0,0,0,.45));will-change:transform,opacity;}
+#ripple{position:absolute;left:0;top:0;width:120px;height:120px;border-radius:50%;
+  border:3px solid var(--gold-bright);opacity:0;transform:translate(-50%,-50%) scale(.2);z-index:29;}
+/* corner logo lockup */
+#logo{position:absolute;left:64px;top:70px;display:flex;flex-direction:column;align-items:center;gap:9px;
+  opacity:0;z-index:40;color:var(--porcelain);will-change:opacity,transform;}
+#logo .k{width:40px;height:auto;}
+#logo .w{width:118px;height:auto;margin-top:1px;}
+/* captions */
+#cap{position:absolute;left:0;right:0;bottom:150px;padding:0 92px;z-index:35;text-align:left;}
+#eyebrow{font-family:'GeistMonoV';font-weight:500;font-size:25px;letter-spacing:.32em;text-transform:uppercase;
+  color:var(--gold-bright);opacity:0;will-change:opacity,transform;}
+#headline{font-family:'Fraunces';font-weight:500;font-size:90px;line-height:.98;letter-spacing:-.01em;
+  color:var(--porcelain);margin-top:20px;opacity:0;will-change:opacity,transform;}
+#headline .it{font-style:italic;color:var(--gold-bright);}
+#sub{font-family:'GeistV';font-weight:400;font-size:33px;line-height:1.34;color:rgba(246,236,227,.82);
+  margin-top:24px;max-width:760px;opacity:0;will-change:opacity,transform;}
+/* end card */
+#endcard{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:0;z-index:45;opacity:0;text-align:center;}
+#endcard .klogo{width:120px;color:var(--porcelain);opacity:0;will-change:opacity,transform;}
+#endcard .kw{width:300px;margin-top:18px;color:var(--porcelain);opacity:0;will-change:opacity,transform;}
+#endcard .url{font-family:'Fraunces';font-weight:500;font-size:62px;color:var(--porcelain);margin-top:64px;opacity:0;will-change:opacity,transform;}
+#endcard .loc{font-family:'GeistMonoV';font-weight:500;font-size:24px;letter-spacing:.34em;color:var(--gold-bright);
+  text-transform:uppercase;margin-top:26px;opacity:0;will-change:opacity,transform;}
+#endcard .pill{margin-top:54px;font-family:'GeistV';font-weight:500;font-size:30px;color:#fff;
+  background:linear-gradient(105deg,var(--gold-deep),var(--gold) 60%);padding:22px 52px;border-radius:999px;opacity:0;
+  box-shadow:0 16px 40px -12px rgba(129,103,72,.6);will-change:opacity,transform;}
+/* progress dots */
+#dots{position:absolute;left:0;right:0;bottom:84px;display:flex;gap:14px;justify-content:center;z-index:36;opacity:0;}
+#dots i{width:46px;height:5px;border-radius:3px;background:rgba(246,236,227,.28);display:block;}
+#dots i.on{background:var(--gold-bright);}
+/* caption scrim */
+#capscrim{position:absolute;left:0;right:0;bottom:0;height:760px;z-index:33;opacity:0;pointer-events:none;
+  background:linear-gradient(180deg, transparent 0%, rgba(16,11,9,0) 16%, rgba(16,11,9,.55) 58%, rgba(16,11,9,.9) 100%);}
+/* grain + vignette */
+#vignette{position:absolute;inset:0;z-index:50;pointer-events:none;
+  background:radial-gradient(130% 100% at 50% 42%, transparent 56%, rgba(15,11,9,.5) 100%);}
+#grain{position:absolute;inset:-50%;z-index:51;pointer-events:none;opacity:.05;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bg"></div>
+  <div id="bggrad"></div>
+  <div id="phoneshadow"></div>
+  <div id="phone"><div id="bezel"></div></div>
+  <div id="screen"></div>
+  <div id="notch"></div>
+  <div id="ripple"></div>
+  <svg id="cursor" viewBox="0 0 24 24" fill="none"><path d="M5 3l14 8.5-6 1.2 3.2 6.1-2.7 1.4-3.2-6.1-4.6 4.1V3z" fill="#fff" stroke="#2a2420" stroke-width="1.1" stroke-linejoin="round"/></svg>
+  <div id="logo">
+    <svg class="k" viewBox="0 0 130 234"><path fill="currentColor" d="M128.115 113.115C125.458 111.125 125.24 111.219 95.9687 125.833C47.875 149.844 33.4896 155.943 26.1823 155.391C18.5521 154.812 19.7552 142.432 28.9375 126.969C33.0573 120.031 41.0677 108.969 66.7552 74.7187C92.7291 40.1041 105.505 20.802 105.901 15.6093C106.047 13.5885 105.818 13.0416 104.615 12.6406C101.948 11.7447 100.547 12.5156 99.1666 15.6354C96.4479 21.7604 83.7291 39.5572 57.6562 73.7083C28.3125 112.151 21.2239 122.458 16.5521 133.526L14.0521 139.443L14.375 129.479C14.8541 114.875 17.4323 82.3177 18.9843 71.4531C22.2031 48.7812 25.4375 33.2916 30.8698 14.3697C34.2864 2.47912 34.3229 2.27079 33.1771 1.276C31.7916 0.0780791 27.1927 -0.416713 25.4218 0.442662C21.1823 2.48433 12.901 30.552 8.0781 59.2083C7.40101 63.2291 5.78122 69.401 4.40101 73.1822C-0.140655 85.6458 -0.21357 86.4322 3.05205 86.6718C4.4531 86.7812 4.46872 87.0416 4.05205 98.3697C2.6406 136.875 2.88018 186.24 4.60935 210.562C5.78643 227.266 6.74476 230.797 10.4791 232.339C13.151 233.437 15.6823 233.203 16.3281 231.802C16.5677 231.276 16.4271 228.135 16.0052 224.755C15.0833 217.286 14.4375 206.182 14.1458 192.568C13.8906 180.995 13.7968 157.656 13.9896 155.062L14.1198 153.302L15.8125 155.271C21.0364 161.333 32.7552 160.469 51.3385 152.651C60.0156 149.005 125.911 116.344 128 114.656C128.911 113.927 128.927 113.713 128.115 113.115Z"/></svg>
+    <svg class="w" viewBox="0 0 531 51"><g fill="currentColor"><path d="M0.875977 25.8821C0.875977 39.8949 13.026 50.8986 27.1821 50.8986H90.1532V43.113H27.1821C16.8829 43.113 9.09142 34.814 9.09142 25.8821C9.16306 24.8134 9.23471 24.0253 9.45562 23.2372L9.66459 22.2401C11.4557 14.4485 18.8831 8.80043 26.6746 8.80043C26.8179 8.80043 26.9672 8.80043 27.1105 8.80043H90.0816V0.937256H27.1105C13.1693 0.937256 0.875977 11.8693 0.875977 25.8821Z"/><path d="M111.468 43.1847V0.937256H103.312V50.9762H176.087V43.1847H111.468Z"/><path d="M189.252 50.9762H197.467V0.937256H189.252V50.9762Z"/><path d="M213.498 50.6181H221.713V13.0933C289.831 44.8326 300.626 50.1225 302.411 50.827L302.704 50.9763V0.937353H294.548V38.4621L213.498 0.656738V50.6181Z"/><path d="M318.723 50.9762H326.938V0.937256H318.723V50.9762Z"/><path d="M340.82 25.8821C340.82 39.8949 352.97 50.8986 367.126 50.8986H430.103V43.113H367.126C356.838 43.113 349.047 34.814 349.047 25.8821C349.113 24.8134 349.184 24.0253 349.399 23.2372L349.608 22.2401C351.399 14.4485 358.839 8.80043 366.63 8.80043C366.767 8.80043 366.911 8.80043 367.054 8.80043H430.025V0.937256H367.054C353.113 0.937256 340.82 11.8693 340.82 25.8821Z"/><path d="M441.118 50.8269H515.033C523.392 50.8269 530.181 44.2534 530.181 36.3186C530.181 28.3181 522.753 21.8878 515.099 21.8878H456.2C452.343 21.8878 449.274 18.8787 449.274 15.2367C449.274 11.4454 452.486 8.80043 455.848 8.80043C455.985 8.80043 456.128 8.80043 456.278 8.80043H530.181V0.937256H456.278C448.343 0.937256 441.19 7.23019 441.19 15.2367V15.5173C441.19 23.7447 448.701 29.8167 456.128 29.8167H515.171C518.89 29.8167 521.965 32.6766 521.965 36.3902C521.965 40.0382 518.89 43.0414 515.033 43.0414H441.118V50.8269Z"/></g></svg>
+  </div>
+  <div id="capscrim"></div>
+  <div id="cap"><div id="eyebrow"></div><div id="headline"></div><div id="sub"></div></div>
+  <div id="dots"><i></i><i></i><i></i><i></i></div>
+  <div id="endcard">
+    <svg class="klogo" viewBox="0 0 130 234"><path fill="currentColor" d="M128.115 113.115C125.458 111.125 125.24 111.219 95.9687 125.833C47.875 149.844 33.4896 155.943 26.1823 155.391C18.5521 154.812 19.7552 142.432 28.9375 126.969C33.0573 120.031 41.0677 108.969 66.7552 74.7187C92.7291 40.1041 105.505 20.802 105.901 15.6093C106.047 13.5885 105.818 13.0416 104.615 12.6406C101.948 11.7447 100.547 12.5156 99.1666 15.6354C96.4479 21.7604 83.7291 39.5572 57.6562 73.7083C28.3125 112.151 21.2239 122.458 16.5521 133.526L14.0521 139.443L14.375 129.479C14.8541 114.875 17.4323 82.3177 18.9843 71.4531C22.2031 48.7812 25.4375 33.2916 30.8698 14.3697C34.2864 2.47912 34.3229 2.27079 33.1771 1.276C31.7916 0.0780791 27.1927 -0.416713 25.4218 0.442662C21.1823 2.48433 12.901 30.552 8.0781 59.2083C7.40101 63.2291 5.78122 69.401 4.40101 73.1822C-0.140655 85.6458 -0.21357 86.4322 3.05205 86.6718C4.4531 86.7812 4.46872 87.0416 4.05205 98.3697C2.6406 136.875 2.88018 186.24 4.60935 210.562C5.78643 227.266 6.74476 230.797 10.4791 232.339C13.151 233.437 15.6823 233.203 16.3281 231.802C16.5677 231.276 16.4271 228.135 16.0052 224.755C15.0833 217.286 14.4375 206.182 14.1458 192.568C13.8906 180.995 13.7968 157.656 13.9896 155.062L14.1198 153.302L15.8125 155.271C21.0364 161.333 32.7552 160.469 51.3385 152.651C60.0156 149.005 125.911 116.344 128 114.656C128.911 113.927 128.927 113.713 128.115 113.115Z"/></svg>
+    <svg class="kw" viewBox="0 0 531 51"><g fill="currentColor"><path d="M0.875977 25.8821C0.875977 39.8949 13.026 50.8986 27.1821 50.8986H90.1532V43.113H27.1821C16.8829 43.113 9.09142 34.814 9.09142 25.8821C9.16306 24.8134 9.23471 24.0253 9.45562 23.2372L9.66459 22.2401C11.4557 14.4485 18.8831 8.80043 26.6746 8.80043C26.8179 8.80043 26.9672 8.80043 27.1105 8.80043H90.0816V0.937256H27.1105C13.1693 0.937256 0.875977 11.8693 0.875977 25.8821Z"/><path d="M111.468 43.1847V0.937256H103.312V50.9762H176.087V43.1847H111.468Z"/><path d="M189.252 50.9762H197.467V0.937256H189.252V50.9762Z"/><path d="M213.498 50.6181H221.713V13.0933C289.831 44.8326 300.626 50.1225 302.411 50.827L302.704 50.9763V0.937353H294.548V38.4621L213.498 0.656738V50.6181Z"/><path d="M318.723 50.9762H326.938V0.937256H318.723V50.9762Z"/><path d="M340.82 25.8821C340.82 39.8949 352.97 50.8986 367.126 50.8986H430.103V43.113H367.126C356.838 43.113 349.047 34.814 349.047 25.8821C349.113 24.8134 349.184 24.0253 349.399 23.2372L349.608 22.2401C351.399 14.4485 358.839 8.80043 366.63 8.80043C366.767 8.80043 366.911 8.80043 367.054 8.80043H430.025V0.937256H367.054C353.113 0.937256 340.82 11.8693 340.82 25.8821Z"/><path d="M441.118 50.8269H515.033C523.392 50.8269 530.181 44.2534 530.181 36.3186C530.181 28.3181 522.753 21.8878 515.099 21.8878H456.2C452.343 21.8878 449.274 18.8787 449.274 15.2367C449.274 11.4454 452.486 8.80043 455.848 8.80043C455.985 8.80043 456.128 8.80043 456.278 8.80043H530.181V0.937256H456.278C448.343 0.937256 441.19 7.23019 441.19 15.2367V15.5173C441.19 23.7447 448.701 29.8167 456.128 29.8167H515.171C518.89 29.8167 521.965 32.6766 521.965 36.3902C521.965 40.0382 518.89 43.0414 515.033 43.0414H441.118V50.8269Z"/></g></svg>
+    <div class="url">kclinics.co.uk</div>
+    <div class="loc">Islington · London</div>
+    <div class="pill">Book online &nbsp;→</div>
+  </div>
+  <div id="vignette"></div>
+  <div id="grain"></div>
+</div>
+<script src="scene.js"></script>
+</body>
+</html>
