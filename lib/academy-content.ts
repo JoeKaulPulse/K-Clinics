@@ -2398,6 +2398,179 @@ export const NEW_MODULES: CourseContentDef[] = [
     ],
   },
 
+  {
+    courseSlug: L2,
+    modules: [
+      {
+        title: 'Laser Safety & Equipment',
+        summary: 'Know your laser class, control the treatment area, and keep everyone protected.',
+        lessons: [
+          {
+            title: 'Laser Classes & Controlled Areas',
+            durationMin: 10,
+            objectives: ['Name laser classes used in aesthetics', 'Set up a controlled area', 'Post correct warning signs'],
+            studyTips: ['Class 3B and 4 can injure from direct and reflected beams.'],
+            examRefs: ['Laser safety'],
+            steps: [
+              { kind: 'say', text: 'Lasers are powerful tools — handled correctly, they’re safe. Let’s get it right.', mood: 'happy' },
+              { kind: 'teach', title: 'Laser classes', text: 'Class 3B and Class 4 are the types used in aesthetics. Both can damage eyes and skin from direct and reflected beams.' },
+              { kind: 'ask', prompt: 'Which laser classes are commonly used in aesthetic treatments?', qtype: 'MULTI', options: ['Class 3B', 'Class 4', 'Class 1', 'Class 0'], correct: [0, 1], explanation: 'Class 3B and 4 are the treatment classes.' },
+              { kind: 'teach', title: 'Controlled area', text: 'The treatment room becomes a laser-controlled area during use. Entry is restricted and warning signs go on every door.' },
+              { kind: 'ask', prompt: 'During laser use, the treatment room is a laser-___ area.', qtype: 'WORD', options: ['controlled', 'open', 'free'], correct: [0], explanation: 'A controlled area with restricted entry.' },
+              { kind: 'say', text: 'Signs up, door locked — now the personal protection.', mood: 'cheer' },
+              { kind: 'teach', title: 'Responsibility', text: 'The operator is responsible for safe laser use at all times — not the manufacturer or the regulator.' },
+              { kind: 'ask', prompt: 'Responsibility for safe laser use rests with...', qtype: 'SINGLE', options: ['The operator', 'The machine manufacturer', 'The client', 'The regulator alone'], correct: [0], explanation: 'The operator is accountable.' },
+              { kind: 'say', text: 'Your room is prepared. Now the safety gear.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'PPE & Eye Protection',
+            durationMin: 9,
+            objectives: ['Explain why eye protection is critical', 'Match goggles to the wavelength', 'Know who wears what'],
+            studyTips: ['Wavelength-matched goggles only — ordinary sunglasses offer no protection.'],
+            examRefs: ['Laser safety'],
+            steps: [
+              { kind: 'say', text: 'Eyes are irreplaceable. Let’s make sure everyone in the room stays safe.', mood: 'think' },
+              { kind: 'teach', title: 'Eye damage', text: 'A laser can permanently damage eyes in a fraction of a second. Ordinary sunglasses don’t help.' },
+              { kind: 'ask', prompt: 'Ordinary sunglasses protect eyes from laser beams.', qtype: 'TRUEFALSE', options: ['False', 'True'], correct: [0], explanation: 'Wavelength-rated goggles are essential; sunglasses do not protect.' },
+              { kind: 'teach', title: 'Wavelength-matched goggles', text: 'Protective goggles must be rated for the specific wavelength in use. A different wavelength needs different optical density ratings.' },
+              { kind: 'ask', prompt: 'Protective laser goggles must be rated for the specific ___ in use.', qtype: 'WORD', options: ['wavelength', 'brand', 'colour'], correct: [0], explanation: 'Different wavelengths require different optical densities.' },
+              { kind: 'teach', title: 'Who wears them', text: 'The practitioner, the client, and anyone else present in the room all wear appropriate protective eyewear throughout the treatment.' },
+              { kind: 'ask', prompt: 'Wavelength-matched eyewear must be worn by...', qtype: 'MULTI', options: ['The practitioner', 'The client', 'Any observers in the room', 'Nobody'], correct: [0, 1, 2], explanation: 'Every person present needs protection.' },
+              { kind: 'say', text: 'Everyone protected, every session. That’s professional.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Laser Safety Assessment', passMark: 70,
+          questions: [
+            { prompt: 'Which laser classes are used in aesthetic treatments?', type: 'MULTI', options: ['Class 3B', 'Class 4', 'Class 2', 'Class 1'], correct: [0, 1], explanation: 'Class 3B and 4 are the treatment classes.' },
+            { prompt: 'During laser use the treatment room is a laser-___ area.', type: 'WORD', options: ['controlled', 'free', 'open'], correct: [0], explanation: 'A controlled area with restricted entry and warning signs.' },
+            { prompt: 'Ordinary sunglasses protect eyes from treatment lasers.', type: 'TRUEFALSE', options: ['False', 'True'], correct: [0], explanation: 'Only wavelength-rated goggles protect.' },
+            { prompt: 'Protective goggles must match the ___ of the laser.', type: 'WORD', options: ['wavelength', 'brand', 'colour'], correct: [0], explanation: 'Different wavelengths need different optical densities.' },
+            { prompt: 'Which people in the room must wear eye protection?', type: 'MULTI', options: ['The practitioner', 'The client', 'Any observers', 'Nobody'], correct: [0, 1, 2], explanation: 'Everyone present.' },
+            { prompt: 'Responsibility for safe laser use rests with...', type: 'SINGLE', options: ['The operator', 'The manufacturer only', 'The client', 'The regulator alone'], correct: [0], explanation: 'The operator is accountable.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    courseSlug: 'level-4-certificate-aesthetic-practice',
+    modules: [
+      {
+        title: 'Skin Analysis Techniques',
+        summary: 'Read the skin accurately to build a safe, effective treatment plan.',
+        lessons: [
+          {
+            title: 'Reading the Skin Accurately',
+            durationMin: 10,
+            objectives: ['Cleanse before assessing', 'Identify skin type vs condition', 'Use tools correctly'],
+            studyTips: ['Skin type is genetic; dehydration is a condition any type can develop.'],
+            examRefs: ['Skin analysis'],
+            steps: [
+              { kind: 'say', text: 'You can’t plan well without accurate assessment. Let’s read the skin properly.', mood: 'happy' },
+              { kind: 'teach', title: 'Cleanse first', text: 'Remove all products before assessing; residue masks the skin’s true state and skews the analysis.' },
+              { kind: 'ask', prompt: 'Before a skin analysis, skin should be...', qtype: 'WORD', options: ['cleansed', 'moisturised', 'made up'], correct: [0], explanation: 'A bare skin surface gives the accurate read.' },
+              { kind: 'teach', title: 'Type vs condition', text: 'Skin type (oily, dry, combination, normal) is genetic and stable. Dehydration is a changeable condition any skin type can have.' },
+              { kind: 'ask', prompt: 'Dehydration is a skin ___, not a skin type.', qtype: 'WORD', options: ['condition', 'disease', 'colour'], correct: [0], explanation: 'Any skin type can be dehydrated — it is a changeable state.' },
+              { kind: 'teach', title: 'The main types', text: 'The four main skin types are oily, dry, combination and normal. Getting this right shapes every product and protocol choice.' },
+              { kind: 'ask', prompt: 'Which are the main skin types?', qtype: 'MULTI', options: ['Oily', 'Dry', 'Combination', 'Dehydrated'], correct: [0, 1, 2], explanation: 'Dehydrated is a condition, not a type.' },
+              { kind: 'say', text: 'Types and conditions clear. Now look closer.', mood: 'cheer' },
+              { kind: 'teach', title: 'Magnifying lamp', text: 'A magnifying lamp reveals pores, texture, vascular detail and pigmentation that are easy to miss with the naked eye.' },
+              { kind: 'ask', prompt: 'A magnifying lamp helps you see...', qtype: 'MULTI', options: ['Open pores', 'Comedones', 'Erythema', 'The client’s exact age'], correct: [0, 1, 2], explanation: 'It reveals texture and vascular detail — not age.' },
+              { kind: 'say', text: 'Eyes and tools working together. Lovely.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Building the Treatment Plan',
+            durationMin: 9,
+            objectives: ['Match findings to treatments', 'Explain the plan to the client', 'Document and review'],
+            studyTips: ['Assessment drives the plan; plan drives the treatment.'],
+            examRefs: ['Treatment planning'],
+            steps: [
+              { kind: 'say', text: 'Analysis done — now turn findings into a safe, informed plan.', mood: 'think' },
+              { kind: 'teach', title: 'Match findings to plan', text: 'Each finding shapes the choice: a reactive skin needs gentler settings; photodamage suggests different modalities to dry skin.' },
+              { kind: 'ask', prompt: 'The main purpose of a skin analysis is to...', qtype: 'SINGLE', options: ['Shape a safe treatment plan', 'Set the price', 'Skip the consultation', 'Impress the client'], correct: [0], explanation: 'Analysis informs a safe, appropriate plan.' },
+              { kind: 'teach', title: 'Explain clearly', text: 'Walk the client through what you found and why the plan suits their skin. They understand better and consent more confidently.' },
+              { kind: 'ask', prompt: 'After analysis, the client should understand...', qtype: 'SINGLE', options: ['What was found and why the plan suits them', 'Nothing — just sign the form', 'The price only', 'The device brand'], correct: [0], explanation: 'Informed clients give better consent.' },
+              { kind: 'teach', title: 'Document and review', text: 'Record your findings and the agreed plan. Review at each follow-up and adjust if the skin has changed.' },
+              { kind: 'ask', prompt: 'Skin analysis findings should be...', qtype: 'MULTI', options: ['Documented', 'Reviewed at follow-up', 'Used to shape the plan', 'Ignored after the first visit'], correct: [0, 1, 2], explanation: 'Document, review, and use them — they drive every decision.' },
+              { kind: 'say', text: 'Analysed, planned, documented. That’s expert practice.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Skin Analysis Assessment', passMark: 70,
+          questions: [
+            { prompt: 'Before skin analysis, skin should be...', type: 'WORD', options: ['cleansed', 'moisturised', 'tanned'], correct: [0], explanation: 'A clean surface gives an accurate read.' },
+            { prompt: 'Dehydration is a skin ___, not a type.', type: 'WORD', options: ['condition', 'disease', 'colour'], correct: [0], explanation: 'Any skin type can be dehydrated.' },
+            { prompt: 'The four main skin types are oily, dry, combination and normal.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Dehydration is a condition, not a type.' },
+            { prompt: 'A magnifying lamp helps identify...', type: 'MULTI', options: ['Open pores', 'Skin texture', 'Erythema', 'The client’s exact age'], correct: [0, 1, 2], explanation: 'It reveals detail — not age.' },
+            { prompt: 'The main purpose of skin analysis is to...', type: 'SINGLE', options: ['Shape a safe treatment plan', 'Set the price', 'Skip the consultation', 'Impress the client'], correct: [0], explanation: 'Analysis informs the plan.' },
+            { prompt: 'Skin analysis findings should be documented and reviewed at follow-up.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Records protect everyone.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    courseSlug: 'advanced-aesthetics-level-5-7',
+    modules: [
+      {
+        title: 'Evidence-Based Practice & Clinical Audit',
+        summary: 'Ground decisions in evidence and use clinical audit to raise your own standards.',
+        lessons: [
+          {
+            title: 'Using Evidence in Practice',
+            durationMin: 10,
+            objectives: ['Grade the evidence you encounter', 'Reject unsupported claims', 'Apply evidence at decision points'],
+            studyTips: ['A peer-reviewed study outranks a manufacturer claim every time.'],
+            examRefs: ['Evidence-based practice'],
+            steps: [
+              { kind: 'say', text: 'Experts base decisions on evidence, not habit. Let’s build that skill.', mood: 'think' },
+              { kind: 'teach', title: 'Evidence hierarchy', text: 'Not all evidence is equal. Peer-reviewed clinical research sits at the top; manufacturer brochures and social media sit at the bottom.' },
+              { kind: 'ask', prompt: 'The strongest source of evidence for a treatment outcome is...', qtype: 'SINGLE', options: ['A peer-reviewed study', 'A manufacturer brochure', 'A viral video', 'A rumour'], correct: [0], explanation: 'Peer-reviewed evidence outranks marketing.' },
+              { kind: 'teach', title: 'Red flags in claims', text: 'Watch for “clinically proven” with no cited study, before/after photos with no context, and single-session cure claims.' },
+              { kind: 'ask', prompt: 'Which are red flags in a treatment claim?', qtype: 'MULTI', options: ['"Clinically proven" with no study cited', 'Before/after without context', 'A single-session cure claim', 'A published peer-reviewed citation'], correct: [0, 1, 2], explanation: 'A proper citation is evidence; the others are marketing.' },
+              { kind: 'say', text: 'Critical eyes on — now apply it to real decisions.', mood: 'cheer' },
+              { kind: 'teach', title: 'Apply at decision points', text: 'Before adopting new equipment, updating a protocol or adding a treatment, check the evidence base. It protects clients and your reputation.' },
+              { kind: 'ask', prompt: 'Checking evidence before changing a protocol protects...', qtype: 'MULTI', options: ['Clients', 'Your reputation', 'Your outcomes', 'Nobody — it just slows you down'], correct: [0, 1, 2], explanation: 'Evidence-based decisions protect clients and practitioners alike.' },
+              { kind: 'say', text: 'Evidence-based practice raises everyone’s standard. Excellent.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'The Clinical Audit Cycle',
+            durationMin: 10,
+            objectives: ['Explain the five-step audit cycle', 'Set a standard and measure against it', 'Close the loop with re-audit'],
+            studyTips: ['Plan — collect — compare — change — re-audit. Never skip re-audit.'],
+            examRefs: ['Clinical audit'],
+            steps: [
+              { kind: 'say', text: 'Audit is how you prove — to yourself and others — that your practice is good.', mood: 'happy' },
+              { kind: 'teach', title: 'The five steps', text: 'Plan what to measure → Collect data → Compare to the agreed standard → Change what needs changing → Re-audit to confirm improvement.' },
+              { kind: 'ask', prompt: 'A clinical audit compares your practice against a...', qtype: 'WORD', options: ['standard', 'rival', 'trend'], correct: [0], explanation: 'Measure against an agreed standard.' },
+              { kind: 'teach', title: 'The loop must close', text: 'Re-audit after a change is the most commonly skipped step. Without it you cannot confirm the change actually improved things.' },
+              { kind: 'ask', prompt: 'The audit cycle is only complete once you have...', qtype: 'SINGLE', options: ['Re-audited to confirm improvement', 'Written a report', 'Presented findings at a meeting', 'Filed the data'], correct: [0], explanation: 'Re-audit closes the loop; without it you cannot confirm improvement.' },
+              { kind: 'teach', title: 'Useful metrics', text: 'Complication rates, client satisfaction, re-treatment rates and consent completeness are all measurable and meaningful.' },
+              { kind: 'ask', prompt: 'Which are useful audit metrics?', qtype: 'MULTI', options: ['Complication rates', 'Client satisfaction', 'Consent completeness', 'Lunch break length'], correct: [0, 1, 2], explanation: 'Clinical and outcome metrics; not break times.' },
+              { kind: 'say', text: 'Measured, improved, confirmed. That’s expertise.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Evidence & Audit Assessment', passMark: 70,
+          questions: [
+            { prompt: 'The strongest evidence for a treatment comes from...', type: 'SINGLE', options: ['A peer-reviewed study', 'A manufacturer brochure', 'A social media post', 'Word of mouth'], correct: [0], explanation: 'Peer-reviewed research ranks highest.' },
+            { prompt: '"Clinically proven" with no cited study is...', type: 'SINGLE', options: ['A red flag in a claim', 'A regulatory standard', 'Good enough evidence', 'Always correct'], correct: [0], explanation: 'Unsupported claims need scrutiny.' },
+            { prompt: 'An audit compares your practice against a...', type: 'WORD', options: ['standard', 'rival', 'trend'], correct: [0], explanation: 'An agreed standard.' },
+            { prompt: 'Re-auditing after a change confirms the improvement worked.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Closing the loop confirms improvement.' },
+            { prompt: 'Which are useful audit metrics?', type: 'MULTI', options: ['Complication rates', 'Client satisfaction', 'Consent completeness', 'Social media followers'], correct: [0, 1, 2], explanation: 'Clinical metrics, not social metrics.' },
+            { prompt: 'Evidence-based practice protects both clients and the practitioner’s reputation.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'It raises standards and reduces harm.' },
+          ],
+        },
+      },
+    ],
+  },
 ];
 
 export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
@@ -2595,6 +2768,31 @@ export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
   { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Consent', prompt: 'A cooling-off period before an aesthetic treatment gives the client time to...', options: ['Reflect on the decision and withdraw without pressure', 'Change their appointment time', 'Test the practitioner\'s patience', 'Request a cheaper alternative'], correct: [0], explanation: 'A cooling-off period ensures consent is free and informed, not impulsive. Industry codes (JCCP/Save Face) recommend at least 24-48 hours for some treatments.' },
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Adverse events', prompt: 'A serious adverse event linked to a laser device must be reported to the...', type: 'WORD', options: ['MHRA', 'client only', 'insurer only'], correct: [0], explanation: 'The MHRA (Medicines and Healthcare products Regulatory Agency) collects medical device adverse event reports under the Medical Devices Regulations.' },
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Governance', prompt: 'The duty of candour requires that when something goes wrong, you...', type: 'MULTI', options: ['Inform the client promptly', 'Apologise sincerely', 'Offer a practical remedy or support', 'Delete the treatment record'], correct: [0, 1, 2], explanation: 'Openness, an apology, and a remedy are the three pillars of duty of candour. Deleting records is a criminal act.' },
+  // -- BATCH 11 exam bank questions -------------------------------------------
+
+  // L2 — Laser safety
+  { courseSlug: L2, topic: 'Laser safety', prompt: 'Class 3B and Class 4 lasers pose risk from both direct and ___ beams.', type: 'WORD', options: ['reflected', 'ambient', 'harmless'], correct: [0], explanation: 'Reflected beams from shiny surfaces are a recognised hazard for both classes.' },
+  { courseSlug: L2, topic: 'Laser safety', prompt: 'A laser warning notice on the treatment room door must show the class, wavelength and hazard level.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Warning signage must include class, wavelength and hazard so anyone entering knows the risk.' },
+  { courseSlug: L2, topic: 'Laser safety', prompt: 'Potential laser hazards in addition to eye and skin injury include fire and...', type: 'WORD', options: ['fumes', 'music', 'gravity'], correct: [0], explanation: 'Laser tissue fumes (plume) are a biological and chemical hazard requiring extraction or filtration.' },
+  { courseSlug: L2, topic: 'Laser safety', prompt: 'The optical density (OD) rating on laser goggles indicates...', options: ['The protection level at a given wavelength', 'The brand quality', 'How dark the lens is', 'The frame size'], correct: [0], explanation: 'OD rating confirms how much the lens attenuates energy at the specified wavelength.' },
+  { courseSlug: L2, topic: 'Laser safety', prompt: 'A shiny reflective surface in a laser treatment room...', options: ['Must be removed or covered before use', 'Improves the treatment result', 'Offers no hazard', 'Is required for safety'], correct: [0], explanation: 'Shiny surfaces can scatter or reflect beams and cause unintended injury.' },
+
+  // L3 — Skin tightening & body contouring
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Skin tightening', prompt: 'HIFU (high-intensity focused ultrasound) tightens skin by depositing energy at...', options: ['A precise depth in the SMAS/deep dermis', 'The skin surface only', 'Subcutaneous fat only', 'Bone level'], correct: [0], explanation: 'HIFU targets the SMAS and deep dermis to trigger collagen contraction and neocollagenesis at a controlled depth.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Skin tightening', prompt: 'Skin tightening with energy-based devices produces results that are...', options: ['Gradual over 2-3 months as collagen remodels', 'Instant and permanent', 'Equivalent to a surgical facelift', 'Visible only under UV light'], correct: [0], explanation: 'Collagen remodelling takes weeks to months; results are modest and gradual — not surgical.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Body contouring', prompt: 'Cryolipolysis (fat freezing) works by applying...', options: ['Controlled cold to selectively destroy fat cells', 'Heat to melt fat', 'Suction alone', 'RF energy to the fat layer'], correct: [0], explanation: 'Controlled cooling (around -11°C) triggers apoptosis (cell death) selectively in adipocytes without damaging the skin surface.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Body contouring', prompt: 'After cryolipolysis, destroyed fat cells are removed by the body’s ___ system over weeks.', type: 'WORD', options: ['lymphatic', 'nervous', 'skeletal'], correct: [0], explanation: 'Dead adipocytes are cleared via the lymphatic system over 8-12 weeks.' },
+
+  // L4 — Skin analysis
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Skin analysis', prompt: 'Fitzpatrick skin typing and skin-type assessment are completed...', options: ['Before any energy-based treatment', 'Only once at registration', 'After the first treatment', 'Only if the client asks'], correct: [0], explanation: 'Skin type and Fitzpatrick classification must be established before every energy-based treatment to guide safe settings.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Skin analysis', prompt: 'A telangiectasia visible during skin analysis is a...', options: ['Dilated superficial blood vessel', 'Form of malignant melanoma', 'Type of comedone', 'Sign of bacterial infection'], correct: [0], explanation: 'Telangiectasia are small dilated superficial vessels — visible lesions to note and potentially treat with vascular devices.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Skin analysis', prompt: 'A thorough medical history before aesthetic treatment includes asking about current...', type: 'MULTI', options: ['Prescription medications', 'Herbal supplements', 'Recent isotretinoin use', 'Favourite television show'], correct: [0, 1, 2], explanation: 'Medications, herbal supplements and isotretinoin history are all clinically relevant contraindication checks.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Skin analysis', prompt: 'Transient erythema (redness) immediately after laser treatment is...', options: ['A normal expected response', 'A sign of treatment failure', 'An allergic reaction requiring referral', 'A contraindication to further treatment'], correct: [0], explanation: 'Brief erythema is a normal vascular response to laser energy. Persistent or worsening erythema may need review.' },
+
+  // L5-7 — Evidence, audit, mentoring
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Evidence', prompt: 'A systematic review or meta-analysis sits at the top of the evidence hierarchy because it...', options: ['Pools and statistically combines multiple studies to reduce bias', 'Is written by the manufacturer', 'Is the newest study available', 'Uses the largest single sample'], correct: [0], explanation: 'Systematic reviews/meta-analyses aggregate evidence across many trials, reducing the effect of individual study bias.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Audit', prompt: 'An audit criterion is...', type: 'WORD', options: ['a measurable standard', 'a client outcome', 'a team opinion'], correct: [0], explanation: 'A criterion is a specific, measurable statement of the standard you are auditing against.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Mentoring', prompt: 'When giving constructive feedback to a mentee, the most useful feedback is specific, actionable and...', type: 'WORD', options: ['kind', 'vague', 'public'], correct: [0], explanation: 'Specific, actionable and kind feedback supports growth without embarrassing or demoralising the mentee.' },
 
 ];
 
