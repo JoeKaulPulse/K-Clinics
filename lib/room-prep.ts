@@ -81,6 +81,22 @@ export async function setRoomOccupied(roomId: string, date: Date, occupied: bool
   });
 }
 
+/** Clear the manual "occupied" flag on every room a booking holds, for the clinic
+ *  day — called when a booking finishes so the room screen returns to Available
+ *  without staff having to tap Vacant (BLD-506). Best-effort, idempotent. */
+export async function clearOccupiedForBooking(bookingId: string, date: Date = clinicDay()): Promise<void> {
+  const booking = await db.booking.findUnique({
+    where: { id: bookingId },
+    select: { resources: { where: { kind: 'ROOM' }, select: { id: true } } },
+  });
+  const roomIds = booking?.resources.map((r) => r.id) ?? [];
+  if (roomIds.length === 0) return;
+  await db.roomPrep.updateMany({
+    where: { roomId: { in: roomIds }, date, occupied: true },
+    data: { occupied: false, occupiedAt: null, occupiedBy: null },
+  });
+}
+
 /** Rooms for a clinic day with their prep state + live availability (occupied
  *  now, current + next booking). `now` is injectable for testing. */
 export async function getRoomsForDay(opts: { locationId?: string | null; date?: Date; now?: Date } = {}): Promise<RoomDay[]> {
