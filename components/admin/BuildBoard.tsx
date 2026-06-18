@@ -448,9 +448,9 @@ function ListView({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => void 
                 <td className="px-3 py-2"><span className={`rounded-full px-1.5 py-0.5 text-[0.6rem] font-semibold ${URGENCY[i.urgency]?.cls}`}>{i.urgency}</span></td>
                 <td className="px-3 py-2 text-xs">{i.status.replace('_', ' ').toLowerCase()}</td>
                 <td className="px-3 py-2 text-xs">{i.assignee === 'claude' ? '◆ Claude' : i.assignee.split('@')[0]}</td>
-                <td className="px-3 py-2 text-xs">{r ?? '—'}</td>
-                <td className="px-3 py-2 text-xs">{i.subtasks.length ? `${done}/${i.subtasks.length}` : '—'}</td>
-                <td className="px-3 py-2 text-xs">{d != null ? fmtDur(d) : '—'}</td>
+                <td className="px-3 py-2 text-xs tabular-nums">{r ?? '—'}</td>
+                <td className="px-3 py-2 text-xs tabular-nums">{i.subtasks.length ? `${done}/${i.subtasks.length}` : '—'}</td>
+                <td className="px-3 py-2 text-xs tabular-nums">{d != null ? fmtDur(d) : '—'}</td>
                 <td className="px-3 py-2 text-xs">{i.estCompleteAt ? day(i.estCompleteAt) : '—'}</td>
               </tr>
             );

@@ -20,7 +20,7 @@ export default async function AdminNpsPage() {
 
   const Stat = ({ label, value, tone = '' }: { label: string; value: string; tone?: string }) => (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
-      <p className={`font-[family-name:var(--font-display)] text-3xl ${tone}`}>{value}</p>
+      <p className={`font-[family-name:var(--font-display)] text-3xl tabular-nums ${tone}`}>{value}</p>
       <p className="mt-1 text-xs uppercase tracking-wide text-[var(--color-stone)]">{label}</p>
     </div>
   );

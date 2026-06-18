@@ -12,7 +12,7 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({
   description:
     'Train as an aesthetics practitioner at K Academy, Islington. Ofqual-regulated, VTCT and CPD-accredited courses from Level 2 to Level 7 — blended Thinkific theory, hands-on practical days and in-house exams. Finance available with Clearpay.',
   path: '/academy',
-  keywords: ['aesthetics training London', 'Level 4 aesthetics course', 'VTCT aesthetics qualification', 'botox filler training', 'accredited aesthetics academy'],
+  keywords: ['aesthetics training London', 'Level 4 aesthetics course', 'VTCT aesthetics qualification', 'anti-wrinkle and filler training', 'accredited aesthetics academy'],
 });
 
 export const revalidate = 3600;

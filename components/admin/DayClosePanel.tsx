@@ -77,7 +77,7 @@ export function DayClosePanel() {
         ) : (
           <>
             <p className="text-sm text-[var(--color-stone)]">Card takings expected today</p>
-            <p className="font-[family-name:var(--font-display)] text-3xl">{money(data.expected.cardPence)}</p>
+            <p className="font-[family-name:var(--font-display)] text-3xl tabular-nums">{money(data.expected.cardPence)}</p>
             <p className="mt-1 text-xs text-[var(--color-stone)]">
               {data.expected.chargeCount} charge{data.expected.chargeCount === 1 ? '' : 's'}
               {data.expected.orderCount > 0 && <> · {data.expected.orderCount} order{data.expected.orderCount === 1 ? '' : 's'}</>}

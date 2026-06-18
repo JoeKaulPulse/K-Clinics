@@ -303,13 +303,13 @@ export const treatments: Treatment[] = [
       'A multi-step ritual that cleanses, gently resurfaces, extracts and then floods the skin with serums of antioxidants, peptides and hyaluronic acid. Non-invasive and deeply restorative, the HydraGlow leaves skin plump, dewy and radiant — the perfect reset before an event, or a monthly indulgence that keeps skin in its best form. Choose from three tiers — Signature Express, Full Face Deluxe and Platinum — each adding deeper resurfacing and more targeted boosters.',
     benefits: [
       { title: 'Instant hydration', text: 'Skin drinks in serums for a plump, dewy, luminous finish.' },
-      { title: 'Painless extraction', text: 'Gentle vortex suction clears congestion without the pinch.' },
+      { title: 'Comfortable extraction', text: 'Gentle vortex suction helps clear congestion.' },
       { title: 'Tailored serums', text: 'Boosters chosen for your concern — brightening, calming or firming.' },
       { title: 'Every skin type', text: 'Gentle enough for sensitive skin, effective for all.' },
     ],
     process: [
       { title: 'Cleanse & resurface', text: 'Lift away dead cells to reveal fresh skin beneath.' },
-      { title: 'Extract & hydrate', text: 'Painless extraction paired with deep serum infusion.' },
+      { title: 'Extract & hydrate', text: 'Gentle extraction paired with deep serum infusion.' },
       { title: 'Infuse & glow', text: 'Antioxidants and hyaluronic acid seal in the luminosity.' },
     ],
     faqs: [
@@ -379,7 +379,7 @@ export const treatments: Treatment[] = [
     benefits: [
       { title: 'Smooths cellulite', text: 'Targets the structure of cellulite for visibly smoother skin.' },
       { title: 'Firms & tightens', text: 'Collagen stimulation tightens lax skin across the body.' },
-      { title: 'Drains & detoxifies', text: 'Improves lymphatic drainage and microcirculation.' },
+      { title: 'Drains & de-puffs', text: 'Supports lymphatic drainage and microcirculation.' },
       { title: 'Defines contours', text: 'Sculpts more harmonious shape across abdomen, thighs and arms.' },
     ],
     process: [
@@ -410,7 +410,7 @@ export const treatments: Treatment[] = [
     metaTitle: 'Anti-Wrinkle & Dermal Filler Injections London | KClinics',
     metaDescription:
       'Expert cosmetic injectables in Islington, London — anti-wrinkle treatment, dermal filler and fat-dissolving — delivered with a natural, refined aesthetic at KClinics.',
-    keywords: ['Botox London', 'dermal filler London', 'anti-wrinkle injections Islington', 'lip filler London'],
+    keywords: ['anti-wrinkle injections London', 'dermal filler London', 'anti-wrinkle injections Islington', 'lip filler London'],
     eyebrow: 'Body & Injectables',
     intro:
       'Injectables, done with restraint and artistry. Anti-wrinkle treatment softens the lines of expression; dermal filler restores volume and sculpts subtle definition; targeted fat-dissolving refines the profile. Our clinicians work to a single principle — enhancing your features so the result is simply a rested, refreshed version of you.',

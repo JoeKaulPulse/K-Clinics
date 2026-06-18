@@ -36,7 +36,7 @@ export const primaryNav: NavGroup[] = [
       {
         heading: 'Injectables & Body',
         links: [
-          { label: 'Anti-Wrinkle (Botox)', href: '/botox', description: 'Soften expression lines' },
+          { label: 'Anti-Wrinkle Treatment', href: '/botox', description: 'Soften expression lines' },
           { label: 'Dermal Fillers', href: '/dermal-fillers', description: 'Restore & define' },
           { label: 'Body Contouring', href: '/body-contouring', description: 'Define & refine' },
           { label: 'Intimate Rejuvenation', href: '/intimate-rejuvenation', description: 'Discreet & advanced' },
@@ -88,6 +88,34 @@ export const primaryNav: NavGroup[] = [
   {
     label: 'Academy',
     href: '/academy',
+    columns: [
+      {
+        heading: 'Accredited Courses',
+        links: [
+          { label: 'Foundation — Skin & Laser (L2)', href: '/academy/level-2-foundation-skin-laser', description: 'Start your aesthetics career' },
+          { label: 'Laser & Aesthetic Therapies (L3)', href: '/academy/level-3-laser-aesthetic-therapies', description: 'Advance your laser practice' },
+          { label: 'Certificate in Aesthetic Practice (L4)', href: '/academy/level-4-certificate-aesthetic-practice', description: 'Injectables & clinical skills' },
+          { label: 'Advanced Aesthetics (L5–7)', href: '/academy/advanced-aesthetics-level-5-7', description: 'Master-level qualifications' },
+          { label: 'All Courses', href: '/academy', description: 'Browse the full curriculum' },
+        ],
+      },
+      {
+        heading: 'Fund Your Training',
+        links: [
+          { label: 'Funding & Finance', href: '/academy/funding', description: 'Government, council & monthly plans' },
+          { label: 'Check Your Eligibility', href: '/academy/funding#eligibility', description: 'See what you qualify for' },
+          { label: 'Buy Now, Pay Later', href: '/academy/funding#bnpl', description: 'Spread the cost with Clearpay' },
+        ],
+      },
+      {
+        heading: 'About the Academy',
+        links: [
+          { label: 'Why K Academy', href: '/academy', description: 'Accredited, clinic-led training' },
+          { label: 'Careers in Aesthetics', href: '/careers', description: 'Where your training leads' },
+          { label: 'Apply Now', href: '/academy', description: 'Reserve your place' },
+        ],
+      },
+    ],
   },
   {
     label: 'Get My Plan',
@@ -104,11 +132,21 @@ export const primaryNav: NavGroup[] = [
           { label: 'Our Team', href: '/team', description: 'Meet the clinicians' },
           { label: 'Treatment Finder', href: '/treatment-finder', description: 'Find your ideal treatment' },
           { label: 'Book a Consultation', href: '/consultation', description: 'Complimentary & bespoke' },
-          { label: 'Membership & Rewards', href: '/membership', description: 'Beauty Points' },
           { label: 'Reviews', href: '/reviews', description: 'Verified client reviews' },
           { label: 'The Journal', href: '/journal', description: 'Expert guides & advice' },
           { label: 'FAQ', href: '/faq', description: 'Everything explained' },
           { label: 'Contact & Find Us', href: '/contact', description: 'Visit the clinic' },
+        ],
+      },
+      {
+        heading: 'Ways to Pay & Gifting',
+        links: [
+          { label: 'Cost & Finance', href: '/finance', description: 'Transparent pricing' },
+          { label: 'Buy Now, Pay Later', href: '/finance#buy-now-pay-later', description: '0% options with Klarna & Clearpay' },
+          { label: 'Membership & Rewards', href: '/membership', description: 'Beauty Points & member perks' },
+          { label: 'Gift Vouchers', href: '/gift-vouchers', description: 'Design-your-own gift cards' },
+          { label: 'Group & Party Bookings', href: '/group-bookings', description: 'Celebrate together' },
+          { label: 'AI Skin Scan', href: '/ai-consultation', description: 'Your personalised plan in seconds' },
         ],
       },
     ],

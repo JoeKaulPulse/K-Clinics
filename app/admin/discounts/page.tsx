@@ -59,7 +59,7 @@ export default async function DiscountsPage({ searchParams }: { searchParams: Pr
           { label: L('Blocked', 'Заблоковані'), value: countOf('BLOCKED'), tone: 'text-[var(--color-blush)]' },
         ].map((s) => (
           <div key={s.label} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
-            <div className={`font-[family-name:var(--font-display)] text-2xl ${s.tone}`}>{s.value}</div>
+            <div className={`font-[family-name:var(--font-display)] text-2xl tabular-nums ${s.tone}`}>{s.value}</div>
             <div className="mt-1 text-xs text-[var(--color-stone)]">{s.label}</div>
           </div>
         ))}
@@ -106,7 +106,7 @@ export default async function DiscountsPage({ searchParams }: { searchParams: Pr
                     {c.flagged && <span className="mt-1 inline-block rounded-full bg-[var(--color-blush)]/25 px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-wide text-[var(--color-ink)]">⚠ {L('flagged', 'позначено')}</span>}
                   </td>
                   <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide ${STATUS_STYLE[c.status]}`}>{c.status.toLowerCase()}</span></td>
-                  <td className="px-4 py-3">{c.percent}%</td>
+                  <td className="px-4 py-3 tabular-nums">{c.percent}%</td>
                   <td className="px-4 py-3 text-[var(--color-stone)]">{c.createdAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                   <td className="px-4 py-3 text-right">
                     {c.status === 'ACTIVE' && <DiscountAction claimId={c.id} action="revoke" label={L('Revoke', 'Скасувати')} />}

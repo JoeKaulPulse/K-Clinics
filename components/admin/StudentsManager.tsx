@@ -88,7 +88,7 @@ export function StudentsManager({ students }: { students: StudentRow[] }) {
                     )}
                   </td>
                   <td className="px-2 text-xs text-[var(--color-stone)]">{s.lessonsCompleted} lesson{s.lessonsCompleted === 1 ? '' : 's'}<br />{s.quizAttempts} quiz attempt{s.quizAttempts === 1 ? '' : 's'}</td>
-                  <td className="px-2"><span className="font-medium text-[var(--color-ink)]">{s.xp.toLocaleString()}</span>{s.badges > 0 && <span className="block text-xs text-[var(--color-stone)]">🏅 {s.badges}</span>}</td>
+                  <td className="px-2"><span className="font-medium tabular-nums text-[var(--color-ink)]">{s.xp.toLocaleString()}</span>{s.badges > 0 && <span className="block text-xs text-[var(--color-stone)]">🏅 {s.badges}</span>}</td>
                   <td className="px-2 text-xs text-[var(--color-stone)]">{fmtDate(s.createdAt)}</td>
                   <td className="px-2 text-xs text-[var(--color-stone)]">{fmtDate(s.lastLoginAt)}</td>
                   <td className="px-2">

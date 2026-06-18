@@ -73,8 +73,8 @@ export function ProductsList({ rows }: { rows: ProductRow[] }) {
                       <span className="font-medium hover:text-[var(--color-gold)]">{r.name}{r.ageRestricted && <span className="ml-2 rounded-full bg-[var(--color-ink)] px-1.5 py-0.5 text-[0.6rem] text-[var(--color-porcelain)]">18+</span>}</span>
                     </Link>
                   </td>
-                  <td className="p-3">{money(r.pricePence)}</td>
-                  <td className={`p-3 ${STOCK[r.stock]}`}>{r.stock === 'untracked' ? '—' : `${r.stockQty} ${r.stock === 'low' ? '(low)' : r.stock === 'out' ? '(out)' : ''}`}</td>
+                  <td className="p-3 tabular-nums">{money(r.pricePence)}</td>
+                  <td className={`p-3 ${STOCK[r.stock]} tabular-nums`}>{r.stock === 'untracked' ? '—' : `${r.stockQty} ${r.stock === 'low' ? '(low)' : r.stock === 'out' ? '(out)' : ''}`}</td>
                   <td className="p-3"><span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-medium ${STATUS[r.status]}`}>{r.status}</span></td>
                 </tr>
               ))}
