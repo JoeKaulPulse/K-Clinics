@@ -291,7 +291,7 @@ function SectionView({ section: { type, data } }: { section: Section }) {
           <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
             {arr<{ name: string; price: string; note: string }>(data.items).map((it, i) => (
               <div key={i} className="flex items-baseline justify-between gap-4 border-b border-[var(--color-line)] px-6 py-4 last:border-0">
-                <span><span className="font-medium">{it.name}</span>{it.note && <span className="ml-2 text-sm text-[var(--color-stone-soft)]">{it.note}</span>}</span>
+                <span><span className="font-medium">{it.name}</span>{it.note && <span className="ml-2 text-sm text-[var(--color-stone)]">{it.note}</span>}</span>
                 <span className="font-[family-name:var(--font-display)] text-lg text-[var(--color-ink)]">{it.price}</span>
               </div>
             ))}

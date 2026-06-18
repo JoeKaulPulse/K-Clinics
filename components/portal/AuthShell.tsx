@@ -73,5 +73,5 @@ export function AuthShell({
 }
 
 export const authField =
-  'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-[var(--color-ink)] transition-colors placeholder:text-[var(--color-stone-soft)] focus:border-[var(--color-gold)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stone)]';
+  'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-[var(--color-ink)] transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stone)]';
 export const authLabel = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';

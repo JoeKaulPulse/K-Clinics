@@ -64,7 +64,7 @@ export function OnboardingModal({ title, intro, steps, initial, endpoint, onClos
 
           <AnimatePresence mode="wait">
             <motion.div key={i} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}>
-              <p className="text-[0.65rem] uppercase tracking-[0.18em] text-[var(--color-stone-soft)]">{title} · {i + 1}/{steps.length}</p>
+              <p className="text-[0.65rem] uppercase tracking-[0.18em] text-[var(--color-stone)]">{title} · {i + 1}/{steps.length}</p>
               <h2 className="mt-1 font-[family-name:var(--font-display)] text-2xl leading-tight">{step.label}</h2>
               {step.help && <p className="mt-1.5 text-sm text-[var(--color-stone)]">{step.help}</p>}
 

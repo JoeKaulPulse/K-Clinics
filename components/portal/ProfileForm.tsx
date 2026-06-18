@@ -56,7 +56,7 @@ export function ProfileForm({ initial, locale = 'en' }: { initial: Initial; loca
           <option value="">{t('gender.unset')}</option>
           {GENDERS.map((g) => <option key={g} value={g}>{t(`gender.${g}`)}</option>)}
         </select>
-        <span className="mt-1 block text-xs normal-case tracking-normal text-[var(--color-stone-soft)]">{t('gender.help')}</span>
+        <span className="mt-1 block text-xs normal-case tracking-normal text-[var(--color-stone)]">{t('gender.help')}</span>
       </Field>
       {d.gender === 'OTHER' && (
         <Field label={t('gender.selfDescribe')}><input className={f} maxLength={60} value={d.genderSelfDescribe} onChange={(e) => set('genderSelfDescribe', e.target.value)} /></Field>

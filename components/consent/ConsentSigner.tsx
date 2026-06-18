@@ -117,7 +117,7 @@ export function ConsentSigner({
               className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--color-ink)] px-6 py-3.5 text-base font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold)]">
               I’ve read this — continue
             </button>
-            <p className="mt-2 text-center text-xs text-[var(--color-stone-soft)]" role="status">{readPct < 100 ? 'Scroll to read it all — the gold line tracks your place.' : 'Read to the end — thank you.'}</p>
+            <p className="mt-2 text-center text-xs text-[var(--color-stone)]" role="status">{readPct < 100 ? 'Scroll to read it all — the gold line tracks your place.' : 'Read to the end — thank you.'}</p>
           </motion.section>
         )}
 
@@ -189,7 +189,7 @@ export function ConsentSigner({
                   {busy ? 'Sealing…' : kind === 'photo_opt_out' ? 'Sign & decline photos' : 'Sign & consent'}
                 </button>
               </div>
-              <p className="mt-3 text-center text-[0.7rem] leading-relaxed text-[var(--color-stone-soft)]">
+              <p className="mt-3 text-center text-[0.7rem] leading-relaxed text-[var(--color-stone)]">
                 Your signature, the time and this device are sealed into a tamper-evident record.
               </p>
             </div>
@@ -269,7 +269,7 @@ function SignaturePad({ handleRef, hasSig, onInk }: { handleRef: Ref<SignaturePa
     <div className="relative mt-1.5">
       <canvas ref={canvas} className="h-44 w-full touch-none rounded-[var(--radius-sm)] border border-dashed border-[var(--color-gold)]/50 bg-white" aria-label="Signature pad — sign with your finger" />
       {!hasSig && (
-        <span aria-hidden className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-[var(--color-stone-soft)]">
+        <span aria-hidden className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-[var(--color-stone)]">
           Sign here with your finger
         </span>
       )}

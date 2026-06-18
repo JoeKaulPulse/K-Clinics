@@ -85,7 +85,7 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
           ) : v.status === 'CONSULTATION' ? (
             <span className="text-base text-[var(--color-stone)]">On consultation</span>
           ) : v.offerPence != null ? (
-            <span><span className="mr-2 text-base text-[var(--color-stone-soft)] line-through">{formatPence(v.pricePence)}</span>{formatPence(v.offerPence)}</span>
+            <span><span className="mr-2 text-base text-[var(--color-stone)] line-through">{formatPence(v.pricePence)}</span>{formatPence(v.offerPence)}</span>
           ) : (
             formatPence(v.pricePence)
           )}
@@ -195,7 +195,7 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
                   ) : fromOfferPence != null ? (
                     <>
                       <p className="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">From <span className="rounded-full bg-[var(--color-gold)] px-1.5 py-0.5 text-[0.6rem] font-semibold normal-case tracking-normal text-white">Offer</span></p>
-                      <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]"><span className="mr-2 text-lg text-[var(--color-stone-soft)] line-through">{formatPence(fromPence)}</span>{formatPence(fromOfferPence)}</p>
+                      <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]"><span className="mr-2 text-lg text-[var(--color-stone)] line-through">{formatPence(fromPence)}</span>{formatPence(fromOfferPence)}</p>
                     </>
                   ) : (
                     <>
