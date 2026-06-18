@@ -2176,6 +2176,7 @@ model Cohort {
   capacity      Int          @default(8)
   location      String?
   trainer       String?
+  name          String?
   status        CohortStatus @default(OPEN)
   notes         String?
   createdAt     DateTime     @default(now())

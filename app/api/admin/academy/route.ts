@@ -83,6 +83,7 @@ export async function POST(req: Request) {
         capacity: Math.max(1, num(b.capacity) ?? 8),
         location: (b.location as string)?.trim() || null,
         trainer: (b.trainer as string)?.trim() || null,
+        name: (b.name as string)?.trim() || null,
         status: ['OPEN', 'FULL', 'CLOSED'].includes(b.status as string) ? (b.status as 'OPEN') : 'OPEN',
         notes: (b.notes as string)?.trim() || null,
         accessStartAt: b.accessStartAt ? new Date(b.accessStartAt as string) : null,
