@@ -9,4 +9,7 @@ if (dsn) {
     tracesSampleRate: 0.05,
     sendDefaultPii: false,
   });
+} else if (process.env.NODE_ENV === 'production') {
+  // BLD-507: without a DSN every edge error is silently dropped — make it visible.
+  console.warn('[sentry] SENTRY_DSN is not set — edge errors are not being reported.');
 }
