@@ -1538,7 +1538,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: '/team page driven by live staff records + public-profile toggle (BLD-487)', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1134),
+    title: '/team page driven by live staff records + public-profile toggle (BLD-487)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1134),
     value: 8, effort: 2,
     detail: 'Owner trigger: /team must show real staff photos and correct GMC/GDC numbers, not placeholder content. Fix: /team now driven solely by publicTeam() query (AdminUser where active=true AND publicProfile=true); empty state shows "coming soon" card + noindex. StaffManager gets a team-page count banner and per-row public-profile toggle explaining deactivation behaviour.',
     notes: [
@@ -1548,7 +1548,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: 'Live Appointment Session -- Remove Addon Treatments + Session Photos (BLD-479, BLD-480)', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1135),
+    title: 'Live Appointment Session -- Remove Addon Treatments + Session Photos (BLD-479, BLD-480)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1135),
     value: 7, effort: 3,
     detail: 'BLD-479: Photo uploads in the live session runner -- BeforePhotoCapture integrated pre-start and in-treatment for laser gate compliance. BLD-480: Staff can now remove an add-on treatment mid-session via removeAddonTreatment() server action; guarded against charged or non-addon items; adjusts pricePence + durationMin; logs SESSION_EDITED audit event. AddonList component with per-item Remove/confirm dialog.',
     notes: [
