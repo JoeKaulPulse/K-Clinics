@@ -45,10 +45,13 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   await ensureDefaultTemplates();
   const consentKey = await templateKeyForTreatment(b.treatmentSlug);
   const isLaser = isLaserTreatment(b.treatmentSlug);
-  const [consentTemplate, signedConsents, pendingConsents, beforePhotos] = await Promise.all([
+  const [consentTemplate, consentTemplates, signedConsents, pendingConsents, beforePhotos] = await Promise.all([
     db.consentTemplate.findUnique({ where: { key: consentKey } }),
+    // All active treatment-consent forms, so staff can pick the right one per
+    // appointment (BLD-505). The photo opt-out is excluded; it has its own flow.
+    db.consentTemplate.findMany({ where: { active: true, NOT: { key: 'photo_opt_out' } }, orderBy: { title: 'asc' }, select: { key: true, title: true } }),
     db.signedConsent.findMany({ where: { bookingId: b.id }, orderBy: { signedAt: 'desc' }, select: { id: true, title: true, signedAt: true, declined: true, kind: true } }),
-    db.consentRequest.findMany({ where: { bookingId: b.id, status: 'PENDING' }, select: { token: true, title: true, kind: true } }),
+    db.consentRequest.findMany({ where: { bookingId: b.id, status: 'PENDING' }, select: { token: true, title: true, kind: true, templateKey: true } }),
     db.beforePhoto.findMany({ where: { bookingId: b.id }, orderBy: { createdAt: 'asc' }, select: { id: true, area: true, capturedBy: true, createdAt: true } }),
   ]);
   const optOutSigned = signedConsents.some((s) => s.kind === 'photo_opt_out');
@@ -305,6 +308,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             bookingId={b.id}
             clientId={b.client.id}
             treatmentForm={consentTemplate && consentTemplate.active ? { key: consentTemplate.key, title: consentTemplate.title } : null}
+            templates={consentTemplates}
             signed={signedConsents.map((s) => ({ id: s.id, title: s.title, signedAt: s.signedAt.toISOString(), declined: s.declined, kind: s.kind }))}
             pending={pendingConsents}
             baseUrl={site.url.replace(/\/$/, '')}

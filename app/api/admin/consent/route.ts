@@ -79,12 +79,19 @@ export async function POST(req: Request) {
       if (!body.clientId || !body.templateKey) return bad();
       const template = await db.consentTemplate.findUnique({ where: { key: body.templateKey } });
       if (!template) return bad('Template not found');
-      // Reuse an existing pending request for the same booking+template if present.
-      const existing = await db.consentRequest.findFirst({ where: { bookingId: body.bookingId ?? undefined, templateKey: body.templateKey, status: 'PENDING' } });
+      // Never issue a retired form: a deactivated template must not be sendable
+      // even though the picker hides them — the API must not trust the client.
+      if (!template.active) return bad('That consent form is no longer available.');
+      // The kind is derived from the template, NOT taken from the client: the
+      // photo opt-out is a decline record, so it must never be issued or stored
+      // as an affirmative treatment consent (or vice versa).
+      const kind = template.key === 'photo_opt_out' ? 'photo_opt_out' : 'treatment';
+      // Reuse an existing pending request for the same booking + form if present.
+      const existing = await db.consentRequest.findFirst({ where: { bookingId: body.bookingId ?? undefined, templateKey: body.templateKey, kind, status: 'PENDING' } });
       const reqRow = existing ?? await db.consentRequest.create({
         data: {
           clientId: body.clientId, bookingId: body.bookingId ?? null, templateKey: body.templateKey,
-          title: template.title, kind: body.kind === 'photo_opt_out' ? 'photo_opt_out' : 'treatment',
+          title: template.title, kind,
           createdBy: session.email, expiresAt: new Date(Date.now() + 30 * 86400000),
         },
       });
