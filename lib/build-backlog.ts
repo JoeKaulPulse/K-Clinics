@@ -1487,6 +1487,30 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Created app/error.tsx following the Sentry.captureException + reset button pattern used in app/admin/error.tsx. Catches render errors for pages directly under app/ that would otherwise skip segment-level boundaries.',
     notes: ['app/error.tsx (new file).'],
   },
+  {
+    title: 'Visual-QA: fix false P1 timeout on kiosk session and result pages (BLD-328)', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude',
+    value: 3, effort: 1,
+    detail: 'scripts/visual-qa.mjs: two inline page.goto calls for /kiosk/<token> and /kiosk/result/<slug> were using waitUntil:networkidle, which never settled on pages with animation timers or live camera SSE. Changed both to waitUntil:load (matching the already-fixed /kiosk/display call from BLD-346) so genuine failures are not masked by false P1 timeouts.',
+    notes: ['scripts/visual-qa.mjs lines 137 and 188.'],
+  },
+  {
+    title: 'Newsletter mid-page capture: homepage, dentistry, packages (BLD-353)', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude',
+    value: 9, effort: 3,
+    detail: 'Created components/layout/NewsletterCapture.tsx -- a reusable ink-background section wrapping NewsletterForm with eyebrow, heading and strapline. Added as a mid-page section to the homepage (after testimonials), dentistry page (before RegisterInterest), and packages page (after the package list). Footer already has the form; this adds high-intent mid-page capture points on the three pages the audit identified.',
+    notes: ['components/layout/NewsletterCapture.tsx (new). app/(marketing)/page.tsx, app/(marketing)/dentistry/page.tsx, app/(marketing)/packages/page.tsx.'],
+  },
+  {
+    title: 'Academy content batch 10 -- Fitzpatrick Assessment, Vascular Protocols (BLD-311)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 5,
+    detail: '2 new modules: "Fitzpatrick Skin Typing & Skin Assessment" (L2 -- Fitzpatrick I-VI, tan timing, contraindications, asymmetric mole referral, assessment documentation) and "Vascular Lesion Treatment with IPL & Laser" (L3 -- haemoglobin chromophore, lesion types, wavelength selection by skin type, test-patch protocol, expected response, aftercare). Each module: 2 lessons + 6-question quiz. Plus 12 new exam-bank questions (Batch 10) covering Fitzpatrick typing, vascular protocols, consent law (Health and Care Act 2022), duty of candour, and MHRA reporting.',
+    notes: ['lib/academy-content.ts. enrichCourseContentIfNeeded() picks up additions on the next daily cron run.'],
+  },
+  {
+    title: 'BLD-285 remaining: QA demo seed users per role (DEVELOPER, CONTRACTOR, PRACTITIONER, RECEPTION)', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude',
+    value: 3, effort: 2,
+    detail: 'prisma/seed.mjs: added QA demo user creation (four roles: PRACTITIONER, RECEPTION, DEVELOPER, CONTRACTOR) using qa-<role>@kaulindustries.com emails. Guarded by SEED_QA_ROLES=true env var so it never runs in production by default. Notify permissions (timetracking keys) and contractor task assignment notification were already shipped in an earlier slice.',
+    notes: ['prisma/seed.mjs. Run: SEED_QA_ROLES=true SEED_QA_PASSWORD=<pw> node prisma/seed.mjs'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

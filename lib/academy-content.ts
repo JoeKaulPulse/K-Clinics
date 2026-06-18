@@ -2202,6 +2202,148 @@ export const NEW_MODULES: CourseContentDef[] = [
     ],
   },
 
+  // -- Batch 10 ----------------------------------------------------------------
+
+  {
+    courseSlug: L2,
+    modules: [
+      {
+        title: 'Fitzpatrick Skin Typing & Skin Assessment',
+        summary: 'Classify skin type using the Fitzpatrick scale, understand why it drives treatment decisions, and apply a systematic pre-treatment skin assessment.',
+        lessons: [
+          {
+            title: 'The Fitzpatrick Scale in Clinical Practice',
+            durationMin: 10,
+            objectives: [
+              'State the six Fitzpatrick skin types and their key characteristics',
+              'Explain why Fitzpatrick type affects laser and IPL settings',
+              'Use the scale to adjust fluence and select appropriate wavelengths',
+            ],
+            studyTips: [
+              'Types I-III have less melanin and are safer for most laser/IPL. Types IV-VI carry higher risk of PIH and need lower fluence, longer wavelengths and careful review.',
+            ],
+            examRefs: ['Fitzpatrick scale', 'Skin typing', 'Treatment planning', 'Selective photothermolysis'],
+            steps: [
+              { kind: 'say', text: 'Knowing a client\'s Fitzpatrick type is the first safety gate before any laser or IPL treatment.', mood: 'think' },
+              { kind: 'teach', title: 'What is the Fitzpatrick scale?', text: 'The Fitzpatrick scale classifies skin into six types (I-VI) based on melanin content and how the skin responds to UV: burns vs tans. Type I always burns and never tans; Type VI never burns and always tans.' },
+              { kind: 'ask', prompt: 'A client who always burns and never tans is Fitzpatrick type...', qtype: 'SINGLE', options: ['I', 'III', 'V', 'VI'], correct: [0], explanation: 'Fitzpatrick I: very pale skin, red or blonde hair, always burns, never tans.' },
+              { kind: 'teach', title: 'Why it matters for laser', text: 'Melanin is the chromophore for hair removal and pigmentation lasers. More melanin (types IV-VI) means the skin itself competes with the target — higher risk of burns and PIH. Lower-melanin types (I-III) can safely absorb more energy at the target.' },
+              { kind: 'ask', prompt: 'For laser hair removal, Fitzpatrick types IV-VI require...', qtype: 'SINGLE', options: ['Lower fluence and longer wavelengths', 'Higher fluence for faster results', 'The same settings as types I-III', 'No wavelength adjustment'], correct: [0], explanation: 'Higher melanin in darker skin types means lower fluence and longer wavelengths (e.g. Nd:YAG 1064 nm) to reduce the risk of burns and PIH.' },
+              { kind: 'teach', title: 'Sun exposure and skin type assessment', text: 'Always ask about recent sun exposure, fake tan, and any self-tan products. Active tanning significantly darkens the skin and effectively moves the client\'s functional skin type higher, even temporarily — reschedule if in doubt.' },
+              { kind: 'ask', prompt: 'A Fitzpatrick II client returns from two weeks in Spain with a deep tan. You should...', qtype: 'SINGLE', options: ['Postpone and reassess once the tan has faded', 'Treat at standard Fitzpatrick II settings', 'Increase the energy to compensate', 'Cancel the course permanently'], correct: [0], explanation: 'Active tanning increases melanin and raises burn/PIH risk significantly. Postpone until the tan fades.' },
+              { kind: 'say', text: 'Correct Fitzpatrick typing protects your client and gives you a defensible, documented clinical rationale.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Systematic Skin Assessment Before Treatment',
+            durationMin: 10,
+            objectives: [
+              'Describe the key elements of a pre-treatment skin assessment',
+              'Identify contraindications discovered during assessment',
+              'Explain how to document assessment findings',
+            ],
+            studyTips: [
+              'A skin assessment is not just looking at the skin — it involves questions, palpation where appropriate, and documentation. Everything you observe must be recorded.',
+            ],
+            examRefs: ['Consultation', 'Skin assessment', 'Contraindications', 'Record keeping'],
+            steps: [
+              { kind: 'say', text: 'A thorough skin assessment before every session catches contraindications before they become complications.', mood: 'think' },
+              { kind: 'teach', title: 'What to assess', text: 'Look at: skin colour and Fitzpatrick type; signs of active infection (cold sores, impetigo, open wounds); lesions (moles, freckles, vascular lesions) in the treatment area; any visible redness, inflammation, or bruising; and tattoos or permanent makeup that could interact with laser.' },
+              { kind: 'ask', prompt: 'An active cold sore in the laser treatment area means you should...', qtype: 'SINGLE', options: ['Postpone until fully healed', 'Treat around it', 'Apply a different wavelength', 'Treat as normal with extra cooling'], correct: [0], explanation: 'Active viral lesions are a contraindication. Laser over a cold sore can spread the virus and cause a severe outbreak.' },
+              { kind: 'teach', title: 'Suspicious lesions', text: 'Any mole, lesion, or pigmented mark that is asymmetric, has irregular borders, multiple colours, a diameter over 6 mm, or is evolving must not be treated and must be referred to a GP. The ABCDEs of melanoma apply.' },
+              { kind: 'ask', prompt: 'A pigmented lesion in the treatment area is asymmetric and has uneven borders. You should...', qtype: 'SINGLE', options: ['Refer to a GP before any treatment', 'Treat with reduced settings', 'Avoid the area this session only', 'Document and treat as a normal mole'], correct: [0], explanation: 'Asymmetric, irregular-bordered lesions are potential melanoma warning signs. Refer before any treatment.' },
+              { kind: 'teach', title: 'Documenting the assessment', text: 'Record everything you observed and everything you asked. A clear note of "contraindication identified, treatment deferred, client advised, GP referral issued" is a complete clinical record and your protection if a complaint is made.' },
+              { kind: 'ask', prompt: 'A skin assessment finding must be documented because...', qtype: 'MULTI', options: ['It is a clinical record and legal document', 'It protects the client if something goes wrong', 'It supports your clinical rationale', 'It is required by the equipment manufacturer only'], correct: [0, 1, 2], explanation: 'Clinical records are legal documents. Documentation protects the client and the practitioner alike.' },
+              { kind: 'say', text: 'Assessment is the consultation, not just the start of it. If in doubt, do not treat.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Fitzpatrick Typing & Skin Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'Fitzpatrick type I skin always burns and never tans.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Type I: pale skin, always burns, never tans — lowest melanin, most sensitive to laser.' },
+            { prompt: 'For a Fitzpatrick V client having laser hair removal, the settings should be...', type: 'SINGLE', options: ['Lower fluence with a longer wavelength (e.g. Nd:YAG)', 'Higher fluence for faster clearance', 'The same as for a Fitzpatrick II', 'No laser — only IPL'], correct: [0], explanation: 'Higher melanin requires conservative, longer-wavelength treatment to avoid burns and PIH.' },
+            { prompt: 'A client with an active tan should be...', type: 'SINGLE', options: ['Rescheduled until the tan fades', 'Treated at half fluence', 'Treated as a higher Fitzpatrick type', 'Treated normally with extra cooling'], correct: [0], explanation: 'Active tanning raises melanin, increasing burn and PIH risk. Postpone treatment.' },
+            { prompt: 'A mole in the treatment area with uneven borders should be...', type: 'SINGLE', options: ['Referred to a GP before any treatment', 'Avoided this session only', 'Treated with reduced energy', 'Documented and treated next time'], correct: [0], explanation: 'Irregular-bordered lesions are potential melanoma flags. Refer first, treat never without GP clearance.' },
+            { prompt: 'Active cold sores in a laser treatment area are a...', type: 'WORD', options: ['contraindication', 'minor finding', 'normal variant'], correct: [0], explanation: 'Active viral lesions contraindicate laser in that area. Laser can spread the virus and cause a severe outbreak.' },
+            { prompt: 'Pre-treatment skin assessment findings must be recorded to...', type: 'MULTI', options: ['Create a clinical record', 'Protect the client', 'Support the clinical rationale', 'Fulfil a marketing requirement'], correct: [0, 1, 2], explanation: 'Assessment documentation is a clinical record and legal protection — not marketing.' },
+          ],
+        },
+      },
+    ],
+  },
+
+  {
+    courseSlug: 'level-3-laser-aesthetic-therapies',
+    modules: [
+      {
+        title: 'Vascular Lesion Treatment with IPL & Laser',
+        summary: 'Understand how IPL and laser selectively destroy vascular lesions, which lesion types respond best, and how to plan a safe, effective protocol.',
+        lessons: [
+          {
+            title: 'Targeting Vascular Lesions: Science & Lesion Types',
+            durationMin: 11,
+            objectives: [
+              'Explain how IPL and laser destroy vascular lesions via haemoglobin absorption',
+              'Classify common vascular lesions and their treatment candidacy',
+              'State the contraindications to vascular IPL/laser',
+            ],
+            studyTips: [
+              'The chromophore in vascular treatment is oxyhaemoglobin. The target wavelengths are in the 532-600 nm range for superficial vessels; deeper vessels need longer wavelengths (755 nm, 1064 nm).',
+            ],
+            examRefs: ['Selective photothermolysis', 'Vascular lesions', 'Chromophores', 'Treatment planning'],
+            steps: [
+              { kind: 'say', text: 'Vascular treatment is one of the most satisfying laser/IPL disciplines — but getting the physics right matters enormously.', mood: 'think' },
+              { kind: 'teach', title: 'The mechanism', text: 'Oxyhaemoglobin in blood vessels absorbs specific wavelengths of light (peak absorption around 541 nm and 577 nm). The absorbed energy heats the vessel wall, causing coagulation. The body then clears the closed vessel over weeks.' },
+              { kind: 'ask', prompt: 'In vascular IPL/laser treatment, the chromophore targeted is...', qtype: 'WORD', options: ['haemoglobin', 'melanin', 'water'], correct: [0], explanation: 'Oxyhaemoglobin absorbs the treatment wavelength, causing the vessel to coagulate and be cleared.' },
+              { kind: 'teach', title: 'Common treatable lesions', text: 'IPL and laser work well on: telangiectasia (fine thread veins on the face and legs), cherry angiomas (bright red dome-shaped spots), spider naevi, and diffuse redness/erythema from rosacea. Port wine stains can also be treated but require specialist protocols.' },
+              { kind: 'ask', prompt: 'Which of these vascular lesions responds well to IPL/laser treatment?', qtype: 'MULTI', options: ['Telangiectasia', 'Cherry angioma', 'Diffuse rosacea erythema', 'Deep varicose veins'], correct: [0, 1, 2], explanation: 'Superficial vascular lesions with small-vessel haemoglobin respond well. Deep varicose veins require sclerotherapy or endovenous laser by a vascular specialist.' },
+              { kind: 'teach', title: 'Contraindications to vascular treatment', text: 'Contraindications include: active skin infection in the area, suspicious lesion overlying the target area, anticoagulant therapy without GP clearance, active tanning (raised melanin competing with haemoglobin), photosensitising medications, and pregnancy.' },
+              { kind: 'ask', prompt: 'A client on warfarin asks for IPL to treat facial thread veins. Before proceeding you must...', qtype: 'SINGLE', options: ['Obtain written GP clearance', 'Treat with reduced settings', 'Advise them to stop warfarin for 48 hours', 'Proceed at standard settings'], correct: [0], explanation: 'Anticoagulants increase bleeding and bruising risk. GP written clearance is required before any vascular treatment.' },
+              { kind: 'say', text: 'Vascular treatment can be dramatic and deeply satisfying for clients. Safe selection and correct settings make the difference between a great outcome and a complication.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Vascular IPL Protocols, Settings & Post-Care',
+            durationMin: 11,
+            objectives: [
+              'Select appropriate wavelengths for superficial vs deeper vascular lesions',
+              'Describe the Fitzpatrick adjustment for vascular protocols',
+              'Explain the expected treatment response and aftercare requirements',
+            ],
+            studyTips: [
+              'After vascular treatment, temporary darkening and crusting is the target response. It confirms the vessel has been closed. Advise clients in advance so they are not alarmed.',
+            ],
+            examRefs: ['Treatment planning', 'Vascular lesions', 'Aftercare', 'Fitzpatrick scale'],
+            steps: [
+              { kind: 'say', text: 'Selecting the right settings for vascular treatment is both a science and a clinical skill.', mood: 'happy' },
+              { kind: 'teach', title: 'Wavelength choice', text: 'Shorter wavelengths (532 nm Nd:YAG KTP or 540-590 nm IPL filter) target superficial fine vessels. Longer wavelengths (755 nm alexandrite, 1064 nm Nd:YAG) penetrate deeper and are safer for darker skin types where melanin competition is a concern.' },
+              { kind: 'ask', prompt: 'For deeper leg veins on a Fitzpatrick IV client, the preferred laser is...', qtype: 'SINGLE', options: ['Long-pulse Nd:YAG 1064 nm', 'KTP 532 nm', 'Ruby 694 nm', 'Alexandrite 755 nm'], correct: [0], explanation: '1064 nm penetrates deeper and is minimally absorbed by melanin, making it safer for darker skin types and deeper vessels.' },
+              { kind: 'teach', title: 'Fitzpatrick adjustment', text: 'On types I-III, fluence can be higher as melanin does not compete significantly. On types IV-VI, reduce fluence, increase pulse duration, and use longer wavelengths. Always perform a test patch and wait 48 hours before treating the full area.' },
+              { kind: 'ask', prompt: 'Before treating a large area of facial telangiectasia, you should always first...', qtype: 'SINGLE', options: ['Perform a test patch and review at 48 hours', 'Treat the full area at half fluence', 'Use the maximum energy setting', 'Skip the test if the client has been treated elsewhere'], correct: [0], explanation: 'A test patch and 48-hour review confirm the tissue response before committing to the full treatment area.' },
+              { kind: 'teach', title: 'Expected response and aftercare', text: 'Immediately after treatment, treated vessels appear dark or purple and may swell slightly. Over 2-4 weeks the body reabsorbs them. Aftercare: avoid sun, heat (saunas, hot showers), and topical retinoids for at least 48 hours. SPF 50 daily.' },
+              { kind: 'ask', prompt: 'A client\'s treated thread veins look darker and slightly swollen immediately after IPL. This indicates...', qtype: 'SINGLE', options: ['A successful treatment response', 'A burn', 'Incorrect wavelength selection', 'Allergy to the cooling gel'], correct: [0], explanation: 'Temporary darkening and mild swelling confirm that the haemoglobin absorbed the energy and the vessel is coagulating — the expected outcome.' },
+              { kind: 'say', text: 'Set expectations before the treatment, not after. A confident client who knows what to expect is far less likely to become a complaint.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Vascular Lesion Treatment Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'The chromophore targeted in vascular IPL/laser treatment is...', type: 'WORD', options: ['haemoglobin', 'melanin', 'water'], correct: [0], explanation: 'Oxyhaemoglobin in blood vessel walls is the target chromophore in vascular treatment.' },
+            { prompt: 'Deep varicose veins are treated effectively with IPL.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [1], explanation: 'Deep varicose veins are beyond the reach of IPL/laser. They require sclerotherapy or endovenous laser by a vascular specialist.' },
+            { prompt: 'For a Fitzpatrick IV client with facial thread veins, which wavelength adjustment is correct?', type: 'SINGLE', options: ['Use longer wavelengths and reduce fluence', 'Use the shortest wavelength at highest fluence', 'No adjustment is needed', 'Switch to UV light'], correct: [0], explanation: 'Longer wavelengths reduce melanin competition; lower fluence prevents PIH in darker skin types.' },
+            { prompt: 'A test patch before vascular IPL should be reviewed after...', type: 'SINGLE', options: ['48 hours', '5 minutes', '2 weeks', 'No review needed'], correct: [0], explanation: '48 hours allows the expected response (darkening, mild swelling) to be assessed and any adverse reaction to be identified before treating the full area.' },
+            { prompt: 'Immediately after vascular IPL, treated vessels appearing darker is...', type: 'SINGLE', options: ['The expected treatment response', 'A sign of a burn', 'An allergic reaction', 'A contraindication to continuing'], correct: [0], explanation: 'Temporary darkening confirms haemoglobin absorption and coagulation -- the intended clinical outcome.' },
+            { prompt: 'A client on warfarin asking for thread vein IPL requires...', type: 'SINGLE', options: ['Written GP clearance before treatment', 'No additional checks', 'Halved settings only', 'A patch test only'], correct: [0], explanation: 'Anticoagulants increase bleeding and bruising risk. GP written clearance is required before any vascular treatment.' },
+          ],
+        },
+      },
+    ],
+  },
+
   {
     courseSlug: 'level-4-certificate-aesthetic-practice',
     modules: [
@@ -2433,6 +2575,26 @@ export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
   { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Medication interactions', prompt: 'A client asks if they should stop warfarin before their vascular IPL appointment. You should...', options: ['Advise them never to stop without GP instruction and refer for written clearance', 'Tell them to skip one dose', 'Reassure them it is safe to stop for 48 hours', 'Proceed without GP involvement'], correct: [0], explanation: 'Only the prescribing GP can authorise changes to anticoagulation. Never advise the client to stop warfarin.' },
   { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Medication interactions', prompt: 'Topical retinoids should be paused before resurfacing for...', options: ['5-7 days', '24 hours', '6 months', 'No pause is needed'], correct: [0], explanation: 'Topical retinoids thin the skin and increase photosensitivity; a 5-7 day pause before resurfacing is standard.' },
   { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Medication interactions', prompt: 'Which of these drugs should trigger a GP referral before laser treatment?', type: 'MULTI', options: ['Warfarin', 'Methotrexate', 'Isotretinoin (within last 6 months)', 'Vitamin D supplement'], correct: [0, 1, 2], explanation: 'Anticoagulants, immunosuppressants, and recent isotretinoin all require GP clearance before any laser or energy-based treatment.' },
+
+  // -- BATCH 10 exam bank questions --------------------------------------------
+
+  // Fitzpatrick Typing & Skin Assessment (L2)
+  { courseSlug: L2, topic: 'Fitzpatrick', prompt: 'Fitzpatrick type VI skin...', options: ['Never burns and deeply tans', 'Always burns and never tans', 'Sometimes burns and sometimes tans', 'Has no melanin'], correct: [0], explanation: 'Type VI: deeply pigmented dark brown or black skin -- never burns, always tans. Highest melanin and highest risk of treatment-induced PIH.' },
+  { courseSlug: L2, topic: 'Fitzpatrick', prompt: 'A Fitzpatrick III client has an active deep tan from a recent holiday. You should...', options: ['Postpone treatment until the tan has fully faded', 'Treat at the standard Fitzpatrick III settings', 'Increase the fluence to compensate for extra melanin', 'Proceed with a patch test on the same day'], correct: [0], explanation: 'Active tanning raises melanin significantly above the baseline Fitzpatrick type -- postpone until the tan fades.' },
+  { courseSlug: L2, topic: 'Skin assessment', prompt: 'An asymmetric mole with irregular borders in the treatment zone means you should...', options: ['Refer to a GP before treating', 'Avoid the mole and treat the surrounding area', 'Document it and proceed normally', 'Treat at lower settings'], correct: [0], explanation: 'Irregular-bordered, asymmetric lesions are potential melanoma warning signs. Refer first -- do not treat.' },
+  { courseSlug: L2, topic: 'Skin assessment', prompt: 'A pre-treatment skin assessment must always be...', options: ['Documented in the clinical record', 'Photographed and sent to the manufacturer', 'Shared with the client only', 'Stored verbally -- not written down'], correct: [0], explanation: 'Assessment findings are part of the clinical record -- they must be documented to protect the client and the practitioner.' },
+
+  // Vascular Lesion Treatment (L3)
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Vascular', prompt: 'Which laser wavelength is most appropriate for deep vascular lesions on a Fitzpatrick IV client?', options: ['Long-pulse Nd:YAG 1064 nm', 'KTP 532 nm', 'Ruby 694 nm', 'Short-pulse 532 nm'], correct: [0], explanation: '1064 nm penetrates deeply, is minimally absorbed by melanin, and is the preferred wavelength for darker skin types with deeper vessels.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Vascular', prompt: 'Port wine stains and spider naevi are types of...', type: 'WORD', options: ['vascular lesions', 'pigmented lesions', 'textural changes'], correct: [0], explanation: 'Port wine stains and spider naevi are both vascular (blood-vessel) lesions, targetable by haemoglobin-absorbing wavelengths.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Vascular', prompt: 'After vascular IPL, clients must avoid direct sun exposure for at least...', options: ['48 hours (and SPF 50 daily throughout the course)', '5 minutes', '72 hours indoors only', 'No restriction is needed'], correct: [0], explanation: 'UV exposure on treated skin raises PIH risk. 48-hour avoidance plus daily SPF 50 for the full course is standard aftercare.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Vascular', prompt: 'Immediately after vascular IPL, treated thread veins appearing darker indicates...', options: ['Successful haemoglobin absorption and coagulation', 'An adverse burn reaction', 'The wrong wavelength was used', 'Treatment failure'], correct: [0], explanation: 'Darkening is the expected response -- the haemoglobin absorbed the energy and the vessel is coagulating.' },
+
+  // Skin Assessment & Clinical Law (L4 and L5-7)
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Consent law', prompt: 'Under the Health and Care Act 2022 (Part 4), performing certain non-surgical cosmetic procedures on under-18s is...', options: ['A criminal offence', 'Permitted with parental consent', 'Permitted if medically indicated', 'Subject only to voluntary guidance'], correct: [0], explanation: 'The 2022 Act criminalises performing specified non-surgical cosmetic procedures (Botox, fillers) on under-18s. It is not a discretionary restriction.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Consent', prompt: 'A cooling-off period before an aesthetic treatment gives the client time to...', options: ['Reflect on the decision and withdraw without pressure', 'Change their appointment time', 'Test the practitioner\'s patience', 'Request a cheaper alternative'], correct: [0], explanation: 'A cooling-off period ensures consent is free and informed, not impulsive. Industry codes (JCCP/Save Face) recommend at least 24-48 hours for some treatments.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Adverse events', prompt: 'A serious adverse event linked to a laser device must be reported to the...', type: 'WORD', options: ['MHRA', 'client only', 'insurer only'], correct: [0], explanation: 'The MHRA (Medicines and Healthcare products Regulatory Agency) collects medical device adverse event reports under the Medical Devices Regulations.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Governance', prompt: 'The duty of candour requires that when something goes wrong, you...', type: 'MULTI', options: ['Inform the client promptly', 'Apologise sincerely', 'Offer a practical remedy or support', 'Delete the treatment record'], correct: [0, 1, 2], explanation: 'Openness, an apology, and a remedy are the three pillars of duty of candour. Deleting records is a criminal act.' },
 
 ];
 

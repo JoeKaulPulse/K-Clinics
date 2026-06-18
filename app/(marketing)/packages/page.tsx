@@ -7,6 +7,7 @@ import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { ArrowIcon } from '@/components/ui/Button';
 import { packages } from '@/lib/packages';
 import { pageMeta, JsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
+import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Treatment Packages & Programmes in London | KClinics',
@@ -67,6 +68,9 @@ export default function PackagesPage() {
           })}
         </Stagger>
       </section>
+
+      {/* BLD-353: mid-page newsletter capture */}
+      <NewsletterCapture />
     </>
   );
 }
