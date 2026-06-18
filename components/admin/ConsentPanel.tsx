@@ -20,8 +20,11 @@ export function ConsentPanel({ bookingId, clientId, treatmentForm, templates, si
   const options: Template[] = treatmentForm && !templates.some((t) => t.key === treatmentForm.key)
     ? [{ key: treatmentForm.key, title: treatmentForm.title }, ...templates]
     : templates;
-  const defaultKey = recommendedKey ?? options[0]?.key ?? '';
   const pendingForKey = (key: string) => pending.find((p) => p.kind === 'treatment' && p.templateKey === key);
+  // Default to the recommended form; if none is mapped, fall back to a form that
+  // already has a pending signing link so it stays visible, then the first form.
+  const pendingTreatmentKey = pending.find((p) => p.kind === 'treatment')?.templateKey ?? null;
+  const defaultKey = recommendedKey ?? pendingTreatmentKey ?? options[0]?.key ?? '';
 
   const [selectedKey, setSelectedKey] = useState(defaultKey);
   const [link, setLink] = useState<string | null>(() => {
