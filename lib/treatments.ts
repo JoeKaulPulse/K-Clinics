@@ -3,6 +3,7 @@
 // app/[slug]/page.tsx. Copy is written to read as "ultra-premium clinic".
 // ─────────────────────────────────────────────────────────────────────────────
 import { importedTreatments } from './treatments-imported';
+import { POM_BRAND_SLUGS } from './compliance';
 
 export type Faq = { q: string; a: string };
 export type Benefit = { title: string; text: string };
@@ -165,7 +166,7 @@ export const treatments: Treatment[] = [
     faqs: [
       { q: 'Can you shape my beard line without removing the beard?', a: 'Absolutely — we define the neck and cheek lines precisely while preserving the beard you want to keep.' },
       { q: 'Is back and shoulder hair treatable in one go?', a: 'Yes. These larger areas are typically completed within a single, efficient appointment.' },
-      { q: 'Will it stop ingrown hairs?', a: 'Reducing the hair at the follicle dramatically reduces — and often eliminates — ingrown hairs and razor irritation.' },
+      { q: 'Will it stop ingrown hairs?', a: 'Reducing the hair at the follicle dramatically reduces ingrown hairs and razor irritation.' },
     ],
     facts: [
       { label: 'Course', value: '6–8 sessions' },
@@ -230,7 +231,7 @@ export const treatments: Treatment[] = [
       { title: 'Deep, structural lift', text: 'Targets the SMAS support layer for genuine lifting — not just surface tightening.' },
       { title: 'Jawline & neck', text: 'Beautifully redefines the jaw, jowl and neck contour.' },
       { title: 'Collagen renewal', text: 'Triggers months of natural collagen production for results that build.' },
-      { title: 'Zero downtime', text: 'Return to life immediately — the lift reveals itself gradually.' },
+      { title: 'Minimal downtime', text: 'Return to life immediately — the lift reveals itself gradually.' },
     ],
     process: [
       { title: 'Mapping', text: 'We map treatment depths to your facial anatomy and goals.' },
@@ -573,7 +574,7 @@ export const treatments: Treatment[] = [
     ],
     process: [
       { title: 'Design', text: 'We plan shape and shade to complement your smile.' },
-      { title: 'Sculpting', text: 'Composite is layered, shaped and cured directly on the tooth.' },
+      { title: 'Sculpting', text: 'Composite is layered, shaped and hardened directly on the tooth.' },
       { title: 'Polish', text: 'A final polish brings a natural, light-catching finish.' },
     ],
     faqs: [
@@ -777,7 +778,10 @@ export const treatments: Treatment[] = [
     gradient: ['#c2a589', '#7b6a5d'],
   },
   // Treatments imported from the existing kclinics.co.uk site (real copy).
-  ...importedTreatments,
+  // POM-brand pages are filtered out (see lib/compliance.ts) so the public
+  // catalogue, /[slug] pages and sitemap never advertise a prescription-only
+  // medicine by brand.
+  ...importedTreatments.filter((t) => !POM_BRAND_SLUGS.has(t.slug)),
 ];
 
 // ── Booking config ───────────────────────────────────────────────────────────
@@ -819,9 +823,7 @@ export const bookingConfig: Record<string, BookingCfg> = {
   'prp-therapy':                 { durationMin: 60 },
   'chemical-peels':              { durationMin: 30 },
   'microdermabrasion':           { durationMin: 45 },
-  'botox':                       { durationMin: 30 },
   'dermal-fillers':              { durationMin: 45 },
-  'kybella':                     { durationMin: 45 },
   'anti-cellulite-programs':     { durationMin: 60 },
   'vacuum-massage':              { durationMin: 50 },
   'hip-dip-filler':              { durationMin: 45 },

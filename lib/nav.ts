@@ -36,7 +36,7 @@ export const primaryNav: NavGroup[] = [
       {
         heading: 'Injectables & Body',
         links: [
-          { label: 'Anti-Wrinkle Treatment', href: '/botox', description: 'Soften expression lines' },
+          { label: 'Anti-Wrinkle Treatment', href: '/cosmetic-injections', description: 'Soften expression lines' },
           { label: 'Dermal Fillers', href: '/dermal-fillers', description: 'Restore & define' },
           { label: 'Body Contouring', href: '/body-contouring', description: 'Define & refine' },
           { label: 'Intimate Rejuvenation', href: '/intimate-rejuvenation', description: 'Discreet & advanced' },

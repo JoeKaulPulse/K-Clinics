@@ -50,6 +50,11 @@ const redirects = async () => [
   { source: '/individualised-treatment-plans', destination: '/about', permanent: true },
   // IPL Phototherapy retired from the menu — send old links to the treatments hub.
   { source: '/ipl-phototherapy', destination: '/treatments', permanent: true },
+  // POM-brand pages removed for CAP 12.12 / MHRA compliance (no advertising a
+  // prescription-only medicine to the public). Their SEO equity is preserved by
+  // redirecting to the compliant, generically-named injectables page.
+  { source: '/botox', destination: '/cosmetic-injections', permanent: true },
+  { source: '/kybella', destination: '/cosmetic-injections', permanent: true },
 ];
 
 const nextConfig = {
