@@ -23,6 +23,11 @@ export function StaffManager({ staff, canManage, actorRole }: { staff: Staff[]; 
   const [editing, setEditing] = useState<Staff | 'new' | null>(null);
   const [profileFor, setProfileFor] = useState<Staff | null>(null);
 
+  // Mirrors lib/team-data.ts: a person shows on the public /team page only while
+  // their account is active AND their public profile is switched on. Deactivating
+  // an account removes them automatically.
+  const onTeamPage = staff.filter((s) => s.active && s.profile?.publicProfile).length;
+
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -38,6 +43,21 @@ export function StaffManager({ staff, canManage, actorRole }: { staff: Staff[]; 
         )}
       </div>
 
+      <a
+        href="/team"
+        target="_blank"
+        rel="noreferrer"
+        className="mb-6 flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)] px-4 py-3 text-sm transition-colors hover:border-[var(--color-gold)]"
+      >
+        <span className="grid h-7 min-w-7 place-items-center rounded-full bg-[var(--color-gold)] px-2 text-sm font-semibold text-white">{onTeamPage}</span>
+        <span className="text-[var(--color-ink)]">
+          {onTeamPage === 1 ? '1 person appears' : `${onTeamPage} people appear`} on the public <strong>/team</strong> page.
+        </span>
+        <span className="ml-auto text-xs text-[var(--color-stone)]">
+          Use the <strong>Profile</strong> button on each row to add a photo, credentials and bio, or to take someone off. Open page ↗
+        </span>
+      </a>
+
       <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
         <table className="w-full text-left text-sm">
           <thead className="bg-[var(--color-bone)] text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">
@@ -46,6 +66,7 @@ export function StaffManager({ staff, canManage, actorRole }: { staff: Staff[]; 
               <th scope="col" className="px-5 py-3 font-medium">Role</th>
               <th scope="col" className="px-5 py-3 font-medium">Custom access</th>
               <th scope="col" className="px-5 py-3 font-medium">Status</th>
+              <th scope="col" className="px-5 py-3 font-medium">Team page</th>
               <th scope="col" className="px-5 py-3" />
             </tr>
           </thead>
@@ -67,10 +88,25 @@ export function StaffManager({ staff, canManage, actorRole }: { staff: Staff[]; 
                       {s.active ? 'active' : 'deactivated'}
                     </span>
                   </td>
+                  <td className="px-5 py-3">
+                    {s.profile?.publicProfile ? (
+                      s.active ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-jade)]/15 px-2.5 py-0.5 text-xs font-medium text-[var(--color-jade)]" title="Live on the public /team page">
+                          <span aria-hidden="true">●</span> On /team
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-bone)] px-2.5 py-0.5 text-xs text-[var(--color-stone)]" title="Profile is on, but the account is deactivated so it is hidden from the public page">
+                          Hidden (deactivated)
+                        </span>
+                      )
+                    ) : (
+                      <span className="text-xs text-[var(--color-stone-soft)]">—</span>
+                    )}
+                  </td>
                   <td className="px-5 py-3 text-right">
                     {canManage && (
                       <span className="inline-flex items-center gap-3">
-                        <button onClick={() => setProfileFor(s)} className="text-sm font-medium text-[var(--color-stone)] hover:underline" title="Public team-page profile">
+                        <button onClick={() => setProfileFor(s)} className={`text-sm font-medium hover:underline ${s.profile?.publicProfile ? 'text-[var(--color-jade)]' : 'text-[var(--color-stone)]'}`} title="Public team-page profile">
                           Profile{s.profile?.publicProfile ? ' ✓' : ''}
                         </button>
                         <button onClick={() => setEditing(s)} className="text-sm font-medium text-[var(--color-gold)] hover:underline">
@@ -313,9 +349,12 @@ function ProfileEditor({ staff, onClose, onSaved }: { staff: Staff; onClose: () 
           </div>
           <button onClick={onClose} aria-label="Close" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>
         </div>
-        <label className="mb-4 flex items-center gap-3 text-sm">
-          <input type="checkbox" checked={f.publicProfile} onChange={(e) => set('publicProfile', e.target.checked)} className="h-4 w-4 accent-[var(--color-gold)]" />
-          Show this person on the public team page
+        <label className={`mb-4 flex cursor-pointer items-start gap-3 rounded-[var(--radius-md)] border p-3 text-sm transition-colors ${f.publicProfile ? 'border-[var(--color-gold)] bg-[var(--color-bone)]' : 'border-[var(--color-line)]'}`}>
+          <input type="checkbox" checked={f.publicProfile} onChange={(e) => set('publicProfile', e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]" />
+          <span>
+            <span className="block font-medium text-[var(--color-ink)]">Show this person on the public team page</span>
+            <span className="mt-0.5 block text-xs text-[var(--color-stone)]">Their card appears at /team while their account is active. Deactivating the account takes them off the page automatically — no need to untick this.</span>
+          </span>
         </label>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-xs text-[var(--color-stone)]">Job title<br /><input className={field} value={f.title} onChange={(e) => set('title', e.target.value)} placeholder="Aesthetic Doctor" /></label>

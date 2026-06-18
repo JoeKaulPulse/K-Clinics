@@ -2,18 +2,28 @@ import type { Metadata } from 'next';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
-import { team as fallbackTeam } from '@/lib/team';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 import type { TeamMember } from '@/lib/team-data';
 
-export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'Our Team — Expert Clinicians & Practitioners | KClinics London',
-  description:
-    'Meet the KClinics team — qualified aesthetic doctors, laser specialists and cosmetic dentists, with their experience, ratings and specialisms, delivering safe, artful results in Islington, London.',
-  path: '/team',
-  keywords: ['KClinics team', 'aesthetic doctor London', 'cosmetic dentist Islington', 'laser specialist London'],
-});
+async function getTeam(): Promise<{ clinicians: TeamMember[]; support: TeamMember[] }> {
+  try { return await (await import('@/lib/team-data')).publicTeam(); }
+  catch { return { clinicians: [], support: [] }; }
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { clinicians, support } = await getTeam();
+  const published = clinicians.length + support.length > 0;
+  return pageMeta({
+    title: 'Our Team — Expert Clinicians & Practitioners | KClinics London',
+    description:
+      'Meet the KClinics team — qualified aesthetic doctors, laser specialists and cosmetic dentists, with their experience, ratings and specialisms, delivering safe, artful results in Islington, London.',
+    path: '/team',
+    keywords: ['KClinics team', 'aesthetic doctor London', 'cosmetic dentist Islington', 'laser specialist London'],
+    // Don't index an empty team page until staff publish their profiles in the CRM.
+    noindex: !published,
+  });
+}
 
 export const revalidate = 600; // ISR: cached, revalidated in the background
 
@@ -29,9 +39,10 @@ function teamLd(members: TeamMember[]) {
 }
 
 export default async function TeamPage() {
-  let clinicians: TeamMember[] = [];
-  let support: TeamMember[] = [];
-  try { ({ clinicians, support } = await (await import('@/lib/team-data')).publicTeam()); } catch { /* DB optional */ }
+  // Single source of truth: the live CRM staff records (AdminUser). Members
+  // appear only while their account is active and their public profile is on,
+  // so a deactivated account drops off this page automatically.
+  const { clinicians, support } = await getTeam();
   const hasDbTeam = clinicians.length + support.length > 0;
 
   return (
@@ -64,21 +75,19 @@ export default async function TeamPage() {
           )}
         </>
       ) : (
-        // Graceful fallback until staff enable their public profiles in the CRM.
+        // Shown until staff enable their public profiles in the CRM. No
+        // placeholder names — the page only ever reflects real staff records.
         <section className="container-lux section">
-          <h2 className="sr-only">Our team</h2>
-          <Stagger className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {fallbackTeam.map((p) => (
-              <StaggerItem key={p.slug}>
-                <div className="h-full rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-7">
-                  <h3 className="font-[family-name:var(--font-display)] text-2xl">{p.name}</h3>
-                  <p className="mt-1 text-sm uppercase tracking-[0.14em] text-[var(--color-gold)]">{p.role}</p>
-                  <p className="mt-4 text-[var(--color-ink-soft)]">{p.bio}</p>
-                  {p.focus.length > 0 && <div className="mt-4 flex flex-wrap gap-1.5">{p.focus.map((f) => <span key={f} className="rounded-full bg-[var(--color-porcelain)] px-2.5 py-1 text-xs text-[var(--color-stone)]">{f}</span>)}</div>}
-                </div>
-              </StaggerItem>
-            ))}
-          </Stagger>
+          <Reveal>
+            <div className="mx-auto max-w-xl rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-10 text-center">
+              <h2 className="font-[family-name:var(--font-display)] text-3xl">Our team profiles are coming soon.</h2>
+              <p className="mt-4 text-[var(--color-ink-soft)]">
+                We’re finalising the profiles for our clinicians and practitioners. In the meantime,
+                book a consultation and you’ll be matched with the right expert for your treatment.
+              </p>
+              <div className="mt-7 flex justify-center"><BookingButtons /></div>
+            </div>
+          </Reveal>
         </section>
       )}
     </>
@@ -96,7 +105,7 @@ function Stars({ rating, count }: { rating: number; count: number }) {
 }
 
 function Card({ m }: { m: TeamMember }) {
-  const initials = m.name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+  const initials = m.name.split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'K';
   return (
     <div id={`m-${m.id}`} className="flex h-full scroll-mt-28 flex-col rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6">
       <div className="flex items-center gap-4">
@@ -104,7 +113,7 @@ function Card({ m }: { m: TeamMember }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={m.photoUrl} alt={`${m.name}${m.title ? `, ${m.title}` : ''} — KClinics`} width={80} height={80} loading="lazy" decoding="async" className="h-20 w-20 shrink-0 rounded-full object-cover" />
         ) : (
-          <span className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-[var(--color-ink)] font-[family-name:var(--font-display)] text-2xl text-[var(--color-gold-soft)]">{initials}</span>
+          <span aria-hidden="true" className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-[var(--color-ink)] font-[family-name:var(--font-display)] text-2xl text-[var(--color-gold-soft)]">{initials}</span>
         )}
         <div>
           <h3 className="font-[family-name:var(--font-display)] text-xl leading-tight">{m.name}</h3>
@@ -114,7 +123,11 @@ function Card({ m }: { m: TeamMember }) {
       </div>
 
       {m.rating != null && <div className="mt-4"><Stars rating={m.rating} count={m.reviewCount} /></div>}
-      {m.credentials && <p className="mt-3 text-xs text-[var(--color-stone)]">{m.credentials}</p>}
+      {m.credentials && (
+        <p className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full bg-[var(--color-porcelain)] px-3 py-1 text-xs font-medium text-[var(--color-gold-deep)]" title="Registration & qualifications">
+          <span aria-hidden="true">✓</span>{m.credentials}
+        </p>
+      )}
       {m.bio && <p className="mt-3 flex-1 text-sm text-[var(--color-ink-soft)]">{m.bio}</p>}
 
       {m.services.length > 0 && (
