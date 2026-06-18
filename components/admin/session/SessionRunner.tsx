@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { SESSION_STEPS, STEP_STATION, STATION_LABEL, stepActiveAtStation, type SessionStepKey, type StationMode, type StepTimings } from '@/lib/appointment-session';
 import type { SessionSnapshot } from '@/lib/appointment-session-server';
-import { reviewMedicalFlag, saveSopChecklist, startAppointment, finishAppointment, saveClinicalNote } from '@/app/admin/bookings/clinical-actions';
+import { reviewMedicalFlag, saveSopChecklist, startAppointment, finishAppointment, saveClinicalNote, removeAddonTreatment } from '@/app/admin/bookings/clinical-actions';
+import { BeforePhotoCapture } from '@/components/admin/BeforePhotoCapture';
 import { useSessionChannel } from '@/components/admin/session/useSessionChannel';
 import { CheckIcon } from '@/components/ui/session-icons';
 
@@ -32,7 +33,15 @@ type Props = {
   nextRec: { dateISO: string; label: string; maintenance: boolean } | null;
   booking: {
     id: string; treatmentSlug: string; treatmentTitle: string; startAt: string; durationMin: number; pricePence: number;
-    refreshments: string[]; addOns: string[];
+    chargedAt: string | null;
+    refreshments: string[]; addOns: { id: string; label: string; pricePence: number }[];
+  };
+  photos: {
+    items: { id: string; area: string | null; capturedBy: string; createdAt: string }[];
+    optOutSigned: boolean;
+    baseUrl: string;
+    canManage: boolean;
+    isLaser: boolean;
   };
   client: { id: string; firstName: string; fullName: string; email: string; medicalFlag: string | null; allergyNote: string | null };
   practitionerName: string | null;
@@ -335,6 +344,7 @@ export function SessionRunner(p: Props) {
                     onStart={() => run(() => startAppointment(p.booking.id))}
                     onFinish={() => run(() => finishAppointment(p.booking.id))}
                     onSaveNote={(note) => run(() => saveClinicalNote(p.booking.id, note))}
+                    onRemoveAddon={(itemId) => run(() => removeAddonTreatment(p.booking.id, itemId))}
                     onContinue={() => goTo('aftercare')}
                   />
                 )}
@@ -385,7 +395,7 @@ function ArrivalStep({ p, presenting, onBegin }: { p: Props; presenting: boolean
     <>
       <p className="max-w-prose leading-relaxed text-[var(--color-stone)]">
         {p.booking.treatmentTitle}
-        {p.booking.addOns.length > 0 && <> with {p.booking.addOns.join(', ')}</>} ·{' '}
+        {p.booking.addOns.length > 0 && <> with {p.booking.addOns.map((a) => a.label).join(', ')}</>} ·{' '}
         {when.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} at {fmtTime(p.booking.startAt)} · about {p.booking.durationMin} minutes
         {p.practitionerName && <> with {p.practitionerName}</>}.
       </p>
@@ -589,12 +599,12 @@ function ConsentStep({ p, live, onContinue, onSkip }: {
   );
 }
 
-function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateHints, elapsed, api, onStart, onFinish, onSaveNote, onContinue }: {
+function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateHints, elapsed, api, onStart, onFinish, onSaveNote, onRemoveAddon, onContinue }: {
   p: Props; live: { startedAt: string | null; finishedAt: string | null }; sessData: Record<string, { value: string; by: string; at: string }>;
   pending: boolean; presenting: boolean; canStart: boolean;
   gateHints: { flagOk: boolean; sopOk: boolean; consentOk: boolean; photoOk: boolean };
   elapsed: number; api: (payload: Record<string, unknown>) => Promise<{ ok: boolean }>;
-  onStart: () => void; onFinish: () => void; onSaveNote: (note: string) => void; onContinue: () => void;
+  onStart: () => void; onFinish: () => void; onSaveNote: (note: string) => void; onRemoveAddon: (itemId: string) => void; onContinue: () => void;
 }) {
   const [note, setNote] = useState(p.clinicalNote);
   // Live-derived until this device edits — a note saved on another device (or
@@ -626,6 +636,18 @@ function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateH
                 </li>
               ))}
             </ul>
+          )}
+          {/* Before photo capture — accessible pre-start so the gate can be cleared here */}
+          {!presenting && (p.gates.requireBeforePhoto || p.photos.items.length > 0) && (
+            <BeforePhotoCapture
+              bookingId={p.booking.id}
+              clientId={p.client.id}
+              photos={p.photos.items}
+              optOutSigned={p.photos.optOutSigned}
+              baseUrl={p.photos.baseUrl}
+              canManage={p.photos.canManage}
+              required={p.photos.isLaser}
+            />
           )}
           <button type="button" disabled={pending || !canStart} onClick={onStart}
             className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
@@ -663,6 +685,22 @@ function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateH
                   </div>
                 </div>
               )}
+
+              {/* Add-on treatments — listed with a remove button while uncharged */}
+              {p.booking.addOns.length > 0 && (
+                <AddonList bookingId={p.booking.id} addOns={p.booking.addOns} charged={!!p.booking.chargedAt} onRemove={onRemoveAddon} />
+              )}
+
+              {/* Before photo capture — always accessible during the session */}
+              <BeforePhotoCapture
+                bookingId={p.booking.id}
+                clientId={p.client.id}
+                photos={p.photos.items}
+                optOutSigned={p.photos.optOutSigned}
+                baseUrl={p.photos.baseUrl}
+                canManage={p.photos.canManage}
+                required={p.photos.isLaser}
+              />
 
               {!finished && (
                 <button type="button" disabled={pending} onClick={onFinish}
@@ -1248,6 +1286,48 @@ function ArrowIcon() {
   return <svg aria-hidden width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 8h11m0 0L9 4m4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
+
+// BLD-480 — add-on treatments list with remove button (staff only, pre-charge).
+function AddonList({ bookingId, addOns, charged, onRemove }: {
+  bookingId: string;
+  addOns: { id: string; label: string; pricePence: number }[];
+  charged: boolean;
+  onRemove: (itemId: string) => void;
+}) {
+  const [removing, setRemoving] = useState<string | null>(null);
+  const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
+
+  async function handleRemove(id: string) {
+    if (!confirm('Remove this add-on treatment? The total will be reduced.')) return;
+    setRemoving(id);
+    onRemove(id);
+    setRemoving(null);
+  }
+
+  return (
+    <div className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/60 p-4">
+      <p className="mb-2 text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">Add-on treatments</p>
+      <ul className="space-y-2">
+        {addOns.map((a) => (
+          <li key={a.id} className="flex items-center justify-between gap-3 text-sm">
+            <span className="min-w-0 break-words">{a.label}{a.pricePence > 0 ? ` — ${money(a.pricePence)}` : ''}</span>
+            {!charged && (
+              <button
+                type="button"
+                disabled={removing === a.id}
+                onClick={() => handleRemove(a.id)}
+                aria-label={`Remove ${a.label}`}
+                className="shrink-0 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs text-[var(--color-stone)] transition-colors hover:border-[var(--color-blush)] hover:text-[var(--color-blush)] disabled:opacity-50"
+              >
+                {removing === a.id ? 'Removing…' : 'Remove'}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 // BLD-138 — in-session voice recorder. Records via browser MediaRecorder,
 // POSTs the audio blob to /api/admin/bookings/transcribe (Deepgram), and
