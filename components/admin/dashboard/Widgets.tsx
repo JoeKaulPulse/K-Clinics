@@ -72,7 +72,11 @@ export function StatTile({
           <span
             role="img"
             aria-label={`${up ? 'Up' : 'Down'} ${Math.abs(trend)} percent`}
-            className={`inline-flex items-center gap-1 text-xs font-medium tabular-nums ${up ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush)]'}`}
+            // BLD-226 a11y: down-trend was --color-blush (#cdb4a3, 1.69:1 on
+            // porcelain — effectively invisible). Use the admin danger red
+            // (#b23b3b, 5.03:1 AA); the rotated arrow + aria-label carry the
+            // direction too, so meaning never rests on colour alone.
+            className={`inline-flex items-center gap-1 text-xs font-medium tabular-nums ${up ? 'text-[var(--color-jade)]' : 'text-[#b23b3b]'}`}
           >
             <svg width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden className={up ? '' : 'rotate-180'}>
               <path d="M6 2.5 10 9 2 9Z" fill="currentColor" />
@@ -114,7 +118,9 @@ export function TimelineList({ items, empty }: { items: TimelineItem[]; empty?: 
         const inner = (
           <>
             {it.lead != null && (
-              <span className="w-14 shrink-0 font-[family-name:var(--font-display)] text-lg text-[var(--color-gold)]">{it.lead}</span>
+              // BLD-226 a11y: --color-gold (#a98a6d) is 2.75:1 — fails AA for this
+              // 18px lead. --color-gold-deep (#816748) keeps the warm-gold accent at 4.54:1 (AA).
+              <span className="w-14 shrink-0 font-[family-name:var(--font-display)] text-lg text-[var(--color-gold-deep)]">{it.lead}</span>
             )}
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium">{it.title}</p>
