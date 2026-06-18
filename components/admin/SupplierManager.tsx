@@ -114,7 +114,7 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
                   {editing.calls.map((c) => (
                     <li key={c.id} className="flex items-center justify-between px-3 py-2">
                       <span>{c.direction === 'INBOUND' ? '↘ Inbound' : '↗ Outbound'} · {new Date(c.startedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                      <span className="text-[var(--color-stone)]">{Math.floor(c.durationSec / 60)}m {c.durationSec % 60}s</span>
+                      <span className="tabular-nums text-[var(--color-stone)]">{Math.floor(c.durationSec / 60)}m {c.durationSec % 60}s</span>
                     </li>
                   ))}
                 </ul>
@@ -135,7 +135,7 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
                     {bills.map((bl, i) => (
                       <li key={i} className="flex items-center justify-between px-3 py-2">
                         <span>{bl.invoiceNumber} · {bl.date ? new Date(bl.date).toLocaleDateString('en-GB') : '—'} <span className="text-[var(--color-stone)]">({bl.status})</span></span>
-                        <span className="font-medium">£{bl.total.toFixed(2)}{bl.amountDue > 0 && <span className="ml-1 text-[var(--color-blush)]">· £{bl.amountDue.toFixed(2)} due</span>}</span>
+                        <span className="font-medium tabular-nums">£{bl.total.toFixed(2)}{bl.amountDue > 0 && <span className="ml-1 text-[var(--color-blush)]">· £{bl.amountDue.toFixed(2)} due</span>}</span>
                       </li>
                     ))}
                   </ul>

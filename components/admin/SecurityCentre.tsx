@@ -68,7 +68,7 @@ export function SecurityCentre({ score, checks, policy, threats }: { score: numb
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 lg:col-span-1">
           <p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">Posture</p>
-          <p className={`font-[family-name:var(--font-display)] text-3xl ${scoreColor}`}>{score}<span className="text-base text-[var(--color-stone)]">/100</span></p>
+          <p className={`font-[family-name:var(--font-display)] text-3xl tabular-nums ${scoreColor}`}>{score}<span className="text-base text-[var(--color-stone)]">/100</span></p>
         </div>
         {[
           { l: 'Failed logins (24h)', v: threats.failed24h, warn: threats.failed24h > 20 },
@@ -79,7 +79,7 @@ export function SecurityCentre({ score, checks, policy, threats }: { score: numb
         ].map((s) => (
           <div key={s.l} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
             <p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">{s.l}</p>
-            <p className={`font-[family-name:var(--font-display)] text-2xl ${s.warn ? 'text-amber-600' : ''}`}>{s.v}</p>
+            <p className={`font-[family-name:var(--font-display)] text-2xl tabular-nums ${s.warn ? 'text-amber-600' : ''}`}>{s.v}</p>
           </div>
         ))}
       </div>

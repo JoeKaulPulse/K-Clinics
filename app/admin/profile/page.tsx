@@ -87,7 +87,7 @@ export default async function ProfilePage() {
               { label: uk ? 'Відгуки' : 'Reviews', value: standing.reviewCount },
             ].map((s) => (
               <div key={s.label} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
-                <div className={`font-[family-name:var(--font-display)] text-2xl ${s.tone || ''}`}>{s.value} {s.sub && <span className="text-sm text-[var(--color-stone)]">{s.sub}</span>}</div>
+                <div className={`font-[family-name:var(--font-display)] text-2xl tabular-nums ${s.tone || ''}`}>{s.value} {s.sub && <span className="text-sm text-[var(--color-stone)]">{s.sub}</span>}</div>
                 <div className="mt-1 text-xs text-[var(--color-stone)]">{s.label}</div>
               </div>
             ))}
@@ -101,7 +101,7 @@ export default async function ProfilePage() {
                   {standing.byCategory.map((c) => (
                     <li key={c.category} className="flex items-center justify-between text-sm">
                       <span className="text-[var(--color-stone)]">{CAT_LABEL[c.category] || c.category}</span>
-                      <span className={`font-medium ${c.points < 0 ? 'text-[var(--color-blush)]' : ''}`}>{c.points > 0 ? '+' : ''}{c.points}</span>
+                      <span className={`font-medium tabular-nums ${c.points < 0 ? 'text-[var(--color-blush)]' : ''}`}>{c.points > 0 ? '+' : ''}{c.points}</span>
                     </li>
                   ))}
                 </ul>
@@ -117,7 +117,7 @@ export default async function ProfilePage() {
                         <span className="block truncate">{r.reason}</span>
                         <span className="text-xs text-[var(--color-stone)]">{new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · {CAT_LABEL[r.category] || r.category}</span>
                       </span>
-                      <span className={`shrink-0 font-medium ${r.points < 0 ? 'text-[var(--color-blush)]' : 'text-[var(--color-jade)]'}`}>{r.points > 0 ? '+' : ''}{r.points}</span>
+                      <span className={`shrink-0 font-medium tabular-nums ${r.points < 0 ? 'text-[var(--color-blush)]' : 'text-[var(--color-jade)]'}`}>{r.points > 0 ? '+' : ''}{r.points}</span>
                     </li>
                   ))}
                 </ul>
