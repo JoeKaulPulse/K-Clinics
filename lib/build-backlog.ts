@@ -1541,7 +1541,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     title: '/team page driven by live staff records + public-profile toggle (BLD-487)', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1129),
     value: 8, effort: 2,
     detail: 'Owner trigger: /team must show real staff photos and correct GMC/GDC numbers, not placeholder content. Fix: /team now driven solely by publicTeam() query (AdminUser where active=true AND publicProfile=true); empty state shows "coming soon" card + noindex. StaffManager gets a team-page count banner and per-row public-profile toggle explaining deactivation behaviour.',
-    notes: ['app/(marketing)/team/page.tsx, components/admin/StaffManager.tsx (SHA 556250b on claude/team-staff-link-487).'],
+    notes: [
+      'app/(marketing)/team/page.tsx, components/admin/StaffManager.tsx (SHA 556250b on claude/team-staff-link-487).',
+      'Security fix (SHA bcd472c): login email removed from publicTeam() select and team card -- it was the credential username, exposed as a mailto: link. publicPhone stays. Found by Opus 4.8 review.',
+    ],
+  },
+  {
+    title: 'Academy route ops lack tenantId scope guard (BLD-484 Opus finding)', type: 'ERROR', urgency: 'P2', status: 'TRIAGE', assignee: 'claude',
+    value: 5, effort: 2,
+    detail: 'Opus 4.8 review found updateEnrolment, removeCohort, removeEnrolment in app/api/admin/academy/route.ts use db.enrolment.update/delete({ where: { id } }) with no tenantId filter. Create paths set tenantId. A permitted admin in one tenant could mutate another tenants enrolment/cohort by ID. Route is auth-gated (requirePermission). Fix: add tenantId filter to every update/delete where clause. Predates BLD-484; affects all existing ops.',
+    notes: ['Logged from Opus 4.8 review of BLD-484 (2026-06-18). Low practical risk on single-clinic deploy; must be fixed before multi-tenant or if other clinics are onboarded.'],
   },
 ];
 
