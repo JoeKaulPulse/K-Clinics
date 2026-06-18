@@ -581,15 +581,25 @@ model Booking {
   chargePaymentIntentId String?
   chargedPence          Int?
   chargedAt             DateTime?
+  // BNPL course pre-payment (BLD-399; BLD-409 course context). BNPL methods
+  // (Klarna/Clearpay) can't be saved off-session, so for a course the client
+  // pays the full price upfront via a Stripe Checkout link. Set when the
+  // course_prepaid payment_intent succeeds; once set, no card-on-file charge is
+  // taken for this booking. Additive, nullable — no card-on-file change.
+  prepaidVia            String? // 'klarna' | 'clearpay' | 'bnpl'
+  prepaidPence          Int? // amount pre-paid (pi.amount_received)
+  prepaidAt             DateTime?
+  prepaidCheckoutId     String? // Stripe Checkout Session id (traceability / idempotency)
+
   // Refund (full or partial) of a charge, within the allowed window.
-  refundedPence         Int?
-  refundedAt            DateTime?
-  refundReason          String?
+  refundedPence     Int?
+  refundedAt        DateTime?
+  refundReason      String?
   // Xero sales push (lib/xero.ts): the ACCREC invoice raised for the charge
   // ('PENDING' while a push is in flight — doubles as the idempotency claim),
   // and the credit note raised for each refund.
-  xeroInvoiceId         String?
-  xeroCreditNoteIds     String[]  @default([])
+  xeroInvoiceId     String?
+  xeroCreditNoteIds String[]  @default([])
 
   // Cancellation.
   cancelledAt  DateTime?
@@ -601,11 +611,11 @@ model Booking {
   // Client self-service link token.
   manageToken String @unique @default(cuid())
 
-  remindersSent   Boolean  @default(false)
+  remindersSent   Boolean @default(false)
   // BLD-126: additional reminder windows (72h/48h) — additive, default false.
-  reminder72hSent Boolean  @default(false)
-  reminder48hSent Boolean  @default(false)
-  rescheduleCount Int      @default(0)
+  reminder72hSent Boolean @default(false)
+  reminder48hSent Boolean @default(false)
+  rescheduleCount Int     @default(0)
 
   // Google Calendar: id of the event mirrored onto the assigned clinician's
   // Workspace calendar, so it can be updated/removed idempotently. Null until
@@ -613,8 +623,8 @@ model Booking {
   // Best-effort — calendar sync never blocks the booking lifecycle.
   googleEventId String?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Marketing attribution (first-touch, captured from UTM/campaign params).
   attribSource        String?
@@ -950,7 +960,7 @@ model AdminUser {
   googleSub   String?
   googleEmail String?
 
-  locale                 String  @default("en") // CRM UI language (en | uk)
+  locale                 String             @default("en") // CRM UI language (en | uk)
   preferredDashboardView String? // PRJ-63: OWNER/ADMIN can pin a role-view to land on (null = role default)
   notifPrefs             Json? // per-user notification preferences (in-app/email per category, quiet hours, digest, chat sound). Null = defaults. See lib/notifications.ts
   pushSubscriptions      PushSubscription[]
@@ -1800,14 +1810,14 @@ model AcademyStudent {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  enrolments       Enrolment[]
-  lessonProgress   LessonProgress[]
-  quizAttempts     QuizAttempt[]
-  practiceAttempts PracticeAttempt[]
-  pointEvents      PointEvent[]
-  badges           StudentBadge[]
-  dailyActivity    DailyActivity[]
-  passkeys         StudentPasskey[]
+  enrolments          Enrolment[]
+  lessonProgress      LessonProgress[]
+  quizAttempts        QuizAttempt[]
+  practiceAttempts    PracticeAttempt[]
+  pointEvents         PointEvent[]
+  badges              StudentBadge[]
+  dailyActivity       DailyActivity[]
+  passkeys            StudentPasskey[]
   homeworkSubmissions HomeworkSubmission[]
 
   @@unique([tenantId, email]) // ClinicOS Ring 1 (BLD-301): per-tenant email — replaces the global @unique
@@ -1862,12 +1872,12 @@ model Course {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  cohorts       Cohort[]
-  enrolments    Enrolment[]
-  modules       CourseModule[]
-  liveClasses   LiveClass[]
-  examQuestions ExamQuestion[]
-  pastPapers    PastPaper[]
+  cohorts             Cohort[]
+  enrolments          Enrolment[]
+  modules             CourseModule[]
+  liveClasses         LiveClass[]
+  examQuestions       ExamQuestion[]
+  pastPapers          PastPaper[]
   fundingApplications FundingApplication[]
 
   @@unique([tenantId, slug]) // ClinicOS Ring 1 (BLD-301): per-tenant slug — replaces the global @unique
@@ -1895,32 +1905,32 @@ model CourseModule {
 }
 
 model Lesson {
-  id          String           @id @default(cuid())
-  tenantId    String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
-  module      CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  moduleId    String
-  title       String
-  order       Int              @default(0)
-  durationMin Int?
-  videoUrl    String? // YouTube watch/embed URL, or a search link (pre-test explainer)
-  imageUrl    String?
-  body        String           @db.Text // markdown-ish lesson content
-  keyPoints   String[]         @default([])
-  objectives  String[]         @default([]) // "by the end you will…" shown at lesson start
-  studyTips   String[]         @default([]) // exam tips / memory aids surfaced in-lesson
-  homework    String? // assignment to complete after the lesson (markdown)
-  requiresHomework Boolean     @default(false) // BLD-446: learner must submit homework files for this lesson
-  examRefs    String[]         @default([]) // real exam/syllabus references this maps to
-  steps       Json? // authored bite-size flow [{kind:'teach'|'say'|'ask', …}]; when null the player auto-chunks `body`
-  minSeconds  Int? // minimum dwell time before the lesson can be marked complete
-  citations   Json? // [{ label, url }]
-  resources   Json? // [{ label, url }]
-  pdfUrls     String[]         @default([]) // BLD-407: uploaded PDF attachments (Vercel Blob URLs)
-  pdfNoDownload String[]       @default([]) // BLD-443: subset of pdfUrls marked view-only (no download offered)
-  progress    LessonProgress[]
+  id                  String               @id @default(cuid())
+  tenantId            String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  module              CourseModule         @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  moduleId            String
+  title               String
+  order               Int                  @default(0)
+  durationMin         Int?
+  videoUrl            String? // YouTube watch/embed URL, or a search link (pre-test explainer)
+  imageUrl            String?
+  body                String               @db.Text // markdown-ish lesson content
+  keyPoints           String[]             @default([])
+  objectives          String[]             @default([]) // "by the end you will…" shown at lesson start
+  studyTips           String[]             @default([]) // exam tips / memory aids surfaced in-lesson
+  homework            String? // assignment to complete after the lesson (markdown)
+  requiresHomework    Boolean              @default(false) // BLD-446: learner must submit homework files for this lesson
+  examRefs            String[]             @default([]) // real exam/syllabus references this maps to
+  steps               Json? // authored bite-size flow [{kind:'teach'|'say'|'ask', …}]; when null the player auto-chunks `body`
+  minSeconds          Int? // minimum dwell time before the lesson can be marked complete
+  citations           Json? // [{ label, url }]
+  resources           Json? // [{ label, url }]
+  pdfUrls             String[]             @default([]) // BLD-407: uploaded PDF attachments (Vercel Blob URLs)
+  pdfNoDownload       String[]             @default([]) // BLD-443: subset of pdfUrls marked view-only (no download offered)
+  progress            LessonProgress[]
   homeworkSubmissions HomeworkSubmission[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   @@index([moduleId, order])
   @@index([tenantId])
@@ -2155,21 +2165,21 @@ enum CohortStatus {
 }
 
 model Cohort {
-  id        String       @id @default(cuid())
-  tenantId  String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
-  course    Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  courseId  String
-  startAt   DateTime
-  endAt     DateTime?
+  id            String       @id @default(cuid())
+  tenantId      String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  course        Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId      String
+  startAt       DateTime
+  endAt         DateTime?
   accessStartAt DateTime? // BLD-408: course access opens for this cohort (null = open as soon as enrolled)
   accessEndAt   DateTime? // BLD-408: course access expires for this cohort (null = never expires)
-  capacity  Int          @default(8)
-  location  String?
-  trainer   String?
-  status    CohortStatus @default(OPEN)
-  notes     String?
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  capacity      Int          @default(8)
+  location      String?
+  trainer       String?
+  status        CohortStatus @default(OPEN)
+  notes         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   enrolments Enrolment[]
 
@@ -2203,13 +2213,13 @@ model Enrolment {
   experience      String? // free-text background / qualifications
   financeInterest Boolean @default(false) // interested in Clearpay financing
 
-  status     EnrolmentStatus @default(APPLIED)
-  pricePence Int             @default(0)
-  paidPence  Int             @default(0)
-  notes      String?
+  status         EnrolmentStatus @default(APPLIED)
+  pricePence     Int             @default(0)
+  paidPence      Int             @default(0)
+  notes          String?
   preCourseAckAt DateTime? // BLD-445: when the learner acknowledged the pre-course information page
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   @@index([status])
   @@index([courseId])
@@ -2235,7 +2245,7 @@ enum FundingStatus {
 }
 
 model FundingApplication {
-  id       String  @id @default(cuid())
+  id       String @id @default(cuid())
   tenantId String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
 
   // Applicant.

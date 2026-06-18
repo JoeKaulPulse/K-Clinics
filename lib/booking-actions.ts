@@ -23,6 +23,31 @@ export function isWithin24h(b: Pick<Booking, 'startAt'>): boolean {
 }
 
 /**
+ * Full price of a course booking, in pence — the single source of truth for the
+ * BNPL pre-payment amount (BLD-399) and its webhook validation. The primary
+ * (non-add-on) line item holds the course total: create-action.ts sets its
+ * pricePence to (price-per-session × sessions), and the booking detail derives
+ * `basePence` the same way (booking.pricePence minus add-ons). We read the
+ * primary item directly so the link, the validation and the badge all agree.
+ * Returns { pence, sessions, label }; pence is 0 for an on-consultation (£0)
+ * booking, which callers must reject (nothing to pre-pay).
+ */
+export async function courseTotalPence(bookingId: string): Promise<{ pence: number; sessions: number; label: string } | null> {
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true, treatmentTitle: true } });
+  if (!booking) return null;
+  const primary = await db.bookingItem.findFirst({
+    where: { bookingId, isAddon: false },
+    orderBy: { createdAt: 'asc' },
+    select: { pricePence: true, sessions: true, label: true },
+  });
+  // Prefer the primary line item (course total + session count). Fall back to
+  // the booking price for legacy bookings created without line items.
+  const sessions = Math.max(1, primary?.sessions ?? 1);
+  const pence = primary?.pricePence ?? booking.pricePence ?? 0;
+  return { pence, sessions, label: primary?.label || booking.treatmentTitle };
+}
+
+/**
  * Gather the rich detail for a stylised, itemised receipt: line items (primary
  * treatment + any add-ons), clinician, clinic-local date, a short reference and
  * the card used. All best-effort — the receipt still sends if any part fails.

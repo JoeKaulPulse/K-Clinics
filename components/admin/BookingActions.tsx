@@ -15,6 +15,7 @@ export function BookingActions({
   refundableUntil = null,
   canManage = true,
   canCharge = true,
+  prepaid = false,
 }: {
   bookingId: string;
   status: string;
@@ -25,6 +26,9 @@ export function BookingActions({
   refundableUntil?: string | null;
   canManage?: boolean;
   canCharge?: boolean;
+  // BLD-399: a course pre-paid upfront via BNPL (Klarna/Clearpay). When true the
+  // card-on-file charge UI is suppressed — the course is already paid in full.
+  prepaid?: boolean;
 }) {
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState('');
