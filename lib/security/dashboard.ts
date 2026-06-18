@@ -75,7 +75,7 @@ export async function threatSummary(): Promise<ThreatSummary> {
   const since7d = new Date(Date.now() - 7 * 24 * 3600 * 1000);
   const lockWindow = new Date(Date.now() - 15 * 60 * 1000);
 
-  const [failed24h, lockouts24h, rateLimited24h, captchaFails24h, twofaFails24h, lockedGroups, ipGroups, recent] = await Promise.all([
+  const [failed24h, lockouts24h, rateLimited24h, captchaFails24h, twofaFails24h, lockedGroups, ipGroups, ipUnlocks, recent] = await Promise.all([
     db.securityEvent.count({ where: { type: 'LOGIN_FAIL', createdAt: { gte: since24 } } }),
     db.securityEvent.count({ where: { type: 'LOCKOUT', createdAt: { gte: since24 } } }),
     db.securityEvent.count({ where: { type: 'RATE_LIMITED', createdAt: { gte: since24 } } }),
@@ -83,6 +83,8 @@ export async function threatSummary(): Promise<ThreatSummary> {
     db.securityEvent.count({ where: { type: 'TWOFA_FAIL', createdAt: { gte: since24 } } }),
     db.securityEvent.groupBy({ by: ['identifier'], where: { type: 'LOGIN_FAIL', identifier: { not: null }, createdAt: { gte: lockWindow } }, _count: { _all: true } }),
     db.securityEvent.groupBy({ by: ['ip'], where: { type: 'LOGIN_FAIL', ip: { not: null }, createdAt: { gte: since7d } }, _count: { _all: true } }),
+    // Fetch the most recent UNLOCK event per IP so we can exclude IPs that were cleared (BLD-483).
+    db.securityEvent.findMany({ where: { type: 'UNLOCK', ip: { not: null }, createdAt: { gte: since7d } }, orderBy: { createdAt: 'desc' }, select: { ip: true, createdAt: true } }),
     db.securityEvent.findMany({ where: { type: { in: ['LOGIN_FAIL', 'LOCKOUT', 'RATE_LIMITED', 'CAPTCHA_FAIL', 'TWOFA_FAIL', 'TWOFA_ENABLED', 'TWOFA_DISABLED', 'UNLOCK'] } }, orderBy: { createdAt: 'desc' }, take: 25, select: { id: true, type: true, portal: true, identifier: true, ip: true, createdAt: true } }),
   ]);
 
@@ -90,11 +92,25 @@ export async function threatSummary(): Promise<ThreatSummary> {
     .filter((g) => g._count._all >= 5 && g.identifier)
     .map((g) => ({ identifier: g.identifier as string, fails: g._count._all }))
     .sort((a, b) => b.fails - a.fails);
-  const topIps = ipGroups
-    .map((g) => ({ ip: g.ip as string, fails: g._count._all }))
-    .filter((g) => g.fails >= 3)
-    .sort((a, b) => b.fails - a.fails)
-    .slice(0, 8);
+
+  // Build a map of IP -> most recent UNLOCK time so cleared IPs drop off the list.
+  const lastUnlockByIp = new Map<string, Date>();
+  for (const e of ipUnlocks) {
+    if (e.ip && !lastUnlockByIp.has(e.ip)) lastUnlockByIp.set(e.ip, e.createdAt);
+  }
+  // For each IP that was unlocked, recount only fails that came AFTER the unlock.
+  const topIpsRaw = await Promise.all(
+    ipGroups.map(async (g) => {
+      const ip = g.ip as string;
+      const lastUnlock = lastUnlockByIp.get(ip);
+      let fails = g._count._all;
+      if (lastUnlock) {
+        fails = await db.securityEvent.count({ where: { type: 'LOGIN_FAIL', ip, createdAt: { gte: lastUnlock } } });
+      }
+      return { ip, fails };
+    }),
+  );
+  const topIps = topIpsRaw.filter((g) => g.fails >= 3).sort((a, b) => b.fails - a.fails).slice(0, 8);
 
   return { failed24h, lockouts24h, rateLimited24h, captchaFails24h, twofaFails24h, lockedNow, topIps, recent };
 }

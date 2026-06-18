@@ -165,7 +165,7 @@ export const treatments: Treatment[] = [
     faqs: [
       { q: 'Can you shape my beard line without removing the beard?', a: 'Absolutely — we define the neck and cheek lines precisely while preserving the beard you want to keep.' },
       { q: 'Is back and shoulder hair treatable in one go?', a: 'Yes. These larger areas are typically completed within a single, efficient appointment.' },
-      { q: 'Will it stop ingrown hairs?', a: 'Reducing the hair at the follicle dramatically reduces — and often eliminates — ingrown hairs and razor irritation.' },
+      { q: 'Will it stop ingrown hairs?', a: 'Reducing the hair at the follicle dramatically reduces — and often clears — ingrown hairs and razor irritation.' },
     ],
     facts: [
       { label: 'Course', value: '6–8 sessions' },
@@ -230,7 +230,7 @@ export const treatments: Treatment[] = [
       { title: 'Deep, structural lift', text: 'Targets the SMAS support layer for genuine lifting — not just surface tightening.' },
       { title: 'Jawline & neck', text: 'Beautifully redefines the jaw, jowl and neck contour.' },
       { title: 'Collagen renewal', text: 'Triggers months of natural collagen production for results that build.' },
-      { title: 'Zero downtime', text: 'Return to life immediately — the lift reveals itself gradually.' },
+      { title: 'Little to no downtime', text: 'Return to life immediately — the lift reveals itself gradually.' },
     ],
     process: [
       { title: 'Mapping', text: 'We map treatment depths to your facial anatomy and goals.' },
@@ -573,7 +573,7 @@ export const treatments: Treatment[] = [
     ],
     process: [
       { title: 'Design', text: 'We plan shape and shade to complement your smile.' },
-      { title: 'Sculpting', text: 'Composite is layered, shaped and cured directly on the tooth.' },
+      { title: 'Sculpting', text: 'Composite is layered, shaped and set directly on the tooth.' },
       { title: 'Polish', text: 'A final polish brings a natural, light-catching finish.' },
     ],
     faqs: [

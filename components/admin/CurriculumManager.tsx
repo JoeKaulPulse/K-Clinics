@@ -138,6 +138,10 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
     } finally { clearTimeout(timer); setPct(0); }
   }
   const uploadErr = (e: unknown) => ((e as Error)?.name === 'AbortError' ? 'timed out after 3 min — check the connection or file size' : (e as Error)?.message || 'unknown');
+  // Build the full save payload from a given form state snapshot.
+  function lessonSavePayload(s: typeof f) {
+    return { op: 'updateLesson', id: l.id, title: s.title, durationMin: s.durationMin, minSeconds: s.minSeconds, videoUrl: s.videoUrl, imageUrl: s.imageUrl, body: s.body, keyPoints: textToList(s.keyPoints), objectives: textToList(s.objectives), studyTips: textToList(s.studyTips), homework: s.homework, examRefs: textToList(s.examRefs), citations: textToLinks(s.citations), resources: textToLinks(s.resources), pdfUrls: s.pdfUrls, pdfNoDownload: s.pdfNoDownload, requiresHomework: s.requiresHomework };
+  }
   async function uploadVideo(file: File) {
     setUploading(true);
     try { const url = await putFile(file, 'academy'); setF((s) => ({ ...s, videoUrl: url })); }
@@ -146,7 +150,13 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
   }
   async function uploadPdf(file: File) {
     setUploadingPdf(true);
-    try { const url = await putFile(file, 'academy/pdf'); setF((s) => ({ ...s, pdfUrls: [...s.pdfUrls, url] })); }
+    try {
+      const url = await putFile(file, 'academy/pdf');
+      // Build updated state directly so we can auto-save without waiting for React's async state flush (BLD-485).
+      const updated = { ...f, pdfUrls: [...f.pdfUrls, url] };
+      setF(updated);
+      await act(lessonSavePayload(updated));
+    }
     catch (e) { alert('PDF upload failed: ' + uploadErr(e)); }
     finally { setUploadingPdf(false); }
   }
@@ -170,7 +180,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
               <div className="mt-1 flex gap-2">
                 <input className={`${field} flex-1`} value={f.videoUrl} onChange={(e) => set('videoUrl', e.target.value)} placeholder="https://youtube… or upload →" />
                 <label className={`shrink-0 cursor-pointer rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-1.5 text-xs ${uploading ? 'opacity-60' : 'hover:border-[var(--color-gold)]'}`}>
-                  {uploading ? `Uploading ${pct}%` : 'Upload'}
+                  {uploading ? (pct > 0 ? `Uploading ${pct}%` : 'Uploading...') : 'Upload'}
                   <input type="file" accept="video/*,image/*" className="hidden" disabled={uploading} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadVideo(file); e.currentTarget.value = ''; }} />
                 </label>
               </div>
@@ -192,7 +202,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
               <p className={label}>PDF attachments &amp; further reading (Label | URL, one per line)</p>
               <textarea rows={3} className={`${field} mt-1 text-xs`} value={f.resources} onChange={(e) => set('resources', e.target.value)} placeholder="My Guide | https://…" />
               <label className={`mt-1.5 inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs ${uploadingPdf ? 'opacity-60 pointer-events-none' : 'hover:border-[var(--color-gold)]'}`}>
-                {uploadingPdf ? `Uploading ${pct}%` : '↑ Upload PDF'}
+                {uploadingPdf ? (pct > 0 ? `Uploading ${pct}%` : 'Uploading...') : '↑ Upload PDF'}
                 <input type="file" accept="application/pdf" className="hidden" disabled={uploadingPdf} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadPdf(file); e.currentTarget.value = ''; }} />
               </label>
             </div>
@@ -217,7 +227,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
                 );
               })}
               <label className={`inline-flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-line)] px-3 py-1.5 text-xs ${uploadingPdf ? 'opacity-60' : 'hover:border-[var(--color-gold)]'}`}>
-                {uploadingPdf ? `Uploading ${pct}%` : '+ Attach PDF'}
+                {uploadingPdf ? (pct > 0 ? `Uploading ${pct}%` : 'Uploading...') : '+ Attach PDF'}
                 <input type="file" accept="application/pdf" className="hidden" disabled={uploadingPdf} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadPdf(file); e.currentTarget.value = ''; }} />
               </label>
             </div>

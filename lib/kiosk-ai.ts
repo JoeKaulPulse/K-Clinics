@@ -17,7 +17,7 @@ When given a photo, provide:
 5. 1-2 treatment suggestions from K Clinics that could enhance their look
 
 Treatment options to suggest from (use exact names):
-- HydraFacial, Chemical Peel, Microneedling, LED Light Therapy, Botox, Dermal Fillers, Lip Fillers, Teeth Whitening, Composite Bonding, Laser Hair Removal, IPL Photorejuvenation
+- HydraFacial, Chemical Peel, Microneedling, LED Light Therapy, Anti-Wrinkle Injections, Dermal Fillers, Lip Fillers, Teeth Whitening, Composite Bonding, Laser Hair Removal, IPL Photorejuvenation
 
 Tone: warm, fun, celebratory — like a beauty-savvy friend. Never medical or diagnostic. If the photo isn't a usable face/selfie (e.g. no person, intimate areas, a minor), still return the JSON but with a gentle generic headline and modest scores.
 
@@ -31,14 +31,14 @@ ALWAYS respond in this exact JSON format:
 }`;
 
 export const ALLOWED_TREATMENTS = [
-  'HydraFacial', 'Chemical Peel', 'Microneedling', 'LED Light Therapy', 'Botox',
+  'HydraFacial', 'Chemical Peel', 'Microneedling', 'LED Light Therapy', 'Anti-Wrinkle Injections',
   'Dermal Fillers', 'Lip Fillers', 'Teeth Whitening', 'Composite Bonding',
   'Laser Hair Removal', 'IPL Photorejuvenation',
 ];
 
 // Treatments that are invasive: the model is told to only ever suggest these
 // when the visual signal is unambiguous (and the surrounding copy stays soft).
-const INVASIVE_TREATMENTS = ['Botox', 'Dermal Fillers', 'Lip Fillers'];
+const INVASIVE_TREATMENTS = ['Anti-Wrinkle Injections', 'Dermal Fillers', 'Lip Fillers'];
 
 export type KioskAiResult = {
   headline: string;

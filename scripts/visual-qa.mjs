@@ -208,8 +208,9 @@ async function main() {
   const browser = await chromium.launch();
   try {
     // Static page visual checks (extend this list for other journeys).
-    // /kiosk/display holds an open SSE channel — use 'load' not 'networkidle'.
-    await visit(browser, '/kiosk/display', 'kiosk-1-display', 'Storefront display (QR attract screen)', { waitUntil: 'load' });
+    // /kiosk/display holds an open SSE channel + animation timers — use domcontentloaded so
+    // a fast HTML parse is enough and persistent connections never trigger a false timeout (BLD-328).
+    await visit(browser, '/kiosk/display', 'kiosk-1-display', 'Storefront display (QR attract screen)', { waitUntil: 'domcontentloaded' });
     await visit(browser, '/', 'home', 'Homepage');
     await visit(browser, '/book', 'book', 'Booking flow');
     await visit(browser, '/gift-vouchers', 'gift', 'Gift vouchers');

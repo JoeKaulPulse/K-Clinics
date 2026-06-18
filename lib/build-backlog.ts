@@ -1488,10 +1488,10 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['app/error.tsx (new file).'],
   },
   {
-    title: 'Visual-QA: fix false P1 timeout on kiosk session and result pages (BLD-328)', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude',
+    title: 'Visual-QA: fix false P1 timeout on kiosk display/session/result pages (BLD-328)', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude',
     value: 3, effort: 1,
-    detail: 'scripts/visual-qa.mjs: two inline page.goto calls for /kiosk/<token> and /kiosk/result/<slug> were using waitUntil:networkidle, which never settled on pages with animation timers or live camera SSE. Changed both to waitUntil:load (matching the already-fixed /kiosk/display call from BLD-346) so genuine failures are not masked by false P1 timeouts.',
-    notes: ['scripts/visual-qa.mjs lines 137 and 188.'],
+    detail: 'scripts/visual-qa.mjs: (1) kiosk/<token> and /kiosk/result/<slug> inline goto calls changed from networkidle to load; (2) /kiosk/display changed from load to domcontentloaded — the SSE channel + animation timers prevent the load event from ever firing on that page, causing a recurring false P1 30s timeout every QA run.',
+    notes: ['scripts/visual-qa.mjs lines 137, 188, and 212.'],
   },
   {
     title: 'Newsletter mid-page capture: homepage, dentistry, packages (BLD-353)', type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude',

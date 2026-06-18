@@ -215,10 +215,13 @@ function DoneView({ result, treatmentTitle, whenLabel, onClose, router }: { resu
 
   // ① Create-your-account + card link (passwordless clients get the magic link).
   const [linkState, setLinkState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [linkError, setLinkError] = useState('');
   async function sendLink() {
     setLinkState('sending');
+    setLinkError('');
     const r = await fetch('/api/admin/bookings/request-card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId: result.bookingId, channel: 'email' }) }).then((x) => x.json()).catch(() => ({ ok: false }));
     setLinkState(r.ok ? 'sent' : 'error');
+    if (!r.ok) setLinkError(r.error || '');
   }
   // Auto-send the account + card link once on open, when there's no card on file.
   useEffect(() => { if (canSendLink) sendLink(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
@@ -279,7 +282,7 @@ function DoneView({ result, treatmentTitle, whenLabel, onClose, router }: { resu
                 : !canEmail ? 'No email on file — add one on the booking page.'
                 : linkState === 'sending' ? 'Sending…'
                 : linkState === 'sent' ? `Sent to ${result.clientEmail}`
-                : linkState === 'error' ? 'Send failed.' : 'Ready to send.'}
+                : linkState === 'error' ? (linkError ? `Send failed: ${linkError}` : 'Send failed.') : 'Ready to send.'}
             </span>
           </span>
           {result.hasCard
