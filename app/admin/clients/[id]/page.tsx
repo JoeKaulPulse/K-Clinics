@@ -445,7 +445,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
               <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
                 <div className="flex items-end justify-between gap-3">
                   <div>
-                    <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-gold)]">{loyalty.balance.toLocaleString('en-GB')}</p>
+                    <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-gold)] tabular-nums">{loyalty.balance.toLocaleString('en-GB')}</p>
                     <p className="text-xs text-[var(--color-stone)]">points · worth {formatPrice(loyalty.valuePence)}</p>
                   </div>
                   <div className="text-right text-xs text-[var(--color-stone)]">
@@ -461,7 +461,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                     {loyaltyLedger.map((row) => (
                       <li key={row.id} className="flex items-center justify-between gap-3 py-1.5 text-xs">
                         <span className="min-w-0 truncate text-[var(--color-stone)]">{row.reason}</span>
-                        <span className={`shrink-0 font-medium ${row.points < 0 ? 'text-[var(--color-stone)]' : 'text-[var(--color-jade)]'}`}>{row.points > 0 ? '+' : ''}{row.points}</span>
+                        <span className={`shrink-0 font-medium tabular-nums ${row.points < 0 ? 'text-[var(--color-stone)]' : 'text-[var(--color-jade)]'}`}>{row.points > 0 ? '+' : ''}{row.points}</span>
                       </li>
                     ))}
                   </ul>

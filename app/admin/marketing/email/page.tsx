@@ -140,9 +140,9 @@ export default async function EmailDashboard() {
                 <tr key={c.id} className="border-t border-[var(--color-line)]">
                   <td className="p-3 font-medium">{c.name}<span className="block text-xs text-[var(--color-stone)]">{c.subject}</span></td>
                   <td className="p-3 text-xs text-[var(--color-stone)]">{new Date(c.sentAt ?? c.createdAt).toLocaleDateString('en-GB')}</td>
-                  <td className="p-3">{s.sent}</td>
-                  <td className="p-3">{s.sent ? `${pct(s.opened, s.sent)}%` : '—'}</td>
-                  <td className="p-3">{s.sent ? `${pct(s.clicked, s.sent)}%` : '—'}</td>
+                  <td className="p-3 tabular-nums">{s.sent}</td>
+                  <td className="p-3 tabular-nums">{s.sent ? `${pct(s.opened, s.sent)}%` : '—'}</td>
+                  <td className="p-3 tabular-nums">{s.sent ? `${pct(s.clicked, s.sent)}%` : '—'}</td>
                   <td className="p-3 text-right">{canSend && <Link href={`/admin/marketing/email/new?clone=${c.id}`} className="text-xs text-[var(--color-gold)] hover:underline">Duplicate</Link>}</td>
                 </tr>
               );
@@ -163,9 +163,9 @@ export default async function EmailDashboard() {
                   {audienceRows.map((a) => (
                     <tr key={a.label} className="border-t border-[var(--color-line)]">
                       <td className="p-3">{a.label}</td>
-                      <td className="p-3">{a.recipients}</td>
-                      <td className="p-3">{a.recipients ? `${pct(a.opened, a.recipients)}%` : '—'}</td>
-                      <td className="p-3">{a.recipients ? `${pct(a.clicked, a.recipients)}%` : '—'}</td>
+                      <td className="p-3 tabular-nums">{a.recipients}</td>
+                      <td className="p-3 tabular-nums">{a.recipients ? `${pct(a.opened, a.recipients)}%` : '—'}</td>
+                      <td className="p-3 tabular-nums">{a.recipients ? `${pct(a.clicked, a.recipients)}%` : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -184,7 +184,7 @@ export default async function EmailDashboard() {
                   {topLinks.map((l) => (
                     <tr key={l.url} className="border-b border-[var(--color-line)] last:border-0">
                       <td className="max-w-0 truncate p-3"><a href={l.url} target="_blank" rel="noreferrer" className="text-[var(--color-gold)] hover:underline">{l.url}</a></td>
-                      <td className="whitespace-nowrap p-3 text-right font-medium">{l._sum.clicks ?? 0} clicks</td>
+                      <td className="whitespace-nowrap p-3 text-right font-medium tabular-nums">{l._sum.clicks ?? 0} clicks</td>
                     </tr>
                   ))}
                 </tbody>
@@ -203,7 +203,7 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
       <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{label}</p>
-      <p className="mt-2 font-[family-name:var(--font-display)] text-3xl text-[var(--color-ink)]">{value}</p>
+      <p className="mt-2 font-[family-name:var(--font-display)] text-3xl tabular-nums text-[var(--color-ink)]">{value}</p>
       {sub && <p className="text-xs text-[var(--color-stone)]">{sub}</p>}
     </div>
   );

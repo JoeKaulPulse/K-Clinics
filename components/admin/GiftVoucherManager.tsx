@@ -76,7 +76,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
       <p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">{label}</p>
-      <p className="mt-1 font-[family-name:var(--font-display)] text-2xl">{value}</p>
+      <p className="mt-1 font-[family-name:var(--font-display)] text-2xl tabular-nums">{value}</p>
     </div>
   );
 }
@@ -93,8 +93,8 @@ function Row({ v, canManage }: { v: Voucher; canManage: boolean }) {
         <span className="block">{v.purchaserName}</span>
         <span className="block text-xs text-[var(--color-stone)]">→ {v.recipientName || v.recipientEmail || 'self'}{v.deliverAt && !v.delivered ? ` · scheduled ${fmt(v.deliverAt)}` : ''}</span>
       </td>
-      <td className="px-3 py-2">{money(v.amountPence)}</td>
-      <td className="px-3 py-2 font-medium">{money(v.balancePence)}</td>
+      <td className="px-3 py-2 tabular-nums">{money(v.amountPence)}</td>
+      <td className="px-3 py-2 font-medium tabular-nums">{money(v.balancePence)}</td>
       <td className="px-3 py-2"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[v.status] || ''}`}>{v.status}</span></td>
       <td className="px-3 py-2 text-xs text-[var(--color-stone)]">{fmt(v.expiresAt)}</td>
       <td className="px-3 py-2 text-right">

@@ -102,7 +102,7 @@ export default async function QrPage() {
           {funnel.map((f) => (
             <div key={f.label} className="rounded-[var(--radius-md)] bg-[var(--color-porcelain)] p-4 text-center">
               <dt className="text-xs uppercase tracking-wide text-[var(--color-stone)]">{f.label}</dt>
-              <dd className="mt-1 font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">{f.value}</dd>
+              <dd className="mt-1 font-[family-name:var(--font-display)] text-2xl tabular-nums text-[var(--color-ink)]">{f.value}</dd>
               <dd className="mt-0.5 text-[0.65rem] text-[var(--color-stone)]">{f.pct}% of scans{f.step !== null ? ` · ${f.step}% prior` : ''}</dd>
             </div>
           ))}

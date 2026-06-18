@@ -121,7 +121,7 @@ function ImportPanel({ services, treatments }: { services: Service[]; treatments
                 <tbody>
                   {preview.map((v, i) => (
                     <tr key={i} className="border-t border-[var(--color-line)]">
-                      <td className="p-2">{v.name}</td><td className="p-2">{v.durationMin}</td><td className="p-2">{money(v.pricePence)}</td>
+                      <td className="p-2">{v.name}</td><td className="p-2 tabular-nums">{v.durationMin}</td><td className="p-2 tabular-nums">{money(v.pricePence)}</td>
                       <td className="p-2 text-xs text-[var(--color-stone)]">{v.courses.map((c) => `${c.sessions}×${money(c.totalPence)}`).join('  ') || '—'}</td>
                     </tr>
                   ))}
@@ -267,7 +267,7 @@ function VariantRow({ v }: { v: Variant }) {
         <td className="px-2"><input value={dur} onChange={(e) => setDur(e.target.value)} className={`${field} w-14`} /></td>
         <td className="px-2"><input value={price} onChange={(e) => setPrice(e.target.value)} className={`${field} w-20`} /></td>
         <td className="px-2"><input value={cost} onChange={(e) => setCost(e.target.value)} placeholder="—" className={`${field} w-20`} /></td>
-        <td className="px-2 text-[var(--color-stone)]">{margin == null ? '—' : `${margin}%`}</td>
+        <td className="px-2 tabular-nums text-[var(--color-stone)]">{margin == null ? '—' : `${margin}%`}</td>
         <td className="px-2">
           <select value={v.status ?? ''} onChange={(e) => setStatus(e.target.value)} className={`${field} max-w-[8.5rem]`} title="Override the service status for this option">
             <option value="">Inherit</option>

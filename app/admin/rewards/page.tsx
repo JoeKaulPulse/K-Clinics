@@ -91,7 +91,7 @@ export default async function RewardsPage({ searchParams }: { searchParams: Prom
               </p>
             </div>
             <div className="text-right">
-              <div className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-gold)]">{r.total}</div>
+              <div className="font-[family-name:var(--font-display)] text-2xl tabular-nums text-[var(--color-gold)]">{r.total}</div>
               <div className="text-[0.65rem] uppercase tracking-[0.14em] text-[var(--color-stone)]">{L('points', 'балів')}</div>
             </div>
           </div>

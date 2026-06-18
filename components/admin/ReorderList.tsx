@@ -84,10 +84,10 @@ function SupplierGroup({ group, canManage, uk, L }: { group: Group; canManage: b
                   <span className="font-medium">{l.name}</span>
                   {(l.size || l.brand) && <span className="ml-2 text-xs text-[var(--color-stone)]">{[l.brand, l.size].filter(Boolean).join(' · ')}</span>}
                 </td>
-                <td className="px-4 py-2.5 text-right text-[var(--color-blush)]">{l.currentQty} {l.unit}</td>
-                <td className="px-4 py-2.5 text-right text-[var(--color-stone)]">{l.moq}</td>
-                <td className="px-4 py-2.5 text-right font-medium">{l.suggestQty}</td>
-                <td className="px-4 py-2.5 text-right">{gbp(l.lineCostPence)}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-[var(--color-blush)]">{l.currentQty} {l.unit}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-[var(--color-stone)]">{l.moq}</td>
+                <td className="px-4 py-2.5 text-right font-medium tabular-nums">{l.suggestQty}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums">{gbp(l.lineCostPence)}</td>
               </tr>
             ))}
           </tbody>

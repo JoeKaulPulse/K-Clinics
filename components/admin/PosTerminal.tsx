@@ -92,7 +92,7 @@ export function PosTerminal({ products }: { products: P[] }) {
               return (
                 <button key={p.id} onClick={() => !out && add(p.id)} disabled={out} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3 text-left transition-shadow hover:shadow-[var(--shadow-soft)] disabled:opacity-40">
                   <div className="font-medium leading-tight">{p.name}</div>
-                  <div className="mt-1 text-sm text-[var(--color-gold-deep)]">{money(p.pricePence)}</div>
+                  <div className="mt-1 text-sm tabular-nums text-[var(--color-gold-deep)]">{money(p.pricePence)}</div>
                   <div className="mt-0.5 text-[0.7rem] text-[var(--color-stone)]">{out ? 'Out of stock' : p.trackInventory ? `${p.stockQty} in stock` : 'In stock'}{p.ageRestricted ? ' · 18+' : ''}</div>
                 </button>
               );
@@ -115,7 +115,7 @@ export function PosTerminal({ products }: { products: P[] }) {
                   <button onClick={() => sub(l.p.id)} className="h-7 w-7 rounded-full border border-[var(--color-line)]">−</button>
                   <span className="w-5 text-center">{l.qty}</span>
                   <button onClick={() => add(l.p.id)} className="h-7 w-7 rounded-full border border-[var(--color-line)]">+</button>
-                  <span className="w-16 text-right font-medium">{money(l.p.pricePence * l.qty)}</span>
+                  <span className="w-16 text-right font-medium tabular-nums">{money(l.p.pricePence * l.qty)}</span>
                 </div>
               </li>
             ))}
@@ -123,7 +123,7 @@ export function PosTerminal({ products }: { products: P[] }) {
         )}
         <div className="mt-4 flex items-center justify-between border-t border-[var(--color-line)] pt-4">
           <span className="text-sm uppercase tracking-wide text-[var(--color-stone)]">Total</span>
-          <span className="font-[family-name:var(--font-display)] text-2xl">{money(total)}</span>
+          <span className="font-[family-name:var(--font-display)] text-2xl tabular-nums">{money(total)}</span>
         </div>
         {needAge && <p className="mt-2 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-3 py-2 text-xs text-[var(--color-ink)]">Includes an 18+ product — confirm the customer’s age before completing.</p>}
         <div className="mt-4 grid gap-2">

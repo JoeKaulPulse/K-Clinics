@@ -130,9 +130,12 @@ export function Footer({ config }: { config: SiteConfig }) {
       <div className="container-lux relative flex flex-col items-center gap-5 border-t border-white/10 py-7 text-xs text-[color-mix(in_oklab,var(--color-porcelain)_55%,transparent)] md:flex-row md:justify-between">
         <PaymentMarks />
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+          <Link href="/info/website-privacy-terms" className="transition-colors hover:text-[var(--color-gold)]">Privacy Policy</Link>
+          <span className="text-white/15">·</span>
           <CookieSettingsLink />
           <span className="hidden md:inline text-white/15">·</span>
-          <p>© {year} {legalName}{companyNumber ? ` · Registered in England & Wales, company no. ${companyNumber}` : ''}. All rights reserved.</p>
+          {/* ICO data-protection registration — shown publicly for transparency/compliance. */}
+          <p>© {year} {legalName}{companyNumber ? ` · Registered in England & Wales, company no. ${companyNumber}` : ''} · ICO reg. ZC153001. All rights reserved.</p>
         </div>
       </div>
     </footer>
