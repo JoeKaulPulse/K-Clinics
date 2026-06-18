@@ -56,14 +56,14 @@ export function TopTreatments({ items }: { items: { name: string; count: number 
         <p className="py-6 text-center text-sm text-[var(--color-stone)]">No bookings yet.</p>
       ) : (
         <ul className="space-y-3">
-          {items.map((t) => (
+          {items.map((t, i) => (
             <li key={t.name}>
               <div className="mb-1 flex items-center justify-between text-sm">
                 <span className="truncate pr-3">{t.name}</span>
                 <span className="shrink-0 text-[var(--color-stone)]">{t.count}</span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-sand)]">
-                <div className="h-full rounded-full bg-[var(--color-gold)]" style={{ width: `${(t.count / max) * 100}%` }} />
+                <div className="h-full rounded-full bg-[var(--color-gold)] kc-bar-enter" style={{ width: `${(t.count / max) * 100}%`, animationDelay: `${i * 60}ms` }} />
               </div>
             </li>
           ))}
