@@ -26,10 +26,15 @@ export async function POST(req: Request) {
   }
 
   // Ensure a Stripe customer exists for the client and is linked to the booking.
-  const { ensureCustomer } = await import('@/lib/stripe');
-  const customerId = await ensureCustomer(booking.client);
-  if (!booking.stripeCustomerId) {
-    await db.booking.update({ where: { id: booking.id }, data: { stripeCustomerId: customerId } });
+  // Wrapped in try/catch so a Stripe outage never blocks the email/SMS send (BLD-482).
+  try {
+    const { ensureCustomer } = await import('@/lib/stripe');
+    const customerId = await ensureCustomer(booking.client);
+    if (!booking.stripeCustomerId) {
+      await db.booking.update({ where: { id: booking.id }, data: { stripeCustomerId: customerId } });
+    }
+  } catch (stripeErr) {
+    console.error('[request-card] Stripe customer sync failed (non-blocking):', (stripeErr as Error)?.message);
   }
 
   const base = (process.env.NEXT_PUBLIC_SITE_URL || (await import('@/lib/site')).site.url).replace(/\/$/, '');
@@ -50,6 +55,7 @@ export async function POST(req: Request) {
   }
 
   const sent: string[] = [];
+  const sendErrors: string[] = [];
   if (want === 'email' || want === 'both') {
     const { sendEmail, tmplCardRequest, tmplAccountInvite } = await import('@/lib/email');
     const html = noAccount
@@ -61,6 +67,7 @@ export async function POST(req: Request) {
       html,
     });
     if (r.ok) sent.push('email');
+    else sendErrors.push(`email: ${r.error || 'unknown error'}`);
   }
   if (want === 'sms' || want === 'both') {
     const { sendSms } = await import('@/lib/sms');
@@ -69,10 +76,12 @@ export async function POST(req: Request) {
       : `KClinics: please save a card to confirm your appointment (no payment taken now): ${cardUrl}`;
     const r = await sendSms(booking.client.phone, msg);
     if (r.ok) sent.push('sms');
+    else sendErrors.push(`sms: ${r.error || 'unknown error'}`);
   }
 
   if (sent.length === 0) {
-    return NextResponse.json({ ok: false, error: 'Could not send the link (check the client has an email/phone).', url: actionUrl }, { status: 400 });
+    const detail = sendErrors.length ? ` (${sendErrors.join('; ')})` : ' (check the client has an email/phone)';
+    return NextResponse.json({ ok: false, error: `Could not send the link${detail}`, url: actionUrl }, { status: 400 });
   }
 
   const logLabel = noAccount ? 'Account invite + card link sent' : 'Card-on-file link sent';

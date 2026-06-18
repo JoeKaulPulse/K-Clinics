@@ -53,6 +53,7 @@ export function KioskSessionFlow({
   const [retakePose, setRetakePose] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<KioskResultView | null>(null);
+  const [hasShared, setHasShared] = useState(false);
   const [analyzingLine, setAnalyzingLine] = useState(0);
 
   // Fallback (file-input) path state — reuses the classic single-photo flow.
@@ -360,8 +361,8 @@ export function KioskSessionFlow({
       {/* RESULT + share-to-claim reward */}
       {step === 'result' && result && (
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="w-full">
-          <ResultCard result={result} />
-          {result.id && <ClaimReward resultId={result.id} />}
+          <ResultCard result={result} onShared={() => setHasShared(true)} />
+          {result.id && <ClaimReward resultId={result.id} hasShared={hasShared} />}
         </motion.div>
       )}
       {step === 'result' && !result && (
