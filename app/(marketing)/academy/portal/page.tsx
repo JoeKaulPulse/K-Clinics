@@ -137,7 +137,7 @@ export default async function AcademyPortalPage() {
                     <div className="rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] px-4 py-3"><span className="block text-xs uppercase tracking-wide text-[var(--color-stone)]">Practical</span>{e.cohort ? fmtDate(e.cohort.startAt) : 'To be scheduled'}</div>
                     <div className="rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] px-4 py-3"><span className="block text-xs uppercase tracking-wide text-[var(--color-stone)]">Assessment</span>VTCT exam, administered in-house</div>
                   </div>
-                  {e.course.accreditations.length > 0 && <p className="mt-3 text-[0.7rem] uppercase tracking-wide text-[var(--color-stone-soft)]">{e.course.accreditations.map((a) => ACCREDITATION_LABELS[a] ?? a).join(' · ')}</p>}
+                  {e.course.accreditations.length > 0 && <p className="mt-3 text-[0.7rem] uppercase tracking-wide text-[var(--color-stone)]">{e.course.accreditations.map((a) => ACCREDITATION_LABELS[a] ?? a).join(' · ')}</p>}
                 </div>
               );
             })}

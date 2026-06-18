@@ -5,23 +5,19 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Admin-only password (re)set for a client portal account, so a client who can't
-// sign in can be helped without email infrastructure. Requires either a staff
-// session with clients.edit, or the CRON_SECRET bearer token (ops use).
+// sign in can be helped without email infrastructure. Requires a staff session
+// with clients.edit. (The shared CRON_SECRET is NOT accepted here — it is reused
+// by the daily cron, health probe and ops tooling, so honouring it would let any
+// holder of that one secret reset any client's password — BLD-465.)
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'Not enabled.' }, { status: 503 });
 
-  const { cronAuthorized } = await import('@/lib/cron-auth');
-  const viaSecret = cronAuthorized(req); // constant-time compare
-  let actor = 'cron-secret';
-
-  if (!viaSecret) {
-    const { getSession, sessionCan } = await import('@/lib/auth');
-    const session = await getSession();
-    if (!sessionCan(session, 'clients.edit')) {
-      return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
-    }
-    actor = session?.email || 'staff';
+  const { getSession, sessionCan } = await import('@/lib/auth');
+  const session = await getSession();
+  if (!sessionCan(session, 'clients.edit')) {
+    return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
   }
+  const actor = session?.email || 'staff';
 
   // Bound abuse of this privileged endpoint (it can set any client's password).
   const { enforceRateLimit, recordSecurity } = await import('@/lib/security/guard');

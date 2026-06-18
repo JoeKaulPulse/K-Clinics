@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { treatments } from '@/lib/treatments';
 import { site } from '@/lib/site';
 import { Button, ArrowIcon } from '@/components/ui/Button';
+import { trackLead } from '@/lib/analytics-events';
 
 /** Premium enquiry form. With no backend in a static export, it composes a
  *  pre-filled email to the clinic via mailto: — reliable, zero-infra, and easy
@@ -44,7 +45,7 @@ export function EnquiryForm() {
         }),
       });
       const j = await res.json().catch(() => ({ ok: false }));
-      if (j.ok) setStatus('sent'); else mailtoFallback();
+      if (j.ok) { trackLead(); setStatus('sent'); } else mailtoFallback();
     } catch {
       mailtoFallback();
     } finally {

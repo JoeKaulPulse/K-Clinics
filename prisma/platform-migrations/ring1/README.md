@@ -92,4 +92,8 @@ must only be run with the GUC plumbing removed from the app.
 - Ring 1a — migrations flip (baseline + self-adopt) — **merged**.
 - Ring 1b — per-tenant uniques — **merged**.
 - Ring 1c — `tenantId NOT NULL` (self-backfilling) + create-site cascade + backfill retired — **merged**.
-- Ring 1d — RLS — **rehearsal track**: `scripts/rehearse-rls.mjs` (safe, rolled-back proof of the policy + GUC mechanism) + `RLS_ROLLOUT.md` (the staged plan) authored; run the rehearsal next, then the query-layer conversion + prod enable. `0002` is the policy SQL.
+- Ring 1d — RLS — **in progress** (`0002` is the policy SQL; not yet applied):
+  - *Rehearsal* (`scripts/rehearse-rls.mjs`) — **run and passing** on Postgres 16 (non-bypass owner role, all 7 ✓); refuses to run under a SUPERUSER/`BYPASSRLS` role.
+  - *Query-layer GUC conversion* (`ACADEMY_RLS=1`, `lib/db.ts`) — **done and merged**; no-op until the flag flips with the table enable.
+  - *Live two-tenant isolation suite* (`scripts/test-tenant-isolation-live.ts`) — **authored and validated** (real Prisma + RLS path, all ✓, self-cleaning).
+  - *Remaining*: Neon-branch enable + live suite + preview/latency (step 3), role provisioning (step 4), prod enable in one release with PITR (step 5) — see `RLS_ROLLOUT.md`. These need a branch DB and owner decisions.

@@ -10,6 +10,7 @@ import { demoSlots } from '@/lib/availability-client';
 import { DemoCard } from '@/components/booking/DemoCard';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { REFRESHMENTS } from '@/lib/hospitality';
+import { trackPurchase } from '@/lib/analytics-events';
 
 type Course = { sessions: number; totalPence: number };
 type Variant = { id: string; name: string; durationMin: number; pricePence: number; offerPence: number | null; offerName: string | null; courses: Course[] };
@@ -255,7 +256,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                       </button>
                     ))}
                   </div>
-                  <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Booking a course reserves this appointment as your first session.</p>
+                  <p className="mt-2 text-xs text-[var(--color-stone)]">Booking a course reserves this appointment as your first session.</p>
                 </div>
               )}
             </div>
@@ -269,10 +270,10 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                 <label className={label} htmlFor="bdate">Select a date</label>
                 {popularDays.length > 0 && (
                   <div className="mb-3">
-                    <p className="mb-1.5 text-xs text-[var(--color-stone-soft)]"><span className="text-[var(--color-gold)]">★</span> Popular days — you’ll likely be seen sooner</p>
+                    <p className="mb-1.5 text-xs text-[var(--color-stone)]"><span className="text-[var(--color-gold)]">★</span> Popular days — you’ll likely be seen sooner</p>
                     <div className="flex flex-wrap gap-2">
                       {popularDays.map((d) => (
-                        <button key={d} type="button" onClick={() => setDate(d)} className={`rounded-full border px-3 py-1.5 text-xs transition-all ${date === d ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20'}`}>
+                        <button key={d} type="button" onClick={() => setDate(d)} className={`rounded-full border px-3 py-2.5 text-sm transition-all ${date === d ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20'}`}>
                           {new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
                         </button>
                       ))}
@@ -303,14 +304,14 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                             const isPref = preferred.includes(s);
                             const selected = slot === s;
                             return (
-                              <button key={s} type="button" onClick={() => setSlot(s)} title={isPref ? 'Sooner-seen slot — fits neatly with the day’s other appointments' : undefined} className={`relative rounded-full border px-4 py-2 text-sm transition-all ${selected ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : isPref ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
+                              <button key={s} type="button" onClick={() => setSlot(s)} title={isPref ? 'Sooner-seen slot — fits neatly with the day’s other appointments' : undefined} className={`relative rounded-full border px-4 py-2.5 text-sm transition-all ${selected ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : isPref ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                                 {!selected && isPref && <span aria-hidden className="mr-1 text-[var(--color-gold)]">★</span>}
                                 {new Date(s).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                               </button>
                             );
                           })}
                         </div>
-                        {preferred.length > 0 && <p className="mt-2 text-xs text-[var(--color-stone-soft)]"><span className="text-[var(--color-gold)]">★</span> Recommended — these times fit neatly around the day’s other appointments, so you’re often seen more promptly.</p>}
+                        {preferred.length > 0 && <p className="mt-2 text-xs text-[var(--color-stone)]"><span className="text-[var(--color-gold)]">★</span> Recommended — these times fit neatly around the day’s other appointments, so you’re often seen more promptly.</p>}
                       </>
                     )}
                 </div>
@@ -336,7 +337,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                           <span className="text-xs text-[var(--color-stone)]">+{v.durationMin} min · save {money(ap.saved)}</span>
                         </span>
                         <span className="shrink-0 text-right text-sm font-medium text-[var(--color-gold)]">
-                          <span className="mr-1 text-xs text-[var(--color-stone-soft)] line-through">{money(v.pricePence)}</span>{money(ap.price)}
+                          <span className="mr-1 text-xs text-[var(--color-stone)] line-through">{money(v.pricePence)}</span>{money(ap.price)}
                         </span>
                       </button>
                     );
@@ -349,7 +350,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                 <div className="space-y-3">
                   {REFRESHMENTS.map((g) => (
                     <div key={g.group}>
-                      <p className="mb-1 text-xs text-[var(--color-stone-soft)]">{g.group}</p>
+                      <p className="mb-1 text-xs text-[var(--color-stone)]">{g.group}</p>
                       <div className="flex flex-wrap gap-2">
                         {g.items.map((it) => {
                           const on = refreshments.has(it.id);
@@ -386,7 +387,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                 <div className="flex justify-between"><span className="text-[var(--color-stone)]">Due today</span><span className="font-medium text-[var(--color-stone)]">Nothing charged until after your visit</span></div>
                 <div className="flex justify-between"><span className="text-[var(--color-stone)]">Total at your visit</span><span className="font-medium text-[var(--color-ink)]">{money(orderTotal)}</span></div>
                 {promo?.ok && <div className="mt-1 flex justify-between text-[var(--color-jade,#3f7a5a)]"><span>Promo {promo.code}</span><span>−{money(promo.discountPence || 0)} applied</span></div>}
-                <p className="mt-2 text-xs text-[var(--color-stone-soft)]">{totalDuration} min · {[service.name, ...[...addOns].map((id) => catalogue.flatMap((s) => s.variants).find((v) => v.id === id)?.name).filter(Boolean)].join(' + ')}</p>
+                <p className="mt-2 text-xs text-[var(--color-stone)]">{totalDuration} min · {[service.name, ...[...addOns].map((id) => catalogue.flatMap((s) => s.variants).find((v) => v.id === id)?.name).filter(Boolean)].join(' + ')}</p>
               </div>
 
               {/* Aftercare acknowledgement */}
@@ -537,16 +538,13 @@ function RequestReceived({ firstName, treatment, slot }: { firstName: string; tr
 
 function Done({ firstName, treatment, slot, orderTotal, variantId, category, bookingId }: { firstName: string; treatment?: string; slot: string; orderTotal: number; variantId: string; category?: string; bookingId?: string }) {
   useEffect(() => {
-    try {
-      (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'purchase', {
-        currency: 'GBP', value: orderTotal / 100,
-        items: [{ item_id: variantId, item_name: treatment, item_category: category }],
-      });
-    } catch { /* analytics best-effort */ }
-    try {
-      // eventID = booking id so this de-duplicates against the server-side CAPI Schedule.
-      (window as Window & { fbq?: (...a: unknown[]) => void }).fbq?.('track', 'Schedule', { currency: 'GBP', value: orderTotal / 100 }, bookingId ? { eventID: bookingId } : undefined);
-    } catch { /* analytics best-effort */ }
+    // GA4 `purchase` + Meta `Schedule` (pre-charge); eventId = booking id so the
+    // browser Pixel de-duplicates against the server-side CAPI Schedule.
+    trackPurchase({
+      valuePence: orderTotal,
+      eventId: bookingId || undefined,
+      detail: { items: [{ item_id: variantId, item_name: treatment, item_category: category }] },
+    });
   }, []);
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-10 text-center md:p-16">

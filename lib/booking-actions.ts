@@ -285,7 +285,8 @@ export async function finalizeBookingCharge(
   } catch (e) { console.error('[charge] receipt failed:', (e as Error)?.message); }
   try { const { awardClientSpend } = await import('./client-loyalty'); await awardClientSpend(bookingId); } catch (e) { console.error('[charge] loyalty failed:', (e as Error)?.message); }
   try { const { pushBookingSaleToXero } = await import('@/lib/xero'); await pushBookingSaleToXero(bookingId); } catch (e) { console.error('[charge] xero push failed:', (e as Error)?.message); }
-  try { const { sendPurchase } = await import('./conversions'); await sendPurchase({ bookingId, valuePence: amountReceivedPence, clientId: booking.clientId, email: booking.client.email, campaign: booking.attribCampaign, gclid: booking.gclid }); } catch (e) { console.error('[charge] conversion failed:', (e as Error)?.message); }
+  // BLD-455: only send hashed email to Meta CAPI if the client has opted in to marketing.
+  try { const { sendPurchase } = await import('./conversions'); await sendPurchase({ bookingId, valuePence: amountReceivedPence, clientId: booking.clientId, email: booking.client?.marketingOptIn ? booking.client.email : null, campaign: booking.attribCampaign, gclid: booking.gclid }); } catch (e) { console.error('[charge] conversion failed:', (e as Error)?.message); }
   try { await logAudit({ action: 'PAYMENT_CHARGED', actor: 'system', summary: `Charge completed (£${(amountReceivedPence / 100).toFixed(2)})`, bookingId, clientId: booking.clientId }); } catch { /* non-fatal */ }
   return true;
 }

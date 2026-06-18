@@ -108,8 +108,12 @@ export async function eraseClientData(clientId: string) {
     // GiftVouchers purchased by this client (email-matched; no purchaserClientId FK).
     db.giftVoucher.updateMany({ where: { purchaserEmail: client.email }, data: { purchaserName: 'Erased', purchaserEmail: erasedEmail } }),
     // PromoRedemption — null the captured email (BLD-315 residual: SAR exports it
-    // but erasure previously did not remove it).
+    // but erasure previously did not remove it). Also match the guest-redemption
+    // case (clientId null, email captured at checkout — see lib/promo.ts
+    // redeemPromo), mirroring the email-matched GiftVoucher erasure above so an
+    // unauthenticated redemption by this person is erased too (BLD-366).
     db.promoRedemption.updateMany({ where: { clientId }, data: { email: null } }),
+    db.promoRedemption.updateMany({ where: { email: client.email.toLowerCase() }, data: { email: null } }),
   ]);
   await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
   try {

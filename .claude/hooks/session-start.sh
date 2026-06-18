@@ -36,11 +36,55 @@ npm install --no-audit --no-fund
 #    symptom. Visual QA is optional tooling, never a gate, so a browser-install
 #    hiccup must not fail the session: try with OS deps, fall back to the
 #    browser-only install, and if even that fails, warn and continue.
+# Fallback for when Playwright's own CDN (cdn.playwright.dev / *.azureedge.net) is
+# blocked by the environment's network policy but the official Chrome-for-Testing
+# bucket (storage.googleapis.com) is reachable — the observed failure mode here.
+# Playwright's "chromium" build IS Chrome for Testing, so we fetch the identical
+# artifacts from the bucket and feed them to Playwright's own installer through a
+# throwaway local download host. Playwright then does the extraction, layout and
+# markers itself, so the result is a genuine install (not a hand-placed one).
+# ffmpeg ships in the base image, so `install chromium` doesn't re-fetch it.
+install_chromium_via_cft_mirror() {
+  command -v python3 >/dev/null 2>&1 || { echo "  · mirror skipped: python3 not available"; return 1; }
+
+  local dry ver base root stage port srv_pid f i ok=
+  dry="$(npx playwright install --dry-run chromium 2>/dev/null || true)"
+  ver="$(printf '%s\n' "$dry" | grep -oE 'builds/cft/[0-9.]+/linux64' | head -1 | grep -oE '[0-9]+(\.[0-9]+)+')"
+  [ -n "$ver" ] || { echo "  · mirror skipped: could not determine Chrome-for-Testing version"; return 1; }
+
+  base="https://storage.googleapis.com/chrome-for-testing-public/${ver}/linux64"
+  root="$(mktemp -d)"
+  stage="$root/builds/cft/${ver}/linux64"
+  mkdir -p "$stage"
+  trap 'kill "${srv_pid:-}" 2>/dev/null || true; rm -rf "$root"' RETURN
+
+  for f in chrome-linux64.zip chrome-headless-shell-linux64.zip; do
+    echo "  · mirror: fetching $f ($ver) from storage.googleapis.com…"
+    curl -fsS -m 300 -o "$stage/$f" "$base/$f" || { echo "  · mirror: download failed for $f"; return 1; }
+  done
+
+  port=$(( 20000 + (RANDOM % 20000) ))
+  python3 -m http.server "$port" --bind 127.0.0.1 --directory "$root" >/dev/null 2>&1 &
+  srv_pid=$!
+  for i in $(seq 1 10); do
+    curl -fsS -m 3 -o /dev/null "http://127.0.0.1:$port/builds/cft/${ver}/linux64/chrome-linux64.zip" && { ok=1; break; }
+    sleep 0.5
+  done
+  [ -n "$ok" ] || { echo "  · mirror: local download host did not come up"; return 1; }
+
+  PLAYWRIGHT_DOWNLOAD_HOST="http://127.0.0.1:$port" npx playwright install chromium || {
+    echo "  · mirror: playwright install still failed"; return 1; }
+  echo "  ✓ mirror: Chromium $ver installed from the Chrome-for-Testing bucket"
+}
+
 echo "[session-start] installing Playwright Chromium…"
 if ! npx playwright install --with-deps chromium; then
   echo "[session-start] ⚠ playwright --with-deps failed (likely no root / blocked mirror); retrying browser-only…"
   if ! npx playwright install chromium; then
-    echo "[session-start] ⚠ Chromium install failed — visual QA (scripts/visual-qa.mjs) is unavailable this session; everything else is unaffected."
+    echo "[session-start] ⚠ direct Playwright CDN unreachable; trying the Chrome-for-Testing bucket mirror…"
+    if ! install_chromium_via_cft_mirror; then
+      echo "[session-start] ⚠ Chromium install failed — visual QA (scripts/visual-qa.mjs) is unavailable this session; everything else is unaffected."
+    fi
   fi
 fi
 

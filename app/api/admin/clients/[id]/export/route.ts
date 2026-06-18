@@ -49,7 +49,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   // Fetch records not declared as reverse-FK relations on Client (no include path). (BLD-315)
   const [signedConsents, beforePhotos, chatConversations, shopOrders, consentRequests, promoRedemptions] = await Promise.all([
     db.signedConsent.findMany({ where: { clientId: id } }),
-    db.beforePhoto.findMany({ where: { clientId: id } }),
+    // Metadata only here; the decrypted image is added under the clinical gate below (BLD-367).
+    db.beforePhoto.findMany({ where: { clientId: id }, select: { id: true, bookingId: true, area: true, capturedBy: true, attestation: true, createdAt: true } }),
     db.chatConversation.findMany({ where: { clientId: id }, include: { messages: true } }),
     db.order.findMany({ where: { clientId: id }, include: { items: true }, orderBy: { createdAt: 'desc' } }),
     db.consentRequest.findMany({ where: { clientId: id }, orderBy: { createdAt: 'desc' } }),
@@ -73,6 +74,19 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const assessments = await db.healthAssessment.findMany({ where: { clientId: id }, orderBy: { submittedAt: 'desc' } });
     const { formatAssessment } = await import('@/lib/health-assessments');
     out.healthAssessments = await Promise.all(assessments.map((a) => formatAssessment(a.id)));
+
+    // BLD-367 (Art. 15): attach the decrypted before-photo image to each record,
+    // not just its metadata. Same decryption path as the authenticated serve
+    // route, gated on the same clinical permission. One bad cipher must not fail
+    // the whole export.
+    const { decryptJson } = await import('@/lib/crypto');
+    const ciphers = await db.beforePhoto.findMany({ where: { clientId: id }, select: { id: true, dataEnc: true } });
+    const imageById = new Map(ciphers.map((p) => {
+      let image: string | null = null;
+      try { image = decryptJson<string>(p.dataEnc); } catch { /* skip corrupt cipher */ }
+      return [p.id, image] as const;
+    }));
+    out.beforePhotos = beforePhotos.map((p) => ({ ...p, image: imageById.get(p.id) ?? null }));
   }
 
   const { logAudit } = await import('@/lib/audit');

@@ -151,7 +151,7 @@ function Summary({ items, subtotalPence, shipping, estTotal }: { items: { produc
         <div className="flex justify-between"><span className="text-[var(--color-stone)]">Shipping</span><span>{shipping === 0 ? 'Free' : money(shipping)}</span></div>
         <div className="flex justify-between font-medium"><span>Total</span><span>{money(estTotal)}</span></div>
       </div>
-      <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Any gift card is applied on the next step.</p>
+      <p className="mt-2 text-xs text-[var(--color-stone)]">Any gift card is applied on the next step.</p>
     </div>
   );
 }
