@@ -13,6 +13,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     select: {
       id: true, headline: true, skinScore: true, smileScore: true,
       insights: true, treatments: true, shareSlug: true, shareCount: true,
+      shareCaption: true,
     },
   });
   if (!result) return NextResponse.json({ ok: false, error: 'not_found' }, { status: 404 });
