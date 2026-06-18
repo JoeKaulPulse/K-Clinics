@@ -39,7 +39,7 @@ export function LeaderboardCard({ client }: { client: { id: string; optIn: boole
       </label>
       {optIn && (
         <div className="mt-3 space-y-3">
-          <label className="block text-xs text-[var(--color-stone)]">Display name <span className="text-[var(--color-stone-soft)]">(defaults to {client.firstName})</span>
+          <label className="block text-xs text-[var(--color-stone)]">Display name <span className="text-[var(--color-stone)]">(defaults to {client.firstName})</span>
             <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder={client.firstName} className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
           </label>
           <div>

@@ -125,7 +125,7 @@ export async function ClinicianView({ session }: { session: Session }) {
           <TimelineList items={mine.map((b) => toItem(b))} empty="No appointments assigned to you today." />
           {canAllBookings && clinic.length > mine.length && (
             <>
-              <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-stone-soft)]">Whole clinic today</p>
+              <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-stone)]">Whole clinic today</p>
               <TimelineList items={clinic.filter((b) => b.practitionerId !== session.sub).map((b) => toItem(b, true))} empty="No other appointments." />
             </>
           )}

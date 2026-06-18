@@ -41,7 +41,7 @@ export function PageSearch({
           defaultValue={defaultValue}
           placeholder={placeholder}
           aria-label={placeholder}
-          className={`${widthClass} h-11 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] pl-9 pr-4 text-sm text-[var(--color-ink)] outline-none transition-shadow placeholder:text-[var(--color-stone-soft)] focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)] [&::-webkit-search-cancel-button]:appearance-none`}
+          className={`${widthClass} h-11 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] pl-9 pr-4 text-sm text-[var(--color-ink)] outline-none transition-shadow placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)] [&::-webkit-search-cancel-button]:appearance-none`}
         />
       </div>
       {showSubmit && (

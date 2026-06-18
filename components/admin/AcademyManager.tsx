@@ -26,11 +26,11 @@ export function Applications({ enrolments, courses }: { enrolments: Enrolment[];
       <h2 className="mb-1 font-[family-name:var(--font-display)] text-xl">Applications &amp; enrolments</h2>
       <p className="mb-4 text-sm text-[var(--color-stone)]">Move applicants through the pipeline, assign a cohort, and record payments (taken manually / via Clearpay).</p>
       {enrolments.length === 0 ? (
-        <p className="text-sm text-[var(--color-stone-soft)]">No applications yet.</p>
+        <p className="text-sm text-[var(--color-stone)]">No applications yet.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px] text-sm">
-            <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">
+            <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]">
               <th scope="col" className="py-1 pr-2">Applicant</th><th scope="col" className="px-2">Course</th><th scope="col" className="px-2">Status</th><th scope="col" className="px-2">Cohort</th><th scope="col" className="px-2">Paid</th><th scope="col" className="px-2"></th>
             </tr></thead>
             <tbody>
@@ -38,8 +38,8 @@ export function Applications({ enrolments, courses }: { enrolments: Enrolment[];
                 <tr key={e.id} className="border-t border-[var(--color-line)] align-top">
                   <td className="py-2 pr-2">
                     <span className="font-medium">{e.applicantName}</span>{e.financeInterest && <span className="ml-1 rounded-full bg-[var(--color-gold)]/15 px-1.5 py-0.5 text-[0.6rem] text-[var(--color-gold)]">Clearpay</span>}
-                    <span className="block text-xs text-[var(--color-stone-soft)]">{e.applicantEmail}{e.applicantPhone ? ` · ${e.applicantPhone}` : ''}</span>
-                    <span className="block text-xs text-[var(--color-stone-soft)]">{fmtDate(e.createdAt)} · {money(e.pricePence)}</span>
+                    <span className="block text-xs text-[var(--color-stone)]">{e.applicantEmail}{e.applicantPhone ? ` · ${e.applicantPhone}` : ''}</span>
+                    <span className="block text-xs text-[var(--color-stone)]">{fmtDate(e.createdAt)} · {money(e.pricePence)}</span>
                     {e.experience && <span className="mt-1 block max-w-xs text-xs text-[var(--color-stone)]">{e.experience}</span>}
                   </td>
                   <td className="px-2">{e.courseTitle}</td>
@@ -93,7 +93,7 @@ function CourseCard({ course }: { course: Course }) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <span className="font-medium">{course.title}</span>
-          <span className="text-xs text-[var(--color-stone-soft)]"> · {course.level || 'No level'} · {money(course.pricePence)} · {course.cohorts.length} cohort(s){course.featured ? ' · featured' : ''}</span>
+          <span className="text-xs text-[var(--color-stone)]"> · {course.level || 'No level'} · {money(course.pricePence)} · {course.cohorts.length} cohort(s){course.featured ? ' · featured' : ''}</span>
         </div>
         <div className="flex items-center gap-3 text-xs">
           <a href={`/admin/academy/${course.id}`} className="font-medium text-[var(--color-ink)] hover:text-[var(--color-gold)] hover:underline">Curriculum →</a>
@@ -166,7 +166,7 @@ function Cohorts({ course }: { course: Course }) {
   return (
     <div className="mt-3 border-t border-[var(--color-line)] pt-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">Cohorts — practical dates &amp; course-access window</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-stone)]">Cohorts — practical dates &amp; course-access window</p>
         <button onClick={() => setAdd((v) => !v)} className="text-xs text-[var(--color-gold)] hover:underline">{add ? 'Cancel' : '+ Add cohort'}</button>
       </div>
       {add && (
@@ -205,7 +205,7 @@ function CohortRow({ courseId, cohort: h, onRemove }: { courseId: string; cohort
     <li className="flex flex-wrap items-center gap-x-2 gap-y-1">
       <span className="text-[var(--color-ink-soft)]">{fmtDate(h.startAt)}{h.endAt ? `–${fmtDate(h.endAt)}` : ''} · {h.capacity} places{h.trainer ? ` · ${h.trainer}` : ''} · {h.status}</span>
       <label className="text-[0.6rem] text-[var(--color-stone)]" title="Course access opens">access<input type="date" value={aStart} onChange={(e) => setAStart(e.target.value)} className={`${field} ml-1`} /></label>
-      <span className="text-[var(--color-stone-soft)]">→</span>
+      <span className="text-[var(--color-stone)]">→</span>
       <input type="date" value={aEnd} onChange={(e) => setAEnd(e.target.value)} className={field} title="Course access expires" />
       {dirty && <button onClick={saveAccess} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-2.5 py-1 text-[0.65rem] text-[var(--color-porcelain)] disabled:opacity-50">{busy ? '…' : 'Save'}</button>}
       <button onClick={onRemove} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>

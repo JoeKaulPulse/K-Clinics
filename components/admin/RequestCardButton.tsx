@@ -29,7 +29,7 @@ export function RequestCardButton({ bookingId, hasEmail, hasPhone }: { bookingId
       </div>
       {msg && <p className="mt-2 text-xs text-[var(--color-stone)]">{msg}</p>}
       {link && (
-        <p className="mt-1 break-all text-[0.7rem] text-[var(--color-stone-soft)]">Or copy: <button onClick={() => navigator.clipboard?.writeText(link)} className="text-[var(--color-gold-deep)] underline">copy link</button></p>
+        <p className="mt-1 break-all text-[0.7rem] text-[var(--color-stone)]">Or copy: <button onClick={() => navigator.clipboard?.writeText(link)} className="text-[var(--color-gold-deep)] underline">copy link</button></p>
       )}
     </div>
   );

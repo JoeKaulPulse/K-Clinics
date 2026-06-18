@@ -16,7 +16,7 @@ export function ReplayList({ rows }: { rows: ReplayRow[] }) {
       ) : (
         <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)]">
           <table className="w-full text-sm">
-            <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th scope="col" className="p-2">When</th><th scope="col" className="p-2">Entry</th><th scope="col" className="p-2">Device</th><th scope="col" className="p-2">Length</th><th scope="col" className="p-2"></th></tr></thead>
+            <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th scope="col" className="p-2">When</th><th scope="col" className="p-2">Entry</th><th scope="col" className="p-2">Device</th><th scope="col" className="p-2">Length</th><th scope="col" className="p-2"></th></tr></thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="border-t border-[var(--color-line)]">

@@ -40,7 +40,7 @@ export function ConnectionsManager({ providers, flash }: { providers: Provider[]
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="font-[family-name:var(--font-display)] text-lg">{p.name}</h2>
-                <p className="text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">{p.category}</p>
+                <p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">{p.category}</p>
               </div>
               <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[0.65rem] font-medium ${BADGE[p.state]}`}>{LABEL[p.state]}</span>
             </div>

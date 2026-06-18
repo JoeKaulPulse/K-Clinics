@@ -117,7 +117,7 @@ export function MentionInput({
                 <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--color-ink)] text-[0.6rem] text-[var(--color-gold-soft)]">{p.handle === 'claude' ? '◆' : (p.name[0] || '?').toUpperCase()}</span>
                 <span className="min-w-0">
                   <span className="block truncate font-medium text-[var(--color-ink)]">{p.name}{p.isClinician ? ' · clinician' : ''}</span>
-                  <span className="block truncate text-xs text-[var(--color-stone-soft)]">@{p.handle}</span>
+                  <span className="block truncate text-xs text-[var(--color-stone)]">@{p.handle}</span>
                 </span>
               </button>
             </li>

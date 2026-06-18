@@ -81,7 +81,7 @@ export function ApiHealthPanel({ initial }: { initial: Report | null }) {
           <span className="inline-flex items-center gap-3 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm">
             <span className={`h-3 w-3 rounded-full ${DOT[report.overall]} ${checking ? 'animate-pulse' : ''}`} />
             <span className="font-medium">{checking ? 'Re-checking…' : LABEL[report.overall]}</span>
-            <span className="text-[var(--color-stone-soft)]">
+            <span className="text-[var(--color-stone)]">
               {(['red', 'amber', 'green', 'grey'] as Light[]).map((l) => `${report.counts[l]} ${LABEL[l].toLowerCase()}`).join(' · ')}
             </span>
           </span>
@@ -105,7 +105,7 @@ export function ApiHealthPanel({ initial }: { initial: Report | null }) {
           Auto re-check every minute
         </label>
         {report && (
-          <span className="text-xs text-[var(--color-stone-soft)]">
+          <span className="text-xs text-[var(--color-stone)]">
             Last run {fmtAgo(report.generatedAt)} · took {(report.durationMs / 1000).toFixed(1)}s · {report.env} · {report.commit}
           </span>
         )}
@@ -134,20 +134,20 @@ export function ApiHealthPanel({ initial }: { initial: Report | null }) {
                         <div className="flex flex-wrap items-baseline justify-between gap-x-3">
                           <p className="font-medium">
                             {c.label}
-                            {c.critical && <span className="ml-2 rounded-full border border-[var(--color-line)] px-1.5 py-0.5 align-middle text-[10px] uppercase tracking-wide text-[var(--color-stone-soft)]">critical</span>}
+                            {c.critical && <span className="ml-2 rounded-full border border-[var(--color-line)] px-1.5 py-0.5 align-middle text-[10px] uppercase tracking-wide text-[var(--color-stone)]">critical</span>}
                           </p>
                           <p className="text-sm text-[var(--color-stone)]">
                             {c.detail}
-                            {typeof c.latencyMs === 'number' && <span className="text-[var(--color-stone-soft)]"> · {c.latencyMs}ms</span>}
+                            {typeof c.latencyMs === 'number' && <span className="text-[var(--color-stone)]"> · {c.latencyMs}ms</span>}
                           </p>
                         </div>
-                        <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">
+                        <p className="mt-0.5 text-xs text-[var(--color-stone)]">
                           Probe: {c.probe} · {LABEL[c.light].toLowerCase()} since {fmtAgo(c.since)}
                         </p>
                         {c.info && c.info.length > 0 && (
                           <ul className="mt-1 space-y-0.5">
                             {c.info.map((line, k) => (
-                              <li key={k} className="text-xs text-[var(--color-stone-soft)]">{line}</li>
+                              <li key={k} className="text-xs text-[var(--color-stone)]">{line}</li>
                             ))}
                           </ul>
                         )}
@@ -161,7 +161,7 @@ export function ApiHealthPanel({ initial }: { initial: Report | null }) {
         })}
       </div>
 
-      <p className="mt-6 text-xs text-[var(--color-stone-soft)]">
+      <p className="mt-6 text-xs text-[var(--color-stone)]">
         Every row is a real, read-only API call made just now from the live server — an invalid key, an expired
         token or a retired API version shows red here even when the configuration looks complete. No secrets are
         ever shown, and no probe writes, sends or charges anything.

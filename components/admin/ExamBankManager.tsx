@@ -43,7 +43,7 @@ export function ExamBankManager({ courses, questions, papers }: { courses: Cours
 
         <div className="mt-4 space-y-2">
           {shown.map((q) => <QuestionRow key={q.id} q={q} courses={courses} courseTitle={q.courseId ? titleById.get(q.courseId) ?? null : null} busy={busy} act={act} />)}
-          {shown.length === 0 && <p className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-line)] p-4 text-sm text-[var(--color-stone-soft)]">No questions yet. Import from a course’s quizzes above, or add one below.</p>}
+          {shown.length === 0 && <p className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-line)] p-4 text-sm text-[var(--color-stone)]">No questions yet. Import from a course’s quizzes above, or add one below.</p>}
         </div>
         <QuestionForm courses={courses} defaultCourseId={filter === 'all' ? courses[0]?.id ?? '' : filter} busy={busy} act={act} />
       </section>
@@ -82,7 +82,7 @@ function QuestionRow({ q, courses, courseTitle, busy, act }: { q: QView; courses
         <button onClick={() => setOpen((v) => !v)} className="text-[var(--color-stone)]">{open ? '▾' : '▸'}</button>
         <span className="flex-1 text-sm">{q.prompt}</span>
         <span className="rounded-full bg-[var(--color-porcelain)] px-2 py-0.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">{q.type}</span>
-        {courseTitle && <span className="hidden text-xs text-[var(--color-stone-soft)] sm:inline">{courseTitle}</span>}
+        {courseTitle && <span className="hidden text-xs text-[var(--color-stone)] sm:inline">{courseTitle}</span>}
         <button onClick={() => act({ op: 'toggleQuestion', id: q.id, active: !q.active })} disabled={busy} className="text-xs text-[var(--color-stone)] hover:underline">{q.active ? 'Disable' : 'Enable'}</button>
         <button onClick={() => { if (confirm('Delete this question?')) act({ op: 'deleteQuestion', id: q.id }); }} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline">Delete</button>
       </div>
@@ -121,7 +121,7 @@ function QuestionForm({ courses, existing, defaultCourseId, busy, act }: { cours
       </div>
       <div className="mt-2 flex items-center gap-3">
         <label className={lbl}>Type<select className={`${field} mt-1 w-40`} value={f.type} onChange={(e) => changeType(e.target.value)}><option value="SINGLE">Single answer</option><option value="MULTI">Multiple answers</option><option value="TRUEFALSE">True / False</option></select></label>
-        <span className="self-end pb-1.5 text-xs text-[var(--color-stone-soft)]">{f.type === 'MULTI' ? 'Tick all correct' : 'Pick the correct one'}</span>
+        <span className="self-end pb-1.5 text-xs text-[var(--color-stone)]">{f.type === 'MULTI' ? 'Tick all correct' : 'Pick the correct one'}</span>
       </div>
       <div className="mt-2 space-y-1.5">
         {f.options.map((o, i) => (
@@ -152,7 +152,7 @@ function PaperRow({ p, courses, courseTitle, busy, act }: { p: PView; courses: C
       <div className="flex items-center gap-2 p-2.5">
         <button onClick={() => setOpen((v) => !v)} className="text-[var(--color-stone)]">{open ? '▾' : '▸'}</button>
         <span className="flex-1 text-sm">{p.title}</span>
-        <span className="text-xs text-[var(--color-stone-soft)]">{[p.examBoard, p.year, courseTitle].filter(Boolean).join(' · ')}</span>
+        <span className="text-xs text-[var(--color-stone)]">{[p.examBoard, p.year, courseTitle].filter(Boolean).join(' · ')}</span>
         <button onClick={() => { if (confirm('Delete this paper?')) act({ op: 'deletePaper', id: p.id }); }} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline">Delete</button>
       </div>
       {open && <div className="border-t border-[var(--color-line)] p-3"><PaperForm courses={courses} existing={p} busy={busy} act={act} /></div>}

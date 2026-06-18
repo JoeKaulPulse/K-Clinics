@@ -66,7 +66,7 @@ export default async function AdminOverview() {
   // cluster (built below) so the top row stays one tidy, anchored band.
   const heading = (
     <div>
-      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-stone-soft)]">Overview · {todayLabel}</p>
+      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-stone)]">Overview · {todayLabel}</p>
       <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl">{greeting}{session?.name ? `, ${session.name}` : ''}</h1>
     </div>
   );
@@ -87,7 +87,7 @@ export default async function AdminOverview() {
               <span className="tabular-nums">{weather.tempC}°</span>
               <span className="ml-1 inline-block max-w-[7rem] truncate align-bottom font-normal text-[var(--color-stone)]">{weather.label}</span>
               {weather.uvMax != null && uv && (
-                <span className="ml-1.5 text-[var(--color-stone-soft)]">· UV <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{weather.uvMax}</span></span>
+                <span className="ml-1.5 text-[var(--color-stone)]">· UV <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{weather.uvMax}</span></span>
               )}
             </p>
           </div>

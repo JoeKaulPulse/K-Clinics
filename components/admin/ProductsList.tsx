@@ -7,8 +7,8 @@ import { useRouter } from 'next/navigation';
 export type ProductRow = { id: string; name: string; image: string | null; pricePence: number; status: string; ageRestricted: boolean; stockQty: number; stock: 'in' | 'low' | 'out' | 'untracked' };
 
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
-const STATUS: Record<string, string> = { DRAFT: 'bg-[var(--color-bone)] text-[var(--color-stone)]', ACTIVE: 'bg-green-100 text-green-800', ARCHIVED: 'bg-[var(--color-bone)] text-[var(--color-stone-soft)]' };
-const STOCK: Record<string, string> = { in: 'text-[var(--color-jade)]', low: 'text-amber-700', out: 'text-[var(--color-blush)]', untracked: 'text-[var(--color-stone-soft)]' };
+const STATUS: Record<string, string> = { DRAFT: 'bg-[var(--color-bone)] text-[var(--color-stone)]', ACTIVE: 'bg-green-100 text-green-800', ARCHIVED: 'bg-[var(--color-bone)] text-[var(--color-stone)]' };
+const STOCK: Record<string, string> = { in: 'text-[var(--color-jade)]', low: 'text-amber-700', out: 'text-[var(--color-blush)]', untracked: 'text-[var(--color-stone)]' };
 
 export function ProductsList({ rows }: { rows: ProductRow[] }) {
   const router = useRouter();
@@ -60,7 +60,7 @@ export function ProductsList({ rows }: { rows: ProductRow[] }) {
       ) : (
         <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
           <table className="w-full text-sm">
-            <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th scope="col" className="p-3">Product</th><th scope="col" className="p-3">Price</th><th scope="col" className="p-3">Stock</th><th scope="col" className="p-3">Status</th></tr></thead>
+            <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th scope="col" className="p-3">Product</th><th scope="col" className="p-3">Price</th><th scope="col" className="p-3">Stock</th><th scope="col" className="p-3">Status</th></tr></thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="border-t border-[var(--color-line)] hover:bg-[var(--color-bone)]/50">
@@ -69,7 +69,7 @@ export function ProductsList({ rows }: { rows: ProductRow[] }) {
                       {r.image
                         // eslint-disable-next-line @next/next/no-img-element
                         ? <img src={r.image} alt="" className="h-10 w-10 rounded object-cover" />
-                        : <span className="grid h-10 w-10 place-items-center rounded bg-[var(--color-bone)] text-[var(--color-stone-soft)]">▦</span>}
+                        : <span className="grid h-10 w-10 place-items-center rounded bg-[var(--color-bone)] text-[var(--color-stone)]">▦</span>}
                       <span className="font-medium hover:text-[var(--color-gold)]">{r.name}{r.ageRestricted && <span className="ml-2 rounded-full bg-[var(--color-ink)] px-1.5 py-0.5 text-[0.6rem] text-[var(--color-porcelain)]">18+</span>}</span>
                     </Link>
                   </td>

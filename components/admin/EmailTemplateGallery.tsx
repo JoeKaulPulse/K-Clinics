@@ -22,7 +22,7 @@ export function EmailTemplateGallery({ previews }: { previews: Preview[] }) {
       <nav className="space-y-4">
         {groups.map(([group, items]) => (
           <div key={group}>
-            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-stone-soft)]">{group}</p>
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">{group}</p>
             <ul className="space-y-0.5">
               {items.map((p) => (
                 <li key={p.key}>

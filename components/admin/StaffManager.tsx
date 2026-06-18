@@ -347,7 +347,7 @@ function ProfileEditor({ staff, onClose, onSaved }: { staff: Staff; onClose: () 
           <label className="text-xs text-[var(--color-stone)] sm:col-span-2">Credentials<br /><input className={field} value={f.credentials} onChange={(e) => set('credentials', e.target.value)} placeholder="GMC reg. · Aesthetic Medicine" /></label>
           <label className="text-xs text-[var(--color-stone)] sm:col-span-2">Bio<br /><textarea rows={4} className={field} value={f.bio} onChange={(e) => set('bio', e.target.value)} /></label>
         </div>
-        <p className="mt-3 text-xs text-[var(--color-stone-soft)]">Services shown on the card come from this person’s competencies (set in Schedules), and the star rating is calculated from their published reviews.</p>
+        <p className="mt-3 text-xs text-[var(--color-stone)]">Services shown on the card come from this person’s competencies (set in Schedules), and the star rating is calculated from their published reviews.</p>
         {err && <p className="mt-3 text-sm text-[var(--color-blush)]">{err}</p>}
         <div className="mt-5 flex justify-end gap-3">
           <button onClick={onClose} className="px-4 py-2.5 text-sm text-[var(--color-stone)]">Cancel</button>

@@ -17,7 +17,7 @@ const URGENCY_CLS: Record<string, string> = {
   P0: 'bg-[color-mix(in_oklab,#c0392b_16%,transparent)] text-[#b23b3b]',
   P1: 'bg-amber-100 text-amber-800',
   P2: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
-  P3: 'bg-[var(--color-bone)] text-[var(--color-stone-soft)]',
+  P3: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
 };
 
 export async function DeveloperView({ session }: { session: Session }) {
@@ -94,7 +94,7 @@ export async function DeveloperView({ session }: { session: Session }) {
                 className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-4 py-3 text-sm text-[var(--color-ink-soft)] transition-colors duration-150 ease-out hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)] active:bg-[var(--color-sand)]"
               >
                 <span>{l.label}</span>
-                <span aria-hidden className="text-[var(--color-stone-soft)]">{l.external ? '↗' : '→'}</span>
+                <span aria-hidden className="text-[var(--color-stone)]">{l.external ? '↗' : '→'}</span>
               </Link>
             ))}
           </div>

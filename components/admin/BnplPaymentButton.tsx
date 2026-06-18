@@ -44,7 +44,7 @@ export function BnplPaymentButton({ bookingId }: { bookingId: string }) {
       </div>
       {msg && <p className="mt-2 text-xs text-[var(--color-stone)]">{msg}</p>}
       {link && (
-        <p className="mt-1 break-all text-[0.7rem] text-[var(--color-stone-soft)]">
+        <p className="mt-1 break-all text-[0.7rem] text-[var(--color-stone)]">
           {link} · <button onClick={copy} className="text-[var(--color-gold-deep)] underline">{copied ? 'copied ✓' : 'copy link'}</button>
         </p>
       )}

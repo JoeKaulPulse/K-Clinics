@@ -202,7 +202,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               {treatments.length === 0 && <p className="p-4 text-sm text-[var(--color-stone)]">{L('No data yet.', 'Немає даних.')}</p>}
               {treatments.map((t) => (
                 <div key={t.title} className="flex items-center justify-between border-b border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5 text-sm transition-colors last:border-0 hover:bg-[var(--color-bone)]">
-                  <span>{t.title} <span className="text-xs tabular-nums text-[var(--color-stone-soft)]">×{t.count}</span></span>
+                  <span>{t.title} <span className="text-xs tabular-nums text-[var(--color-stone)]">×{t.count}</span></span>
                   <span className="tabular-nums text-[var(--color-jade)]">{gbp(t.revenue)}</span>
                 </div>
               ))}
@@ -211,16 +211,16 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <div>
             <div className="mb-3 flex items-baseline justify-between gap-2">
               <h2 className="font-[family-name:var(--font-display)] text-xl">{L('Profitability by service', 'Прибутковість за послугою')}</h2>
-              <span className="text-xs text-[var(--color-stone-soft)]">{L('revenue − goods & consumables', 'дохід − товари та витратні')}</span>
+              <span className="text-xs text-[var(--color-stone)]">{L('revenue − goods & consumables', 'дохід − товари та витратні')}</span>
             </div>
             <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
               <table className="w-full text-sm tabular-nums">
-                <thead><tr className="bg-[var(--color-bone)] text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">{[L('Service', 'Послуга'), L('Revenue', 'Дохід'), L('Cost', 'Собівартість'), L('Margin', 'Маржа'), '%'].map((h) => <th key={h} className="px-4 py-2.5 text-right first:text-left">{h}</th>)}</tr></thead>
+                <thead><tr className="bg-[var(--color-bone)] text-xs uppercase tracking-wide text-[var(--color-stone)]">{[L('Service', 'Послуга'), L('Revenue', 'Дохід'), L('Cost', 'Собівартість'), L('Margin', 'Маржа'), '%'].map((h) => <th key={h} className="px-4 py-2.5 text-right first:text-left">{h}</th>)}</tr></thead>
                 <tbody>
                   {profitability.length === 0 && <tr><td colSpan={5} className="px-4 py-4 text-[var(--color-stone)]">{L('No data yet.', 'Немає даних.')}</td></tr>}
                   {profitability.map((p) => (
                     <tr key={p.title} className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)] transition-colors duration-150 hover:bg-[var(--color-bone)]">
-                      <td className="px-4 py-2.5 font-medium">{p.title} <span className="text-xs text-[var(--color-stone-soft)]">×{p.count}</span>{minMarginPct > 0 && p.cost > 0 && p.marginPct < minMarginPct && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[0.6rem] font-medium text-amber-800">⚠ below {minMarginPct}%</span>}</td>
+                      <td className="px-4 py-2.5 font-medium">{p.title} <span className="text-xs text-[var(--color-stone)]">×{p.count}</span>{minMarginPct > 0 && p.cost > 0 && p.marginPct < minMarginPct && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[0.6rem] font-medium text-amber-800">⚠ below {minMarginPct}%</span>}</td>
                       <td className="px-4 py-2.5 text-right text-[var(--color-jade)]">{gbp(p.revenue)}</td>
                       <td className="px-4 py-2.5 text-right text-[var(--color-stone)]">{p.cost > 0 ? gbp(p.cost) : '—'}</td>
                       <td className="px-4 py-2.5 text-right font-medium">{gbp(p.margin)}</td>
@@ -230,7 +230,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                 </tbody>
               </table>
             </div>
-            <p className="mt-2 text-xs text-[var(--color-stone-soft)]">{L('Cost is conservative — only recorded goods (variant cost) and consumables linked to a booking are counted, so margin is never overstated.', 'Собівартість консервативна — лише зафіксовані товари та витратні, прив’язані до запису.')}</p>
+            <p className="mt-2 text-xs text-[var(--color-stone)]">{L('Cost is conservative — only recorded goods (variant cost) and consumables linked to a booking are counted, so margin is never overstated.', 'Собівартість консервативна — лише зафіксовані товари та витратні, прив’язані до запису.')}</p>
           </div>
           <div>
             <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">{L('Inventory valuation', 'Вартість складу')}</h2>
@@ -246,7 +246,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       <section className="mt-10">
         <div className="mb-3 flex items-baseline justify-between gap-2">
           <h2 className="font-[family-name:var(--font-display)] text-xl">{L('Appointment timing', 'Тривалість етапів')}</h2>
-          <span className="text-xs text-[var(--color-stone-soft)]">{L(`avg per stage across ${sessions.length} live session${sessions.length === 1 ? '' : 's'}`, `середнє за ${sessions.length} сесій`)}</span>
+          <span className="text-xs text-[var(--color-stone)]">{L(`avg per stage across ${sessions.length} live session${sessions.length === 1 ? '' : 's'}`, `середнє за ${sessions.length} сесій`)}</span>
         </div>
         {stepRows.length === 0 ? (
           <p className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 text-sm text-[var(--color-stone)]">{L('No live-session timing recorded in this period yet.', 'Ще немає даних про тривалість сесій за цей період.')}</p>
@@ -274,7 +274,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             </table>
           </div>
         )}
-        <p className="mt-2 text-xs text-[var(--color-stone-soft)]">{L('Longest stages show where time concentrates; high skip rates flag stages staff routinely bypass; revisits > 1× mean a stage is returned to.', 'Найдовші етапи показують, де зосереджено час; високий відсоток пропусків — етапи, які часто оминають.')}</p>
+        <p className="mt-2 text-xs text-[var(--color-stone)]">{L('Longest stages show where time concentrates; high skip rates flag stages staff routinely bypass; revisits > 1× mean a stage is returned to.', 'Найдовші етапи показують, де зосереджено час; високий відсоток пропусків — етапи, які часто оминають.')}</p>
       </section>
     </AdminShell>
   );

@@ -21,9 +21,9 @@ export function PagesList({ pages, legalPages = [] }: { pages: PageRow[]; legalP
     const existing = byPath.get(item.path);
     return (
       <div key={item.path} className={rowCls}>
-        <span><span className="font-medium">{item.label}</span><span className="ml-2 text-sm text-[var(--color-stone-soft)]">{item.path}</span></span>
+        <span><span className="font-medium">{item.label}</span><span className="ml-2 text-sm text-[var(--color-stone)]">{item.path}</span></span>
         <span className="flex items-center gap-3">
-          {existing ? <StatusBadge status={existing.status} /> : <span className="text-xs text-[var(--color-stone-soft)]">Built-in</span>}
+          {existing ? <StatusBadge status={existing.status} /> : <span className="text-xs text-[var(--color-stone)]">Built-in</span>}
           {existing
             ? <Link href={`/admin/pages/${existing.id}`} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Edit</Link>
             : <button disabled={!!busy} onClick={() => create(item.path)} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy === item.path ? 'Opening…' : 'Customise'}</button>}
@@ -76,13 +76,13 @@ export function PagesList({ pages, legalPages = [] }: { pages: PageRow[]; legalP
             item.manage === 'builder' ? builderRow(item)
             : item.manage === 'catalogue' ? (
               <div key={item.path} className={rowCls}>
-                <span><span className="font-medium">{item.label}</span><span className="ml-2 text-sm text-[var(--color-stone-soft)]">{item.path}</span></span>
+                <span><span className="font-medium">{item.label}</span><span className="ml-2 text-sm text-[var(--color-stone)]">{item.path}</span></span>
                 <Link href={item.adminHref!} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Open editor →</Link>
               </div>
             ) : (
               <div key={item.path} className={rowCls}>
-                <span><span className="font-medium">{item.label}</span><span className="ml-2 text-sm text-[var(--color-stone-soft)]">{item.path}</span></span>
-                <span className="text-xs text-[var(--color-stone-soft)]">Built-in</span>
+                <span><span className="font-medium">{item.label}</span><span className="ml-2 text-sm text-[var(--color-stone)]">{item.path}</span></span>
+                <span className="text-xs text-[var(--color-stone)]">Built-in</span>
               </div>
             )
           ))}

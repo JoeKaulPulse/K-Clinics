@@ -49,7 +49,7 @@ export default async function WaitlistPage() {
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2.5 py-0.5 text-xs ${w.status === 'NOTIFIED' ? 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{w.status === 'NOTIFIED' ? 'Notified' : 'Waiting'}</span>
                 </td>
-                <td className="px-4 py-3 text-[var(--color-stone-soft)]">{d(w.createdAt)}</td>
+                <td className="px-4 py-3 text-[var(--color-stone)]">{d(w.createdAt)}</td>
               </tr>
             ))}
           </tbody>

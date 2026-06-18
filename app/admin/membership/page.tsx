@@ -49,7 +49,7 @@ export default async function MembershipPage() {
               <p className="font-medium">{t.name}</p>
             </div>
             <p className="mt-2 font-[family-name:var(--font-display)] text-2xl">{t.members.toLocaleString('en-GB')}</p>
-            <p className="text-xs text-[var(--color-stone-soft)]">members · {gbp(t.minSpendPence)}+ · {(t.pointsMultiplierBps / 100)}× pts</p>
+            <p className="text-xs text-[var(--color-stone)]">members · {gbp(t.minSpendPence)}+ · {(t.pointsMultiplierBps / 100)}× pts</p>
           </div>
         ))}
       </div>

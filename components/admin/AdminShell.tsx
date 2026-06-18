@@ -189,7 +189,7 @@ export function AdminShell({
       <span className="mt-3 block h-[0.62rem] w-[6.75rem]"><ClinicsWordmark /></span>
       <p className="mt-3 pl-[0.3em] text-center text-[0.66rem] font-medium uppercase tracking-[0.3em] text-[var(--color-stone)]">
         {locationLabel}
-        <span className="text-[var(--color-stone-soft)]"> · CRM</span>
+        <span className="text-[var(--color-stone)]"> · CRM</span>
       </p>
     </div>
   );
@@ -207,7 +207,7 @@ export function AdminShell({
             <button
               onClick={() => toggleGroup(key)}
               aria-expanded={open}
-              className="flex w-full cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-4 pb-1 pt-4 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)] transition-colors hover:text-[var(--color-stone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
+              className="flex w-full cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-4 pb-1 pt-4 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone)] transition-colors hover:text-[var(--color-stone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
             >
               <svg
                 viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden
@@ -286,7 +286,7 @@ export function AdminShell({
                 {profileOpen && (
                   <div role="menu" className="kc-pop absolute right-0 z-40 mt-2 w-64 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white shadow-[var(--shadow-lift)]">
                     <div className="border-b border-[var(--color-line)] bg-[var(--color-bone)]/60 px-4 py-3">
-                      <p className="text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)]">Signed in as</p>
+                      <p className="text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone)]">Signed in as</p>
                       {user && <p className="mt-0.5 truncate text-sm font-medium text-[var(--color-ink)]">{user}</p>}
                     </div>
                     <Link href="/admin/profile" role="menuitem" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-bone)]">

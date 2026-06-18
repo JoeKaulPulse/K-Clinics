@@ -64,7 +64,7 @@ export function MembershipManager({ rows }: { rows: TierRow[] }) {
               </label>
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <label className="text-xs text-[var(--color-stone)]">Threshold (£, 12-mo spend){t.key === 'member' && <span className="text-[var(--color-stone-soft)]"> · base</span>}
+              <label className="text-xs text-[var(--color-stone)]">Threshold (£, 12-mo spend){t.key === 'member' && <span className="text-[var(--color-stone)]"> · base</span>}
                 <input type="number" min={0} value={Math.round(t.minSpendPence / 100)} onChange={(e) => set(t.id, { minSpendPence: Math.round(Number(e.target.value) * 100) })} className={`${field} mt-1`} disabled={t.key === 'member'} />
               </label>
               <label className="text-xs text-[var(--color-stone)]">Points multiplier (×)

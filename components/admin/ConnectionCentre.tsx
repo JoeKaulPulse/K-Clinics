@@ -40,7 +40,7 @@ export function ConnectionCentre({ initial }: { initial: Centre }) {
           </span>
         </div>
         <div className="flex items-center gap-3">
-          {initial.generatedAt && <span className="text-xs text-[var(--color-stone-soft)]">Checked {new Date(initial.generatedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}
+          {initial.generatedAt && <span className="text-xs text-[var(--color-stone)]">Checked {new Date(initial.generatedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}
           <button onClick={recheck} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm font-medium text-[var(--color-porcelain)] transition-opacity hover:opacity-90 disabled:opacity-50">
             {busy ? 'Checking…' : 'Re-check now'}
           </button>
@@ -142,7 +142,7 @@ function KeyRow({ k }: { k: ConnectionKey }) {
       </div>
       {k.help && <p className="mt-0.5 font-[family-name:var(--font-mono)] text-[0.65rem] text-[var(--color-stone)]">{k.help}</p>}
       {k.envOnly ? (
-        <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Set in hosting (build-time key — cannot be entered here).</p>
+        <p className="mt-2 text-xs text-[var(--color-stone)]">Set in hosting (build-time key — cannot be entered here).</p>
       ) : (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <input type="password" value={value} onChange={(e) => setValue(e.target.value)} autoComplete="off"
@@ -169,7 +169,7 @@ function CopyRow({ label, value, note }: { label: string; value: string; note?: 
         <button onClick={copy} className="rounded-full border border-[var(--color-line)] px-3 py-1 text-xs text-[var(--color-stone)] hover:bg-[var(--color-bone)]">{copied ? 'Copied' : 'Copy'}</button>
       </div>
       <p className="mt-1 break-all font-[family-name:var(--font-mono)] text-[0.65rem] text-[var(--color-stone)]">{value}</p>
-      {note && <p className="mt-1 text-[0.65rem] text-[var(--color-stone-soft)]">{note}</p>}
+      {note && <p className="mt-1 text-[0.65rem] text-[var(--color-stone)]">{note}</p>}
     </div>
   );
 }

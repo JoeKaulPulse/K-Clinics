@@ -47,7 +47,7 @@ export default async function HealthFormsPage() {
           <section key={q.key} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="font-[family-name:var(--font-display)] text-xl">{q.title}</h2>
-              <span className="text-xs text-[var(--color-stone-soft)]">{q.type} · v{q.version} · {q.questions.length} core questions</span>
+              <span className="text-xs text-[var(--color-stone)]">{q.type} · v{q.version} · {q.questions.length} core questions</span>
             </div>
             <p className="mt-1 text-sm text-[var(--color-stone)]">{q.intro}</p>
 
@@ -62,7 +62,7 @@ export default async function HealthFormsPage() {
             <CoreQuestionEditor formKey={q.key} version={q.version} questions={q.questions as CoreQ[]} />
 
             <div className="mt-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-stone-soft)]">Your extra questions</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-stone)]">Your extra questions</p>
               <HealthFormManager formKey={q.key} questions={customByKey.get(q.key) ?? []} />
             </div>
           </section>

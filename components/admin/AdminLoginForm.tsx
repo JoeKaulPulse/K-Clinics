@@ -123,7 +123,7 @@ function Inner({ ssoEnabled }: { ssoEnabled: boolean }) {
 
       {!twoFactor && (
         <>
-          <div className="flex items-center gap-3 text-xs uppercase tracking-[0.18em] text-[var(--color-stone-soft)]">
+          <div className="flex items-center gap-3 text-xs uppercase tracking-[0.18em] text-[var(--color-stone)]">
             <span className="h-px flex-1 bg-[var(--color-line)]" /> or <span className="h-px flex-1 bg-[var(--color-line)]" />
           </div>
           {ssoEnabled && (

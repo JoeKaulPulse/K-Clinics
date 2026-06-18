@@ -67,7 +67,7 @@ export function CallLog({ canManage }: { canManage: boolean }) {
           ))}
         </div>
         {calls.length === 0 ? (
-          <p className="p-6 text-sm text-[var(--color-stone-soft)]">No calls yet.</p>
+          <p className="p-6 text-sm text-[var(--color-stone)]">No calls yet.</p>
         ) : (
           <ul className="divide-y divide-[var(--color-line)]">
             {calls.map((c) => {
@@ -85,9 +85,9 @@ export function CallLog({ canManage }: { canManage: boolean }) {
                         {c.client && <span className="rounded-full bg-[var(--color-gold)]/15 px-1.5 py-0.5 text-[0.6rem] font-medium text-[var(--color-gold)]">Client</span>}
                         {c.supplier && <span className="rounded-full bg-[var(--color-jade)]/15 px-1.5 py-0.5 text-[0.6rem] font-medium text-[var(--color-jade)]">Supplier</span>}
                       </span>
-                      <span className="mt-0.5 block truncate text-xs text-[var(--color-stone-soft)]">{ext} · {fmtTime(c.startedAt)} · {fmtDur(c.durationSec)}</span>
+                      <span className="mt-0.5 block truncate text-xs text-[var(--color-stone)]">{ext} · {fmtTime(c.startedAt)} · {fmtDur(c.durationSec)}</span>
                     </span>
-                    <span className="flex shrink-0 items-center gap-1.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone-soft)]">
+                    <span className="flex shrink-0 items-center gap-1.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">
                       {c.recordingUrl && <span title="Recording available">●</span>}
                       {c.hasTranscript && <span title="Transcript available" className="text-[var(--color-gold)]">T</span>}
                       {missed && <span className="text-[var(--color-blush)]">missed</span>}
@@ -103,7 +103,7 @@ export function CallLog({ canManage }: { canManage: boolean }) {
       {/* Detail */}
       <aside className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
         {!detail ? (
-          <p className="text-sm text-[var(--color-stone-soft)]">Select a call to see details, recording and transcript.</p>
+          <p className="text-sm text-[var(--color-stone)]">Select a call to see details, recording and transcript.</p>
         ) : (
           <div className="space-y-4">
             <div>
@@ -114,13 +114,13 @@ export function CallLog({ canManage }: { canManage: boolean }) {
                   : (detail.matchedLabel || (detail.direction === 'INBOUND' ? detail.fromNumber : detail.toNumber))}
               </p>
               <p className="mt-0.5 text-sm text-[var(--color-stone)]">{detail.direction === 'INBOUND' ? detail.fromNumber : detail.toNumber} · {fmtTime(detail.startedAt)} · {fmtDur(detail.durationSec)}</p>
-              {detail.agentEmail && <p className="text-xs text-[var(--color-stone-soft)]">Handled by {detail.agentEmail}</p>}
+              {detail.agentEmail && <p className="text-xs text-[var(--color-stone)]">Handled by {detail.agentEmail}</p>}
             </div>
 
             {detail.recordingUrl ? (
               <audio controls preload="none" src={detail.recordingUrl} className="w-full" />
             ) : (
-              <p className="text-xs text-[var(--color-stone-soft)]">No recording for this call.</p>
+              <p className="text-xs text-[var(--color-stone)]">No recording for this call.</p>
             )}
 
             <div>
@@ -128,7 +128,7 @@ export function CallLog({ canManage }: { canManage: boolean }) {
               {detail.transcript ? (
                 <p className="max-h-56 overflow-y-auto whitespace-pre-wrap rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-3 text-sm leading-relaxed">{detail.transcript}</p>
               ) : (
-                <p className="text-sm text-[var(--color-stone-soft)]">{detail.transcriptStatus === 'unavailable' ? 'No transcript available.' : 'Transcript pending — it’ll appear once yay.com finishes processing.'}</p>
+                <p className="text-sm text-[var(--color-stone)]">{detail.transcriptStatus === 'unavailable' ? 'No transcript available.' : 'Transcript pending — it’ll appear once yay.com finishes processing.'}</p>
               )}
             </div>
 

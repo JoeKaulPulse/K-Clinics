@@ -50,23 +50,23 @@ export function MaintenanceScheduler({ windows, serviceOptions }: { windows: Win
 
       {open && (
         <div className="mt-4 grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4 sm:grid-cols-2">
-          <label className="text-xs font-medium uppercase tracking-wide text-[var(--color-stone-soft)] sm:col-span-2">Title
+          <label className="text-xs font-medium uppercase tracking-wide text-[var(--color-stone)] sm:col-span-2">Title
             <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-2 text-sm" placeholder="e.g. Database migration — expand step" />
           </label>
-          <label className="text-xs font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">Start
+          <label className="text-xs font-medium uppercase tracking-wide text-[var(--color-stone)]">Start
             <input type="datetime-local" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-2 text-sm" />
           </label>
-          <label className="text-xs font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">End
+          <label className="text-xs font-medium uppercase tracking-wide text-[var(--color-stone)]">End
             <input type="datetime-local" value={form.endAt} onChange={(e) => setForm({ ...form, endAt: e.target.value })} className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-2 text-sm" />
           </label>
-          <label className="text-xs font-medium uppercase tracking-wide text-[var(--color-stone-soft)] sm:col-span-2">Impact
+          <label className="text-xs font-medium uppercase tracking-wide text-[var(--color-stone)] sm:col-span-2">Impact
             <input value={form.impact} onChange={(e) => setForm({ ...form, impact: e.target.value })} className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-2 text-sm" placeholder="e.g. No expected downtime · booking briefly read-only" />
           </label>
-          <label className="text-xs font-medium uppercase tracking-wide text-[var(--color-stone-soft)] sm:col-span-2">Notes
+          <label className="text-xs font-medium uppercase tracking-wide text-[var(--color-stone)] sm:col-span-2">Notes
             <textarea value={form.detail} onChange={(e) => setForm({ ...form, detail: e.target.value })} rows={2} className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-2 text-sm" />
           </label>
           <div className="sm:col-span-2">
-            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">Affected areas</p>
+            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-stone)]">Affected areas</p>
             <div className="flex flex-wrap gap-1.5">
               {serviceOptions.map((s) => {
                 const on = form.services.includes(s.id);
@@ -87,7 +87,7 @@ export function MaintenanceScheduler({ windows, serviceOptions }: { windows: Win
       )}
 
       {upcoming.length === 0 ? (
-        <p className="mt-3 text-sm text-[var(--color-stone-soft)]">No maintenance scheduled.</p>
+        <p className="mt-3 text-sm text-[var(--color-stone)]">No maintenance scheduled.</p>
       ) : (
         <ul className="mt-3 divide-y divide-[var(--color-line)]">
           {upcoming.map((w) => (
@@ -99,8 +99,8 @@ export function MaintenanceScheduler({ windows, serviceOptions }: { windows: Win
                   <span className="rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-[0.65rem] uppercase tracking-wide text-[var(--color-stone)]">{w.status.toLowerCase()}</span>
                 </div>
                 <p className="mt-0.5 text-sm text-[var(--color-stone)]">{fmt(w.startAt)} → {fmt(w.endAt)}{w.impact ? ` · ${w.impact}` : ''}</p>
-                {w.detail && <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">{w.detail}</p>}
-                {w.services.length > 0 && <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">Affects: {w.services.join(', ')}</p>}
+                {w.detail && <p className="mt-0.5 text-xs text-[var(--color-stone)]">{w.detail}</p>}
+                {w.services.length > 0 && <p className="mt-0.5 text-xs text-[var(--color-stone)]">Affects: {w.services.join(', ')}</p>}
               </div>
               <button onClick={() => cancel(w.id)} className="shrink-0 text-xs text-[var(--color-stone)] hover:text-red-600">Cancel</button>
             </li>

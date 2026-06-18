@@ -103,7 +103,7 @@ export default async function QrPage() {
             <div key={f.label} className="rounded-[var(--radius-md)] bg-[var(--color-porcelain)] p-4 text-center">
               <dt className="text-xs uppercase tracking-wide text-[var(--color-stone)]">{f.label}</dt>
               <dd className="mt-1 font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">{f.value}</dd>
-              <dd className="mt-0.5 text-[0.65rem] text-[var(--color-stone-soft)]">{f.pct}% of scans{f.step !== null ? ` · ${f.step}% prior` : ''}</dd>
+              <dd className="mt-0.5 text-[0.65rem] text-[var(--color-stone)]">{f.pct}% of scans{f.step !== null ? ` · ${f.step}% prior` : ''}</dd>
             </div>
           ))}
         </dl>
@@ -112,9 +112,9 @@ export default async function QrPage() {
           <span><strong className="text-[var(--color-ink)]">{totalSessions}</strong> sessions</span>
           <span><strong className="text-[var(--color-ink)]">{reachedAnalysis}%</strong> reached analysis</span>
           <span><strong className="text-[var(--color-ink)]">{byStatus.SHARED ?? 0}</strong> shared · <strong className="text-[var(--color-ink)]">{byStatus.EXPIRED ?? 0}</strong> expired</span>
-          {ageDeclined > 0 && <span className="text-[var(--color-stone-soft)]">{ageDeclined} age-declined (photos purged)</span>}
+          {ageDeclined > 0 && <span className="text-[var(--color-stone)]">{ageDeclined} age-declined (photos purged)</span>}
         </div>
-        <p className="mt-2 text-[0.65rem] text-[var(--color-stone-soft)]">Campaign attribution needs a campaign tag captured at the kiosk entry point — a small follow-up once per-campaign QR/links drive the kiosk.</p>
+        <p className="mt-2 text-[0.65rem] text-[var(--color-stone)]">Campaign attribution needs a campaign tag captured at the kiosk entry point — a small follow-up once per-campaign QR/links drive the kiosk.</p>
         <KioskThemeSelector current={activeTheme} />
 
         {/* BLD-137 slice 2: per-location display links */}

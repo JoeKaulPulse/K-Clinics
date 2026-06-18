@@ -50,12 +50,12 @@ export function PasskeyManager() {
 
       <div className="mt-4">
         {!loaded ? (
-          <p className="text-xs text-[var(--color-stone-soft)]">Loading…</p>
+          <p className="text-xs text-[var(--color-stone)]">Loading…</p>
         ) : keys.length ? (
           <ul className="divide-y divide-[var(--color-line)] rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white">
             {keys.map((k) => (
               <li key={k.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
-                <span>{k.deviceName || 'Passkey'}<span className="ml-2 text-xs text-[var(--color-stone-soft)]">added {new Date(k.createdAt).toLocaleDateString('en-GB')}{k.lastUsedAt ? ` · last used ${new Date(k.lastUsedAt).toLocaleDateString('en-GB')}` : ''}</span></span>
+                <span>{k.deviceName || 'Passkey'}<span className="ml-2 text-xs text-[var(--color-stone)]">added {new Date(k.createdAt).toLocaleDateString('en-GB')}{k.lastUsedAt ? ` · last used ${new Date(k.lastUsedAt).toLocaleDateString('en-GB')}` : ''}</span></span>
                 <button onClick={() => remove(k.id)} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
               </li>
             ))}

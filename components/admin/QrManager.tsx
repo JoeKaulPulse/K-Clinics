@@ -93,11 +93,11 @@ function CreatePanel() {
       <div className="flex flex-wrap items-end gap-2">
         <label className="text-xs text-[var(--color-stone)]">Name (internal)<br /><input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Reception poster" className={`${field} w-52`} /></label>
         <label className="text-xs text-[var(--color-stone)]">Destination URL<br /><input value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="https://kclinics.co.uk/offers" className={`${field} w-72`} /></label>
-        <label className="text-xs text-[var(--color-stone)]">Custom code <span className="text-[var(--color-stone-soft)]">(optional)</span><br /><input value={code} onChange={(e) => setCode(e.target.value)} placeholder="auto" className={`${field} w-32`} /></label>
+        <label className="text-xs text-[var(--color-stone)]">Custom code <span className="text-[var(--color-stone)]">(optional)</span><br /><input value={code} onChange={(e) => setCode(e.target.value)} placeholder="auto" className={`${field} w-32`} /></label>
         <button onClick={create} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-60">{busy ? 'Creating…' : 'Create'}</button>
         {msg && <span className="text-sm text-[var(--color-blush)]">{msg}</span>}
       </div>
-      <label className="mt-2 block text-xs text-[var(--color-stone)]">Notes <span className="text-[var(--color-stone-soft)]">(optional)</span><br /><input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Where this code is displayed / campaign" className={`${field} w-full max-w-xl`} /></label>
+      <label className="mt-2 block text-xs text-[var(--color-stone)]">Notes <span className="text-[var(--color-stone)]">(optional)</span><br /><input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Where this code is displayed / campaign" className={`${field} w-full max-w-xl`} /></label>
     </section>
   );
 }
@@ -144,7 +144,7 @@ function QrCard({ row }: { row: QrRow }) {
             ) : (
               <button onClick={copy} title="Copy link" className="font-mono hover:text-[var(--color-gold)]">/qr/{row.code}{copied ? ' ✓' : ''}</button>
             )}
-            <button onClick={() => setEditCode((v) => !v)} className="text-[var(--color-stone-soft)] hover:underline">{editCode ? 'keep' : 'change code'}</button>
+            <button onClick={() => setEditCode((v) => !v)} className="text-[var(--color-stone)] hover:underline">{editCode ? 'keep' : 'change code'}</button>
           </div>
           {editCode && <p className="mt-1 text-[0.65rem] text-[var(--color-blush)]">Changing the code changes the printed URL — only do this before printing.</p>}
 

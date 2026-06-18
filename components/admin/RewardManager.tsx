@@ -116,7 +116,7 @@ export function RewardManager({
                 <span aria-hidden>{r.emoji || '🎁'}</span>
                 <span className="font-medium">{r.name}</span>
                 <span className="text-[var(--color-stone)]">· {r.costPoints} {L('pts', 'балів')}</span>
-                {r.stock != null && <span className="text-[var(--color-stone-soft)]">· {r.stock} {L('in stock', 'в наявності')}</span>}
+                {r.stock != null && <span className="text-[var(--color-stone)]">· {r.stock} {L('in stock', 'в наявності')}</span>}
               </span>
               <span className="flex items-center gap-2">
                 <button onClick={() => catalogueAction({ action: 'toggle', id: r.id, active: !r.active })} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-ink)]">{r.active ? L('Hide', 'Сховати') : L('Show', 'Показати')}</button>

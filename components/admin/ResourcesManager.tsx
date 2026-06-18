@@ -74,7 +74,7 @@ function RoomSection({ rooms, equipment, locations, multiLocation }: { rooms: Re
         <div className="mt-5 space-y-4">
           {Object.entries(byFloor).map(([fl, list]) => (
             <div key={fl}>
-              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">{fl === '—' ? 'No floor set' : `${fl} floor`}</p>
+              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-stone)]">{fl === '—' ? 'No floor set' : `${fl} floor`}</p>
               <ul className="divide-y divide-[var(--color-line)] border-t border-[var(--color-line)]">
                 {list.map((r) => <RoomRow key={r.id} room={r} equipment={equipment} />)}
               </ul>
@@ -115,8 +115,8 @@ function RoomRow({ room, equipment }: { room: Resource; equipment: Resource[] })
       <div className="flex items-center justify-between gap-3">
         <span className={room.active ? '' : 'opacity-50'}>
           <span className="font-medium">{room.name}</span>
-          {room.tags.length > 0 && <span className="text-[var(--color-stone-soft)]"> · {room.tags.join(', ')}</span>}
-          {equipNames.length > 0 && <span className="text-[var(--color-stone-soft)]"> · 🛠 {equipNames.join(', ')}</span>}
+          {room.tags.length > 0 && <span className="text-[var(--color-stone)]"> · {room.tags.join(', ')}</span>}
+          {equipNames.length > 0 && <span className="text-[var(--color-stone)]"> · 🛠 {equipNames.join(', ')}</span>}
         </span>
         <span className="flex items-center gap-3">
           <button onClick={() => setOpen((v) => !v)} className="text-xs text-[var(--color-gold)] hover:underline">{open ? 'Close' : 'Edit'}</button>
@@ -138,7 +138,7 @@ function RoomRow({ room, equipment }: { room: Resource; equipment: Resource[] })
           <div>
             <p className="mb-1 text-xs font-medium text-[var(--color-stone)]">Equipment in this room</p>
             {equipment.length === 0 ? (
-              <p className="text-xs text-[var(--color-stone-soft)]">No equipment defined yet — add some below.</p>
+              <p className="text-xs text-[var(--color-stone)]">No equipment defined yet — add some below.</p>
             ) : (
               <div className="flex flex-wrap gap-3">
                 {equipment.map((e) => (
@@ -205,7 +205,7 @@ function EquipmentSection({ equipment, locations, multiLocation }: { equipment: 
             <li key={r.id} className="flex items-center justify-between gap-3 py-2 text-sm">
               <span className={r.active ? '' : 'opacity-50'}>
                 <span className="font-medium">{r.name}</span>
-                <span className="text-[var(--color-stone-soft)]"> · {r.slug} · ×{r.capacity}</span>
+                <span className="text-[var(--color-stone)]"> · {r.slug} · ×{r.capacity}</span>
               </span>
               <span className="flex items-center gap-3">
                 <button onClick={() => act({ op: 'toggle', id: r.id, active: !r.active })} className="text-xs text-[var(--color-stone)] hover:underline">{r.active ? 'Disable' : 'Enable'}</button>

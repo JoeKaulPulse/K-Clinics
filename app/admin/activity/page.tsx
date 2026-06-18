@@ -43,7 +43,7 @@ export default async function ActivityPage() {
                 <p className="text-sm">
                   {e.bookingId ? <Link href={`/admin/bookings/${e.bookingId}`} className="font-medium hover:text-[var(--color-gold)]">{e.summary}</Link> : <span className="font-medium">{e.summary}</span>}
                 </p>
-                <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">
+                <p className="mt-0.5 text-xs text-[var(--color-stone)]">
                   {new Date(e.createdAt).toLocaleString('en-GB')} · {e.action.toLowerCase().replace(/_/g, ' ')} · {e.actor}{e.actorRole ? ` (${e.actorRole.toLowerCase()})` : ''}
                 </p>
               </div>

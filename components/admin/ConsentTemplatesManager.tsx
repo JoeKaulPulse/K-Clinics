@@ -66,7 +66,7 @@ function AssignmentPicker({
         <div className="mt-2 max-h-56 space-y-2 overflow-y-auto rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-2.5">
           {groups.map((g) => (
             <div key={g}>
-              <p className="px-1 text-[0.6rem] font-semibold uppercase tracking-wide text-[var(--color-stone-soft)]">{g}</p>
+              <p className="px-1 text-[0.6rem] font-semibold uppercase tracking-wide text-[var(--color-stone)]">{g}</p>
               {(byGroup.get(g) ?? []).map((s) => {
                 const on = selSlugs.includes(s.slug);
                 return (
@@ -80,7 +80,7 @@ function AssignmentPicker({
           ))}
         </div>
       )}
-      <p className="mt-2 text-[0.7rem] leading-relaxed text-[var(--color-stone-soft)]">A treatment that matches nothing falls back to the built-in form for its category.</p>
+      <p className="mt-2 text-[0.7rem] leading-relaxed text-[var(--color-stone)]">A treatment that matches nothing falls back to the built-in form for its category.</p>
     </div>
   );
 }
@@ -170,7 +170,7 @@ function Card({ r, services, groups }: { r: TemplateRow; services: Service[]; gr
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full border-0 bg-transparent p-0 font-[family-name:var(--font-display)] text-lg outline-none focus:underline" />
-          <p className="text-xs text-[var(--color-stone-soft)]">v{r.version} · code <span className="font-mono">{r.key}</span>{r.active ? '' : ' · disabled'}</p>
+          <p className="text-xs text-[var(--color-stone)]">v{r.version} · code <span className="font-mono">{r.key}</span>{r.active ? '' : ' · disabled'}</p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <label className="text-xs text-[var(--color-stone)]">Category

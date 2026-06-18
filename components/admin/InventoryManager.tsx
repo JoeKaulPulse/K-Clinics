@@ -130,11 +130,11 @@ function ItemRow({ item, canManage, uk }: { item: Item; canManage: boolean; uk: 
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium">{item.name}</span>
-            {item.size && <span className="text-xs text-[var(--color-stone-soft)]">{item.size}</span>}
-            {item.sku && <span className="text-xs text-[var(--color-stone-soft)]">#{item.sku}</span>}
+            {item.size && <span className="text-xs text-[var(--color-stone)]">{item.size}</span>}
+            {item.sku && <span className="text-xs text-[var(--color-stone)]">#{item.sku}</span>}
             {item.isRetail && <span className="rounded-full bg-[var(--color-gold)]/15 px-2 py-0.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-ink)]">{L('retail', 'роздріб')}</span>}
           </div>
-          <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">
+          <p className="mt-0.5 text-xs text-[var(--color-stone)]">
             {[item.brand, item.supplier].filter(Boolean).join(' · ')}
             {item.costPence != null ? ` · ${L('cost', 'собів.')} ${gbp(item.costPence)}` : ''}
             {item.retailPence != null ? ` · ${L('RRP', 'РРЦ')} ${gbp(item.retailPence)}` : ''}
@@ -144,7 +144,7 @@ function ItemRow({ item, canManage, uk }: { item: Item; canManage: boolean; uk: 
         <div className="flex items-center gap-3">
           <div className="text-right">
             <div className={`font-[family-name:var(--font-display)] text-lg leading-none ${low ? 'text-[var(--color-blush)]' : ''}`}>{item.currentQty}</div>
-            <div className="text-xs text-[var(--color-stone-soft)]">{item.unit}</div>
+            <div className="text-xs text-[var(--color-stone)]">{item.unit}</div>
           </div>
           {canManage && (
             <div className="flex flex-col gap-1">
@@ -194,7 +194,7 @@ function MoveForm({ itemId, unit, moq, uk, onDone }: { itemId: string; unit: str
       </label>
       <label className="text-xs text-[var(--color-stone)]">{L('Quantity', 'Кількість')} ({unit}){reason === 'ADJUSTMENT' ? ' ±' : ''}
         <input type="number" step="any" value={qty} onChange={(e) => setQty(e.target.value)} className={field} />
-        {reason === 'RECEIVED' && moq > 1 && <span className="mt-1 block text-[0.65rem] text-[var(--color-stone-soft)]">{L('Supplier MOQ', 'МОЗ постачальника')}: {moq}</span>}
+        {reason === 'RECEIVED' && moq > 1 && <span className="mt-1 block text-[0.65rem] text-[var(--color-stone)]">{L('Supplier MOQ', 'МОЗ постачальника')}: {moq}</span>}
       </label>
       {reason === 'RECEIVED' && (
         <>

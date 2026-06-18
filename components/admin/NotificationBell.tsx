@@ -110,7 +110,7 @@ export function NotificationBell() {
 
           <div className="max-h-[60vh] overflow-y-auto">
             {items.length === 0 ? (
-              <p className="px-3 py-6 text-center text-sm text-[var(--color-stone-soft)]">You’re all caught up.</p>
+              <p className="px-3 py-6 text-center text-sm text-[var(--color-stone)]">You’re all caught up.</p>
             ) : items.map((n) => (
               <button key={n.id} onClick={() => go(n)} className={`flex w-full items-start gap-2 border-b border-[var(--color-line)] px-3 py-2.5 text-left last:border-0 hover:bg-[var(--color-bone)] ${PRIORITY_ACCENT[n.priority || 'normal'] || ''} ${n.readAt ? '' : 'bg-[var(--color-gold)]/5'}`}>
                 <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${PRIORITY_DOT[n.priority || 'normal'] || PRIORITY_DOT.normal}`} aria-hidden />
@@ -119,7 +119,7 @@ export function NotificationBell() {
                     <span className="truncate text-sm font-medium leading-snug text-[var(--color-ink)]">{n.title}</span>
                   </span>
                   {n.body && <span className="mt-0.5 line-clamp-2 block text-xs text-[var(--color-stone)]">{n.body}</span>}
-                  <span className="mt-0.5 flex items-center gap-1.5 text-[0.65rem] text-[var(--color-stone-soft)]">
+                  <span className="mt-0.5 flex items-center gap-1.5 text-[0.65rem] text-[var(--color-stone)]">
                     {n.category && <span className="rounded-full bg-[var(--color-bone)] px-1.5 py-0.5">{CATEGORY_LABEL[n.category] || n.category}</span>}
                     {ago(n.createdAt)}
                   </span>

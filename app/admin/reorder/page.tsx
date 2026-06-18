@@ -78,7 +78,7 @@ export default async function ReorderPage() {
           <div className="mt-6 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
             <span className="text-sm text-[var(--color-stone)]">{L('Estimated order value', 'Орієнтовна вартість замовлення')}: </span>
             <span className="font-[family-name:var(--font-display)] text-xl">{gbp(grandTotal)}</span>
-            <span className="ml-2 text-xs text-[var(--color-stone-soft)]">({L('at wholesale cost, ex VAT', 'за оптовою ціною, без ПДВ')})</span>
+            <span className="ml-2 text-xs text-[var(--color-stone)]">({L('at wholesale cost, ex VAT', 'за оптовою ціною, без ПДВ')})</span>
           </div>
           <div className="mt-8">
             <ReorderList groups={groups} canManage={canManage} uk={uk} />

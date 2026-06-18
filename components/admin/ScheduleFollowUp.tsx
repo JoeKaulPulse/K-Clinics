@@ -84,7 +84,7 @@ export function ScheduleFollowUp({
       >
         {busy ? 'Checking availability…' : 'Check availability & book'}
       </button>
-      <p className="mt-2 text-[0.7rem] text-[var(--color-stone-soft)]">Staff only. Syncs to Google Calendar once that connection is set up.</p>
+      <p className="mt-2 text-[0.7rem] text-[var(--color-stone)]">Staff only. Syncs to Google Calendar once that connection is set up.</p>
     </div>
   );
 }

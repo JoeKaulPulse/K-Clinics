@@ -12,7 +12,7 @@ function Copy({ label, text, multiline }: { label?: string; text: string; multil
     <div className="group rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-2.5">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          {label && <p className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone-soft)]">{label}</p>}
+          {label && <p className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">{label}</p>}
           <p className={`text-sm text-[var(--color-ink)] ${multiline ? 'whitespace-pre-wrap' : ''}`}>{text}</p>
         </div>
         <button onClick={() => { navigator.clipboard?.writeText(text); setDone(true); setTimeout(() => setDone(false), 1200); }} className="shrink-0 text-[0.65rem] text-[var(--color-gold)] hover:underline">{done ? '✓' : 'copy'}</button>

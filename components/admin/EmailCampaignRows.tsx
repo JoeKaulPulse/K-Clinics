@@ -40,7 +40,7 @@ export function EmailCampaignRows({ rows }: { rows: DraftRow[] }) {
             <tr key={r.id} className="border-b border-[var(--color-line)] last:border-0">
               <td className="p-3">
                 <span className="font-medium">{r.name}</span>
-                <span className="block text-xs text-[var(--color-stone-soft)]">{r.subject || 'No subject yet'} · {r.audience}</span>
+                <span className="block text-xs text-[var(--color-stone)]">{r.subject || 'No subject yet'} · {r.audience}</span>
               </td>
               <td className="p-3 text-xs text-[var(--color-stone)]">
                 {r.status === 'AB_TESTING'
@@ -51,7 +51,7 @@ export function EmailCampaignRows({ rows }: { rows: DraftRow[] }) {
               </td>
               <td className="p-3 text-right">
                 {r.status === 'AB_TESTING' ? (
-                  <span className="text-xs text-[var(--color-stone-soft)]">Testing in progress…</span>
+                  <span className="text-xs text-[var(--color-stone)]">Testing in progress…</span>
                 ) : (
                   <div className="flex flex-wrap justify-end gap-3 text-xs">
                     <Link href={`/admin/marketing/email/new?id=${r.id}`} className="text-[var(--color-gold)] hover:underline">Edit</Link>

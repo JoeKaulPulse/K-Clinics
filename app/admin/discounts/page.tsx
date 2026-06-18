@@ -102,7 +102,7 @@ export default async function DiscountsPage({ searchParams }: { searchParams: Pr
                   <td className="px-4 py-3 font-mono text-xs">{c.status === 'BLOCKED' ? '—' : c.code}</td>
                   <td className="px-4 py-3">
                     <Link href={`/admin/clients/${c.client.id}`} className="font-medium hover:text-[var(--color-gold)]">{name}</Link>
-                    <div className="text-xs text-[var(--color-stone-soft)]">{c.client.email}</div>
+                    <div className="text-xs text-[var(--color-stone)]">{c.client.email}</div>
                     {c.flagged && <span className="mt-1 inline-block rounded-full bg-[var(--color-blush)]/25 px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-wide text-[var(--color-ink)]">⚠ {L('flagged', 'позначено')}</span>}
                   </td>
                   <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide ${STATUS_STYLE[c.status]}`}>{c.status.toLowerCase()}</span></td>

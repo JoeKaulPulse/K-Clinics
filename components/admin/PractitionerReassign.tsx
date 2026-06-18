@@ -43,7 +43,7 @@ export function PractitionerReassign({ bookingId, current, clinicians }: { booki
       <button onClick={save} disabled={pending} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-50">{pending ? 'Saving…' : 'Save'}</button>
       <button onClick={() => { setEditing(false); setErr(null); }} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-ink)]">Cancel</button>
       {err && <span className="w-full text-xs text-[var(--color-blush-deep)]">{err}</span>}
-      {clinicians.length === 0 && <span className="w-full text-xs text-[var(--color-stone-soft)]">No clinicians are set up to perform this treatment — set competencies under Schedules.</span>}
+      {clinicians.length === 0 && <span className="w-full text-xs text-[var(--color-stone)]">No clinicians are set up to perform this treatment — set competencies under Schedules.</span>}
     </div>
   );
 }

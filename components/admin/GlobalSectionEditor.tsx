@@ -42,7 +42,7 @@ export function GlobalSectionEditor({ block }: { block: { id: string; name: stri
       <div className="mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
         {def ? <SectionFields fields={def.fields} data={data} onChange={setData} /> : <p className="text-sm text-[#c0392b]">Unknown section type.</p>}
       </div>
-      <button onClick={del} className="mt-6 text-sm text-[var(--color-stone-soft)] hover:text-[#c0392b]">Delete block</button>
+      <button onClick={del} className="mt-6 text-sm text-[var(--color-stone)] hover:text-[#c0392b]">Delete block</button>
     </div>
   );
 }

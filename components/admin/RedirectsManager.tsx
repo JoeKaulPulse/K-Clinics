@@ -19,7 +19,7 @@ export function RedirectsManager({ rows }: { rows: RedirectRow[] }) {
       <BulkPanel />
       <section className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
         <table className="w-full text-sm">
-          <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">
+          <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]">
             <th scope="col" className="p-3">From</th><th scope="col" className="p-3">To</th><th scope="col" className="p-3">Type</th><th scope="col" className="p-3"></th>
           </tr></thead>
           <tbody>

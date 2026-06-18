@@ -16,7 +16,7 @@ type Staff = { id: string; name: string };
 const PRIORITY_STYLE: Record<string, string> = {
   HIGH: 'bg-[var(--color-blush)]/25 text-[var(--color-ink)]',
   NORMAL: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
-  LOW: 'bg-[var(--color-bone)] text-[var(--color-stone-soft)]',
+  LOW: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
 };
 
 // Refs branch from the parent (TSK-12 → TSK-12.1); keep branches readable.
@@ -208,11 +208,11 @@ function Row({ t, staff, uk, orphanSub }: { t: Task; staff: Staff[]; uk: boolean
             <RefChip refId={t.ref} uk={uk} />
             <span className={`text-sm font-medium ${done ? 'line-through text-[var(--color-stone)]' : ''}`}>{t.title}</span>
             <span className={`rounded-full px-2 py-0.5 text-[0.6rem] uppercase tracking-wide ${PRIORITY_STYLE[t.priority]}`}>{t.priority.toLowerCase()}</span>
-            {t.dueAt && <span className={`text-xs ${overdue ? 'font-medium text-[var(--color-blush)]' : 'text-[var(--color-stone-soft)]'}`}>{overdue ? '⚠ ' : ''}{new Date(t.dueAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>}
-            {orphanSub && t.parentRef && <span className="text-xs text-[var(--color-stone-soft)]">↳ {L('part of', 'частина')} {t.parentRef}</span>}
+            {t.dueAt && <span className={`text-xs ${overdue ? 'font-medium text-[var(--color-blush)]' : 'text-[var(--color-stone)]'}`}>{overdue ? '⚠ ' : ''}{new Date(t.dueAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>}
+            {orphanSub && t.parentRef && <span className="text-xs text-[var(--color-stone)]">↳ {L('part of', 'частина')} {t.parentRef}</span>}
           </div>
           {t.detail && <p className="mt-0.5 whitespace-pre-wrap text-sm text-[var(--color-stone)]">{t.detail}</p>}
-          <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-[var(--color-stone-soft)]">
+          <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-[var(--color-stone)]">
             {t.clientId && t.clientName && <Link href={`/admin/clients/${t.clientId}`} className="text-[var(--color-gold)] hover:underline">{t.clientName}</Link>}
             {!done && (
               <select value={t.assigneeId || ''} onChange={(e) => reassign(e.target.value)} className="rounded-full border border-[var(--color-line)] bg-transparent px-2 py-0.5 text-xs">

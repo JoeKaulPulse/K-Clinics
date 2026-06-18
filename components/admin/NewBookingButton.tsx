@@ -128,7 +128,7 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
                     <div className="mt-1 overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)]">
                       {matches.map((c) => (
                         <button key={c.id} onClick={() => { setSelected(c); setQ(''); }} className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-[var(--color-bone)]">
-                          <span>{c.firstName} {c.lastName ?? ''} <span className="text-[var(--color-stone-soft)]">· {c.email}{c.phone ? ` · ${c.phone}` : ''}</span></span>
+                          <span>{c.firstName} {c.lastName ?? ''} <span className="text-[var(--color-stone)]">· {c.email}{c.phone ? ` · ${c.phone}` : ''}</span></span>
                           {c.hasCard && <span className="rounded-full bg-[var(--color-jade)]/15 px-2 py-0.5 text-[0.6rem] text-[var(--color-jade)]">card</span>}
                         </button>
                       ))}
@@ -165,7 +165,7 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
             {!isConsultationCat && (
               <label className="flex items-center gap-2 text-sm text-[var(--color-stone)]">
                 <input type="checkbox" checked={d.asConsultation} onChange={(e) => set('asConsultation', e.target.checked)} />
-                Book as a consultation <span className="text-[var(--color-stone-soft)]">(15 min · on consultation)</span>
+                Book as a consultation <span className="text-[var(--color-stone)]">(15 min · on consultation)</span>
               </label>
             )}
             {/* BLD-409: book a course of N sessions in one go. */}

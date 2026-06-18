@@ -175,19 +175,19 @@ export function EmailComposer({ segments, tags, initial, templates = [] }: { seg
           )}
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-xs text-[var(--color-stone)]">Internal name<input value={name} onChange={(e) => setName(e.target.value)} placeholder="February newsletter" className={`${field} mt-1 w-full`} /></label>
-            <label className="text-xs text-[var(--color-stone)]">From name <span className="text-[var(--color-stone-soft)]">(optional)</span><input value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="KClinics" className={`${field} mt-1 w-full`} /></label>
+            <label className="text-xs text-[var(--color-stone)]">From name <span className="text-[var(--color-stone)]">(optional)</span><input value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="KClinics" className={`${field} mt-1 w-full`} /></label>
           </div>
           <div className="mt-3">
             <label className="text-xs text-[var(--color-stone)]">{abOn ? 'Subject A' : 'Subject line'}
               <input value={subject} onFocus={onFocus('subject', -1)} onChange={(e) => setSubject(e.target.value)} placeholder="A little glow for February ✨" className={`${field} mt-1 w-full`} />
             </label>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-              <span className="text-[0.65rem] uppercase tracking-wide text-[var(--color-stone-soft)]">Insert:</span>
+              <span className="text-[0.65rem] uppercase tracking-wide text-[var(--color-stone)]">Insert:</span>
               {MERGE_TAGS.map((m) => <button key={m.tag} type="button" onClick={() => insertTag(m.tag)} className="rounded-full border border-[var(--color-line)] px-2 py-0.5 text-[0.65rem] hover:border-[var(--color-gold)]">{m.label}</button>)}
               <label className="ml-auto flex items-center gap-1.5 text-[0.65rem] text-[var(--color-stone)]">
                 <input type="checkbox" checked={abOn} onChange={(e) => setAbOn(e.target.checked)} className="h-3.5 w-3.5 accent-[var(--color-gold)]" /> A/B test subject
               </label>
-              <span className={`text-[0.65rem] ${subject.length > 60 ? 'text-amber-700' : 'text-[var(--color-stone-soft)]'}`}>{subject.length} chars</span>
+              <span className={`text-[0.65rem] ${subject.length > 60 ? 'text-amber-700' : 'text-[var(--color-stone)]'}`}>{subject.length} chars</span>
             </div>
             {abOn && (
               <div className="mt-2 rounded-[var(--radius-md)] border border-dashed border-[var(--color-line)] bg-white/50 p-3">
@@ -205,15 +205,15 @@ export function EmailComposer({ segments, tags, initial, templates = [] }: { seg
                       {[2, 4, 8, 24].map((h) => <option key={h} value={h}>{h}h</option>)}
                     </select>
                   </label>
-                  <span className="text-[var(--color-stone-soft)]">Winner (by open rate) sends to the other {audCount != null ? Math.max(0, 100 - abSamplePct * 2) : ''}%.</span>
+                  <span className="text-[var(--color-stone)]">Winner (by open rate) sends to the other {audCount != null ? Math.max(0, 100 - abSamplePct * 2) : ''}%.</span>
                 </div>
               </div>
             )}
             {spamHits.length > 0 && <p className="mt-1 text-[0.65rem] text-amber-700">Possible spam triggers: {spamHits.join(', ')}</p>}
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <label className="text-xs text-[var(--color-stone)]">Preview text <span className="text-[var(--color-stone-soft)]">(inbox snippet)</span><input value={preheader} onChange={(e) => setPreheader(e.target.value)} placeholder="Shown after the subject in most inboxes" className={`${field} mt-1 w-full`} /></label>
-            <label className="text-xs text-[var(--color-stone)]">Reply-to <span className="text-[var(--color-stone-soft)]">(optional)</span><input value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder="hello@kclinics.co.uk" className={`${field} mt-1 w-full`} /></label>
+            <label className="text-xs text-[var(--color-stone)]">Preview text <span className="text-[var(--color-stone)]">(inbox snippet)</span><input value={preheader} onChange={(e) => setPreheader(e.target.value)} placeholder="Shown after the subject in most inboxes" className={`${field} mt-1 w-full`} /></label>
+            <label className="text-xs text-[var(--color-stone)]">Reply-to <span className="text-[var(--color-stone)]">(optional)</span><input value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder="hello@kclinics.co.uk" className={`${field} mt-1 w-full`} /></label>
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <label className="text-xs text-[var(--color-stone)]">Audience
@@ -236,7 +236,7 @@ export function EmailComposer({ segments, tags, initial, templates = [] }: { seg
             {blocks.map((b, i) => (
               <div key={i} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-[0.65rem] uppercase tracking-wide text-[var(--color-stone-soft)]">{b.type}</span>
+                  <span className="text-[0.65rem] uppercase tracking-wide text-[var(--color-stone)]">{b.type}</span>
                   <span className="flex items-center gap-2 text-xs text-[var(--color-stone)]">
                     {'align' in b && <AlignToggle value={(b.align as Align) || 'left'} onChange={(a) => update(i, { align: a } as Partial<EmailBlock>)} />}
                     <button onClick={() => move(i, -1)} className="hover:text-[var(--color-ink)]">↑</button>
@@ -267,7 +267,7 @@ export function EmailComposer({ segments, tags, initial, templates = [] }: { seg
                     <option value="sm">Small gap</option><option value="md">Medium gap</option><option value="lg">Large gap</option>
                   </select>
                 )}
-                {b.type === 'divider' && <p className="text-xs text-[var(--color-stone-soft)]">A horizontal divider.</p>}
+                {b.type === 'divider' && <p className="text-xs text-[var(--color-stone)]">A horizontal divider.</p>}
               </div>
             ))}
           </div>
@@ -292,7 +292,7 @@ export function EmailComposer({ segments, tags, initial, templates = [] }: { seg
             <div className="mt-3 flex flex-wrap items-end gap-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3">
               <label className="text-xs text-[var(--color-stone)]">Send at<input type="datetime-local" value={scheduleAt} onChange={(e) => setScheduleAt(e.target.value)} className={`${field} mt-1`} /></label>
               <button onClick={schedule} disabled={busy || !scheduleAt || !subject} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm text-white disabled:opacity-50">Schedule send</button>
-              <span className="text-xs text-[var(--color-stone-soft)]">Delivered automatically within ~15 min of the chosen time.</span>
+              <span className="text-xs text-[var(--color-stone)]">Delivered automatically within ~15 min of the chosen time.</span>
             </div>
           )}
           {msg && <p className="mt-2 text-sm text-[var(--color-stone)]">{msg}</p>}
@@ -302,8 +302,8 @@ export function EmailComposer({ segments, tags, initial, templates = [] }: { seg
       {/* Live preview */}
       <div className="lg:sticky lg:top-4 lg:self-start">
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">Live preview</p>
-          <p className="text-[0.65rem] text-[var(--color-stone-soft)]">personalised with sample data</p>
+          <p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">Live preview</p>
+          <p className="text-[0.65rem] text-[var(--color-stone)]">personalised with sample data</p>
         </div>
         <iframe title="Email preview" srcDoc={previewHtml} className="h-[640px] w-full rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white" />
       </div>

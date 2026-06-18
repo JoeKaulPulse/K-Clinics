@@ -96,7 +96,7 @@ export function CampaignEditor({ data, stats, baseUrl, canManage, spendSyncedAt 
           </div>
           <div className="grid gap-4 sm:grid-cols-4">
             <label className="text-xs text-[var(--color-stone)]">Budget £<input value={f.budget} onChange={(e) => set('budget', e.target.value)} className={field} /></label>
-            <label className="text-xs text-[var(--color-stone)]">Spend £{spendSyncedAt && <span className="ml-1 text-[var(--color-stone-soft)]">· synced {new Date(spendSyncedAt).toLocaleDateString('en-GB')}</span>}<input value={f.spend} onChange={(e) => set('spend', e.target.value)} className={field} /></label>
+            <label className="text-xs text-[var(--color-stone)]">Spend £{spendSyncedAt && <span className="ml-1 text-[var(--color-stone)]">· synced {new Date(spendSyncedAt).toLocaleDateString('en-GB')}</span>}<input value={f.spend} onChange={(e) => set('spend', e.target.value)} className={field} /></label>
             <label className="text-xs text-[var(--color-stone)]">Target £<input value={f.targetRevenue} onChange={(e) => set('targetRevenue', e.target.value)} className={field} /></label>
             <label className="text-xs text-[var(--color-stone)]">Target bookings<input value={f.targetBookings} onChange={(e) => set('targetBookings', e.target.value)} className={field} /></label>
           </div>
@@ -139,7 +139,7 @@ export function CampaignEditor({ data, stats, baseUrl, canManage, spendSyncedAt 
                 <li key={l.label} className="text-xs">
                   <span className="font-medium text-[var(--color-ink)]">{l.label}</span>
                   <button onClick={() => navigator.clipboard?.writeText(l.url)} className="ml-2 text-[var(--color-gold)] hover:underline">copy</button>
-                  <span className="mt-0.5 block truncate font-mono text-[0.65rem] text-[var(--color-stone-soft)]">{l.url}</span>
+                  <span className="mt-0.5 block truncate font-mono text-[0.65rem] text-[var(--color-stone)]">{l.url}</span>
                 </li>
               ))}
             </ul>
@@ -153,7 +153,7 @@ export function CampaignEditor({ data, stats, baseUrl, canManage, spendSyncedAt 
 function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
-      <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone-soft)]">{label}</p>
+      <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{label}</p>
       <p className="mt-1 font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">{value}</p>
       {sub && <p className="text-[0.65rem] text-[var(--color-stone)]">{sub}</p>}
     </div>

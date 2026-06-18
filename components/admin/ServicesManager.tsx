@@ -83,7 +83,7 @@ function ImportPanel({ services, treatments }: { services: Service[]; treatments
       {open && (
         <div className="mt-4 space-y-4">
           <PriceListUpload treatments={treatments} onImported={() => router.refresh()} />
-          <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone-soft)]">Or paste a single block manually</p>
+          <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">Or paste a single block manually</p>
           <div className="flex flex-wrap items-end gap-2">
             <label className="text-xs text-[var(--color-stone)]">Import into<br />
               <select value={target} onChange={(e) => setTarget(e.target.value)} className={field}>
@@ -117,7 +117,7 @@ function ImportPanel({ services, treatments }: { services: Service[]; treatments
           {preview && preview.length > 0 && (
             <div className="max-h-64 overflow-y-auto rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white">
               <table className="w-full text-sm">
-                <thead><tr className="sticky top-0 bg-[var(--color-bone)] text-left text-xs uppercase text-[var(--color-stone-soft)]"><th scope="col" className="p-2">Variant</th><th scope="col" className="p-2">Min</th><th scope="col" className="p-2">Price</th><th scope="col" className="p-2">Courses</th></tr></thead>
+                <thead><tr className="sticky top-0 bg-[var(--color-bone)] text-left text-xs uppercase text-[var(--color-stone)]"><th scope="col" className="p-2">Variant</th><th scope="col" className="p-2">Min</th><th scope="col" className="p-2">Price</th><th scope="col" className="p-2">Courses</th></tr></thead>
                 <tbody>
                   {preview.map((v, i) => (
                     <tr key={i} className="border-t border-[var(--color-line)]">
@@ -180,7 +180,7 @@ function ServiceCard({ service }: { service: Service }) {
       <div className="flex items-center justify-between gap-3">
         <button onClick={() => setOpen((v) => !v)} className="text-left">
           <h3 className="font-[family-name:var(--font-display)] text-lg">{service.name}</h3>
-          <p className="text-xs text-[var(--color-stone-soft)]">{service.variants.length} variant(s) · {service.category} · {open ? 'hide' : 'show'}</p>
+          <p className="text-xs text-[var(--color-stone)]">{service.variants.length} variant(s) · {service.category} · {open ? 'hide' : 'show'}</p>
         </button>
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-1.5 text-xs text-[var(--color-stone)]">
@@ -206,7 +206,7 @@ function ServiceCard({ service }: { service: Service }) {
       {open && (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
-            <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">
+            <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]">
               <th scope="col" className="py-1 pr-2">Variant</th><th scope="col" className="px-2">Min</th><th scope="col" className="px-2">Price £</th><th scope="col" className="px-2">Cost £</th><th scope="col" className="px-2">Margin</th><th scope="col" className="px-2">Status</th><th scope="col" className="px-2"></th>
             </tr></thead>
             <tbody>
@@ -287,7 +287,7 @@ function VariantRow({ v }: { v: Variant }) {
               <p className="mb-2 text-xs text-[var(--color-stone)]">
                 Course / package prices for <span className="font-medium">{v.name}</span> — set the number of sessions and the total package price. The single-session price above ({money(single)}) is used when no package is chosen.
               </p>
-              {courses.length === 0 && <p className="mb-2 text-xs text-[var(--color-stone-soft)]">No packages yet — add one below.</p>}
+              {courses.length === 0 && <p className="mb-2 text-xs text-[var(--color-stone)]">No packages yet — add one below.</p>}
               <div className="space-y-1.5">
                 {courses.map((c, i) => {
                   const sess = Math.round(Number(c.sessions));
@@ -299,7 +299,7 @@ function VariantRow({ v }: { v: Variant }) {
                       <input value={c.sessions} onChange={(e) => setCourse(i, { sessions: e.target.value })} inputMode="numeric" placeholder="e.g. 6" className={`${field} w-16`} aria-label="Sessions" />
                       <span className="text-xs text-[var(--color-stone)]">sessions for £</span>
                       <input value={c.price} onChange={(e) => setCourse(i, { price: e.target.value })} inputMode="decimal" placeholder="total" className={`${field} w-24`} aria-label="Package price" />
-                      <span className="text-xs text-[var(--color-stone-soft)]">
+                      <span className="text-xs text-[var(--color-stone)]">
                         {perSession != null ? `= ${money(perSession)}/session${savePct != null && savePct > 0 ? ` · save ${savePct}%` : ''}` : ''}
                       </span>
                       <button onClick={() => removeCourse(i)} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
@@ -420,7 +420,7 @@ function OffersSection({ services, offers }: { services: Service[]; offers: Offe
             <li key={o.id} className="flex items-center justify-between gap-3 py-2 text-sm">
               <span>
                 <span className="font-medium">{o.name.replace(/\s*[—–-]+\s*£?\d+%?\s*off\s*$/i, '').trim() || o.name}</span>
-                <span className="text-[var(--color-stone-soft)]"> · {o.percentOff ? `${o.percentOff}% off` : `£${((o.amountOffPence ?? 0) / 100)} off`} · {o.scope === 'SERVICE' ? svcName(o.serviceId) : o.scope === 'VARIANT' ? 'one variant' : 'all services'}{o.endAt ? ` · ends ${new Date(o.endAt).toLocaleDateString('en-GB')}` : ''}</span>
+                <span className="text-[var(--color-stone)]"> · {o.percentOff ? `${o.percentOff}% off` : `£${((o.amountOffPence ?? 0) / 100)} off`} · {o.scope === 'SERVICE' ? svcName(o.serviceId) : o.scope === 'VARIANT' ? 'one variant' : 'all services'}{o.endAt ? ` · ends ${new Date(o.endAt).toLocaleDateString('en-GB')}` : ''}</span>
                 {o.promoted && <span className="ml-2 rounded-full bg-[var(--color-gold)]/15 px-2 py-0.5 text-[0.65rem] text-[var(--color-gold)]">promoted</span>}
               </span>
               <span className="flex items-center gap-3">

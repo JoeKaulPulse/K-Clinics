@@ -78,7 +78,7 @@ export function EditClientDetails({ client }: { client: EditableClient }) {
           <label className="block text-xs text-[var(--color-stone)]">Notes<textarea rows={2} className={`${f} mt-1`} value={d.notes} onChange={(e) => set('notes', e.target.value)} /></label>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={d.marketingOptIn} onChange={(e) => set('marketingOptIn', e.target.checked)} /> Marketing opt-in</label>
           {error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-3 py-2 text-sm">{error}</p>}
-          <p className="text-xs text-[var(--color-stone-soft)]">Changes are recorded in the admin-only activity log.</p>
+          <p className="text-xs text-[var(--color-stone)]">Changes are recorded in the admin-only activity log.</p>
           <div className="flex justify-end gap-3 pt-1">
             <button onClick={() => setOpen(false)} className="px-4 py-2 text-sm text-[var(--color-stone)]">Cancel</button>
             <button onClick={save} disabled={pending} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{pending ? 'Saving…' : 'Save changes'}</button>

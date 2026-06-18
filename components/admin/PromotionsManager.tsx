@@ -60,21 +60,21 @@ export function PromotionsManager({ universal, campaignBatches }: { universal: U
           <label className="flex items-center gap-2 self-end text-sm text-[var(--color-ink-soft)]"><input type="checkbox" checked={f.oncePerClient} onChange={(e) => set('oncePerClient', e.target.checked)} className="h-4 w-4 accent-[var(--color-gold)]" /> One use per client</label>
         </div>
         <button onClick={create} disabled={busy} className="mt-4 rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">Create code</button>
-        <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Leave “treatments” unset and it applies to everything. For per-recipient codes, use the discount fields on the Campaigns page.</p>
+        <p className="mt-2 text-xs text-[var(--color-stone)]">Leave “treatments” unset and it applies to everything. For per-recipient codes, use the discount fields on the Campaigns page.</p>
       </section>
 
       {/* Universal codes list */}
       <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
         <h2 className="mb-4 font-[family-name:var(--font-display)] text-xl">Universal codes</h2>
-        {universal.length === 0 ? <p className="text-sm text-[var(--color-stone-soft)]">No codes yet.</p> : (
+        {universal.length === 0 ? <p className="text-sm text-[var(--color-stone)]">No codes yet.</p> : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[680px] text-sm">
-              <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th scope="col" className="py-2">Code</th><th scope="col">Discount</th><th scope="col">Used</th><th scope="col">Window</th><th scope="col">Status</th><th scope="col"></th></tr></thead>
+              <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th scope="col" className="py-2">Code</th><th scope="col">Discount</th><th scope="col">Used</th><th scope="col">Window</th><th scope="col">Status</th><th scope="col"></th></tr></thead>
               <tbody>
                 {universal.map((p) => (
                   <tr key={p.id} className="border-t border-[var(--color-line)]">
-                    <td className="py-2"><span className="font-[family-name:var(--font-mono,monospace)] font-medium">{p.code}</span>{p.label && <span className="block text-xs text-[var(--color-stone-soft)]">{p.label}</span>}</td>
-                    <td>{value(p)}{p.treatmentSlugs.length ? <span className="block text-xs text-[var(--color-stone-soft)]">{p.treatmentSlugs.length} treatment(s)</span> : ''}</td>
+                    <td className="py-2"><span className="font-[family-name:var(--font-mono,monospace)] font-medium">{p.code}</span>{p.label && <span className="block text-xs text-[var(--color-stone)]">{p.label}</span>}</td>
+                    <td>{value(p)}{p.treatmentSlugs.length ? <span className="block text-xs text-[var(--color-stone)]">{p.treatmentSlugs.length} treatment(s)</span> : ''}</td>
                     <td>{p.redeemedCount}{p.maxRedemptions ? ` / ${p.maxRedemptions}` : ''}</td>
                     <td className="text-xs text-[var(--color-stone)]">{fmtDate(p.startsAt) || '—'} → {fmtDate(p.expiresAt) || 'no end'}</td>
                     <td><span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-medium uppercase ${p.active ? 'bg-emerald-100 text-emerald-800' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{p.active ? 'active' : 'off'}</span></td>

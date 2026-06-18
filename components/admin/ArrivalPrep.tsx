@@ -92,7 +92,7 @@ export function ArrivalPrep({ a }: { a: NextArrival }) {
 
         <div className="mt-4">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)]">Prep checklist</p>
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone)]">Prep checklist</p>
             <span className="text-xs tabular-nums text-[var(--color-stone)]">{readyCount}/{total} ready</span>
           </div>
           <ul className="space-y-1.5">
