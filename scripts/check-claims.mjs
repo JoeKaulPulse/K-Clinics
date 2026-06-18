@@ -73,7 +73,11 @@ if (process.argv.includes('--file-task') && findings.length) {
   const token = process.env.BOARD_QUEUE_TOKEN;
   if (!token) { console.error('\nNo BOARD_QUEUE_TOKEN — cannot file a build-board task.'); }
   else {
-    const detail = [...high, ...med].map((f) => `${f.sev} ${f.file}:${f.line} "${f.term}" — ${f.fix}`).join('\n');
+    // Only counts (numbers) + a static pointer go over the wire — never the
+    // scanned file contents/paths — so file data doesn't reach the network sink
+    // (clears the CodeQL "file data in outbound network request" flag) and we
+    // don't echo source snippets to the board. Run the scan locally for detail.
+    const detail = `${high.length} HIGH and ${med.length} MED marketing-claim flag(s) were found in public copy. Run \`npm run check:claims\` locally to see each file:line and a suggested rewrite, then reword and re-run until 0 HIGH.`;
     const body = { action: 'create', items: [{ type: 'TASK', title: `Marketing claims governance: ${high.length} HIGH / ${med.length} MED wording flags`, detail, urgency: high.length ? 'P0' : 'P2' }] };
     const r = await fetch(`${base}/api/build/queue`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: JSON.stringify(body) }).then((x) => x.json()).catch((e) => ({ ok: false, error: String(e) }));
     console.log('\nBuild-board task:', r.ok ? `created (${r.createdCount})` : `failed: ${r.error}`);
