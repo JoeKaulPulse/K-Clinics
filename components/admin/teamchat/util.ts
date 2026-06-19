@@ -1,6 +1,6 @@
 'use client';
 
-import { upload } from '@vercel/blob/client';
+import { uploadBlob } from '@/lib/upload-client';
 import type { DraftAttachment } from './types';
 
 export function initials(name: string): string {
@@ -39,15 +39,11 @@ export function attachmentKind(mime: string): DraftAttachment['kind'] {
   return 'FILE';
 }
 
-/** Upload a file straight to Vercel Blob via our signed-token route. */
+/** Upload a chat attachment (server-side route for normal files; client-direct
+ *  fallback only for files above the serverless size cap). Returns a draft. */
 export async function uploadFile(file: File): Promise<DraftAttachment> {
-  const safe = (file.name || 'file').replace(/[^a-zA-Z0-9.\-_]/g, '-').slice(0, 80);
-  const blob = await upload(`team-chat/${Date.now().toString(36)}-${safe}`, file, {
-    access: 'public',
-    handleUploadUrl: '/api/admin/team-chat/blob-token',
-    contentType: file.type || undefined,
-  });
-  return { kind: attachmentKind(file.type || ''), url: blob.url, name: file.name, mime: file.type, size: file.size };
+  const url = await uploadBlob(file, { folder: 'team-chat', clientUploadUrl: '/api/admin/team-chat/blob-token' });
+  return { kind: attachmentKind(file.type || ''), url, name: file.name, mime: file.type, size: file.size };
 }
 
 // Quick reactions shown on hover, and a fuller picker set.

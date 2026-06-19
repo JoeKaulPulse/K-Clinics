@@ -22,6 +22,7 @@ export async function GET(req: Request) {
   const op = url.searchParams.get('op') || 'channels';
   const chat = await import('@/lib/team-chat');
 
+  try {
   if (op === 'channels') {
     const [channels, roster] = await Promise.all([chat.listMyChannels(session.sub), chat.chatRoster()]);
     const totalUnread = channels.reduce((s, c) => s + (c.muted ? 0 : c.unread), 0);
@@ -48,6 +49,10 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, results: await chat.searchMessages(session.sub, url.searchParams.get('q') || '') });
   }
   return NextResponse.json({ ok: false, error: 'Unknown op' }, { status: 400 });
+  } catch (e) {
+    console.error('[team-chat] GET failed', (e as Error)?.message);
+    return NextResponse.json({ ok: false, error: 'Something went wrong loading chat.' }, { status: 200 });
+  }
 }
 
 export async function POST(req: Request) {

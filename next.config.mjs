@@ -19,7 +19,11 @@ const csp = [
   "font-src 'self' https://fonts.gstatic.com data:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "script-src 'self' 'unsafe-inline' https://js.stripe.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://maps.googleapis.com https://maps.gstatic.com https://connect.facebook.net",
-  "connect-src 'self' https://api.stripe.com https://m.stripe.network https://r.stripe.com https://challenges.cloudflare.com https://maps.googleapis.com https://blob.vercel-storage.com https://*.public.blob.vercel-storage.com https://*.sentry.io https://sentry.io https://connect.facebook.net https://graph.facebook.com",
+  // NB: the @vercel/blob *client* SDK performs client-direct uploads via
+  // https://vercel.com/api/blob (not the storage host directly), so vercel.com
+  // MUST be allowed here or every client-direct upload (team chat, academy PDFs,
+  // homework, build attachments) is CSP-blocked in the browser.
+  "connect-src 'self' https://api.stripe.com https://m.stripe.network https://r.stripe.com https://challenges.cloudflare.com https://maps.googleapis.com https://vercel.com https://blob.vercel-storage.com https://*.blob.vercel-storage.com https://*.public.blob.vercel-storage.com https://*.sentry.io https://sentry.io https://connect.facebook.net https://graph.facebook.com",
   "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com",
   "worker-src 'self' blob:",
   'upgrade-insecure-requests',
