@@ -169,9 +169,28 @@ behave the same anyway (the GUC is harmless when RLS is off).
   (all ✓), reads verified under RLS (GUC → 300 rows, no-GUC → 0), and the rollback
   block recovers reads. Flag overhead measured at ~0.9 ms/query (loopback). See the
   runbook's "Dress rehearsal" section.
+- Neon branch (`neon-KClinicsOS`) check — **policy mechanism re-validated on the real
+  branch, 2026-06-19**. The Claude sandbox's network policy blocks outbound Postgres
+  (port 5432 times out; 443 is open), so `prisma migrate deploy`/`db push` and the
+  pg-based scripts can't run here; the check was driven over 443 via Neon's serverless
+  (WebSocket) driver instead. Result on a throwaway probe table using the **exact**
+  policy + GUC contract (`set_config('app.tenant_id',$1,true)` /
+  `current_setting('app.tenant_id', true)`): **5/5** — tenant A reads only A, B only B,
+  no-GUC → 0 rows, `WITH CHECK` rejects a cross-tenant insert, cross-tenant UPDATE
+  affects 0 rows. The table and the test role were dropped; no residue.
+  - **Empirical confirmation of the role gotcha**: the branch's default `neondb_owner`
+    has `rolbypassrls = true`. Run as-is, the *identical* policy scored **0/5** — RLS
+    is entirely inert. The 5/5 pass required `SET ROLE` into a freshly created
+    `NOLOGIN NOBYPASSRLS` role. **Action for step 4/5: the production runtime must
+    connect as a dedicated non-owner `NOBYPASSRLS` role; if Accelerate connects as the
+    owner/bypass role, applying `0002` provides zero protection.** Confirming that role
+    (step 4) is therefore a hard gate on the cutover, not a formality.
 - Remaining before prod (the only parts needing the branch DB / owner): the
   **preview-app pass** — wire a preview with `ACADEMY_RLS=1` to an RLS-enabled branch
   to exercise the real `lib/db.ts` hook + the Accelerate pooled path and re-measure
   latency (step 3); confirm the role Accelerate connects as (step 4); then run the
   flag-first cutover with a PITR snapshot (step 5). The procedure, policy, role model
-  and rollback are all validated; what's left is executing it against real infra.
+  and rollback are all validated; what's left is executing it against real infra
+  (and, for full branch coverage of the real Academy tables, a runner with port-5432
+  egress — e.g. a preview/CI step or Neon's SQL-over-HTTP — since this sandbox can't
+  reach 5432).
