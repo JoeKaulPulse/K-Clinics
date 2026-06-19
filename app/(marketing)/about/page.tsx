@@ -11,6 +11,9 @@ import { CountUp } from '@/components/motion/CountUp';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
+// BLD-517: hourly ISR so these mostly-static pages are cached, not full SSR per request.
+export const revalidate = 3600;
+
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'About KClinics — Premium Aesthetics & Dentistry, Islington London',
   description:
