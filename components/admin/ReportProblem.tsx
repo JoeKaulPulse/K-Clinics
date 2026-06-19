@@ -54,6 +54,10 @@ export function ReportProblem() {
     } else { setError(r.error || 'Could not submit.'); setStatus('error'); }
   }
 
+  // The full-screen messages view has its own bottom-right composer; this floating
+  // button would overlap its send button (esp. on mobile), so hide it there.
+  if (pathname.startsWith('/admin/messages')) return null;
+
   return (
     <>
       <button onClick={() => setOpen(true)} className="fixed bottom-5 right-5 z-40 rounded-full bg-[var(--color-ink)] px-4 py-2.5 text-sm font-medium text-[var(--color-porcelain)] shadow-[var(--shadow-lift)] hover:bg-[var(--color-gold-deep)]">⚑ Report a problem</button>
