@@ -492,32 +492,45 @@ type Checked = { correct: boolean; correctIndices: number[]; explanation: string
 function QuizStep({ quiz, preview, onFinish }: { quiz: QuizView; preview: boolean; onFinish: (result: { passed: boolean; scorePct: number; newBadges: AwardedBadge[] }) => void }) {
   const [qi, setQi] = useState(0);
   const [selected, setSelected] = useState<number[]>([]);
+  const [text, setTextAns] = useState('');
   const [checked, setChecked] = useState<Checked | null>(null);
   const [showTip, setShowTip] = useState(false);
   const [busy, setBusy] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
-  const answersRef = useRef<Record<string, number[]>>({});
+  const answersRef = useRef<Record<string, number[] | string>>({});
   const [done, setDone] = useState<null | { scorePct: number; passed: boolean; newBadges: AwardedBadge[] }>(null);
 
   const q = quiz.questions[qi];
   const multi = q?.type === 'MULTI';
+  const isShort = q?.type === 'SHORT';
+  const survey = quiz.isSurvey;
   const last = qi === quiz.questions.length - 1;
+  const answered = isShort ? !!text.trim() : selected.length > 0;
 
   function toggle(oi: number) {
     if (checked) return;
     setSelected((cur) => (multi ? (cur.includes(oi) ? cur.filter((x) => x !== oi) : [...cur, oi]) : [oi]));
   }
+  function recordCurrent() { answersRef.current[q.id] = isShort ? text : selected; }
 
   async function check() {
-    if (!selected.length || checked) return;
-    answersRef.current[q.id] = selected;
+    if (!answered || checked) return;
+    recordCurrent();
     setBusy(true);
     try {
       let res: Checked;
-      if (q.correct !== undefined) {
+      if (isShort) {
+        if (q.acceptedAnswers !== undefined) {
+          const accepted = q.acceptedAnswers.map((s) => s.trim().toLowerCase());
+          res = { correct: !!text.trim() && accepted.includes(text.trim().toLowerCase()), correctIndices: [], explanation: q.explanation ?? null };
+        } else {
+          const r = await fetch('/api/academy/quiz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'check', quizId: quiz.id, questionId: q.id, answer: text }) }).then((x) => x.json());
+          res = { correct: !!r.correct, correctIndices: [], explanation: r.explanation ?? null };
+        }
+      } else if (q.correct !== undefined) {
         // Preview: answer key is present — grade locally.
-        const correctIndices = [...q.correct].sort();
-        const given = [...selected].sort();
+        const correctIndices = [...q.correct].sort((a, b) => a - b);
+        const given = [...selected].sort((a, b) => a - b);
         res = { correct: correctIndices.length === given.length && correctIndices.every((v, i) => v === given[i]), correctIndices, explanation: q.explanation ?? null };
       } else {
         const r = await fetch('/api/academy/quiz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'check', quizId: quiz.id, questionId: q.id, answer: selected }) }).then((x) => x.json());
@@ -530,11 +543,11 @@ function QuizStep({ quiz, preview, onFinish }: { quiz: QuizView; preview: boolea
   }
 
   async function next() {
-    if (!last) { setQi((i) => i + 1); setSelected([]); setChecked(null); setShowTip(false); return; }
+    if (!last) { setQi((i) => i + 1); setSelected([]); setTextAns(''); setChecked(null); setShowTip(false); return; }
     // Finish: record the attempt (learn) or compute locally (preview).
     setBusy(true);
     const localPct = Math.round((correctCount / quiz.questions.length) * 100);
-    let scorePct = localPct, passed = localPct >= quiz.passMark;
+    let scorePct = survey ? 100 : localPct, passed = survey ? true : localPct >= quiz.passMark;
     let newBadges: AwardedBadge[] = [];
     if (!preview) {
       try {
@@ -546,9 +559,24 @@ function QuizStep({ quiz, preview, onFinish }: { quiz: QuizView; preview: boolea
     setDone({ scorePct, passed, newBadges });
   }
 
-  function retry() { setQi(0); setSelected([]); setChecked(null); setShowTip(false); setCorrectCount(0); answersRef.current = {}; setDone(null); }
+  // Survey: no per-question grading — record the answer and move on.
+  function advanceSurvey() { if (!answered) return; recordCurrent(); next(); }
+
+  function retry() { setQi(0); setSelected([]); setTextAns(''); setChecked(null); setShowTip(false); setCorrectCount(0); answersRef.current = {}; setDone(null); }
 
   if (done) {
+    if (survey) {
+      return (
+        <div className="text-center">
+          <KMascot variant="pass" size={78} className="mx-auto" />
+          <h2 className="mt-5 font-[family-name:var(--font-display)] text-3xl">Thank you</h2>
+          <p className="mt-2 text-white/70">Your feedback has been recorded.</p>
+          <div className="mt-8 flex items-center justify-center gap-3">
+            <button onClick={() => onFinish({ passed: done.passed, scorePct: done.scorePct, newBadges: done.newBadges })} className="rounded-full bg-[var(--color-gold)] px-7 py-3 text-sm font-semibold text-[var(--color-ink)] hover:scale-[1.02]">Continue →</button>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="text-center">
         {done.passed ? (
@@ -571,30 +599,41 @@ function QuizStep({ quiz, preview, onFinish }: { quiz: QuizView; preview: boolea
   return (
     <div>
       <div className="flex items-center justify-between text-xs text-white/45">
-        <span className="uppercase tracking-[0.16em]">{quiz.title}</span>
+        <span className="uppercase tracking-[0.16em]">{quiz.title}{survey ? ' · survey' : ''}</span>
         <span className="tabular-nums">Question {qi + 1} / {quiz.questions.length}</span>
       </div>
       <h2 className="mt-4 font-[family-name:var(--font-display)] text-2xl leading-snug">{q.prompt}{multi && <span className="ml-2 align-middle text-xs font-normal text-white/45">(select all that apply)</span>}</h2>
       {q.imageUrl && /* eslint-disable-next-line @next/next/no-img-element */ <img src={q.imageUrl} alt="" className="mt-4 max-h-64 rounded-[var(--radius-md)]" />}
 
-      <div className="mt-6 space-y-2.5">
-        {q.options.map((opt, oi) => {
-          const chosen = selected.includes(oi);
-          const isC = checked?.correctIndices.includes(oi);
-          const cls = checked
-            ? isC ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/15' : chosen ? 'border-red-400/60 bg-red-400/10' : 'border-white/10 opacity-60'
-            : chosen ? 'border-white bg-white/10' : 'border-white/15 hover:border-white/40';
-          return (
-            <button key={oi} onClick={() => toggle(oi)} disabled={!!checked} className={`flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left text-sm transition-colors ${cls}`}>
-              <span className={`grid h-5 w-5 shrink-0 place-items-center ${multi ? 'rounded-[4px]' : 'rounded-full'} border text-[0.7rem] ${chosen ? 'border-white bg-white text-[var(--color-ink)]' : 'border-white/40'}`}>{chosen ? '✓' : ''}</span>
-              <span className="flex-1">{opt}</span>
-              {checked && isC && <span className="text-xs font-medium text-[var(--color-gold)]">✓</span>}
-            </button>
-          );
-        })}
-      </div>
+      {isShort ? (
+        <input
+          type="text"
+          value={text}
+          disabled={!!checked}
+          onChange={(e) => setTextAns(e.target.value)}
+          placeholder="Type your answer…"
+          className={`mt-6 w-full rounded-[var(--radius-md)] border bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/35 ${checked ? (checked.correct ? 'border-[var(--color-gold)]' : 'border-red-400/60') : 'border-white/20 focus:border-white/50 focus:outline-none'}`}
+        />
+      ) : (
+        <div className="mt-6 space-y-2.5">
+          {q.options.map((opt, oi) => {
+            const chosen = selected.includes(oi);
+            const isC = checked?.correctIndices.includes(oi);
+            const cls = checked
+              ? isC ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/15' : chosen ? 'border-red-400/60 bg-red-400/10' : 'border-white/10 opacity-60'
+              : chosen ? 'border-white bg-white/10' : 'border-white/15 hover:border-white/40';
+            return (
+              <button key={oi} onClick={() => toggle(oi)} disabled={!!checked} className={`flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left text-sm transition-colors ${cls}`}>
+                <span className={`grid h-5 w-5 shrink-0 place-items-center ${multi ? 'rounded-[4px]' : 'rounded-full'} border text-[0.7rem] ${chosen ? 'border-white bg-white text-[var(--color-ink)]' : 'border-white/40'}`}>{chosen ? '✓' : ''}</span>
+                <span className="flex-1">{opt}</span>
+                {checked && isC && <span className="text-xs font-medium text-[var(--color-gold)]">✓</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-      {q.tip && !checked && (
+      {q.tip && !checked && !survey && (
         <div className="mt-4">
           {showTip ? (
             <p className="rounded-[var(--radius-md)] border border-[var(--color-gold)]/25 bg-[var(--color-gold)]/8 px-4 py-2.5 text-sm text-white/85">💡 {q.tip}</p>
@@ -604,7 +643,7 @@ function QuizStep({ quiz, preview, onFinish }: { quiz: QuizView; preview: boolea
         </div>
       )}
 
-      {checked && (
+      {checked && !survey && (
         <div className={`mt-5 rounded-[var(--radius-lg)] border p-4 ${checked.correct ? 'border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10' : 'border-red-400/40 bg-red-400/10'}`}>
           <p className="font-semibold">{checked.correct ? '✓ Correct' : '✗ Not quite'}</p>
           {checked.explanation && <p className="mt-1 text-sm text-white/80">{checked.explanation}</p>}
@@ -612,10 +651,12 @@ function QuizStep({ quiz, preview, onFinish }: { quiz: QuizView; preview: boolea
       )}
 
       <div className="mt-7 flex justify-center border-t border-white/10 pt-6">
-        {checked ? (
+        {survey ? (
+          <button onClick={advanceSurvey} disabled={!answered || busy} className="rounded-full bg-[var(--color-gold)] px-8 py-3 text-sm font-semibold text-[var(--color-ink)] enabled:hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50">{busy ? '…' : last ? 'Finish →' : 'Continue →'}</button>
+        ) : checked ? (
           <button onClick={next} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-8 py-3 text-sm font-semibold text-[var(--color-ink)] hover:scale-[1.02] disabled:opacity-60">{busy ? '…' : last ? 'See result →' : 'Continue →'}</button>
         ) : (
-          <button onClick={check} disabled={!selected.length || busy} className="rounded-full bg-[var(--color-gold)] px-8 py-3 text-sm font-semibold text-[var(--color-ink)] enabled:hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50">{busy ? 'Checking…' : 'Check'}</button>
+          <button onClick={check} disabled={!answered || busy} className="rounded-full bg-[var(--color-gold)] px-8 py-3 text-sm font-semibold text-[var(--color-ink)] enabled:hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50">{busy ? 'Checking…' : 'Check'}</button>
         )}
       </div>
     </div>

@@ -20,8 +20,8 @@ export type LessonView = {
   keyPoints: string[]; objectives: string[]; studyTips: string[]; homework: string | null;
   examRefs: string[]; steps: unknown; citations: LinkRef[]; resources: LinkRef[]; pdfUrls: string[]; pdfNoDownload: string[]; requiresHomework: boolean; submission: HomeworkSubmissionView | null; done: boolean; locked: boolean;
 };
-export type QuizQuestionView = { id: string; order: number; prompt: string; type: string; options: string[]; tip: string | null; imageUrl: string | null; correct?: number[]; explanation?: string | null };
-export type QuizView = { id: string; title: string; passMark: number; questionCount: number; bestScore: number | null; passed: boolean; questions: QuizQuestionView[] };
+export type QuizQuestionView = { id: string; order: number; prompt: string; type: string; options: string[]; tip: string | null; imageUrl: string | null; correct?: number[]; acceptedAnswers?: string[]; explanation?: string | null };
+export type QuizView = { id: string; title: string; passMark: number; questionCount: number; bestScore: number | null; passed: boolean; timeLimitMin: number | null; maxAttempts: number | null; attemptsUsed: number; shuffleOptions: boolean; isSurvey: boolean; questions: QuizQuestionView[] };
 export type ModuleView = { id: string; title: string; summary: string | null; order: number; lessons: LessonView[]; quiz: QuizView | null; complete: boolean; lockedUntil: string | null };
 export type CourseLearning = {
   course: { id: string; slug: string; title: string; level: string | null; welcome: string | null; objectives: string[]; preCourseInfo: string | null };
@@ -34,6 +34,42 @@ export type CourseLearning = {
 const arr = (v: unknown): LinkRef[] => (Array.isArray(v) ? (v as LinkRef[]).filter((x) => x && x.label) : []);
 const attArr = (v: unknown): AttachmentRef[] => (Array.isArray(v) ? (v as AttachmentRef[]).filter((x) => x && x.label && x.url) : []);
 const strArr = (v: unknown): string[] => (Array.isArray(v) ? (v as string[]) : []);
+
+// BLD-529: a quiz pool draws N of the bank. The subset MUST be reproducible
+// server-side at grade time (otherwise the grader can't tell which questions were
+// issued and a client could submit the whole bank to inflate the score), yet we
+// keep no per-attempt record. So the subset is DETERMINISTIC per (student, quiz):
+// each learner gets a stable random draw, different learners get different draws,
+// and gradeQuiz / checkQuizAnswer recompute the exact same set. Display order can
+// still be shuffled freely (order doesn't affect grading).
+const poolActive = (total: number, poolSize: number | null | undefined): boolean => !!poolSize && poolSize > 0 && poolSize < total;
+const effectiveQuestionCount = (total: number, poolSize: number | null | undefined): number =>
+  poolActive(total, poolSize) ? poolSize! : total;
+
+/** Deterministic pooled subset of question ids for a seed (e.g. `${studentId}:${quizId}`). */
+function pooledIds(ids: string[], poolSize: number, seed: string): Set<string> {
+  const ranked = ids
+    .map((id) => ({ id, h: crypto.createHash('sha1').update(`${seed}:${id}`).digest('hex') }))
+    .sort((a, b) => (a.h < b.h ? -1 : a.h > b.h ? 1 : 0))
+    .slice(0, poolSize)
+    .map((x) => x.id);
+  return new Set(ranked);
+}
+
+/** The questions a learner is issued for a quiz (pooled subset, optionally shuffled
+ *  for display). Pass the same seed to gradeQuiz so grading matches what was shown. */
+function selectQuizQuestions<T extends { id: string }>(questions: T[], shuffle: boolean, poolSize: number | null | undefined, seed: string): T[] {
+  let arr = questions;
+  if (poolActive(questions.length, poolSize)) {
+    const keep = pooledIds(questions.map((q) => q.id), poolSize!, seed);
+    arr = questions.filter((q) => keep.has(q.id));
+  }
+  if (shuffle) {
+    arr = [...arr];
+    for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+  }
+  return arr;
+}
 
 /** Is the student allowed into a course's content? (paid / enrolled / completed) */
 export async function studentCanAccess(studentId: string, courseId: string): Promise<boolean> {
@@ -102,9 +138,11 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
   const posByLesson = new Map(playbackRows.map((p) => [p.lessonId, p.positionSec]));
   const subByLesson = new Map(homeworkRows.map((h) => [h.lessonId, { files: h.files, note: h.note, status: h.status as string, feedback: h.feedback }]));
   const bestByQuiz = new Map<string, { best: number; passed: boolean }>();
+  const attemptsByQuiz = new Map<string, number>();
   for (const a of attempts) {
     const cur = bestByQuiz.get(a.quizId);
     bestByQuiz.set(a.quizId, { best: Math.max(cur?.best ?? 0, a.scorePct), passed: (cur?.passed ?? false) || a.passed });
+    attemptsByQuiz.set(a.quizId, (attemptsByQuiz.get(a.quizId) ?? 0) + 1);
   }
   // BLD: per-cohort drip — locked modules are listed in the outline but their
   // content (body/video/quiz) is withheld until the release date.
@@ -136,13 +174,16 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
     });
     let quiz: QuizView | null = null;
     if (m.quiz) {
-      const b = bestByQuiz.get(m.quiz.id);
+      const qz = m.quiz;
+      const b = bestByQuiz.get(qz.id);
       totalUnits++; if (!isLocked && b?.passed) doneUnits++;
       // A locked module's quiz is withheld (no questions sent) until release.
       quiz = isLocked ? null : {
-        id: m.quiz.id, title: m.quiz.title, passMark: m.quiz.passMark, questionCount: m.quiz.questions.length,
+        id: qz.id, title: qz.title, passMark: qz.passMark, questionCount: effectiveQuestionCount(qz.questions.length, qz.poolSize),
         bestScore: b?.best ?? null, passed: b?.passed ?? false,
-        questions: m.quiz.questions.map((q) => ({ id: q.id, order: q.order, prompt: q.prompt, type: q.type, options: strArr(q.options), tip: q.tip, imageUrl: q.imageUrl })),
+        timeLimitMin: qz.timeLimitMin, maxAttempts: qz.maxAttempts, attemptsUsed: attemptsByQuiz.get(qz.id) ?? 0, shuffleOptions: qz.shuffleOptions, isSurvey: qz.isSurvey,
+        // Survey questions and SHORT questions carry no answer options to the learner.
+        questions: selectQuizQuestions(qz.questions, qz.shuffleQuestions, qz.poolSize, `${studentId}:${qz.id}`).map((q) => ({ id: q.id, order: q.order, prompt: q.prompt, type: q.type, options: q.type === 'SHORT' ? [] : strArr(q.options), tip: q.tip, imageUrl: q.imageUrl })),
       };
     }
     const complete = !isLocked && lessons.every((l) => l.done) && (!m.quiz || bestByQuiz.get(m.quiz.id)?.passed === true);
@@ -360,8 +401,9 @@ export type GradeResult = {
   newBadges?: { key: string; name: string; icon: string }[];
 };
 
-/** Grade a quiz submission server-side and record the attempt. */
-export async function gradeQuiz(studentId: string, quizId: string, answers: Record<string, number[]>): Promise<GradeResult> {
+/** Grade a quiz submission server-side and record the attempt. Handles surveys
+ *  (ungraded), short-answer (text-matched), question pools and attempt limits. */
+export async function gradeQuiz(studentId: string, quizId: string, answers: Record<string, number[] | string>): Promise<GradeResult> {
   const quiz = await db.quiz.findUnique({
     where: { id: quizId },
     include: { questions: { orderBy: { order: 'asc' } }, module: { select: { id: true, courseId: true } } },
@@ -371,19 +413,52 @@ export async function gradeQuiz(studentId: string, quizId: string, answers: Reco
   if ((await lockedModuleMap(studentId, quiz.module.courseId)).has(quiz.module.id)) return { ok: false, error: 'This module hasn’t been released yet.' };
   if (quiz.questions.length === 0) return { ok: false, error: 'No questions.' };
 
+  const tenantId = await currentTenantId();
+
+  // Attempt limit (counts every recorded attempt for this learner + quiz).
+  if (quiz.maxAttempts && quiz.maxAttempts > 0) {
+    const used = await db.quizAttempt.count({ where: { studentId, quizId } });
+    if (used >= quiz.maxAttempts) return { ok: false, error: 'You have used all your attempts for this assessment.' };
+  }
+
+  // Survey: ungraded — record a completed attempt and return without answer keys.
+  if (quiz.isSurvey) {
+    await db.quizAttempt.create({ data: { tenantId, studentId, quizId, scorePct: 100, passed: true, answers: answers as object } });
+    const { recordDailyTask } = await import('@/lib/academy-daily'); await recordDailyTask(studentId);
+    return { ok: true, scorePct: 100, passed: true, passMark: 0, results: [], newBadges: [] };
+  }
+
+  // Re-derive the EXACT subset this learner was issued (deterministic per
+  // student+quiz) and grade only those — ignoring any extra answers a client
+  // might submit, so a pool can't be gamed by answering the whole bank.
+  const issued = poolActive(quiz.questions.length, quiz.poolSize)
+    ? quiz.questions.filter((q) => pooledIds(quiz.questions.map((x) => x.id), quiz.poolSize!, `${studentId}:${quizId}`).has(q.id))
+    : quiz.questions;
+  const answeredCount = issued.filter((q) => q.id in answers).length;
+  if (answeredCount < issued.length) return { ok: false, error: 'Please answer every question.' };
+
   let correctCount = 0;
-  const results = quiz.questions.map((q) => {
-    const correctIndices = (Array.isArray(q.correct) ? (q.correct as number[]) : []).slice().sort();
-    const given = (answers[q.id] ?? []).slice().sort();
-    const correct = correctIndices.length === given.length && correctIndices.every((v, i) => v === given[i]);
+  const results = issued.map((q) => {
+    const id = q.id;
+    const ans = answers[id];
+    let correct: boolean;
+    let correctIndices: number[] = [];
+    if (q.type === 'SHORT') {
+      const accepted = (Array.isArray(q.acceptedAnswers) ? q.acceptedAnswers : []).map((s) => String(s).trim().toLowerCase());
+      const given = (typeof ans === 'string' ? ans : '').trim().toLowerCase();
+      correct = !!given && accepted.includes(given);
+    } else {
+      correctIndices = (Array.isArray(q.correct) ? (q.correct as number[]) : []).slice().sort((a, b) => a - b);
+      const given = (Array.isArray(ans) ? ans : []).slice().sort((a, b) => a - b);
+      correct = correctIndices.length === given.length && correctIndices.every((v, i) => v === given[i]);
+    }
     if (correct) correctCount++;
-    return { questionId: q.id, correct, correctIndices, explanation: q.explanation };
+    return { questionId: id, correct, correctIndices, explanation: q.explanation };
   });
 
-  const scorePct = Math.round((correctCount / quiz.questions.length) * 100);
+  const scorePct = issued.length ? Math.min(100, Math.round((correctCount / issued.length) * 100)) : 0;
   const passed = scorePct >= quiz.passMark;
   const priorPass = passed ? await db.quizAttempt.findFirst({ where: { studentId, quizId, passed: true }, select: { id: true } }) : null;
-  const tenantId = await currentTenantId();
   await db.quizAttempt.create({ data: { tenantId, studentId, quizId, scorePct, passed, answers: answers as object } });
   let newBadges: { key: string; name: string; icon: string }[] = [];
   if (passed && !priorPass) {
@@ -397,16 +472,27 @@ export async function gradeQuiz(studentId: string, quizId: string, answers: Reco
 /** Grade a SINGLE question for immediate (Duolingo-style) feedback. Verifies
  *  access. Does not record an attempt — the full quiz is recorded via gradeQuiz
  *  when the learner finishes. Reveals only this question's answer. */
-export async function checkQuizAnswer(studentId: string, quizId: string, questionId: string, answer: number[]): Promise<{ ok: boolean; correct?: boolean; correctIndices?: number[]; explanation?: string | null; error?: string }> {
+export async function checkQuizAnswer(studentId: string, quizId: string, questionId: string, answer: number[] | string): Promise<{ ok: boolean; correct?: boolean; correctIndices?: number[]; explanation?: string | null; error?: string }> {
   const quiz = await db.quiz.findUnique({
     where: { id: quizId },
-    select: { module: { select: { courseId: true } }, questions: { where: { id: questionId }, select: { correct: true, explanation: true } } },
+    select: { poolSize: true, module: { select: { courseId: true } }, questions: { select: { id: true, type: true, correct: true, acceptedAnswers: true, explanation: true } } },
   });
   if (!quiz || quiz.questions.length === 0) return { ok: false, error: 'Question not found.' };
   if (!(await studentCanAccess(studentId, quiz.module.courseId))) return { ok: false, error: 'Not enrolled.' };
-  const q = quiz.questions[0];
-  const correctIndices = (Array.isArray(q.correct) ? (q.correct as number[]) : []).slice().sort();
-  const given = (answer ?? []).slice().sort();
+  // For a pooled quiz, only reveal answers for the subset THIS learner was issued —
+  // otherwise the per-question feedback endpoint leaks the whole bank's answer key.
+  if (poolActive(quiz.questions.length, quiz.poolSize) && !pooledIds(quiz.questions.map((x) => x.id), quiz.poolSize!, `${studentId}:${quizId}`).has(questionId)) {
+    return { ok: false, error: 'Question not found.' };
+  }
+  const q = quiz.questions.find((x) => x.id === questionId);
+  if (!q) return { ok: false, error: 'Question not found.' };
+  if (q.type === 'SHORT') {
+    const accepted = (Array.isArray(q.acceptedAnswers) ? q.acceptedAnswers : []).map((s) => String(s).trim().toLowerCase());
+    const given = (typeof answer === 'string' ? answer : '').trim().toLowerCase();
+    return { ok: true, correct: !!given && accepted.includes(given), correctIndices: [], explanation: q.explanation };
+  }
+  const correctIndices = (Array.isArray(q.correct) ? (q.correct as number[]) : []).slice().sort((a, b) => a - b);
+  const given = (Array.isArray(answer) ? answer : []).slice().sort((a, b) => a - b);
   const correct = correctIndices.length === given.length && correctIndices.every((v, i) => v === given[i]);
   return { ok: true, correct, correctIndices, explanation: q.explanation };
 }
@@ -430,11 +516,14 @@ export async function getCoursePreview(courseId: string): Promise<CourseLearning
       keyPoints: strArr(l.keyPoints), objectives: strArr(l.objectives), studyTips: strArr(l.studyTips),
       homework: l.homework, examRefs: strArr(l.examRefs), steps: l.steps, citations: arr(l.citations), resources: arr(l.resources), pdfUrls: strArr(l.pdfUrls), pdfNoDownload: strArr(l.pdfNoDownload), requiresHomework: l.requiresHomework, submission: null, done: false, locked: false,
     }));
+    // Preview shows ALL questions (no pool/shuffle) WITH answer keys so the
+    // admin can verify content; settings are surfaced so the timer etc. preview too.
     const quiz: QuizView | null = m.quiz ? {
       id: m.quiz.id, title: m.quiz.title, passMark: m.quiz.passMark, questionCount: m.quiz.questions.length, bestScore: null, passed: false,
+      timeLimitMin: m.quiz.timeLimitMin, maxAttempts: m.quiz.maxAttempts, attemptsUsed: 0, shuffleOptions: m.quiz.shuffleOptions, isSurvey: m.quiz.isSurvey,
       questions: m.quiz.questions.map((q) => ({
-        id: q.id, order: q.order, prompt: q.prompt, type: q.type, options: strArr(q.options), tip: q.tip, imageUrl: q.imageUrl,
-        correct: (Array.isArray(q.correct) ? (q.correct as number[]) : []), explanation: q.explanation,
+        id: q.id, order: q.order, prompt: q.prompt, type: q.type, options: q.type === 'SHORT' ? [] : strArr(q.options), tip: q.tip, imageUrl: q.imageUrl,
+        correct: (Array.isArray(q.correct) ? (q.correct as number[]) : []), acceptedAnswers: strArr(q.acceptedAnswers), explanation: q.explanation,
       })),
     } : null;
     return { id: m.id, title: m.title, summary: m.summary, order: m.order, lessons, quiz, complete: false, lockedUntil: null };

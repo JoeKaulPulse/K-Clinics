@@ -54,10 +54,12 @@ export default async function CurriculumPage({ params }: { params: Promise<{ cou
       })),
       quiz: m.quiz ? {
         id: m.quiz.id, title: m.quiz.title, passMark: m.quiz.passMark,
+        timeLimitMin: m.quiz.timeLimitMin, maxAttempts: m.quiz.maxAttempts, shuffleQuestions: m.quiz.shuffleQuestions, shuffleOptions: m.quiz.shuffleOptions, poolSize: m.quiz.poolSize, isSurvey: m.quiz.isSurvey,
         questions: m.quiz.questions.map((q) => ({
           id: q.id, prompt: q.prompt, type: q.type,
           options: (q.options as string[] | null) ?? [],
           correct: (q.correct as number[] | null) ?? [],
+          acceptedAnswers: Array.isArray(q.acceptedAnswers) ? q.acceptedAnswers : [],
           explanation: q.explanation, tip: q.tip, imageUrl: q.imageUrl,
         })),
       } : null,

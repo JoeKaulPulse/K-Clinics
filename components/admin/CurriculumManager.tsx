@@ -15,8 +15,8 @@ const LESSON_TYPES: { value: string; label: string }[] = [
   { value: 'DOWNLOAD', label: 'Download' },
   { value: 'EMBED', label: 'Embed (iframe)' },
 ];
-type Question = { id: string; prompt: string; type: string; options: string[]; correct: number[]; explanation: string | null; tip: string | null; imageUrl: string | null };
-type Quiz = { id: string; title: string; passMark: number; questions: Question[] };
+type Question = { id: string; prompt: string; type: string; options: string[]; correct: number[]; acceptedAnswers: string[]; explanation: string | null; tip: string | null; imageUrl: string | null };
+type Quiz = { id: string; title: string; passMark: number; timeLimitMin: number | null; maxAttempts: number | null; shuffleQuestions: boolean; shuffleOptions: boolean; poolSize: number | null; isSurvey: boolean; questions: Question[] };
 type Module = { id: string; title: string; summary: string | null; lessons: Lesson[]; quiz: Quiz | null };
 type Course = { id: string; title: string; objectives: string[]; welcome: string | null; preCourseInfo: string | null; modules: Module[] };
 
@@ -304,11 +304,18 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
 function QuizBlock({ module: m, busy, act }: { module: Module; busy: boolean; act: Act }) {
   const [title, setTitle] = useState(m.quiz?.title ?? `${m.title} assessment`);
   const [passMark, setPassMark] = useState(m.quiz?.passMark ?? 70);
+  const [timeLimitMin, setTimeLimit] = useState<string>(m.quiz?.timeLimitMin ? String(m.quiz.timeLimitMin) : '');
+  const [maxAttempts, setMaxAttempts] = useState<string>(m.quiz?.maxAttempts ? String(m.quiz.maxAttempts) : '');
+  const [poolSize, setPoolSize] = useState<string>(m.quiz?.poolSize ? String(m.quiz.poolSize) : '');
+  const [shuffleQuestions, setShuffleQ] = useState(m.quiz?.shuffleQuestions ?? false);
+  const [shuffleOptions, setShuffleO] = useState(m.quiz?.shuffleOptions ?? false);
+  const [isSurvey, setIsSurvey] = useState(m.quiz?.isSurvey ?? false);
+  const settings = { timeLimitMin, maxAttempts, poolSize, shuffleQuestions, shuffleOptions, isSurvey };
   if (!m.quiz) {
     return (
       <div>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">Assessment</p>
-        <button onClick={() => act({ op: 'upsertQuiz', moduleId: m.id, title, passMark })} disabled={busy} className="text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add a quiz to this module</button>
+        <button onClick={() => act({ op: 'upsertQuiz', moduleId: m.id, title, passMark, ...settings })} disabled={busy} className="text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add a quiz to this module</button>
       </div>
     );
   }
@@ -319,12 +326,22 @@ function QuizBlock({ module: m, busy, act }: { module: Module; busy: boolean; ac
       <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3">
         <div className="flex flex-wrap items-end gap-3">
           <label className={`${label} flex-1`}>Quiz title<input className={`${field} mt-1`} value={title} onChange={(e) => setTitle(e.target.value)} /></label>
-          <label className={label}>Pass mark %<input type="number" min={1} max={100} className={`${field} mt-1 w-24`} value={passMark} onChange={(e) => setPassMark(Number(e.target.value))} /></label>
-          <button onClick={() => act({ op: 'upsertQuiz', moduleId: m.id, title, passMark })} disabled={busy} className={btnDark}>Save</button>
+          <label className={label}>Pass mark %<input type="number" min={1} max={100} disabled={isSurvey} className={`${field} mt-1 w-24 ${isSurvey ? 'opacity-50' : ''}`} value={passMark} onChange={(e) => setPassMark(Number(e.target.value))} /></label>
+          <button onClick={() => act({ op: 'upsertQuiz', moduleId: m.id, title, passMark, ...settings })} disabled={busy} className={btnDark}>Save</button>
           <button onClick={() => { if (confirm('Delete this quiz and its questions?')) act({ op: 'deleteQuiz', id: q.id }); }} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline">Delete quiz</button>
         </div>
+        {/* BLD-529 assessment settings */}
+        <div className="mt-3 grid gap-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3 sm:grid-cols-3">
+          <label className={label}>Time limit (min, blank = none)<input type="number" min={1} className={`${field} mt-1`} value={timeLimitMin} onChange={(e) => setTimeLimit(e.target.value)} placeholder="e.g. 20" /></label>
+          <label className={label}>Max attempts (blank = unlimited)<input type="number" min={1} className={`${field} mt-1`} value={maxAttempts} onChange={(e) => setMaxAttempts(e.target.value)} placeholder="e.g. 3" /></label>
+          <label className={label}>Question pool (blank = all)<input type="number" min={1} className={`${field} mt-1`} value={poolSize} onChange={(e) => setPoolSize(e.target.value)} placeholder={`draw N of ${q.questions.length}`} /></label>
+          <label className="flex items-center gap-2 text-xs text-[var(--color-stone)]"><input type="checkbox" checked={shuffleQuestions} onChange={(e) => setShuffleQ(e.target.checked)} /> Shuffle question order</label>
+          <label className="flex items-center gap-2 text-xs text-[var(--color-stone)]"><input type="checkbox" checked={shuffleOptions} onChange={(e) => setShuffleO(e.target.checked)} /> Shuffle answer options</label>
+          <label className="flex items-center gap-2 text-xs text-[var(--color-stone)]"><input type="checkbox" checked={isSurvey} onChange={(e) => setIsSurvey(e.target.checked)} /> Survey (ungraded — no pass/fail)</label>
+          <p className="text-[0.7rem] text-[var(--color-stone)] sm:col-span-3">Click <strong>Save</strong> above to apply these settings.</p>
+        </div>
         <div className="mt-3 space-y-2">
-          {q.questions.map((qq, qi) => <QuestionRow key={qq.id} q={qq} index={qi} total={q.questions.length} busy={busy} act={act} ids={q.questions.map((x) => x.id)} />)}
+          {q.questions.map((qq, qi) => <QuestionRow key={qq.id} q={qq} index={qi} total={q.questions.length} busy={busy} act={act} ids={q.questions.map((x) => x.id)} isSurvey={isSurvey} />)}
         </div>
         <button onClick={() => act({ op: 'createQuestion', quizId: q.id })} disabled={busy} className="mt-2 text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add question</button>
       </div>
@@ -332,7 +349,7 @@ function QuizBlock({ module: m, busy, act }: { module: Module; busy: boolean; ac
   );
 }
 
-function QuestionRow({ q, index, total, busy, act, ids }: { q: Question; index: number; total: number; busy: boolean; act: Act; ids: string[] }) {
+function QuestionRow({ q, index, total, busy, act, ids, isSurvey = false }: { q: Question; index: number; total: number; busy: boolean; act: Act; ids: string[]; isSurvey?: boolean }) {
   const [open, setOpen] = useState(false);
   const [prompt, setPrompt] = useState(q.prompt);
   const [type, setType] = useState(q.type);
@@ -340,6 +357,7 @@ function QuestionRow({ q, index, total, busy, act, ids }: { q: Question; index: 
   const [tip, setTip] = useState(q.tip ?? '');
   const [options, setOptions] = useState<string[]>(q.options.length ? q.options : ['', '']);
   const [correct, setCorrect] = useState<number[]>(q.correct);
+  const [acceptedAnswers, setAcceptedAnswers] = useState(listToText(q.acceptedAnswers ?? []));
   const [imageUrl, setImageUrl] = useState(q.imageUrl ?? '');
   const [uploadingImg, setUploadingImg] = useState(false);
 
@@ -387,12 +405,18 @@ function QuestionRow({ q, index, total, busy, act, ids }: { q: Question; index: 
                 <option value="SINGLE">Single answer</option>
                 <option value="MULTI">Multiple answers</option>
                 <option value="TRUEFALSE">True / False</option>
+                <option value="SHORT">Short answer (typed)</option>
               </select>
             </label>
-            <span className="self-end pb-2 text-xs text-[var(--color-stone)]">{type === 'MULTI' ? 'Tick all correct answers' : 'Select the one correct answer'}</span>
+            <span className="self-end pb-2 text-xs text-[var(--color-stone)]">{type === 'SHORT' ? 'Learner types an answer' : type === 'MULTI' ? 'Tick all correct answers' : 'Select the one correct answer'}</span>
           </div>
+          {type === 'SHORT' ? (
+            <label className={label}>Accepted answers (one per line — a typed answer matching any of these, ignoring case, is marked correct)
+              <textarea rows={3} className={`${field} mt-1`} value={acceptedAnswers} onChange={(e) => setAcceptedAnswers(e.target.value)} placeholder={'epidermis\nthe epidermis'} />
+            </label>
+          ) : (
           <div>
-            <p className={label}>Options</p>
+            <p className={label}>Options{isSurvey && <span className="ml-2 font-normal normal-case text-[var(--color-stone)]">(survey — the “correct” tick is ignored)</span>}</p>
             <div className="mt-1 space-y-2">
               {options.map((o, i) => (
                 <div key={i} className="flex items-center gap-2">
@@ -404,6 +428,7 @@ function QuestionRow({ q, index, total, busy, act, ids }: { q: Question; index: 
             </div>
             {type !== 'TRUEFALSE' && <button onClick={addOpt} className="mt-2 text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add option</button>}
           </div>
+          )}
           <div>
             <p className={label}>Image (optional — a picture shown with the question)</p>
             {imageUrl && (
@@ -420,7 +445,7 @@ function QuestionRow({ q, index, total, busy, act, ids }: { q: Question; index: 
           </div>
           <label className={label}>Hint (optional — a nudge the learner can reveal before answering)<input className={`${field} mt-1`} value={tip} onChange={(e) => setTip(e.target.value)} placeholder="Think about which layer has no blood supply." /></label>
           <label className={label}>Explanation (shown after answering)<textarea rows={2} className={`${field} mt-1`} value={explanation} onChange={(e) => setExplanation(e.target.value)} /></label>
-          <button onClick={() => act({ op: 'updateQuestion', id: q.id, prompt, type, options, correct, explanation, tip, imageUrl })} disabled={busy} className={btnDark}>Save question</button>
+          <button onClick={() => act({ op: 'updateQuestion', id: q.id, prompt, type, options, correct, acceptedAnswers: textToList(acceptedAnswers), explanation, tip, imageUrl })} disabled={busy} className={btnDark}>Save question</button>
         </div>
       )}
     </div>

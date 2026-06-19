@@ -9,6 +9,8 @@ export const runtime = 'nodejs';
 // (LessonProgress/QuizAttempt rows are only removed if the parent is deleted).
 
 const num = (v: unknown, d = 0) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? n : d; };
+// BLD-529: optional positive int (blank/0/invalid → null), for quiz time/attempts/pool.
+const optInt = (v: unknown): number | null => { if (v === '' || v == null) return null; const n = Math.round(Number(v)); return Number.isFinite(n) && n > 0 ? n : null; };
 const str = (v: unknown) => (typeof v === 'string' ? v : '');
 const linkArr = (v: unknown) => (Array.isArray(v) ? (v as { label?: unknown; url?: unknown }[]).map((x) => ({ label: str(x?.label).slice(0, 160), url: str(x?.url).slice(0, 500) })).filter((x) => x.label && x.url) : []);
 const strList = (v: unknown) => (Array.isArray(v) ? (v as unknown[]).map((x) => str(x).slice(0, 300)).filter(Boolean) : []);
@@ -131,7 +133,16 @@ export async function POST(req: Request) {
     // ── Quiz ─────────────────────────────────────────────────────────────────
     case 'upsertQuiz': {
       if (!b.moduleId) return bad();
-      const data = { title: str(b.title).slice(0, 160) || 'Module assessment', passMark: Math.min(100, Math.max(1, num(b.passMark, 70))) };
+      const data = {
+        title: str(b.title).slice(0, 160) || 'Module assessment',
+        passMark: Math.min(100, Math.max(1, num(b.passMark, 70))),
+        timeLimitMin: optInt(b.timeLimitMin),
+        maxAttempts: optInt(b.maxAttempts),
+        shuffleQuestions: !!b.shuffleQuestions,
+        shuffleOptions: !!b.shuffleOptions,
+        poolSize: optInt(b.poolSize),
+        isSurvey: !!b.isSurvey,
+      };
       const existing = await db.quiz.findUnique({ where: { moduleId: String(b.moduleId) }, select: { id: true } });
       if (existing) { await db.quiz.update({ where: { id: existing.id }, data }); return ok({ id: existing.id }); }
       const q = await db.quiz.create({ data: { ...data, tenantId, moduleId: String(b.moduleId) } });
@@ -152,14 +163,22 @@ export async function POST(req: Request) {
     }
     case 'updateQuestion': {
       if (!b.id) return bad();
-      const type = ['SINGLE', 'MULTI', 'TRUEFALSE'].includes(str(b.type)) ? str(b.type) : 'SINGLE';
+      const type = ['SINGLE', 'MULTI', 'TRUEFALSE', 'SHORT'].includes(str(b.type)) ? str(b.type) : 'SINGLE';
+      const common = { prompt: str(b.prompt).slice(0, 600), type, explanation: str(b.explanation).slice(0, 600) || null, tip: str(b.tip).slice(0, 400) || null, imageUrl: str(b.imageUrl).slice(0, 500) || null };
+      // SHORT: text-matched, no options/correct — needs one or more accepted answers.
+      if (type === 'SHORT') {
+        const acceptedAnswers = (Array.isArray(b.acceptedAnswers) ? (b.acceptedAnswers as unknown[]).map((a) => str(a).slice(0, 200).trim()).filter(Boolean) : []);
+        if (acceptedAnswers.length < 1) return bad('Add at least one accepted answer.');
+        await db.quizQuestion.update({ where: { id: String(b.id) }, data: { ...common, options: [], correct: [], acceptedAnswers } });
+        return ok();
+      }
       const options = Array.isArray(b.options) ? (b.options as unknown[]).map((o) => str(o).slice(0, 300)).filter(Boolean) : [];
       let correct = Array.isArray(b.correct) ? (b.correct as unknown[]).map((c) => num(c)).filter((i) => i >= 0 && i < options.length) : [];
       correct = [...new Set(correct)].sort((x, y) => x - y);
       if (options.length < 2) return bad('Add at least two options.');
       if (correct.length < 1) return bad('Mark at least one correct answer.');
       if ((type === 'SINGLE' || type === 'TRUEFALSE') && correct.length !== 1) return bad('Single-answer questions need exactly one correct option.');
-      await db.quizQuestion.update({ where: { id: String(b.id) }, data: { prompt: str(b.prompt).slice(0, 600), type, options, correct, explanation: str(b.explanation).slice(0, 600) || null, tip: str(b.tip).slice(0, 400) || null, imageUrl: str(b.imageUrl).slice(0, 500) || null } });
+      await db.quizQuestion.update({ where: { id: String(b.id) }, data: { ...common, options, correct, acceptedAnswers: [] } });
       return ok();
     }
     case 'deleteQuestion': {
