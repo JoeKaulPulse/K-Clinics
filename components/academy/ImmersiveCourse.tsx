@@ -8,6 +8,7 @@ import { Illustration, matchIllustration, type IlloKey, type IlloLevel } from '@
 import { AmbientBackdrop } from '@/components/academy/AmbientBackdrop';
 import { ExplainerPlayer } from '@/components/academy/ExplainerPlayer';
 import { HomeworkPanel } from '@/components/academy/HomeworkPanel';
+import { kindLabel } from '@/components/academy/attachment-kinds';
 import { academyLevel } from '@/lib/academy-levels';
 import { isMascotMuted, setMascotMuted } from '@/components/academy/mascotVoice';
 import type { CourseLearning, LessonView, QuizView } from '@/lib/lms';
@@ -327,7 +328,7 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
                 <a href={a.url} download target="_blank" rel="noreferrer" className="flex items-center gap-2.5 text-sm text-white/80 transition-colors hover:text-[var(--color-gold)]">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0 text-[var(--color-gold)]/70"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
                   <span className="truncate">{a.label}</span>
-                  <span className="ml-auto shrink-0 text-[0.65rem] text-white/30">Download</span>
+                  <span className="ml-auto shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[0.6rem] uppercase tracking-wide text-white/50">{kindLabel(a.kind)}</span>
                 </a>
               </li>
             ))}

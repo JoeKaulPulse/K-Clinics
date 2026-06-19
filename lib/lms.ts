@@ -10,7 +10,7 @@ import { escapeHtml } from '@/lib/sanitize';
 // server: the player receives questions without them; grading happens here.
 
 export type LinkRef = { label: string; url: string };
-export type AttachmentRef = { label: string; url: string; sizeBytes?: number };
+export type AttachmentRef = { label: string; url: string; sizeBytes?: number; kind?: string };
 export type LessonType = 'TEXT' | 'VIDEO' | 'AUDIO' | 'PDF' | 'DOWNLOAD' | 'EMBED';
 export type HomeworkSubmissionView = { files: string[]; note: string | null; status: string; feedback: string | null };
 export type LessonView = {

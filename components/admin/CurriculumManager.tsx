@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ATTACHMENT_KINDS, DEFAULT_KIND } from '@/components/academy/attachment-kinds';
 
 type Link = { label: string; url: string };
-type Attachment = { label: string; url: string; sizeBytes?: number };
+type Attachment = { label: string; url: string; sizeBytes?: number; kind?: string };
 type Lesson = { id: string; title: string; type: string; durationMin: number | null; minSeconds: number | null; videoUrl: string | null; audioUrl: string | null; embedUrl: string | null; attachments: Attachment[]; imageUrl: string | null; body: string; keyPoints: string[]; objectives: string[]; studyTips: string[]; homework: string | null; examRefs: string[]; citations: Link[]; resources: Link[]; pdfUrls: string[]; pdfNoDownload: string[]; requiresHomework: boolean };
 const LESSON_TYPES: { value: string; label: string }[] = [
   { value: 'TEXT', label: 'Text / reading' },
@@ -167,7 +168,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
     try {
       const url = await putFile(file, 'academy/files');
       const label = file.name.replace(/^\d+-/, '');
-      const updated = { ...f, attachments: [...f.attachments, { label, url, sizeBytes: file.size }] };
+      const updated = { ...f, attachments: [...f.attachments, { label, url, sizeBytes: file.size, kind: DEFAULT_KIND }] };
       setF(updated);
       await act(lessonSavePayload(updated));
     }
@@ -274,17 +275,21 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
             </div>
           </div>
           <div>
-            <p className={`${label} mb-1.5`}>Downloadable files (any type — learners download these)</p>
+            <p className={`${label} mb-1.5`}>Lesson files &amp; homework (any file type — learners download these)</p>
+            <p className="mb-2 text-xs text-[var(--color-stone)]">Upload a file, then pick what it is (e.g. <strong>Homework</strong> or <strong>Lesson material</strong>) so learners see at a glance what each one is for.</p>
             <div className="space-y-1.5">
               {f.attachments.map((a, i) => (
-                <div key={`${a.url}-${i}`} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-xs">
-                  <input className={`${field} flex-1`} value={a.label} onChange={(e) => setF((s) => ({ ...s, attachments: s.attachments.map((x, j) => j === i ? { ...x, label: e.target.value } : x) }))} placeholder="File label shown to learner" />
+                <div key={`${a.url}-${i}`} className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-xs">
+                  <select value={a.kind ?? DEFAULT_KIND} onChange={(e) => setF((s) => ({ ...s, attachments: s.attachments.map((x, j) => j === i ? { ...x, kind: e.target.value } : x) }))} className={`${field} shrink-0`} aria-label="File type">
+                    {ATTACHMENT_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
+                  </select>
+                  <input className={`${field} min-w-[10rem] flex-1`} value={a.label} onChange={(e) => setF((s) => ({ ...s, attachments: s.attachments.map((x, j) => j === i ? { ...x, label: e.target.value } : x) }))} placeholder="File label shown to learner" />
                   <a href={a.url} target="_blank" rel="noreferrer" className="shrink-0 text-[var(--color-gold)] hover:underline">View</a>
                   <button type="button" onClick={() => setF((s) => ({ ...s, attachments: s.attachments.filter((_, j) => j !== i) }))} className="shrink-0 text-[var(--color-blush)] hover:underline">Remove</button>
                 </div>
               ))}
               <label className={`inline-flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-line)] px-3 py-1.5 text-xs ${uploadingFile ? 'opacity-60' : 'hover:border-[var(--color-gold)]'}`}>
-                {uploadingFile ? 'Uploading...' : '+ Attach file'}
+                {uploadingFile ? 'Uploading...' : '+ Attach a file (material or homework)'}
                 <input type="file" className="hidden" disabled={uploadingFile} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadAttachment(file); e.currentTarget.value = ''; }} />
               </label>
             </div>

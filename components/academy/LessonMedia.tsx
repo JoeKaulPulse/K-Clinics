@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import type { LessonView, AttachmentRef } from '@/lib/lms';
+import { ATTACHMENT_KINDS, kindLabel, DEFAULT_KIND } from '@/components/academy/attachment-kinds';
 
 // BLD-529: type-aware primary media for a lesson — native uploaded video/audio
 // (with resume + auto-complete), YouTube/Vimeo embeds, third-party iframe embeds,
@@ -80,21 +81,36 @@ function fmtSize(bytes?: number): string {
   return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
+function DownloadLink({ a }: { a: AttachmentRef }) {
+  return (
+    <a href={a.url} download target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-[var(--color-ink-soft)] link-underline">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+      {a.label}{fmtSize(a.sizeBytes) ? <span className="text-[var(--color-stone)]"> · {fmtSize(a.sizeBytes)}</span> : null} ↓
+    </a>
+  );
+}
+
+// Grouped by file type (Lesson material / Homework / …) so learners see at a
+// glance what each file is for. Unknown/absent kinds fall under "Lesson material".
 export function Downloads({ items }: { items: AttachmentRef[] }) {
   if (!items.length) return null;
+  const order = ATTACHMENT_KINDS.map((k) => k.value) as string[];
+  const groups = order
+    .map((kind) => ({ kind, files: items.filter((a) => (a.kind && order.includes(a.kind) ? a.kind : DEFAULT_KIND) === kind) }))
+    .filter((g) => g.files.length);
   return (
     <div className="mt-7 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5">
-      <p className="eyebrow mb-3">Downloads</p>
-      <ul className="space-y-2">
-        {items.map((a, i) => (
-          <li key={i}>
-            <a href={a.url} download target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-[var(--color-ink-soft)] link-underline">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-              {a.label}{fmtSize(a.sizeBytes) ? <span className="text-[var(--color-stone)]"> · {fmtSize(a.sizeBytes)}</span> : null} ↓
-            </a>
-          </li>
+      <p className="eyebrow mb-3">Lesson files</p>
+      <div className="space-y-4">
+        {groups.map((g) => (
+          <div key={g.kind}>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">{kindLabel(g.kind)}</p>
+            <ul className="space-y-2">
+              {g.files.map((a, i) => <li key={i}><DownloadLink a={a} /></li>)}
+            </ul>
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }

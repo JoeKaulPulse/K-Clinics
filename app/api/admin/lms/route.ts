@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
+import { normalizeKind } from '@/components/academy/attachment-kinds';
 
 export const runtime = 'nodejs';
 
@@ -28,8 +29,8 @@ type ReviewStatusValue = 'PENDING' | 'PUBLISHED' | 'HIDDEN';
 // unpublish a live review on a malformed payload).
 const reviewStatus = (v: unknown): ReviewStatusValue | null => { const s = str(v).toUpperCase(); return s === 'PUBLISHED' || s === 'HIDDEN' || s === 'PENDING' ? s : null; };
 const attachmentArr = (v: unknown) => (Array.isArray(v)
-  ? (v as { label?: unknown; url?: unknown; sizeBytes?: unknown }[])
-      .map((x) => ({ label: str(x?.label).slice(0, 200), url: str(x?.url).slice(0, 1000).trim(), sizeBytes: Number.isFinite(Number(x?.sizeBytes)) && Number(x?.sizeBytes) > 0 ? Math.round(Number(x?.sizeBytes)) : undefined }))
+  ? (v as { label?: unknown; url?: unknown; sizeBytes?: unknown; kind?: unknown }[])
+      .map((x) => ({ label: str(x?.label).slice(0, 200), url: str(x?.url).slice(0, 1000).trim(), sizeBytes: Number.isFinite(Number(x?.sizeBytes)) && Number(x?.sizeBytes) > 0 ? Math.round(Number(x?.sizeBytes)) : undefined, kind: normalizeKind(str(x?.kind)) }))
       .filter((x) => x.label && x.url && isHttpUrl(x.url))
   : []);
 
