@@ -40,7 +40,9 @@ export default async function CurriculumPage({ params }: { params: Promise<{ cou
     modules: course.modules.map((m) => ({
       id: m.id, title: m.title, summary: m.summary,
       lessons: m.lessons.map((l) => ({
-        id: l.id, title: l.title, durationMin: l.durationMin, minSeconds: l.minSeconds, videoUrl: l.videoUrl, imageUrl: l.imageUrl,
+        id: l.id, title: l.title, type: l.type, durationMin: l.durationMin, minSeconds: l.minSeconds, videoUrl: l.videoUrl, audioUrl: l.audioUrl, embedUrl: l.embedUrl,
+        attachments: Array.isArray(l.attachments) ? (l.attachments as { label: string; url: string; sizeBytes?: number; kind?: string }[]) : [],
+        imageUrl: l.imageUrl,
         body: l.body, keyPoints: Array.isArray(l.keyPoints) ? l.keyPoints : [],
         objectives: Array.isArray(l.objectives) ? l.objectives : [],
         studyTips: Array.isArray(l.studyTips) ? l.studyTips : [],
@@ -52,10 +54,12 @@ export default async function CurriculumPage({ params }: { params: Promise<{ cou
       })),
       quiz: m.quiz ? {
         id: m.quiz.id, title: m.quiz.title, passMark: m.quiz.passMark,
+        timeLimitMin: m.quiz.timeLimitMin, maxAttempts: m.quiz.maxAttempts, shuffleQuestions: m.quiz.shuffleQuestions, shuffleOptions: m.quiz.shuffleOptions, poolSize: m.quiz.poolSize, isSurvey: m.quiz.isSurvey,
         questions: m.quiz.questions.map((q) => ({
           id: q.id, prompt: q.prompt, type: q.type,
           options: (q.options as string[] | null) ?? [],
           correct: (q.correct as number[] | null) ?? [],
+          acceptedAnswers: Array.isArray(q.acceptedAnswers) ? q.acceptedAnswers : [],
           explanation: q.explanation, tip: q.tip, imageUrl: q.imageUrl,
         })),
       } : null,

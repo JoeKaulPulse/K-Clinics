@@ -2,11 +2,21 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ATTACHMENT_KINDS, DEFAULT_KIND } from '@/components/academy/attachment-kinds';
 
 type Link = { label: string; url: string };
-type Lesson = { id: string; title: string; durationMin: number | null; minSeconds: number | null; videoUrl: string | null; imageUrl: string | null; body: string; keyPoints: string[]; objectives: string[]; studyTips: string[]; homework: string | null; examRefs: string[]; citations: Link[]; resources: Link[]; pdfUrls: string[]; pdfNoDownload: string[]; requiresHomework: boolean };
-type Question = { id: string; prompt: string; type: string; options: string[]; correct: number[]; explanation: string | null; tip: string | null; imageUrl: string | null };
-type Quiz = { id: string; title: string; passMark: number; questions: Question[] };
+type Attachment = { label: string; url: string; sizeBytes?: number; kind?: string };
+type Lesson = { id: string; title: string; type: string; durationMin: number | null; minSeconds: number | null; videoUrl: string | null; audioUrl: string | null; embedUrl: string | null; attachments: Attachment[]; imageUrl: string | null; body: string; keyPoints: string[]; objectives: string[]; studyTips: string[]; homework: string | null; examRefs: string[]; citations: Link[]; resources: Link[]; pdfUrls: string[]; pdfNoDownload: string[]; requiresHomework: boolean };
+const LESSON_TYPES: { value: string; label: string }[] = [
+  { value: 'TEXT', label: 'Text / reading' },
+  { value: 'VIDEO', label: 'Video' },
+  { value: 'AUDIO', label: 'Audio' },
+  { value: 'PDF', label: 'PDF' },
+  { value: 'DOWNLOAD', label: 'Download' },
+  { value: 'EMBED', label: 'Embed (iframe)' },
+];
+type Question = { id: string; prompt: string; type: string; options: string[]; correct: number[]; acceptedAnswers: string[]; explanation: string | null; tip: string | null; imageUrl: string | null };
+type Quiz = { id: string; title: string; passMark: number; timeLimitMin: number | null; maxAttempts: number | null; shuffleQuestions: boolean; shuffleOptions: boolean; poolSize: number | null; isSurvey: boolean; questions: Question[] };
 type Module = { id: string; title: string; summary: string | null; lessons: Lesson[]; quiz: Quiz | null };
 type Course = { id: string; title: string; objectives: string[]; welcome: string | null; preCourseInfo: string | null; modules: Module[] };
 
@@ -112,11 +122,13 @@ function ModuleCard({ module: m, index, total, busy, act, onMove }: { module: Mo
 
 function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: Lesson; index: number; total: number; busy: boolean; act: Act; lessonIds: string[] }) {
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ title: l.title, durationMin: l.durationMin ?? '', minSeconds: l.minSeconds ?? '', videoUrl: l.videoUrl ?? '', imageUrl: l.imageUrl ?? '', body: l.body, keyPoints: listToText(l.keyPoints), objectives: listToText(l.objectives), studyTips: listToText(l.studyTips), homework: l.homework ?? '', examRefs: listToText(l.examRefs), citations: linksToText(l.citations), resources: linksToText(l.resources), pdfUrls: l.pdfUrls, pdfNoDownload: l.pdfNoDownload ?? [], requiresHomework: l.requiresHomework });
+  const [f, setF] = useState({ title: l.title, type: l.type || 'TEXT', durationMin: l.durationMin ?? '', minSeconds: l.minSeconds ?? '', videoUrl: l.videoUrl ?? '', audioUrl: l.audioUrl ?? '', embedUrl: l.embedUrl ?? '', attachments: l.attachments ?? [], imageUrl: l.imageUrl ?? '', body: l.body, keyPoints: listToText(l.keyPoints), objectives: listToText(l.objectives), studyTips: listToText(l.studyTips), homework: l.homework ?? '', examRefs: listToText(l.examRefs), citations: linksToText(l.citations), resources: linksToText(l.resources), pdfUrls: l.pdfUrls, pdfNoDownload: l.pdfNoDownload ?? [], requiresHomework: l.requiresHomework });
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((s) => ({ ...s, [k]: v }));
   const move = (d: number) => { const ids = [...lessonIds]; const j = index + d; if (j < 0 || j >= ids.length) return; [ids[index], ids[j]] = [ids[j], ids[index]]; act({ op: 'reorderLessons', ids }); };
   const [uploading, setUploading] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
   // BLD-444: client-direct upload to Vercel Blob, hardened so it can't sit on
   // "Uploading…" forever — sanitise the filename (spaces / # / ? in the pathname
   // break the upload URL) and abort after 3 minutes with a clear error.
@@ -137,13 +149,31 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
   const uploadErr = (e: unknown) => ((e as Error)?.name === 'AbortError' ? 'timed out after 3 min — check the connection or file size' : (e as Error)?.message || 'unknown');
   // Build the full save payload from a given form state snapshot.
   function lessonSavePayload(s: typeof f) {
-    return { op: 'updateLesson', id: l.id, title: s.title, durationMin: s.durationMin, minSeconds: s.minSeconds, videoUrl: s.videoUrl, imageUrl: s.imageUrl, body: s.body, keyPoints: textToList(s.keyPoints), objectives: textToList(s.objectives), studyTips: textToList(s.studyTips), homework: s.homework, examRefs: textToList(s.examRefs), citations: textToLinks(s.citations), resources: textToLinks(s.resources), pdfUrls: s.pdfUrls, pdfNoDownload: s.pdfNoDownload, requiresHomework: s.requiresHomework };
+    return { op: 'updateLesson', id: l.id, title: s.title, type: s.type, durationMin: s.durationMin, minSeconds: s.minSeconds, videoUrl: s.videoUrl, audioUrl: s.audioUrl, embedUrl: s.embedUrl, attachments: s.attachments, imageUrl: s.imageUrl, body: s.body, keyPoints: textToList(s.keyPoints), objectives: textToList(s.objectives), studyTips: textToList(s.studyTips), homework: s.homework, examRefs: textToList(s.examRefs), citations: textToLinks(s.citations), resources: textToLinks(s.resources), pdfUrls: s.pdfUrls, pdfNoDownload: s.pdfNoDownload, requiresHomework: s.requiresHomework };
   }
   async function uploadVideo(file: File) {
     setUploading(true);
     try { const url = await putFile(file, 'academy'); setF((s) => ({ ...s, videoUrl: url })); }
     catch (e) { alert('Upload failed: ' + uploadErr(e)); }
     finally { setUploading(false); }
+  }
+  async function uploadAudio(file: File) {
+    setUploadingAudio(true);
+    try { const url = await putFile(file, 'academy/audio'); setF((s) => ({ ...s, audioUrl: url })); }
+    catch (e) { alert('Audio upload failed: ' + uploadErr(e)); }
+    finally { setUploadingAudio(false); }
+  }
+  async function uploadAttachment(file: File) {
+    setUploadingFile(true);
+    try {
+      const url = await putFile(file, 'academy/files');
+      const label = file.name.replace(/^\d+-/, '');
+      const updated = { ...f, attachments: [...f.attachments, { label, url, sizeBytes: file.size, kind: DEFAULT_KIND }] };
+      setF(updated);
+      await act(lessonSavePayload(updated));
+    }
+    catch (e) { alert('File upload failed: ' + uploadErr(e)); }
+    finally { setUploadingFile(false); }
   }
   async function uploadPdf(file: File) {
     setUploadingPdf(true);
@@ -171,9 +201,14 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
         <div className="space-y-3 border-t border-[var(--color-line)] p-3">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label className={label}>Title<input className={`${field} mt-1`} value={f.title} onChange={(e) => set('title', e.target.value)} /></label>
+            <label className={label}>Lesson type
+              <select className={`${field} mt-1`} value={f.type} onChange={(e) => set('type', e.target.value)}>
+                {LESSON_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </label>
             <label className={label}>Duration (min, shown to learner)<input type="number" className={`${field} mt-1`} value={f.durationMin} onChange={(e) => set('durationMin', e.target.value as never)} /></label>
             <label className={label}>Min. time before complete (sec)<input type="number" min={0} className={`${field} mt-1`} value={f.minSeconds} onChange={(e) => set('minSeconds', e.target.value as never)} placeholder="e.g. 30 — stops skipping" /></label>
-            <label className={label}>Video (YouTube link, or upload a file)
+            <label className={label}>Video (YouTube/Vimeo link, or upload a file)
               <div className="mt-1 flex gap-2">
                 <input className={`${field} flex-1`} value={f.videoUrl} onChange={(e) => set('videoUrl', e.target.value)} placeholder="https://youtube… or upload →" />
                 <label className={`shrink-0 cursor-pointer rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-1.5 text-xs ${uploading ? 'opacity-60' : 'hover:border-[var(--color-gold)]'}`}>
@@ -182,6 +217,16 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
                 </label>
               </div>
             </label>
+            <label className={label}>Audio (MP3 link, or upload a file)
+              <div className="mt-1 flex gap-2">
+                <input className={`${field} flex-1`} value={f.audioUrl} onChange={(e) => set('audioUrl', e.target.value)} placeholder="https://… or upload →" />
+                <label className={`shrink-0 cursor-pointer rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-1.5 text-xs ${uploadingAudio ? 'opacity-60' : 'hover:border-[var(--color-gold)]'}`}>
+                  {uploadingAudio ? 'Uploading...' : 'Upload'}
+                  <input type="file" accept="audio/*" className="hidden" disabled={uploadingAudio} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadAudio(file); e.currentTarget.value = ''; }} />
+                </label>
+              </div>
+            </label>
+            <label className={label}>Embed URL (iframe — slides, form, interactive)<input className={`${field} mt-1`} value={f.embedUrl} onChange={(e) => set('embedUrl', e.target.value)} placeholder="https://… (shown in an iframe)" /></label>
             <label className={label}>Image URL (optional)<input className={`${field} mt-1`} value={f.imageUrl} onChange={(e) => set('imageUrl', e.target.value)} /></label>
           </div>
           <label className={label}>Lesson content (Markdown: ## headings, - bullets, **bold**)<textarea rows={8} className={`${field} mt-1 font-mono text-xs`} value={f.body} onChange={(e) => set('body', e.target.value)} /></label>
@@ -229,7 +274,27 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
               </label>
             </div>
           </div>
-          <button onClick={() => act({ op: 'updateLesson', id: l.id, title: f.title, durationMin: f.durationMin, minSeconds: f.minSeconds, videoUrl: f.videoUrl, imageUrl: f.imageUrl, body: f.body, keyPoints: textToList(f.keyPoints), objectives: textToList(f.objectives), studyTips: textToList(f.studyTips), homework: f.homework, examRefs: textToList(f.examRefs), citations: textToLinks(f.citations), resources: textToLinks(f.resources), pdfUrls: f.pdfUrls, pdfNoDownload: f.pdfNoDownload, requiresHomework: f.requiresHomework })} disabled={busy} className={btnDark}>Save lesson</button>
+          <div>
+            <p className={`${label} mb-1.5`}>Lesson files &amp; homework (any file type — learners download these)</p>
+            <p className="mb-2 text-xs text-[var(--color-stone)]">Upload a file, then pick what it is (e.g. <strong>Homework</strong> or <strong>Lesson material</strong>) so learners see at a glance what each one is for.</p>
+            <div className="space-y-1.5">
+              {f.attachments.map((a, i) => (
+                <div key={`${a.url}-${i}`} className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-xs">
+                  <select value={a.kind ?? DEFAULT_KIND} onChange={(e) => setF((s) => ({ ...s, attachments: s.attachments.map((x, j) => j === i ? { ...x, kind: e.target.value } : x) }))} className={`${field} shrink-0`} aria-label="File type">
+                    {ATTACHMENT_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
+                  </select>
+                  <input className={`${field} min-w-[10rem] flex-1`} value={a.label} onChange={(e) => setF((s) => ({ ...s, attachments: s.attachments.map((x, j) => j === i ? { ...x, label: e.target.value } : x) }))} placeholder="File label shown to learner" />
+                  <a href={a.url} target="_blank" rel="noreferrer" className="shrink-0 text-[var(--color-gold)] hover:underline">View</a>
+                  <button type="button" onClick={() => setF((s) => ({ ...s, attachments: s.attachments.filter((_, j) => j !== i) }))} className="shrink-0 text-[var(--color-blush)] hover:underline">Remove</button>
+                </div>
+              ))}
+              <label className={`inline-flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-line)] px-3 py-1.5 text-xs ${uploadingFile ? 'opacity-60' : 'hover:border-[var(--color-gold)]'}`}>
+                {uploadingFile ? 'Uploading...' : '+ Attach a file (material or homework)'}
+                <input type="file" className="hidden" disabled={uploadingFile} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadAttachment(file); e.currentTarget.value = ''; }} />
+              </label>
+            </div>
+          </div>
+          <button onClick={() => act(lessonSavePayload(f))} disabled={busy} className={btnDark}>Save lesson</button>
         </div>
       )}
     </div>
@@ -239,11 +304,18 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
 function QuizBlock({ module: m, busy, act }: { module: Module; busy: boolean; act: Act }) {
   const [title, setTitle] = useState(m.quiz?.title ?? `${m.title} assessment`);
   const [passMark, setPassMark] = useState(m.quiz?.passMark ?? 70);
+  const [timeLimitMin, setTimeLimit] = useState<string>(m.quiz?.timeLimitMin ? String(m.quiz.timeLimitMin) : '');
+  const [maxAttempts, setMaxAttempts] = useState<string>(m.quiz?.maxAttempts ? String(m.quiz.maxAttempts) : '');
+  const [poolSize, setPoolSize] = useState<string>(m.quiz?.poolSize ? String(m.quiz.poolSize) : '');
+  const [shuffleQuestions, setShuffleQ] = useState(m.quiz?.shuffleQuestions ?? false);
+  const [shuffleOptions, setShuffleO] = useState(m.quiz?.shuffleOptions ?? false);
+  const [isSurvey, setIsSurvey] = useState(m.quiz?.isSurvey ?? false);
+  const settings = { timeLimitMin, maxAttempts, poolSize, shuffleQuestions, shuffleOptions, isSurvey };
   if (!m.quiz) {
     return (
       <div>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">Assessment</p>
-        <button onClick={() => act({ op: 'upsertQuiz', moduleId: m.id, title, passMark })} disabled={busy} className="text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add a quiz to this module</button>
+        <button onClick={() => act({ op: 'upsertQuiz', moduleId: m.id, title, passMark, ...settings })} disabled={busy} className="text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add a quiz to this module</button>
       </div>
     );
   }
@@ -254,12 +326,22 @@ function QuizBlock({ module: m, busy, act }: { module: Module; busy: boolean; ac
       <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3">
         <div className="flex flex-wrap items-end gap-3">
           <label className={`${label} flex-1`}>Quiz title<input className={`${field} mt-1`} value={title} onChange={(e) => setTitle(e.target.value)} /></label>
-          <label className={label}>Pass mark %<input type="number" min={1} max={100} className={`${field} mt-1 w-24`} value={passMark} onChange={(e) => setPassMark(Number(e.target.value))} /></label>
-          <button onClick={() => act({ op: 'upsertQuiz', moduleId: m.id, title, passMark })} disabled={busy} className={btnDark}>Save</button>
+          <label className={label}>Pass mark %<input type="number" min={1} max={100} disabled={isSurvey} className={`${field} mt-1 w-24 ${isSurvey ? 'opacity-50' : ''}`} value={passMark} onChange={(e) => setPassMark(Number(e.target.value))} /></label>
+          <button onClick={() => act({ op: 'upsertQuiz', moduleId: m.id, title, passMark, ...settings })} disabled={busy} className={btnDark}>Save</button>
           <button onClick={() => { if (confirm('Delete this quiz and its questions?')) act({ op: 'deleteQuiz', id: q.id }); }} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline">Delete quiz</button>
         </div>
+        {/* BLD-529 assessment settings */}
+        <div className="mt-3 grid gap-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3 sm:grid-cols-3">
+          <label className={label}>Time limit (min, blank = none)<input type="number" min={1} className={`${field} mt-1`} value={timeLimitMin} onChange={(e) => setTimeLimit(e.target.value)} placeholder="e.g. 20" /></label>
+          <label className={label}>Max attempts (blank = unlimited)<input type="number" min={1} className={`${field} mt-1`} value={maxAttempts} onChange={(e) => setMaxAttempts(e.target.value)} placeholder="e.g. 3" /></label>
+          <label className={label}>Question pool (blank = all)<input type="number" min={1} className={`${field} mt-1`} value={poolSize} onChange={(e) => setPoolSize(e.target.value)} placeholder={`draw N of ${q.questions.length}`} /></label>
+          <label className="flex items-center gap-2 text-xs text-[var(--color-stone)]"><input type="checkbox" checked={shuffleQuestions} onChange={(e) => setShuffleQ(e.target.checked)} /> Shuffle question order</label>
+          <label className="flex items-center gap-2 text-xs text-[var(--color-stone)]"><input type="checkbox" checked={shuffleOptions} onChange={(e) => setShuffleO(e.target.checked)} /> Shuffle answer options</label>
+          <label className="flex items-center gap-2 text-xs text-[var(--color-stone)]"><input type="checkbox" checked={isSurvey} onChange={(e) => setIsSurvey(e.target.checked)} /> Survey (ungraded — no pass/fail)</label>
+          <p className="text-[0.7rem] text-[var(--color-stone)] sm:col-span-3">Click <strong>Save</strong> above to apply these settings.</p>
+        </div>
         <div className="mt-3 space-y-2">
-          {q.questions.map((qq, qi) => <QuestionRow key={qq.id} q={qq} index={qi} total={q.questions.length} busy={busy} act={act} ids={q.questions.map((x) => x.id)} />)}
+          {q.questions.map((qq, qi) => <QuestionRow key={qq.id} q={qq} index={qi} total={q.questions.length} busy={busy} act={act} ids={q.questions.map((x) => x.id)} isSurvey={isSurvey} />)}
         </div>
         <button onClick={() => act({ op: 'createQuestion', quizId: q.id })} disabled={busy} className="mt-2 text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add question</button>
       </div>
@@ -267,7 +349,7 @@ function QuizBlock({ module: m, busy, act }: { module: Module; busy: boolean; ac
   );
 }
 
-function QuestionRow({ q, index, total, busy, act, ids }: { q: Question; index: number; total: number; busy: boolean; act: Act; ids: string[] }) {
+function QuestionRow({ q, index, total, busy, act, ids, isSurvey = false }: { q: Question; index: number; total: number; busy: boolean; act: Act; ids: string[]; isSurvey?: boolean }) {
   const [open, setOpen] = useState(false);
   const [prompt, setPrompt] = useState(q.prompt);
   const [type, setType] = useState(q.type);
@@ -275,6 +357,7 @@ function QuestionRow({ q, index, total, busy, act, ids }: { q: Question; index: 
   const [tip, setTip] = useState(q.tip ?? '');
   const [options, setOptions] = useState<string[]>(q.options.length ? q.options : ['', '']);
   const [correct, setCorrect] = useState<number[]>(q.correct);
+  const [acceptedAnswers, setAcceptedAnswers] = useState(listToText(q.acceptedAnswers ?? []));
   const [imageUrl, setImageUrl] = useState(q.imageUrl ?? '');
   const [uploadingImg, setUploadingImg] = useState(false);
 
@@ -322,12 +405,18 @@ function QuestionRow({ q, index, total, busy, act, ids }: { q: Question; index: 
                 <option value="SINGLE">Single answer</option>
                 <option value="MULTI">Multiple answers</option>
                 <option value="TRUEFALSE">True / False</option>
+                <option value="SHORT">Short answer (typed)</option>
               </select>
             </label>
-            <span className="self-end pb-2 text-xs text-[var(--color-stone)]">{type === 'MULTI' ? 'Tick all correct answers' : 'Select the one correct answer'}</span>
+            <span className="self-end pb-2 text-xs text-[var(--color-stone)]">{type === 'SHORT' ? 'Learner types an answer' : type === 'MULTI' ? 'Tick all correct answers' : 'Select the one correct answer'}</span>
           </div>
+          {type === 'SHORT' ? (
+            <label className={label}>Accepted answers (one per line — a typed answer matching any of these, ignoring case, is marked correct)
+              <textarea rows={3} className={`${field} mt-1`} value={acceptedAnswers} onChange={(e) => setAcceptedAnswers(e.target.value)} placeholder={'epidermis\nthe epidermis'} />
+            </label>
+          ) : (
           <div>
-            <p className={label}>Options</p>
+            <p className={label}>Options{isSurvey && <span className="ml-2 font-normal normal-case text-[var(--color-stone)]">(survey — the “correct” tick is ignored)</span>}</p>
             <div className="mt-1 space-y-2">
               {options.map((o, i) => (
                 <div key={i} className="flex items-center gap-2">
@@ -339,6 +428,7 @@ function QuestionRow({ q, index, total, busy, act, ids }: { q: Question; index: 
             </div>
             {type !== 'TRUEFALSE' && <button onClick={addOpt} className="mt-2 text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add option</button>}
           </div>
+          )}
           <div>
             <p className={label}>Image (optional — a picture shown with the question)</p>
             {imageUrl && (
@@ -355,7 +445,7 @@ function QuestionRow({ q, index, total, busy, act, ids }: { q: Question; index: 
           </div>
           <label className={label}>Hint (optional — a nudge the learner can reveal before answering)<input className={`${field} mt-1`} value={tip} onChange={(e) => setTip(e.target.value)} placeholder="Think about which layer has no blood supply." /></label>
           <label className={label}>Explanation (shown after answering)<textarea rows={2} className={`${field} mt-1`} value={explanation} onChange={(e) => setExplanation(e.target.value)} /></label>
-          <button onClick={() => act({ op: 'updateQuestion', id: q.id, prompt, type, options, correct, explanation, tip, imageUrl })} disabled={busy} className={btnDark}>Save question</button>
+          <button onClick={() => act({ op: 'updateQuestion', id: q.id, prompt, type, options, correct, acceptedAnswers: textToList(acceptedAnswers), explanation, tip, imageUrl })} disabled={busy} className={btnDark}>Save question</button>
         </div>
       )}
     </div>

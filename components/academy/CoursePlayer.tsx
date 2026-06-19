@@ -1,15 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Markdown } from '@/components/academy/Markdown';
 import { Glyph } from '@/components/ui/Glyph';
+import { LessonMedia, Downloads } from '@/components/academy/LessonMedia';
+import { LessonEngagement } from '@/components/academy/LessonEngagement';
 import type { CourseLearning, ModuleView, LessonView, QuizView } from '@/lib/lms';
-
-function ytId(url: string): string | null {
-  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{11})/);
-  return m ? m[1] : null;
-}
 
 const fmtReleaseDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -163,31 +160,22 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
 }
 
 function LessonPanel({ lesson, done, onComplete, onNext }: { lesson: LessonView; done: boolean; onComplete: () => void; onNext?: () => void }) {
-  const id = lesson.videoUrl ? ytId(lesson.videoUrl) : null;
   return (
     <article>
       <p className="eyebrow mb-2">{lesson.durationMin ? `${lesson.durationMin} min` : 'Lesson'}</p>
       <h2 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl">{lesson.title}</h2>
 
-      {lesson.videoUrl && (
-        <div className="mt-6">
-          <p className="eyebrow mb-2 text-xs">Watch first</p>
-          {id ? (
-            <div className="aspect-video w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
-              <iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${id}`} title={lesson.title} loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-            </div>
-          ) : (
-            <a href={lesson.videoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">▶ Watch explainer videos</a>
-          )}
-        </div>
-      )}
+      <LessonMedia lesson={lesson} onComplete={done ? undefined : onComplete} />
 
-      {lesson.imageUrl && (
+      {/* A still image still shows for non-video lessons that supplied one. */}
+      {lesson.imageUrl && !lesson.videoUrl && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={lesson.imageUrl} alt={lesson.title} className="mt-6 w-full rounded-[var(--radius-lg)] border border-[var(--color-line)]" />
       )}
 
       <div className="mt-2"><Markdown text={lesson.body} /></div>
+
+      <Downloads items={lesson.attachments} />
 
       {lesson.keyPoints.length > 0 && (
         <div className="mt-7 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5">
@@ -218,29 +206,64 @@ function LessonPanel({ lesson, done, onComplete, onNext }: { lesson: LessonView;
           ? <button onClick={() => { if (!done) onComplete(); onNext(); }} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">{done ? 'Next lesson →' : 'Complete & continue →'}</button>
           : (!done && <button onClick={onComplete} className="rounded-full bg-[var(--color-ink)] px-6 py-2.5 text-sm font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-espresso)]">Mark as complete</button>)}
       </div>
+
+      <LessonEngagement lessonId={lesson.id} />
     </article>
   );
 }
 
+type QuizResult = { scorePct: number; passed: boolean; passMark: number; results: { questionId: string; correct: boolean; correctIndices: number[]; explanation: string | null }[] };
+
 function QuizPanel({ quiz, state, onGraded, onNext }: { quiz: QuizView; state?: { passed: boolean; best: number | null }; onGraded: (passed: boolean, best: number) => void; onNext?: () => void }) {
-  const [answers, setAnswers] = useState<Record<string, number[]>>({});
-  const [result, setResult] = useState<null | { scorePct: number; passed: boolean; passMark: number; results: { questionId: string; correct: boolean; correctIndices: number[]; explanation: string | null }[] }>(null);
+  const [answers, setAnswers] = useState<Record<string, number[] | string>>({});
+  const [result, setResult] = useState<QuizResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [round, setRound] = useState(0); // bumped on retake to reshuffle + reset timer
 
+  const attemptsLeft = quiz.maxAttempts ? Math.max(0, quiz.maxAttempts - quiz.attemptsUsed) : null;
+  const noAttemptsLeft = !quiz.isSurvey && attemptsLeft === 0;
+
+  // Per-question display order for options (shuffled when enabled). Maps display
+  // position → ORIGINAL index, so what we send for grading stays original-indexed.
+  const optionOrder = useMemo<Record<string, number[]>>(() => {
+    const o: Record<string, number[]> = {};
+    for (const q of quiz.questions) {
+      const idxs = q.options.map((_, i) => i);
+      if (quiz.shuffleOptions) for (let i = idxs.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [idxs[i], idxs[j]] = [idxs[j], idxs[i]]; }
+      o[q.id] = idxs;
+    }
+    return o;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quiz, round]);
+
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(quiz.timeLimitMin ? quiz.timeLimitMin * 60 : null);
+
+  function getArr(qid: string): number[] { const v = answers[qid]; return Array.isArray(v) ? v : []; }
   function toggle(qid: string, idx: number, multi: boolean) {
+    if (result) return;
     setAnswers((a) => {
-      const cur = a[qid] ?? [];
+      const cur = Array.isArray(a[qid]) ? (a[qid] as number[]) : [];
       if (multi) return { ...a, [qid]: cur.includes(idx) ? cur.filter((x) => x !== idx) : [...cur, idx] };
       return { ...a, [qid]: [idx] };
     });
   }
+  function setText(qid: string, text: string) { if (!result) setAnswers((a) => ({ ...a, [qid]: text })); }
 
-  async function submit() {
-    if (Object.keys(answers).length < quiz.questions.length) { setErr('Please answer every question.'); return; }
+  async function submit(force = false) {
+    if (busy || result) return;
+    let toSend: Record<string, number[] | string> = answers;
+    if (force) {
+      // Timer ran out — submit what we have, filling blanks so the count is complete.
+      toSend = { ...answers };
+      for (const q of quiz.questions) if (!(q.id in toSend)) toSend[q.id] = q.type === 'SHORT' ? '' : [];
+    } else if (!quiz.isSurvey) {
+      const answered = quiz.questions.filter((q) => { const v = answers[q.id]; return q.type === 'SHORT' ? typeof v === 'string' && v.trim() : Array.isArray(v) && v.length; });
+      if (answered.length < quiz.questions.length) { setErr('Please answer every question.'); return; }
+    }
     setBusy(true); setErr('');
     try {
-      const res = await fetch('/api/academy/quiz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quizId: quiz.id, answers }) });
+      const res = await fetch('/api/academy/quiz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quizId: quiz.id, answers: toSend }) });
       const j = await res.json();
       if (j.ok) { setResult(j); onGraded(j.passed, j.scorePct); }
       else setErr(j.error || 'Could not submit.');
@@ -248,22 +271,54 @@ function QuizPanel({ quiz, state, onGraded, onNext }: { quiz: QuizView; state?: 
     finally { setBusy(false); }
   }
 
-  function retake() { setAnswers({}); setResult(null); setErr(''); }
+  // Countdown for timed assessments; auto-submits at zero.
+  useEffect(() => {
+    if (result || secondsLeft == null || noAttemptsLeft) return;
+    if (secondsLeft <= 0) { submit(true); return; }
+    const t = setTimeout(() => setSecondsLeft((s) => (s == null ? null : s - 1)), 1000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [secondsLeft, result, noAttemptsLeft]);
+
+  function retake() { setAnswers({}); setResult(null); setErr(''); setRound((n) => n + 1); setSecondsLeft(quiz.timeLimitMin ? quiz.timeLimitMin * 60 : null); }
   const resById = (qid: string) => result?.results.find((r) => r.questionId === qid);
+  const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  const isSurveyResult = result && quiz.isSurvey;
 
   return (
     <div>
-      <p className="eyebrow mb-2">Assessment · {quiz.passMark}% to pass</p>
-      <h2 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl">{quiz.title}</h2>
-      {state?.passed && !result && <p className="mt-2 text-sm font-medium text-[var(--color-gold)]">✓ Passed{state.best != null ? ` · best score ${state.best}%` : ''}. You can retake it any time.</p>}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="eyebrow mb-2">{quiz.isSurvey ? 'Survey · your feedback' : `Assessment · ${quiz.passMark}% to pass`}</p>
+          <h2 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl">{quiz.title}</h2>
+        </div>
+        {!result && secondsLeft != null && !noAttemptsLeft && (
+          <span className={`rounded-full px-3 py-1 text-sm font-medium tabular-nums ${secondsLeft <= 30 ? 'bg-[var(--color-blush)]/15 text-[var(--color-blush)]' : 'bg-[var(--color-bone)] text-[var(--color-ink-soft)]'}`}>⏱ {mmss(secondsLeft)}</span>
+        )}
+      </div>
+      <p className="mt-1 text-xs text-[var(--color-stone)]">
+        {quiz.questions.length} question{quiz.questions.length === 1 ? '' : 's'}
+        {quiz.timeLimitMin ? ` · ${quiz.timeLimitMin} min` : ''}
+        {attemptsLeft != null ? ` · ${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} left` : ''}
+      </p>
+      {state?.passed && !result && !quiz.isSurvey && <p className="mt-2 text-sm font-medium text-[var(--color-gold)]">✓ Passed{state.best != null ? ` · best score ${state.best}%` : ''}. You can retake it any time.</p>}
 
-      {result && (
+      {result && !quiz.isSurvey && (
         <div className={`mt-5 rounded-[var(--radius-lg)] border p-5 ${result.passed ? 'border-[var(--color-gold)]/40 bg-[var(--color-gold)]/8' : 'border-[var(--color-blush)]/40 bg-[var(--color-blush)]/8'}`}>
           <p className="flex items-center gap-2 font-[family-name:var(--font-display)] text-2xl">{result.passed && <Glyph name="sparkle" className="h-5 w-5 text-[var(--color-gold)]" />}{result.passed ? 'Passed' : 'Not quite yet'}</p>
           <p className="mt-1 text-sm text-[var(--color-ink-soft)]">You scored <strong>{result.scorePct}%</strong> ({result.passMark}% needed). {result.passed ? 'Well done — the module is complete.' : 'Review the feedback below and try again.'}</p>
         </div>
       )}
+      {isSurveyResult && (
+        <div className="mt-5 rounded-[var(--radius-lg)] border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/8 p-5">
+          <p className="font-[family-name:var(--font-display)] text-2xl">Thank you</p>
+          <p className="mt-1 text-sm text-[var(--color-ink-soft)]">Your feedback has been recorded.</p>
+        </div>
+      )}
 
+      {noAttemptsLeft && !result ? (
+        <p className="mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5 text-sm text-[var(--color-stone)]">You’ve used all your attempts for this assessment.{state?.best != null ? ` Your best score was ${state.best}%.` : ''}</p>
+      ) : (
       <ol className="mt-6 space-y-6">
         {quiz.questions.map((q, qi) => {
           const multi = q.type === 'MULTI';
@@ -272,34 +327,50 @@ function QuizPanel({ quiz, state, onGraded, onNext }: { quiz: QuizView; state?: 
             <li key={q.id} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5">
               <p className="font-medium">{qi + 1}. {q.prompt}{multi && <span className="ml-2 text-xs font-normal text-[var(--color-stone)]">(select all that apply)</span>}</p>
               {q.imageUrl && /* eslint-disable-next-line @next/next/no-img-element */ <img src={q.imageUrl} alt="" className="mt-3 max-h-60 rounded-[var(--radius-md)]" />}
-              <div className="mt-3 space-y-2">
-                {q.options.map((opt, oi) => {
-                  const chosen = (answers[q.id] ?? []).includes(oi);
-                  const isCorrect = r?.correctIndices.includes(oi);
-                  const stateCls = r ? (isCorrect ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10' : chosen ? 'border-[var(--color-blush)] bg-[var(--color-blush)]/10' : 'border-[var(--color-line)]') : chosen ? 'border-[var(--color-ink)] bg-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]';
-                  return (
-                    <button key={oi} disabled={!!result} onClick={() => toggle(q.id, oi, multi)} className={`flex w-full items-center gap-3 rounded-[var(--radius-sm)] border px-4 py-2.5 text-left text-sm transition-colors ${stateCls}`}>
-                      <span className={`grid h-4 w-4 shrink-0 place-items-center ${multi ? 'rounded-[3px]' : 'rounded-full'} border ${chosen ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-white' : 'border-[var(--color-stone-soft)]'}`}>{chosen ? '✓' : ''}</span>
-                      <span className="flex-1">{opt}</span>
-                      {r && isCorrect && <span className="text-xs font-medium text-[var(--color-gold)]">correct</span>}
-                    </button>
-                  );
-                })}
-              </div>
-              {r && r.explanation && <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] px-4 py-2.5 text-sm text-[var(--color-ink-soft)]"><strong>Why:</strong> {r.explanation}</p>}
+              {q.type === 'SHORT' ? (
+                <div className="mt-3">
+                  <input
+                    type="text"
+                    disabled={!!result}
+                    value={typeof answers[q.id] === 'string' ? (answers[q.id] as string) : ''}
+                    onChange={(e) => setText(q.id, e.target.value)}
+                    placeholder="Type your answer…"
+                    className={`w-full rounded-[var(--radius-sm)] border px-4 py-2.5 text-sm ${r ? (r.correct ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10' : 'border-[var(--color-blush)] bg-[var(--color-blush)]/10') : 'border-[var(--color-line)] bg-white focus:border-[var(--color-gold)] focus:outline-none'}`}
+                  />
+                  {r && <p className={`mt-2 text-xs font-medium ${r.correct ? 'text-[var(--color-gold)]' : 'text-[var(--color-blush)]'}`}>{r.correct ? '✓ Correct' : '✗ Not quite'}</p>}
+                </div>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  {optionOrder[q.id].map((origIdx) => {
+                    const opt = q.options[origIdx];
+                    const chosen = getArr(q.id).includes(origIdx);
+                    const isCorrect = r?.correctIndices.includes(origIdx);
+                    const stateCls = r ? (isCorrect ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10' : chosen ? 'border-[var(--color-blush)] bg-[var(--color-blush)]/10' : 'border-[var(--color-line)]') : chosen ? 'border-[var(--color-ink)] bg-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]';
+                    return (
+                      <button key={origIdx} disabled={!!result} onClick={() => toggle(q.id, origIdx, multi)} className={`flex w-full items-center gap-3 rounded-[var(--radius-sm)] border px-4 py-2.5 text-left text-sm transition-colors ${stateCls}`}>
+                        <span className={`grid h-4 w-4 shrink-0 place-items-center ${multi ? 'rounded-[3px]' : 'rounded-full'} border ${chosen ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-white' : 'border-[var(--color-stone-soft)]'}`}>{chosen ? '✓' : ''}</span>
+                        <span className="flex-1">{opt}</span>
+                        {r && isCorrect && <span className="text-xs font-medium text-[var(--color-gold)]">correct</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {r && r.explanation && <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] px-4 py-2.5 text-sm text-[var(--color-ink-soft)]"><strong>{quiz.isSurvey ? 'Note' : 'Why'}:</strong> {r.explanation}</p>}
             </li>
           );
         })}
       </ol>
+      )}
 
       {err && <p className="mt-4 text-sm text-[var(--color-blush)]">{err}</p>}
       <div className="mt-6 flex flex-wrap items-center gap-3">
         {result ? (
-          <button onClick={retake} className="rounded-full bg-[var(--color-ink)] px-6 py-2.5 text-sm font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-espresso)]">Retake assessment</button>
-        ) : (
-          <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? 'Marking…' : 'Submit answers'}</button>
+          !quiz.isSurvey && !noAttemptsLeft && <button onClick={retake} className="rounded-full bg-[var(--color-ink)] px-6 py-2.5 text-sm font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-espresso)]">Retake assessment</button>
+        ) : !noAttemptsLeft && (
+          <button onClick={() => submit(false)} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? 'Marking…' : quiz.isSurvey ? 'Submit feedback' : 'Submit answers'}</button>
         )}
-        {onNext && (result?.passed || state?.passed) && (
+        {onNext && (result?.passed || state?.passed || isSurveyResult) && (
           <button onClick={onNext} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">Next →</button>
         )}
       </div>

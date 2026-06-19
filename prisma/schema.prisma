@@ -1826,6 +1826,10 @@ model AcademyStudent {
 
   enrolments          Enrolment[]
   lessonProgress      LessonProgress[]
+  lessonPlaybacks     LessonPlayback[]
+  lessonNotes         LessonNote[]
+  lessonComments      LessonComment[]
+  courseReviews       CourseReview[]
   quizAttempts        QuizAttempt[]
   practiceAttempts    PracticeAttempt[]
   pointEvents         PointEvent[]
@@ -1898,6 +1902,7 @@ model Course {
   examQuestions       ExamQuestion[]
   pastPapers          PastPaper[]
   fundingApplications FundingApplication[]
+  reviews             CourseReview[]
 
   @@unique([tenantId, slug]) // ClinicOS Ring 1 (BLD-301): per-tenant slug — replaces the global @unique
   @@index([active, order])
@@ -1924,6 +1929,20 @@ model CourseModule {
   @@index([tenantId])
 }
 
+// BLD-529: lesson content type drives the primary media + the admin editor shape
+// (Thinkific-style). TEXT = body only; VIDEO = native Blob upload OR YouTube/Vimeo
+// embed (both via `videoUrl`); AUDIO = `audioUrl`; PDF = `pdfUrls`; DOWNLOAD =
+// `attachments`; EMBED = third-party iframe via `embedUrl`. The body still renders
+// underneath any media, so a lesson can stay multimodal.
+enum LessonType {
+  TEXT
+  VIDEO
+  AUDIO
+  PDF
+  DOWNLOAD
+  EMBED
+}
+
 model Lesson {
   id                  String               @id @default(cuid())
   tenantId            String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
@@ -1931,8 +1950,12 @@ model Lesson {
   moduleId            String
   title               String
   order               Int                  @default(0)
+  type                LessonType           @default(TEXT) // BLD-529: primary content type
   durationMin         Int?
-  videoUrl            String? // YouTube watch/embed URL, or a search link (pre-test explainer)
+  videoUrl            String? // native Blob/MP4 upload, YouTube/Vimeo embed, or a search link (pre-test explainer)
+  audioUrl            String? // BLD-529: native audio (Blob/MP3) or hosted audio URL
+  embedUrl            String? // BLD-529: third-party iframe embed (slides, interactive widget, form)
+  attachments         Json? // BLD-529: downloadable files [{ label, url, sizeBytes? }]
   imageUrl            String?
   body                String               @db.Text // markdown-ish lesson content
   keyPoints           String[]             @default([])
@@ -1948,6 +1971,9 @@ model Lesson {
   pdfUrls             String[]             @default([]) // BLD-407: uploaded PDF attachments (Vercel Blob URLs)
   pdfNoDownload       String[]             @default([]) // BLD-443: subset of pdfUrls marked view-only (no download offered)
   progress            LessonProgress[]
+  playbacks           LessonPlayback[]
+  notes               LessonNote[]
+  comments            LessonComment[]
   homeworkSubmissions HomeworkSubmission[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
@@ -1994,6 +2020,13 @@ model Quiz {
   moduleId  String         @unique
   title     String
   passMark  Int            @default(70) // percentage required to pass
+  // BLD-529 assessments upgrade (all optional / non-breaking defaults):
+  timeLimitMin     Int? // optional countdown; client auto-submits at zero
+  maxAttempts      Int? // optional cap on attempts (null = unlimited)
+  shuffleQuestions Boolean @default(false) // randomise question order per attempt
+  shuffleOptions   Boolean @default(false) // randomise answer-option order per attempt
+  poolSize         Int? // draw N random questions from the bank (null = all)
+  isSurvey         Boolean @default(false) // ungraded feedback set — no pass/fail, no answer keys
   questions QuizQuestion[]
   attempts  QuizAttempt[]
   createdAt DateTime       @default(now())
@@ -2009,9 +2042,10 @@ model QuizQuestion {
   quizId      String
   order       Int     @default(0)
   prompt      String  @db.Text
-  type        String  @default("SINGLE") // SINGLE | MULTI | TRUEFALSE
+  type        String  @default("SINGLE") // SINGLE | MULTI | TRUEFALSE | SHORT (BLD-529)
   options     Json // [string]
   correct     Json // [number] (0-based indices)
+  acceptedAnswers String[] @default([]) // BLD-529: accepted text answers for SHORT (case-insensitive match)
   explanation String? @db.Text
   tip         String? // optional hint surfaced to help the learner (Duolingo-style)
   imageUrl    String?
@@ -2032,6 +2066,102 @@ model LessonProgress {
 
   @@unique([studentId, lessonId])
   @@index([studentId])
+  @@index([tenantId])
+}
+
+// BLD-529: resume position for media lessons (video/audio). Kept SEPARATE from
+// LessonProgress on purpose — a LessonProgress row means "completed" everywhere
+// (gamification counts rows), so storing an in-progress position there would
+// wrongly mark a half-watched video as done. New table → the @@unique is created
+// with it (the additive deploy gate only refuses @unique added to existing tables).
+model LessonPlayback {
+  id          String         @id @default(cuid())
+  tenantId    String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  student     AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId   String
+  lesson      Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId    String
+  positionSec Int            @default(0) // last playback position in seconds
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([studentId, lessonId])
+  @@index([studentId])
+  @@index([tenantId])
+}
+
+// BLD-529 (engagement & community): private per-lesson study notes the learner
+// takes as they go. One note per (student, lesson) — upsert.
+model LessonNote {
+  id        String         @id @default(cuid())
+  tenantId  String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  lesson    Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId  String
+  body      String         @db.Text
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([studentId, lessonId])
+  @@index([studentId])
+  @@index([tenantId])
+}
+
+// BLD-529 (engagement & community): per-lesson discussion / Q&A. Threaded one
+// level (a top-level comment has replies via parentId). Staff replies set
+// isStaff + authorStaff (email); learner posts set authorStudentId. authorName is
+// denormalised for display so a deleted account doesn't blank the thread.
+model LessonComment {
+  id              String          @id @default(cuid())
+  tenantId        String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  lesson          Lesson          @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId        String
+  parent          LessonComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  parentId        String?
+  replies         LessonComment[] @relation("CommentReplies")
+  authorStudent   AcademyStudent? @relation(fields: [authorStudentId], references: [id], onDelete: SetNull)
+  authorStudentId String?
+  authorStaff     String? // staff email when a staff member replies
+  authorName      String // denormalised display name
+  isStaff         Boolean         @default(false)
+  body            String          @db.Text
+  pinned          Boolean         @default(false) // staff can pin an important thread to the top
+  resolved        Boolean         @default(false) // Q&A: marked answered
+  hidden          Boolean         @default(false) // moderation: hidden from learners
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([lessonId, createdAt])
+  @@index([tenantId])
+}
+
+enum CourseReviewStatus {
+  PENDING // awaiting staff moderation — not shown publicly
+  PUBLISHED // visible on the public course page
+  HIDDEN // moderated out
+}
+
+// BLD-529 (engagement & community): a learner's star rating + written review of a
+// course. One per (student, course) — editing resets to PENDING for re-moderation.
+model CourseReview {
+  id          String             @id @default(cuid())
+  tenantId    String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  course      Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId    String
+  student     AcademyStudent     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId   String
+  rating      Int // 1..5
+  title       String?
+  body        String?            @db.Text
+  authorName  String // denormalised display name for public display
+  status      CourseReviewStatus @default(PENDING)
+  moderatedBy String? // staff email
+  moderatedAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@unique([studentId, courseId])
+  @@index([courseId, status])
   @@index([tenantId])
 }
 

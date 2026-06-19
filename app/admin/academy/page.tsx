@@ -16,7 +16,7 @@ export default async function AdminAcademyPage() {
 
   const { db } = await import('@/lib/db');
   const now = new Date();
-  const [courses, newApplications, totalEnrolments, students, upcomingLive, openVacancies, newFunding] = await Promise.all([
+  const [courses, newApplications, totalEnrolments, students, upcomingLive, openVacancies, newFunding, pendingReviews, openQuestions] = await Promise.all([
     db.course.findMany({ orderBy: [{ order: 'asc' }], include: { cohorts: { orderBy: { startAt: 'asc' } } } }),
     db.enrolment.count({ where: { status: 'APPLIED' } }),
     db.enrolment.count(),
@@ -24,6 +24,8 @@ export default async function AdminAcademyPage() {
     db.liveClass.count({ where: { startAt: { gte: now } } }),
     db.vacancy.count({ where: { active: true } }),
     db.fundingApplication.count({ where: { status: 'NEW' } }),
+    db.courseReview.count({ where: { status: 'PENDING' } }),
+    db.lessonComment.count({ where: { parentId: null, isStaff: false, resolved: false, hidden: false } }),
   ]);
 
   const coursesView = courses.map((c) => ({
@@ -44,6 +46,7 @@ export default async function AdminAcademyPage() {
     { href: '/admin/academy/funding', label: 'Funding', value: String(newFunding), sub: 'new enquiries' },
     { href: '/admin/academy/students', label: 'Trainees', value: String(students), sub: 'portal accounts' },
     { href: '/admin/academy/live-classes', label: 'Live classes', value: String(upcomingLive), sub: 'upcoming' },
+    { href: '/admin/academy/reviews', label: 'Reviews & Q&A', value: String(pendingReviews + openQuestions), sub: `${pendingReviews} reviews · ${openQuestions} questions` },
     { href: '/admin/careers', label: 'Careers', value: String(openVacancies), sub: 'open roles' },
   ];
 

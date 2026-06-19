@@ -17,10 +17,11 @@ export default async function LearnPage({ params }: { params: Promise<{ slug: st
   const student = await getCurrentStudent().catch(() => null);
   if (!student) redirect('/academy/portal');
 
-  const { getCourseLearning } = await import('@/lib/lms');
+  const { getCourseLearning, getMyReview } = await import('@/lib/lms');
   const { studentStanding } = await import('@/lib/academy-gamification');
   const { registerForAge } = await import('@/components/academy/lessonFlow');
   const [learning, standing] = await Promise.all([getCourseLearning(slug, student.id), studentStanding(student.id)]);
+  const myReview = learning ? await getMyReview(student.id, learning.course.id) : null;
   const age = student.dob ? Math.floor((Date.now() - new Date(student.dob).getTime()) / 31557600000) : null;
   const register = registerForAge(age);
 
@@ -48,7 +49,7 @@ export default async function LearnPage({ params }: { params: Promise<{ slug: st
 
   return (
     <AcademyPortalShell firstName={student.firstName}>
-      <CourseExperience learning={learning} slug={slug} xp={standing.xp} register={register} />
+      <CourseExperience learning={learning} slug={slug} xp={standing.xp} register={register} myReview={myReview} />
     </AcademyPortalShell>
   );
 }
