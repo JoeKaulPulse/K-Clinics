@@ -125,17 +125,13 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
   // certain Chrome versions. Without it the SDK falls back to a plain File-body
   // fetch which is reliable across all browsers; progress shows "Uploading…".
   async function putFile(file: File, folder: string): Promise<string> {
-    const { upload } = await import('@vercel/blob/client');
-    const safe = file.name.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/-+/g, '-').slice(-120) || 'file';
+    // Server-side route for normal files (reliable — no CSP/CORS); client-direct
+    // fallback only for files above the ~4.5 MB serverless cap (large HD videos).
+    const { uploadBlob } = await import('@/lib/upload-client');
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 180_000);
     try {
-      const blob = await upload(`${folder}/${Date.now()}-${safe}`, file, {
-        access: 'public',
-        handleUploadUrl: '/api/admin/academy/blob-token',
-        abortSignal: controller.signal,
-      });
-      return blob.url;
+      return await uploadBlob(file, { folder, clientUploadUrl: '/api/admin/academy/blob-token', signal: controller.signal });
     } finally { clearTimeout(timer); }
   }
   const uploadErr = (e: unknown) => ((e as Error)?.name === 'AbortError' ? 'timed out after 3 min — check the connection or file size' : (e as Error)?.message || 'unknown');
