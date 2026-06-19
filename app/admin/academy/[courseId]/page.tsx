@@ -79,7 +79,10 @@ export default async function CurriculumPage({ params }: { params: Promise<{ cou
           <h1 className="font-[family-name:var(--font-display)] text-3xl">Curriculum — {course.title}</h1>
           <p className="mt-1 max-w-2xl text-sm text-[var(--color-stone)]">Add and edit modules, lessons (video, content, references) and quizzes. Changes are live in the trainee portal immediately and never affect existing trainee progress.</p>
         </div>
-        <CoursePreviewButton preview={preview} />
+        <div className="flex flex-wrap items-center gap-3">
+          <Link href={`/admin/academy/${courseId}/flashcards`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Flashcards →</Link>
+          <CoursePreviewButton preview={preview} />
+        </div>
       </div>
       <div className="mt-8">
         <CurriculumManager course={view} />
