@@ -22,7 +22,9 @@ export function GuideHost() {
     } catch { /* ignore */ }
   }, [tourId]);
 
-  if (!tourId) return null;
+  // Hide on the full-screen messages view so the Help button doesn't overlap the
+  // chat composer's send button in the bottom-right.
+  if (!tourId || (pathname || '').startsWith('/admin/messages')) return null;
   const tour = TOURS[tourId];
 
   function close() {
