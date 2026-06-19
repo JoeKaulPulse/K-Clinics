@@ -16,6 +16,17 @@ const strList = (v: unknown) => (Array.isArray(v) ? (v as unknown[]).map((x) => 
 // stored javascript:/data: URL would be a stored-XSS vector (React doesn't sanitise href).
 const isHttpUrl = (s: string) => /^https?:\/\//i.test(s.trim());
 const urlList = (v: unknown) => (Array.isArray(v) ? (v as unknown[]).map((x) => str(x).slice(0, 600).trim()).filter((s) => s && isHttpUrl(s)) : []);
+// BLD-529: media URLs may be uploaded Blob URLs with the filename embedded, so use
+// a generous ceiling; reject non-http(s) (stored-XSS guard, as these become hrefs/srcs).
+const mediaUrl = (v: unknown) => { const s = str(v).slice(0, 1000).trim(); return s && isHttpUrl(s) ? s : null; };
+type LessonTypeValue = 'TEXT' | 'VIDEO' | 'AUDIO' | 'PDF' | 'DOWNLOAD' | 'EMBED';
+const LESSON_TYPES = new Set<LessonTypeValue>(['TEXT', 'VIDEO', 'AUDIO', 'PDF', 'DOWNLOAD', 'EMBED']);
+const lessonType = (v: unknown): LessonTypeValue => { const s = str(v).toUpperCase() as LessonTypeValue; return LESSON_TYPES.has(s) ? s : 'TEXT'; };
+const attachmentArr = (v: unknown) => (Array.isArray(v)
+  ? (v as { label?: unknown; url?: unknown; sizeBytes?: unknown }[])
+      .map((x) => ({ label: str(x?.label).slice(0, 200), url: str(x?.url).slice(0, 1000).trim(), sizeBytes: Number.isFinite(Number(x?.sizeBytes)) && Number(x?.sizeBytes) > 0 ? Math.round(Number(x?.sizeBytes)) : undefined }))
+      .filter((x) => x.label && x.url && isHttpUrl(x.url))
+  : []);
 
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
@@ -77,10 +88,14 @@ export async function POST(req: Request) {
         where: { id: String(b.id) },
         data: {
           title: str(b.title).slice(0, 160),
+          type: lessonType(b.type),
           durationMin: b.durationMin === '' || b.durationMin == null ? null : num(b.durationMin),
           minSeconds: b.minSeconds === '' || b.minSeconds == null ? null : Math.max(0, num(b.minSeconds)),
-          videoUrl: str(b.videoUrl).slice(0, 500) || null,
-          imageUrl: str(b.imageUrl).slice(0, 500) || null,
+          videoUrl: mediaUrl(b.videoUrl),
+          audioUrl: mediaUrl(b.audioUrl),
+          embedUrl: mediaUrl(b.embedUrl),
+          attachments: attachmentArr(b.attachments),
+          imageUrl: mediaUrl(b.imageUrl),
           body: str(b.body),
           keyPoints: strList(b.keyPoints),
           objectives: strList(b.objectives),

@@ -4,12 +4,8 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Markdown } from '@/components/academy/Markdown';
 import { Glyph } from '@/components/ui/Glyph';
+import { LessonMedia, Downloads } from '@/components/academy/LessonMedia';
 import type { CourseLearning, ModuleView, LessonView, QuizView } from '@/lib/lms';
-
-function ytId(url: string): string | null {
-  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{11})/);
-  return m ? m[1] : null;
-}
 
 const fmtReleaseDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -163,31 +159,22 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
 }
 
 function LessonPanel({ lesson, done, onComplete, onNext }: { lesson: LessonView; done: boolean; onComplete: () => void; onNext?: () => void }) {
-  const id = lesson.videoUrl ? ytId(lesson.videoUrl) : null;
   return (
     <article>
       <p className="eyebrow mb-2">{lesson.durationMin ? `${lesson.durationMin} min` : 'Lesson'}</p>
       <h2 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl">{lesson.title}</h2>
 
-      {lesson.videoUrl && (
-        <div className="mt-6">
-          <p className="eyebrow mb-2 text-xs">Watch first</p>
-          {id ? (
-            <div className="aspect-video w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
-              <iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${id}`} title={lesson.title} loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-            </div>
-          ) : (
-            <a href={lesson.videoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">▶ Watch explainer videos</a>
-          )}
-        </div>
-      )}
+      <LessonMedia lesson={lesson} onComplete={done ? undefined : onComplete} />
 
-      {lesson.imageUrl && (
+      {/* A still image still shows for non-video lessons that supplied one. */}
+      {lesson.imageUrl && !lesson.videoUrl && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={lesson.imageUrl} alt={lesson.title} className="mt-6 w-full rounded-[var(--radius-lg)] border border-[var(--color-line)]" />
       )}
 
       <div className="mt-2"><Markdown text={lesson.body} /></div>
+
+      <Downloads items={lesson.attachments} />
 
       {lesson.keyPoints.length > 0 && (
         <div className="mt-7 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5">

@@ -257,9 +257,12 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
     const base = buildLessonFlow({ title: lesson.title, body: lesson.body, objectives: lesson.objectives, studyTips: lesson.studyTips, homework: lesson.homework, steps: lesson.steps }, register);
     // Auto-chunked lessons get one interspersed check, just before the closing line.
     const withAsk = !authored && formative && base.length > 1 ? [...base.slice(0, -1), formative as FlowStep, base[base.length - 1]] : base;
-    let videoArt: string | null = null;
-    if (lesson.videoUrl) { const yt = ytId(lesson.videoUrl); videoArt = yt ? `video:yt:${yt}` : `video:url:${encodeURIComponent(lesson.videoUrl)}`; }
-    return videoArt ? [{ kind: 'teach', title: 'Watch first', text: '', art: videoArt }, ...withAsk] : withAsk;
+    let mediaArt: string | null = null;
+    let mediaTitle = 'Watch first';
+    if (lesson.videoUrl) { const yt = ytId(lesson.videoUrl); mediaArt = yt ? `video:yt:${yt}` : `video:url:${encodeURIComponent(lesson.videoUrl)}`; }
+    else if (lesson.audioUrl) { mediaArt = `audio:url:${encodeURIComponent(lesson.audioUrl)}`; mediaTitle = 'Listen'; }
+    else if (lesson.embedUrl) { mediaArt = `embed:url:${encodeURIComponent(lesson.embedUrl)}`; mediaTitle = ''; }
+    return mediaArt ? [{ kind: 'teach', title: mediaTitle, text: '', art: mediaArt }, ...withAsk] : withAsk;
   }, [lesson, formative, register]);
 
   const [mi, setMi] = useState(0);
@@ -315,6 +318,23 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
         </div>
       )}
 
+      {lesson.attachments.length > 0 && (
+        <div className="mt-6 rounded-[var(--radius-lg)] border border-white/10 bg-white/5 p-4">
+          <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-white/40">Downloads</p>
+          <ul className="space-y-2">
+            {lesson.attachments.map((a, i) => (
+              <li key={`${a.url}-${i}`}>
+                <a href={a.url} download target="_blank" rel="noreferrer" className="flex items-center gap-2.5 text-sm text-white/80 transition-colors hover:text-[var(--color-gold)]">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0 text-[var(--color-gold)]/70"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                  <span className="truncate">{a.label}</span>
+                  <span className="ml-auto shrink-0 text-[0.65rem] text-white/30">Download</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {lesson.requiresHomework && <HomeworkPanel lessonId={lesson.id} submission={lesson.submission} />}
     </div>
   );
@@ -342,7 +362,10 @@ function TeachMicro({ step, onContinue, gated }: { step: TeachStep; onContinue: 
   const v = step.art?.startsWith('video:') ? step.art.slice(6) : null;
   const ytv = v?.startsWith('yt:') ? v.slice(3) : null;
   const filev = v?.startsWith('url:') ? decodeURIComponent(v.slice(4)) : null;
-  const art = v ? null : resolveArt(step.art, `${step.title ?? ''} ${step.text}`);
+  const audioSrc = step.art?.startsWith('audio:url:') ? decodeURIComponent(step.art.slice(10)) : null;
+  const embedSrc = step.art?.startsWith('embed:url:') ? decodeURIComponent(step.art.slice(10)) : null;
+  const isMedia = !!v || !!audioSrc || !!embedSrc;
+  const art = isMedia ? null : resolveArt(step.art, `${step.title ?? ''} ${step.text}`);
   const [lvl] = useState<IlloLevel>(() => (art ? levelFor(art) : 'full'));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (art) seeArt(art); }, []);
@@ -354,6 +377,11 @@ function TeachMicro({ step, onContinue, gated }: { step: TeachStep; onContinue: 
       ) : filev ? (
         // eslint-disable-next-line jsx-a11y/media-has-caption
         <video controls playsInline className="aspect-video w-full max-w-md rounded-[var(--radius-lg)] border border-white/12" src={filev} />
+      ) : audioSrc ? (
+        // eslint-disable-next-line jsx-a11y/media-has-caption
+        <audio controls preload="metadata" className="w-full max-w-md" src={audioSrc} />
+      ) : embedSrc ? (
+        <div className="aspect-video w-full max-w-md overflow-hidden rounded-[var(--radius-lg)] border border-white/12"><iframe className="h-full w-full" src={embedSrc} title="Lesson content" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowFullScreen /></div>
       ) : (
         <>
           {art && <div className="mb-5 w-full max-w-[190px]"><Illustration name={art} level={lvl} /></div>}

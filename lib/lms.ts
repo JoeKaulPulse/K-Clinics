@@ -9,10 +9,13 @@ import { currentTenantId } from '@/lib/tenant';
 // server: the player receives questions without them; grading happens here.
 
 export type LinkRef = { label: string; url: string };
+export type AttachmentRef = { label: string; url: string; sizeBytes?: number };
+export type LessonType = 'TEXT' | 'VIDEO' | 'AUDIO' | 'PDF' | 'DOWNLOAD' | 'EMBED';
 export type HomeworkSubmissionView = { files: string[]; note: string | null; status: string; feedback: string | null };
 export type LessonView = {
   id: string; title: string; order: number; durationMin: number | null; minSeconds: number | null;
-  videoUrl: string | null; imageUrl: string | null; body: string;
+  type: LessonType; videoUrl: string | null; audioUrl: string | null; embedUrl: string | null; attachments: AttachmentRef[]; videoPositionSec: number;
+  imageUrl: string | null; body: string;
   keyPoints: string[]; objectives: string[]; studyTips: string[]; homework: string | null;
   examRefs: string[]; steps: unknown; citations: LinkRef[]; resources: LinkRef[]; pdfUrls: string[]; pdfNoDownload: string[]; requiresHomework: boolean; submission: HomeworkSubmissionView | null; done: boolean; locked: boolean;
 };
@@ -28,6 +31,7 @@ export type CourseLearning = {
 };
 
 const arr = (v: unknown): LinkRef[] => (Array.isArray(v) ? (v as LinkRef[]).filter((x) => x && x.label) : []);
+const attArr = (v: unknown): AttachmentRef[] => (Array.isArray(v) ? (v as AttachmentRef[]).filter((x) => x && x.label && x.url) : []);
 const strArr = (v: unknown): string[] => (Array.isArray(v) ? (v as string[]) : []);
 
 /** Is the student allowed into a course's content? (paid / enrolled / completed) */
@@ -90,8 +94,11 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
     db.quizAttempt.findMany({ where: { studentId, quiz: { module: { courseId: course.id } } }, select: { quizId: true, scorePct: true, passed: true } }),
     db.homeworkSubmission.findMany({ where: { studentId, lesson: { module: { courseId: course.id } } }, select: { lessonId: true, files: true, note: true, status: true, feedback: true } }),
   ]);
+  // BLD-529: resume positions live in LessonPlayback (decoupled from completion).
+  const playbackRows = await db.lessonPlayback.findMany({ where: { studentId, lesson: { module: { courseId: course.id } } }, select: { lessonId: true, positionSec: true } });
 
   const doneSet = new Set(doneRows.map((d) => d.lessonId));
+  const posByLesson = new Map(playbackRows.map((p) => [p.lessonId, p.positionSec]));
   const subByLesson = new Map(homeworkRows.map((h) => [h.lessonId, { files: h.files, note: h.note, status: h.status as string, feedback: h.feedback }]));
   const bestByQuiz = new Map<string, { best: number; passed: boolean }>();
   for (const a of attempts) {
@@ -113,13 +120,15 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
       if (isLocked) {
         return {
           id: l.id, title: l.title, order: l.order, durationMin: l.durationMin, minSeconds: null,
-          videoUrl: null, imageUrl: null, body: '', keyPoints: [], objectives: [], studyTips: [],
+          type: 'TEXT', videoUrl: null, audioUrl: null, embedUrl: null, attachments: [], videoPositionSec: 0,
+          imageUrl: null, body: '', keyPoints: [], objectives: [], studyTips: [],
           homework: null, examRefs: [], steps: null, citations: [], resources: [], pdfUrls: [], pdfNoDownload: [], requiresHomework: false, submission: null, done: false, locked: true,
         };
       }
       return {
         id: l.id, title: l.title, order: l.order, durationMin: l.durationMin, minSeconds: l.minSeconds,
-        videoUrl: l.videoUrl, imageUrl: l.imageUrl, body: l.body,
+        type: l.type, videoUrl: l.videoUrl, audioUrl: l.audioUrl, embedUrl: l.embedUrl, attachments: attArr(l.attachments), videoPositionSec: posByLesson.get(l.id) ?? 0,
+        imageUrl: l.imageUrl, body: l.body,
         keyPoints: strArr(l.keyPoints), objectives: strArr(l.objectives), studyTips: strArr(l.studyTips),
         homework: l.homework, examRefs: strArr(l.examRefs), steps: l.steps, citations: arr(l.citations), resources: arr(l.resources), pdfUrls: strArr(l.pdfUrls), pdfNoDownload: strArr(l.pdfNoDownload), requiresHomework: l.requiresHomework, submission: subByLesson.get(l.id) ?? null, done, locked: false,
       };
@@ -167,6 +176,24 @@ export async function completeLesson(studentId: string, lessonId: string, second
     const { recordDailyTask } = await import('@/lib/academy-daily'); await recordDailyTask(studentId);
   }
   return { ok: true, newBadges };
+}
+
+/** BLD-529: persist the learner's last video playback position so the player can
+ *  resume where they left off. Cheap upsert; never marks the lesson complete.
+ *  Verifies access and rejects locked modules, same as completeLesson. */
+export async function saveVideoPosition(studentId: string, lessonId: string, positionSec: number): Promise<{ ok: boolean }> {
+  const lesson = await db.lesson.findUnique({ where: { id: lessonId }, select: { moduleId: true, module: { select: { courseId: true } } } });
+  if (!lesson) return { ok: false };
+  if (!(await studentCanAccess(studentId, lesson.module.courseId))) return { ok: false };
+  if ((await lockedModuleMap(studentId, lesson.module.courseId)).has(lesson.moduleId)) return { ok: false };
+  const pos = Math.max(0, Math.min(Math.round(positionSec) || 0, 24 * 60 * 60)); // sane cap
+  const tenantId = await currentTenantId();
+  await db.lessonPlayback.upsert({
+    where: { studentId_lessonId: { studentId, lessonId } },
+    update: { positionSec: pos },
+    create: { tenantId, studentId, lessonId, positionSec: pos },
+  });
+  return { ok: true };
 }
 
 export type GradeResult = {
@@ -241,7 +268,8 @@ export async function getCoursePreview(courseId: string): Promise<CourseLearning
   const moduleViews: ModuleView[] = modules.map((m) => {
     const lessons: LessonView[] = m.lessons.map((l) => ({
       id: l.id, title: l.title, order: l.order, durationMin: l.durationMin, minSeconds: l.minSeconds,
-      videoUrl: l.videoUrl, imageUrl: l.imageUrl, body: l.body,
+      type: l.type, videoUrl: l.videoUrl, audioUrl: l.audioUrl, embedUrl: l.embedUrl, attachments: attArr(l.attachments), videoPositionSec: 0,
+      imageUrl: l.imageUrl, body: l.body,
       keyPoints: strArr(l.keyPoints), objectives: strArr(l.objectives), studyTips: strArr(l.studyTips),
       homework: l.homework, examRefs: strArr(l.examRefs), steps: l.steps, citations: arr(l.citations), resources: arr(l.resources), pdfUrls: strArr(l.pdfUrls), pdfNoDownload: strArr(l.pdfNoDownload), requiresHomework: l.requiresHomework, submission: null, done: false, locked: false,
     }));

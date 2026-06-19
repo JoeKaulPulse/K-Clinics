@@ -25,6 +25,7 @@ export const ACADEMY_TENANT_MODELS: ReadonlySet<string> = new Set<string>([
   'quiz',
   'quizQuestion',
   'lessonProgress',
+  'lessonPlayback',
   'quizAttempt',
   'examQuestion',
   'pastPaper',

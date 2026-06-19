@@ -10,10 +10,19 @@ export async function POST(req: Request) {
   const student = await getCurrentStudent().catch(() => null);
   if (!student) return NextResponse.json({ ok: false, error: 'Please sign in.' }, { status: 401 });
 
-  const { lessonId, secondsSpent } = await req.json().catch(() => ({}));
+  const body = await req.json().catch(() => ({} as Record<string, unknown>));
+  const lessonId = body?.lessonId;
   if (!lessonId) return NextResponse.json({ ok: false, error: 'Missing lesson.' }, { status: 400 });
 
+  // BLD-529: a body carrying `positionSec` is a lightweight resume-position save
+  // (video/audio scrub), never a completion. Completion still sends `secondsSpent`.
+  if (Object.prototype.hasOwnProperty.call(body, 'positionSec')) {
+    const { saveVideoPosition } = await import('@/lib/lms');
+    const res = await saveVideoPosition(student.id, String(lessonId), Number(body.positionSec) || 0);
+    return NextResponse.json(res, { status: res.ok ? 200 : 400 });
+  }
+
   const { completeLesson } = await import('@/lib/lms');
-  const res = await completeLesson(student.id, String(lessonId), Number(secondsSpent) || 0);
+  const res = await completeLesson(student.id, String(lessonId), Number(body.secondsSpent) || 0);
   return NextResponse.json(res, { status: res.ok ? 200 : 400 });
 }

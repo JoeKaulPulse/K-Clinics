@@ -1826,6 +1826,7 @@ model AcademyStudent {
 
   enrolments          Enrolment[]
   lessonProgress      LessonProgress[]
+  lessonPlaybacks     LessonPlayback[]
   quizAttempts        QuizAttempt[]
   practiceAttempts    PracticeAttempt[]
   pointEvents         PointEvent[]
@@ -1924,6 +1925,20 @@ model CourseModule {
   @@index([tenantId])
 }
 
+// BLD-529: lesson content type drives the primary media + the admin editor shape
+// (Thinkific-style). TEXT = body only; VIDEO = native Blob upload OR YouTube/Vimeo
+// embed (both via `videoUrl`); AUDIO = `audioUrl`; PDF = `pdfUrls`; DOWNLOAD =
+// `attachments`; EMBED = third-party iframe via `embedUrl`. The body still renders
+// underneath any media, so a lesson can stay multimodal.
+enum LessonType {
+  TEXT
+  VIDEO
+  AUDIO
+  PDF
+  DOWNLOAD
+  EMBED
+}
+
 model Lesson {
   id                  String               @id @default(cuid())
   tenantId            String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
@@ -1931,8 +1946,12 @@ model Lesson {
   moduleId            String
   title               String
   order               Int                  @default(0)
+  type                LessonType           @default(TEXT) // BLD-529: primary content type
   durationMin         Int?
-  videoUrl            String? // YouTube watch/embed URL, or a search link (pre-test explainer)
+  videoUrl            String? // native Blob/MP4 upload, YouTube/Vimeo embed, or a search link (pre-test explainer)
+  audioUrl            String? // BLD-529: native audio (Blob/MP3) or hosted audio URL
+  embedUrl            String? // BLD-529: third-party iframe embed (slides, interactive widget, form)
+  attachments         Json? // BLD-529: downloadable files [{ label, url, sizeBytes? }]
   imageUrl            String?
   body                String               @db.Text // markdown-ish lesson content
   keyPoints           String[]             @default([])
@@ -1948,6 +1967,7 @@ model Lesson {
   pdfUrls             String[]             @default([]) // BLD-407: uploaded PDF attachments (Vercel Blob URLs)
   pdfNoDownload       String[]             @default([]) // BLD-443: subset of pdfUrls marked view-only (no download offered)
   progress            LessonProgress[]
+  playbacks           LessonPlayback[]
   homeworkSubmissions HomeworkSubmission[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
@@ -2029,6 +2049,26 @@ model LessonProgress {
   lessonId     String
   completedAt  DateTime       @default(now())
   secondsSpent Int            @default(0) // total dwell time recorded for this lesson
+
+  @@unique([studentId, lessonId])
+  @@index([studentId])
+  @@index([tenantId])
+}
+
+// BLD-529: resume position for media lessons (video/audio). Kept SEPARATE from
+// LessonProgress on purpose — a LessonProgress row means "completed" everywhere
+// (gamification counts rows), so storing an in-progress position there would
+// wrongly mark a half-watched video as done. New table → the @@unique is created
+// with it (the additive deploy gate only refuses @unique added to existing tables).
+model LessonPlayback {
+  id          String         @id @default(cuid())
+  tenantId    String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  student     AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId   String
+  lesson      Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId    String
+  positionSec Int            @default(0) // last playback position in seconds
+  updatedAt   DateTime       @updatedAt
 
   @@unique([studentId, lessonId])
   @@index([studentId])
