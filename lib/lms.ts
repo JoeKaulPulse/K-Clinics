@@ -238,6 +238,18 @@ export async function saveVideoPosition(studentId: string, lessonId: string, pos
   return { ok: true };
 }
 
+/** BLD-529: resolve a lesson PDF's source URL for a student IF they may view it
+ *  (enrolled + in access window + module not drip-locked + valid index). Used only
+ *  by the authenticated PDF proxy — the public Blob URL is never sent to the page. */
+export async function resolveLessonPdf(studentId: string, lessonId: string, index: number): Promise<string | null> {
+  const lesson = await db.lesson.findUnique({ where: { id: lessonId }, select: { moduleId: true, pdfUrls: true, module: { select: { courseId: true } } } });
+  if (!lesson) return null;
+  const [canAccess, locked] = await Promise.all([studentCanAccess(studentId, lesson.module.courseId), lockedModuleMap(studentId, lesson.module.courseId)]);
+  if (!canAccess || locked.has(lesson.moduleId)) return null;
+  const url = (Array.isArray(lesson.pdfUrls) ? lesson.pdfUrls : [])[index];
+  return url && /^https?:\/\//i.test(url) ? url : null;
+}
+
 // ── Engagement & community (BLD-529) ─────────────────────────────────────────
 // Per-lesson private notes + threaded discussion/Q&A, and course reviews.
 

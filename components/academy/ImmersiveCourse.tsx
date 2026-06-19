@@ -8,6 +8,7 @@ import { Illustration, matchIllustration, type IlloKey, type IlloLevel } from '@
 import { AmbientBackdrop } from '@/components/academy/AmbientBackdrop';
 import { ExplainerPlayer } from '@/components/academy/ExplainerPlayer';
 import { HomeworkPanel } from '@/components/academy/HomeworkPanel';
+import { SecurePdfViewer } from '@/components/academy/SecurePdfViewer';
 import { kindLabel } from '@/components/academy/attachment-kinds';
 import { academyLevel } from '@/lib/academy-levels';
 import { isMascotMuted, setMascotMuted } from '@/components/academy/mascotVoice';
@@ -268,6 +269,7 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
 
   const [mi, setMi] = useState(0);
   const [showExplainer, setShowExplainer] = useState(false);
+  const [pdfView, setPdfView] = useState<{ index: number; name: string } | null>(null);
   const startedAt = useRef(Date.now());
   const cur = flow[Math.min(mi, flow.length - 1)];
   const last = mi >= flow.length - 1;
@@ -301,23 +303,34 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
         <div className="mt-6 rounded-[var(--radius-lg)] border border-white/10 bg-white/5 p-4">
           <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-white/40">Lesson resources</p>
           <ul className="space-y-2">
-            {lesson.pdfUrls.map((url) => {
+            {lesson.pdfUrls.map((url, idx) => {
               const raw = url.split('/').pop() ?? 'Document';
               const name = (() => { try { return decodeURIComponent(raw); } catch { return raw; } })().replace(/^\d+-/, '');
               const viewOnly = lesson.pdfNoDownload?.includes(url) ?? false;
+              const icon = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0 text-[var(--color-gold)]/70"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" /></svg>;
+              // View-only → open the secure in-app viewer (no download/print, URL never exposed).
               return (
                 <li key={url}>
-                  <a href={url} target="_blank" rel="noreferrer" {...(viewOnly ? {} : { download: name })} className="flex items-center gap-2.5 text-sm text-white/80 transition-colors hover:text-[var(--color-gold)]">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0 text-[var(--color-gold)]/70"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" /></svg>
-                    <span className="truncate">{name}</span>
-                    <span className="ml-auto shrink-0 text-[0.65rem] text-white/30">{viewOnly ? 'View only' : 'Download'}</span>
-                  </a>
+                  {viewOnly ? (
+                    <button onClick={() => setPdfView({ index: idx, name })} className="flex w-full items-center gap-2.5 text-left text-sm text-white/80 transition-colors hover:text-[var(--color-gold)]">
+                      {icon}
+                      <span className="truncate">{name}</span>
+                      <span className="ml-auto shrink-0 text-[0.65rem] text-white/30">View only</span>
+                    </button>
+                  ) : (
+                    <a href={url} target="_blank" rel="noreferrer" download={name} className="flex items-center gap-2.5 text-sm text-white/80 transition-colors hover:text-[var(--color-gold)]">
+                      {icon}
+                      <span className="truncate">{name}</span>
+                      <span className="ml-auto shrink-0 text-[0.65rem] text-white/30">Download</span>
+                    </a>
+                  )}
                 </li>
               );
             })}
           </ul>
         </div>
       )}
+      {pdfView && <SecurePdfViewer lessonId={lesson.id} index={pdfView.index} title={pdfView.name} onClose={() => setPdfView(null)} />}
 
       {lesson.attachments.length > 0 && (
         <div className="mt-6 rounded-[var(--radius-lg)] border border-white/10 bg-white/5 p-4">
