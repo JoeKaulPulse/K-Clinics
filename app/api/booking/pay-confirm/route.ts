@@ -26,7 +26,11 @@ export async function POST(req: Request) {
   const bookingId = pi.metadata?.bookingId;
   if (!bookingId) return NextResponse.json({ ok: false, error: 'Not a booking payment' }, { status: 400 });
 
+  // BLD-508: record only the amount actually captured (amount_received), never the
+  // requested amount (pi.amount). If nothing was captured, do not finalise.
+  const receivedPence = pi.amount_received ?? 0;
+  if (receivedPence <= 0) return NextResponse.json({ ok: false, error: 'Payment not captured' }, { status: 409 });
   const { finalizeBookingCharge } = await import('@/lib/booking-actions');
-  await finalizeBookingCharge(bookingId, pi.id, pi.amount_received ?? pi.amount, { late: pi.metadata?.late === 'true' });
+  await finalizeBookingCharge(bookingId, pi.id, receivedPence, { late: pi.metadata?.late === 'true' });
   return NextResponse.json({ ok: true });
 }

@@ -38,8 +38,18 @@ export async function POST(req: Request) {
           // Idempotent: records the charge, emails the receipt and credits loyalty
           // if it hasn't already been finalised synchronously. This is the backstop
           // that completes an SCA charge once the client authenticates via /booking/pay.
-          const { finalizeBookingCharge } = await import('@/lib/booking-actions');
-          await finalizeBookingCharge(bookingId, pi.id, pi.amount_received ?? pi.amount, { late: pi.metadata?.late === 'true' });
+          // BLD-508: record ONLY the amount actually captured (amount_received), never
+          // the requested amount (pi.amount). For a partially-captured / not-fully-paid
+          // intent amount_received is below pi.amount, so the old `?? pi.amount` fallback
+          // could mark a booking fully paid for money that was never taken. If nothing
+          // was received, do not finalise — leave it for staff.
+          const receivedPence = pi.amount_received ?? 0;
+          if (receivedPence <= 0) {
+            console.error('[webhook] payment_intent.succeeded with no amount_received — not finalising:', { bookingId, piId: pi.id });
+          } else {
+            const { finalizeBookingCharge } = await import('@/lib/booking-actions');
+            await finalizeBookingCharge(bookingId, pi.id, receivedPence, { late: pi.metadata?.late === 'true' });
+          }
         }
         // Finalise retail orders server-side so they complete even if the customer
         // closes the tab. Assert amount_received matches the stored order total to
