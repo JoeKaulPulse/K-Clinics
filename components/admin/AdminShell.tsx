@@ -7,6 +7,9 @@ import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 import { site } from '@/lib/site';
 import { GlobalSearch } from '@/components/admin/GlobalSearch';
 import { NotificationBell } from '@/components/admin/NotificationBell';
+import { TeamChatProvider } from '@/components/admin/teamchat/TeamChatProvider';
+import { ChatLauncher } from '@/components/admin/teamchat/ChatLauncher';
+import { ChatDock } from '@/components/admin/teamchat/ChatDock';
 import { GuideHost } from '@/components/guide/GuideHost';
 import { CloseDownReminder } from '@/components/admin/CloseDownReminder';
 import { ReportProblem } from '@/components/admin/ReportProblem';
@@ -83,6 +86,7 @@ export function AdminShell({
   const [pendingTimeOff, setPendingTimeOff] = useState(0);
   const [openTasks, setOpenTasks] = useState(0);
   const [chatUnread, setChatUnread] = useState(0);
+  const [teamChatUnread, setTeamChatUnread] = useState(0);
   const canApproveTimeOff = allowed.has('schedule.manage');
   useEffect(() => {
     let on = true;
@@ -91,7 +95,7 @@ export function AdminShell({
       if (typeof document !== 'undefined' && document.hidden) return;
       fetch('/api/admin/badges')
         .then((r) => r.json())
-        .then((j) => { if (on && j?.ok) { setPendingTimeOff(j.pendingTimeOff || 0); setOpenTasks(j.openTasks || 0); setChatUnread(j.chatUnread || 0); } })
+        .then((j) => { if (on && j?.ok) { setPendingTimeOff(j.pendingTimeOff || 0); setOpenTasks(j.openTasks || 0); setChatUnread(j.chatUnread || 0); setTeamChatUnread(j.teamChatUnread || 0); } })
         .catch(() => {});
     };
     load();
@@ -102,7 +106,7 @@ export function AdminShell({
   }, []);
 
   const badgeCount = (badge?: string) =>
-    badge === 'timeoff' ? (canApproveTimeOff ? pendingTimeOff : 0) : badge === 'tasks' ? openTasks : badge === 'chat' ? chatUnread : 0;
+    badge === 'timeoff' ? (canApproveTimeOff ? pendingTimeOff : 0) : badge === 'tasks' ? openTasks : badge === 'chat' ? chatUnread : badge === 'teamchat' ? teamChatUnread : 0;
 
   // Collapsible sidebar sections (desktop). Collapsed by default; the section
   // containing the current page opens automatically so you can see where you are.
@@ -234,6 +238,7 @@ export function AdminShell({
 
   return (
     <I18nProvider locale={locale}>
+      <TeamChatProvider>
       <div className="flex min-h-screen bg-[var(--color-bone)]">
         {/* Desktop sidebar — navigation only; account moved to the top bar. */}
         <aside className="hidden shrink-0 flex-col border-r border-[var(--color-line)] bg-[var(--color-porcelain)] lg:flex lg:w-64">
@@ -271,6 +276,7 @@ export function AdminShell({
             <span className="block h-6 w-[0.9rem] shrink-0 text-[var(--color-ink)] lg:hidden"><KMark /></span>
             <div data-tour="admin-search" className="min-w-0 flex-1"><div className="max-w-xl"><GlobalSearch placeholder={t('shell.search')} pages={navPages} /></div></div>
             <div className="flex shrink-0 items-center gap-1 md:gap-2">
+              <ChatLauncher />
               <NotificationBell />
               <div ref={profileRef} className="relative">
                 <button
@@ -317,7 +323,9 @@ export function AdminShell({
         </div>
         {allowed.has('build.view') && <ReportProblem />}
       </div>
+      <ChatDock />
       <GuideHost />
+      </TeamChatProvider>
     </I18nProvider>
   );
 }

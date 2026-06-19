@@ -989,6 +989,8 @@ model AdminUser {
   notifications   StaffNotification[]
   timeEntries     TimeEntry[]
   contractorTasks ContractorTask[]    @relation("ContractorTaskAssignee")
+  teamMemberships TeamChannelMember[] @relation("TeamChatMemberships")
+  teamMessages    TeamMessage[]       @relation("TeamChatAuthored")
 }
 
 // PRJ-63 — staff time tracking. A TimeEntry is an open/closed interval of either
@@ -1421,6 +1423,7 @@ model Task {
   parent      Task?        @relation("TaskSubtasks", fields: [parentId], references: [id], onDelete: Cascade)
   parentId    String?
   subtasks    Task[]       @relation("TaskSubtasks")
+  comments    TaskComment[] @relation("TaskComments")
   createdBy   String?
   completedAt DateTime?
   completedBy String?
@@ -3533,4 +3536,194 @@ model WaitlistEntry {
 
   @@index([treatmentSlug, status])
   @@index([clientId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Team chat — internal staff-to-staff messaging (BLD ref cited in the PR).
+// 1:1 DMs and group channels with file/image/video attachments, GIFs, emoji
+// reactions and @-mentions. Surfaced through the notifications hub; opens as
+// docked windows in the admin. Deliberately separate from the visitor-facing
+// ChatConversation / ChatMessage models (different audience, lifecycle, fields).
+// All new tables, so unique constraints are declared directly (created fresh by
+// the migration — no `db push` add-unique-to-existing-table concern).
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum TeamChannelKind {
+  DM // 1:1 direct message
+  GROUP // named group of 2+ people
+}
+
+enum TeamMemberRole {
+  OWNER // can rename, add/remove members, delete the channel
+  MEMBER
+}
+
+model TeamChannel {
+  id   String          @id @default(cuid())
+  kind TeamChannelKind @default(DM)
+  // DMs only: a stable key built from the two sorted member ids, so a 1:1 is
+  // found-or-created exactly once. Null for groups (Postgres allows many NULLs
+  // under a unique index, so groups don't collide).
+  dmKey         String?   @unique
+  name          String? // group name; DMs derive their title from the other member
+  topic         String?
+  avatarUrl     String?
+  createdById   String?
+  archivedAt    DateTime?
+  lastMessageAt DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  members  TeamChannelMember[]
+  messages TeamMessage[]
+
+  @@index([kind])
+  @@index([lastMessageAt])
+}
+
+model TeamChannelMember {
+  id         String         @id @default(cuid())
+  channel    TeamChannel    @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelId  String
+  user       AdminUser      @relation("TeamChatMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  role       TeamMemberRole @default(MEMBER)
+  lastReadAt DateTime? // everything up to here is read; drives unread counts
+  muted      Boolean        @default(false) // no notifications/sound for this channel
+  createdAt  DateTime       @default(now())
+
+  @@unique([channelId, userId])
+  @@index([userId])
+  @@index([channelId])
+}
+
+model TeamMessage {
+  id          String      @id @default(cuid())
+  channel     TeamChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelId   String
+  author      AdminUser?  @relation("TeamChatAuthored", fields: [authorId], references: [id], onDelete: SetNull)
+  authorId    String? // null for SYSTEM messages ("X created the group")
+  kind        String      @default("TEXT") // TEXT | SYSTEM
+  body        String      @db.Text
+  mentionIds  String[]    @default([]) // AdminUser ids @-mentioned in the body
+  mentionsAll Boolean     @default(false) // @everyone / @channel
+  replyToId   String? // light threading: quote/reply to an earlier message
+  editedAt    DateTime?
+  deletedAt   DateTime? // soft-delete: keeps thread ordering, shows "message removed"
+  createdAt   DateTime    @default(now())
+
+  attachments TeamMessageAttachment[]
+  reactions   TeamMessageReaction[]
+
+  @@index([channelId, createdAt])
+  @@index([authorId])
+}
+
+model TeamMessageAttachment {
+  id        String      @id @default(cuid())
+  message   TeamMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId String
+  kind      String // IMAGE | VIDEO | FILE | GIF
+  url       String      @db.Text
+  name      String?
+  mime      String?
+  size      Int?
+  width     Int?
+  height    Int?
+  createdAt DateTime    @default(now())
+
+  @@index([messageId])
+}
+
+model TeamMessageReaction {
+  id        String      @id @default(cuid())
+  message   TeamMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId String
+  userId    String // AdminUser id who reacted
+  emoji     String // a single emoji character/sequence
+  createdAt DateTime    @default(now())
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Team task board extensions — comments and an automations engine that
+// materialises recurring / triggered work onto the Tasks board (TSK-).
+// Automations carry their own ref scheme: AUT-<seq>. All new tables.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model TaskComment {
+  id          String   @id @default(cuid())
+  task        Task     @relation("TaskComments", fields: [taskId], references: [id], onDelete: Cascade)
+  taskId      String
+  authorId    String? // AdminUser id (null if the author account was removed)
+  authorEmail String?
+  body        String   @db.Text
+  mentionIds  String[] @default([])
+  createdAt   DateTime @default(now())
+
+  @@index([taskId, createdAt])
+}
+
+enum TaskAutomationTrigger {
+  SCHEDULE // recurring on a calendar cadence (the "repeat events")
+  ON_TASK_COMPLETED // when a matching task is completed, spawn a follow-up
+}
+
+model TaskAutomation {
+  id          String                @id @default(cuid())
+  seq         Int                   @default(autoincrement())
+  ref         String? // AUT-<seq>
+  name        String
+  description String?
+  enabled     Boolean               @default(true)
+  trigger     TaskAutomationTrigger @default(SCHEDULE)
+
+  // ── Schedule config (trigger = SCHEDULE) ──────────────────────────────────
+  freq       String    @default("WEEKLY") // DAILY | WEEKLY | MONTHLY
+  interval   Int       @default(1) // every N periods (every 2 weeks, etc.)
+  daysOfWeek Int[]     @default([]) // 0=Sun … 6=Sat, for WEEKLY
+  dayOfMonth Int? // 1…28 for MONTHLY (capped at 28 to exist every month)
+  timeOfDay  String    @default("09:00") // HH:mm, clinic-local (Europe/London)
+  startsOn   DateTime?
+  endsOn     DateTime?
+
+  // ── Trigger config (trigger = ON_TASK_COMPLETED) ──────────────────────────
+  matchText String? // case-insensitive substring match on the completed task title
+
+  // ── Task template (what gets created) ─────────────────────────────────────
+  titleTemplate  String
+  detailTemplate String?
+  priority       String   @default("NORMAL") // LOW | NORMAL | HIGH
+  dueInDays      Int? // due date = creation date + N days
+  assignMode     String   @default("FIXED") // FIXED | ROUND_ROBIN | ALL
+  assigneeIds    String[] @default([]) // pool of AdminUser ids
+  roundRobinIdx  Int      @default(0) // cursor for ROUND_ROBIN
+
+  lastRunAt   DateTime?
+  nextRunAt   DateTime? // next scheduled fire (advisory; occurrenceKey is the guard)
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  runs TaskAutomationRun[]
+
+  @@index([enabled, trigger])
+  @@index([nextRunAt])
+}
+
+model TaskAutomationRun {
+  id            String         @id @default(cuid())
+  automation    TaskAutomation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  automationId  String
+  // Idempotency guard: one run row per due occurrence, so overlapping cron ticks
+  // can never double-spawn the same scheduled task.
+  occurrenceKey  String
+  createdTaskIds String[] @default([])
+  note           String?
+  createdAt      DateTime @default(now())
+
+  @@unique([automationId, occurrenceKey])
+  @@index([automationId, createdAt])
 }

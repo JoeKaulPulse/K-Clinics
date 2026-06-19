@@ -7,7 +7,7 @@
 // optional `keywords` string of extra synonyms so search matches how people
 // actually describe a page ("till" → POS, "vat"/"tax" → finance, etc.).
 
-export type NavBadge = 'tasks' | 'timeoff' | 'chat';
+export type NavBadge = 'tasks' | 'timeoff' | 'chat' | 'teamchat';
 export type NavItem = {
   href: string;
   key: string;        // i18n key for the label
@@ -27,6 +27,8 @@ export const navGroups: NavGroup[] = [
     { href: '/admin/my-day', key: 'nav.myday', keywords: 'today agenda shift' },
     { href: '/admin/calendar', key: 'nav.calendar', perm: 'calendar.view', keywords: 'diary appointments schedule day week' },
     { href: '/admin/tasks', key: 'nav.tasks', badge: 'tasks', keywords: 'todo to-do checklist' },
+    { href: '/admin/tasks/automations', key: 'nav.taskAutomations', perm: 'tasks.automate', keywords: 'recurring repeat automation schedule task generator rota workload engine' },
+    { href: '/admin/messages', key: 'nav.teamChat', badge: 'teamchat', keywords: 'team chat messages dm direct message group staff colleagues internal slack' },
     { href: '/admin/time-off', key: 'nav.timeoff', badge: 'timeoff', keywords: 'holiday leave annual absence' },
   ] },
   // Clients & bookings: the people and conversations. Loyalty/offers split out

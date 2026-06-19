@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionPermissions } from '@/lib/auth';
@@ -55,10 +56,19 @@ export default async function TasksPage() {
 
   return (
     <AdminShell user={session.email} can={can} locale={locale}>
-      <h1 className="font-[family-name:var(--font-display)] text-3xl">{uk ? 'Завдання' : 'Tasks'}</h1>
-      <p className="mt-1 text-sm text-[var(--color-stone)]">
-        {uk ? 'Внутрішні завдання команди — призначайте, встановлюйте терміни та відстежуйте виконання.' : 'Internal team tasks — assign them, set due dates and track completion.'}
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-[family-name:var(--font-display)] text-3xl">{uk ? 'Завдання' : 'Tasks'}</h1>
+          <p className="mt-1 text-sm text-[var(--color-stone)]">
+            {uk ? 'Внутрішні завдання команди — призначайте, встановлюйте терміни та відстежуйте виконання.' : 'Internal team tasks — assign them, set due dates and track completion.'}
+          </p>
+        </div>
+        {can.includes('tasks.automate') && (
+          <Link href="/admin/tasks/automations" className="shrink-0 rounded-full border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-bone)]">
+            ↻ {uk ? 'Автоматизація завдань' : 'Task automations'}
+          </Link>
+        )}
+      </div>
       <div className="mt-8">
         <TaskBoard
           meId={session.sub}

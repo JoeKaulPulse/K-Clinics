@@ -79,6 +79,7 @@ export const PERMISSIONS: Permission[] = [
   { key: 'schedule.manage', group: 'Scheduling', label: 'Manage schedules & time-off', description: 'Edit staff working hours, time-off and availability.' },
   { key: 'sop.manage', group: 'Scheduling', label: 'Manage SOPs', description: 'Edit standard operating procedures per treatment.', sensitive: true },
   { key: 'rooms.prep.manage', group: 'Scheduling', label: 'Set room readiness', description: 'Mark treatment rooms dirty / cleaning / ready and see room availability.' },
+  { key: 'tasks.automate', group: 'Scheduling', label: 'Manage task automations', description: 'Create recurring/triggered work and repeat events that auto-assign tasks to staff.' },
 
   // Inventory
   { key: 'inventory.view', group: 'Inventory', label: 'View inventory', description: 'See stock levels, batches and expiry dates.' },
@@ -162,6 +163,7 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     'reviews.manage',
     'calendar.view',
     'schedule.manage',
+    'tasks.automate',
     'rooms.prep.manage',
     'inventory.view',
     'inventory.manage',

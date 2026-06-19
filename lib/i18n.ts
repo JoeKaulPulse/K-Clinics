@@ -113,6 +113,8 @@ export const DICT: Record<string, Entry> = {
   'nav.financeControls': { en: 'Financial controls', uk: 'Фінансовий контроль' },
   'nav.promotions': { en: 'Promotions', uk: 'Промокоди' },
   'nav.chat': { en: 'Live chat', uk: 'Онлайн-чат' },
+  'nav.teamChat': { en: 'Team chat', uk: 'Командний чат' },
+  'nav.taskAutomations': { en: 'Task automations', uk: 'Автоматизація завдань' },
   'nav.calls': { en: 'Calls', uk: 'Дзвінки' },
   'nav.group.clients': { en: 'Clients & bookings', uk: 'Клієнти та записи' },
   'nav.group.loyalty': { en: 'Loyalty & offers', uk: 'Лояльність і пропозиції' },
