@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { PageHero } from '@/components/ui/PageHero';
 import { EnrolmentCheckout } from '@/components/academy/EnrolmentCheckout';
+import { AcademyPortalShell } from '@/components/academy/AcademyPortalShell';
 import { pageMeta } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: 'Accept your place — K Academy', description: 'Accept your offer and secure your place at K Academy.', path: '/academy/pay', noindex: true });
@@ -32,14 +32,13 @@ export default async function AcademyPayPage({ params }: { params: Promise<{ enr
         : null;
 
   return (
-    <>
-      <PageHero
-        eyebrow={enrolment.course.level ? `K Academy · ${enrolment.course.level}` : 'K Academy'}
-        title="Accept your place"
-        lede={`Secure your place on ${enrolment.course.title}.`}
-        gradient={['#2a2420', '#7b6a5d']}
-      />
-      <section className="container-lux section max-w-2xl">
+    <AcademyPortalShell firstName={student.firstName}>
+      <div className="mb-7">
+        {enrolment.course.level && <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-gold)]">K Academy · {enrolment.course.level}</p>}
+        <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl sm:text-4xl">Accept your place</h1>
+        <p className="mt-1 text-[var(--color-stone)]">Secure your place on {enrolment.course.title}.</p>
+      </div>
+      <section className="max-w-2xl">
         {blocked || !money ? (
           <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-8 text-center">
             <p className="text-[var(--color-stone)]">{blocked ?? 'We couldn’t load this enrolment.'}</p>
@@ -62,6 +61,6 @@ export default async function AcademyPayPage({ params }: { params: Promise<{ enr
           </>
         )}
       </section>
-    </>
+    </AcademyPortalShell>
   );
 }

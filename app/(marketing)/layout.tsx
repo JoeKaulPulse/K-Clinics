@@ -2,6 +2,7 @@ import { organizationLd, websiteLd, JsonLd } from '@/lib/seo';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { AnnouncementBar } from '@/components/layout/AnnouncementBar';
+import { HideOnAcademyPortal } from '@/components/layout/HideOnAcademyPortal';
 import { PageTransition } from '@/components/motion/PageTransition';
 import { ScrollProgress } from '@/components/motion/ScrollProgress';
 import { Cursor } from '@/components/motion/Cursor';
@@ -32,13 +33,19 @@ export default async function MarketingLayout({ children }: { children: React.Re
       >
         Skip to content
       </a>
-      <AnnouncementBar a={config.announcement} active={announcementActive(config.announcement)} />
-      <Header config={config} />
+      {/* The trainee portal (/academy/portal, learn, practice…) wears its own
+          portal shell, so the marketing chrome is hidden there (BLD-528). */}
+      <HideOnAcademyPortal>
+        <AnnouncementBar a={config.announcement} active={announcementActive(config.announcement)} />
+        <Header config={config} />
+      </HideOnAcademyPortal>
       <main id="main" className="pt-[var(--ann-h,0px)]">
         <PageTransition>{children}</PageTransition>
       </main>
-      <Footer config={config} />
-      <WhatsAppButton config={config} />
+      <HideOnAcademyPortal>
+        <Footer config={config} />
+        <WhatsAppButton config={config} />
+      </HideOnAcademyPortal>
       <DeferredLiveChat />
       <EditBar />
       <CookieConsent />

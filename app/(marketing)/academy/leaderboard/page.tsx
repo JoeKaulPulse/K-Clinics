@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
+import { AcademyPortalShell } from '@/components/academy/AcademyPortalShell';
 import { pageMeta } from '@/lib/seo';
 import type { LeaderRow } from '@/lib/academy-gamification';
 
@@ -45,9 +45,8 @@ export default async function LeaderboardPage() {
   const earned = new Set(standing.badges.map((b) => b.key));
 
   return (
-    <section className="container-lux py-[calc(var(--header-h,5.25rem)+2rem)]">
-      <Link href="/academy/portal" className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Trainee portal</Link>
-      <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl sm:text-4xl">Leaderboard</h1>
+    <AcademyPortalShell firstName={student.firstName}>
+      <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl">Leaderboard</h1>
       <p className="mt-2 max-w-2xl text-[var(--color-stone)]">Earn XP for every lesson, assessment and practice set. Top performers each cohort go in the running for end-of-course prizes — and our annual winners may be offered a place on the team.</p>
 
       {/* Your standing */}
@@ -75,6 +74,6 @@ export default async function LeaderboardPage() {
         {cohortId && <Board title="Your cohort" rows={cohort} blurb="How you stack up against the people you’re training with." />}
         <Board title="All-time" rows={allTime} blurb="The academy’s highest scorers across every cohort." />
       </div>
-    </section>
+    </AcademyPortalShell>
   );
 }

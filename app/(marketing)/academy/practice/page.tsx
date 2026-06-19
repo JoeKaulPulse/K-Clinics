@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { PracticeRunner } from '@/components/academy/PracticeRunner';
+import { AcademyPortalShell } from '@/components/academy/AcademyPortalShell';
 import { pageMeta } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: 'Practice — K Academy', description: 'Test your knowledge any time and see real exam-style papers.', path: '/academy/practice' });
@@ -19,9 +19,8 @@ export default async function PracticePage() {
   const [courses, papers] = await Promise.all([studentPracticeCourses(student.id), listPastPapers()]);
 
   return (
-    <section className="container-lux py-[calc(var(--header-h,5.25rem)+2rem)]">
-      <Link href="/academy/portal" className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Trainee portal</Link>
-      <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl sm:text-4xl">Practice &amp; past papers</h1>
+    <AcademyPortalShell firstName={student.firstName}>
+      <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl">Practice &amp; past papers</h1>
       <p className="mt-2 max-w-2xl text-[var(--color-stone)]">Test yourself any time with exam-style questions, and see what the real papers look like so there are no surprises on the day.</p>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px] lg:items-start">
@@ -48,6 +47,6 @@ export default async function PracticePage() {
           </div>
         </aside>
       </div>
-    </section>
+    </AcademyPortalShell>
   );
 }

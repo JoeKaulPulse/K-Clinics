@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { PageHero } from '@/components/ui/PageHero';
+import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 import { AcademyAuth } from '@/components/academy/AcademyAuth';
-import { AcademyLogout } from '@/components/academy/AcademyLogout';
+import { AcademyPortalShell } from '@/components/academy/AcademyPortalShell';
 import { DailyGoal } from '@/components/academy/DailyGoal';
 import { InstallPrompt } from '@/components/academy/InstallPrompt';
-import { GuideHost } from '@/components/guide/GuideHost';
 import { OnboardingHost } from '@/components/onboarding/OnboardingHost';
 import { ONBOARDING } from '@/lib/onboarding-steps';
 import { ACCREDITATION_LABELS } from '@/lib/academy';
@@ -26,11 +26,23 @@ export default async function AcademyPortalPage() {
   const student = await getCurrentStudent().catch(() => null);
 
   if (!student) {
+    // Signed-out sign-in screen. The marketing chrome is hidden on this route, so
+    // we give it a minimal brand bar (mirrors the client portal's login page).
     return (
-      <>
+      <div className="min-h-screen">
+        <div className="border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-porcelain)_82%,transparent)] backdrop-blur-xl">
+          <div className="mx-auto flex max-w-[88rem] items-center justify-between px-[var(--gutter)] py-4">
+            <Link href="/academy" aria-label="K Academy" className="flex items-center gap-2.5 text-[var(--color-ink)]">
+              <span className="block h-8 w-[1.25rem]"><KMark /></span>
+              <span className="hidden h-[0.62rem] w-[5.5rem] sm:block"><ClinicsWordmark /></span>
+              <span className="hidden text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-stone)] sm:block">Academy</span>
+            </Link>
+            <Link href="/academy" className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Back to courses</Link>
+          </div>
+        </div>
         <PageHero eyebrow="K Academy" title="Trainee portal" lede="Sign in to track your enrolment, work through your theory and see your practical dates." gradient={['#2a2420', '#7b6a5d']} />
         <section className="container-lux section"><AcademyAuth /></section>
-      </>
+      </div>
     );
   }
 
@@ -69,9 +81,13 @@ export default async function AcademyPortalPage() {
   const totalMin = Math.round((timeAgg._sum.secondsSpent ?? 0) / 60);
 
   return (
-    <>
-      <PageHero eyebrow="K Academy" title={`Welcome, ${student.firstName}.`} lede="Your training, in one place." gradient={['#2a2420', '#7b6a5d']} />
-      <section className="container-lux pt-8">
+    <AcademyPortalShell firstName={student.firstName}>
+      <div className="mb-7">
+        <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-gold)]">K Academy</p>
+        <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl sm:text-4xl">Welcome, {student.firstName}.</h1>
+        <p className="mt-1 text-[var(--color-stone)]">Your training, in one place.</p>
+      </div>
+      <section>
         <div className="grid gap-4 lg:grid-cols-[1fr_360px] lg:items-start">
         <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5 sm:p-6">
           <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
@@ -95,18 +111,8 @@ export default async function AcademyPortalPage() {
         </div>
         <div className="mt-4 flex justify-center"><InstallPrompt /></div>
       </section>
-      <section className="container-lux section" data-tour="academy-courses">
-        <div className="mb-6 flex items-center justify-between gap-3">
-          <h2 className="text-title">Your courses</h2>
-          <div className="flex items-center gap-3">
-            <Link href="/academy/leaderboard" className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Leaderboard</Link>
-            <Link href="/academy/practice" className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Practice &amp; papers</Link>
-            <Link href="/academy/settings" aria-label="Settings" className="grid h-9 w-9 place-items-center rounded-full border border-[var(--color-line)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" /></svg>
-            </Link>
-            <AcademyLogout />
-          </div>
-        </div>
+      <section className="mt-10" data-tour="academy-courses">
+        <h2 className="text-title mb-6">Your courses</h2>
 
         {enrolments.length === 0 ? (
           <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-8 text-center">
@@ -210,8 +216,7 @@ export default async function AcademyPortalPage() {
           </div>
         )}
       </section>
-      <GuideHost />
       {acadOnb && <OnboardingHost pending={acadOnb.pending} title={ONBOARDING.academy.title} intro={ONBOARDING.academy.intro} steps={ONBOARDING.academy.steps} initial={acadOnb.initial} endpoint={ONBOARDING.academy.endpoint} />}
-    </>
+    </AcademyPortalShell>
   );
 }
