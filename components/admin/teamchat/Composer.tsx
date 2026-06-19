@@ -55,8 +55,8 @@ export function Composer({ channel, meId, onSent, replyTo, onCancelReply }: {
     if (!files?.length) return;
     setUploading((n) => n + files.length);
     for (const f of Array.from(files).slice(0, 10)) {
-      try { const a = await uploadFile(f); setDrafts((d) => [...d, a]); }
-      catch { /* surfaced by the empty thumbnail not appearing */ }
+      try { const a = await uploadFile(f); setDrafts((d) => [...d, a]); setError(''); }
+      catch (e) { setError((e as Error)?.message || 'Upload failed.'); }
       finally { setUploading((n) => Math.max(0, n - 1)); }
     }
   }
