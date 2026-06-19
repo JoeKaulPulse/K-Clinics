@@ -275,6 +275,19 @@ function QuestionRow({ q, index, total, busy, act, ids }: { q: Question; index: 
   const [tip, setTip] = useState(q.tip ?? '');
   const [options, setOptions] = useState<string[]>(q.options.length ? q.options : ['', '']);
   const [correct, setCorrect] = useState<number[]>(q.correct);
+  const [imageUrl, setImageUrl] = useState(q.imageUrl ?? '');
+  const [uploadingImg, setUploadingImg] = useState(false);
+
+  // Image upload for the question (pictures only) — reuses the academy Blob client.
+  async function uploadImage(file: File) {
+    setUploadingImg(true);
+    try {
+      const { uploadBlob } = await import('@/lib/upload-client');
+      const url = await uploadBlob(file, { folder: 'academy/quiz', clientUploadUrl: '/api/admin/academy/blob-token' });
+      setImageUrl(url);
+    } catch (e) { alert('Image upload failed: ' + ((e as Error)?.message || 'unknown')); }
+    finally { setUploadingImg(false); }
+  }
 
   const move = (d: number) => { const a = [...ids]; const j = index + d; if (j < 0 || j >= a.length) return; [a[index], a[j]] = [a[j], a[index]]; act({ op: 'reorderQuestions', ids: a }); };
   const setOpt = (i: number, v: string) => setOptions((o) => o.map((x, k) => (k === i ? v : x)));
@@ -326,9 +339,23 @@ function QuestionRow({ q, index, total, busy, act, ids }: { q: Question; index: 
             </div>
             {type !== 'TRUEFALSE' && <button onClick={addOpt} className="mt-2 text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add option</button>}
           </div>
+          <div>
+            <p className={label}>Image (optional — a picture shown with the question)</p>
+            {imageUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={imageUrl} alt="" className="mt-1.5 max-h-40 rounded-[var(--radius-sm)] border border-[var(--color-line)]" />
+            )}
+            <div className="mt-1.5 flex items-center gap-2">
+              <label className={`inline-flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-1.5 text-xs ${uploadingImg ? 'opacity-60 pointer-events-none' : 'hover:border-[var(--color-gold)]'}`}>
+                {uploadingImg ? 'Uploading…' : imageUrl ? '↑ Replace image' : '↑ Upload image'}
+                <input type="file" accept="image/*" className="hidden" disabled={uploadingImg} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadImage(file); e.currentTarget.value = ''; }} />
+              </label>
+              {imageUrl && <button onClick={() => setImageUrl('')} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>}
+            </div>
+          </div>
           <label className={label}>Hint (optional — a nudge the learner can reveal before answering)<input className={`${field} mt-1`} value={tip} onChange={(e) => setTip(e.target.value)} placeholder="Think about which layer has no blood supply." /></label>
           <label className={label}>Explanation (shown after answering)<textarea rows={2} className={`${field} mt-1`} value={explanation} onChange={(e) => setExplanation(e.target.value)} /></label>
-          <button onClick={() => act({ op: 'updateQuestion', id: q.id, prompt, type, options, correct, explanation, tip })} disabled={busy} className={btnDark}>Save question</button>
+          <button onClick={() => act({ op: 'updateQuestion', id: q.id, prompt, type, options, correct, explanation, tip, imageUrl })} disabled={busy} className={btnDark}>Save question</button>
         </div>
       )}
     </div>

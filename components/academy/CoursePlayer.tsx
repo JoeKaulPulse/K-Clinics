@@ -11,6 +11,8 @@ function ytId(url: string): string | null {
   return m ? m[1] : null;
 }
 
+const fmtReleaseDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
 type Sel = { type: 'lesson'; moduleId: string; lessonId: string } | { type: 'quiz'; moduleId: string };
 
 export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slug: string }) {
@@ -22,14 +24,34 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
     return o;
   });
 
-  const firstUndone = useMemo(() => {
+  // Flat, ordered list of navigable items (locked modules excluded) — drives resume
+  // and the "Next →" button.
+  const flat = useMemo<Sel[]>(() => {
+    const out: Sel[] = [];
     for (const m of learning.modules) {
-      for (const l of m.lessons) if (!learning.modules.flatMap((x) => x.lessons).find((y) => y.id === l.id)?.done) return { type: 'lesson', moduleId: m.id, lessonId: l.id } as Sel;
+      if (m.lockedUntil) continue;
+      for (const l of m.lessons) out.push({ type: 'lesson', moduleId: m.id, lessonId: l.id });
+      if (m.quiz) out.push({ type: 'quiz', moduleId: m.id });
     }
-    const f = learning.modules[0];
-    return f?.lessons[0] ? ({ type: 'lesson', moduleId: f.id, lessonId: f.lessons[0].id } as Sel) : null;
+    return out;
   }, [learning]);
+  const firstUndone = useMemo<Sel | null>(() => {
+    const doneL = new Set(learning.modules.flatMap((m) => m.lessons.filter((l) => l.done).map((l) => l.id)));
+    const passedQ = new Set(learning.modules.filter((m) => m.quiz?.passed).map((m) => m.quiz!.id));
+    for (const m of learning.modules) {
+      if (m.lockedUntil) continue;
+      for (const l of m.lessons) if (!doneL.has(l.id)) return { type: 'lesson', moduleId: m.id, lessonId: l.id };
+      if (m.quiz && !passedQ.has(m.quiz.id)) return { type: 'quiz', moduleId: m.id };
+    }
+    return flat[0] ?? null;
+  }, [learning, flat]);
   const [sel, setSel] = useState<Sel | null>(firstUndone);
+  const selKey = (s: Sel | null) => (!s ? '' : s.type === 'lesson' ? `l:${s.lessonId}` : `q:${s.moduleId}`);
+  const nextSel = useMemo<Sel | null>(() => {
+    const i = flat.findIndex((s) => selKey(s) === selKey(sel));
+    return i >= 0 && i + 1 < flat.length ? flat[i + 1] : null;
+  }, [flat, sel]);
+  const goNext = nextSel ? () => { setSel(nextSel); if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' }); } : undefined;
 
   const totals = useMemo(() => {
     let total = 0, done = 0;
@@ -70,7 +92,27 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
         )}
 
         <nav className="mt-6 space-y-4">
-          {learning.modules.map((m, mi) => (
+          {learning.modules.map((m, mi) => {
+            if (m.lockedUntil) {
+              // Drip-locked module: shown in the outline, content withheld until release.
+              return (
+                <div key={m.id} className="opacity-70">
+                  <p className="mb-1.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-stone)]">
+                    <span className="grid h-4 w-4 place-items-center rounded-full border border-[var(--color-line)] text-[0.6rem]">🔒</span>
+                    {m.title}
+                  </p>
+                  <div className="border-l border-[var(--color-line)] pl-3">
+                    <ul className="space-y-0.5">
+                      {m.lessons.map((l) => (
+                        <li key={l.id} className="flex items-center gap-2 px-2.5 py-1.5 text-sm text-[var(--color-stone)]"><span className="text-xs">🔒</span><span className="flex-1">{l.title}</span></li>
+                      ))}
+                    </ul>
+                    <p className="mt-1 px-2.5 text-[0.7rem] text-[var(--color-stone)]">Unlocks {fmtReleaseDate(m.lockedUntil)}</p>
+                  </div>
+                </div>
+              );
+            }
+            return (
             <div key={m.id}>
               <p className="mb-1.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-stone)]">
                 <span className={`grid h-4 w-4 place-items-center rounded-full text-[0.6rem] ${moduleComplete(m) ? 'bg-[var(--color-gold)] text-white' : 'border border-[var(--color-line)]'}`}>{moduleComplete(m) ? '✓' : mi + 1}</span>
@@ -98,18 +140,20 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
                 )}
               </ul>
             </div>
-          ))}
+            );
+          })}
         </nav>
       </aside>
 
       {/* Main panel */}
       <div className="min-h-[60vh] rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 md:p-10">
-        {curLesson && <LessonPanel lesson={curLesson} done={doneLessons.has(curLesson.id)} onComplete={() => markComplete(curLesson.id)} />}
+        {curLesson && <LessonPanel lesson={curLesson} done={doneLessons.has(curLesson.id)} onComplete={() => markComplete(curLesson.id)} onNext={goNext} />}
         {curQuiz && (
           <QuizPanel
             quiz={curQuiz}
             state={quizState[curQuiz.id]}
             onGraded={(passed, best) => setQuizState((s) => ({ ...s, [curQuiz.id]: { passed: s[curQuiz.id]?.passed || passed, best: Math.max(s[curQuiz.id]?.best ?? 0, best) } }))}
+            onNext={goNext}
           />
         )}
         {!curLesson && !curQuiz && <p className="text-[var(--color-stone)]">Select a lesson to begin.</p>}
@@ -118,7 +162,7 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
   );
 }
 
-function LessonPanel({ lesson, done, onComplete }: { lesson: LessonView; done: boolean; onComplete: () => void }) {
+function LessonPanel({ lesson, done, onComplete, onNext }: { lesson: LessonView; done: boolean; onComplete: () => void; onNext?: () => void }) {
   const id = lesson.videoUrl ? ytId(lesson.videoUrl) : null;
   return (
     <article>
@@ -166,18 +210,19 @@ function LessonPanel({ lesson, done, onComplete }: { lesson: LessonView; done: b
         </div>
       )}
 
-      <div className="mt-8 flex items-center gap-4 border-t border-[var(--color-line)] pt-6">
-        {done ? (
-          <span className="inline-flex items-center gap-2 text-sm font-medium text-[var(--color-gold)]">✓ Lesson complete</span>
-        ) : (
-          <button onClick={onComplete} className="rounded-full bg-[var(--color-ink)] px-6 py-2.5 text-sm font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-espresso)]">Mark as complete</button>
-        )}
+      <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--color-line)] pt-6">
+        {done
+          ? <span className="inline-flex items-center gap-2 text-sm font-medium text-[var(--color-gold)]">✓ Lesson complete</span>
+          : <span className="text-sm text-[var(--color-stone)]">Finished? Mark it complete to track your progress.</span>}
+        {onNext
+          ? <button onClick={() => { if (!done) onComplete(); onNext(); }} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">{done ? 'Next lesson →' : 'Complete & continue →'}</button>
+          : (!done && <button onClick={onComplete} className="rounded-full bg-[var(--color-ink)] px-6 py-2.5 text-sm font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-espresso)]">Mark as complete</button>)}
       </div>
     </article>
   );
 }
 
-function QuizPanel({ quiz, state, onGraded }: { quiz: QuizView; state?: { passed: boolean; best: number | null }; onGraded: (passed: boolean, best: number) => void }) {
+function QuizPanel({ quiz, state, onGraded, onNext }: { quiz: QuizView; state?: { passed: boolean; best: number | null }; onGraded: (passed: boolean, best: number) => void; onNext?: () => void }) {
   const [answers, setAnswers] = useState<Record<string, number[]>>({});
   const [result, setResult] = useState<null | { scorePct: number; passed: boolean; passMark: number; results: { questionId: string; correct: boolean; correctIndices: number[]; explanation: string | null }[] }>(null);
   const [busy, setBusy] = useState(false);
@@ -248,11 +293,14 @@ function QuizPanel({ quiz, state, onGraded }: { quiz: QuizView; state?: { passed
       </ol>
 
       {err && <p className="mt-4 text-sm text-[var(--color-blush)]">{err}</p>}
-      <div className="mt-6">
+      <div className="mt-6 flex flex-wrap items-center gap-3">
         {result ? (
           <button onClick={retake} className="rounded-full bg-[var(--color-ink)] px-6 py-2.5 text-sm font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-espresso)]">Retake assessment</button>
         ) : (
           <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? 'Marking…' : 'Submit answers'}</button>
+        )}
+        {onNext && (result?.passed || state?.passed) && (
+          <button onClick={onNext} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">Next →</button>
         )}
       </div>
     </div>

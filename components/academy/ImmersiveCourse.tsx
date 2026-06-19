@@ -43,6 +43,7 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, regist
   const steps = useMemo<Step[]>(() => {
     const s: Step[] = [{ kind: 'intro' }];
     learning.modules.forEach((m, mi) => {
+      if (m.lockedUntil) return; // BLD: drip — skip not-yet-released modules
       m.lessons.forEach((_, li) => s.push({ kind: 'lesson', mi, li }));
       if (m.quiz) s.push({ kind: 'quiz', mi });
     });
@@ -123,14 +124,11 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, regist
     enqueue(...badgeCelebrations(result.newBadges));
     advance();
   }
-  // One interspersed multiple-choice check per lesson, drawn from the module's
-  // question bank (server-graded in learn mode; answer key present in preview).
-  function formativeFor(st: Step): AskStep | null {
-    if (st.kind !== 'lesson') return null;
-    const m = learning.modules[st.mi];
-    if (!m.quiz || m.quiz.questions.length === 0) return null;
-    const q = m.quiz.questions[st.li % m.quiz.questions.length];
-    return { kind: 'ask', prompt: q.prompt, qtype: q.type as AskStep['qtype'], options: q.options, tip: q.tip ?? undefined, quizId: m.quiz.id, questionId: q.id, ...(q.correct !== undefined ? { correct: q.correct } : {}) };
+  // BLD: per owner request, lessons no longer intersperse a formative question.
+  // The only questions a student sees are the curriculum module quizzes, so every
+  // question is one staff authored and can find in the curriculum editor.
+  function formativeFor(_st: Step): AskStep | null {
+    return null;
   }
 
   const moduleLabel = step.kind === 'lesson' || step.kind === 'quiz' ? learning.modules[step.mi]?.title : null;

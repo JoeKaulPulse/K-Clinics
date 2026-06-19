@@ -1916,6 +1916,7 @@ model CourseModule {
   order     Int      @default(0)
   lessons   Lesson[]
   quiz      Quiz?
+  releases  CohortModuleRelease[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -2201,9 +2202,31 @@ model Cohort {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
-  enrolments Enrolment[]
+  enrolments     Enrolment[]
+  moduleReleases CohortModuleRelease[]
 
   @@index([courseId, startAt])
+  @@index([tenantId])
+}
+
+// BLD: per-cohort content release schedule (drip). Courses can be opened before
+// every module's materials are ready, then unlocked gradually per cohort. A module
+// with a future releaseAt for the learner's cohort is LOCKED; no row (or a past
+// date) means it's available. Uniqueness (cohort+module) is enforced in app code
+// (no @unique), matching the additive-deploy convention.
+model CohortModuleRelease {
+  id        String       @id @default(cuid())
+  tenantId  String // ClinicOS multi-tenant (Ring 0)
+  cohort    Cohort       @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  cohortId  String
+  module    CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  moduleId  String
+  releaseAt DateTime
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([cohortId])
+  @@index([moduleId])
   @@index([tenantId])
 }
 

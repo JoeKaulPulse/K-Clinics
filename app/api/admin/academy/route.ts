@@ -269,6 +269,23 @@ export async function POST(req: Request) {
       await db.fundingApplication.update({ where: { id: String(body.id) }, data: { enrolmentId: eid, ...(eid ? { studentId } : {}) } });
       return ok();
     }
+    case 'setModuleRelease': {
+      // BLD: per-cohort drip — set (or clear) the release date for a module on a
+      // cohort. A future date locks the module until then; clearing it (null) makes
+      // the module available immediately.
+      const b = body as Record<string, unknown>;
+      if (!b.cohortId || !b.moduleId) return bad();
+      const cohortId = String(b.cohortId), moduleId = String(b.moduleId);
+      const releaseAt = b.releaseAt ? new Date(b.releaseAt as string) : null;
+      const existing = await db.cohortModuleRelease.findFirst({ where: { cohortId, moduleId }, select: { id: true } });
+      if (!releaseAt || Number.isNaN(+releaseAt)) {
+        if (existing) await db.cohortModuleRelease.delete({ where: { id: existing.id } });
+        return ok();
+      }
+      if (existing) await db.cohortModuleRelease.update({ where: { id: existing.id }, data: { releaseAt } });
+      else await db.cohortModuleRelease.create({ data: { tenantId, cohortId, moduleId, releaseAt } });
+      return ok();
+    }
   }
   return NextResponse.json({ ok: false, error: 'Unknown op' }, { status: 400 });
 }
