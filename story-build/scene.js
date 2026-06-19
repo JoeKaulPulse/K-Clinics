@@ -143,7 +143,7 @@ function render(t) {
     // open + home scroll
     active.home = 1;
     const sp = seg(t, T.home[0], T.home[1], eio);
-    scrollOf.home = lerp(0, 1700, sp);   // px scroll within screen (displayed)
+    scrollOf.home = lerp(0, 1040, sp);   // gentle scroll; stops on a calm band under the caption
   } else if (t < T.portal[0]) {
     // booking shots crossfade
     for (let i = 0; i < BOOK.length; i++) {
