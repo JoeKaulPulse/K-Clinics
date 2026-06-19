@@ -17,6 +17,7 @@ export function Composer({ channel, meId, onSent, replyTo, onCancelReply }: {
   const [drafts, setDrafts] = useState<DraftAttachment[]>([]);
   const [picked, setPicked] = useState<{ id: string; name: string }[]>([]);
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
   const [uploading, setUploading] = useState(0);
   const [emoji, setEmoji] = useState(false);
   const [gif, setGif] = useState(false);
@@ -63,7 +64,7 @@ export function Composer({ channel, meId, onSent, replyTo, onCancelReply }: {
   async function send() {
     const body = text.trim();
     if ((!body && drafts.length === 0) || sending) return;
-    setSending(true);
+    setSending(true); setError('');
     const mentionIds = picked.filter((p) => body.includes(`@${p.name.split(' ')[0]}`)).map((p) => p.id);
     const mentionsAll = /@(everyone|channel|all|here)\b/i.test(body);
     try {
@@ -74,7 +75,11 @@ export function Composer({ channel, meId, onSent, replyTo, onCancelReply }: {
       if (r?.ok && r.message) {
         onSent(r.message as ChatMessage);
         setText(''); setDrafts([]); setPicked([]); onCancelReply?.();
+      } else {
+        setError(r?.error || 'Couldn’t send — try again.');
       }
+    } catch {
+      setError('Network error — message not sent.');
     } finally { setSending(false); }
   }
 
@@ -127,6 +132,8 @@ export function Composer({ channel, meId, onSent, replyTo, onCancelReply }: {
         </div>
       )}
 
+      {error && <p className="mb-1 px-1 text-xs text-[#b23b3b]">{error}</p>}
+
       <div className="flex items-end gap-1">
         <button type="button" className={ICON} onClick={() => fileRef.current?.click()} aria-label="Attach file" title="Attach photo, video or file">
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 10l4-4a2.5 2.5 0 013.5 3.5l-6 6a4 4 0 01-5.7-5.7l6-6" /></svg>
@@ -144,7 +151,7 @@ export function Composer({ channel, meId, onSent, replyTo, onCancelReply }: {
         <textarea
           ref={taRef} rows={1} value={text}
           onChange={(e) => onChange(e.target.value)} onKeyDown={onKeyDown}
-          placeholder={`Message ${channel.title}…`}
+          placeholder="Message…"
           className="max-h-28 min-h-[2.25rem] flex-1 resize-none rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]"
         />
         <button
