@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { authField, authLabel } from '@/components/portal/AuthShell';
+import { authField, authLabel, authButton } from '@/components/portal/AuthShell';
+import { FormStagger, FormField, SubmitButton } from '@/components/portal/FormMotion';
+import { Reveal } from '@/components/motion/Reveal';
 import { portalTranslator, DEFAULT_LOCALE, type Locale } from '@/lib/i18n-portal';
 import { isLocale } from '@/lib/i18n';
 
@@ -39,26 +41,30 @@ export function ForgotPasswordForm() {
 
   if (sent) {
     return (
-      <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6">
-        <p className="font-medium">{t('forgot.title')}</p>
-        <p className="mt-2 text-sm text-[var(--color-stone)]">{t('forgot.sent')}</p>
-        <Link href="/account/login" className="mt-4 inline-block text-sm font-medium text-[var(--color-gold-deep)]">← {t('forgot.back')}</Link>
-      </div>
+      <Reveal y={16}>
+        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6">
+          <p className="font-medium">{t('forgot.title')}</p>
+          <p className="mt-2 text-sm text-[var(--color-stone)]">{t('forgot.sent')}</p>
+          <Link href="/account/login" className="mt-4 inline-block text-sm font-medium text-[var(--color-gold-deep)]">← {t('forgot.back')}</Link>
+        </div>
+      </Reveal>
     );
   }
 
   return (
-    <form onSubmit={submit} className="space-y-5">
-      <div>
+    <FormStagger onSubmit={submit} className="space-y-5">
+      <FormField>
         <label className={authLabel} htmlFor="email">{t('field.email')}</label>
         <input id="email" type="email" autoComplete="email" required className={authField} value={email} onChange={(e) => setEmail(e.target.value)} />
-      </div>
-      <button type="submit" disabled={loading} className="w-full rounded-full bg-[var(--color-gold-deep)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60">
-        {loading ? t('forgot.sending') : t('forgot.send')}
-      </button>
-      <p className="text-center text-sm text-[var(--color-stone)]">
-        {t('login.newHere')} <Link href="/account/login" className="font-medium text-[var(--color-gold-deep)]">{t('action.signin')}</Link>
-      </p>
-    </form>
+      </FormField>
+      <FormField>
+        <SubmitButton pending={loading} pendingLabel={t('forgot.sending')} className={authButton}>{t('forgot.send')}</SubmitButton>
+      </FormField>
+      <FormField>
+        <p className="text-center text-sm text-[var(--color-stone)]">
+          {t('login.newHere')} <Link href="/account/login" className="font-medium text-[var(--color-gold-deep)]">{t('action.signin')}</Link>
+        </p>
+      </FormField>
+    </FormStagger>
   );
 }

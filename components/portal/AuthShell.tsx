@@ -72,6 +72,10 @@ export function AuthShell({
   );
 }
 
-export const authField =
-  'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-[var(--color-ink)] transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stone)]';
+// Shared with admin auth. `.input-lux` carries the skin + accessible gold-deep
+// focus ring (see app/globals.css); add only sizing here.
+export const authField = 'input-lux w-full px-4 py-3';
 export const authLabel = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
+// Full-width primary auth button (pairs with SubmitButton's inline spinner).
+export const authButton =
+  'inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--color-gold-deep)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60';

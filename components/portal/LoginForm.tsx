@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { authField, authLabel } from '@/components/portal/AuthShell';
+import { authField, authLabel, authButton } from '@/components/portal/AuthShell';
+import { FormStagger, FormField, SubmitFeedback, SubmitButton } from '@/components/portal/FormMotion';
 import { Turnstile } from '@/components/security/Turnstile';
 import { portalTranslator, DEFAULT_LOCALE, type Locale } from '@/lib/i18n-portal';
 import { isLocale } from '@/lib/i18n';
@@ -68,39 +69,37 @@ function Inner() {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-5">
-      <div>
+    <FormStagger onSubmit={submit} className="space-y-5">
+      <FormField>
         <label className={authLabel} htmlFor="email">{t('field.email')}</label>
         <input id="email" type="email" autoComplete="email" required className={authField} value={email} onChange={(e) => setEmail(e.target.value)} />
-      </div>
-      <div>
+      </FormField>
+      <FormField>
         <div className="flex items-baseline justify-between">
           <label className={authLabel} htmlFor="password">{t('login.password')}</label>
           <Link href="/account/forgot-password" className="text-xs font-medium text-[var(--color-gold-deep)]">{t('login.forgot')}</Link>
         </div>
         <input id="password" type="password" autoComplete="current-password" required className={authField} value={password} onChange={(e) => setPassword(e.target.value)} />
-      </div>
-      {captchaSiteKey && <Turnstile siteKey={captchaSiteKey} onToken={setCaptchaToken} />}
-      {error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full rounded-full bg-[var(--color-gold-deep)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60"
-      >
-        {loading ? t('login.signingIn') : t('action.signin')}
-      </button>
-      <p className="text-center text-sm text-[var(--color-stone)]">
-        {t('login.newHere')}{' '}
-        <Link href="/account/signup" className="font-medium text-[var(--color-gold-deep)]">
-          {t('login.createCta')}
-        </Link>
-      </p>
-      <p className="text-center text-xs text-[var(--color-stone)]">
-        {t('login.staff')}{' '}
-        <Link href="/admin/login" className="underline">
-          {t('login.crmSignin')}
-        </Link>
-      </p>
-    </form>
+      </FormField>
+      {captchaSiteKey && <FormField><Turnstile siteKey={captchaSiteKey} onToken={setCaptchaToken} /></FormField>}
+      <FormField className="space-y-4">
+        <SubmitFeedback message={error} tone="error" />
+        <SubmitButton pending={loading} pendingLabel={t('login.signingIn')} className={authButton}>{t('action.signin')}</SubmitButton>
+      </FormField>
+      <FormField className="space-y-2">
+        <p className="text-center text-sm text-[var(--color-stone)]">
+          {t('login.newHere')}{' '}
+          <Link href="/account/signup" className="font-medium text-[var(--color-gold-deep)]">
+            {t('login.createCta')}
+          </Link>
+        </p>
+        <p className="text-center text-xs text-[var(--color-stone)]">
+          {t('login.staff')}{' '}
+          <Link href="/admin/login" className="underline">
+            {t('login.crmSignin')}
+          </Link>
+        </p>
+      </FormField>
+    </FormStagger>
   );
 }
