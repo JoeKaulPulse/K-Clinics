@@ -129,7 +129,7 @@ export function ChatWindow({ channelId, variant = 'docked', onRequestClose }: { 
       {manage && <ManagePanel mode={manage} channelId={channelId} onDone={() => { setManage(null); void refreshChannels(); }} roster={roster} memberIds={channel.members.map((m) => m.id)} currentName={channel.title} />}
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 space-y-1 overflow-y-auto px-3 py-3">
+      <div ref={scrollRef} className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3 py-3">
         {messages.length === 0 && (
           <div className="grid h-full place-items-center px-6 text-center">
             <div>
@@ -211,13 +211,15 @@ function MessageRow({ m, grouped, members, onReact, onReply, onDelete, onCreateT
         </div>
 
         {/* Hover toolbar — absolutely positioned so it never consumes row width
-            (that was crushing the bubble to one word per line). */}
+            (that was crushing the bubble to one word per line). Anchored toward
+            the empty margin (mine→right, theirs→left) so it never spills past the
+            window edge and triggers a horizontal scrollbar. */}
         {!m.deletedAt && (
-          <div className={`absolute -top-3 z-20 flex items-center gap-0.5 rounded-full border border-[var(--color-line)] bg-white px-1 py-0.5 opacity-0 shadow-[var(--shadow-lift)] transition-opacity group-hover:opacity-100 ${mine ? 'left-0' : 'right-0'}`}>
+          <div className={`absolute -top-3 z-20 flex items-center gap-0.5 rounded-full border border-[var(--color-line)] bg-white px-1 py-0.5 opacity-0 shadow-[var(--shadow-lift)] transition-opacity group-hover:opacity-100 ${mine ? 'right-0' : 'left-0'}`}>
             {QUICK_REACTIONS.slice(0, 3).map((e) => <button key={e} onClick={() => onReact(m.id, e)} className="grid h-7 w-7 place-items-center rounded-full text-sm hover:bg-[var(--color-bone)]">{e}</button>)}
             <div className="relative">
               <button onClick={() => setPicker((v) => !v)} className={`${ACT} text-xs`} aria-label="More reactions">＋</button>
-              {picker && <EmojiPicker align={mine ? 'left' : 'right'} onPick={(e) => { onReact(m.id, e); setPicker(false); }} onClose={() => setPicker(false)} />}
+              {picker && <EmojiPicker align={mine ? 'right' : 'left'} onPick={(e) => { onReact(m.id, e); setPicker(false); }} onClose={() => setPicker(false)} />}
             </div>
             <button onClick={() => onReply(m)} className={`${ACT} text-xs`} aria-label="Reply">↩</button>
             <button onClick={async () => { const r = await onCreateTask(m); if (r) { setTaskRef(r); setTimeout(() => setTaskRef(null), 2600); } }} className={`${ACT} text-xs`} aria-label="Create a task from this message" title="Create a task">✓</button>
