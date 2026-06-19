@@ -101,7 +101,7 @@ export function ChatWindow({ channelId, variant = 'docked', onRequestClose }: { 
   if (!channel) return null;
   const docked = variant === 'docked';
   const shell = docked
-    ? 'flex h-[27rem] w-[20.5rem] flex-col overflow-hidden rounded-t-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)]'
+    ? 'flex h-[30rem] w-[22rem] max-h-[70vh] flex-col overflow-hidden rounded-t-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)]'
     : 'flex h-full w-full flex-col overflow-hidden bg-[var(--color-porcelain)]';
 
   return (
@@ -130,6 +130,15 @@ export function ChatWindow({ channelId, variant = 'docked', onRequestClose }: { 
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 space-y-1 overflow-y-auto px-3 py-3">
+        {messages.length === 0 && (
+          <div className="grid h-full place-items-center px-6 text-center">
+            <div>
+              <p className="text-3xl">👋</p>
+              <p className="mt-2 text-sm font-medium text-[var(--color-ink)]">{channel.kind === 'GROUP' ? channel.title : `Chat with ${channel.title}`}</p>
+              <p className="mt-1 text-xs text-[var(--color-stone)]">No messages yet — say hello, share a file or drop a GIF.</p>
+            </div>
+          </div>
+        )}
         {hasMore && messages.length >= 40 && <button onClick={() => void loadEarlier()} className="mx-auto mb-2 block rounded-full border border-[var(--color-line)] px-3 py-1 text-xs text-[var(--color-stone)] hover:bg-[var(--color-bone)]">Load earlier</button>}
         {messages.map((m, i) => {
           const prev = messages[i - 1];

@@ -176,14 +176,15 @@ export async function totalUnread(meId: string): Promise<number> {
   return snap.totalUnread;
 }
 
+type ReplyPreview = { id: string; authorName: string; preview: string };
+
 function shapeMessage(m: {
   id: string; channelId: string; authorId: string | null; kind: string; body: string; mentionIds: string[]; mentionsAll: boolean;
   replyToId: string | null; editedAt: Date | null; deletedAt: Date | null; createdAt: Date;
   author: { name: string | null; email: string; photoUrl: string | null } | null;
   attachments: { id: string; kind: string; url: string; name: string | null; mime: string | null; width: number | null; height: number | null }[];
   reactions: { emoji: string; userId: string }[];
-  replyTo?: { id: string; body: string; author: { name: string | null; email: string } | null } | null;
-}, meId: string): ChatMessageDTO {
+}, meId: string, replyMap?: Map<string, ReplyPreview>): ChatMessageDTO {
   const byEmoji = new Map<string, { count: number; mine: boolean }>();
   for (const r of m.reactions) {
     const cur = byEmoji.get(r.emoji) || { count: 0, mine: false };
@@ -196,7 +197,7 @@ function shapeMessage(m: {
     authorPhoto: m.author?.photoUrl || null,
     kind: m.kind, body: m.deletedAt ? '' : m.body, mentionIds: m.mentionIds, mentionsAll: m.mentionsAll,
     replyToId: m.replyToId,
-    replyTo: m.replyTo ? { id: m.replyTo.id, authorName: m.replyTo.author?.name || m.replyTo.author?.email || 'Unknown', preview: previewOf(m.replyTo.body, 0) } : null,
+    replyTo: (m.replyToId && replyMap?.get(m.replyToId)) || null,
     attachments: m.deletedAt ? [] : m.attachments.map((a) => ({ id: a.id, kind: a.kind, url: a.url, name: a.name, mime: a.mime, width: a.width, height: a.height })),
     reactions: Array.from(byEmoji.entries()).map(([emoji, v]) => ({ emoji, count: v.count, mine: v.mine })),
     editedAt: m.editedAt?.toISOString() || null, deletedAt: m.deletedAt?.toISOString() || null,
@@ -204,12 +205,22 @@ function shapeMessage(m: {
   };
 }
 
+// NOTE: replyToId is a plain column (no Prisma relation), so reply previews are
+// resolved with a separate batched lookup (replyPreviewMap) — NOT a relation
+// include. Including a non-relation field here throws at runtime.
 const MSG_INCLUDE = {
   author: { select: { name: true, email: true, photoUrl: true } },
   attachments: { orderBy: { createdAt: 'asc' as const } },
   reactions: { select: { emoji: true, userId: true } },
-  replyTo: { select: { id: true, body: true, author: { select: { name: true, email: true } } } },
 } as const;
+
+/** Resolve quoted-message previews for a batch of rows (replyToId → preview). */
+async function replyPreviewMap(rows: { replyToId: string | null }[]): Promise<Map<string, ReplyPreview>> {
+  const ids = Array.from(new Set(rows.map((r) => r.replyToId).filter(Boolean))) as string[];
+  if (!ids.length) return new Map();
+  const targets = await db.teamMessage.findMany({ where: { id: { in: ids } }, select: { id: true, body: true, author: { select: { name: true, email: true } } } });
+  return new Map(targets.map((t) => [t.id, { id: t.id, authorName: t.author?.name || t.author?.email || 'Unknown', preview: previewOf(t.body, 0) }]));
+}
 
 /** A page of messages, oldest→newest. `before` paginates older; `after` fetches new. */
 export async function getMessages(meId: string, channelId: string, opts: { before?: string; after?: string; limit?: number } = {}): Promise<ChatMessageDTO[]> {
@@ -219,13 +230,15 @@ export async function getMessages(meId: string, channelId: string, opts: { befor
       where: { channelId, createdAt: { gt: new Date(opts.after) } },
       orderBy: { createdAt: 'asc' }, take: limit, include: MSG_INCLUDE,
     });
-    return rows.map((m) => shapeMessage(m, meId));
+    const map = await replyPreviewMap(rows);
+    return rows.map((m) => shapeMessage(m, meId, map));
   }
   const rows = await db.teamMessage.findMany({
     where: { channelId, ...(opts.before ? { createdAt: { lt: new Date(opts.before) } } : {}) },
     orderBy: { createdAt: 'desc' }, take: limit, include: MSG_INCLUDE,
   });
-  return rows.reverse().map((m) => shapeMessage(m, meId));
+  const map = await replyPreviewMap(rows);
+  return rows.reverse().map((m) => shapeMessage(m, meId, map));
 }
 
 export type SendInput = {
@@ -271,7 +284,8 @@ export async function sendMessage(meId: string, channelId: string, input: SendIn
   await db.teamChannelMember.update({ where: { channelId_userId: { channelId, userId: meId } }, data: { lastReadAt: message.createdAt } }).catch(() => {});
 
   void notifyMessage(meId, channelId, message.id, body, attachments.length, mentionIds, mentionsAll).catch(() => {});
-  return shapeMessage(message, meId);
+  const replyMap = await replyPreviewMap([message]);
+  return shapeMessage(message, meId, replyMap);
 }
 
 /** Fan out notifications for a new message to the other members (mentions get a
