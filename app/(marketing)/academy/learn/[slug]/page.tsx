@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { CourseExperience } from '@/components/academy/CourseExperience';
+import { AcademyPortalShell } from '@/components/academy/AcademyPortalShell';
 import { pageMeta } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: 'Course — K Academy', description: 'Your K Academy course.', path: '/academy/learn', noindex: true }); // BLD-341: per-learner page — never index
@@ -25,13 +26,13 @@ export default async function LearnPage({ params }: { params: Promise<{ slug: st
 
   if (!learning) {
     return (
-      <section className="container-lux py-[calc(var(--header-h,5.25rem)+4rem)]">
+      <AcademyPortalShell firstName={student.firstName}>
         <div className="mx-auto max-w-lg rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-8 text-center">
           <h1 className="font-[family-name:var(--font-display)] text-2xl">Not available yet</h1>
           <p className="mt-3 text-[var(--color-stone)]">You don’t have access to this course yet. Once your place is confirmed, it’ll appear in your portal.</p>
           <Link href="/academy/portal" className="mt-5 inline-block link-underline font-medium text-[var(--color-ink)]">Back to your portal →</Link>
         </div>
-      </section>
+      </AcademyPortalShell>
     );
   }
 
@@ -39,15 +40,15 @@ export default async function LearnPage({ params }: { params: Promise<{ slug: st
   if (learning.course.preCourseInfo && !learning.preCourseAck) {
     const { PreCourseGate } = await import('@/components/academy/PreCourseGate');
     return (
-      <section className="container-lux py-[calc(var(--header-h,5.25rem)+2rem)]">
+      <AcademyPortalShell firstName={student.firstName}>
         <PreCourseGate slug={slug} title={learning.course.title} level={learning.course.level} content={learning.course.preCourseInfo} />
-      </section>
+      </AcademyPortalShell>
     );
   }
 
   return (
-    <section className="container-lux py-[calc(var(--header-h,5.25rem)+2rem)]">
+    <AcademyPortalShell firstName={student.firstName}>
       <CourseExperience learning={learning} slug={slug} xp={standing.xp} register={register} />
-    </section>
+    </AcademyPortalShell>
   );
 }
