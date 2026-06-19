@@ -169,19 +169,20 @@ function MessageRow({ m, grouped, members, onReact, onReply, onDelete, onCreateT
   const [taskRef, setTaskRef] = useState<string | null>(null);
   const mine = m.mine;
   const parts = tokenizeBody(m.body, members.map((x) => ({ id: x.id, name: x.name })), m.mentionIds, m.mentionsAll);
+  const ACT = 'grid h-7 w-7 place-items-center rounded-full text-[var(--color-stone)] hover:bg-[var(--color-bone)]';
   return (
-    <div className={`group flex gap-2 ${mine ? 'flex-row-reverse' : ''}`}>
-      <div className="w-7 shrink-0">{!grouped && !mine && <Avatar name={m.authorName} photo={m.authorPhoto} size={28} />}</div>
-      <div className={`relative min-w-0 max-w-[78%] ${mine ? 'items-end text-right' : ''}`}>
+    <div className={`group relative flex items-end gap-2 ${mine ? 'flex-row-reverse' : ''}`}>
+      {!mine && <div className="w-7 shrink-0 self-start pt-4">{!grouped && <Avatar name={m.authorName} photo={m.authorPhoto} size={28} />}</div>}
+      <div className={`relative flex min-w-0 max-w-[82%] flex-col ${mine ? 'items-end' : 'items-start'}`}>
         {!grouped && !mine && <p className="mb-0.5 text-[0.7rem] font-medium text-[var(--color-stone)]">{m.authorName}</p>}
-        {m.replyTo && <p className={`mb-0.5 truncate border-l-2 border-[var(--color-sand)] pl-1.5 text-[0.7rem] text-[var(--color-stone)] ${mine ? 'ml-auto text-left' : ''}`}>↩ {m.replyTo.authorName}: {m.replyTo.preview}</p>}
+        {m.replyTo && <p className="mb-0.5 max-w-full truncate border-l-2 border-[var(--color-sand)] pl-1.5 text-[0.7rem] text-[var(--color-stone)]">↩ {m.replyTo.authorName}: {m.replyTo.preview}</p>}
         {m.deletedAt ? (
           <p className="rounded-[var(--radius-md)] bg-[var(--color-bone)]/60 px-3 py-1.5 text-sm italic text-[var(--color-stone)]">Message removed</p>
         ) : (
           <>
-            {(m.body || parts.length > 0) && m.body && (
-              <div className={`inline-block whitespace-pre-wrap break-words rounded-[var(--radius-md)] px-3 py-1.5 text-sm ${mine ? 'bg-[var(--color-gold-deep)] text-white' : 'bg-white text-[var(--color-ink)]'}`}>
-                {parts.map((p, i) => p.mention ? <span key={i} className={`rounded px-0.5 font-medium ${mine ? 'bg-white/20' : 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]'}`}>{p.text}</span> : <span key={i}>{p.text}</span>)}
+            {m.body && (
+              <div className={`max-w-full whitespace-pre-wrap break-words rounded-[var(--radius-md)] px-3 py-1.5 text-left text-sm leading-snug ${mine ? 'bg-[var(--color-gold-deep)] text-white' : 'bg-white text-[var(--color-ink)]'}`}>
+                {parts.map((p, i) => p.mention ? <span key={i} className={`rounded px-0.5 font-medium ${mine ? 'bg-white/25' : 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]'}`}>{p.text}</span> : <span key={i}>{p.text}</span>)}
               </div>
             )}
             {m.attachments.length > 0 && (
@@ -204,22 +205,26 @@ function MessageRow({ m, grouped, members, onReact, onReply, onDelete, onCreateT
             ))}
           </div>
         )}
-        <p className="mt-0.5 text-[0.6rem] text-[var(--color-stone)] opacity-0 group-hover:opacity-100">{clock(m.createdAt)}{m.editedAt ? ' · edited' : ''}</p>
-      </div>
-      {/* Hover actions */}
-      {!m.deletedAt && (
-        <div className={`relative flex items-center self-center opacity-0 transition-opacity group-hover:opacity-100 ${mine ? 'flex-row-reverse' : ''}`}>
-          <div className="flex items-center gap-0.5">
-            {QUICK_REACTIONS.slice(0, 3).map((e) => <button key={e} onClick={() => onReact(m.id, e)} className="grid h-6 w-6 place-items-center rounded-full text-sm hover:bg-[var(--color-bone)]">{e}</button>)}
-            <button onClick={() => setPicker((v) => !v)} className="grid h-6 w-6 place-items-center rounded-full text-xs text-[var(--color-stone)] hover:bg-[var(--color-bone)]" aria-label="React">＋</button>
-            <button onClick={() => onReply(m)} className="grid h-6 w-6 place-items-center rounded-full text-xs text-[var(--color-stone)] hover:bg-[var(--color-bone)]" aria-label="Reply">↩</button>
-            <button onClick={async () => { const r = await onCreateTask(m); if (r) { setTaskRef(r); setTimeout(() => setTaskRef(null), 2600); } }} className="grid h-6 w-6 place-items-center rounded-full text-xs text-[var(--color-stone)] hover:bg-[var(--color-bone)]" aria-label="Create a task from this message" title="Create a task">✓</button>
-            {mine && <button onClick={() => { if (confirm('Delete this message?')) onDelete(m.id); }} className="grid h-6 w-6 place-items-center rounded-full text-xs text-[var(--color-stone)] hover:bg-[var(--color-bone)]" aria-label="Delete">🗑</button>}
-            {taskRef && <span className="whitespace-nowrap rounded-full bg-[var(--color-jade)]/15 px-2 py-0.5 text-[0.6rem] text-[var(--color-jade)]">Added {taskRef}</span>}
-          </div>
-          {picker && <EmojiPicker align={mine ? 'right' : 'left'} onPick={(e) => { onReact(m.id, e); setPicker(false); }} onClose={() => setPicker(false)} />}
+        <div className={`mt-0.5 flex items-center gap-2 ${mine ? 'flex-row-reverse' : ''}`}>
+          <span className="text-[0.6rem] text-[var(--color-stone)] opacity-0 group-hover:opacity-100">{clock(m.createdAt)}{m.editedAt ? ' · edited' : ''}</span>
+          {taskRef && <span className="rounded-full bg-[var(--color-jade)]/15 px-2 py-0.5 text-[0.6rem] text-[var(--color-jade)]">Added {taskRef}</span>}
         </div>
-      )}
+
+        {/* Hover toolbar — absolutely positioned so it never consumes row width
+            (that was crushing the bubble to one word per line). */}
+        {!m.deletedAt && (
+          <div className={`absolute -top-3 z-20 flex items-center gap-0.5 rounded-full border border-[var(--color-line)] bg-white px-1 py-0.5 opacity-0 shadow-[var(--shadow-lift)] transition-opacity group-hover:opacity-100 ${mine ? 'left-0' : 'right-0'}`}>
+            {QUICK_REACTIONS.slice(0, 3).map((e) => <button key={e} onClick={() => onReact(m.id, e)} className="grid h-7 w-7 place-items-center rounded-full text-sm hover:bg-[var(--color-bone)]">{e}</button>)}
+            <div className="relative">
+              <button onClick={() => setPicker((v) => !v)} className={`${ACT} text-xs`} aria-label="More reactions">＋</button>
+              {picker && <EmojiPicker align={mine ? 'left' : 'right'} onPick={(e) => { onReact(m.id, e); setPicker(false); }} onClose={() => setPicker(false)} />}
+            </div>
+            <button onClick={() => onReply(m)} className={`${ACT} text-xs`} aria-label="Reply">↩</button>
+            <button onClick={async () => { const r = await onCreateTask(m); if (r) { setTaskRef(r); setTimeout(() => setTaskRef(null), 2600); } }} className={`${ACT} text-xs`} aria-label="Create a task from this message" title="Create a task">✓</button>
+            {mine && <button onClick={() => { if (confirm('Delete this message?')) onDelete(m.id); }} className={`${ACT} text-xs`} aria-label="Delete">🗑</button>}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
