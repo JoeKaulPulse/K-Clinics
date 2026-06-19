@@ -2,6 +2,7 @@ import 'server-only';
 import crypto from 'crypto';
 import { db } from '@/lib/db';
 import { currentTenantId } from '@/lib/tenant';
+import { escapeHtml } from '@/lib/sanitize';
 
 // ── Native LMS engine ────────────────────────────────────────────────────────
 // Course content (modules → lessons + a module quiz), per-student progress,
@@ -194,6 +195,162 @@ export async function saveVideoPosition(studentId: string, lessonId: string, pos
     create: { tenantId, studentId, lessonId, positionSec: pos },
   });
   return { ok: true };
+}
+
+// ── Engagement & community (BLD-529) ─────────────────────────────────────────
+// Per-lesson private notes + threaded discussion/Q&A, and course reviews.
+
+export type CommentView = {
+  id: string; authorName: string; isStaff: boolean; body: string;
+  pinned: boolean; resolved: boolean; createdAt: string; mine: boolean;
+  replies: CommentView[];
+};
+export type LessonEngagement = { note: string; comments: CommentView[] };
+
+/** A lesson's note + visible discussion thread for a student. Returns empty when
+ *  the student can't access the course or the module is drip-locked. */
+export async function getLessonEngagement(studentId: string, lessonId: string): Promise<LessonEngagement> {
+  const lesson = await db.lesson.findUnique({ where: { id: lessonId }, select: { moduleId: true, module: { select: { courseId: true } } } });
+  if (!lesson) return { note: '', comments: [] };
+  // Independent access checks — run them together on this per-lesson-open hot path.
+  const [canAccess, locked] = await Promise.all([studentCanAccess(studentId, lesson.module.courseId), lockedModuleMap(studentId, lesson.module.courseId)]);
+  if (!canAccess || locked.has(lesson.moduleId)) return { note: '', comments: [] };
+
+  const [noteRow, top] = await Promise.all([
+    db.lessonNote.findUnique({ where: { studentId_lessonId: { studentId, lessonId } }, select: { body: true } }),
+    db.lessonComment.findMany({
+      where: { lessonId, parentId: null, hidden: false },
+      orderBy: [{ pinned: 'desc' }, { createdAt: 'asc' }],
+      include: { replies: { where: { hidden: false }, orderBy: { createdAt: 'asc' } } },
+    }),
+  ]);
+  const toView = (c: { id: string; authorName: string; isStaff: boolean; body: string; pinned: boolean; resolved: boolean; createdAt: Date; authorStudentId: string | null }): CommentView => ({
+    id: c.id, authorName: c.authorName, isStaff: c.isStaff, body: c.body, pinned: c.pinned, resolved: c.resolved,
+    createdAt: c.createdAt.toISOString(), mine: c.authorStudentId === studentId, replies: [],
+  });
+  const comments = top.map((c) => ({ ...toView(c), replies: c.replies.map(toView) }));
+  return { note: noteRow?.body ?? '', comments };
+}
+
+/** Upsert (or clear) a learner's private note for a lesson. */
+export async function saveLessonNote(studentId: string, lessonId: string, body: string): Promise<{ ok: boolean }> {
+  const lesson = await db.lesson.findUnique({ where: { id: lessonId }, select: { moduleId: true, module: { select: { courseId: true } } } });
+  if (!lesson) return { ok: false };
+  if (!(await studentCanAccess(studentId, lesson.module.courseId))) return { ok: false };
+  if ((await lockedModuleMap(studentId, lesson.module.courseId)).has(lesson.moduleId)) return { ok: false };
+  const text = (body || '').slice(0, 20000).trim();
+  if (!text) { await db.lessonNote.deleteMany({ where: { studentId, lessonId } }); return { ok: true }; }
+  const tenantId = await currentTenantId();
+  await db.lessonNote.upsert({
+    where: { studentId_lessonId: { studentId, lessonId } },
+    update: { body: text },
+    create: { tenantId, studentId, lessonId, body: text },
+  });
+  return { ok: true };
+}
+
+/** Post a learner comment / question on a lesson (optionally a reply to a
+ *  top-level comment). Returns the created comment as a view. */
+export async function addLessonComment(studentId: string, lessonId: string, body: string, parentId?: string | null): Promise<{ ok: boolean; error?: string; comment?: CommentView }> {
+  const lesson = await db.lesson.findUnique({ where: { id: lessonId }, select: { moduleId: true, module: { select: { courseId: true } } } });
+  if (!lesson) return { ok: false, error: 'Lesson not found.' };
+  if (!(await studentCanAccess(studentId, lesson.module.courseId))) return { ok: false, error: 'Not enrolled.' };
+  if ((await lockedModuleMap(studentId, lesson.module.courseId)).has(lesson.moduleId)) return { ok: false, error: 'This module hasn’t been released yet.' };
+  const text = (body || '').trim().slice(0, 4000);
+  if (!text) return { ok: false, error: 'Please write something first.' };
+  // One-level threading: a reply must target a top-level comment on this lesson.
+  let resolvedParentId: string | null = null;
+  if (parentId) {
+    const parent = await db.lessonComment.findFirst({ where: { id: parentId, lessonId }, select: { id: true, parentId: true } });
+    if (!parent) return { ok: false, error: 'That comment no longer exists.' };
+    resolvedParentId = parent.parentId ?? parent.id; // attach to the top-level ancestor
+  }
+  const student = await db.academyStudent.findUnique({ where: { id: studentId }, select: { firstName: true, lastName: true } });
+  const authorName = [student?.firstName, student?.lastName?.slice(0, 1)].filter(Boolean).join(' ') || 'Trainee';
+  const tenantId = await currentTenantId();
+  const c = await db.lessonComment.create({
+    data: { tenantId, lessonId, parentId: resolvedParentId, authorStudentId: studentId, authorName, isStaff: false, body: text },
+  });
+  return { ok: true, comment: { id: c.id, authorName: c.authorName, isStaff: false, body: c.body, pinned: false, resolved: false, createdAt: c.createdAt.toISOString(), mine: true, replies: [] } };
+}
+
+/** A learner removes their own comment (and any replies, via cascade). */
+export async function deleteOwnComment(studentId: string, commentId: string): Promise<{ ok: boolean }> {
+  const c = await db.lessonComment.findFirst({ where: { id: commentId, authorStudentId: studentId }, select: { id: true } });
+  if (!c) return { ok: false };
+  await db.lessonComment.delete({ where: { id: c.id } });
+  return { ok: true };
+}
+
+export type ReviewView = { rating: number; title: string | null; body: string | null; status: string } | null;
+
+/** Fetch a learner's own review for a course (any status), for the edit form. */
+export async function getMyReview(studentId: string, courseId: string): Promise<ReviewView> {
+  const r = await db.courseReview.findUnique({ where: { studentId_courseId: { studentId, courseId } }, select: { rating: true, title: true, body: true, status: true } });
+  return r ? { rating: r.rating, title: r.title, body: r.body, status: r.status } : null;
+}
+
+/** Upsert a learner's course review. Only enrolled learners may review; editing
+ *  resets the review to PENDING so staff re-moderate before it shows publicly. */
+export async function saveCourseReview(studentId: string, courseId: string, rating: number, title: string, body: string): Promise<{ ok: boolean; error?: string }> {
+  const enrolled = await db.enrolment.findFirst({ where: { studentId, courseId, status: { in: ['PAID', 'ENROLLED', 'COMPLETED'] } }, select: { id: true } });
+  if (!enrolled) return { ok: false, error: 'Only enrolled trainees can review this course.' };
+  // Validate the raw rating BEFORE clamping — clamping first would turn a missing
+  // 0 into a bogus 1-star and make this guard unreachable.
+  const r = Math.round(rating);
+  if (!Number.isFinite(r) || r < 1 || r > 5) return { ok: false, error: 'Please choose a star rating from 1 to 5.' };
+  const student = await db.academyStudent.findUnique({ where: { id: studentId }, select: { firstName: true, lastName: true } });
+  const authorName = [student?.firstName, student?.lastName?.slice(0, 1)].filter(Boolean).join(' ') || 'Trainee';
+  const t = title.trim().slice(0, 160) || null;
+  const b = body.trim().slice(0, 4000) || null;
+  const tenantId = await currentTenantId();
+  await db.courseReview.upsert({
+    where: { studentId_courseId: { studentId, courseId } },
+    update: { rating: r, title: t, body: b, authorName, status: 'PENDING', moderatedBy: null, moderatedAt: null },
+    create: { tenantId, courseId, studentId, rating: r, title: t, body: b, authorName, status: 'PENDING' },
+  });
+  return { ok: true };
+}
+
+export type PublicReview = { id: string; rating: number; title: string | null; body: string | null; authorName: string; createdAt: string };
+export type CourseRatingSummary = { average: number; count: number; reviews: PublicReview[] };
+
+/** Published reviews + average for the public course page. */
+export async function getPublishedReviews(courseId: string, take = 12): Promise<CourseRatingSummary> {
+  const [agg, rows] = await Promise.all([
+    db.courseReview.aggregate({ where: { courseId, status: 'PUBLISHED' }, _avg: { rating: true }, _count: true }),
+    db.courseReview.findMany({ where: { courseId, status: 'PUBLISHED' }, orderBy: { createdAt: 'desc' }, take, select: { id: true, rating: true, title: true, body: true, authorName: true, createdAt: true } }),
+  ]);
+  return {
+    average: agg._avg.rating ? Math.round(agg._avg.rating * 10) / 10 : 0,
+    count: agg._count,
+    reviews: rows.map((r) => ({ id: r.id, rating: r.rating, title: r.title, body: r.body, authorName: r.authorName, createdAt: r.createdAt.toISOString() })),
+  };
+}
+
+/** Best-effort email to a learner that staff replied to their question. */
+export async function notifyStudentReply(studentId: string, lessonId: string): Promise<void> {
+  const [student, lesson] = await Promise.all([
+    db.academyStudent.findUnique({ where: { id: studentId }, select: { email: true, firstName: true } }),
+    db.lesson.findUnique({ where: { id: lessonId }, select: { title: true, module: { select: { course: { select: { slug: true, title: true } } } } } }),
+  ]);
+  if (!student?.email || !lesson) return;
+  const base = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://kclinics.co.uk';
+  const url = `${base}/academy/learn/${lesson.module.course.slug}`;
+  try {
+    const { sendEmail, emailShell } = await import('@/lib/email');
+    await sendEmail({
+      to: student.email,
+      subject: `Your trainer replied — ${lesson.module.course.title}`,
+      html: emailShell({
+        preheader: 'A K Academy trainer answered your question.',
+        body: `<h1 style="font-size:24px;margin:0 0 14px;">Your question was answered</h1>
+          <p style="margin:0 0 12px;">Hi ${escapeHtml(student.firstName || 'there')},</p>
+          <p style="margin:0 0 12px;">A trainer has replied to your question on <strong>${escapeHtml(lesson.title)}</strong> in <strong>${escapeHtml(lesson.module.course.title)}</strong>.</p>
+          <p style="margin:0 0 22px;"><a class="kc-btn" href="${url}" style="display:inline-block;background:#2a2420;color:#f7f1e8;text-decoration:none;padding:13px 26px;border-radius:999px;font-weight:600;">Read the reply &rarr;</a></p>`,
+      }),
+    });
+  } catch { /* best-effort */ }
 }
 
 export type GradeResult = {

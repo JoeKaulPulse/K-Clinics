@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Markdown } from '@/components/academy/Markdown';
 import { Glyph } from '@/components/ui/Glyph';
 import { LessonMedia, Downloads } from '@/components/academy/LessonMedia';
+import { LessonEngagement } from '@/components/academy/LessonEngagement';
 import type { CourseLearning, ModuleView, LessonView, QuizView } from '@/lib/lms';
 
 const fmtReleaseDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -205,6 +206,8 @@ function LessonPanel({ lesson, done, onComplete, onNext }: { lesson: LessonView;
           ? <button onClick={() => { if (!done) onComplete(); onNext(); }} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">{done ? 'Next lesson →' : 'Complete & continue →'}</button>
           : (!done && <button onClick={onComplete} className="rounded-full bg-[var(--color-ink)] px-6 py-2.5 text-sm font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-espresso)]">Mark as complete</button>)}
       </div>
+
+      <LessonEngagement lessonId={lesson.id} />
     </article>
   );
 }

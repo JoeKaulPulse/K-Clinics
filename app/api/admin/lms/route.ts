@@ -22,6 +22,11 @@ const mediaUrl = (v: unknown) => { const s = str(v).slice(0, 1000).trim(); retur
 type LessonTypeValue = 'TEXT' | 'VIDEO' | 'AUDIO' | 'PDF' | 'DOWNLOAD' | 'EMBED';
 const LESSON_TYPES = new Set<LessonTypeValue>(['TEXT', 'VIDEO', 'AUDIO', 'PDF', 'DOWNLOAD', 'EMBED']);
 const lessonType = (v: unknown): LessonTypeValue => { const s = str(v).toUpperCase() as LessonTypeValue; return LESSON_TYPES.has(s) ? s : 'TEXT'; };
+type ReviewStatusValue = 'PENDING' | 'PUBLISHED' | 'HIDDEN';
+// Strict: returns null for an unrecognised status so the caller can reject it,
+// rather than silently defaulting a moderation write to PENDING (which would
+// unpublish a live review on a malformed payload).
+const reviewStatus = (v: unknown): ReviewStatusValue | null => { const s = str(v).toUpperCase(); return s === 'PUBLISHED' || s === 'HIDDEN' || s === 'PENDING' ? s : null; };
 const attachmentArr = (v: unknown) => (Array.isArray(v)
   ? (v as { label?: unknown; url?: unknown; sizeBytes?: unknown }[])
       .map((x) => ({ label: str(x?.label).slice(0, 200), url: str(x?.url).slice(0, 1000).trim(), sizeBytes: Number.isFinite(Number(x?.sizeBytes)) && Number(x?.sizeBytes) > 0 ? Math.round(Number(x?.sizeBytes)) : undefined }))
@@ -166,6 +171,33 @@ export async function POST(req: Request) {
       await Promise.all((b.ids as string[]).map((id, i) => db.quizQuestion.update({ where: { id }, data: { order: i } }).catch(() => {})));
       return ok();
     }
+
+    // ── Engagement moderation (BLD-529): discussion comments + course reviews ──
+    case 'staffReply': {
+      if (!b.parentId || !str(b.body).trim()) return bad('Missing reply.');
+      const parent = await db.lessonComment.findUnique({ where: { id: String(b.parentId) }, select: { id: true, lessonId: true, parentId: true, authorStudentId: true } });
+      if (!parent) return bad('Comment not found.');
+      const topId = parent.parentId ?? parent.id; // attach reply to the top-level thread
+      const authorName = str(session.name) || 'K Academy team';
+      const reply = await db.lessonComment.create({ data: { tenantId, lessonId: parent.lessonId, parentId: topId, authorStaff: session.email, authorName, isStaff: true, body: str(b.body).trim().slice(0, 4000) } });
+      await db.lessonComment.update({ where: { id: topId }, data: { resolved: true } }).catch(() => {});
+      // Best-effort: email the learner who asked.
+      const askerId = parent.authorStudentId ?? (await db.lessonComment.findUnique({ where: { id: topId }, select: { authorStudentId: true } }))?.authorStudentId ?? null;
+      if (askerId) { const { notifyStudentReply } = await import('@/lib/lms'); notifyStudentReply(askerId, parent.lessonId).catch(() => {}); }
+      return ok({ id: reply.id });
+    }
+    case 'pinComment': { if (!b.id) return bad(); await db.lessonComment.update({ where: { id: String(b.id) }, data: { pinned: !!b.pinned } }); return ok(); }
+    case 'resolveComment': { if (!b.id) return bad(); await db.lessonComment.update({ where: { id: String(b.id) }, data: { resolved: !!b.resolved } }); return ok(); }
+    case 'hideComment': { if (!b.id) return bad(); await db.lessonComment.update({ where: { id: String(b.id) }, data: { hidden: !!b.hidden } }); return ok(); }
+    case 'deleteComment': { if (!b.id) return bad(); await db.lessonComment.delete({ where: { id: String(b.id) } }); return ok(); }
+    case 'setReviewStatus': {
+      if (!b.id) return bad();
+      const status = reviewStatus(b.status);
+      if (!status) return bad('Unknown status.');
+      await db.courseReview.update({ where: { id: String(b.id) }, data: { status, moderatedBy: session.email, moderatedAt: new Date() } });
+      return ok();
+    }
+    case 'deleteReview': { if (!b.id) return bad(); await db.courseReview.delete({ where: { id: String(b.id) } }); return ok(); }
   }
   return bad('Unknown op');
 }

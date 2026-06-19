@@ -1827,6 +1827,9 @@ model AcademyStudent {
   enrolments          Enrolment[]
   lessonProgress      LessonProgress[]
   lessonPlaybacks     LessonPlayback[]
+  lessonNotes         LessonNote[]
+  lessonComments      LessonComment[]
+  courseReviews       CourseReview[]
   quizAttempts        QuizAttempt[]
   practiceAttempts    PracticeAttempt[]
   pointEvents         PointEvent[]
@@ -1899,6 +1902,7 @@ model Course {
   examQuestions       ExamQuestion[]
   pastPapers          PastPaper[]
   fundingApplications FundingApplication[]
+  reviews             CourseReview[]
 
   @@unique([tenantId, slug]) // ClinicOS Ring 1 (BLD-301): per-tenant slug — replaces the global @unique
   @@index([active, order])
@@ -1968,6 +1972,8 @@ model Lesson {
   pdfNoDownload       String[]             @default([]) // BLD-443: subset of pdfUrls marked view-only (no download offered)
   progress            LessonProgress[]
   playbacks           LessonPlayback[]
+  notes               LessonNote[]
+  comments            LessonComment[]
   homeworkSubmissions HomeworkSubmission[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
@@ -2072,6 +2078,82 @@ model LessonPlayback {
 
   @@unique([studentId, lessonId])
   @@index([studentId])
+  @@index([tenantId])
+}
+
+// BLD-529 (engagement & community): private per-lesson study notes the learner
+// takes as they go. One note per (student, lesson) — upsert.
+model LessonNote {
+  id        String         @id @default(cuid())
+  tenantId  String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  lesson    Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId  String
+  body      String         @db.Text
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([studentId, lessonId])
+  @@index([studentId])
+  @@index([tenantId])
+}
+
+// BLD-529 (engagement & community): per-lesson discussion / Q&A. Threaded one
+// level (a top-level comment has replies via parentId). Staff replies set
+// isStaff + authorStaff (email); learner posts set authorStudentId. authorName is
+// denormalised for display so a deleted account doesn't blank the thread.
+model LessonComment {
+  id              String          @id @default(cuid())
+  tenantId        String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  lesson          Lesson          @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId        String
+  parent          LessonComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  parentId        String?
+  replies         LessonComment[] @relation("CommentReplies")
+  authorStudent   AcademyStudent? @relation(fields: [authorStudentId], references: [id], onDelete: SetNull)
+  authorStudentId String?
+  authorStaff     String? // staff email when a staff member replies
+  authorName      String // denormalised display name
+  isStaff         Boolean         @default(false)
+  body            String          @db.Text
+  pinned          Boolean         @default(false) // staff can pin an important thread to the top
+  resolved        Boolean         @default(false) // Q&A: marked answered
+  hidden          Boolean         @default(false) // moderation: hidden from learners
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([lessonId, createdAt])
+  @@index([tenantId])
+}
+
+enum CourseReviewStatus {
+  PENDING // awaiting staff moderation — not shown publicly
+  PUBLISHED // visible on the public course page
+  HIDDEN // moderated out
+}
+
+// BLD-529 (engagement & community): a learner's star rating + written review of a
+// course. One per (student, course) — editing resets to PENDING for re-moderation.
+model CourseReview {
+  id          String             @id @default(cuid())
+  tenantId    String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  course      Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId    String
+  student     AcademyStudent     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId   String
+  rating      Int // 1..5
+  title       String?
+  body        String?            @db.Text
+  authorName  String // denormalised display name for public display
+  status      CourseReviewStatus @default(PENDING)
+  moderatedBy String? // staff email
+  moderatedAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@unique([studentId, courseId])
+  @@index([courseId, status])
   @@index([tenantId])
 }
 

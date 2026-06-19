@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { ApplyForm } from '@/components/academy/ApplyForm';
+import { Stars } from '@/components/ui/Stars';
 import { pageMeta, JsonLd, breadcrumbLd, courseLd } from '@/lib/seo';
 import { ACCREDITATION_LABELS, formatFee } from '@/lib/academy';
 import { getActivePromo } from '@/lib/academy-utils';
@@ -23,12 +24,16 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 const fmt = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+const fmtShort = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
 export default async function CoursePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const { getCourse } = await import('@/lib/academy');
   const course = await getCourse(slug);
   if (!course) notFound();
+
+  const { getPublishedReviews } = await import('@/lib/lms');
+  const rating = await getPublishedReviews(course.id);
 
   const cohortOptions = course.cohorts.map((h) => ({ id: h.id, label: `${fmt(h.startAt.toISOString())}${h.remaining <= 3 ? ` · ${h.remaining} places left` : ''}` }));
   const activePromo = getActivePromo(course);
@@ -53,6 +58,14 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
               <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm uppercase tracking-[0.14em] text-[var(--color-stone)]">
                 {course.accreditations.map((a) => <span key={a} className="flex items-center gap-2"><span className="text-[var(--color-gold)]">✦</span>{ACCREDITATION_LABELS[a] ?? a}</span>)}
               </div>
+            )}
+
+            {rating.count > 0 && (
+              <a href="#reviews" className="inline-flex items-center gap-2 text-sm text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">
+                <Stars rating={rating.average} />
+                <span className="font-medium">{rating.average.toFixed(1)}</span>
+                <span className="text-[var(--color-stone)]">· {rating.count} trainee review{rating.count === 1 ? '' : 's'}</span>
+              </a>
             )}
 
             {course.description && <div className="prose-lux whitespace-pre-line text-[var(--color-ink-soft)]">{course.description}</div>}
@@ -85,6 +98,28 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
                     <li key={h.id} className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-4 py-3 text-sm">
                       <span className="font-medium text-[var(--color-ink)]">{fmt(h.startAt.toISOString())}{h.endAt ? ` – ${fmt(h.endAt.toISOString())}` : ''}</span>
                       <span className="text-[var(--color-stone)]">{h.location ?? 'Islington'}{h.trainer ? ` · ${h.trainer}` : ''} · {h.remaining > 0 ? `${h.remaining} place${h.remaining === 1 ? '' : 's'} left` : 'Full'}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {rating.count > 0 && (
+              <div id="reviews" className="scroll-mt-28">
+                <div className="flex flex-wrap items-baseline gap-3">
+                  <h2 className="font-[family-name:var(--font-display)] text-2xl">Trainee reviews</h2>
+                  <span className="flex items-center gap-2 text-sm text-[var(--color-stone)]"><Stars rating={rating.average} /> {rating.average.toFixed(1)} out of 5 · {rating.count} review{rating.count === 1 ? '' : 's'}</span>
+                </div>
+                <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+                  {rating.reviews.map((r) => (
+                    <li key={r.id} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5">
+                      <div className="flex items-center justify-between gap-2">
+                        <Stars rating={r.rating} />
+                        <span className="text-xs text-[var(--color-stone)]">{fmtShort(r.createdAt)}</span>
+                      </div>
+                      {r.title && <p className="mt-2 font-medium text-[var(--color-ink)]">{r.title}</p>}
+                      {r.body && <p className="mt-1 whitespace-pre-line text-sm text-[var(--color-ink-soft)]">{r.body}</p>}
+                      <p className="mt-3 text-xs text-[var(--color-stone)]">— {r.authorName}</p>
                     </li>
                   ))}
                 </ul>
