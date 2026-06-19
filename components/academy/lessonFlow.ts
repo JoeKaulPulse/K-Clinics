@@ -53,7 +53,11 @@ export function registerForAge(age: number | null | undefined): Register {
   return 'mid';
 }
 
-/** Validate/coerce an authored steps array from JSON into FlowStep[]. */
+/** Validate/coerce an authored steps array from JSON into FlowStep[].
+ *  BLD: per owner request, inline 'ask' questions are NOT surfaced in lessons —
+ *  the only questions students see are the curriculum module quizzes (which staff
+ *  author and can find in the curriculum editor). We keep the teaching cards from
+ *  any authored flow and drop the embedded 'ask' steps. */
 export function coerceSteps(raw: unknown): FlowStep[] | null {
   if (!Array.isArray(raw) || raw.length === 0) return null;
   const out: FlowStep[] = [];
@@ -61,9 +65,7 @@ export function coerceSteps(raw: unknown): FlowStep[] | null {
     const kind = r?.kind;
     if (kind === 'teach' && typeof r.text === 'string') out.push({ kind: 'teach', title: typeof r.title === 'string' ? r.title : undefined, text: r.text, art: typeof r.art === 'string' ? r.art : undefined });
     else if (kind === 'say' && typeof r.text === 'string') out.push({ kind: 'say', text: r.text, mood: (['happy', 'think', 'cheer'].includes(r.mood as string) ? r.mood : undefined) as SayStep['mood'] });
-    else if (kind === 'ask' && typeof r.prompt === 'string' && Array.isArray(r.options) && Array.isArray(r.correct)) {
-      out.push({ kind: 'ask', prompt: r.prompt, qtype: (['SINGLE', 'MULTI', 'TRUEFALSE', 'WORD'].includes(r.qtype as string) ? r.qtype : 'SINGLE') as AskStep['qtype'], options: (r.options as unknown[]).map(String), correct: (r.correct as unknown[]).map(Number).filter((n) => Number.isInteger(n)), explanation: typeof r.explanation === 'string' ? r.explanation : undefined, tip: typeof r.tip === 'string' ? r.tip : undefined, art: typeof r.art === 'string' ? r.art : undefined });
-    }
+    // 'ask' steps intentionally dropped — questions come only from the module quiz.
   }
   return out.length ? out : null;
 }

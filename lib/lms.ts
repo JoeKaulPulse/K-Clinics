@@ -14,11 +14,11 @@ export type LessonView = {
   id: string; title: string; order: number; durationMin: number | null; minSeconds: number | null;
   videoUrl: string | null; imageUrl: string | null; body: string;
   keyPoints: string[]; objectives: string[]; studyTips: string[]; homework: string | null;
-  examRefs: string[]; steps: unknown; citations: LinkRef[]; resources: LinkRef[]; pdfUrls: string[]; pdfNoDownload: string[]; requiresHomework: boolean; submission: HomeworkSubmissionView | null; done: boolean;
+  examRefs: string[]; steps: unknown; citations: LinkRef[]; resources: LinkRef[]; pdfUrls: string[]; pdfNoDownload: string[]; requiresHomework: boolean; submission: HomeworkSubmissionView | null; done: boolean; locked: boolean;
 };
 export type QuizQuestionView = { id: string; order: number; prompt: string; type: string; options: string[]; tip: string | null; imageUrl: string | null; correct?: number[]; explanation?: string | null };
 export type QuizView = { id: string; title: string; passMark: number; questionCount: number; bestScore: number | null; passed: boolean; questions: QuizQuestionView[] };
-export type ModuleView = { id: string; title: string; summary: string | null; order: number; lessons: LessonView[]; quiz: QuizView | null; complete: boolean };
+export type ModuleView = { id: string; title: string; summary: string | null; order: number; lessons: LessonView[]; quiz: QuizView | null; complete: boolean; lockedUntil: string | null };
 export type CourseLearning = {
   course: { id: string; slug: string; title: string; level: string | null; welcome: string | null; objectives: string[]; preCourseInfo: string | null };
   modules: ModuleView[];
@@ -47,6 +47,22 @@ export async function studentCanAccess(studentId: string, courseId: string): Pro
     if (end && now > end.getTime()) return false;
     return true;
   });
+}
+
+/** BLD: per-cohort drip. Module ids NOT yet released for this student's cohort on
+ *  the course (a future release date). Empty when the student has no cohort or no
+ *  schedule is set — so courses without a release schedule behave exactly as before. */
+async function lockedModuleMap(studentId: string, courseId: string): Promise<Map<string, Date>> {
+  const enrol = await db.enrolment.findFirst({
+    where: { studentId, courseId, status: { in: ['PAID', 'ENROLLED', 'COMPLETED'] }, cohortId: { not: null } },
+    select: { cohortId: true },
+  });
+  if (!enrol?.cohortId) return new Map();
+  const rels = await db.cohortModuleRelease.findMany({ where: { cohortId: enrol.cohortId, module: { courseId } }, select: { moduleId: true, releaseAt: true } });
+  const now = Date.now();
+  const map = new Map<string, Date>();
+  for (const r of rels) if (r.releaseAt.getTime() > now) map.set(r.moduleId, r.releaseAt);
+  return map;
 }
 
 /** Full learning view for a student: content + progress (no correct answers). */
@@ -82,31 +98,45 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
     const cur = bestByQuiz.get(a.quizId);
     bestByQuiz.set(a.quizId, { best: Math.max(cur?.best ?? 0, a.scorePct), passed: (cur?.passed ?? false) || a.passed });
   }
+  // BLD: per-cohort drip — locked modules are listed in the outline but their
+  // content (body/video/quiz) is withheld until the release date.
+  const lockedMap = await lockedModuleMap(studentId, course.id);
 
   let totalUnits = 0, doneUnits = 0;
   const moduleViews: ModuleView[] = modules.map((m) => {
+    const lockedUntil = lockedMap.get(m.id) ?? null;
+    const isLocked = !!lockedUntil;
     const lessons: LessonView[] = m.lessons.map((l) => {
-      const done = doneSet.has(l.id);
+      const done = !isLocked && doneSet.has(l.id);
       totalUnits++; if (done) doneUnits++;
+      // Withhold content of locked lessons — only the title shows in the outline.
+      if (isLocked) {
+        return {
+          id: l.id, title: l.title, order: l.order, durationMin: l.durationMin, minSeconds: null,
+          videoUrl: null, imageUrl: null, body: '', keyPoints: [], objectives: [], studyTips: [],
+          homework: null, examRefs: [], steps: null, citations: [], resources: [], pdfUrls: [], pdfNoDownload: [], requiresHomework: false, submission: null, done: false, locked: true,
+        };
+      }
       return {
         id: l.id, title: l.title, order: l.order, durationMin: l.durationMin, minSeconds: l.minSeconds,
         videoUrl: l.videoUrl, imageUrl: l.imageUrl, body: l.body,
         keyPoints: strArr(l.keyPoints), objectives: strArr(l.objectives), studyTips: strArr(l.studyTips),
-        homework: l.homework, examRefs: strArr(l.examRefs), steps: l.steps, citations: arr(l.citations), resources: arr(l.resources), pdfUrls: strArr(l.pdfUrls), pdfNoDownload: strArr(l.pdfNoDownload), requiresHomework: l.requiresHomework, submission: subByLesson.get(l.id) ?? null, done,
+        homework: l.homework, examRefs: strArr(l.examRefs), steps: l.steps, citations: arr(l.citations), resources: arr(l.resources), pdfUrls: strArr(l.pdfUrls), pdfNoDownload: strArr(l.pdfNoDownload), requiresHomework: l.requiresHomework, submission: subByLesson.get(l.id) ?? null, done, locked: false,
       };
     });
     let quiz: QuizView | null = null;
     if (m.quiz) {
       const b = bestByQuiz.get(m.quiz.id);
-      totalUnits++; if (b?.passed) doneUnits++;
-      quiz = {
+      totalUnits++; if (!isLocked && b?.passed) doneUnits++;
+      // A locked module's quiz is withheld (no questions sent) until release.
+      quiz = isLocked ? null : {
         id: m.quiz.id, title: m.quiz.title, passMark: m.quiz.passMark, questionCount: m.quiz.questions.length,
         bestScore: b?.best ?? null, passed: b?.passed ?? false,
         questions: m.quiz.questions.map((q) => ({ id: q.id, order: q.order, prompt: q.prompt, type: q.type, options: strArr(q.options), tip: q.tip, imageUrl: q.imageUrl })),
       };
     }
-    const complete = lessons.every((l) => l.done) && (!quiz || quiz.passed);
-    return { id: m.id, title: m.title, summary: m.summary, order: m.order, lessons, quiz, complete };
+    const complete = !isLocked && lessons.every((l) => l.done) && (!m.quiz || bestByQuiz.get(m.quiz.id)?.passed === true);
+    return { id: m.id, title: m.title, summary: m.summary, order: m.order, lessons, quiz, complete, lockedUntil: lockedUntil ? lockedUntil.toISOString() : null };
   });
 
   const progressPct = totalUnits ? Math.round((doneUnits / totalUnits) * 100) : 0;
@@ -117,9 +147,11 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
 /** Mark a lesson complete (idempotent). Verifies access. `secondsSpent` (the
  *  dwell time the player measured for this visit) is accumulated, not overwritten. */
 export async function completeLesson(studentId: string, lessonId: string, secondsSpent = 0): Promise<{ ok: boolean; newBadges?: { key: string; name: string; icon: string }[] }> {
-  const lesson = await db.lesson.findUnique({ where: { id: lessonId }, select: { module: { select: { courseId: true } } } });
+  const lesson = await db.lesson.findUnique({ where: { id: lessonId }, select: { moduleId: true, module: { select: { courseId: true } } } });
   if (!lesson) return { ok: false };
   if (!(await studentCanAccess(studentId, lesson.module.courseId))) return { ok: false };
+  // BLD: can't complete a lesson in a module that isn't released yet for the cohort.
+  if ((await lockedModuleMap(studentId, lesson.module.courseId)).has(lesson.moduleId)) return { ok: false };
   const secs = Math.max(0, Math.min(Math.round(secondsSpent) || 0, 6 * 60 * 60)); // cap at 6h to ignore idle tabs
   const firstTime = !(await db.lessonProgress.findUnique({ where: { studentId_lessonId: { studentId, lessonId } }, select: { id: true } }));
   const tenantId = await currentTenantId();
@@ -148,10 +180,11 @@ export type GradeResult = {
 export async function gradeQuiz(studentId: string, quizId: string, answers: Record<string, number[]>): Promise<GradeResult> {
   const quiz = await db.quiz.findUnique({
     where: { id: quizId },
-    include: { questions: { orderBy: { order: 'asc' } }, module: { select: { courseId: true } } },
+    include: { questions: { orderBy: { order: 'asc' } }, module: { select: { id: true, courseId: true } } },
   });
   if (!quiz) return { ok: false, error: 'Quiz not found.' };
   if (!(await studentCanAccess(studentId, quiz.module.courseId))) return { ok: false, error: 'Not enrolled.' };
+  if ((await lockedModuleMap(studentId, quiz.module.courseId)).has(quiz.module.id)) return { ok: false, error: 'This module hasn’t been released yet.' };
   if (quiz.questions.length === 0) return { ok: false, error: 'No questions.' };
 
   let correctCount = 0;
@@ -210,7 +243,7 @@ export async function getCoursePreview(courseId: string): Promise<CourseLearning
       id: l.id, title: l.title, order: l.order, durationMin: l.durationMin, minSeconds: l.minSeconds,
       videoUrl: l.videoUrl, imageUrl: l.imageUrl, body: l.body,
       keyPoints: strArr(l.keyPoints), objectives: strArr(l.objectives), studyTips: strArr(l.studyTips),
-      homework: l.homework, examRefs: strArr(l.examRefs), steps: l.steps, citations: arr(l.citations), resources: arr(l.resources), pdfUrls: strArr(l.pdfUrls), pdfNoDownload: strArr(l.pdfNoDownload), requiresHomework: l.requiresHomework, submission: null, done: false,
+      homework: l.homework, examRefs: strArr(l.examRefs), steps: l.steps, citations: arr(l.citations), resources: arr(l.resources), pdfUrls: strArr(l.pdfUrls), pdfNoDownload: strArr(l.pdfNoDownload), requiresHomework: l.requiresHomework, submission: null, done: false, locked: false,
     }));
     const quiz: QuizView | null = m.quiz ? {
       id: m.quiz.id, title: m.quiz.title, passMark: m.quiz.passMark, questionCount: m.quiz.questions.length, bestScore: null, passed: false,
@@ -219,7 +252,7 @@ export async function getCoursePreview(courseId: string): Promise<CourseLearning
         correct: (Array.isArray(q.correct) ? (q.correct as number[]) : []), explanation: q.explanation,
       })),
     } : null;
-    return { id: m.id, title: m.title, summary: m.summary, order: m.order, lessons, quiz, complete: false };
+    return { id: m.id, title: m.title, summary: m.summary, order: m.order, lessons, quiz, complete: false, lockedUntil: null };
   });
   return { course, modules: moduleViews, progressPct: 0, certificateEligible: false, preCourseAck: true };
 }
