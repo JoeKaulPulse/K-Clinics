@@ -1,4 +1,5 @@
 import 'server-only';
+import crypto from 'crypto';
 import { db } from '@/lib/db';
 import { currentTenantId } from '@/lib/tenant';
 
@@ -236,6 +237,47 @@ export async function courseProgress(studentId: string, courseId: string): Promi
   if (total === 0) return { pct: 0, hasContent: false };
   const done = Math.min(doneLessons, lessonTotal) + passedQuizRows.length;
   return { pct: Math.round((done / total) * 100), hasContent: true };
+}
+
+// ── Verifiable certificate (BLD-528) ─────────────────────────────────────────
+// On theory completion we issue a STORED, verifiable reference (not a derived
+// string), so anyone can confirm it at /academy/verify/<ref>. Uniqueness is
+// self-healed by retrying on collision — no DB @unique (deploy-gate safe).
+const certToken = () => `KA-${crypto.randomBytes(2).toString('hex').toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+/** Issue (or return the existing) certificate reference for a student+course.
+ *  Only the enrolment that grants access is stamped. Idempotent. */
+export async function issueCertificate(studentId: string, courseId: string): Promise<{ ref: string; issuedAt: Date } | null> {
+  const enrol = await db.enrolment.findFirst({
+    where: { studentId, courseId, status: { in: ['PAID', 'ENROLLED', 'COMPLETED'] } },
+    select: { id: true, certificateRef: true, certificateIssuedAt: true },
+  });
+  if (!enrol) return null;
+  if (enrol.certificateRef && enrol.certificateIssuedAt) return { ref: enrol.certificateRef, issuedAt: enrol.certificateIssuedAt };
+  for (let i = 0; i < 5; i++) {
+    const ref = certToken();
+    const clash = await db.enrolment.findFirst({ where: { certificateRef: ref }, select: { id: true } });
+    if (clash) continue;
+    try {
+      const updated = await db.enrolment.update({ where: { id: enrol.id }, data: { certificateRef: ref, certificateIssuedAt: enrol.certificateIssuedAt ?? new Date() }, select: { certificateRef: true, certificateIssuedAt: true } });
+      return { ref: updated.certificateRef as string, issuedAt: updated.certificateIssuedAt as Date };
+    } catch { /* retry on the rare unique race */ }
+  }
+  return null;
+}
+
+export type CertificateCheck = { ok: true; name: string; courseTitle: string; level: string | null; accreditations: string[]; issuedAt: Date } | { ok: false };
+
+/** Public verification of a certificate reference. */
+export async function verifyCertificate(ref: string): Promise<CertificateCheck> {
+  if (!ref || ref.length > 40) return { ok: false };
+  const e = await db.enrolment.findFirst({
+    where: { certificateRef: ref.toUpperCase() },
+    select: { certificateIssuedAt: true, applicantName: true, student: { select: { firstName: true, lastName: true } }, course: { select: { title: true, level: true, accreditations: true } } },
+  });
+  if (!e || !e.certificateIssuedAt) return { ok: false };
+  const name = e.student ? [e.student.firstName, e.student.lastName].filter(Boolean).join(' ') : e.applicantName;
+  return { ok: true, name, courseTitle: e.course.title, level: e.course.level, accreditations: e.course.accreditations, issuedAt: e.certificateIssuedAt };
 }
 
 export type CalendarEvent = { id: string; kind: 'live' | 'practical'; courseTitle: string; title: string; startAt: Date; endAt: Date | null; joinUrl: string | null; location: string | null; trainer: string | null };

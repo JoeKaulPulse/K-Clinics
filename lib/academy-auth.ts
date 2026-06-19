@@ -10,6 +10,26 @@ const hashesEqual = (a: string, b: string) => {
   return ab.length === bb.length && crypto.timingSafeEqual(ab, bb);
 };
 
+// BLD-528: best-effort bridge to the clinic CRM. A trainee is often also a
+// clinic client; link them by email so staff see both sides of the same person.
+// Only fills an empty clientId (never overwrites an existing link).
+async function linkClientByEmail(studentId: string, email: string): Promise<void> {
+  try {
+    const client = await db.client.findUnique({ where: { email: email.trim().toLowerCase() }, select: { id: true } });
+    if (client) await db.academyStudent.updateMany({ where: { id: studentId, clientId: null }, data: { clientId: client.id } });
+  } catch { /* best-effort — never block account creation */ }
+}
+
+/** Staff/explicit re-link of a trainee to their clinic client record (by email). */
+export async function linkStudentToClient(studentId: string): Promise<{ ok: boolean; linked: boolean }> {
+  const s = await db.academyStudent.findUnique({ where: { id: studentId }, select: { email: true, clientId: true } });
+  if (!s) return { ok: false, linked: false };
+  if (s.clientId) return { ok: true, linked: true };
+  await linkClientByEmail(studentId, s.email);
+  const after = await db.academyStudent.findUnique({ where: { id: studentId }, select: { clientId: true } });
+  return { ok: true, linked: !!after?.clientId };
+}
+
 export type AcademySignup = { firstName: string; lastName?: string; email: string; phone?: string; password: string; dob?: string };
 
 /** Create a trainee (academy) account — separate from the clinic client portal. */
@@ -36,6 +56,7 @@ export async function signupStudent(input: AcademySignup): Promise<{ ok: boolean
   });
   // Link any prior applications made with this email to the new account.
   await db.enrolment.updateMany({ where: { applicantEmail: email, studentId: null }, data: { studentId: student.id } }).catch(() => {});
+  await linkClientByEmail(student.id, email);
   await createAcademySession({ sub: student.id, email: student.email, firstName: student.firstName, epoch: student.sessionEpoch });
   return { ok: true };
 }
@@ -135,6 +156,7 @@ export async function ensureStudentForOffer(input: { tenantId: string; email: st
     data: { tenantId: input.tenantId, email, firstName: input.firstName || 'there', lastName: input.lastName || null, phone: input.phone || null, portalActive: false },
     select: { id: true, email: true, firstName: true },
   });
+  await linkClientByEmail(created.id, email);
   return { ...created, isNew: true };
 }
 

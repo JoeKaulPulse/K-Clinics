@@ -361,6 +361,7 @@ model Client {
   referralsMade  Referral[]         @relation("ReferralsMade")
   referredVia    Referral?          @relation("ReferralReceived")
   callRecords    CallRecord[]
+  academyStudents AcademyStudent[] // BLD-528: linked K Academy trainee account(s) (same person, by email)
 
   @@index([createdAt])
   @@index([dob])
@@ -1816,6 +1817,10 @@ model AcademyStudent {
   resetTokenExp  DateTime?
   notes          String?
   xp             Int       @default(0) // gamification points (earned across the academy)
+  // BLD-528: bridge to the clinic CRM. A trainee is often also a clinic client;
+  // linked by email (best-effort) so staff can see both sides of the same person.
+  clientId       String?
+  client         Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -1828,11 +1833,13 @@ model AcademyStudent {
   dailyActivity       DailyActivity[]
   passkeys            StudentPasskey[]
   homeworkSubmissions HomeworkSubmission[]
+  fundingApplications FundingApplication[]
 
   @@unique([tenantId, email]) // ClinicOS Ring 1 (BLD-301): per-tenant email — replaces the global @unique
   @@index([createdAt])
   @@index([xp])
   @@index([tenantId])
+  @@index([clientId])
 }
 
 // Trainee passkeys — Face ID / Touch ID / fingerprint sign-in for the academy
@@ -2242,6 +2249,13 @@ model Enrolment {
   paymentPlan    Boolean         @default(false) // an in-house instalment plan is in place
   payments       EnrolmentPayment[]
 
+  // BLD-528: verifiable certificate reference, issued when the theory is complete.
+  // Stored (not derived) so /academy/verify can confirm it. Uniqueness is enforced
+  // in app code (self-healing), not a DB @unique, to stay within the deploy gate.
+  certificateRef      String?
+  certificateIssuedAt DateTime?
+  fundingApplications FundingApplication[]
+
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
@@ -2334,6 +2348,14 @@ model FundingApplication {
   courseId    String?
   courseLevel String? // level they're interested in, e.g. "Level 4"
 
+  // BLD-528: link a funding enquiry to the trainee account / enrolment it relates
+  // to (auto-linked by email, or attached by staff), so funding is traceable to
+  // the place it pays for instead of reconciling by name.
+  student     AcademyStudent? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  studentId   String?
+  enrolment   Enrolment?      @relation(fields: [enrolmentId], references: [id], onDelete: SetNull)
+  enrolmentId String?
+
   // Funding route the applicant is pursuing + every route the self-check flagged
   // as a likely fit (route keys live in lib/funding.ts).
   route          String
@@ -2360,6 +2382,8 @@ model FundingApplication {
   @@index([email])
   @@index([tenantId])
   @@index([createdAt])
+  @@index([studentId])
+  @@index([enrolmentId])
 }
 
 // ── Post-treatment follow-up questionnaire ──────────────────────────────────

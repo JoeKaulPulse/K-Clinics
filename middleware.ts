@@ -34,6 +34,7 @@ const RESERVED_ACADEMY = new Set([
 // reserved trainee routes above. Deeper paths (/academy/learn/...) are never public.
 const isPublicAcademyPath = (p: string) =>
   PUBLIC_ACADEMY.has(p) ||
+  p.startsWith('/academy/verify/') || // BLD-528: public certificate verification
   (!RESERVED_ACADEMY.has(p) && /^\/academy\/[^/]+$/.test(p));
 
 // ── Admin-managed URL redirects ─────────────────────────────────────────────

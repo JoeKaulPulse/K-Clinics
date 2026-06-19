@@ -33,6 +33,8 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
   const { db } = await import('@/lib/db');
   const student = await db.academyStudent.findUnique({ where: { id } });
   if (!student) notFound();
+  // BLD-528: linked clinic CRM client (same person), if any.
+  const client = student.clientId ? await db.client.findUnique({ where: { id: student.clientId }, select: { id: true, firstName: true, lastName: true } }) : null;
 
   const [enrolments, payments, lessonRows, quizRows, practiceRows, homeworkRows, badgeRows, passkeys, timeAgg, standing] = await Promise.all([
     db.enrolment.findMany({ where: { studentId: id }, orderBy: { createdAt: 'desc' }, include: { course: { select: { id: true, title: true, slug: true } }, cohort: { select: { startAt: true, name: true } } } }),
@@ -67,8 +69,9 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
         <div>
           <h1 className="font-[family-name:var(--font-display)] text-3xl">{student.firstName} {student.lastName ?? ''}{!student.portalActive && <span className="ml-2 align-middle rounded-full bg-[var(--color-blush)]/15 px-2 py-0.5 text-xs text-[var(--color-blush)]">Suspended</span>}</h1>
           <p className="mt-1 text-sm text-[var(--color-stone)]">{student.email}{student.phone ? ` · ${student.phone}` : ''}</p>
+          <p className="mt-1 text-xs text-[var(--color-stone)]">Clinic client: {client ? <Link href={`/admin/clients/${client.id}`} className="text-[var(--color-gold)] hover:underline">{client.firstName} {client.lastName ?? ''} →</Link> : <span>not linked</span>}</p>
         </div>
-        <StudentActions studentId={student.id} email={student.email} portalActive={student.portalActive} />
+        <StudentActions studentId={student.id} email={student.email} portalActive={student.portalActive} hasClient={!!client} />
       </div>
 
       <div className="mt-8 grid gap-5 lg:grid-cols-2">

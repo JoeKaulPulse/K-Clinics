@@ -239,6 +239,22 @@ export async function POST(req: Request) {
       await requestAcademyPasswordReset(String(body.email));
       return ok();
     }
+    case 'linkClient': {
+      // Link a trainee to their clinic CRM Client record (by email).
+      if (!body.studentId) return bad();
+      const { linkStudentToClient } = await import('@/lib/academy-auth');
+      const r = await linkStudentToClient(String(body.studentId));
+      return r.ok ? ok({ linked: r.linked }) : bad();
+    }
+    case 'linkFunding': {
+      // Attach a funding enquiry to an enrolment (and copy its student link).
+      if (!body.id) return bad();
+      const eid = (body.enrolmentId as string) || null;
+      let studentId: string | null = null;
+      if (eid) { const enr = await db.enrolment.findUnique({ where: { id: eid }, select: { studentId: true } }); studentId = enr?.studentId ?? null; }
+      await db.fundingApplication.update({ where: { id: String(body.id) }, data: { enrolmentId: eid, ...(eid ? { studentId } : {}) } });
+      return ok();
+    }
   }
   return NextResponse.json({ ok: false, error: 'Unknown op' }, { status: 400 });
 }

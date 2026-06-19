@@ -10,7 +10,7 @@ async function post(payload: object) {
 // BLD-528: staff account actions for one trainee — suspend/reactivate, email a
 // passwordless portal link (for accounts created during an offer), or trigger a
 // password reset email.
-export function StudentActions({ studentId, email, portalActive }: { studentId: string; email: string; portalActive: boolean }) {
+export function StudentActions({ studentId, email, portalActive, hasClient }: { studentId: string; email: string; portalActive: boolean; hasClient: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState('');
   const [done, setDone] = useState('');
@@ -32,6 +32,7 @@ export function StudentActions({ studentId, email, portalActive }: { studentId: 
       >{portalActive ? 'Suspend access' : 'Reactivate'}</button>
       <button onClick={() => act('sendActivation', { studentId }, 'Access link sent')} disabled={!!busy} className={btn}>Email portal link</button>
       <button onClick={() => act('resetStudentPassword', { email }, 'Reset email sent')} disabled={!!busy} className={btn}>Send password reset</button>
+      {!hasClient && <button onClick={() => act('linkClient', { studentId }, 'Client linked')} disabled={!!busy} className={btn}>Link clinic client</button>}
       {busy && <span className="text-xs text-[var(--color-stone)]">Working…</span>}
       {done && <span className="text-xs text-[var(--color-gold)]">{done} ✓</span>}
     </div>

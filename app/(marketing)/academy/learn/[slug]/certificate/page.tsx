@@ -28,7 +28,13 @@ export default async function CertificatePage({ params }: { params: Promise<{ sl
   const { db } = await import('@/lib/db');
   const course = await db.course.findFirst({ where: { slug }, select: { accreditations: true } });
   const name = [student.firstName, student.lastName].filter(Boolean).join(' ');
-  const ref = `KA-${slug.slice(0, 6).toUpperCase()}-${student.id.slice(-6).toUpperCase()}`;
+  // BLD-528: issue (or fetch) a stored, verifiable reference + date.
+  const { issueCertificate } = await import('@/lib/lms');
+  const cert = await issueCertificate(student.id, learning.course.id);
+  const ref = cert?.ref ?? `KA-${slug.slice(0, 6).toUpperCase()}-${student.id.slice(-6).toUpperCase()}`;
+  const issued = cert?.issuedAt ?? new Date();
+  const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://kclinics.co.uk';
+  const verifyUrl = `${base.replace(/^https?:\/\//, '')}/academy/verify/${ref}`;
 
   return (
     <section className="container-lux py-[calc(var(--header-h,5.25rem)+2rem)]">
@@ -58,14 +64,15 @@ export default async function CertificatePage({ params }: { params: Promise<{ sl
           ) : null}
 
           <div className="mt-9 flex flex-wrap items-end justify-between gap-6 border-t border-[var(--color-line)] pt-6 text-left text-xs text-[var(--color-stone)]">
-            <div><span className="block uppercase tracking-wide text-[var(--color-stone)]">Date</span><span className="text-[var(--color-ink)]">{fmt(new Date())}</span></div>
+            <div><span className="block uppercase tracking-wide text-[var(--color-stone)]">Date</span><span className="text-[var(--color-ink)]">{fmt(issued)}</span></div>
             <div><span className="block uppercase tracking-wide text-[var(--color-stone)]">Reference</span><span className="font-[family-name:var(--font-mono,monospace)] text-[var(--color-ink)]">{ref}</span></div>
             <div className="text-right"><span className="block uppercase tracking-wide text-[var(--color-stone)]">Awarded by</span><span className="text-[var(--color-ink)]">K Academy, London</span></div>
           </div>
+          <p className="mt-4 text-[0.62rem] uppercase tracking-[0.14em] text-[var(--color-stone)]">Verify at {verifyUrl}</p>
         </div>
 
         <p className="mt-5 text-center text-xs text-[var(--color-stone)] print:hidden">
-          This certificate confirms completion of the online theory and assessments. Your full accredited qualification is issued on completion of the practical training and external assessment.
+          This certificate confirms completion of the online theory and assessments. Your full accredited qualification is issued on completion of the practical training and external assessment. Anyone can confirm it at <Link href={`/academy/verify/${ref}`} className="link-underline">{verifyUrl}</Link>.
         </p>
       </div>
     </section>

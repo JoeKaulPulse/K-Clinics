@@ -23,6 +23,9 @@ export type FundingView = {
   priorLevel3: boolean | null;
   courseTitle: string | null;
   createdAt: string;
+  enrolmentId: string | null;
+  linkedLabel: string | null;
+  enrolmentOptions: { id: string; label: string }[];
 };
 
 const STATUSES = ['NEW', 'REVIEWING', 'REFERRED', 'APPROVED', 'DECLINED', 'FUNDED', 'CLOSED'] as const;
@@ -54,6 +57,10 @@ export function FundingApplications({ applications }: { applications: FundingVie
     if (!confirm('Delete this funding enquiry? This cannot be undone.')) return;
     setRows((p) => p.filter((r) => r.id !== id));
     await post({ op: 'removeFunding', id });
+  }
+  async function linkEnrolment(id: string, enrolmentId: string, linkedLabel: string | null) {
+    setRows((p) => p.map((r) => (r.id === id ? { ...r, enrolmentId: enrolmentId || null, linkedLabel } : r)));
+    await post({ op: 'linkFunding', id, enrolmentId });
   }
 
   if (rows.length === 0) {
@@ -93,6 +100,24 @@ export function FundingApplications({ applications }: { applications: FundingVie
           </div>
 
           {r.message && <p className="mt-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3 text-sm text-[var(--color-ink-soft)]"><span className="text-xs uppercase tracking-wide text-[var(--color-stone)]">Message: </span>{r.message}</p>}
+
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-xs uppercase tracking-wide text-[var(--color-stone)]">Linked enrolment</span>
+            {r.enrolmentOptions.length === 0 ? (
+              <span className="text-xs text-[var(--color-stone)]">No enrolment found for {r.email} — they apply for a course first.</span>
+            ) : (
+              <select
+                aria-label="Link to enrolment"
+                value={r.enrolmentId ?? ''}
+                onChange={(e) => linkEnrolment(r.id, e.target.value, r.enrolmentOptions.find((o) => o.id === e.target.value)?.label ?? null)}
+                className={field}
+              >
+                <option value="">— not linked —</option>
+                {r.enrolmentOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+              </select>
+            )}
+            {r.linkedLabel && <span className="text-xs text-[var(--color-gold)]">→ {r.linkedLabel}</span>}
+          </div>
 
           <div className="mt-3 flex items-center justify-between gap-3">
             <textarea
