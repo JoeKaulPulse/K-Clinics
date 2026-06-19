@@ -49,6 +49,8 @@ const pillars = [
 ];
 
 export default async function HomePage() {
+  const { getSiteConfig } = await import('@/lib/site-config');
+  const { dentistryLive } = await getSiteConfig(); // BLD-515: live, admin-toggleable flag
   const { getReviewAggregate } = await import('@/lib/reviews-aggregate');
   const aggregate = await getReviewAggregate();
   const rating = aggregate ? { average: aggregate.average, count: aggregate.count } : null;
@@ -135,7 +137,7 @@ export default async function HomePage() {
                 <div className="relative">
                   <p className="eyebrow mb-4 flex items-center gap-2.5 text-[var(--color-gold-soft)]">
                     {c.tag}
-                    {c.tag === 'Dentistry' && !site.dentistryLive && <span className="rounded-full bg-[var(--color-gold-soft)] px-2.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-ink)]">Opening soon</span>}
+                    {c.tag === 'Dentistry' && !dentistryLive && <span className="rounded-full bg-[var(--color-gold-soft)] px-2.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-ink)]">Opening soon</span>}
                   </p>
                   <h3 className="font-[family-name:var(--font-display)] text-[clamp(2rem,1.4rem+2vw,3.25rem)] leading-[1.05]">{c.title}</h3>
                   <p className="mt-5 max-w-md leading-relaxed text-[color-mix(in_oklab,var(--color-porcelain)_84%,transparent)]">{c.text}</p>

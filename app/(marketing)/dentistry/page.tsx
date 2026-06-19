@@ -7,34 +7,39 @@ import { Button, ArrowIcon } from '@/components/ui/Button';
 import { RegisterInterest } from '@/components/dentistry/RegisterInterest';
 import { dentistry, groupByGroup } from '@/lib/treatments';
 import { withCardOverrides } from '@/lib/treatment-content';
-import { site } from '@/lib/site';
+import { getSiteConfig } from '@/lib/site-config';
 import { pageMeta, JsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
 
 // ISR: refresh hourly so any live "from" prices on the cards stay current.
 export const revalidate = 3600;
 
-export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: site.dentistryLive
-    ? 'Aesthetic & Cosmetic Dentistry in London | KClinics'
-    : 'Cosmetic Dentistry Coming Soon — Join the Waiting List | KClinics London',
-  description: site.dentistryLive
-    ? 'Health-led aesthetic dentistry in Islington, London — porcelain veneers, teeth whitening, composite bonding, dental implants and specialist care at KClinics.'
-    : 'Aesthetic dentistry is coming soon to KClinics, Islington — porcelain veneers, whitening, bonding and implants. Join the waiting list and be first to book when we open.',
-  path: '/dentistry',
-  // BLD-157: indexed even before launch, but title/description/keywords are framed
-  // for genuine coming-soon / waiting-list intent, so the page ranks for terms it
-  // can satisfy today (no "ranks for a service it can't deliver" mismatch). Keywords
-  // swap to live commercial intent once dentistry goes live.
-  keywords: site.dentistryLive
-    ? ['cosmetic dentist London', 'dental clinic Islington', 'veneers London', 'dental implants London']
-    : ['cosmetic dentist London opening soon', 'new dental clinic Islington', 'veneers London waiting list', 'cosmetic dentistry coming soon London', 'register interest cosmetic dentist London'],
-});
+// BLD-515: read the live, admin-toggleable dentistryLive flag (getSiteConfig),
+// not the static default — so the owner can launch dentistry without a redeploy.
+export async function generateMetadata(): Promise<Metadata> {
+  const { dentistryLive } = await getSiteConfig();
+  return pageMeta({
+    title: dentistryLive
+      ? 'Aesthetic & Cosmetic Dentistry in London | KClinics'
+      : 'Cosmetic Dentistry Coming Soon — Join the Waiting List | KClinics London',
+    description: dentistryLive
+      ? 'Health-led aesthetic dentistry in Islington, London — porcelain veneers, teeth whitening, composite bonding, dental implants and specialist care at KClinics.'
+      : 'Aesthetic dentistry is coming soon to KClinics, Islington — porcelain veneers, whitening, bonding and implants. Join the waiting list and be first to book when we open.',
+    path: '/dentistry',
+    // BLD-157: indexed even before launch, but title/description/keywords are framed
+    // for genuine coming-soon / waiting-list intent, so the page ranks for terms it
+    // can satisfy today (no "ranks for a service it can't deliver" mismatch). Keywords
+    // swap to live commercial intent once dentistry goes live.
+    keywords: dentistryLive
+      ? ['cosmetic dentist London', 'dental clinic Islington', 'veneers London', 'dental implants London']
+      : ['cosmetic dentist London opening soon', 'new dental clinic Islington', 'veneers London waiting list', 'cosmetic dentistry coming soon London', 'register interest cosmetic dentist London'],
+  });
+}
 
 export default async function DentistryPage() {
   const list = await withCardOverrides(dentistry);
   const groups = groupByGroup(list);
-  const comingSoon = !site.dentistryLive;
+  const comingSoon = !(await getSiteConfig()).dentistryLive;
   let idx = 0;
   return (
     <>

@@ -22,7 +22,7 @@ export default function CartPage() {
                 {i.image
                   // eslint-disable-next-line @next/next/no-img-element
                   ? <img src={i.image} alt="" className="h-16 w-16 rounded object-cover" />
-                  : <span className="grid h-16 w-16 place-items-center rounded bg-[var(--color-bone)] text-[var(--color-stone-soft)]">▦</span>}
+                  : <span className="grid h-16 w-16 place-items-center rounded bg-[var(--color-bone)] text-[var(--color-stone)]">▦</span>}
                 <div className="min-w-0 flex-1">
                   <Link href={`/shop/${i.slug}`} className="font-[family-name:var(--font-display)] hover:text-[var(--color-gold)]">{i.name}{i.ageRestricted && <span className="ml-2 rounded-full bg-[var(--color-ink)] px-1.5 py-0.5 text-[0.6rem] text-[var(--color-porcelain)]">18+</span>}</Link>
                   <p className="text-sm text-[var(--color-stone)]">{money(i.pricePence)}</p>

@@ -59,7 +59,7 @@ export function FollowUpForm({ token, treatment }: { token: string; treatment: s
       <p className="mt-1 text-sm text-[var(--color-stone)]">A week on from your {treatment} — how are you getting on?</p>
       <div className="mt-6 grid gap-2">
         {OPTIONS.map((o) => (
-          <button key={o.id} type="button" onClick={() => setSentiment(o.id)}
+          <button key={o.id} type="button" onClick={() => setSentiment(o.id)} aria-pressed={sentiment === o.id}
             className={`flex items-center gap-3 rounded-[var(--radius-md)] border p-4 text-left transition-all ${sentiment === o.id ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)] text-[var(--color-gold-deep)]' : 'border-[var(--color-line)] text-[var(--color-stone)] hover:border-[var(--color-stone-soft)]'}`}>
             <span aria-hidden>{o.icon}</span><span className="text-sm font-medium text-[var(--color-ink)]">{o.label}</span>
           </button>

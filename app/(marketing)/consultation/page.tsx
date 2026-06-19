@@ -3,6 +3,7 @@ import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { ConsultForm } from '@/components/consult/ConsultForm';
 import { site } from '@/lib/site';
+import { getSiteConfig } from '@/lib/site-config';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
@@ -20,7 +21,8 @@ const points = [
   '15% off your first treatment as a new client',
 ];
 
-export default function ConsultationPage() {
+export default async function ConsultationPage() {
+  const { dentistryLive } = await getSiteConfig(); // BLD-515: live, admin-toggleable flag
   return (
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Consultation', path: '/consultation' }])} />
@@ -60,7 +62,7 @@ export default function ConsultationPage() {
       <section id="dental" className="container-lux section scroll-mt-28">
         <Reveal>
           <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-8 md:p-12">
-            {site.dentistryLive ? (
+            {dentistryLive ? (
               <>
                 <p className="eyebrow mb-3">Cosmetology & dental consultations</p>
                 <h2 className="text-title">Whether it’s your skin or your smile.</h2>

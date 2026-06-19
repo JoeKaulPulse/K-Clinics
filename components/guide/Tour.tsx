@@ -89,7 +89,7 @@ export function Tour({ steps, open, onClose }: { steps: TourStep[]; open: boolea
 
       {/* Tooltip */}
       <div style={tipStyle} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 shadow-[var(--shadow-lift)]">
-        <p className="text-[0.65rem] uppercase tracking-[0.16em] text-[var(--color-stone-soft)]">Step {i + 1} of {steps.length}</p>
+        <p className="text-[0.65rem] uppercase tracking-[0.16em] text-[var(--color-stone)]">Step {i + 1} of {steps.length}</p>
         <h3 className="mt-1 font-[family-name:var(--font-display)] text-lg">{step.title}</h3>
         <p className="mt-1.5 text-sm leading-relaxed text-[var(--color-stone)]">{step.body}</p>
         <div className="mt-4 flex items-center justify-between">

@@ -8,6 +8,9 @@ import { LOYALTY } from '@/lib/client-loyalty';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
+// BLD-517: hourly ISR so these mostly-static pages are cached, not full SSR per request.
+export const revalidate = 3600;
+
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Membership & Beauty Points Rewards | KClinics London',
   description:

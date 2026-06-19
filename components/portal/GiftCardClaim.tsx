@@ -28,7 +28,7 @@ export function GiftCardClaim({ initialCode, needsAge, claimed }: { initialCode:
   return (
     <div className="space-y-5">
       <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
-        <label className="block text-xs font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">Gift card code
+        <label className="block text-xs font-medium uppercase tracking-wide text-[var(--color-stone)]">Gift card code
           <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="KC-XXXX-XXXX" className={`${field} font-mono`} />
         </label>
 

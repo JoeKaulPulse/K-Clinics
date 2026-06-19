@@ -33,7 +33,7 @@ export function DemoCard({ onDone, onError }: { onDone: () => void; onError: (e:
   }
 
   const field =
-    'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-stone-soft)] focus:border-[var(--color-gold)]';
+    'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)]';
 
   return (
     <div>

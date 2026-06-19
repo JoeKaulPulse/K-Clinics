@@ -247,8 +247,26 @@
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: none; }
   }
+  /* Staggered item entrance — apply with inline animation-delay for sequential reveals */
+  .kc-item-enter {
+    animation: kc-item 200ms var(--ease-lux) both;
+  }
+  @keyframes kc-item {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: none; }
+  }
+  /* Chart bar entrance — scaleX from left (transform-safe, no reflow) */
+  .kc-bar-enter {
+    transform-origin: left center;
+    animation: kc-bar 500ms var(--ease-lux) both;
+  }
+  @keyframes kc-bar {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+  }
   @media (prefers-reduced-motion: reduce) {
     .kc-pop, .kc-fade-in, .kc-slide-in-left, .kc-page-enter { animation: none; }
+    .kc-item-enter, .kc-bar-enter { animation: none; }
   }
 
   /* Subtle film grain overlay for premium depth */

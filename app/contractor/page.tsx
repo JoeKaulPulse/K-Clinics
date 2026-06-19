@@ -42,26 +42,26 @@ export default async function ContractorLanding({
       )}
 
       <section className="mt-8">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-stone-soft)]">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-stone)]">
           Find my profile
         </h2>
         <SearchBox />
       </section>
 
-      <div className="my-8 flex items-center gap-3 text-xs uppercase tracking-[0.12em] text-[var(--color-stone-soft)]">
+      <div className="my-8 flex items-center gap-3 text-xs uppercase tracking-[0.12em] text-[var(--color-stone)]">
         <span className="h-px flex-1 bg-[var(--color-line)]" />
         or
         <span className="h-px flex-1 bg-[var(--color-line)]" />
       </div>
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-stone-soft)]">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-stone)]">
           First time here?
         </h2>
         <RegisterForm />
       </section>
 
-      <footer className="mt-auto pt-10 text-center text-xs text-[var(--color-stone-soft)]">
+      <footer className="mt-auto pt-10 text-center text-xs text-[var(--color-stone)]">
         {site.address.street}, {site.address.locality}
       </footer>
     </main>
