@@ -14,7 +14,7 @@ import { site } from '@/lib/site';
 const nav = [
   { href: '/academy/portal', label: 'My courses' },
   { href: '/academy/practice', label: 'Practice & papers' },
-  { href: '/academy/leaderboard', label: 'Leaderboard' },
+  { href: '/academy/leaderboard', label: 'Progress' },
   { href: '/academy/settings', label: 'Settings' },
 ];
 

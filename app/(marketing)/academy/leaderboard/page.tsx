@@ -46,7 +46,7 @@ export default async function LeaderboardPage() {
 
   return (
     <AcademyPortalShell firstName={student.firstName}>
-      <PageTitle lede="Earn XP for every lesson, assessment and practice set. Top performers each cohort go in the running for end-of-course prizes — and our annual winners may be offered a place on the team.">Leaderboard</PageTitle>
+      <PageTitle lede="Earn XP for every lesson, assessment and practice set. Top performers each cohort go in the running for end-of-course prizes — and our annual winners may be offered a place on the team.">Your progress</PageTitle>
 
       {/* Your standing */}
       <Card className="grid gap-4 p-6 sm:grid-cols-[auto_1fr] sm:items-center">
