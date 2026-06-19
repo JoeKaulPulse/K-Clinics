@@ -10,7 +10,7 @@ const SCREENS = {
   time:    { src: 'capture/flow-4-time.png',    nat: [1290, 2796] },
   slots:   { src: 'capture/flow-5-slots.png',   nat: [1290, 2796] },
   confirm: { src: 'capture/flow-7-confirm.png', nat: [1290, 2796] },
-  portal:  { src: 'capture/portal-login.png',   nat: [1290, 2796] },
+  portal:  { src: 'capture/portal-dash.png',     nat: [1290, 9921] },
   ai:      { src: 'capture/ai-hero.png',        nat: [1290, 2796] },
 };
 const PLATES = {
@@ -163,7 +163,8 @@ function render(t) {
     active.portal = win(t, T.portal[0] - 0.05, T.ai[0] + 0.1, .35, .35) || 1;
     if (t > T.ai[0] - 0.35) active.portal = 1 - seg(t, T.ai[0] - 0.35, T.ai[0], eo);
     else active.portal = seg(t, T.portal[0] - 0.05, T.portal[0] + 0.35, eo);
-    scrollOf.portal = 0;
+    // gentle scroll down the logged-in dashboard (hero -> cards)
+    scrollOf.portal = lerp(0, 760, seg(t, T.portal[0], T.ai[0], eio));
   } else {
     active.ai = (t < T.close[0] - 0.3) ? seg(t, T.ai[0] - 0.05, T.ai[0] + 0.35, eo)
                                         : 1 - seg(t, T.close[0] - 0.35, T.close[0], eo);
