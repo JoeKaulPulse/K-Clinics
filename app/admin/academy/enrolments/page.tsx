@@ -19,6 +19,17 @@ export default async function AdminAcademyApplicationsPage() {
     db.course.findMany({ orderBy: [{ order: 'asc' }], include: { cohorts: { orderBy: { startAt: 'asc' } } } }),
     db.enrolment.findMany({ orderBy: { createdAt: 'desc' }, take: 300, include: { course: { select: { title: true } }, cohort: { select: { startAt: true } } } }),
   ]);
+  // Itemised payments for the listed enrolments, in one query, grouped per enrolment.
+  const paymentRows = await db.enrolmentPayment.findMany({
+    where: { enrolmentId: { in: enrolments.map((e) => e.id) } },
+    orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }],
+  });
+  const paymentsByEnrolment = new Map<string, typeof paymentRows>();
+  for (const p of paymentRows) {
+    const arr = paymentsByEnrolment.get(p.enrolmentId) ?? [];
+    arr.push(p);
+    paymentsByEnrolment.set(p.enrolmentId, arr);
+  }
 
   const coursesView = courses.map((c) => ({
     id: c.id, slug: c.slug, title: c.title, level: c.level, summary: c.summary, description: c.description,
@@ -35,6 +46,12 @@ export default async function AdminAcademyApplicationsPage() {
     applicantName: e.applicantName, applicantEmail: e.applicantEmail, applicantPhone: e.applicantPhone,
     experience: e.experience, financeInterest: e.financeInterest, status: e.status,
     pricePence: e.pricePence, paidPence: e.paidPence, notes: e.notes, createdAt: e.createdAt.toISOString(),
+    studentId: e.studentId, offeredAt: e.offeredAt?.toISOString() ?? null, offerExpiresAt: e.offerExpiresAt?.toISOString() ?? null,
+    acceptedAt: e.acceptedAt?.toISOString() ?? null, paymentPlan: e.paymentPlan, preCourseAckAt: e.preCourseAckAt?.toISOString() ?? null,
+    payments: (paymentsByEnrolment.get(e.id) ?? []).map((p) => ({
+      id: p.id, kind: p.kind, method: p.method, state: p.state, amountPence: p.amountPence,
+      dueAt: p.dueAt?.toISOString() ?? null, paidAt: p.paidAt?.toISOString() ?? null, note: p.note, recordedBy: p.recordedBy,
+    })),
   }));
 
   const can = await sessionPermissions();

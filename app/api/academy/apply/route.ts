@@ -49,6 +49,18 @@ export async function POST(req: Request) {
     },
   });
 
+  // In-app staff notification so applications surface in the admin (not just email).
+  try {
+    const { notifyStaffByPermission } = await import('@/lib/notifications');
+    await notifyStaffByPermission('settings.manage', {
+      kind: 'status', category: 'academy', priority: 'high',
+      title: 'New academy application',
+      body: `${d.name} applied for ${course.title}${d.financeInterest ? ' (interested in finance)' : ''}`,
+      href: '/admin/academy/enrolments',
+      groupKey: `academy-apply-${enrolment.id}`,
+    });
+  } catch { /* non-fatal */ }
+
   // Notify the academy + acknowledge the applicant (best-effort).
   try {
     const { sendEmail, emailShell } = await import('@/lib/email');

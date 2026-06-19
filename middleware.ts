@@ -19,6 +19,7 @@ const PUBLIC_ACADEMY = new Set([
   '/academy/portal', // sign-in / sign-up landing (also the redirect target below)
   '/academy/forgot-password',
   '/academy/reset',
+  '/academy/activate', // BLD-528: offer "accept & pay" magic link — signs the trainee in itself
 ]);
 // Single-segment /academy/* paths that are trainee-only and must NOT be served
 // as public course-catalogue slugs. They share the /academy/[slug] namespace but

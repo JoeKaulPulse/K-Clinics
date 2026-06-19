@@ -2228,9 +2228,20 @@ model Enrolment {
 
   status         EnrolmentStatus @default(APPLIED)
   pricePence     Int             @default(0)
-  paidPence      Int             @default(0)
+  paidPence      Int             @default(0) // running total of PAID EnrolmentPayments (kept in sync on every payment)
   notes          String?
   preCourseAckAt DateTime? // BLD-445: when the learner acknowledged the pre-course information page
+
+  // BLD-528: enrolment + payment engine. The place is confirmed by staff (offer),
+  // then the learner accepts & pays online (full or deposit) or staff set up an
+  // in-house instalment plan. paidPence is the source of truth for "how much is in";
+  // payments[] is the itemised history + the scheduled instalment rows.
+  offeredAt      DateTime? // when staff made the offer (status → OFFERED)
+  offerExpiresAt DateTime? // optional offer expiry shown to the learner
+  acceptedAt     DateTime? // when the learner first paid / accepted the offer
+  paymentPlan    Boolean         @default(false) // an in-house instalment plan is in place
+  payments       EnrolmentPayment[]
+
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
@@ -2238,6 +2249,58 @@ model Enrolment {
   @@index([courseId])
   @@index([applicantEmail])
   @@index([tenantId])
+}
+
+// BLD-528: itemised academy payments. One row per payment OR scheduled instalment.
+// A full/deposit/balance payment taken online starts PENDING (a Stripe PaymentIntent
+// is created) and is flipped to PAID by the webhook/confirm. A staff-set instalment
+// plan creates SCHEDULED rows with a dueAt; staff mark each PAID when collected
+// (balances are collected manually). The sum of PAID rows == Enrolment.paidPence.
+enum AcademyPaymentMethod {
+  CARD // Stripe card
+  BNPL // Klarna / Clearpay via Stripe
+  BANK_TRANSFER
+  CASH
+  OTHER
+}
+
+enum AcademyPaymentKind {
+  FULL // the whole course fee in one payment
+  DEPOSIT // a deposit to reserve a place
+  BALANCE // the remainder after a deposit
+  INSTALMENT // one payment of an instalment plan
+}
+
+enum AcademyPaymentState {
+  SCHEDULED // a planned instalment, not yet collected
+  PENDING // an online checkout has started, awaiting Stripe confirmation
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+model EnrolmentPayment {
+  id                    String               @id @default(cuid())
+  tenantId              String // ClinicOS multi-tenant (Ring 0)
+  enrolment             Enrolment            @relation(fields: [enrolmentId], references: [id], onDelete: Cascade)
+  enrolmentId           String
+  kind                  AcademyPaymentKind   @default(FULL)
+  method                AcademyPaymentMethod?
+  state                 AcademyPaymentState  @default(PENDING)
+  amountPence           Int
+  dueAt                 DateTime? // for scheduled instalments / an outstanding balance
+  paidAt                DateTime?
+  stripePaymentIntentId String? // set for online payments
+  note                  String?
+  recordedBy            String? // staff email when recorded / collected manually
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  @@index([enrolmentId])
+  @@index([tenantId])
+  @@index([state, dueAt])
+  @@index([stripePaymentIntentId])
 }
 
 // ── Academy funding / grants applications ───────────────────────────────────

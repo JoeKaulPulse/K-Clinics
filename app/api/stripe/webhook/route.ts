@@ -77,6 +77,19 @@ export async function POST(req: Request) {
         //  • idempotent — no-op if already pre-paid;
         //  • validates currency (GBP) and that the full course total was received;
         //  • derives the method from the charge (klarna / afterpay_clearpay → bnpl).
+        // BLD-528: an academy enrolment payment (course fee / deposit / balance)
+        // succeeded — card or Klarna/Clearpay. Idempotently mark the payment PAID,
+        // advance the enrolment to PAID (unlocking course content) and notify staff.
+        // Shares finalizeEnrolmentPayment with the synchronous confirm endpoint.
+        if (pi.metadata?.kind === 'enrolment' && pi.metadata?.enrolmentId) {
+          let methodType: string | undefined;
+          try {
+            const chargeId = typeof pi.latest_charge === 'string' ? pi.latest_charge : pi.latest_charge?.id;
+            if (chargeId) methodType = (await stripe().charges.retrieve(chargeId)).payment_method_details?.type;
+          } catch { /* method is best-effort */ }
+          const { finalizeEnrolmentPayment } = await import('@/lib/academy-payments');
+          await finalizeEnrolmentPayment(pi.id, pi.amount_received ?? 0, pi.currency, methodType);
+        }
         if (pi.metadata?.kind === 'course_prepaid' && pi.metadata?.bookingId) {
           const courseBookingId = pi.metadata.bookingId;
           const booking = await db.booking.findUnique({ where: { id: courseBookingId }, select: { prepaidVia: true, clientId: true } });

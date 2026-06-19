@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export type StudentRow = {
@@ -71,7 +72,7 @@ export function StudentsManager({ students }: { students: StudentRow[] }) {
               {rows.map((s) => (
                 <tr key={s.id} className="border-t border-[var(--color-line)] align-top">
                   <td className="py-2 pr-2">
-                    <span className="font-medium">{s.firstName} {s.lastName ?? ''}</span>
+                    <Link href={`/admin/academy/students/${s.id}`} className="font-medium hover:text-[var(--color-gold)] hover:underline">{s.firstName} {s.lastName ?? ''}</Link>
                     {!s.portalActive && <span className="ml-1 rounded-full bg-[var(--color-blush)]/15 px-1.5 py-0.5 text-[0.6rem] text-[var(--color-blush)]">Suspended</span>}
                     <span className="block text-xs text-[var(--color-stone)]">{s.email}{s.phone ? ` · ${s.phone}` : ''}</span>
                     <NoteEditor notes={s.notes} onSave={(notes) => act({ op: 'updateStudentNotes', id: s.id, notes })} />

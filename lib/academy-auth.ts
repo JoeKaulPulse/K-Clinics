@@ -115,3 +115,73 @@ export async function performAcademyPasswordReset(studentId: string, token: stri
   await createAcademySession({ sub: student.id, email: student.email, firstName: student.firstName, epoch: updated.sessionEpoch });
   return { ok: true };
 }
+
+// ── Offer onboarding (BLD-528) ──────────────────────────────────────────────
+// When staff make an offer, the applicant needs a way into the portal to accept
+// and pay — even if they never created an account. These helpers ensure a trainee
+// record exists and issue a one-time activation magic link (reusing the reset-token
+// columns, exactly like the client portal — no schema change). The link signs them
+// in and drops them on the pay page. Mirrors lib/client-auth.ts activate flow.
+const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000; // 14 days — covers a typical offer window
+
+/** Find-or-create the trainee account for an offered applicant and return its id.
+ *  A brand-new record is created with no password and `portalActive:false`; the
+ *  activation link (or a later self-signup with the same email) brings it live. */
+export async function ensureStudentForOffer(input: { tenantId: string; email: string; firstName: string; lastName?: string | null; phone?: string | null }): Promise<{ id: string; email: string; firstName: string; isNew: boolean }> {
+  const email = input.email.trim().toLowerCase();
+  const existing = await db.academyStudent.findFirst({ where: { email }, select: { id: true, email: true, firstName: true } });
+  if (existing) return { ...existing, isNew: false };
+  const created = await db.academyStudent.create({
+    data: { tenantId: input.tenantId, email, firstName: input.firstName || 'there', lastName: input.lastName || null, phone: input.phone || null, portalActive: false },
+    select: { id: true, email: true, firstName: true },
+  });
+  return { ...created, isNew: true };
+}
+
+/** Issue a passwordless activation token for a trainee. Returns the plaintext
+ *  token; the caller builds the /academy/activate link. */
+export async function createAcademyInvite(studentId: string): Promise<string | null> {
+  const exists = await db.academyStudent.findUnique({ where: { id: studentId }, select: { id: true } });
+  if (!exists) return null;
+  const token = crypto.randomBytes(32).toString('hex');
+  await db.academyStudent.update({ where: { id: studentId }, data: { resetTokenHash: sha256(token), resetTokenExp: new Date(Date.now() + INVITE_TTL_MS) } });
+  return token;
+}
+
+/** Consume an activation magic link: validate the token, mark the portal active,
+ *  and return the identity so the caller can open a session. Does not set/require a
+ *  password (the trainee can add one later in settings). */
+export async function activateStudent(studentId: string, token: string): Promise<{ ok: true; student: { id: string; email: string; firstName: string; sessionEpoch: number } } | { ok: false }> {
+  if (!studentId || !token) return { ok: false };
+  const student = await db.academyStudent.findUnique({
+    where: { id: studentId },
+    select: { id: true, email: true, firstName: true, sessionEpoch: true, resetTokenHash: true, resetTokenExp: true },
+  });
+  if (!student?.resetTokenHash || !student.resetTokenExp || student.resetTokenExp < new Date()) return { ok: false };
+  if (!hashesEqual(sha256(token), student.resetTokenHash)) return { ok: false };
+  await db.academyStudent.update({ where: { id: student.id }, data: { portalActive: true } });
+  return { ok: true, student: { id: student.id, email: student.email, firstName: student.firstName, sessionEpoch: student.sessionEpoch } };
+}
+
+/** Staff action: email a trainee a passwordless link into their portal (e.g. a
+ *  learner created during an offer who never set a password). Best-effort. */
+export async function sendAccessLink(studentId: string): Promise<{ ok: boolean }> {
+  const student = await db.academyStudent.findUnique({ where: { id: studentId }, select: { id: true, email: true, firstName: true } });
+  if (!student) return { ok: false };
+  const token = await createAcademyInvite(studentId);
+  if (!token) return { ok: false };
+  const base = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://kclinics.co.uk';
+  const url = `${base}/academy/activate?token=${token}&id=${studentId}&next=/academy/portal`;
+  try {
+    const { sendEmail, emailShell } = await import('@/lib/email');
+    await sendEmail({
+      to: student.email,
+      subject: 'Your K Academy portal access',
+      html: emailShell({
+        preheader: 'Access your K Academy trainee portal',
+        body: `<h1 style="font-size:24px;margin:0 0 16px;">Hello ${student.firstName || 'there'},</h1><p>Here's your secure link to access your K Academy trainee portal — no password needed. You can set a password once you're in if you'd like one.</p><p style="margin:28px 0;"><a href="${url}" style="display:inline-block;background:#a98a6d;color:#fff;padding:12px 22px;border-radius:999px;text-decoration:none;">Open my portal</a></p><p style="font-size:14px;color:#91766e;">This is a private link just for you — please don't share it.</p>`,
+      }),
+    });
+  } catch { /* best-effort */ }
+  return { ok: true };
+}
