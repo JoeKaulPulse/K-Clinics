@@ -23,6 +23,10 @@ export async function GET(req: Request) {
   // BLD-133: expire lapsed waitlist offers and pass the freed slot to the next person.
   let waitlist = { expired: 0, reoffered: 0 };
   try { const { rotateExpiredWaitlist } = await import('@/lib/waitlist'); waitlist = await rotateExpiredWaitlist(); } catch { /* non-fatal */ }
+  // Materialise any due recurring/scheduled task automations ("repeat events").
+  // Idempotent per occurrence, so the 15-min cadence can't double-spawn.
+  let taskAutomations = { fired: 0, tasksCreated: 0 };
+  try { const { runDueTaskAutomations } = await import('@/lib/task-automations'); taskAutomations = await runDueTaskAutomations(); } catch { /* non-fatal */ }
   // Mirror any board items not yet on GitHub, a small throttled batch at a time.
   // Only runs when GitHub mirroring is explicitly enabled (default OFF) and we're
   // not in a rate-limit backoff — so the board never burns GitHub's API budget on
@@ -36,5 +40,5 @@ export async function GET(req: Request) {
     const { db } = await import('@/lib/db');
     await db.setting.upsert({ where: { key: 'cron_dispatch_last' }, update: { value: new Date().toISOString() }, create: { key: 'cron_dispatch_last', value: new Date().toISOString() } });
   } catch { /* non-fatal */ }
-  return NextResponse.json({ ok: true, ...result, chatFollowups: chat.emailed, waitlistExpired: waitlist.expired, waitlistReoffered: waitlist.reoffered, githubSynced: ghSync.synced, githubRemaining: ghSync.remaining });
+  return NextResponse.json({ ok: true, ...result, chatFollowups: chat.emailed, waitlistExpired: waitlist.expired, waitlistReoffered: waitlist.reoffered, githubSynced: ghSync.synced, githubRemaining: ghSync.remaining, taskAutomationsFired: taskAutomations.fired, taskAutomationTasks: taskAutomations.tasksCreated });
 }

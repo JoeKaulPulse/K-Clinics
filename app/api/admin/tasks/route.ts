@@ -93,6 +93,11 @@ export async function POST(req: Request) {
       const { logAudit } = await import('@/lib/audit');
       await logAudit({ action: 'TASK_COMPLETED', actor: session.email, summary: `Completed task “${task.title.slice(0, 120)}”`, meta: { taskId: id, ref: task.ref } }).catch(() => {});
     }
+    // Fire any ON_TASK_COMPLETED automations (e.g. "after a deep clean, schedule the next").
+    if (done && task?.title) {
+      const { onTaskCompleted } = await import('@/lib/task-automations');
+      await onTaskCompleted(id, task.title).catch(() => {});
+    }
     return NextResponse.json({ ok: true });
   }
 
@@ -123,6 +128,55 @@ export async function POST(req: Request) {
     const mayDelete = task.createdBy === session.email || task.assigneeId === session.sub || sessionCan(session, 'settings.manage') || sessionCan(session, 'staff.view');
     if (!mayDelete) return NextResponse.json({ ok: false, error: 'You can only delete tasks you created or were assigned.' }, { status: 403 });
     await db.task.deleteMany({ where: { id } });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (body.op === 'comments') {
+    const { taskId } = body as { taskId?: string };
+    if (!taskId) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
+    const rows = await db.taskComment.findMany({
+      where: { taskId }, orderBy: { createdAt: 'asc' }, take: 200,
+      include: { task: { select: { id: true } } },
+    });
+    // Author display names (by id), resolved in one pass.
+    const ids = Array.from(new Set(rows.map((r) => r.authorId).filter(Boolean))) as string[];
+    const authors = ids.length ? await db.adminUser.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, email: true, photoUrl: true } }) : [];
+    const byId = new Map(authors.map((a) => [a.id, a]));
+    return NextResponse.json({
+      ok: true,
+      comments: rows.map((r) => ({
+        id: r.id, body: r.body, createdAt: r.createdAt.toISOString(),
+        authorId: r.authorId, mentionIds: r.mentionIds,
+        authorName: (r.authorId && byId.get(r.authorId)?.name) || (r.authorId && byId.get(r.authorId)?.email) || r.authorEmail || 'Unknown',
+        authorPhoto: (r.authorId && byId.get(r.authorId)?.photoUrl) || null,
+      })),
+    });
+  }
+
+  if (body.op === 'comment') {
+    const { taskId, mentionIds } = body as { taskId?: string; body?: string; mentionIds?: string[] };
+    const text = (body.body as string | undefined)?.trim().slice(0, 2000) || '';
+    if (!taskId || !text) return NextResponse.json({ ok: false, error: 'Type a comment.' }, { status: 400 });
+    const task = await db.task.findUnique({ where: { id: taskId }, select: { id: true, title: true, ref: true, assigneeId: true, createdBy: true } });
+    if (!task) return NextResponse.json({ ok: false, error: 'Task not found.' }, { status: 404 });
+    const mentions = Array.isArray(mentionIds) ? Array.from(new Set(mentionIds.map(String))).filter((x) => x !== session.sub) : [];
+    await db.taskComment.create({ data: { taskId, authorId: session.sub, authorEmail: session.email, body: text, mentionIds: mentions } });
+    await db.task.update({ where: { id: taskId }, data: { updatedAt: new Date() } }).catch(() => {});
+
+    const { notifyStaffById, notifyStaff } = await import('@/lib/notifications');
+    const snippet = text.slice(0, 140);
+    // @-mentioned colleagues first (higher priority), then the assignee + creator.
+    for (const uid of mentions) {
+      await notifyStaffById(uid, { kind: 'mention', category: 'team', priority: 'high', title: `You were mentioned on ${task.ref || 'a task'}`, body: snippet, href: '/admin/tasks' }, session.sub).catch(() => {});
+    }
+    const notified = new Set(mentions);
+    if (task.assigneeId && task.assigneeId !== session.sub && !notified.has(task.assigneeId)) {
+      await notifyStaffById(task.assigneeId, { kind: 'comment', category: 'team', title: `New comment on ${task.ref || 'your task'}`, body: snippet, href: '/admin/tasks' }, session.sub).catch(() => {});
+      notified.add(task.assigneeId);
+    }
+    if (task.createdBy && task.createdBy.trim().toLowerCase() !== session.email.trim().toLowerCase()) {
+      await notifyStaff(task.createdBy, { kind: 'comment', category: 'team', title: `New comment on ${task.ref || 'a task you created'}`, body: snippet, href: '/admin/tasks' }, session.email).catch(() => {});
+    }
     return NextResponse.json({ ok: true });
   }
 

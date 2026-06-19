@@ -32,6 +32,7 @@ import { db } from '@/lib/db';
 export const TASK_REF_PREFIX = 'TSK';
 export const BUILD_REF_PREFIX = 'BLD';
 export const PROJECT_REF_PREFIX = 'PRJ';
+export const AUTOMATION_REF_PREFIX = 'AUT';
 
 /** How many levels deep a ref is (TSK-1 → 1, TSK-1.2 → 2, TSK-1.2.3 → 3). */
 export function refDepth(ref: string): number {
@@ -121,6 +122,32 @@ export async function ensureTaskRefs(): Promise<void> {
     taskRefsChecked = true;
   } catch (e) {
     console.error('[task-refs] task backfill failed', e);
+  }
+}
+
+// ── Task automations ─────────────────────────────────────────────────────────
+
+/** Assign `ref` to a task automation: AUT-<seq>. seq is a Postgres sequence so
+ *  it's unique by construction (no transaction needed). Idempotent. */
+export async function assignAutomationRef(automationId: string): Promise<string | null> {
+  const a = await db.taskAutomation.findUnique({ where: { id: automationId }, select: { seq: true, ref: true } });
+  if (!a) return null;
+  if (a.ref) return a.ref;
+  const ref = `${AUTOMATION_REF_PREFIX}-${a.seq}`;
+  await db.taskAutomation.update({ where: { id: automationId }, data: { ref } });
+  return ref;
+}
+
+let automationRefsChecked = false;
+/** Backfill AUT- refs for any automation missing one. Idempotent + memoised. */
+export async function ensureAutomationRefs(): Promise<void> {
+  if (automationRefsChecked) return;
+  try {
+    const missing = await db.taskAutomation.findMany({ where: { ref: null }, orderBy: { seq: 'asc' }, select: { id: true } });
+    for (const a of missing) await assignAutomationRef(a.id).catch(() => {});
+    automationRefsChecked = true;
+  } catch (e) {
+    console.error('[task-refs] automation backfill failed', e);
   }
 }
 
