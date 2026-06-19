@@ -1830,6 +1830,7 @@ model AcademyStudent {
   lessonNotes         LessonNote[]
   lessonComments      LessonComment[]
   courseReviews       CourseReview[]
+  flashcardReviews    FlashcardReview[]
   quizAttempts        QuizAttempt[]
   practiceAttempts    PracticeAttempt[]
   pointEvents         PointEvent[]
@@ -1903,6 +1904,7 @@ model Course {
   pastPapers          PastPaper[]
   fundingApplications FundingApplication[]
   reviews             CourseReview[]
+  flashcardDecks      FlashcardDeck[]
 
   @@unique([tenantId, slug]) // ClinicOS Ring 1 (BLD-301): per-tenant slug — replaces the global @unique
   @@index([active, order])
@@ -2162,6 +2164,64 @@ model CourseReview {
 
   @@unique([studentId, courseId])
   @@index([courseId, status])
+  @@index([tenantId])
+}
+
+// BLD-531 (academy: flashcards + spaced repetition). A deck of revision cards
+// attached to a course; staff author them. Optional moduleId groups a deck under a
+// module (plain column, no FK, to stay flexible).
+model FlashcardDeck {
+  id          String      @id @default(cuid())
+  tenantId    String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  course      Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId    String
+  moduleId    String? // optional grouping under a module
+  title       String
+  description String?
+  order       Int         @default(0)
+  cards       Flashcard[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([courseId, order])
+  @@index([tenantId])
+}
+
+model Flashcard {
+  id        String            @id @default(cuid())
+  tenantId  String
+  deck      FlashcardDeck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  deckId    String
+  order     Int               @default(0)
+  front     String            @db.Text
+  back      String            @db.Text
+  imageUrl  String?
+  reviews   FlashcardReview[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([deckId, order])
+  @@index([tenantId])
+}
+
+// Per-student spaced-repetition state for a card (SM-2-lite). One row per
+// (student, card) — upserted on each review.
+model FlashcardReview {
+  id           String         @id @default(cuid())
+  tenantId     String
+  student      AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId    String
+  card         Flashcard      @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  cardId       String
+  ease         Int            @default(250) // ease factor ×100 (2.50)
+  intervalDays Int            @default(0)
+  reps         Int            @default(0)
+  lapses       Int            @default(0)
+  dueAt        DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@unique([studentId, cardId])
+  @@index([studentId, dueAt])
   @@index([tenantId])
 }
 
