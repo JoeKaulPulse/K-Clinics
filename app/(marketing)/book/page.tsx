@@ -3,6 +3,7 @@ import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { BookingFlow } from '@/components/booking/BookingFlow';
 import { site } from '@/lib/site';
+import { getSiteConfig } from '@/lib/site-config';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
@@ -48,7 +49,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
     // including dental consultations. Exclude the whole dentistry category (not
     // just known dentistry treatment slugs) so a stray dental consultation
     // service can't be booked directly; it routes to "register interest".
-    catalogue = site.dentistryLive ? catalogueAll : await (async () => {
+    catalogue = (await getSiteConfig()).dentistryLive ? catalogueAll : await (async () => {
       const { dentistry } = await import('@/lib/treatments');
       const dentistrySlugs = new Set(dentistry.map((t) => t.slug));
       return catalogueAll.filter((s) => s.category !== 'dentistry' && !dentistrySlugs.has(s.treatmentSlug));
