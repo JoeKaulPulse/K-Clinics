@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { PortalShell } from '@/components/portal/PortalShell';
 import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { crmEnabled } from '@/lib/crm';
@@ -44,7 +43,7 @@ export default async function AftercarePage() {
     .map((b) => ({ slug: b.treatmentSlug, title: b.treatmentTitle, tr: getTreatment(b.treatmentSlug) }));
 
   return (
-    <PortalShell firstName={client.firstName} locale={locale}>
+    <>
       <PortalPageHeader eyebrow={t('after.eyebrow')} title={t('after.title')} subtitle={t('after.intro')} />
 
       {treatments.length === 0 ? (
@@ -94,6 +93,6 @@ export default async function AftercarePage() {
           </a>
         </section>
       </Reveal>
-    </PortalShell>
+    </>
   );
 }

@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic';
 
 import { redirect } from 'next/navigation';
-import { PortalShell } from '@/components/portal/PortalShell';
 import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
 import { ProfileForm } from '@/components/portal/ProfileForm';
 import { Reveal } from '@/components/motion/Reveal';
@@ -17,7 +16,7 @@ export default async function ProfilePage() {
   const locale: Locale = client.locale === 'uk' ? 'uk' : 'en';
 
   return (
-    <PortalShell firstName={client.firstName} locale={locale}>
+    <>
       <PortalPageHeader eyebrow={pt(locale, 'nav.profile')} title={pt(locale, 'profile.title')} />
       <ProfileForm
         locale={locale}
@@ -48,6 +47,6 @@ export default async function ProfilePage() {
           </p>
         </section>
       </Reveal>
-    </PortalShell>
+    </>
   );
 }

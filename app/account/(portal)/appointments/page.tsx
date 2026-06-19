@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { PortalShell } from '@/components/portal/PortalShell';
 import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
 import { RedeemPoints } from '@/components/portal/RedeemPoints';
 import { Reveal } from '@/components/motion/Reveal';
@@ -42,7 +41,7 @@ export default async function AppointmentsPage() {
   };
 
   return (
-    <PortalShell firstName={client.firstName} locale={locale}>
+    <>
       <PortalPageHeader
         eyebrow={t('nav.appointments')}
         title={t('appt.title')}
@@ -121,6 +120,6 @@ export default async function AppointmentsPage() {
         <p className="text-[var(--color-stone)]">{t('appt.noPast')}</p>
       )}
       </Reveal>
-    </PortalShell>
+    </>
   );
 }

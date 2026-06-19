@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { PortalShell } from '@/components/portal/PortalShell';
 import { DashboardHero } from '@/components/portal/DashboardHero';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { TreatmentCard } from '@/components/ui/TreatmentCard';
@@ -59,7 +58,7 @@ export default async function DashboardPage() {
   const openToday = !!todayHours && todayHours.open !== 'Closed';
 
   return (
-    <PortalShell firstName={client.firstName} locale={locale}>
+    <>
       <DashboardHero
         firstName={client.firstName}
         locale={locale}
@@ -266,7 +265,7 @@ export default async function DashboardPage() {
         </section>
       </Reveal>
       {onb && <OnboardingHost pending={onb.pending} title={ONBOARDING.client.title} intro={ONBOARDING.client.intro} steps={ONBOARDING.client.steps} initial={onb.initial} endpoint={ONBOARDING.client.endpoint} />}
-    </PortalShell>
+    </>
   );
 }
 

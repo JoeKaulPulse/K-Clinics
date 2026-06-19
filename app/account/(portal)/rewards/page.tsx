@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { PortalShell } from '@/components/portal/PortalShell';
 import { Glyph } from '@/components/ui/Glyph';
 import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
 import { ReferralCard } from '@/components/portal/ReferralCard';
@@ -49,7 +48,7 @@ export default async function RewardsPage() {
   const referralQr = await qrSvg(link, { dark: '#1a1a1a' });
 
   return (
-    <PortalShell firstName={client.firstName} locale={locale}>
+    <>
       <PortalPageHeader eyebrow={t('nav.rewards')} title={t('rw.title')} subtitle={t('rw.sub')} />
 
       {/* K Circle membership status */}
@@ -131,6 +130,6 @@ export default async function RewardsPage() {
       ) : (
         <p className="text-[var(--color-stone)]">{t('rw.noActivity')} <Link href="/book" className="font-medium text-[var(--color-gold)]">{t('appt.bookNow')} →</Link></p>
       )}
-    </PortalShell>
+    </>
   );
 }

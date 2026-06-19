@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { motion } from 'motion/react';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 import { GuideHost } from '@/components/guide/GuideHost';
 import { Aurora } from '@/components/ui/Aurora';
@@ -47,9 +48,14 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
     router.refresh();
   }
 
+  // The active background is a single shared element (motion layoutId) that
+  // glides between items on navigation — the portal's signature transition. The
+  // link itself only carries the text colour; the gliding pill is rendered
+  // behind it. Under reduced-motion the layout animation is disabled globally
+  // (MotionConfig reducedMotion="user"), so the pill snaps instead of glides.
   const navLink = (active: boolean, mobile = false) =>
-    `relative ${mobile ? 'shrink-0' : ''} rounded-full px-4 py-2 text-sm font-medium [transition:color_0.4s_var(--ease-lux),background-color_0.4s_var(--ease-lux)] ${
-      active ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)] shadow-[var(--shadow-soft)]' : 'text-[var(--color-ink-soft)] hover:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] hover:text-[var(--color-ink)]'
+    `relative ${mobile ? 'shrink-0' : ''} rounded-full px-4 py-2 text-sm font-medium [transition:color_0.4s_var(--ease-lux)] ${
+      active ? 'text-[var(--color-porcelain)]' : 'text-[var(--color-ink-soft)] hover:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] hover:text-[var(--color-ink)]'
     }`;
 
   return (
@@ -75,7 +81,15 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
                 const active = n.href === '/account' ? pathname === n.href : pathname.startsWith(n.href);
                 return (
                   <Link key={n.href} href={n.href} data-tour={n.key} aria-current={active ? 'page' : undefined} className={navLink(active)}>
-                    {t(n.key)}
+                    {active && (
+                      <motion.span
+                        aria-hidden
+                        layoutId="portal-nav-pill"
+                        className="absolute inset-0 rounded-full bg-[var(--color-ink)] shadow-[var(--shadow-soft)]"
+                        transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                      />
+                    )}
+                    <span className="relative z-10">{t(n.key)}</span>
                   </Link>
                 );
               })}
@@ -93,7 +107,19 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
           <nav className="flex gap-1 overflow-x-auto pb-3 md:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Portal">
             {nav.map((n) => {
               const active = n.href === '/account' ? pathname === n.href : pathname.startsWith(n.href);
-              return <Link key={n.href} href={n.href} aria-current={active ? 'page' : undefined} className={navLink(active, true)}>{t(n.key)}</Link>;
+              return (
+                <Link key={n.href} href={n.href} aria-current={active ? 'page' : undefined} className={navLink(active, true)}>
+                  {active && (
+                    <motion.span
+                      aria-hidden
+                      layoutId="portal-nav-pill-mobile"
+                      className="absolute inset-0 rounded-full bg-[var(--color-ink)] shadow-[var(--shadow-soft)]"
+                      transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                    />
+                  )}
+                  <span className="relative z-10">{t(n.key)}</span>
+                </Link>
+              );
             })}
           </nav>
         </div>

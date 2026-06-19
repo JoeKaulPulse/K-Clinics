@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic';
 
 import { redirect } from 'next/navigation';
-import { PortalShell } from '@/components/portal/PortalShell';
 import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
 import { crmEnabled } from '@/lib/crm';
 import { formatPrice } from '@/lib/treatments';
@@ -22,7 +21,7 @@ export default async function InvoicesPage() {
   const total = invoices.reduce((s, inv) => s + inv.amountPence, 0);
 
   return (
-    <PortalShell firstName={client.firstName} locale={locale}>
+    <>
       <PortalPageHeader
         eyebrow={t('inv.eyebrow')}
         title={t('inv.title')}
@@ -58,6 +57,6 @@ export default async function InvoicesPage() {
       ) : (
         <p className="text-[var(--color-stone)]">{t('inv.none')}</p>
       )}
-    </PortalShell>
+    </>
   );
 }
