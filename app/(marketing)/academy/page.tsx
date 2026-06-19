@@ -25,8 +25,8 @@ const PILLARS = [
 ];
 
 export default async function AcademyPage() {
-  const { listCourses } = await import('@/lib/academy');
-  const courses = await listCourses().catch(() => []);
+  const { listCourses, listBundles } = await import('@/lib/academy');
+  const [courses, bundles] = await Promise.all([listCourses().catch(() => []), listBundles().catch(() => [])]);
 
   // Find the lowest active promo price across all courses (for the banner).
   const lowestPromo = courses.reduce<number | null>((best, c) => {
@@ -128,6 +128,32 @@ export default async function AcademyPage() {
           </div>
         )}
       </section>
+
+      {/* Learning pathways (bundles) */}
+      {bundles.length > 0 && (
+        <section className="container-lux section">
+          <Reveal>
+            <p className="eyebrow mb-3">Learning pathways</p>
+            <h2 className="text-title">Not sure where to start? Follow a route.</h2>
+            <p className="mt-3 max-w-2xl text-[var(--color-ink-soft)]">Each pathway sequences several courses so you progress in the right order — foundation first, then on to advanced.</p>
+          </Reveal>
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {bundles.map((b) => (
+              <Reveal key={b.id}>
+                <Link href={`/academy/bundles/${b.slug}`} className="group flex h-full flex-col rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-ink)] p-6 text-[var(--color-porcelain)] transition-colors hover:border-[var(--color-gold)]">
+                  <span className="text-xs uppercase tracking-[0.16em] text-[var(--color-gold-soft)]">{b.courses.length} course{b.courses.length === 1 ? '' : 's'} · pathway</span>
+                  <h3 className="mt-1 font-[family-name:var(--font-display)] text-xl leading-tight">{b.title}</h3>
+                  {b.summary && <p className="mt-2 flex-1 text-sm text-[var(--color-porcelain)]/75">{b.summary}</p>}
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-sm font-medium">{b.pricePence != null ? formatFee(b.pricePence) : 'On enquiry'}</span>
+                    <span className="text-sm text-[var(--color-gold-soft)] group-hover:underline">View pathway →</span>
+                  </div>
+                </Link>
+              </Reveal>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Funding */}
       <section className="container-lux section">

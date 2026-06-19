@@ -97,6 +97,7 @@ export async function POST(req: Request) {
         data: {
           title: str(b.title).slice(0, 160),
           type: lessonType(b.type),
+          preview: !!b.preview,
           durationMin: b.durationMin === '' || b.durationMin == null ? null : num(b.durationMin),
           minSeconds: b.minSeconds === '' || b.minSeconds == null ? null : Math.max(0, num(b.minSeconds)),
           videoUrl: mediaUrl(b.videoUrl),

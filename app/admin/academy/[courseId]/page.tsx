@@ -40,7 +40,7 @@ export default async function CurriculumPage({ params }: { params: Promise<{ cou
     modules: course.modules.map((m) => ({
       id: m.id, title: m.title, summary: m.summary,
       lessons: m.lessons.map((l) => ({
-        id: l.id, title: l.title, type: l.type, durationMin: l.durationMin, minSeconds: l.minSeconds, videoUrl: l.videoUrl, audioUrl: l.audioUrl, embedUrl: l.embedUrl,
+        id: l.id, title: l.title, type: l.type, preview: l.preview, durationMin: l.durationMin, minSeconds: l.minSeconds, videoUrl: l.videoUrl, audioUrl: l.audioUrl, embedUrl: l.embedUrl,
         attachments: Array.isArray(l.attachments) ? (l.attachments as { label: string; url: string; sizeBytes?: number; kind?: string }[]) : [],
         imageUrl: l.imageUrl,
         body: l.body, keyPoints: Array.isArray(l.keyPoints) ? l.keyPoints : [],

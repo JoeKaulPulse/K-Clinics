@@ -19,6 +19,8 @@ export const ACADEMY_TENANT_MODELS: ReadonlySet<string> = new Set<string>([
   'academyStudent',
   'studentPasskey',
   'course',
+  'courseBundle',
+  'courseBundleItem',
   'courseModule',
   'lesson',
   'homeworkSubmission',
