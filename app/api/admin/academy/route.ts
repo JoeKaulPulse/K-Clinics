@@ -111,6 +111,7 @@ export async function POST(req: Request) {
         data: {
           ...(b.status && ['APPLIED', 'OFFERED', 'PAID', 'ENROLLED', 'COMPLETED', 'CANCELLED'].includes(b.status as string) ? { status: b.status as 'APPLIED' } : {}),
           ...(b.cohortId !== undefined ? { cohortId: (b.cohortId as string) || null } : {}),
+          ...(b.pricePence !== undefined ? { pricePence: Math.max(0, num(b.pricePence) ?? 0) } : {}),
           ...(b.paidPence !== undefined ? { paidPence: Math.max(0, num(b.paidPence) ?? 0) } : {}),
           ...(b.notes !== undefined ? { notes: (b.notes as string) || null } : {}),
         },
@@ -178,6 +179,94 @@ export async function POST(req: Request) {
     case 'removeFunding': {
       if (!body.id) return bad();
       await db.fundingApplication.delete({ where: { id: String(body.id) } });
+      return ok();
+    }
+    // ── BLD-528: enrolment + payment engine ────────────────────────────────
+    case 'makeOffer': {
+      // Confirm a place: ensure the trainee account, set OFFERED, email the
+      // one-click "accept & pay" link.
+      if (!body.id) return bad();
+      const { makeOffer } = await import('@/lib/academy-payments');
+      const r = await makeOffer(String(body.id), { staffEmail: session.email, expiresInDays: body.expiresInDays ? Number(body.expiresInDays) : undefined });
+      return r.ok ? ok() : NextResponse.json({ ok: false, error: r.error }, { status: 400 });
+    }
+    case 'enrolStudent': {
+      // Manually add a learner to a course (+ optional cohort), creating/reusing
+      // their trainee account by email. Defaults to ENROLLED so access unlocks.
+      const b = body as Record<string, unknown>;
+      if (!b.courseId || !b.email) return bad();
+      const { enrolStudentManually } = await import('@/lib/academy-payments');
+      const r = await enrolStudentManually({
+        courseId: String(b.courseId), cohortId: (b.cohortId as string) || null,
+        email: String(b.email), name: (b.name as string) || undefined, phone: (b.phone as string) || undefined,
+        status: (b.status as string) || undefined, pricePence: b.pricePence != null ? Number(b.pricePence) : undefined,
+        sendLink: !!b.sendLink,
+      });
+      return r.ok ? ok() : NextResponse.json({ ok: false, error: r.error }, { status: 400 });
+    }
+    case 'recordPayment': {
+      // Record a payment collected offline (cash / transfer / phone card / a paid instalment).
+      if (!body.id) return bad();
+      const KINDS = ['FULL', 'DEPOSIT', 'BALANCE', 'INSTALMENT'];
+      const METHODS = ['CARD', 'BNPL', 'BANK_TRANSFER', 'CASH', 'OTHER'];
+      const { recordManualPayment } = await import('@/lib/academy-payments');
+      const r = await recordManualPayment(String(body.id), {
+        amountPence: Math.round(Number(body.amountPence) || 0),
+        kind: (KINDS.includes(body.kind) ? body.kind : 'BALANCE') as 'BALANCE',
+        method: (METHODS.includes(body.method) ? body.method : 'OTHER') as 'OTHER',
+        note: typeof body.note === 'string' ? body.note : undefined,
+        staffEmail: session.email,
+      });
+      return r.ok ? ok() : NextResponse.json({ ok: false, error: r.error }, { status: 400 });
+    }
+    case 'createPlan': {
+      // Set up an in-house instalment plan over `count` months from `startDate`.
+      if (!body.id || !body.startDate) return bad();
+      const { createInstalmentPlan } = await import('@/lib/academy-payments');
+      const r = await createInstalmentPlan(String(body.id), { count: Number(body.count) || 3, startDate: String(body.startDate), staffEmail: session.email });
+      return r.ok ? ok() : NextResponse.json({ ok: false, error: r.error }, { status: 400 });
+    }
+    case 'markPaymentPaid': {
+      if (!body.paymentId) return bad();
+      const METHODS = ['CARD', 'BNPL', 'BANK_TRANSFER', 'CASH', 'OTHER'];
+      const { markPaymentPaid } = await import('@/lib/academy-payments');
+      const r = await markPaymentPaid(String(body.paymentId), (METHODS.includes(body.method) ? body.method : 'OTHER') as 'OTHER', session.email);
+      return r.ok ? ok() : NextResponse.json({ ok: false, error: r.error }, { status: 400 });
+    }
+    case 'removePayment': {
+      if (!body.paymentId) return bad();
+      const { removePayment } = await import('@/lib/academy-payments');
+      await removePayment(String(body.paymentId));
+      return ok();
+    }
+    case 'sendActivation': {
+      // Email a trainee a passwordless link into their portal.
+      if (!body.studentId) return bad();
+      const { sendAccessLink } = await import('@/lib/academy-auth');
+      await sendAccessLink(String(body.studentId));
+      return ok();
+    }
+    case 'resetStudentPassword': {
+      // Trigger the trainee's own reset email (only sends if they have a password).
+      if (!body.email) return bad();
+      const { requestAcademyPasswordReset } = await import('@/lib/academy-auth');
+      await requestAcademyPasswordReset(String(body.email));
+      return ok();
+    }
+    case 'linkClient': {
+      // Link a trainee to their clinic CRM Client record (by email).
+      if (!body.studentId) return bad();
+      const { linkStudentToClient } = await import('@/lib/academy-auth');
+      const r = await linkStudentToClient(String(body.studentId));
+      return r.ok ? ok({ linked: r.linked }) : bad();
+    }
+    case 'linkFunding': {
+      // Attach a funding enquiry to an enrolment (and copy its student link).
+      if (!body.id) return bad();
+      const eid = (body.enrolmentId as string) || null;
+      let studentId: string | null = null;
+      if (eid) { const enr = await db.enrolment.findUnique({ where: { id: eid }, select: { studentId: true } }); studentId = enr?.studentId ?? null; }
+      await db.fundingApplication.update({ where: { id: String(body.id) }, data: { enrolmentId: eid, ...(eid ? { studentId } : {}) } });
       return ok();
     }
   }

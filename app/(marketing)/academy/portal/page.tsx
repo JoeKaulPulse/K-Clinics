@@ -16,7 +16,9 @@ export const dynamic = 'force-dynamic';
 
 const STATUS_LABEL: Record<string, string> = { APPLIED: 'Application received', OFFERED: 'Place offered', PAID: 'Paid', ENROLLED: 'Enrolled', COMPLETED: 'Completed', CANCELLED: 'Cancelled' };
 const fmtDate = (d: Date) => d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+const fmtShort = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 const fmtTime = (d: Date) => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+const gbp = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
 const ACTIVE = ['PAID', 'ENROLLED', 'COMPLETED'];
 
 export default async function AcademyPortalPage() {
@@ -36,6 +38,7 @@ export default async function AcademyPortalPage() {
   const sprof = await db.academyStudent.findUnique({ where: { id: student.id }, select: { onboardedAt: true, goals: true } });
   const acadOnb = sprof ? { pending: !sprof.onboardedAt, initial: { goals: sprof.goals ?? '' } } : null;
   const { courseProgress, getStudentCalendar } = await import('@/lib/lms');
+  const { enrolmentMoney } = await import('@/lib/academy-payments');
   const enrolments = await db.enrolment.findMany({
     where: { studentId: student.id },
     orderBy: { createdAt: 'desc' },
@@ -45,6 +48,12 @@ export default async function AcademyPortalPage() {
   const progress = new Map(
     await Promise.all(
       enrolments.filter((e) => ACTIVE.includes(e.status)).map(async (e) => [e.id, await courseProgress(student.id, e.courseId)] as const),
+    ),
+  );
+  // Money view for enrolments that can be paid (offered) or still owe a balance.
+  const money = new Map(
+    await Promise.all(
+      enrolments.filter((e) => ['OFFERED', 'PAID', 'ENROLLED', 'COMPLETED'].includes(e.status)).map(async (e) => [e.id, await enrolmentMoney(e.id)] as const),
     ),
   );
 
@@ -109,8 +118,11 @@ export default async function AcademyPortalPage() {
             {enrolments.map((e) => {
               const active = ACTIVE.includes(e.status);
               const prog = progress.get(e.id);
+              const m = money.get(e.id);
+              const offered = e.status === 'OFFERED';
+              const owes = !!m && m.outstandingPence > 0;
               return (
-                <div key={e.id} className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6">
+                <div key={e.id} className={`rounded-[var(--radius-xl)] border bg-[var(--color-bone)] p-6 ${offered ? 'border-[var(--color-gold)]' : 'border-[var(--color-line)]'}`}>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       {e.course.level && <span className="text-xs uppercase tracking-[0.16em] text-[var(--color-gold)]">{e.course.level}</span>}
@@ -123,6 +135,28 @@ export default async function AcademyPortalPage() {
                       </Link>
                     )}
                   </div>
+
+                  {/* Offer: accept & pay to secure the place (BLD-528) */}
+                  {offered && m && (
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/8 p-4">
+                      <div>
+                        <p className="font-medium text-[var(--color-ink)]">Your place is ready — accept &amp; pay to secure it.</p>
+                        <p className="text-sm text-[var(--color-stone)]">Course fee {gbp(m.feePence)}{m.depositPence ? ` · or a ${gbp(m.depositPence)} deposit to reserve` : ''}{e.offerExpiresAt ? ` · respond by ${fmtShort(e.offerExpiresAt.toISOString())}` : ''}</p>
+                      </div>
+                      <Link href={`/academy/pay/${e.id}`} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)]">Accept &amp; pay →</Link>
+                    </div>
+                  )}
+
+                  {/* Outstanding balance on a part-paid enrolment */}
+                  {active && owes && m && (
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
+                      <div>
+                        <p className="font-medium text-[var(--color-ink)]">Balance outstanding: {gbp(m.outstandingPence)}</p>
+                        <p className="text-sm text-[var(--color-stone)]">{gbp(m.paidPence)} of {gbp(m.feePence)} paid{m.nextDue ? ` · next ${gbp(m.nextDue.amountPence)} due ${fmtShort(m.nextDue.dueAt)}` : ''}</p>
+                      </div>
+                      <Link href={`/academy/pay/${e.id}`} className="rounded-full border border-[var(--color-line)] px-5 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Pay balance →</Link>
+                    </div>
+                  )}
 
                   {/* Progress bar */}
                   {active && prog?.hasContent && (

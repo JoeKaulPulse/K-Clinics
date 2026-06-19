@@ -447,6 +447,44 @@ export function tmplAccountInvite(o: { firstName: string; treatment: string; sta
   });
 }
 
+// ── K Academy: offer + payment (BLD-528) ────────────────────────────────────
+// Sent when staff make an offer. One-click link signs the trainee in and lands
+// them on the pay page (full or deposit). No password needed.
+export function tmplAcademyOffer(o: { firstName: string; courseTitle: string; pricePence: number; depositPence?: number | null; acceptUrl: string; expiresAt?: Date | null }) {
+  const fee = `£${(o.pricePence / 100).toLocaleString('en-GB')}`;
+  const dep = o.depositPence ? `£${(o.depositPence / 100).toLocaleString('en-GB')}` : null;
+  return emailShell({
+    preheader: `You've been offered a place on ${o.courseTitle} at K Academy`,
+    body: `<h1 style="font-size:24px;margin:0 0 16px;">Congratulations, ${escape(o.firstName)} — your place is ready.</h1>
+    <p>We're delighted to offer you a place on <strong>${escape(o.courseTitle)}</strong> at K Academy. To secure it, accept your offer and pay below.</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;background:#efe3d7;border-radius:10px;">
+      <tr><td style="padding:16px 18px;font-size:15px;">
+        <div style="font-weight:600;color:#2a2420;">${escape(o.courseTitle)}</div>
+        <div style="color:#7d6259;margin-top:4px;">Course fee: ${fee}${dep ? ` · or pay a ${dep} deposit to reserve your place` : ''}</div>
+      </td></tr>
+    </table>
+    <p>You can pay in full or${dep ? ' by deposit,' : ''} by card or Klarna/Clearpay, or ask us about a payment plan or funding. The link below signs you straight into your trainee portal — no password needed.</p>
+    <p style="margin:28px 0;">${btn(o.acceptUrl, 'Accept &amp; pay')}</p>
+    ${o.expiresAt ? `<p style="font-size:14px;color:#91766e;">Please respond by ${fmtWhen(o.expiresAt)}.</p>` : ''}
+    <p style="font-size:14px;color:#91766e;">This is a private link just for you — please don't share it.</p>
+    <p style="margin-top:20px;">With warmth,<br>The K Academy team</p>`,
+  });
+}
+
+// Payment confirmation / receipt for a course payment.
+export function tmplAcademyPaymentReceipt(o: { firstName: string; courseTitle: string; amountPence: number; outstandingPence: number; portalUrl: string }) {
+  const paid = `£${(o.amountPence / 100).toLocaleString('en-GB')}`;
+  const owing = o.outstandingPence > 0 ? `£${(o.outstandingPence / 100).toLocaleString('en-GB')}` : null;
+  return emailShell({
+    preheader: `Payment received — ${o.courseTitle}`,
+    body: `<h1 style="font-size:24px;margin:0 0 16px;">Thank you, ${escape(o.firstName)} — payment received.</h1>
+    <p>We've received your payment of <strong>${paid}</strong> for <strong>${escape(o.courseTitle)}</strong>. Your place is secured and your online theory is now unlocked in your portal.</p>
+    ${owing ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">Outstanding balance: <strong>${owing}</strong>. We'll be in touch about the remaining payment${''}, or you can settle it any time from your portal.</p>` : ''}
+    <p style="margin:28px 0;">${btn(o.portalUrl, 'Open my portal')}</p>
+    <p style="margin-top:20px;">With warmth,<br>The K Academy team</p>`,
+  });
+}
+
 // Security notice sent whenever an account password changes — so the owner of
 // the inbox is alerted even if they didn't make the change.
 export function tmplPasswordChanged(firstName: string) {
