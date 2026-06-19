@@ -98,14 +98,16 @@ export async function POST(req: Request) {
     }
     case 'removeCohort': {
       if (!body.id) return bad();
-      await db.cohort.delete({ where: { id: body.id } });
+      // BLD-489: scope delete to this tenant so a cross-tenant ID guess is a no-op.
+      await db.cohort.deleteMany({ where: { id: body.id, tenantId } });
       return ok();
     }
     case 'updateEnrolment': {
       if (!body.id) return bad();
       const b = body as Record<string, unknown>;
-      await db.enrolment.update({
-        where: { id: String(b.id) },
+      // BLD-489: scope to this tenant.
+      await db.enrolment.updateMany({
+        where: { id: String(b.id), tenantId },
         data: {
           ...(b.status && ['APPLIED', 'OFFERED', 'PAID', 'ENROLLED', 'COMPLETED', 'CANCELLED'].includes(b.status as string) ? { status: b.status as 'APPLIED' } : {}),
           ...(b.cohortId !== undefined ? { cohortId: (b.cohortId as string) || null } : {}),
@@ -117,7 +119,8 @@ export async function POST(req: Request) {
     }
     case 'removeEnrolment': {
       if (!body.id) return bad();
-      await db.enrolment.delete({ where: { id: body.id } });
+      // BLD-489: scope delete to this tenant.
+      await db.enrolment.deleteMany({ where: { id: body.id, tenantId } });
       return ok();
     }
     case 'upsertLiveClass': {
