@@ -89,6 +89,9 @@ export default async function AcademyPortalPage() {
     ?? null;
   const offers = enrolments.filter((e) => e.status === 'OFFERED' && money.get(e.id));
   const balances = enrolments.filter((e) => ACTIVE.includes(e.status) && (money.get(e.id)?.outstandingPence ?? 0) > 0);
+  // Don't greet a brand-new trainee with a wall of zeroes — only show the
+  // gamification snapshot once they're actually studying or have earned XP.
+  const showGamification = activeWithContent.length > 0 || standing.xp > 0;
 
   return (
     <AcademyPortalShell firstName={student.firstName}>
@@ -138,7 +141,8 @@ export default async function AcademyPortalPage() {
         </section>
       )}
 
-      {/* Progress snapshot (secondary) + daily goal */}
+      {/* Progress snapshot (secondary) + daily goal — hidden until they've begun */}
+      {showGamification && (<>
       <section className="mb-10 grid gap-4 lg:grid-cols-[1fr_360px] lg:items-start">
         <Card className="p-5">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
@@ -160,6 +164,7 @@ export default async function AcademyPortalPage() {
         <DailyGoal status={daily} />
       </section>
       <div className="mb-10 flex justify-center"><InstallPrompt /></div>
+      </>)}
 
       {/* Your courses — slim cards (offers/balances live in "Needs your attention") */}
       <section data-tour="academy-courses">
