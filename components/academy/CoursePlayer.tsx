@@ -63,9 +63,19 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
   const curLesson = sel?.type === 'lesson' ? curModule?.lessons.find((l) => l.id === sel.lessonId) ?? null : null;
   const curQuiz = sel?.type === 'quiz' ? curModule?.quiz ?? null : null;
 
+  // Gamification parity with the immersive player: surface earned badges as a
+  // transient toast when a lesson is completed or a quiz passed in the outline.
+  const [badgeToast, setBadgeToast] = useState<{ key: string; name: string; icon: string }[]>([]);
+  function pushBadges(b?: { key: string; name: string; icon: string }[]) {
+    if (!b?.length) return;
+    setBadgeToast(b);
+    setTimeout(() => setBadgeToast([]), 4500);
+  }
+
   async function markComplete(lessonId: string) {
     setDoneLessons((s) => new Set(s).add(lessonId)); // optimistic
-    await fetch('/api/academy/lesson', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lessonId }) }).catch(() => {});
+    const r = await fetch('/api/academy/lesson', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lessonId }) }).then((x) => x.json()).catch(() => null);
+    pushBadges(r?.newBadges);
   }
 
   const moduleComplete = (m: ModuleView) => m.lessons.every((l) => doneLessons.has(l.id)) && (!m.quiz || quizState[m.quiz.id]?.passed);
@@ -150,11 +160,22 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
             quiz={curQuiz}
             state={quizState[curQuiz.id]}
             onGraded={(passed, best) => setQuizState((s) => ({ ...s, [curQuiz.id]: { passed: s[curQuiz.id]?.passed || passed, best: Math.max(s[curQuiz.id]?.best ?? 0, best) } }))}
+            onBadges={pushBadges}
             onNext={goNext}
           />
         )}
         {!curLesson && !curQuiz && <p className="text-[var(--color-stone)]">Select a lesson to begin.</p>}
       </div>
+
+      {/* Earned-badge toast (parity with the immersive celebrations) */}
+      {badgeToast.length > 0 && (
+        <div className="fixed inset-x-0 bottom-6 z-[120] flex justify-center px-4" role="status" aria-live="polite">
+          <div className="flex items-center gap-3 rounded-full border border-[var(--color-gold)] bg-[var(--color-porcelain)] px-5 py-3 shadow-[var(--shadow-soft)]">
+            <span className="text-xl">{badgeToast[0].icon}</span>
+            <span className="text-sm font-medium text-[var(--color-ink)]">{badgeToast.length === 1 ? `Badge earned — ${badgeToast[0].name}` : `${badgeToast.length} badges earned!`}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -214,7 +235,7 @@ function LessonPanel({ lesson, done, onComplete, onNext }: { lesson: LessonView;
 
 type QuizResult = { scorePct: number; passed: boolean; passMark: number; results: { questionId: string; correct: boolean; correctIndices: number[]; explanation: string | null }[] };
 
-function QuizPanel({ quiz, state, onGraded, onNext }: { quiz: QuizView; state?: { passed: boolean; best: number | null }; onGraded: (passed: boolean, best: number) => void; onNext?: () => void }) {
+function QuizPanel({ quiz, state, onGraded, onBadges, onNext }: { quiz: QuizView; state?: { passed: boolean; best: number | null }; onGraded: (passed: boolean, best: number) => void; onBadges?: (b?: { key: string; name: string; icon: string }[]) => void; onNext?: () => void }) {
   const [answers, setAnswers] = useState<Record<string, number[] | string>>({});
   const [result, setResult] = useState<QuizResult | null>(null);
   const [busy, setBusy] = useState(false);
@@ -265,7 +286,7 @@ function QuizPanel({ quiz, state, onGraded, onNext }: { quiz: QuizView; state?: 
     try {
       const res = await fetch('/api/academy/quiz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quizId: quiz.id, answers: toSend }) });
       const j = await res.json();
-      if (j.ok) { setResult(j); onGraded(j.passed, j.scorePct); }
+      if (j.ok) { setResult(j); onGraded(j.passed, j.scorePct); onBadges?.(j.newBadges); }
       else setErr(j.error || 'Could not submit.');
     } catch { setErr('Network error.'); }
     finally { setBusy(false); }
