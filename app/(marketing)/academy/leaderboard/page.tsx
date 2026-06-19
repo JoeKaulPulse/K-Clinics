@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { AcademyPortalShell } from '@/components/academy/AcademyPortalShell';
+import { PageTitle, SectionTitle, Card } from '@/components/academy/ui';
 import { pageMeta } from '@/lib/seo';
 import type { LeaderRow } from '@/lib/academy-gamification';
 
@@ -11,9 +12,8 @@ export const dynamic = 'force-dynamic';
 function Board({ title, rows, blurb }: { title: string; rows: LeaderRow[]; blurb?: string }) {
   return (
     <div>
-      <h2 className="font-[family-name:var(--font-display)] text-xl">{title}</h2>
-      {blurb && <p className="mt-1 text-sm text-[var(--color-stone)]">{blurb}</p>}
-      <ol className="mt-4 space-y-1.5">
+      <SectionTitle sub={blurb}>{title}</SectionTitle>
+      <ol className="space-y-1.5">
         {rows.length === 0 ? (
           <li className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] p-5 text-sm text-[var(--color-stone)]">No rankings yet — earn XP by completing lessons, passing assessments and practising.</li>
         ) : rows.map((r) => (
@@ -46,11 +46,10 @@ export default async function LeaderboardPage() {
 
   return (
     <AcademyPortalShell firstName={student.firstName}>
-      <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl">Leaderboard</h1>
-      <p className="mt-2 max-w-2xl text-[var(--color-stone)]">Earn XP for every lesson, assessment and practice set. Top performers each cohort go in the running for end-of-course prizes — and our annual winners may be offered a place on the team.</p>
+      <PageTitle lede="Earn XP for every lesson, assessment and practice set. Top performers each cohort go in the running for end-of-course prizes — and our annual winners may be offered a place on the team.">Your progress</PageTitle>
 
       {/* Your standing */}
-      <div className="mt-8 grid gap-4 rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6 sm:grid-cols-[auto_1fr] sm:items-center">
+      <Card className="grid gap-4 p-6 sm:grid-cols-[auto_1fr] sm:items-center">
         <div className="flex items-center gap-6">
           <div className="text-center"><p className="font-[family-name:var(--font-display)] text-4xl text-[var(--color-ink)]">{standing.xp.toLocaleString()}</p><p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">XP</p></div>
           <div className="text-center"><p className="font-[family-name:var(--font-display)] text-4xl text-[var(--color-ink)]">#{standing.rank}</p><p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">of {standing.total}</p></div>
@@ -68,7 +67,7 @@ export default async function LeaderboardPage() {
             })}
           </div>
         </div>
-      </div>
+      </Card>
 
       <div className="mt-10 grid gap-10 lg:grid-cols-2 lg:items-start">
         {cohortId && <Board title="Your cohort" rows={cohort} blurb="How you stack up against the people you’re training with." />}

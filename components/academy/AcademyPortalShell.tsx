@@ -14,7 +14,7 @@ import { site } from '@/lib/site';
 const nav = [
   { href: '/academy/portal', label: 'My courses' },
   { href: '/academy/practice', label: 'Practice & papers' },
-  { href: '/academy/leaderboard', label: 'Leaderboard' },
+  { href: '/academy/leaderboard', label: 'Progress' },
   { href: '/academy/settings', label: 'Settings' },
 ];
 
@@ -37,14 +37,14 @@ export function AcademyPortalShell({ firstName, children }: { firstName?: string
   return (
     <div className="relative flex min-h-screen flex-col">
       {/* Ambient brand wash — matches the client portal's whisper-soft treatment. */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 print:hidden">
         <Aurora className="opacity-50" />
         <span className="absolute inset-0 bg-[radial-gradient(130%_90%_at_85%_-10%,color-mix(in_oklab,var(--color-gold)_10%,transparent),transparent_55%)]" />
         <span className="grain absolute inset-0 opacity-[0.5]" />
       </div>
 
       {/* Sticky frosted bar: header + mobile nav */}
-      <div className="sticky top-0 z-40 border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-porcelain)_82%,transparent)] backdrop-blur-xl">
+      <div className="sticky top-0 z-40 border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-porcelain)_82%,transparent)] backdrop-blur-xl print:hidden">
         <div className="mx-auto w-full max-w-[88rem] px-[var(--gutter)]">
           <header className="flex items-center justify-between gap-4 py-4">
             <Link href="/academy/portal" aria-label="K Academy" className="group flex items-center gap-2.5 text-[var(--color-ink)]">
@@ -75,7 +75,7 @@ export function AcademyPortalShell({ firstName, children }: { firstName?: string
       <div className="mx-auto flex w-full max-w-[88rem] flex-1 flex-col px-[var(--gutter)]">
         <main className="flex-1 py-9 md:py-12">{children}</main>
 
-        <footer className="mt-8 flex flex-col gap-3 border-t border-[var(--color-line)] py-7 text-xs text-[var(--color-stone)] sm:flex-row sm:items-center sm:justify-between">
+        <footer className="mt-8 flex flex-col gap-3 border-t border-[var(--color-line)] py-7 text-xs text-[var(--color-stone)] sm:flex-row sm:items-center sm:justify-between print:hidden">
           <p>K Academy — accredited aesthetics training. Questions? Call{' '}
             <a href={site.phoneHref} className="font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-gold)]">{site.phone}</a>.
           </p>

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
+import { AcademyPortalShell } from '@/components/academy/AcademyPortalShell';
 import { PrintButton } from '@/components/academy/PrintButton';
 import { ACCREDITATION_LABELS } from '@/lib/academy';
 import { pageMeta } from '@/lib/seo';
@@ -37,7 +38,7 @@ export default async function CertificatePage({ params }: { params: Promise<{ sl
   const verifyUrl = `${base.replace(/^https?:\/\//, '')}/academy/verify/${ref}`;
 
   return (
-    <section className="container-lux py-[calc(var(--header-h,5.25rem)+2rem)]">
+    <AcademyPortalShell firstName={student.firstName}>
       <div className="mx-auto max-w-3xl">
         <div className="mb-5 flex items-center justify-between print:hidden">
           <Link href={`/academy/learn/${slug}`} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Back to course</Link>
@@ -75,6 +76,6 @@ export default async function CertificatePage({ params }: { params: Promise<{ sl
           This certificate confirms completion of the online theory and assessments. Your full accredited qualification is issued on completion of the practical training and external assessment. Anyone can confirm it at <Link href={`/academy/verify/${ref}`} className="link-underline">{verifyUrl}</Link>.
         </p>
       </div>
-    </section>
+    </AcademyPortalShell>
   );
 }

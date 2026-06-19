@@ -10,7 +10,7 @@ import type { CourseLearning, ModuleView, LessonView, QuizView } from '@/lib/lms
 
 const fmtReleaseDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
-type Sel = { type: 'lesson'; moduleId: string; lessonId: string } | { type: 'quiz'; moduleId: string };
+type Sel = { type: 'lesson'; moduleId: string; lessonId: string } | { type: 'quiz'; moduleId: string } | { type: 'resources' };
 
 export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slug: string }) {
   // Local progress mirrors the server so the UI updates without a reload.
@@ -43,7 +43,9 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
     return flat[0] ?? null;
   }, [learning, flat]);
   const [sel, setSel] = useState<Sel | null>(firstUndone);
-  const selKey = (s: Sel | null) => (!s ? '' : s.type === 'lesson' ? `l:${s.lessonId}` : `q:${s.moduleId}`);
+  const selKey = (s: Sel | null) => (!s ? '' : s.type === 'lesson' ? `l:${s.lessonId}` : s.type === 'quiz' ? `q:${s.moduleId}` : 'resources');
+  // All downloadable files across released modules, for a single "Resources" view.
+  const allAttachments = useMemo(() => learning.modules.flatMap((m) => (m.lockedUntil ? [] : m.lessons.flatMap((l) => l.attachments))), [learning]);
   const nextSel = useMemo<Sel | null>(() => {
     const i = flat.findIndex((s) => selKey(s) === selKey(sel));
     return i >= 0 && i + 1 < flat.length ? flat[i + 1] : null;
@@ -59,13 +61,23 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
     return { pct: total ? Math.round((done / total) * 100) : 0, allDone: total > 0 && done === total };
   }, [learning, doneLessons, quizState]);
 
-  const curModule = learning.modules.find((m) => m.id === sel?.moduleId) ?? null;
+  const curModule = learning.modules.find((m) => m.id === (sel && sel.type !== 'resources' ? sel.moduleId : undefined)) ?? null;
   const curLesson = sel?.type === 'lesson' ? curModule?.lessons.find((l) => l.id === sel.lessonId) ?? null : null;
   const curQuiz = sel?.type === 'quiz' ? curModule?.quiz ?? null : null;
 
+  // Gamification parity with the immersive player: surface earned badges as a
+  // transient toast when a lesson is completed or a quiz passed in the outline.
+  const [badgeToast, setBadgeToast] = useState<{ key: string; name: string; icon: string }[]>([]);
+  function pushBadges(b?: { key: string; name: string; icon: string }[]) {
+    if (!b?.length) return;
+    setBadgeToast(b);
+    setTimeout(() => setBadgeToast([]), 4500);
+  }
+
   async function markComplete(lessonId: string) {
     setDoneLessons((s) => new Set(s).add(lessonId)); // optimistic
-    await fetch('/api/academy/lesson', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lessonId }) }).catch(() => {});
+    const r = await fetch('/api/academy/lesson', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lessonId }) }).then((x) => x.json()).catch(() => null);
+    pushBadges(r?.newBadges);
   }
 
   const moduleComplete = (m: ModuleView) => m.lessons.every((l) => doneLessons.has(l.id)) && (!m.quiz || quizState[m.quiz.id]?.passed);
@@ -139,6 +151,12 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
             </div>
             );
           })}
+          {allAttachments.length > 0 && (
+            <button onClick={() => setSel({ type: 'resources' })} className={`flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-1.5 text-left text-sm transition-colors ${sel?.type === 'resources' ? 'bg-[var(--color-bone)] text-[var(--color-ink)]' : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-bone)]'}`}>
+              <span className="text-xs text-[var(--color-stone)]">↓</span>
+              <span className="flex-1 font-medium">Resources &amp; downloads</span>
+            </button>
+          )}
         </nav>
       </aside>
 
@@ -150,11 +168,32 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
             quiz={curQuiz}
             state={quizState[curQuiz.id]}
             onGraded={(passed, best) => setQuizState((s) => ({ ...s, [curQuiz.id]: { passed: s[curQuiz.id]?.passed || passed, best: Math.max(s[curQuiz.id]?.best ?? 0, best) } }))}
+            onBadges={pushBadges}
             onNext={goNext}
           />
         )}
-        {!curLesson && !curQuiz && <p className="text-[var(--color-stone)]">Select a lesson to begin.</p>}
+        {sel?.type === 'resources' && (
+          <div>
+            <p className="eyebrow mb-2">All course materials</p>
+            <h2 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl">Resources &amp; downloads</h2>
+            <p className="mt-2 text-sm text-[var(--color-stone)]">Everything attached across this course — lesson materials and homework — in one place.</p>
+            {allAttachments.length > 0
+              ? <Downloads items={allAttachments} />
+              : <p className="mt-6 text-sm text-[var(--color-stone)]">No downloadable files yet.</p>}
+          </div>
+        )}
+        {!curLesson && !curQuiz && sel?.type !== 'resources' && <p className="text-[var(--color-stone)]">Select a lesson to begin.</p>}
       </div>
+
+      {/* Earned-badge toast (parity with the immersive celebrations) */}
+      {badgeToast.length > 0 && (
+        <div className="fixed inset-x-0 bottom-6 z-[120] flex justify-center px-4" role="status" aria-live="polite">
+          <div className="flex items-center gap-3 rounded-full border border-[var(--color-gold)] bg-[var(--color-porcelain)] px-5 py-3 shadow-[var(--shadow-soft)]">
+            <span className="text-xl">{badgeToast[0].icon}</span>
+            <span className="text-sm font-medium text-[var(--color-ink)]">{badgeToast.length === 1 ? `Badge earned — ${badgeToast[0].name}` : `${badgeToast.length} badges earned!`}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -214,7 +253,7 @@ function LessonPanel({ lesson, done, onComplete, onNext }: { lesson: LessonView;
 
 type QuizResult = { scorePct: number; passed: boolean; passMark: number; results: { questionId: string; correct: boolean; correctIndices: number[]; explanation: string | null }[] };
 
-function QuizPanel({ quiz, state, onGraded, onNext }: { quiz: QuizView; state?: { passed: boolean; best: number | null }; onGraded: (passed: boolean, best: number) => void; onNext?: () => void }) {
+function QuizPanel({ quiz, state, onGraded, onBadges, onNext }: { quiz: QuizView; state?: { passed: boolean; best: number | null }; onGraded: (passed: boolean, best: number) => void; onBadges?: (b?: { key: string; name: string; icon: string }[]) => void; onNext?: () => void }) {
   const [answers, setAnswers] = useState<Record<string, number[] | string>>({});
   const [result, setResult] = useState<QuizResult | null>(null);
   const [busy, setBusy] = useState(false);
@@ -265,7 +304,7 @@ function QuizPanel({ quiz, state, onGraded, onNext }: { quiz: QuizView; state?: 
     try {
       const res = await fetch('/api/academy/quiz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quizId: quiz.id, answers: toSend }) });
       const j = await res.json();
-      if (j.ok) { setResult(j); onGraded(j.passed, j.scorePct); }
+      if (j.ok) { setResult(j); onGraded(j.passed, j.scorePct); onBadges?.(j.newBadges); }
       else setErr(j.error || 'Could not submit.');
     } catch { setErr('Network error.'); }
     finally { setBusy(false); }
