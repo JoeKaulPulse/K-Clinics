@@ -1518,6 +1518,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['lib/academy-content.ts (SHA 5525053). enrichCourseContentIfNeeded() picks up additions on the next cron run.'],
   },
   {
+    title: 'Academy content batch 12 -- Skin Anatomy, Skin Tightening/HIFU/Cryo, Medication Clearance (BLD-311)', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 5,
+    detail: '3 new modules in lib/academy-content.ts: L2 Skin Anatomy & the Laser Target (2 lessons + 6-question quiz: skin layers/melanocytes, hair follicle/anagen phase); L3 Skin Tightening, HIFU & Body Contouring (2 lessons + 6-question quiz: RF/HIFU mechanisms, cryolipolysis/contraindications); L4 Medication Interactions & Pre-treatment Medical Clearance (2 lessons + 6-question quiz: photosensitisers/anticoagulants/isotretinoin, GP clearance protocols). Plus 12 new batch 12 exam-bank questions across L2/L3/L4.',
+    notes: ['lib/academy-content.ts. enrichCourseContentIfNeeded() picks up additions on the next cron run.'],
+  },
+  {
     title: 'Kiosk campaign: share-gated claim UX + AI caption in share text (PRJ-1.14)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1128),
     project: 'skin-smile-kiosk',
     value: 9, effort: 2,

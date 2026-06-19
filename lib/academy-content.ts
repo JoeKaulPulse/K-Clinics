@@ -2514,6 +2514,229 @@ export const NEW_MODULES: CourseContentDef[] = [
       },
     ],
   },
+  // -- BATCH 12 modules --------------------------------------------------------
+
+  {
+    courseSlug: L2,
+    modules: [
+      {
+        title: 'Skin Anatomy & the Laser Target',
+        summary: 'Map the layers of the skin and the structure of the hair follicle so you can link anatomy to treatment rationale in the exam and in the clinic.',
+        lessons: [
+          {
+            title: 'Layers of the Skin: Structure & Function',
+            durationMin: 10,
+            objectives: [
+              'Name the three main skin layers and their primary roles',
+              'Explain where melanin is produced and why it matters in laser treatment',
+              'Describe what the dermis contains and why laser rejuvenation targets it',
+            ],
+            studyTips: [
+              'Link each layer to at least one laser application: epidermis = pigment/hair target; dermis = rejuvenation/collagen; hypodermis = body contouring.',
+            ],
+            examRefs: ['Skin anatomy', 'Selective photothermolysis', 'Chromophores'],
+            steps: [
+              { kind: 'say', text: 'Understanding the skin underneath is what makes laser treatments predictable rather than guesswork.', mood: 'think' },
+              { kind: 'teach', title: 'Three main layers', text: 'The skin has three main layers: the epidermis (outermost), the dermis (middle), and the hypodermis (deepest, also called subcutaneous tissue).' },
+              { kind: 'ask', prompt: 'The outermost layer of the skin is called the...', qtype: 'WORD', options: ['epidermis', 'dermis', 'hypodermis'], correct: [0], explanation: 'The epidermis is the outermost layer, acting as the skin\'s first barrier.' },
+              { kind: 'teach', title: 'The epidermis', text: 'The epidermis contains keratinocytes (the main structural cell) and melanocytes, which produce melanin. Melanin is the chromophore for hair removal and pigmentation lasers.' },
+              { kind: 'ask', prompt: 'Melanin is produced by cells called...', qtype: 'WORD', options: ['melanocytes', 'keratinocytes', 'fibroblasts'], correct: [0], explanation: 'Melanocytes in the basal layer produce melanin, the target chromophore for hair removal and pigmentation treatments.' },
+              { kind: 'teach', title: 'The dermis', text: 'The dermis sits below the epidermis and contains collagen, elastin, blood vessels, nerve endings, sebaceous glands, and hair follicles. Laser rejuvenation targets this layer to stimulate new collagen.' },
+              { kind: 'ask', prompt: 'Which skin layer contains collagen, elastin and blood vessels?', qtype: 'SINGLE', options: ['Dermis', 'Epidermis', 'Hypodermis', 'Stratum corneum'], correct: [0], explanation: 'The dermis is the structural layer -- collagen here is the target for rejuvenation lasers and RF.' },
+              { kind: 'teach', title: 'The hypodermis', text: 'The hypodermis (subcutaneous layer) contains fat cells (adipocytes) and connective tissue. Body-contouring devices such as cryolipolysis and HIFU body settings target this layer.' },
+              { kind: 'ask', prompt: 'Body-contouring devices that target fat operate mainly at the...', qtype: 'SINGLE', options: ['Hypodermis', 'Epidermis', 'Dermis', 'Stratum corneum'], correct: [0], explanation: 'Adipocytes in the hypodermis are the target for cryolipolysis and body-focused HIFU.' },
+              { kind: 'say', text: 'Anatomy links directly to treatment rationale. That connection makes you a safer and more confident clinician.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'The Hair Follicle: Structure, Cycles & Laser Targets',
+            durationMin: 10,
+            objectives: [
+              'Name the key structures within a hair follicle',
+              'Explain why only the anagen phase responds to laser hair removal',
+              'Describe why fair and grey hair responds poorly to laser',
+            ],
+            studyTips: [
+              'Anagen = active = melanin-rich = responds to laser. Catagen and telogen follicles have less melanin in the target zone and do not respond effectively.',
+            ],
+            examRefs: ['Hair follicle anatomy', 'Laser hair removal', 'Hair growth cycle'],
+            steps: [
+              { kind: 'say', text: 'The follicle is the target. Knowing its structure tells you exactly what the laser is aiming at -- and why sessions must be repeated.', mood: 'think' },
+              { kind: 'teach', title: 'Follicle structure', text: 'The hair follicle includes: the bulb (deepest part, contains the dermal papilla which nourishes the hair), the bulge (houses stem cells that allow regrowth), and the sebaceous gland (produces sebum).' },
+              { kind: 'ask', prompt: 'The deepest part of the hair follicle that nourishes the hair is the...', qtype: 'WORD', options: ['bulb', 'shaft', 'bulge'], correct: [0], explanation: 'The bulb contains the dermal papilla -- the vascular supply that keeps the hair alive. Destroying it prevents regrowth.' },
+              { kind: 'teach', title: 'Melanin in the follicle', text: 'Melanin in the hair shaft, cortex and matrix cells of the bulb is the chromophore. The laser energy is absorbed by this melanin and converted to heat, destroying the papilla and stem cells.' },
+              { kind: 'ask', prompt: 'Laser hair removal works because melanin in the follicle absorbs energy and converts it to...', qtype: 'WORD', options: ['heat', 'light', 'electricity'], correct: [0], explanation: 'Selective photothermolysis: the right wavelength is absorbed by melanin, which converts it to heat that destroys the target.' },
+              { kind: 'teach', title: 'The three growth phases', text: 'Hair grows in cycles: anagen (active growth -- bulb full, melanin-rich, close to papilla), catagen (transition -- bulb shrinks), and telogen (resting -- papilla separate). Laser is only effective on anagen follicles.' },
+              { kind: 'ask', prompt: 'Which hair growth phase must the follicle be in for laser removal to be effective?', qtype: 'SINGLE', options: ['Anagen', 'Catagen', 'Telogen', 'Any phase equally'], correct: [0], explanation: 'Only in anagen is the bulb close to the papilla and the melanin content high enough for effective laser destruction.' },
+              { kind: 'teach', title: 'Why multiple sessions are needed', text: 'At any one time, only around 20-30% of follicles are in anagen. Sessions spaced 4-8 weeks apart catch follicles as they cycle into anagen, progressively reducing the overall follicle count.' },
+              { kind: 'ask', prompt: 'Laser hair removal needs multiple sessions because not all follicles are in anagen at the...', qtype: 'WORD', options: ['same time', 'right place', 'winter'], correct: [0], explanation: 'Hair follicles cycle independently; repeated sessions at the right interval catch each batch in the anagen window.' },
+              { kind: 'say', text: 'Follicle, melanin, anagen -- those three words explain why laser hair removal works, and why it takes a course.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Skin Anatomy & the Laser Target Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'The outermost layer of the skin is the...', type: 'WORD', options: ['epidermis', 'dermis', 'hypodermis'], correct: [0], explanation: 'The epidermis is the outermost skin layer.' },
+            { prompt: 'Melanin, the chromophore for hair removal lasers, is produced by cells called...', type: 'WORD', options: ['melanocytes', 'keratinocytes', 'fibroblasts'], correct: [0], explanation: 'Melanocytes in the basal epidermis produce melanin.' },
+            { prompt: 'Laser skin rejuvenation primarily targets which skin layer?', type: 'SINGLE', options: ['Dermis', 'Epidermis', 'Hypodermis', 'Stratum corneum'], correct: [0], explanation: 'The dermis contains collagen and elastin -- the targets for rejuvenation lasers and RF.' },
+            { prompt: 'Which phase must a hair follicle be in for laser removal to be effective?', type: 'SINGLE', options: ['Anagen', 'Catagen', 'Telogen', 'All phases equally'], correct: [0], explanation: 'Anagen follicles have a high melanin content and the bulb is close to the papilla -- ideal for laser destruction.' },
+            { prompt: 'Laser hair removal requires multiple sessions because only a fraction of follicles are in anagen at the same time.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Around 20-30% of follicles are in anagen at any one time; a course catches them progressively.' },
+            { prompt: 'Grey and white hair responds poorly to laser because it contains very little...', type: 'WORD', options: ['melanin', 'keratin', 'collagen'], correct: [0], explanation: 'No melanin = no chromophore = no heat generation. Laser cannot destroy a target that does not absorb the wavelength.' },
+          ],
+        },
+      },
+    ],
+  },
+
+  {
+    courseSlug: 'level-3-laser-aesthetic-therapies',
+    modules: [
+      {
+        title: 'Skin Tightening, HIFU & Body Contouring Modalities',
+        summary: 'Understand how radiofrequency, HIFU and cryolipolysis work, which clients benefit most, and the contraindications that make each modality unsafe.',
+        lessons: [
+          {
+            title: 'Radiofrequency & HIFU: Mechanisms and Applications',
+            durationMin: 12,
+            objectives: [
+              'Explain how RF generates heat and where in the skin it acts',
+              'Describe how HIFU targets the SMAS and deep dermis',
+              'State realistic expectations for both modalities',
+            ],
+            studyTips: [
+              'RF heats the dermis by resistive heating. HIFU focuses at a precise depth (1.5-4.5 mm) to coagulate the SMAS. Both produce gradual results over weeks to months -- not instant lifts.',
+            ],
+            examRefs: ['Skin tightening', 'Radiofrequency', 'HIFU', 'Collagen remodelling'],
+            steps: [
+              { kind: 'say', text: 'Tightening with energy is about controlled heat at the right depth. The depth is everything.', mood: 'think' },
+              { kind: 'teach', title: 'Radiofrequency (RF) tightening', text: 'RF current passes through tissue, generating resistive heat in the dermis. This immediately contracts existing collagen fibres and triggers neocollagenesis (new collagen production) over 6-12 weeks.' },
+              { kind: 'ask', prompt: 'RF skin tightening works by heating the ___ to contract collagen and stimulate new production.', qtype: 'WORD', options: ['dermis', 'epidermis', 'fat'], correct: [0], explanation: 'Resistive heat in the dermis contracts existing collagen and triggers neocollagenesis over weeks.' },
+              { kind: 'teach', title: 'Realistic expectations for RF', text: 'Some immediate tightening is visible as collagen contracts; the main improvement develops over 6-12 weeks. Results are modest firming, not a surgical lift. Multiple sessions are usually needed.' },
+              { kind: 'ask', prompt: 'The main visible result of RF skin tightening appears...', qtype: 'SINGLE', options: ['Gradually over 6-12 weeks as collagen remodels', 'Instantly and permanently', 'After a single session only', 'After one year'], correct: [0], explanation: 'Collagen remodelling takes weeks; expecting instant surgical results leads to dissatisfied clients.' },
+              { kind: 'teach', title: 'HIFU -- High-Intensity Focused Ultrasound', text: 'HIFU focuses ultrasound energy to a precise depth: 1.5 mm (dermis), 3 mm (deep dermis), or 4.5 mm (SMAS -- the muscular layer that surgical facelifts address). Thermal damage zones (coagulation points) form at the focus, triggering collagen contraction and regeneration without disrupting the skin surface.' },
+              { kind: 'ask', prompt: 'HIFU differs from RF because it deposits energy at a highly specific ___ in the deep dermis or SMAS.', qtype: 'WORD', options: ['depth', 'colour', 'wavelength'], correct: [0], explanation: 'HIFU focuses at precise depths (1.5, 3, 4.5 mm) -- a key distinction from RF which heats more diffusely.' },
+              { kind: 'ask', prompt: 'Which clients benefit most from RF and HIFU skin-tightening treatments?', qtype: 'SINGLE', options: ['Those with mild to moderate skin laxity', 'Those needing a surgical facelift', 'Clients with severe deep laxity', 'Clients with active skin infection in the treatment zone'], correct: [0], explanation: 'Mild to moderate laxity responds best; severe laxity is better addressed surgically, and active infection is a contraindication.' },
+              { kind: 'say', text: 'RF heats broadly; HIFU focuses precisely. Both depend on the body\'s own collagen response -- not on an instant change.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Cryolipolysis & Body-Contouring Modalities',
+            durationMin: 11,
+            objectives: [
+              'Explain the mechanism by which cryolipolysis selectively destroys fat cells',
+              'Describe the expected result and clearance timeline',
+              'List the key contraindications to cryolipolysis',
+            ],
+            studyTips: [
+              'Cryolipolysis = controlled cold kills fat cells (apoptosis). Results take 8-12 weeks to appear as the lymphatic system clears dead cells. Cold-sensitivity conditions are absolute contraindications.',
+            ],
+            examRefs: ['Body contouring', 'Cryolipolysis', 'Adipocytes', 'Lymphatic clearance'],
+            steps: [
+              { kind: 'say', text: 'Body contouring with cold is about biology, not willpower. Understanding the mechanism helps you counsel clients honestly.', mood: 'think' },
+              { kind: 'teach', title: 'How cryolipolysis works', text: 'Adipocytes (fat cells) are more susceptible to cold than surrounding skin, nerves or blood vessels. Controlled cooling to around -11 degrees C triggers apoptosis -- programmed cell death -- in the adipocytes without damaging the overlying skin.' },
+              { kind: 'ask', prompt: 'Cryolipolysis selectively destroys fat cells because they are more susceptible to cold than...', qtype: 'SINGLE', options: ['Surrounding skin, nerves and blood vessels', 'Nothing -- all cells are equally affected', 'Collagen fibres only', 'Melanin in the skin'], correct: [0], explanation: 'Adipocytes have a higher freezing point than adjacent tissue -- this selectivity is the basis of the treatment.' },
+              { kind: 'teach', title: 'Clearance timeline', text: 'Dead adipocytes are not removed instantly. They trigger an inflammatory response and are gradually cleared by the lymphatic system over 8-12 weeks. Clients should not expect to see results for at least 4-6 weeks.' },
+              { kind: 'ask', prompt: 'After cryolipolysis, destroyed fat cells are cleared by the ___ system over 8-12 weeks.', qtype: 'WORD', options: ['lymphatic', 'nervous', 'skeletal'], correct: [0], explanation: 'The lymphatic system is responsible for clearing apoptotic adipocytes -- results are gradual, not immediate.' },
+              { kind: 'teach', title: 'Contraindications', text: 'Absolute contraindications include: cryoglobulinaemia, cold agglutinin disease, and paroxysmal cold haemoglobinuria (conditions where cold causes dangerous blood reactions). Also contraindicated: Raynaud\'s phenomenon, insufficient skin fold to fill the applicator, active infection or open wounds in the area, hernias in the treatment zone.' },
+              { kind: 'ask', prompt: 'Why is cryoglobulinaemia an absolute contraindication to cryolipolysis?', qtype: 'SINGLE', options: ['Cold triggers harmful blood reactions that could be life-threatening', 'The fat does not respond to cold', 'Cold changes the skin colour', 'Treatment becomes too painful'], correct: [0], explanation: 'In cryoglobulinaemia, cold causes abnormal proteins in the blood to precipitate -- a potentially severe systemic reaction.' },
+              { kind: 'teach', title: 'What it is -- and is not', text: 'Cryolipolysis reduces the number of fat cells in the treated area. It is not a weight-loss treatment and does not treat obesity. Results are best maintained alongside a healthy diet and exercise.' },
+              { kind: 'ask', prompt: 'Cryolipolysis is best described as...', qtype: 'SINGLE', options: ['A fat-reduction treatment to improve body contour, not a weight-loss solution', 'A replacement for diet and exercise', 'A surgical-level fat removal', 'A treatment suitable for all body areas and all clients'], correct: [0], explanation: 'It reduces fat cells locally; it does not produce weight loss and is not suitable for all clients or all areas.' },
+              { kind: 'say', text: 'Set expectations before the first session: gradual, localised fat reduction -- not instant, not surgical, not for everyone.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Skin Tightening & Body Contouring Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'RF skin tightening heats the ___ to contract existing collagen and stimulate new production.', type: 'WORD', options: ['dermis', 'epidermis', 'fat'], correct: [0], explanation: 'Resistive heat in the dermis is the mechanism of RF tightening.' },
+            { prompt: 'HIFU targets a precise depth in the...', type: 'SINGLE', options: ['SMAS and deep dermis', 'Epidermis only', 'Hypodermis fat layer', 'Subcutaneous muscle only'], correct: [0], explanation: 'HIFU focuses at 1.5-4.5 mm depth, reaching the deep dermis and SMAS.' },
+            { prompt: 'The main result of RF skin tightening appears...', type: 'SINGLE', options: ['Gradually over 6-12 weeks', 'Instantly in one session', 'After 2 years', 'Immediately and permanently'], correct: [0], explanation: 'Collagen remodelling takes weeks; manage expectations accordingly.' },
+            { prompt: 'Cryolipolysis destroys fat cells by applying controlled cold, triggering...', type: 'WORD', options: ['apoptosis', 'necrosis', 'inflammation'], correct: [0], explanation: 'Controlled cold at -11 C triggers apoptosis (programmed cell death) in adipocytes.' },
+            { prompt: 'After cryolipolysis, dead fat cells are cleared by the lymphatic system over...', type: 'SINGLE', options: ['8-12 weeks', '24 hours', 'One week', 'One year'], correct: [0], explanation: '8-12 weeks for lymphatic clearance; results appear gradually from week 4-6.' },
+            { prompt: 'Cold-sensitivity conditions such as cryoglobulinaemia are an absolute contraindication to cryolipolysis.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'These conditions cause dangerous blood reactions when cold is applied; treatment must never proceed.' },
+          ],
+        },
+      },
+    ],
+  },
+
+  {
+    courseSlug: 'level-4-certificate-aesthetic-practice',
+    modules: [
+      {
+        title: 'Medication Interactions & Pre-treatment Medical Clearance',
+        summary: 'Identify the drug classes that change the risk profile for laser and aesthetic treatments, and know when to pause treatment and obtain written GP clearance.',
+        lessons: [
+          {
+            title: 'Photosensitising & Contraindicated Medications',
+            durationMin: 12,
+            objectives: [
+              'Identify drug classes that increase photosensitivity or affect skin healing',
+              'Explain why isotretinoin is an absolute contraindication during and after treatment',
+              'State when to refer to the prescribing GP rather than making a clinical decision alone',
+            ],
+            studyTips: [
+              'The central question for every medication: does it increase photosensitivity, affect bleeding, impair immunity, or change skin architecture? Any yes means you need to investigate before treating.',
+            ],
+            examRefs: ['Medication interactions', 'Photosensitivity', 'Pre-treatment screening', 'Isotretinoin'],
+            steps: [
+              { kind: 'say', text: 'The medication history is as clinical as the treatment itself. Know what to ask for -- and what the answers mean.', mood: 'think' },
+              { kind: 'teach', title: 'Why medications matter', text: 'Some medications increase photosensitivity (raising burn and PIH risk), others impair coagulation (bruising and bleeding), reduce immunity (delayed healing), or dramatically change skin architecture (fragility). All of these shift the risk profile for laser and energy-based treatments.' },
+              { kind: 'ask', prompt: 'Why must a full medication history be taken before any laser or energy-based treatment?', qtype: 'SINGLE', options: ['Medications can change the risk profile through photosensitivity, bleeding, healing or skin fragility', 'It is only needed for new clients', 'It is a regulatory formality only', 'To set the correct price'], correct: [0], explanation: 'Medications can fundamentally alter how the skin responds to energy. This is a patient safety issue, not a paperwork exercise.' },
+              { kind: 'teach', title: 'Photosensitising drugs', text: 'Key photosensitisers include: tetracycline-class antibiotics (doxycycline, lymecycline), fluoroquinolones, thiazide diuretics, NSAIDs (especially naproxen), amiodarone, and some herbal supplements (St John\'s Wort). These raise burn and PIH risk with light-based treatments.' },
+              { kind: 'ask', prompt: 'Which class of antibiotic is most commonly associated with photosensitivity?', qtype: 'SINGLE', options: ['Tetracyclines (e.g. doxycycline)', 'Beta-lactams (e.g. amoxicillin)', 'Macrolides (e.g. azithromycin)', 'Penicillins'], correct: [0], explanation: 'Tetracyclines (including doxycycline and lymecycline, commonly used for acne) are well-known photosensitisers and contraindicate laser in most cases.' },
+              { kind: 'teach', title: 'Anticoagulants', text: 'Warfarin, apixaban, rivaroxaban, aspirin and clopidogrel all increase bruising and bleeding risk, particularly for vascular treatments. Never advise a client to stop anticoagulation -- that decision belongs to the prescribing GP.' },
+              { kind: 'ask', prompt: 'A client asks whether to stop warfarin before their vascular IPL appointment. You should...', qtype: 'SINGLE', options: ['Advise them never to stop without GP instruction, and obtain written GP clearance', 'Tell them to miss one dose only', 'Reassure them 48 hours off is safe', 'Proceed without involving the GP'], correct: [0], explanation: 'Stopping anticoagulation can cause stroke or thromboembolism. This is a GP decision; never give that advice yourself.' },
+              { kind: 'teach', title: 'Isotretinoin -- absolute contraindication', text: 'Isotretinoin (Roaccutane) causes dramatic changes in skin architecture: thinning the epidermis, reducing sebaceous function and skin turnover, and sensitising skin to treatment injury. It is an absolute contraindication DURING the course and for at least 6 months after the last dose.' },
+              { kind: 'ask', prompt: 'The minimum wait after finishing a course of isotretinoin before any laser or IPL treatment is...', qtype: 'SINGLE', options: ['6 months', '2 weeks', '1 month', 'There is no waiting period'], correct: [0], explanation: '6 months is the accepted minimum; some protocols recommend 12 months for ablative procedures. Appearance alone does not confirm skin safety.' },
+              { kind: 'say', text: 'If any medication raises a clinical question, defer treatment. A short delay for clearance is always safer than a serious adverse event.', mood: 'think' },
+            ],
+          },
+          {
+            title: 'When to Require GP or Specialist Clearance',
+            durationMin: 11,
+            objectives: [
+              'List the clinical scenarios that require written GP or specialist clearance before treatment',
+              'Explain how to request clearance correctly',
+              'Describe the documentation required when treatment is deferred',
+            ],
+            studyTips: [
+              'GP clearance must be in writing -- verbal is never sufficient. Document every deferral: date, reason, referral made, and what you told the client.',
+            ],
+            examRefs: ['Medical clearance', 'GP referral', 'Scope of practice', 'Record keeping'],
+            steps: [
+              { kind: 'say', text: 'Knowing when to pause and seek clearance is clinical judgement at its best -- and it protects both your client and your practice.', mood: 'think' },
+              { kind: 'teach', title: 'When clearance is required', text: 'The main categories requiring GP or specialist clearance before treatment: anticoagulation therapy; recent isotretinoin (within 6 months); active or recent serious systemic illness; immunosuppressant therapy; pregnancy (most energy devices are contraindicated); an uncertain or suspicious pigmented lesion in the treatment area; active autoimmune skin condition (e.g. lupus, psoriasis flare).' },
+              { kind: 'ask', prompt: 'Which of these scenarios requires GP clearance before laser treatment?', qtype: 'MULTI', options: ['Anticoagulation therapy', 'Recent isotretinoin use', 'Uncertain pigmented lesion in the treatment area', 'Mild skin dryness'], correct: [0, 1, 2], explanation: 'Mild dry skin does not require medical involvement. The other three carry real clinical risk that only the GP or a specialist can assess.' },
+              { kind: 'teach', title: 'How to request clearance', text: 'Write to the GP with: the client\'s details, the proposed treatment, the specific clinical concern, and a clear question (e.g. "Is it safe to proceed with pulsed-dye laser in the context of warfarin therapy?"). Include the client\'s written consent for this communication.' },
+              { kind: 'ask', prompt: 'When writing to a GP requesting treatment clearance, you must include...', qtype: 'MULTI', options: ['The proposed treatment and the specific clinical concern', 'A clear, specific clinical question', 'The client\'s written consent for this communication', 'Your price list'], correct: [0, 1, 2], explanation: 'The GP needs to know what you want to do and why it concerns you, with the client\'s permission for the disclosure.' },
+              { kind: 'teach', title: 'Documenting a deferral', text: 'When treatment is deferred pending clearance, record in the notes: the date, the reason for deferral, the referral or letter sent, and what you told the client. Review this at the next appointment before proceeding.' },
+              { kind: 'ask', prompt: 'When deferring treatment pending GP clearance, the clinical record must include...', qtype: 'MULTI', options: ['Date and reason for deferral', 'The referral or letter made', 'What the client was told', 'The device brand'], correct: [0, 1, 2], explanation: 'Clinical documentation of the deferral protects the client and creates an audit trail. Device brand is irrelevant here.' },
+              { kind: 'teach', title: 'Receiving clearance', text: 'Written clearance must be received before treatment proceeds and attached to the clinical record. Verbal clearance over the phone is not sufficient -- get it in writing.' },
+              { kind: 'ask', prompt: 'GP clearance for a client on anticoagulants must be...', qtype: 'SINGLE', options: ['In writing, attached to the clinical record before treatment proceeds', 'Verbal on the phone', 'Via the client\'s word', 'Not required if the client is low-risk'], correct: [0], explanation: 'Written clearance becomes part of the clinical record; verbal is not an acceptable standard of evidence.' },
+              { kind: 'say', text: 'When in doubt, defer. Document everything. A well-managed deferral is professional practice; an adverse event from ignoring a red flag is not.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Medication Interactions & Clearance Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'Tetracycline antibiotics are associated with photosensitivity and should be flagged before laser treatment.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Tetracyclines (doxycycline, lymecycline) are well-known photosensitisers -- a risk that must be assessed before any light-based treatment.' },
+            { prompt: 'A client on warfarin asks if they should stop before treatment. You should...', type: 'SINGLE', options: ['Never advise stopping; obtain written GP clearance first', 'Tell them to skip one dose', 'Reassure them 48 hours off is safe', 'Treat as normal with extra cooling'], correct: [0], explanation: 'Stopping anticoagulation without medical instruction can be life-threatening. Only the prescribing GP can make that call.' },
+            { prompt: 'The minimum wait after finishing isotretinoin before any laser treatment is...', type: 'SINGLE', options: ['6 months', '2 weeks', '30 days', 'No waiting period'], correct: [0], explanation: '6 months is the standard minimum; isotretinoin changes skin architecture and greatly increases adverse event risk.' },
+            { prompt: 'Which scenarios require GP clearance before proceeding with laser?', type: 'MULTI', options: ['Anticoagulation therapy', 'Recent isotretinoin (within 6 months)', 'Uncertain pigmented lesion in the treatment area', 'Mild seasonal dry skin'], correct: [0, 1, 2], explanation: 'Dry skin does not require GP involvement; the others carry clinical risk that requires medical assessment.' },
+            { prompt: 'GP clearance for treatment must be received...', type: 'SINGLE', options: ['In writing, before treatment proceeds', 'Verbally over the phone', 'Via the client\'s written statement only', 'Not at all if the client accepts the risk'], correct: [0], explanation: 'Only written clearance is an adequate clinical record standard.' },
+            { prompt: 'When deferring treatment pending clearance, the record must document the date, reason, referral made and what the client was told.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'A full deferral record creates the audit trail and demonstrates duty of care.' },
+          ],
+        },
+      },
+    ],
+  },
+
   {
     courseSlug: 'advanced-aesthetics-level-5-7',
     modules: [
@@ -2793,6 +3016,26 @@ export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Evidence', prompt: 'A systematic review or meta-analysis sits at the top of the evidence hierarchy because it...', options: ['Pools and statistically combines multiple studies to reduce bias', 'Is written by the manufacturer', 'Is the newest study available', 'Uses the largest single sample'], correct: [0], explanation: 'Systematic reviews/meta-analyses aggregate evidence across many trials, reducing the effect of individual study bias.' },
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Audit', prompt: 'An audit criterion is...', type: 'WORD', options: ['a measurable standard', 'a client outcome', 'a team opinion'], correct: [0], explanation: 'A criterion is a specific, measurable statement of the standard you are auditing against.' },
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Mentoring', prompt: 'When giving constructive feedback to a mentee, the most useful feedback is specific, actionable and...', type: 'WORD', options: ['kind', 'vague', 'public'], correct: [0], explanation: 'Specific, actionable and kind feedback supports growth without embarrassing or demoralising the mentee.' },
+
+  // -- BATCH 12 exam bank questions -------------------------------------------
+
+  // Skin Anatomy & the Laser Target (L2)
+  { courseSlug: L2, topic: 'Skin anatomy', prompt: 'The skin layer that contains collagen, elastin and blood vessels is the...', type: 'WORD', options: ['dermis', 'epidermis', 'hypodermis'], correct: [0], explanation: 'The dermis houses collagen and elastin -- the structural components targeted by rejuvenation lasers and RF.' },
+  { courseSlug: L2, topic: 'Skin anatomy', prompt: 'Melanin is produced in the epidermis by cells called...', type: 'WORD', options: ['melanocytes', 'keratinocytes', 'fibroblasts'], correct: [0], explanation: 'Melanocytes in the basal epidermis produce melanin -- the chromophore for hair removal and pigmentation laser treatments.' },
+  { courseSlug: L2, topic: 'Hair follicle', prompt: 'Laser hair removal is effective only when the follicle is in the ___ phase.', type: 'WORD', options: ['anagen', 'catagen', 'telogen'], correct: [0], explanation: 'Only anagen follicles have a melanin-rich bulb close to the dermal papilla -- the two conditions needed for effective destruction.' },
+  { courseSlug: L2, topic: 'Hair follicle', prompt: 'Grey and white hair responds poorly to laser because it contains very little...', type: 'WORD', options: ['melanin', 'keratin', 'collagen'], correct: [0], explanation: 'Without melanin there is no chromophore -- the laser energy has nothing to absorb and no heat is generated at the target.' },
+
+  // Skin Tightening, HIFU & Body Contouring (L3)
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Skin tightening', prompt: 'RF skin tightening generates heat in the dermis through ___ heating.', type: 'WORD', options: ['resistive', 'reflective', 'reactive'], correct: [0], explanation: 'RF current passing through tissue creates resistive (ohmic) heat in the dermis, contracting collagen and triggering neocollagenesis.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'HIFU', prompt: 'HIFU achieves skin tightening without breaking the skin surface by focusing energy at a precise...', type: 'WORD', options: ['depth', 'colour', 'wavelength'], correct: [0], explanation: 'HIFU focuses at depths of 1.5, 3, or 4.5 mm, creating thermal damage zones at the target while leaving overlying skin intact.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Body contouring', prompt: 'After cryolipolysis, clients should be told to expect visible results after approximately...', type: 'SINGLE', options: ['4-6 weeks, with full results at 8-12 weeks', 'The same day', 'One week', 'Six months minimum always'], correct: [0], explanation: 'Lymphatic clearance of apoptotic fat cells takes 8-12 weeks; the first results typically appear from week 4-6.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Body contouring', prompt: 'Cryolipolysis is a treatment for local fat reduction, not a treatment for...', type: 'WORD', options: ['obesity', 'laxity', 'pigmentation'], correct: [0], explanation: 'Cryolipolysis reduces fat cells in the treated area; it does not produce weight loss and is not indicated for obesity.' },
+
+  // Medication Interactions & Clearance (L4)
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Medication interactions', prompt: 'St John\'s Wort is an over-the-counter supplement that increases photosensitivity and must be disclosed before laser treatment.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'St John\'s Wort is a photosensitiser. Many clients do not consider herbal supplements as medications -- always ask specifically.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Medical clearance', prompt: 'Written GP clearance for a client on anticoagulants should be obtained...', type: 'SINGLE', options: ['Before the treatment session proceeds', 'After the first session if no reaction occurs', 'Only if the client asks', 'Never -- verbal clearance is enough'], correct: [0], explanation: 'Written clearance becomes part of the clinical record. Verbal clearance is not a sufficient standard of evidence.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Medication interactions', prompt: 'Immunosuppressant therapy (e.g. methotrexate, ciclosporin) before laser treatment requires...', type: 'SINGLE', options: ['GP or specialist clearance before proceeding', 'No modification to the treatment plan', 'Only an extra patch test', 'Immediate cancellation with no possibility of rescheduling'], correct: [0], explanation: 'Immunosuppression impairs healing and can increase infection risk after any energy-based procedure. GP clearance is needed.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Medical clearance', prompt: 'When treatment is deferred pending GP clearance, the clinical record must include the reason for deferral and the referral made.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'A complete deferral record demonstrates duty of care and creates the audit trail needed if a complaint arises.' },
 
 ];
 
