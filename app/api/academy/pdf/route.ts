@@ -23,6 +23,12 @@ export async function GET(req: Request) {
   const src = await resolveLessonPdf(student.id, lessonId, index);
   if (!src) return new NextResponse('Not found', { status: 404 });
 
+  // SSRF guard: only ever proxy the Vercel Blob store these PDFs are uploaded to —
+  // never an arbitrary host, even if a bad URL somehow reached the DB.
+  let host = '';
+  try { host = new URL(src).hostname; } catch { return new NextResponse('Not found', { status: 404 }); }
+  if (!host.endsWith('.public.blob.vercel-storage.com')) return new NextResponse('Not found', { status: 404 });
+
   const upstream = await fetch(src).catch(() => null);
   if (!upstream || !upstream.ok || !upstream.body) return new NextResponse('Upstream error', { status: 502 });
 

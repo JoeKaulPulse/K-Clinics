@@ -48,8 +48,9 @@ const effectiveQuestionCount = (total: number, poolSize: number | null | undefin
 
 /** Deterministic pooled subset of question ids for a seed (e.g. `${studentId}:${quizId}`). */
 function pooledIds(ids: string[], poolSize: number, seed: string): Set<string> {
+  // SHA-256 (not for security — just a stable, well-distributed ordering key).
   const ranked = ids
-    .map((id) => ({ id, h: crypto.createHash('sha1').update(`${seed}:${id}`).digest('hex') }))
+    .map((id) => ({ id, h: crypto.createHash('sha256').update(`${seed}:${id}`).digest('hex') }))
     .sort((a, b) => (a.h < b.h ? -1 : a.h > b.h ? 1 : 0))
     .slice(0, poolSize)
     .map((x) => x.id);
