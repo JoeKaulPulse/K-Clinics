@@ -181,9 +181,16 @@ export default async function AcademyPortalPage() {
                     <p className="mt-1 text-sm text-[var(--color-stone)]">{STATUS_LABEL[e.status] ?? e.status}{e.cohort ? ` · practical ${fmtDate(e.cohort.startAt)}` : ''}</p>
                     {active && prog?.hasContent && <ProgressBar pct={prog.pct} label="Theory" className="mt-3" />}
                   </div>
-                  <div className="mt-4">
+                  <div className="mt-4 flex flex-wrap gap-2">
                     {active && prog?.hasContent ? (
-                      <AButton href={`/academy/learn/${e.course.slug}`} variant="secondary" size="sm">{prog.pct === 0 ? 'Start' : prog.pct === 100 ? 'Review' : 'Continue'} →</AButton>
+                      prog.pct === 100 ? (
+                        <>
+                          <AButton href={`/academy/learn/${e.course.slug}/certificate`} size="sm">Certificate</AButton>
+                          <AButton href={`/academy/learn/${e.course.slug}`} variant="secondary" size="sm">Review →</AButton>
+                        </>
+                      ) : (
+                        <AButton href={`/academy/learn/${e.course.slug}`} variant="secondary" size="sm">{prog.pct === 0 ? 'Start' : 'Continue'} →</AButton>
+                      )
                     ) : e.status === 'OFFERED' ? (
                       <AButton href={`/academy/pay/${e.id}`} size="sm">Accept &amp; pay →</AButton>
                     ) : (

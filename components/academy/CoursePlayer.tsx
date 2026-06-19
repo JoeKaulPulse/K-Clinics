@@ -10,7 +10,7 @@ import type { CourseLearning, ModuleView, LessonView, QuizView } from '@/lib/lms
 
 const fmtReleaseDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
-type Sel = { type: 'lesson'; moduleId: string; lessonId: string } | { type: 'quiz'; moduleId: string };
+type Sel = { type: 'lesson'; moduleId: string; lessonId: string } | { type: 'quiz'; moduleId: string } | { type: 'resources' };
 
 export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slug: string }) {
   // Local progress mirrors the server so the UI updates without a reload.
@@ -43,7 +43,9 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
     return flat[0] ?? null;
   }, [learning, flat]);
   const [sel, setSel] = useState<Sel | null>(firstUndone);
-  const selKey = (s: Sel | null) => (!s ? '' : s.type === 'lesson' ? `l:${s.lessonId}` : `q:${s.moduleId}`);
+  const selKey = (s: Sel | null) => (!s ? '' : s.type === 'lesson' ? `l:${s.lessonId}` : s.type === 'quiz' ? `q:${s.moduleId}` : 'resources');
+  // All downloadable files across released modules, for a single "Resources" view.
+  const allAttachments = useMemo(() => learning.modules.flatMap((m) => (m.lockedUntil ? [] : m.lessons.flatMap((l) => l.attachments))), [learning]);
   const nextSel = useMemo<Sel | null>(() => {
     const i = flat.findIndex((s) => selKey(s) === selKey(sel));
     return i >= 0 && i + 1 < flat.length ? flat[i + 1] : null;
@@ -59,7 +61,7 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
     return { pct: total ? Math.round((done / total) * 100) : 0, allDone: total > 0 && done === total };
   }, [learning, doneLessons, quizState]);
 
-  const curModule = learning.modules.find((m) => m.id === sel?.moduleId) ?? null;
+  const curModule = learning.modules.find((m) => m.id === (sel && sel.type !== 'resources' ? sel.moduleId : undefined)) ?? null;
   const curLesson = sel?.type === 'lesson' ? curModule?.lessons.find((l) => l.id === sel.lessonId) ?? null : null;
   const curQuiz = sel?.type === 'quiz' ? curModule?.quiz ?? null : null;
 
@@ -149,6 +151,12 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
             </div>
             );
           })}
+          {allAttachments.length > 0 && (
+            <button onClick={() => setSel({ type: 'resources' })} className={`flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-1.5 text-left text-sm transition-colors ${sel?.type === 'resources' ? 'bg-[var(--color-bone)] text-[var(--color-ink)]' : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-bone)]'}`}>
+              <span className="text-xs text-[var(--color-stone)]">↓</span>
+              <span className="flex-1 font-medium">Resources &amp; downloads</span>
+            </button>
+          )}
         </nav>
       </aside>
 
@@ -164,7 +172,17 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
             onNext={goNext}
           />
         )}
-        {!curLesson && !curQuiz && <p className="text-[var(--color-stone)]">Select a lesson to begin.</p>}
+        {sel?.type === 'resources' && (
+          <div>
+            <p className="eyebrow mb-2">All course materials</p>
+            <h2 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl">Resources &amp; downloads</h2>
+            <p className="mt-2 text-sm text-[var(--color-stone)]">Everything attached across this course — lesson materials and homework — in one place.</p>
+            {allAttachments.length > 0
+              ? <Downloads items={allAttachments} />
+              : <p className="mt-6 text-sm text-[var(--color-stone)]">No downloadable files yet.</p>}
+          </div>
+        )}
+        {!curLesson && !curQuiz && sel?.type !== 'resources' && <p className="text-[var(--color-stone)]">Select a lesson to begin.</p>}
       </div>
 
       {/* Earned-badge toast (parity with the immersive celebrations) */}
