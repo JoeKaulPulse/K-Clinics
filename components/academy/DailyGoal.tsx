@@ -46,7 +46,7 @@ export function DailyGoal({ status }: { status: Status }) {
         <button
           onClick={open}
           disabled={!ready}
-          className={`relative grid h-14 w-14 shrink-0 place-items-center rounded-2xl transition-transform ${ready ? 'bg-[var(--color-gold)]/15 text-[var(--color-gold)] hover:scale-105' : opened ? 'bg-[var(--color-bone)] text-[var(--color-stone-soft)]' : 'bg-[var(--color-bone)] text-[var(--color-stone-soft)]'}`}
+          className={`relative grid h-14 w-14 shrink-0 place-items-center rounded-2xl transition-transform ${ready ? 'bg-[var(--color-gold)]/15 text-[var(--color-gold)] hover:scale-105' : opened ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}
           aria-label={ready ? 'Open your beauty box' : opened ? 'Box opened' : 'Beauty box locked'}
         >
           {ready ? (

@@ -106,7 +106,7 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
           </div>
         ))}
       </div>
-      <p className="mb-1 text-xs uppercase tracking-[0.18em] text-[var(--color-stone-soft)]">{t('signup.step', { n: step + 1, total: STEPS })}</p>
+      <p className="mb-1 text-xs uppercase tracking-[0.18em] text-[var(--color-stone)]">{t('signup.step', { n: step + 1, total: STEPS })}</p>
 
       <div className="relative min-h-[20rem]">
         <AnimatePresence mode="wait" custom={dir}>
@@ -125,7 +125,7 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
                     <button key={l} onClick={() => pickLanguage(l)}
                       className={`flex items-center justify-between rounded-[var(--radius-md)] border px-5 py-4 text-left transition-colors ${locale === l ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/5' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                       <span className="font-medium">{LOCALE_LABELS[l]}</span>
-                      <span className="text-sm text-[var(--color-stone-soft)]">{l.toUpperCase()}</span>
+                      <span className="text-sm text-[var(--color-stone)]">{l.toUpperCase()}</span>
                     </button>
                   ))}
                 </div>
@@ -150,7 +150,7 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
                     <div><label className={authLabel}>{t('field.dob')}</label><input type="date" className={authField} value={d.dob} onChange={(e) => set('dob', e.target.value)} /></div>
                   </div>
                   <div>
-                    <label className={authLabel}>{t('gender.label')} <span className="text-[var(--color-stone-soft)]">({t('field.optional')})</span></label>
+                    <label className={authLabel}>{t('gender.label')} <span className="text-[var(--color-stone)]">({t('field.optional')})</span></label>
                     <select className={authField} value={d.gender} onChange={(e) => set('gender', e.target.value)}>
                       <option value="">{t('gender.unset')}</option>
                       {(['FEMALE', 'MALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_SAY'] as const).map((g) => <option key={g} value={g}>{t(`gender.${g}`)}</option>)}

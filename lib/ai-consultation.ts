@@ -23,11 +23,19 @@ export const AREAS = [
 ] as const;
 
 export type Finding = { area: string; label: string; note: string; severity: 'mild' | 'moderate' | 'notable' };
-export type PlanTreatment = { slug: string; title: string; sessions: number; intervalWeeks: number; reason: string; fromPence: number; totalPence: number; href: string };
+// `estimated` (BLD-335): the line total is a "from" estimate, not a real package
+// price — true for a single session (cheapest-variant from-price) or a multi-
+// session count with no exact course price (fromPence * sessions, which can
+// overstate vs a real course). The UI labels these "from £…" so we never imply a
+// firm price we can't honour.
+export type PlanTreatment = { slug: string; title: string; sessions: number; intervalWeeks: number; reason: string; fromPence: number; totalPence: number; estimated: boolean; href: string };
 export type Phase = { title: string; timing: string; startISO: string; expect: string; treatments: PlanTreatment[]; phaseTotalPence: number };
 export type Extra = { slug: string; title: string; fromPence: number; reason: string; href: string };
 export type AnalyzeResult =
-  | { ok: true; analysisId: string; summary: string; findings: Finding[]; phases: Phase[]; planTotalPence: number; extras: Extra[]; confidence: number; needsExpert: boolean }
+  // `aboveBudget` (BLD-335): the core plan could not be trimmed within the stated
+  // budget (a single recommended treatment alone exceeds it), so it must NOT be
+  // presented as "within budget" — the UI shows an honest "above budget" note.
+  | { ok: true; analysisId: string; summary: string; findings: Finding[]; phases: Phase[]; planTotalPence: number; aboveBudget: boolean; extras: Extra[]; confidence: number; needsExpert: boolean }
   | { ok: false; reason: 'unavailable' | 'limit' | 'refused' | 'error'; message: string };
 
 function areaForSlug(slug: string, category: string): string {
@@ -51,13 +59,16 @@ async function buildMenu(): Promise<MenuItem[]> {
     .filter((m, i, arr) => arr.findIndex((x) => x.slug === m.slug) === i);
 }
 
-function priceLine(m: MenuItem, sessions: number): number {
+// Price a treatment line and say whether it is a firm price or a "from" estimate.
+// An exact multi-session course price is firm; a single session (from-price) or a
+// session count with no matching course (fromPence * sessions) is an estimate.
+function priceLine(m: MenuItem, sessions: number): { totalPence: number; estimated: boolean } {
   if (sessions > 1) {
     const exact = m.courses.find((c) => c.sessions === sessions);
-    if (exact) return exact.totalPence;
-    return m.fromPence * sessions;
+    if (exact) return { totalPence: exact.totalPence, estimated: false };
+    return { totalPence: m.fromPence * sessions, estimated: true };
   }
-  return m.fromPence;
+  return { totalPence: m.fromPence, estimated: true };
 }
 
 export async function analysesThisMonth(clientId: string): Promise<number> {
@@ -137,7 +148,8 @@ Use 1–4 phases and 1–2 treatments each — fewer when little is needed (a si
       const m = tr.slug ? bySlug.get(tr.slug) : undefined;
       if (!m) continue;
       const sessions = Math.max(1, Math.min(12, Math.round(Number(tr.sessions) || 1)));
-      treatments.push({ slug: m.slug, title: m.title, sessions, intervalWeeks: Math.max(0, Math.round(Number(tr.intervalWeeks) || 0)), reason: String(tr.reason || '').slice(0, 200), fromPence: m.fromPence, totalPence: priceLine(m, sessions), href: `/book?treatment=${m.slug}` });
+      const price = priceLine(m, sessions);
+      treatments.push({ slug: m.slug, title: m.title, sessions, intervalWeeks: Math.max(0, Math.round(Number(tr.intervalWeeks) || 0)), reason: String(tr.reason || '').slice(0, 200), fromPence: m.fromPence, totalPence: price.totalPence, estimated: price.estimated, href: `/book?treatment=${m.slug}` });
     }
     if (treatments.length === 0) continue;
     phases.push({ title: String(p.title || `Phase ${phases.length + 1}`).slice(0, 60), timing: String(p.timing || '').slice(0, 60), startISO, expect: String(p.expect || '').slice(0, 220), treatments, phaseTotalPence: treatments.reduce((s, x) => s + x.totalPence, 0) });
@@ -174,6 +186,10 @@ Use 1–4 phases and 1–2 treatments each — fewer when little is needed (a si
     }
     for (let i = phases.length - 1; i >= 0; i--) if (phases[i].treatments.length === 0) phases.splice(i, 1);
   }
+  // BLD-335: the trim loop keeps at least one treatment, so a single recommended
+  // treatment that alone exceeds the budget remains in the plan. Flag that honestly
+  // rather than letting the UI claim the plan is "within budget".
+  const aboveBudget = !!opts.budgetPence && planTotal > opts.budgetPence;
 
   const findings: Finding[] = (Array.isArray(parsed.findings) ? parsed.findings : []).slice(0, 8).map((f: Finding) => ({
     area: f.area, label: String(f.label || '').slice(0, 80), note: String(f.note || '').slice(0, 200), severity: ['mild', 'moderate', 'notable'].includes(f.severity) ? f.severity : 'mild',
@@ -186,14 +202,14 @@ Use 1–4 phases and 1–2 treatments each — fewer when little is needed (a si
       confidence: typeof parsed.confidence === 'number' ? parsed.confidence : null, needsExpert: !!parsed.needsExpert,
       budgetPence: opts.budgetPence,
       findingsEnc: encryptJson(findings),
-      planJson: { phases, extras, planTotalPence: planTotal } as object,
+      planJson: { phases, extras, planTotalPence: planTotal, aboveBudget } as object,
       recommendedSlugs: phases.flatMap((p) => p.treatments.map((t) => t.slug)),
       summary, tokensIn: parsed._in, tokensOut: parsed._out, consentAt: new Date(), storeImages: opts.storeImages,
       images: opts.storeImages ? { create: images.map((i) => ({ area: i.area || null, dataEnc: encryptJson(i.dataUrl) })) } : undefined,
     },
   });
 
-  return { ok: true, analysisId: analysis.id, summary, findings, phases, planTotalPence: planTotal, extras, confidence: parsed.confidence ?? 0.8, needsExpert: !!parsed.needsExpert };
+  return { ok: true, analysisId: analysis.id, summary, findings, phases, planTotalPence: planTotal, aboveBudget, extras, confidence: parsed.confidence ?? 0.8, needsExpert: !!parsed.needsExpert };
 }
 
 type Parsed = { refused?: boolean; confidence?: number; needsExpert?: boolean; summary?: string; findings?: unknown; phases?: unknown; worthConsidering?: unknown; _model: string; _in?: number; _out?: number };

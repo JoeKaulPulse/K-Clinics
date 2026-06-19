@@ -46,7 +46,7 @@ export async function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: nu
           ) : fromOfferPence != null && fromPence != null ? (
             <span className="absolute bottom-4 right-4 flex items-center gap-1.5 rounded-full bg-[var(--color-porcelain)]/92 px-3 py-1 text-xs font-medium text-[var(--color-ink)] backdrop-blur-sm">
               <span className="rounded-full bg-[var(--color-gold)] px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-white">Offer</span>
-              <span className="text-[var(--color-stone-soft)] line-through">{formatPence(fromPence)}</span>
+              <span className="text-[var(--color-stone)] line-through">{formatPence(fromPence)}</span>
               <span>from {formatPence(fromOfferPence)}</span>
             </span>
           ) : fromPence != null ? (

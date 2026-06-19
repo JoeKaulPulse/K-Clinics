@@ -36,7 +36,7 @@ export function ReferralCard({ link, labels, qrSvg }: { link: string; labels: La
       <h2 className="font-[family-name:var(--font-display)] text-xl">{labels.title}</h2>
       <p className="mt-1.5 max-w-md text-sm text-[var(--color-stone)]">{labels.sub}</p>
 
-      <label className="mt-5 block text-xs font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">{labels.yourLink}</label>
+      <label className="mt-5 block text-xs font-medium uppercase tracking-wide text-[var(--color-stone)]">{labels.yourLink}</label>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <input
           readOnly
@@ -66,13 +66,13 @@ export function ReferralCard({ link, labels, qrSvg }: { link: string; labels: La
             <div className="mt-3 inline-flex flex-col items-center rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3">
               {/* eslint-disable-next-line react/no-danger */}
               <div className="h-44 w-44 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: qrSvg }} />
-              <p className="mt-2 max-w-[11rem] text-center text-xs text-[var(--color-stone-soft)]">{labels.qrHint ?? 'Let a friend scan this to open your invite.'}</p>
+              <p className="mt-2 max-w-[11rem] text-center text-xs text-[var(--color-stone)]">{labels.qrHint ?? 'Let a friend scan this to open your invite.'}</p>
             </div>
           )}
         </div>
       )}
 
-      <p className="mt-4 text-xs text-[var(--color-stone-soft)]">{labels.stats}</p>
+      <p className="mt-4 text-xs text-[var(--color-stone)]">{labels.stats}</p>
     </section>
   );
 }

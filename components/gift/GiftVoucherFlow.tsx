@@ -122,7 +122,7 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0,
                 <span className="text-sm text-[var(--color-stone)]">Total <strong className="text-[var(--color-ink)]">{money(amountPence || 0)}</strong></span>
                 <Button onClick={() => !busy && start()} variant="gold" size="lg">{busy ? 'Please wait…' : 'Continue to payment'} <ArrowIcon /></Button>
               </div>
-              {isDemo && <p className="mt-3 text-xs text-[var(--color-stone-soft)]">Payments are in demo mode until Stripe is connected.</p>}
+              {isDemo && <p className="mt-3 text-xs text-[var(--color-stone)]">Payments are in demo mode until Stripe is connected.</p>}
             </div>
 
             {/* Right — live preview + design picker (sticky on desktop) */}

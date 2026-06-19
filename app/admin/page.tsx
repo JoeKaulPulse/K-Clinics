@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { ReactElement } from 'react';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { formatPrice } from '@/lib/treatments';
@@ -206,6 +207,15 @@ export default async function AdminOverview() {
     ink: 'border-[var(--color-line)] bg-[var(--color-porcelain)] text-[var(--color-ink)]',
   };
 
+  const bookingStatusCls: Record<string, string> = {
+    CONFIRMED: 'bg-[color-mix(in_oklab,var(--color-jade)_12%,transparent)] text-[var(--color-jade)]',
+    PENDING: 'bg-amber-50 text-amber-800',
+    REQUESTED: 'bg-amber-100 text-amber-900',
+    COMPLETED: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
+    CANCELLED: 'bg-red-50 text-[#b23b3b]',
+    NO_SHOW: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
+  };
+
   const kpis = [
     { label: 'Revenue · 30 days', value: formatPrice(a.rev30), trend: a.revTrend, href: '/admin/bookings' },
     { label: 'Upcoming appointments', value: String(a.upcomingCount), href: '/admin/bookings' },
@@ -262,10 +272,22 @@ export default async function AdminOverview() {
       <DashboardShell role={role} view={renderedView} heading={heading} aside={clockWeather}>
 
       {/* Needs attention */}
-      {attention.length > 0 && (
+      {attention.length === 0 ? (
+        <div className="mt-6 flex items-center gap-2.5 rounded-full border border-[var(--color-jade)]/30 bg-[color-mix(in_oklab,var(--color-jade)_7%,transparent)] px-4 py-2 text-sm text-[var(--color-jade)]">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M13 4.5 6.5 11 3 7.5" />
+          </svg>
+          All clear — no issues requiring attention
+        </div>
+      ) : (
         <div className="mt-6 flex flex-wrap gap-3">
-          {attention.map((x) => (
-            <Link key={x.label} href={x.href} className={`flex items-center gap-3 rounded-full border px-4 py-2 text-sm transition-shadow hover:shadow-[var(--shadow-soft)] ${toneCls[x.tone]}`}>
+          {attention.map((x, i) => (
+            <Link
+              key={x.label}
+              href={x.href}
+              className={`kc-item-enter flex items-center gap-3 rounded-full border px-4 py-2 text-sm transition-shadow hover:shadow-[var(--shadow-soft)] ${toneCls[x.tone]}`}
+              style={{ animationDelay: `${i * 35}ms` }}
+            >
               <span className="font-[family-name:var(--font-display)] text-lg leading-none">{x.value}</span>
               <span>{x.label}</span>
             </Link>
@@ -288,15 +310,32 @@ export default async function AdminOverview() {
           <p className="eyebrow mb-3 text-[var(--color-stone)]">Quick actions</p>
           {canBookings && <div className="mb-3"><NewBookingButton treatments={treatments} /></div>}
           <div className="grid grid-cols-2 gap-2">
-            {[
-              { href: '/admin/calendar', label: 'Calendar', perm: 'calendar.view' },
-              { href: '/admin/my-day', label: 'My day' },
-              { href: '/admin/schedule', label: 'Lunch & breaks', perm: 'schedule.manage' },
-              { href: '/admin/day-close', label: 'Day-close', perm: 'dayclose.run' },
-            ]
+            {([
+              {
+                href: '/admin/calendar', label: 'Calendar', perm: 'calendar.view',
+                icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="2" y="3" width="12" height="11" rx="1.2" /><path d="M5 1.5v3M11 1.5v3M2 7h12" /></svg>,
+              },
+              {
+                href: '/admin/my-day', label: 'My day', perm: undefined,
+                icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="8" cy="8" r="3" /><path d="M8 1.5V3M8 13v1.5M1.5 8H3M13 8h1.5M3.6 3.6l1 1M11.4 11.4l1 1M3.6 12.4l1-1M11.4 4.6l1-1" /></svg>,
+              },
+              {
+                href: '/admin/schedule', label: 'Lunch & breaks', perm: 'schedule.manage',
+                icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="8" cy="8" r="6" /><path d="M8 4.5V8l2.5 1.5" /></svg>,
+              },
+              {
+                href: '/admin/day-close', label: 'Day-close', perm: 'dayclose.run',
+                icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M13 5.5 6.5 12 3 8.5" /><circle cx="8" cy="8" r="6" /></svg>,
+              },
+            ] as { href: string; label: string; perm?: string; icon: ReactElement }[])
               .filter((t) => !t.perm || sessionCan(session, t.perm))
               .map((t) => (
-                <Link key={t.href} href={t.href} className="flex items-center justify-center rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-3 text-center text-sm text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)]">
+                <Link
+                  key={t.href}
+                  href={t.href}
+                  className="flex flex-col items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-3.5 text-center text-sm text-[var(--color-ink-soft)] transition-[colors,transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)] hover:shadow-[var(--shadow-soft)] active:translate-y-0"
+                >
+                  <span className="text-[var(--color-stone)]">{t.icon}</span>
                   {t.label}
                 </Link>
               ))}
@@ -374,7 +413,7 @@ export default async function AdminOverview() {
                   <p className="font-medium">{b.treatment}</p>
                   <p className="text-xs text-[var(--color-stone)]">{b.client}</p>
                 </div>
-                <span className="rounded-full bg-[var(--color-bone)] px-3 py-1 text-xs">{b.status.toLowerCase()}</span>
+                <span className={`rounded-full px-3 py-1 text-xs ${bookingStatusCls[b.status] ?? 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{b.status.toLowerCase()}</span>
               </Link>
             ))}
           </div>
@@ -391,7 +430,7 @@ export default async function AdminOverview() {
                   <p className="font-medium">{c.client.firstName} {c.client.lastName ?? ''}</p>
                   <p className="text-xs text-[var(--color-stone)]">{c.category} · {c.treatments.slice(0, 2).join(', ') || 'general'}</p>
                 </div>
-                <span className="rounded-full bg-[var(--color-bone)] px-3 py-1 text-xs">{c.status}</span>
+                <span className={`rounded-full px-3 py-1 text-xs ${bookingStatusCls[c.status] ?? 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{c.status.toLowerCase()}</span>
               </Link>
             ))}
           </div>
@@ -407,7 +446,8 @@ export default async function AdminOverview() {
                 { label: 'This week', value: o.weekConsults },
                 { label: 'Subscribers', value: o.marketingClients },
               ].map((s) => (
-                <div key={s.label} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
+                <div key={s.label} className="relative overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
+                  <span aria-hidden className="absolute inset-y-3 left-0 w-0.5 rounded-full bg-[var(--color-gold)]/50" />
                   <p className="font-[family-name:var(--font-display)] text-2xl tabular-nums">{s.value}</p>
                   <p className="text-xs text-[var(--color-stone)]">{s.label}</p>
                 </div>
@@ -420,8 +460,12 @@ export default async function AdminOverview() {
             <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
               {o.upcomingBirthdays.length === 0 && <p className="p-6 text-sm text-[var(--color-stone)]">None in the next two weeks.</p>}
               {o.upcomingBirthdays.map((b) => (
-                <div key={b.id} className="flex items-center justify-between border-b border-[var(--color-line)] px-5 py-3 last:border-0">
-                  <span className="text-sm">{b.name}</span>
+                <div key={b.id} className="flex items-center gap-3 border-b border-[var(--color-line)] px-5 py-3 last:border-0">
+                  <span
+                    aria-hidden
+                    className={`h-2 w-2 shrink-0 rounded-full ${b.inDays === 0 ? 'bg-[var(--color-jade)]' : b.inDays <= 3 ? 'bg-amber-400' : 'bg-[var(--color-blush)]'}`}
+                  />
+                  <span className="flex-1 text-sm">{b.name}</span>
                   <span className="text-xs text-[var(--color-stone)]">{b.date} · {b.inDays === 0 ? 'today' : `in ${b.inDays}d`}</span>
                 </div>
               ))}

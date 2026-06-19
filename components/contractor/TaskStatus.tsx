@@ -58,7 +58,7 @@ export function ContractorTaskList({ tasks }: { tasks: MyTaskView[] }) {
             <p className={`text-base font-medium ${t.status === 'DONE' ? 'line-through' : ''}`}>{t.title}</p>
             {t.description && <p className="mt-0.5 text-sm text-[var(--color-stone)]">{t.description}</p>}
             {t.dueLabel && (
-              <p className={`mt-1 text-xs ${t.overdue && t.status !== 'DONE' ? 'font-medium text-[#b23b3b]' : 'text-[var(--color-stone-soft)]'}`}>
+              <p className={`mt-1 text-xs ${t.overdue && t.status !== 'DONE' ? 'font-medium text-[#b23b3b]' : 'text-[var(--color-stone)]'}`}>
                 Due {t.dueLabel}{t.overdue && t.status !== 'DONE' ? ' · overdue' : ''}
               </p>
             )}
