@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { AcademySettings } from '@/components/academy/AcademySettings';
 import { AcademyPortalShell } from '@/components/academy/AcademyPortalShell';
+import { PageTitle } from '@/components/academy/ui';
 import { pageMeta } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: 'Settings — K Academy', description: 'Academy app settings.', path: '/academy/settings' });
@@ -19,8 +20,7 @@ export default async function AcademySettingsPage() {
 
   return (
     <AcademyPortalShell firstName={student.firstName}>
-      <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl">Settings</h1>
-      <p className="mt-2 max-w-xl text-[var(--color-stone)]">Sound and sign-in preferences for your academy.</p>
+      <PageTitle lede="Sound and sign-in preferences for your academy.">Settings</PageTitle>
       <AcademySettings passkeys={passkeys.map((p) => ({ id: p.id, name: p.deviceName ?? 'Passkey', createdAt: p.createdAt.toISOString(), lastUsedAt: p.lastUsedAt?.toISOString() ?? null }))} />
     </AcademyPortalShell>
   );
