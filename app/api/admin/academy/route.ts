@@ -190,6 +190,20 @@ export async function POST(req: Request) {
       const r = await makeOffer(String(body.id), { staffEmail: session.email, expiresInDays: body.expiresInDays ? Number(body.expiresInDays) : undefined });
       return r.ok ? ok() : NextResponse.json({ ok: false, error: r.error }, { status: 400 });
     }
+    case 'enrolStudent': {
+      // Manually add a learner to a course (+ optional cohort), creating/reusing
+      // their trainee account by email. Defaults to ENROLLED so access unlocks.
+      const b = body as Record<string, unknown>;
+      if (!b.courseId || !b.email) return bad();
+      const { enrolStudentManually } = await import('@/lib/academy-payments');
+      const r = await enrolStudentManually({
+        courseId: String(b.courseId), cohortId: (b.cohortId as string) || null,
+        email: String(b.email), name: (b.name as string) || undefined, phone: (b.phone as string) || undefined,
+        status: (b.status as string) || undefined, pricePence: b.pricePence != null ? Number(b.pricePence) : undefined,
+        sendLink: !!b.sendLink,
+      });
+      return r.ok ? ok() : NextResponse.json({ ok: false, error: r.error }, { status: 400 });
+    }
     case 'recordPayment': {
       // Record a payment collected offline (cash / transfer / phone card / a paid instalment).
       if (!body.id) return bad();

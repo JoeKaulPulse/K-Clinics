@@ -4,7 +4,7 @@ import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
-import { Applications } from '@/components/admin/AcademyManager';
+import { Applications, EnrolStudent } from '@/components/admin/AcademyManager';
 import { getLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
@@ -62,6 +62,7 @@ export default async function AdminAcademyApplicationsPage() {
       <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl">Applications &amp; enrolments</h1>
       <p className="mt-1 max-w-2xl text-sm text-[var(--color-stone)]">Move applicants through the pipeline, assign a cohort, and record payments (taken manually or via Clearpay).</p>
       <div className="mt-8">
+        <EnrolStudent courses={coursesView} />
         <Applications courses={coursesView} enrolments={enrolmentsView} />
       </div>
     </AdminShell>

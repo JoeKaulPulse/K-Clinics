@@ -109,6 +109,72 @@ export function Applications({ enrolments, courses }: { enrolments: Enrolment[];
   );
 }
 
+// BLD-528: staff manually add a learner to a course (creates/links the trainee
+// account by email). Answers "I can't manually add students to courses."
+export function EnrolStudent({ courses }: { courses: Course[] }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState({ courseId: '', cohortId: '', email: '', name: '', status: 'ENROLLED', sendLink: true });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
+  const cohorts = courses.find((c) => c.id === f.courseId)?.cohorts ?? [];
+
+  async function submit() {
+    setMsg('');
+    if (!f.courseId || !f.email.trim()) { setMsg('Pick a course and enter an email.'); return; }
+    setBusy(true);
+    const res = await post({ op: 'enrolStudent', courseId: f.courseId, cohortId: f.cohortId || undefined, email: f.email.trim(), name: f.name.trim() || undefined, status: f.status, sendLink: f.sendLink });
+    const j = await res.json().catch(() => ({ ok: false }));
+    setBusy(false);
+    if (j.ok) { setMsg('Added ✓'); setF({ courseId: '', cohortId: '', email: '', name: '', status: 'ENROLLED', sendLink: true }); router.refresh(); setTimeout(() => setMsg(''), 4000); }
+    else setMsg(j.error || 'Could not add the student.');
+  }
+
+  return (
+    <section className="mb-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-[family-name:var(--font-display)] text-xl">Add a student to a course</h2>
+          <p className="text-sm text-[var(--color-stone)]">Enrol someone directly (e.g. they paid offline or signed up in person). Creates their trainee account if they don’t have one.</p>
+        </div>
+        <button onClick={() => setOpen((v) => !v)} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)]">{open ? 'Close' : '+ Add student'}</button>
+      </div>
+      {open && (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="block text-xs text-[var(--color-stone)]">Course<br />
+            <select value={f.courseId} onChange={(e) => { set('courseId', e.target.value); set('cohortId', ''); }} className={`${field} w-full`}>
+              <option value="">— choose a course —</option>
+              {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+            </select>
+          </label>
+          <label className="block text-xs text-[var(--color-stone)]">Cohort (optional)<br />
+            <select value={f.cohortId} onChange={(e) => set('cohortId', e.target.value)} className={`${field} w-full`} disabled={!f.courseId}>
+              <option value="">— no cohort yet —</option>
+              {cohorts.map((h) => <option key={h.id} value={h.id}>{h.name || fmtDate(h.startAt)}</option>)}
+            </select>
+          </label>
+          <label className="block text-xs text-[var(--color-stone)]">Student email<br /><input type="email" value={f.email} onChange={(e) => set('email', e.target.value)} className={`${field} w-full`} placeholder="name@example.com" /></label>
+          <label className="block text-xs text-[var(--color-stone)]">Student name (optional)<br /><input value={f.name} onChange={(e) => set('name', e.target.value)} className={`${field} w-full`} placeholder="First Last" /></label>
+          <label className="block text-xs text-[var(--color-stone)]">Status<br />
+            <select value={f.status} onChange={(e) => set('status', e.target.value)} className={`${field} w-full`}>
+              <option value="ENROLLED">Enrolled (access on now)</option>
+              <option value="PAID">Paid (access on now)</option>
+              <option value="OFFERED">Offered (no access yet)</option>
+              <option value="APPLIED">Applied (no access yet)</option>
+            </select>
+          </label>
+          <label className="flex items-end gap-2 text-sm text-[var(--color-stone)]"><input type="checkbox" checked={f.sendLink} onChange={(e) => set('sendLink', e.target.checked)} className="h-4 w-4 accent-[var(--color-gold)]" />Email them a one-click portal link</label>
+          <div className="sm:col-span-2 flex items-center gap-3">
+            <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">{busy ? 'Adding…' : 'Add to course'}</button>
+            {msg && <span className={`text-sm ${msg.includes('✓') ? 'text-[var(--color-gold)]' : 'text-[var(--color-blush)]'}`}>{msg}</span>}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function PaymentPanel({ enrolment: e, onAct }: { enrolment: Enrolment; onAct: (p: object) => Promise<void> }) {
   const outstanding = Math.max(0, e.pricePence - e.paidPence);
   const [amount, setAmount] = useState(outstanding > 0 ? String(outstanding / 100) : '');

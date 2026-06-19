@@ -64,6 +64,44 @@ export async function enrolmentMoney(enrolmentId: string): Promise<EnrolmentMone
   };
 }
 
+// ── Manual enrolment (staff add a student to a course) ──────────────────────
+
+const ENROLMENT_STATUSES = ['APPLIED', 'OFFERED', 'PAID', 'ENROLLED', 'COMPLETED', 'CANCELLED'] as const;
+type EnrolStatus = (typeof ENROLMENT_STATUSES)[number];
+
+/** Staff add a learner directly onto a course (and optionally a cohort), creating
+ *  or reusing their trainee account by email. Defaults to ENROLLED so content
+ *  unlocks immediately; can email a one-click portal link. */
+export async function enrolStudentManually(input: { courseId: string; cohortId?: string | null; email: string; name?: string; phone?: string; status?: string; pricePence?: number; sendLink?: boolean }): Promise<{ ok: boolean; error?: string }> {
+  const email = (input.email || '').trim().toLowerCase();
+  if (!email || !/\S+@\S+\.\S+/.test(email)) return { ok: false, error: 'Enter a valid email.' };
+  const course = await db.course.findUnique({ where: { id: input.courseId }, select: { id: true, tenantId: true, pricePence: true, title: true } });
+  if (!course) return { ok: false, error: 'Course not found.' };
+  const status: EnrolStatus = ENROLMENT_STATUSES.includes(input.status as EnrolStatus) ? (input.status as EnrolStatus) : 'ENROLLED';
+
+  const { ensureStudentForOffer } = await import('@/lib/academy-auth');
+  const [firstName, ...rest] = (input.name || email.split('@')[0]).trim().split(/\s+/);
+  const student = await ensureStudentForOffer({ tenantId: course.tenantId, email, firstName, lastName: rest.join(' ') || null, phone: input.phone || null });
+
+  // Avoid a duplicate enrolment on the same course for the same student.
+  const existing = await db.enrolment.findFirst({ where: { studentId: student.id, courseId: course.id, status: { notIn: ['CANCELLED'] } }, select: { id: true } });
+  if (existing) return { ok: false, error: 'That student is already enrolled on this course.' };
+
+  await db.enrolment.create({
+    data: {
+      tenantId: course.tenantId, courseId: course.id, cohortId: input.cohortId || null, studentId: student.id,
+      applicantName: input.name?.trim() || student.firstName, applicantEmail: email, applicantPhone: input.phone || null,
+      status, pricePence: input.pricePence != null ? Math.max(0, Math.round(input.pricePence)) : course.pricePence,
+      ...(status === 'PAID' || status === 'ENROLLED' || status === 'COMPLETED' ? { acceptedAt: new Date() } : {}),
+    },
+  });
+  if (input.sendLink) {
+    const { sendAccessLink } = await import('@/lib/academy-auth');
+    await sendAccessLink(student.id).catch(() => {});
+  }
+  return { ok: true };
+}
+
 // ── Offer (staff confirm a place) ───────────────────────────────────────────
 
 const siteBase = () => process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://kclinics.co.uk';

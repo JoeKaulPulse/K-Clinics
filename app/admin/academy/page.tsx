@@ -37,8 +37,10 @@ export default async function AdminAcademyPage() {
     cohorts: c.cohorts.map((h) => ({ id: h.id, startAt: h.startAt.toISOString(), endAt: h.endAt?.toISOString() ?? null, accessStartAt: h.accessStartAt?.toISOString() ?? null, accessEndAt: h.accessEndAt?.toISOString() ?? null, capacity: h.capacity, location: h.location, trainer: h.trainer, name: h.name ?? null, status: h.status })),
   }));
 
+  const totalCohorts = courses.reduce((n, c) => n + c.cohorts.length, 0);
   const cards: { href: string; label: string; value: string; sub: string }[] = [
     { href: '/admin/academy/enrolments', label: 'Applications', value: String(newApplications), sub: `new · ${totalEnrolments} total` },
+    { href: '/admin/academy/cohorts', label: 'Cohorts', value: String(totalCohorts), sub: 'groups & access dates' },
     { href: '/admin/academy/funding', label: 'Funding', value: String(newFunding), sub: 'new enquiries' },
     { href: '/admin/academy/students', label: 'Trainees', value: String(students), sub: 'portal accounts' },
     { href: '/admin/academy/live-classes', label: 'Live classes', value: String(upcomingLive), sub: 'upcoming' },
