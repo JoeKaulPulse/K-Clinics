@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PortalShell } from '@/components/portal/PortalShell';
 import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
-import { Reveal } from '@/components/motion/Reveal';
+import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { crmEnabled } from '@/lib/crm';
 import { getTreatment } from '@/lib/treatments';
 import { guideForGroup, aftercareTitle, aftercareIntro, aftercareText, type AftercareItem } from '@/lib/aftercare';
@@ -57,23 +57,23 @@ export default async function AftercarePage() {
           {treatments.map(({ slug, title, tr }, i) => {
             const guide = guideForGroup(tr?.group);
             return (
-              <Reveal key={slug} delay={i * 0.04}>
-                <section className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-soft)]">
+              <Reveal key={slug} delay={i * 0.04} y={18}>
+                <section className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--color-gold)]/40 hover:shadow-[var(--shadow-lift)]">
                   <div className="border-b border-[var(--color-line)] bg-[var(--color-bone)]/50 p-6">
                     <p className="eyebrow">{t('after.forTreatment', { treatment: title })}</p>
                     <h2 className="mt-1.5 font-[family-name:var(--font-display)] text-2xl">{aftercareTitle(guide, locale)}</h2>
                     <p className="mt-1.5 text-sm text-[var(--color-stone)]">{aftercareIntro(guide, locale)}</p>
                   </div>
-                  <ul className="grid gap-x-8 gap-y-4 p-6 sm:grid-cols-2">
+                  <Stagger as="ul" gap={0.06} delay={0.1} className="grid gap-x-8 gap-y-4 p-6 sm:grid-cols-2">
                     {guide.items.map((it, j) => (
-                      <li key={j} className="flex items-start gap-3.5">
+                      <StaggerItem as="li" key={j} y={12} className="flex items-start gap-3.5">
                         <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--color-gold)]/12 text-[var(--color-gold)]">
                           <Icon name={it.icon} />
                         </span>
                         <p className="text-sm leading-relaxed text-[var(--color-ink-soft)]">{aftercareText(it, locale)}</p>
-                      </li>
+                      </StaggerItem>
                     ))}
-                  </ul>
+                  </Stagger>
                 </section>
               </Reveal>
             );

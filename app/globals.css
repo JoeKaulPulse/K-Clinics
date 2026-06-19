@@ -147,6 +147,37 @@
   ::-webkit-scrollbar-thumb:hover { background: var(--color-stone); }
 }
 
+/* ── Form controls ─────────────────────────────────────────────────────────── */
+@layer components {
+  /* Portal/form input skin. A hairline that warms to gold on hover, then gains a
+     solid gold-deep focus ring (#816748 ≈ 5.3:1 on white, 4.5:1 on porcelain —
+     clears WCAG 2.2 non-text contrast, so it accessibly replaces the global ink
+     ring on inputs) wrapped in a soft champagne halo. Transform-free, so the
+     reduced-motion preference is unaffected. Pair with size utilities (px-/py-/
+     text-) per field; this class carries only the skin. */
+  .input-lux {
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-line);
+    background: #fff;
+    color: var(--color-ink);
+    transition: border-color 0.25s var(--ease-lux), box-shadow 0.25s var(--ease-lux);
+  }
+  .input-lux::placeholder { color: color-mix(in oklab, var(--color-stone) 75%, transparent); }
+  .input-lux:hover:not(:disabled):not(:focus) {
+    border-color: color-mix(in oklab, var(--color-gold) 55%, var(--color-line));
+  }
+  /* Our gold-deep ring is the accessible focus indicator — drop the global ink
+     ring on these inputs so the two don't stack. */
+  .input-lux:focus-visible { outline: none; }
+  .input-lux:focus {
+    border-color: var(--color-gold-deep);
+    box-shadow:
+      0 0 0 1px var(--color-gold-deep),
+      0 0 0 4px color-mix(in oklab, var(--color-gold) 20%, transparent);
+  }
+  .input-lux:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+
 /* ── Reusable utilities ───────────────────────────────────────────────────── */
 @layer utilities {
   .container-lux {
