@@ -25,7 +25,7 @@ export function NewChatModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[rgba(42,36,32,0.5)] p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-5 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label="New conversation" className="w-full max-w-md rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-5 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-[family-name:var(--font-display)] text-xl">New conversation</h2>
           <button onClick={onClose} aria-label="Close" className="text-[var(--color-stone)]">✕</button>
