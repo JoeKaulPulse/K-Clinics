@@ -3,6 +3,8 @@ export const dynamic = 'force-dynamic';
 import { redirect } from 'next/navigation';
 import { PortalShell } from '@/components/portal/PortalShell';
 import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
+import { Reveal } from '@/components/motion/Reveal';
+import { CountUp } from '@/components/motion/CountUp';
 import { crmEnabled } from '@/lib/crm';
 import { formatPrice } from '@/lib/treatments';
 import { pt } from '@/lib/i18n-portal';
@@ -29,7 +31,7 @@ export default async function InvoicesPage() {
         action={invoices.length > 0 ? (
           <div className="text-right">
             <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{t('inv.total')}</p>
-            <p className="font-[family-name:var(--font-display)] text-2xl">{formatPrice(total)}</p>
+            <p className="font-[family-name:var(--font-display)] text-2xl"><CountUp value={formatPrice(total)} /></p>
           </div>
         ) : undefined}
       />
@@ -37,10 +39,10 @@ export default async function InvoicesPage() {
       {invoices.length ? (
         <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-soft)]">
           <ul className="divide-y divide-[var(--color-line)]">
-            {invoices.map((inv) => (
-              <li key={inv.id} className="flex items-center justify-between gap-4 px-6 py-4 transition-colors hover:bg-[var(--color-bone)]/40">
+            {invoices.map((inv, i) => (
+              <Reveal as="li" key={inv.id} delay={Math.min(i * 0.05, 0.4)} className="group flex items-center justify-between gap-4 px-6 py-4 transition-colors hover:bg-[var(--color-bone)]/40">
                 <div className="flex items-center gap-4">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-jade)]/12 text-[var(--color-jade)]">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-jade)]/12 text-[var(--color-jade)] transition-transform duration-300 ease-out group-hover:scale-110">
                     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   </span>
                   <div>
@@ -51,7 +53,7 @@ export default async function InvoicesPage() {
                   </div>
                 </div>
                 <p className="shrink-0 font-[family-name:var(--font-display)] text-lg">{formatPrice(inv.amountPence)}</p>
-              </li>
+              </Reveal>
             ))}
           </ul>
         </div>

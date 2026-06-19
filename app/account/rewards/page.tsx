@@ -8,6 +8,7 @@ import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
 import { ReferralCard } from '@/components/portal/ReferralCard';
 import { MembershipCard } from '@/components/portal/MembershipCard';
 import { Reveal } from '@/components/motion/Reveal';
+import { CountUp } from '@/components/motion/CountUp';
 import { KMark } from '@/components/brand/marks';
 import { crmEnabled } from '@/lib/crm';
 import { formatPrice } from '@/lib/treatments';
@@ -67,7 +68,7 @@ export default async function RewardsPage() {
           </span>
           <div className="relative z-10">
             <p className="text-[0.7rem] uppercase tracking-[0.18em] text-[var(--color-porcelain)]/60">{t('rw.balance')}</p>
-            <p className="mt-3 font-[family-name:var(--font-display)] text-[clamp(2.8rem,2rem+3vw,4rem)] leading-none text-[var(--color-gold-soft)]">{summary.balance.toLocaleString(lc)}</p>
+            <p className="mt-3 font-[family-name:var(--font-display)] text-[clamp(2.8rem,2rem+3vw,4rem)] leading-none text-[var(--color-gold-soft)]"><CountUp value={String(summary.balance)} /></p>
             <p className="mt-2 text-sm text-[var(--color-porcelain)]/75">{t('rw.points')} · {t('rw.worth', { value: formatPrice(summary.valuePence) })}</p>
           </div>
           {summary.expiringSoon > 0 && (
@@ -116,8 +117,8 @@ export default async function RewardsPage() {
       <h2 className="eyebrow mb-3 mt-10">{t('rw.activity')}</h2>
       {ledger.length ? (
         <ul className="divide-y divide-[var(--color-line)] rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
-          {ledger.map((row) => (
-            <li key={row.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+          {ledger.map((row, i) => (
+            <Reveal as="li" key={row.id} delay={Math.min(i * 0.04, 0.4)} className="flex items-center justify-between gap-3 px-5 py-3 text-sm transition-colors hover:bg-[var(--color-bone)]/30">
               <span className="min-w-0">
                 <span className="block truncate">{row.reason}</span>
                 <span className="text-xs text-[var(--color-stone-soft)]">
@@ -125,7 +126,7 @@ export default async function RewardsPage() {
                 </span>
               </span>
               <span className={`shrink-0 font-medium ${row.points < 0 ? 'text-[var(--color-stone)]' : 'text-[var(--color-jade)]'}`}>{row.points > 0 ? '+' : ''}{row.points.toLocaleString(lc)}</span>
-            </li>
+            </Reveal>
           ))}
         </ul>
       ) : (

@@ -2,6 +2,7 @@
 
 import { motion } from 'motion/react';
 import Link from 'next/link';
+import { CountUp } from '@/components/motion/CountUp';
 import { portalTranslator, type Locale } from '@/lib/i18n-portal';
 
 type Next = { treatmentTitle: string; startISO: string } | null;
@@ -27,9 +28,9 @@ export function DashboardHero({ firstName, locale, next, visits, memberSince, la
   }
 
   const stats = [
-    { label: t('dash.statVisits'), value: String(visits) },
-    { label: t('dash.statSince'), value: dateFmt(memberSince, { month: 'short', year: 'numeric' }) },
-    { label: t('dash.statLast'), value: lastVisitISO ? dateFmt(lastVisitISO, { day: 'numeric', month: 'short' }) : '—' },
+    { label: t('dash.statVisits'), value: String(visits), count: true },
+    { label: t('dash.statSince'), value: dateFmt(memberSince, { month: 'short', year: 'numeric' }), count: false },
+    { label: t('dash.statLast'), value: lastVisitISO ? dateFmt(lastVisitISO, { day: 'numeric', month: 'short' }) : '—', count: false },
   ];
 
   return (
@@ -37,10 +38,20 @@ export function DashboardHero({ firstName, locale, next, visits, memberSince, la
       initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease }}
       className="relative mb-10 overflow-hidden rounded-[var(--radius-xl)] bg-[var(--color-ink)] text-[var(--color-porcelain)]"
     >
-      {/* Layered radial glows — the marketing-hero treatment. */}
+      {/* Layered radial glows — the marketing-hero treatment, now slowly breathing. */}
       <span aria-hidden className="pointer-events-none absolute inset-0">
-        <span className="absolute inset-0 bg-[radial-gradient(110%_120%_at_88%_8%,color-mix(in_oklab,var(--color-gold)_32%,transparent),transparent_56%)]" />
-        <span className="absolute inset-0 bg-[radial-gradient(90%_90%_at_8%_98%,color-mix(in_oklab,var(--color-blush)_20%,transparent),transparent_60%)]" />
+        <motion.span
+          className="absolute inset-0 bg-[radial-gradient(110%_120%_at_88%_8%,color-mix(in_oklab,var(--color-gold)_32%,transparent),transparent_56%)]"
+          animate={{ opacity: [0.85, 1, 0.85], scale: [1, 1.08, 1] }}
+          transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ transformOrigin: '88% 8%' }}
+        />
+        <motion.span
+          className="absolute inset-0 bg-[radial-gradient(90%_90%_at_8%_98%,color-mix(in_oklab,var(--color-blush)_20%,transparent),transparent_60%)]"
+          animate={{ opacity: [0.7, 1, 0.7], scale: [1.05, 1, 1.05] }}
+          transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ transformOrigin: '8% 98%' }}
+        />
       </span>
 
       <div className="relative z-10 p-8 sm:p-10 lg:p-12">
@@ -87,7 +98,9 @@ export function DashboardHero({ firstName, locale, next, visits, memberSince, la
           >
             {stats.map((s) => (
               <div key={s.label}>
-                <dt className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-gold-soft)] sm:text-3xl">{s.value}</dt>
+                <dt className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-gold-soft)] sm:text-3xl">
+                  {s.count ? <CountUp value={s.value} /> : s.value}
+                </dt>
                 <dd className="mt-1 text-[0.7rem] uppercase tracking-[0.14em] text-[color-mix(in_oklab,var(--color-porcelain)_62%,transparent)]">{s.label}</dd>
               </div>
             ))}

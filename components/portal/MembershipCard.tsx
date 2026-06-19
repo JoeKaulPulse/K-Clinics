@@ -1,5 +1,6 @@
 import type { MembershipStatus } from '@/lib/membership';
 import type { Locale } from '@/lib/i18n';
+import { AnimatedBar } from '@/components/portal/AnimatedBar';
 
 const gbp = (p: number) => `£${(p / 100).toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
 
@@ -35,7 +36,7 @@ export function MembershipCard({ status, locale }: { status: MembershipStatus; l
               <span className="font-medium">{gbp(toNextPence)} {L('to go', 'залишилось')}</span>
             </div>
             <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-[var(--color-bone)]">
-              <div className="h-full rounded-full transition-all" style={{ width: `${progressPct}%`, background: accent }} />
+              <AnimatedBar pct={progressPct} color={accent} className="h-full rounded-full" />
             </div>
             <p className="mt-2 text-xs text-[var(--color-stone-soft)]">{L('Based on', 'На основі')} {gbp(spendPence)} {L('spent in the last 12 months. Tiers refresh on a rolling basis.', 'витрачено за останні 12 місяців. Рівні оновлюються щомісяця.')}</p>
           </>

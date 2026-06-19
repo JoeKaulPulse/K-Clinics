@@ -49,18 +49,17 @@ export default async function AppointmentsPage() {
         action={<Link href="/book" className="rounded-full bg-[var(--color-gold)] px-6 py-3 text-sm font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)]">{t('appt.bookNew')}</Link>}
       />
 
-      <Reveal>
-      <h2 className="eyebrow mb-3">{t('appt.upcoming')}</h2>
+      <Reveal><h2 className="eyebrow mb-3">{t('appt.upcoming')}</h2></Reveal>
       {upcoming.length ? (
         <ul className="mb-10 grid gap-3">
-          {upcoming.map((b) => {
+          {upcoming.map((b, i) => {
             const days = dayCount(b.startAt);
             const when = days <= 0 ? t('dash.today') : days === 1 ? t('dash.tomorrow') : t('dash.inDays', { n: days });
             return (
-              <li key={b.id} className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 shadow-[var(--shadow-soft)]">
+              <Reveal as="li" key={b.id} delay={Math.min(i * 0.07, 0.49)} className="group flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 shadow-[var(--shadow-soft)] transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-[var(--color-gold)]/40 hover:shadow-[var(--shadow-lift)]">
                 <div className="flex items-center gap-4">
                   {/* Date chip */}
-                  <div className="grid h-14 w-14 shrink-0 place-items-center rounded-[var(--radius-md)] bg-[var(--color-ink)] text-[var(--color-porcelain)]">
+                  <div className="grid h-14 w-14 shrink-0 place-items-center rounded-[var(--radius-md)] bg-[var(--color-ink)] text-[var(--color-porcelain)] transition-transform duration-300 ease-out group-hover:scale-105">
                     <span className="font-[family-name:var(--font-display)] text-lg leading-none">{b.startAt.getDate()}</span>
                     <span className="text-[0.6rem] uppercase tracking-wide">{b.startAt.toLocaleDateString(lc, { month: 'short' })}</span>
                   </div>
@@ -76,10 +75,10 @@ export default async function AppointmentsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <a href={`/api/account/calendar/${b.manageToken}`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
+                  <a href={`/api/account/calendar/${b.manageToken}`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)] active:scale-[0.97]">
                     {t('appt.addCalendar')}
                   </a>
-                  <Link href={`/booking/manage?t=${b.manageToken}`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
+                  <Link href={`/booking/manage?t=${b.manageToken}`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)] active:scale-[0.97]">
                     {t('appt.reschedule')}
                   </Link>
                   {b.pricePence > 0 && (
@@ -94,33 +93,30 @@ export default async function AppointmentsPage() {
                     />
                   )}
                 </div>
-              </li>
+              </Reveal>
             );
           })}
         </ul>
       ) : (
         <p className="mb-10 text-[var(--color-stone)]">{t('appt.none')} <Link href="/book" className="font-medium text-[var(--color-gold)]">{t('appt.bookNow')} →</Link></p>
       )}
-      </Reveal>
 
-      <Reveal delay={0.06}>
-      <h2 className="eyebrow mb-3">{t('appt.past')}</h2>
+      <Reveal><h2 className="eyebrow mb-3">{t('appt.past')}</h2></Reveal>
       {past.length ? (
         <ul className="grid gap-2">
-          {past.map((b) => (
-            <li key={b.id} className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--color-line)] px-5 py-3 text-sm">
+          {past.map((b, i) => (
+            <Reveal as="li" key={b.id} delay={Math.min(i * 0.05, 0.4)} className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--color-line)] px-5 py-3 text-sm transition-colors hover:border-[var(--color-gold)]/40 hover:bg-[var(--color-bone)]/30">
               <span className="flex items-center gap-2">
                 {b.treatmentTitle}
                 <span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-wide ${STATUS_STYLE[b.status] || ''}`}>{t(`status.${b.status}`)}</span>
               </span>
               <span className="text-[var(--color-stone)]">{b.startAt.toLocaleDateString(lc, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-            </li>
+            </Reveal>
           ))}
         </ul>
       ) : (
         <p className="text-[var(--color-stone)]">{t('appt.noPast')}</p>
       )}
-      </Reveal>
     </PortalShell>
   );
 }

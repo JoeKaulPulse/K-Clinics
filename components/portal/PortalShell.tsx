@@ -3,9 +3,13 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 import { GuideHost } from '@/components/guide/GuideHost';
 import { Aurora } from '@/components/ui/Aurora';
+import { ScrollProgress } from '@/components/motion/ScrollProgress';
+import { BackToTop } from '@/components/motion/BackToTop';
+import { Cursor } from '@/components/motion/Cursor';
 import { site } from '@/lib/site';
 import { portalTranslator, PORTAL_LOCALE_COOKIE } from '@/lib/i18n-portal';
 import { LOCALES, LOCALE_LABELS, isLocale, DEFAULT_LOCALE, type Locale } from '@/lib/i18n';
@@ -21,14 +25,17 @@ const nav = [
   { href: '/account/profile', key: 'nav.profile' },
 ];
 
+const navSpring = { type: 'spring', stiffness: 380, damping: 34, mass: 0.7 } as const;
+
 function readCookieLocale(): Locale {
   if (typeof document === 'undefined') return DEFAULT_LOCALE;
   const m = document.cookie.match(/(?:^|;\s*)kc_clang=([^;]+)/);
   return m && isLocale(m[1]) ? (m[1] as Locale) : DEFAULT_LOCALE;
 }
 
-export function PortalShell({ firstName, locale: localeProp, children }: { firstName: string; locale?: Locale; children: React.ReactNode }) {
-  const pathname = usePathname();
+export function PortalShell({ firstName, locale: localeProp, children, activePath }: { firstName: string; locale?: Locale; children: React.ReactNode; activePath?: string }) {
+  const realPath = usePathname();
+  const pathname = activePath ?? realPath;   // activePath: capture/preview override only
   const router = useRouter();
   const [locale, setLocale] = useState<Locale>(localeProp ?? DEFAULT_LOCALE);
   useEffect(() => { if (!localeProp) setLocale(readCookieLocale()); }, [localeProp]);
@@ -47,13 +54,37 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
     router.refresh();
   }
 
-  const navLink = (active: boolean, mobile = false) =>
-    `relative ${mobile ? 'shrink-0' : ''} rounded-full px-4 py-2 text-sm font-medium [transition:color_0.4s_var(--ease-lux),background-color_0.4s_var(--ease-lux)] ${
-      active ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)] shadow-[var(--shadow-soft)]' : 'text-[var(--color-ink-soft)] hover:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] hover:text-[var(--color-ink)]'
-    }`;
+  // A nav link whose active state is a shared-layout pill that glides between
+  // items as you move through the portal (one pill per nav row via layoutId).
+  const NavLink = ({ n, mobile = false }: { n: (typeof nav)[number]; mobile?: boolean }) => {
+    const active = n.href === '/account' ? pathname === n.href : pathname.startsWith(n.href);
+    return (
+      <Link
+        key={n.href}
+        href={n.href}
+        data-tour={n.key}
+        aria-current={active ? 'page' : undefined}
+        className={`relative rounded-full px-4 py-2 text-sm font-medium transition-colors duration-300 active:scale-[0.97] ${mobile ? 'shrink-0' : ''} ${
+          active ? 'text-[var(--color-porcelain)]' : 'text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]'
+        }`}
+      >
+        {active && (
+          <motion.span
+            layoutId={mobile ? 'portalNavPillMobile' : 'portalNavPillDesktop'}
+            transition={navSpring}
+            className="absolute inset-0 -z-10 rounded-full bg-[var(--color-ink)] shadow-[var(--shadow-soft)]"
+          />
+        )}
+        <span className="relative">{t(n.key)}</span>
+      </Link>
+    );
+  };
 
   return (
     <div className="relative flex min-h-screen flex-col">
+      <ScrollProgress />
+      <Cursor />
+
       {/* Ambient brand wash — the marketing-site depth treatment, kept whisper-soft
           on the light portal so content stays crisp. */}
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
@@ -71,19 +102,12 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
               <span className="hidden h-[0.62rem] w-[5.5rem] sm:block"><ClinicsWordmark /></span>
             </Link>
             <nav className="hidden items-center gap-1 md:flex" aria-label="Portal">
-              {nav.map((n) => {
-                const active = n.href === '/account' ? pathname === n.href : pathname.startsWith(n.href);
-                return (
-                  <Link key={n.href} href={n.href} data-tour={n.key} aria-current={active ? 'page' : undefined} className={navLink(active)}>
-                    {t(n.key)}
-                  </Link>
-                );
-              })}
+              {nav.map((n) => <NavLink key={n.href} n={n} />)}
             </nav>
             <div className="flex items-center gap-3">
               <LanguageToggle locale={locale} onChange={changeLanguage} label={t('portal.language')} />
               <span className="hidden text-sm text-[var(--color-stone)] sm:block">{t('portal.greeting', { name: firstName })}</span>
-              <button onClick={signOut} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
+              <button onClick={signOut} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)] active:scale-[0.97]">
                 {t('portal.signOut')}
               </button>
             </div>
@@ -91,16 +115,14 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
 
           {/* Mobile nav */}
           <nav className="flex gap-1 overflow-x-auto pb-3 md:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Portal">
-            {nav.map((n) => {
-              const active = n.href === '/account' ? pathname === n.href : pathname.startsWith(n.href);
-              return <Link key={n.href} href={n.href} aria-current={active ? 'page' : undefined} className={navLink(active, true)}>{t(n.key)}</Link>;
-            })}
+            {nav.map((n) => <NavLink key={n.href} n={n} mobile />)}
           </nav>
         </div>
       </div>
 
       <div className="mx-auto flex w-full max-w-[88rem] flex-1 flex-col px-[var(--gutter)]">
-        <main className="flex-1 py-9 md:py-14">{children}</main>
+        {/* key on pathname so each route re-runs the gentle page-enter (admin standard) */}
+        <main key={pathname} className="kc-page-enter flex-1 py-9 md:py-14">{children}</main>
 
         <footer className="mt-8 flex flex-col gap-3 border-t border-[var(--color-line)] py-7 text-xs text-[var(--color-stone)] sm:flex-row sm:items-center sm:justify-between">
           <p>{t('portal.footer')}{' '}
@@ -113,6 +135,7 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
           </nav>
         </footer>
       </div>
+      <BackToTop />
       <GuideHost />
     </div>
   );
@@ -126,20 +149,29 @@ function LanguageToggle({ locale, onChange, label }: { locale: Locale; onChange:
         onClick={() => setOpen((o) => !o)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         aria-label={label}
-        className="flex items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3 py-2 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-gold)]"
+        className="flex items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3 py-2 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-gold)] active:scale-[0.97]"
       >
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></svg>
         {locale.toUpperCase()}
       </button>
-      {open && (
-        <div className="absolute right-0 z-20 mt-1 w-36 overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white shadow-[var(--shadow-soft)]">
-          {LOCALES.map((l) => (
-            <button key={l} onMouseDown={() => onChange(l)} className={`block w-full px-4 py-2 text-left text-sm ${l === locale ? 'bg-[var(--color-bone)] font-medium' : 'hover:bg-[var(--color-bone)]'}`}>
-              {LOCALE_LABELS[l]}
-            </button>
-          ))}
-        </div>
-      )}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+            style={{ transformOrigin: 'top right' }}
+            className="absolute right-0 z-20 mt-1 w-36 overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white shadow-[var(--shadow-lift)]"
+          >
+            {LOCALES.map((l) => (
+              <button key={l} onMouseDown={() => onChange(l)} className={`block w-full px-4 py-2 text-left text-sm transition-colors ${l === locale ? 'bg-[var(--color-bone)] font-medium' : 'hover:bg-[var(--color-bone)]'}`}>
+                {LOCALE_LABELS[l]}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

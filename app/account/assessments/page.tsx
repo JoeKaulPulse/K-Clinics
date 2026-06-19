@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PortalShell } from '@/components/portal/PortalShell';
 import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
+import { Reveal } from '@/components/motion/Reveal';
+import { AnimatedBar } from '@/components/portal/AnimatedBar';
 import { crmEnabled } from '@/lib/crm';
 import { portalAssessments } from '@/lib/questionnaires';
 import { localizeQuestionnaire } from '@/lib/questionnaires-uk';
@@ -40,17 +42,17 @@ export default async function AssessmentsPage() {
           </span>
         </div>
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--color-bone)]">
-          <div className="h-full rounded-full bg-[var(--color-gold)] transition-[width] duration-700" style={{ width: `${pct}%` }} />
+          <AnimatedBar pct={pct} className="h-full rounded-full bg-[var(--color-gold)]" />
         </div>
         {doneCount === total && <p className="mt-3 text-sm text-[var(--color-jade)]">{t('asmt.allDone')}</p>}
       </div>
 
       <div className="grid gap-4">
-        {portalAssessments.map((q) => {
+        {portalAssessments.map((q, i) => {
           const done = statuses.get(q.type);
           const lq = localizeQuestionnaire(q, locale);
           return (
-            <div key={q.key} className="group flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--color-gold)]/40 hover:shadow-[var(--shadow-lift)]">
+            <Reveal as="div" key={q.key} delay={Math.min(i * 0.06, 0.4)} className="group flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-soft)] transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-[var(--color-gold)]/40 hover:shadow-[var(--shadow-lift)]">
               <div className="flex items-start gap-4">
                 <span className={`mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full ${done ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-gold)]/15 text-[var(--color-gold)]'}`}>
                   {done ? (
@@ -73,11 +75,11 @@ export default async function AssessmentsPage() {
               </div>
               <Link
                 href={`/account/assessments/${q.key}`}
-                className={`shrink-0 rounded-full px-5 py-2.5 text-sm font-medium transition-colors ${done ? 'border border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]' : 'bg-[var(--color-gold)] text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]'}`}
+                className={`shrink-0 rounded-full px-5 py-2.5 text-sm font-medium transition-colors active:scale-[0.97] ${done ? 'border border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]' : 'bg-[var(--color-gold)] text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]'}`}
               >
                 {done ? t('asmt.update') : t('asmt.start')}
               </Link>
-            </div>
+            </Reveal>
           );
         })}
       </div>
