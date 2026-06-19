@@ -50,7 +50,7 @@ export default async function AftercarePage() {
       {treatments.length === 0 ? (
         <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] bg-[var(--color-porcelain)] p-10 text-center">
           <p className="mx-auto max-w-md text-[var(--color-stone)]">{t('after.empty')}</p>
-          <Link href="/treatments" className="mt-5 inline-block rounded-full bg-[var(--color-gold)] px-6 py-3 text-sm font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">{t('after.exploreCta')}</Link>
+          <Link href="/treatments" className="mt-5 inline-block rounded-full bg-[var(--color-gold)] px-6 py-3 text-sm font-medium text-white shadow-[var(--shadow-gold)] transition-[transform,background-color] hover:bg-[var(--color-ink)] active:scale-[0.97]">{t('after.exploreCta')}</Link>
         </div>
       ) : (
         <div className="space-y-6">
@@ -58,7 +58,7 @@ export default async function AftercarePage() {
             const guide = guideForGroup(tr?.group);
             return (
               <Reveal key={slug} delay={i * 0.04}>
-                <section className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-soft)]">
+                <section className="group overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-soft)] transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-[var(--color-gold)]/30 hover:shadow-[var(--shadow-lift)]">
                   <div className="border-b border-[var(--color-line)] bg-[var(--color-bone)]/50 p-6">
                     <p className="eyebrow">{t('after.forTreatment', { treatment: title })}</p>
                     <h2 className="mt-1.5 font-[family-name:var(--font-display)] text-2xl">{aftercareTitle(guide, locale)}</h2>
@@ -67,7 +67,7 @@ export default async function AftercarePage() {
                   <ul className="grid gap-x-8 gap-y-4 p-6 sm:grid-cols-2">
                     {guide.items.map((it, j) => (
                       <li key={j} className="flex items-start gap-3.5">
-                        <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--color-gold)]/12 text-[var(--color-gold)]">
+                        <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--color-gold)]/12 text-[var(--color-gold)] transition-transform duration-300 ease-out group-hover:scale-110">
                           <Icon name={it.icon} />
                         </span>
                         <p className="text-sm leading-relaxed text-[var(--color-ink-soft)]">{aftercareText(it, locale)}</p>
@@ -88,7 +88,7 @@ export default async function AftercarePage() {
             <p className="font-medium">{t('after.questions')}</p>
             <p className="text-sm text-[var(--color-stone)]">{t('after.questionsBody')}</p>
           </div>
-          <a href={site.phoneHref} className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
+          <a href={site.phoneHref} className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)] active:scale-[0.97]">
             <svg viewBox="0 0 24 24" className="h-4 w-4 text-[var(--color-gold)]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" strokeLinejoin="round" /></svg>
             {site.phone}
           </a>

@@ -1,6 +1,6 @@
 import { chromium } from 'playwright';
 const tag = process.argv[2] || 'a';
-const routes = [['dash',''],['appts','/appointments'],['rewards','/rewards']];
+const routes = [['dash',''],['appts','/appointments'],['rewards','/rewards'],['invoices','/invoices'],['assess','/assessments'],['profile','/profile'],['gift','/gift-cards']];
 const b = await chromium.launch({ headless:true, args:['--no-sandbox','--force-color-profile=srgb','--hide-scrollbars'] });
 async function shot(rname, path, name, vw, vh, dsf){
   const ctx = await b.newContext({ viewport:{width:vw,height:vh}, deviceScaleFactor:dsf, ignoreHTTPSErrors:true, bypassCSP:true });
