@@ -34,6 +34,9 @@ yarn-error.log*
 # visual QA harness output (screenshots + report; regenerate via scripts/visual-qa.mjs)
 /qa-output
 
+# ad-hoc visual-audit scaffolding (session cookies, screenshots) — never commit
+/_qa
+
 # editor
 .vscode/*
 !.vscode/extensions.json
