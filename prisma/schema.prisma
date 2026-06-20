@@ -1833,6 +1833,7 @@ model AcademyStudent {
   flashcardReviews    FlashcardReview[]
   forumThreads        ForumThread[]
   forumPosts          ForumPost[]
+  portfolioEntries    PortfolioEntry[]
   quizAttempts        QuizAttempt[]
   practiceAttempts    PracticeAttempt[]
   pointEvents         PointEvent[]
@@ -1908,6 +1909,7 @@ model Course {
   reviews             CourseReview[]
   flashcardDecks      FlashcardDeck[]
   bundleItems         CourseBundleItem[]
+  portfolioEntries    PortfolioEntry[]
 
   @@unique([tenantId, slug]) // ClinicOS Ring 1 (BLD-301): per-tenant slug — replaces the global @unique
   @@index([active, order])
@@ -2306,6 +2308,34 @@ model ForumPost {
 
   @@index([threadId, createdAt])
   @@index([tenantId])
+}
+
+// BLD-534: learner portfolio — a trainee's evidence log of practical case
+// studies (treatment, anonymised client, before/after photos, notes), reviewed
+// by tutors. Mirrors the HomeworkSubmission review pattern.
+model PortfolioEntry {
+  id            String          @id @default(cuid())
+  tenantId      String
+  student       AcademyStudent  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId     String
+  course        Course?         @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  courseId      String?
+  title         String
+  treatmentType String // e.g. Anti-wrinkle, Dermal filler, Skin
+  treatmentDate DateTime?
+  clientRef     String? // anonymised reference, e.g. "Client A"
+  notes         String          @db.Text
+  photos        Json            @default("[]") // [{ url, caption?, kind: 'before'|'after'|'other' }]
+  status        String          @default("DRAFT") // DRAFT | SUBMITTED | APPROVED | NEEDS_WORK
+  feedback      String?         @db.Text // tutor feedback
+  reviewedBy    String? // staff email
+  reviewedAt    DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([studentId, status])
+  @@index([tenantId, status])
+  @@index([courseId])
 }
 
 model QuizAttempt {
