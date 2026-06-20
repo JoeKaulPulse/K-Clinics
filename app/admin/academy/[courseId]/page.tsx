@@ -37,6 +37,7 @@ export default async function CurriculumPage({ params }: { params: Promise<{ cou
     objectives: Array.isArray(course.objectives) ? course.objectives : [],
     welcome: course.welcome,
     preCourseInfo: course.preCourseInfo,
+    portfolioTarget: course.portfolioTarget ?? null,
     modules: course.modules.map((m) => ({
       id: m.id, title: m.title, summary: m.summary,
       lessons: m.lessons.map((l) => ({

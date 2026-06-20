@@ -29,12 +29,19 @@ const RESERVED_ACADEMY = new Set([
   '/academy/settings',
   '/academy/practice',
   '/academy/leaderboard',
+  '/academy/revise', // BLD-531
+  '/academy/exercises', // BLD-535
+  '/academy/community', // BLD-533
+  '/academy/portfolio', // BLD-534
 ]);
 // Prefix match: course-catalogue slugs (/academy/<slug>) are public, except the
-// reserved trainee routes above. Deeper paths (/academy/learn/...) are never public.
+// reserved trainee routes above. Deeper paths (/academy/learn/...) are never
+// public — except the two public Wave-2 marketing routes called out below.
 const isPublicAcademyPath = (p: string) =>
   PUBLIC_ACADEMY.has(p) ||
   p.startsWith('/academy/verify/') || // BLD-528: public certificate verification
+  /^\/academy\/bundles\/[^/]+$/.test(p) || // BLD-532: public learning-pathway pages
+  /^\/academy\/[^/]+\/taster\/[^/]+$/.test(p) || // BLD-532: public free taster lessons
   (!RESERVED_ACADEMY.has(p) && /^\/academy\/[^/]+$/.test(p));
 
 // ── Admin-managed URL redirects ─────────────────────────────────────────────

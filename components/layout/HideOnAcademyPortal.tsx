@@ -8,7 +8,7 @@ import { usePathname } from 'next/navigation';
 // on the authenticated portal routes. usePathname resolves during SSR too, so there
 // is no header flash before hydration. Public academy pages (catalogue, course
 // detail, funding, verify) keep the marketing chrome.
-const PORTAL_PREFIXES = ['/academy/portal', '/academy/learn', '/academy/practice', '/academy/leaderboard', '/academy/settings', '/academy/pay'];
+const PORTAL_PREFIXES = ['/academy/portal', '/academy/learn', '/academy/practice', '/academy/revise', '/academy/exercises', '/academy/community', '/academy/portfolio', '/academy/leaderboard', '/academy/settings', '/academy/pay'];
 
 export function HideOnAcademyPortal({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || '';

@@ -6,10 +6,12 @@ import { useRouter } from 'next/navigation';
 // BLD-535: staff authoring for interactive exercises (hotspots / match / order).
 export type Spot = { label: string; x: number; y: number; r: number };
 export type Pair = { left: string; right: string };
-export type ExConfig = { spots?: Spot[]; pairs?: Pair[]; items?: string[] };
+export type LabelPoint = { label: string; x: number; y: number };
+export type TypeinTarget = { accepted: string[]; x: number; y: number };
+export type ExConfig = { spots?: Spot[]; pairs?: Pair[]; items?: string[]; points?: LabelPoint[]; targets?: TypeinTarget[] };
 export type AdminExercise = { id: string; courseId: string; title: string; type: string; instructions: string | null; imageUrl: string | null; config: ExConfig; order: number; active: boolean };
 
-const TYPES = [{ key: 'HOTSPOT', label: 'Image hotspots' }, { key: 'MATCH', label: 'Match pairs' }, { key: 'ORDER', label: 'Order the steps' }];
+const TYPES = [{ key: 'HOTSPOT', label: 'Image hotspots' }, { key: 'MATCH', label: 'Match pairs' }, { key: 'ORDER', label: 'Order the steps' }, { key: 'LABEL', label: 'Label the diagram' }, { key: 'TYPEIN', label: 'Name on image (type)' }];
 const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
 const label = 'block text-xs font-medium text-[var(--color-stone)]';
 const btnDark = 'rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-50';
@@ -44,10 +46,12 @@ function ExerciseRow({ ex, busy, act, canUp, canDown, onMove }: { ex: AdminExerc
   const [spots, setSpots] = useState<Spot[]>(ex.config.spots ?? []);
   const [pairs, setPairs] = useState<Pair[]>(ex.config.pairs ?? []);
   const [items, setItems] = useState<string[]>(ex.config.items ?? []);
+  const [points, setPoints] = useState<LabelPoint[]>(ex.config.points ?? []);
+  const [targets, setTargets] = useState<TypeinTarget[]>(ex.config.targets ?? []);
   const [uploading, setUploading] = useState(false);
 
   function save() {
-    const config: ExConfig = type === 'HOTSPOT' ? { spots } : type === 'MATCH' ? { pairs } : { items };
+    const config: ExConfig = type === 'HOTSPOT' ? { spots } : type === 'MATCH' ? { pairs } : type === 'ORDER' ? { items } : type === 'LABEL' ? { points } : { targets };
     act({ op: 'update', id: ex.id, title, type, instructions, imageUrl, active, config });
   }
 
@@ -78,6 +82,24 @@ function ExerciseRow({ ex, busy, act, canUp, canDown, onMove }: { ex: AdminExerc
           {type === 'HOTSPOT' && <HotspotEditor imageUrl={imageUrl} spots={spots} setSpots={setSpots} uploading={uploading} onUpload={uploadImage} onClearImage={() => setImageUrl('')} />}
           {type === 'MATCH' && <MatchEditor pairs={pairs} setPairs={setPairs} />}
           {type === 'ORDER' && <OrderEditor items={items} setItems={setItems} />}
+          {type === 'LABEL' && <PointEditor imageUrl={imageUrl} uploading={uploading} onUpload={uploadImage} onClearImage={() => setImageUrl('')} count={points.length} addAt={(x, y) => setPoints([...points, { label: `Point ${points.length + 1}`, x, y }])} markers={points.map((p) => ({ x: p.x, y: p.y }))}>
+            {points.map((p, i) => (
+              <li key={i} className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm">
+                <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-ink)] text-[0.6rem] text-[var(--color-porcelain)]">{i + 1}</span>
+                <input className="flex-1 rounded border border-[var(--color-line)] px-2 py-1 text-xs" value={p.label} onChange={(e) => setPoints(points.map((q, j) => (j === i ? { ...q, label: e.target.value } : q)))} placeholder="Correct label for this point" />
+                <button onClick={() => setPoints(points.filter((_, j) => j !== i))} className="text-xs text-[var(--color-blush)] hover:underline">remove</button>
+              </li>
+            ))}
+          </PointEditor>}
+          {type === 'TYPEIN' && <PointEditor imageUrl={imageUrl} uploading={uploading} onUpload={uploadImage} onClearImage={() => setImageUrl('')} count={targets.length} addAt={(x, y) => setTargets([...targets, { accepted: [''], x, y }])} markers={targets.map((t) => ({ x: t.x, y: t.y }))}>
+            {targets.map((t, i) => (
+              <li key={i} className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm">
+                <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-ink)] text-[0.6rem] text-[var(--color-porcelain)]">{i + 1}</span>
+                <input className="flex-1 rounded border border-[var(--color-line)] px-2 py-1 text-xs" value={t.accepted.join(', ')} onChange={(e) => setTargets(targets.map((q, j) => (j === i ? { ...q, accepted: e.target.value.split(',').map((s) => s.trim()) } : q)))} placeholder="Accepted answers, comma-separated" />
+                <button onClick={() => setTargets(targets.filter((_, j) => j !== i))} className="text-xs text-[var(--color-blush)] hover:underline">remove</button>
+              </li>
+            ))}
+          </PointEditor>}
 
           <div className="flex items-center gap-3">
             <button onClick={save} disabled={busy || uploading} className={btnDark}>Save exercise</button>
@@ -132,6 +154,41 @@ function HotspotEditor({ imageUrl, spots, setSpots, uploading, onUpload, onClear
               ))}
             </ul>
           )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// Generic image + click-to-add-marker editor, shared by LABEL and TYPEIN.
+function PointEditor({ imageUrl, uploading, onUpload, onClearImage, count, addAt, markers, children }: { imageUrl: string; uploading: boolean; onUpload: (f: File) => void; onClearImage: () => void; count: number; addAt: (x: number, y: number) => void; markers: { x: number; y: number }[]; children: React.ReactNode }) {
+  const imgRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  function add(e: React.MouseEvent) {
+    if (!imgRef.current) return;
+    const rect = imgRef.current.getBoundingClientRect();
+    addAt(Math.round(((e.clientX - rect.left) / rect.width) * 100), Math.round(((e.clientY - rect.top) / rect.height) * 100));
+  }
+  return (
+    <div className="space-y-2">
+      <p className={label}>Diagram image</p>
+      {!imageUrl ? (
+        <div>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.currentTarget.value = ''; }} />
+          <button onClick={() => fileRef.current?.click()} disabled={uploading} className={btnGhost}>{uploading ? 'Uploading…' : '+ Upload image'}</button>
+        </div>
+      ) : (
+        <>
+          <div ref={imgRef} onClick={add} className="relative w-full max-w-xl cursor-crosshair overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={imageUrl} alt="" className="block w-full select-none" draggable={false} />
+            {markers.map((m, i) => (
+              <span key={i} style={{ left: `${m.x}%`, top: `${m.y}%` }} className="absolute -translate-x-1/2 -translate-y-1/2 grid h-6 w-6 place-items-center rounded-full bg-[var(--color-ink)] text-[0.6rem] font-bold text-[var(--color-porcelain)]">{i + 1}</span>
+            ))}
+          </div>
+          <p className="text-xs text-[var(--color-stone)]">Click the image to add a marker ({count} so far). Number each marker’s answer below.</p>
+          <button onClick={onClearImage} className="text-xs text-[var(--color-blush)] hover:underline">Change image</button>
+          {count > 0 && <ul className="space-y-1.5">{children}</ul>}
         </>
       )}
     </div>

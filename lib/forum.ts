@@ -86,6 +86,7 @@ export async function replyToThread(student: { id: string } & NameParts, threadI
   const tenantId = await currentTenantId();
   await db.forumPost.create({ data: { tenantId, threadId, authorStudentId: student.id, authorName: studentName(student), isStaff: false, body: text.slice(0, 8000) } });
   await db.forumThread.update({ where: { id: threadId }, data: { postCount: { increment: 1 }, lastPostAt: new Date() } }).catch(() => {});
+  notifyForumReply(threadId, student.id, studentName(student), text).catch(() => {}); // BLD-537, fire-and-forget
   return { ok: true };
 }
 
@@ -134,5 +135,76 @@ export async function staffReply(staff: { email: string; name: string }, threadI
   const tenantId = await currentTenantId();
   await db.forumPost.create({ data: { tenantId, threadId, authorStaff: staff.email, authorName: staff.name || 'K Academy team', isStaff: true, body: text.slice(0, 8000) } });
   await db.forumThread.update({ where: { id: threadId }, data: { postCount: { increment: 1 }, lastPostAt: new Date() } }).catch(() => {});
+  notifyForumReply(threadId, null, staff.name || 'K Academy', text).catch(() => {}); // BLD-537, fire-and-forget
   return { ok: true };
+}
+
+// ── BLD-537: notifications + digest ──────────────────────────────────────────
+
+const SITE = () => process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://kclinics.co.uk';
+
+/** Email the thread's author + distinct prior trainee participants (except the
+ *  person who just posted) that there's a new reply. Best-effort. */
+export async function notifyForumReply(threadId: string, actorStudentId: string | null, replierName: string, snippet: string): Promise<void> {
+  const thread = await db.forumThread.findUnique({ where: { id: threadId }, select: { id: true, title: true, hidden: true, authorStudentId: true } });
+  if (!thread || thread.hidden) return;
+  const posts = await db.forumPost.findMany({ where: { threadId, authorStudentId: { not: null } }, select: { authorStudentId: true }, take: 500 });
+  const ids = new Set<string>();
+  if (thread.authorStudentId) ids.add(thread.authorStudentId);
+  for (const p of posts) if (p.authorStudentId) ids.add(p.authorStudentId);
+  if (actorStudentId) ids.delete(actorStudentId);
+  if (ids.size === 0) return;
+
+  const recipients = await db.academyStudent.findMany({ where: { id: { in: [...ids].slice(0, 60) }, portalActive: true }, select: { email: true, firstName: true } });
+  if (recipients.length === 0) return;
+
+  const { escapeHtml } = await import('@/lib/sanitize');
+  const { sendEmail, emailShell } = await import('@/lib/email');
+  const url = `${SITE()}/academy/community/${threadId}`;
+  const preview = escapeHtml(snippet.replace(/\s+/g, ' ').trim().slice(0, 160));
+  await Promise.all(recipients.map((r) => r.email ? sendEmail({
+    to: r.email,
+    subject: `New reply — ${thread.title}`,
+    html: emailShell({
+      preheader: `${replierName} replied in the K Academy community.`,
+      body: `<h1 style="font-size:22px;margin:0 0 14px;">New reply in the community</h1>
+        <p style="margin:0 0 12px;">Hi ${escapeHtml(r.firstName || 'there')},</p>
+        <p style="margin:0 0 12px;"><strong>${escapeHtml(replierName)}</strong> replied to <strong>${escapeHtml(thread.title)}</strong>:</p>
+        <p style="margin:0 0 16px;padding:12px 16px;background:#f7f1e8;border-radius:10px;color:#2a2420;">“${preview}”</p>
+        <p style="margin:0 0 22px;"><a class="kc-btn" href="${url}" style="display:inline-block;background:#2a2420;color:#f7f1e8;text-decoration:none;padding:13px 26px;border-radius:999px;font-weight:600;">View the discussion &rarr;</a></p>
+        <p style="margin:0;color:#8a7e72;font-size:13px;">You’re getting this because you posted in this thread.</p>`,
+    }),
+  }).catch(() => undefined) : Promise.resolve()));
+}
+
+/** Daily staff digest of community activity in the last 24h. Best-effort; only
+ *  sends when there's something to report. Called from the daily cron. */
+export async function sendCommunityDigest(): Promise<{ sent: boolean; threads: number; posts: number }> {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const [newThreads, newPosts, unanswered] = await Promise.all([
+    db.forumThread.findMany({ where: { hidden: false, createdAt: { gte: since } }, orderBy: { createdAt: 'desc' }, take: 50, select: { id: true, title: true, category: true, authorName: true } }),
+    db.forumPost.count({ where: { hidden: false, createdAt: { gte: since } } }),
+    db.forumThread.findMany({ where: { hidden: false, isStaff: false, postCount: 0, createdAt: { gte: since } }, orderBy: { createdAt: 'desc' }, take: 50, select: { id: true, title: true } }),
+  ]);
+  if (newThreads.length === 0 && newPosts === 0) return { sent: false, threads: 0, posts: newPosts };
+
+  const { site } = await import('@/lib/site');
+  const to = process.env.CLINIC_NOTIFY_EMAIL || site.email;
+  const { escapeHtml } = await import('@/lib/sanitize');
+  const { sendEmail, emailShell } = await import('@/lib/email');
+  const base = SITE();
+  const list = (rows: { id: string; title: string }[]) => rows.map((t) => `<li style="margin:0 0 6px;"><a href="${base}/admin/academy/community" style="color:#2a2420;">${escapeHtml(t.title)}</a></li>`).join('');
+  await sendEmail({
+    to,
+    subject: `K Academy community — ${newThreads.length} new thread${newThreads.length === 1 ? '' : 's'}, ${newPosts} repl${newPosts === 1 ? 'y' : 'ies'} (24h)`,
+    html: emailShell({
+      preheader: 'Daily community activity digest.',
+      body: `<h1 style="font-size:22px;margin:0 0 14px;">Community activity — last 24 hours</h1>
+        <p style="margin:0 0 12px;"><strong>${newThreads.length}</strong> new thread${newThreads.length === 1 ? '' : 's'} · <strong>${newPosts}</strong> new repl${newPosts === 1 ? 'y' : 'ies'}.</p>
+        ${unanswered.length > 0 ? `<p style="margin:16px 0 6px;font-weight:600;">Awaiting a first reply (${unanswered.length}):</p><ul style="margin:0 0 12px;padding-left:18px;">${list(unanswered)}</ul>` : ''}
+        ${newThreads.length > 0 ? `<p style="margin:16px 0 6px;font-weight:600;">New threads:</p><ul style="margin:0 0 12px;padding-left:18px;">${list(newThreads)}</ul>` : ''}
+        <p style="margin:16px 0 0;"><a class="kc-btn" href="${base}/admin/academy/community" style="display:inline-block;background:#2a2420;color:#f7f1e8;text-decoration:none;padding:12px 24px;border-radius:999px;font-weight:600;">Open moderation &rarr;</a></p>`,
+    }),
+  }).catch(() => undefined);
+  return { sent: true, threads: newThreads.length, posts: newPosts };
 }

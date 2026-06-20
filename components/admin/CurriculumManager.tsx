@@ -18,7 +18,7 @@ const LESSON_TYPES: { value: string; label: string }[] = [
 type Question = { id: string; prompt: string; type: string; options: string[]; correct: number[]; acceptedAnswers: string[]; explanation: string | null; tip: string | null; imageUrl: string | null };
 type Quiz = { id: string; title: string; passMark: number; timeLimitMin: number | null; maxAttempts: number | null; shuffleQuestions: boolean; shuffleOptions: boolean; poolSize: number | null; isSurvey: boolean; questions: Question[] };
 type Module = { id: string; title: string; summary: string | null; lessons: Lesson[]; quiz: Quiz | null };
-type Course = { id: string; title: string; objectives: string[]; welcome: string | null; preCourseInfo: string | null; modules: Module[] };
+type Course = { id: string; title: string; objectives: string[]; welcome: string | null; preCourseInfo: string | null; portfolioTarget: number | null; modules: Module[] };
 
 const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
 const label = 'block text-xs font-medium text-[var(--color-stone)]';
@@ -56,6 +56,7 @@ function CourseMeta({ course, busy, act }: { course: Course; busy: boolean; act:
   const [objectives, setObjectives] = useState(listToText(course.objectives));
   const [welcome, setWelcome] = useState(course.welcome ?? '');
   const [preCourseInfo, setPreCourseInfo] = useState(course.preCourseInfo ?? '');
+  const [portfolioTarget, setPortfolioTarget] = useState(course.portfolioTarget != null ? String(course.portfolioTarget) : '');
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
       <div className="flex items-center gap-3 p-4">
@@ -68,7 +69,8 @@ function CourseMeta({ course, busy, act }: { course: Course; busy: boolean; act:
           <label className={label}>Welcome message (shown when a trainee first opens the course)<textarea rows={3} className={`${field} mt-1`} value={welcome} onChange={(e) => setWelcome(e.target.value)} placeholder="Welcome to your Level 4 course. Over the next weeks you'll…" /></label>
           <label className={label}>Course objectives / goals (one per line)<textarea rows={4} className={`${field} mt-1`} value={objectives} onChange={(e) => setObjectives(e.target.value)} placeholder={'Understand laser–tissue interaction\nPass the VTCT Level 4 external exam'} /></label>
           <label className={label}>Pre-course information — mandatory; learners must read &amp; acknowledge before any lessons (BLD-445). Leave blank for no gate.<textarea rows={6} className={`${field} mt-1`} value={preCourseInfo} onChange={(e) => setPreCourseInfo(e.target.value)} placeholder={'Important — please read before starting your course.\n\nAcademy information, learner responsibilities, course requirements, policies and terms…'} /></label>
-          <button onClick={() => act({ op: 'updateCourseMeta', courseId: course.id, objectives: textToList(objectives), welcome, preCourseInfo })} disabled={busy} className={btnDark}>Save course goals</button>
+          <label className={label}>Portfolio target — number of approved case studies needed to complete this course (BLD-538). Leave blank for no target.<input type="number" min={0} max={100} className={`${field} mt-1 max-w-[8rem]`} value={portfolioTarget} onChange={(e) => setPortfolioTarget(e.target.value)} placeholder="e.g. 5" /></label>
+          <button onClick={() => act({ op: 'updateCourseMeta', courseId: course.id, objectives: textToList(objectives), welcome, preCourseInfo, portfolioTarget })} disabled={busy} className={btnDark}>Save course goals</button>
         </div>
       )}
     </div>
