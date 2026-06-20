@@ -1831,6 +1831,8 @@ model AcademyStudent {
   lessonComments      LessonComment[]
   courseReviews       CourseReview[]
   flashcardReviews    FlashcardReview[]
+  forumThreads        ForumThread[]
+  forumPosts          ForumPost[]
   quizAttempts        QuizAttempt[]
   practiceAttempts    PracticeAttempt[]
   pointEvents         PointEvent[]
@@ -2258,6 +2260,51 @@ model FlashcardReview {
 
   @@unique([studentId, cardId])
   @@index([studentId, dueAt])
+  @@index([tenantId])
+}
+
+// BLD-533: trainee community forum — a discussion space across the academy,
+// distinct from the per-lesson Q&A (LessonComment). Threads grouped by category.
+model ForumThread {
+  id              String          @id @default(cuid())
+  tenantId        String
+  category        String // general | study | showcase | wellbeing | announcements
+  title           String
+  body            String          @db.Text // opening message
+  authorStudent   AcademyStudent? @relation(fields: [authorStudentId], references: [id], onDelete: SetNull)
+  authorStudentId String?
+  authorStaff     String? // staff email when authored by a staff member
+  authorName      String // denormalised display name
+  isStaff         Boolean         @default(false)
+  pinned          Boolean         @default(false)
+  locked          Boolean         @default(false) // no new replies
+  hidden          Boolean         @default(false) // moderation
+  postCount       Int             @default(0)
+  lastPostAt      DateTime        @default(now())
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  posts           ForumPost[]
+
+  @@index([tenantId, category, pinned, lastPostAt])
+  @@index([tenantId, hidden, lastPostAt])
+}
+
+model ForumPost {
+  id              String          @id @default(cuid())
+  tenantId        String
+  thread          ForumThread     @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  threadId        String
+  authorStudent   AcademyStudent? @relation(fields: [authorStudentId], references: [id], onDelete: SetNull)
+  authorStudentId String?
+  authorStaff     String?
+  authorName      String
+  isStaff         Boolean         @default(false)
+  body            String          @db.Text
+  hidden          Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([threadId, createdAt])
   @@index([tenantId])
 }
 
