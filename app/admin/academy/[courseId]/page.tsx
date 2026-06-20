@@ -81,6 +81,7 @@ export default async function CurriculumPage({ params }: { params: Promise<{ cou
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Link href={`/admin/academy/${courseId}/flashcards`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Flashcards →</Link>
+          <Link href={`/admin/academy/${courseId}/exercises`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Exercises →</Link>
           <CoursePreviewButton preview={preview} />
         </div>
       </div>

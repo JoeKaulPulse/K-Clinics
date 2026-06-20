@@ -15,6 +15,7 @@ const nav = [
   { href: '/academy/portal', label: 'My courses' },
   { href: '/academy/practice', label: 'Practice & papers' },
   { href: '/academy/revise', label: 'Revise' },
+  { href: '/academy/exercises', label: 'Exercises' },
   { href: '/academy/community', label: 'Community' },
   { href: '/academy/portfolio', label: 'Portfolio' },
   { href: '/academy/leaderboard', label: 'Progress' },
