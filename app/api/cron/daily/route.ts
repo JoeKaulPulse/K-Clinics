@@ -235,6 +235,15 @@ export async function GET(req: Request) {
     }
   } catch { /* non-fatal */ }
 
+  // BLD-537: daily community digest to staff (new threads, replies, unanswered).
+  let communityDigest = { sent: false, threads: 0, posts: 0 };
+  try {
+    const { sendCommunityDigest } = await import('@/lib/forum');
+    communityDigest = await sendCommunityDigest();
+  } catch (e) {
+    failures++; console.error('[cron] community digest failed (continuing):', (e as Error)?.message);
+  }
+
   // Record the run so the status page can show job freshness.
   try {
     const { db } = await import('@/lib/db');
@@ -262,7 +271,7 @@ export async function GET(req: Request) {
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, retention, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, examBank, gamification, authored, courseContent },
+    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, retention, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, examBank, gamification, authored, courseContent, communityDigest },
     { status: failures === 0 ? 200 : 500 },
   );
 }

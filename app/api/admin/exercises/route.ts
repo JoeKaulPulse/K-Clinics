@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   const { normaliseConfig } = await import('@/lib/exercises');
   const ok = (extra: object = {}) => NextResponse.json({ ok: true, ...extra });
   const bad = (e = 'Bad request') => NextResponse.json({ ok: false, error: e }, { status: 400 });
-  const TYPES = new Set(['HOTSPOT', 'MATCH', 'ORDER']);
+  const TYPES = new Set(['HOTSPOT', 'MATCH', 'ORDER', 'LABEL', 'TYPEIN']);
 
   switch (b.op) {
     case 'create': {

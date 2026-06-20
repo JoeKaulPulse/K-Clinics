@@ -6,7 +6,9 @@ import { Card, Pill, AButton } from '@/components/academy/ui';
 // BLD-535: learner-facing interactive exercises (hotspots / match / order).
 export type ExercisePlay = {
   id: string; title: string; type: string; instructions: string | null; imageUrl: string | null;
-  labels?: string[]; lefts?: string[]; rights?: string[]; items?: string[]; count: number; best: number | null;
+  labels?: string[]; lefts?: string[]; rights?: string[]; items?: string[];
+  points?: { x: number; y: number }[]; bank?: string[];
+  count: number; best: number | null;
 };
 type Grade = { ok: boolean; error?: string; scorePct?: number; correct?: number; total?: number; results?: boolean[]; reveal?: unknown };
 
@@ -37,6 +39,8 @@ export function ExercisePlayer({ exercise }: { exercise: ExercisePlay }) {
         {exercise.type === 'HOTSPOT' && <Hotspot key={nonce} exercise={exercise} result={result} busy={busy} onGrade={onGrade} />}
         {exercise.type === 'MATCH' && <Match key={nonce} exercise={exercise} result={result} busy={busy} onGrade={onGrade} />}
         {exercise.type === 'ORDER' && <Order key={nonce} exercise={exercise} result={result} busy={busy} onGrade={onGrade} />}
+        {exercise.type === 'LABEL' && <LabelDiagram key={nonce} exercise={exercise} result={result} busy={busy} onGrade={onGrade} />}
+        {exercise.type === 'TYPEIN' && <TypeIn key={nonce} exercise={exercise} result={result} busy={busy} onGrade={onGrade} />}
       </div>
 
       {result && (
@@ -173,6 +177,76 @@ function Order({ exercise, result, busy, onGrade }: SubProps) {
       </ol>
       {!result && <div className="mt-3"><AButton size="sm" disabled={busy} onClick={() => onGrade(items)}>{busy ? 'Checking…' : 'Check order'}</AButton></div>}
       {!result && <p className="mt-1.5 text-xs text-[var(--color-stone)]">Drag the steps, or use the arrows, into the correct order.</p>}
+    </div>
+  );
+}
+
+// ── LABEL (label the diagram) ────────────────────────────────────────────────
+function LabelDiagram({ exercise, result, busy, onGrade }: SubProps) {
+  const points = exercise.points ?? [];
+  const bank = exercise.bank ?? [];
+  const [sel, setSel] = useState<number | null>(null);
+  const [assign, setAssign] = useState<Record<number, string>>({}); // pointIndex -> label
+  const used = new Set(Object.values(assign));
+  const reveal = (result?.reveal as { x: number; y: number; label: string }[] | undefined) ?? null;
+
+  function put(lbl: string) {
+    if (result || sel == null) return;
+    setAssign((a) => { const next = { ...a }; for (const k of Object.keys(next)) if (next[Number(k)] === lbl) delete next[Number(k)]; next[sel] = lbl; return next; });
+    setSel(null);
+  }
+
+  return (
+    <div>
+      <div className="relative w-full overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {exercise.imageUrl ? <img src={exercise.imageUrl} alt={exercise.title} className="block w-full select-none" draggable={false} /> : <div className="grid h-48 place-items-center text-sm text-[var(--color-stone)]">No image</div>}
+        {points.map((p, i) => (
+          <button key={i} onClick={() => !result && setSel(i)} disabled={!!result} style={{ left: `${p.x}%`, top: `${p.y}%` }}
+            className={`absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border px-2 py-0.5 text-[0.7rem] font-medium ${result ? (result.results?.[i] ? 'border-[var(--color-gold-deep)] bg-[var(--color-gold)]/90 text-[var(--color-ink)]' : 'border-[var(--color-blush)] bg-[var(--color-blush)] text-white') : sel === i ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-porcelain)] ring-2 ring-[var(--color-ink)]' : 'border-[var(--color-ink)] bg-white text-[var(--color-ink)]'}`}>
+            {assign[i] ? assign[i] : result ? (reveal?.[i]?.label ?? i + 1) : i + 1}
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {bank.map((l, i) => (
+          <button key={i} onClick={() => put(l)} disabled={!!result || sel == null}
+            className={`rounded-full border px-3 py-1.5 text-sm ${used.has(l) ? 'border-[var(--color-line)] bg-[var(--color-bone)] text-[var(--color-stone)]' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'} disabled:opacity-60`}>{l}</button>
+        ))}
+      </div>
+      {!result && <div className="mt-3"><AButton size="sm" disabled={busy || Object.keys(assign).length < points.length} onClick={() => onGrade(assign)}>{busy ? 'Checking…' : 'Check labels'}</AButton></div>}
+      {!result && <p className="mt-1.5 text-xs text-[var(--color-stone)]">Tap a numbered marker, then tap its label below.</p>}
+    </div>
+  );
+}
+
+// ── TYPEIN (name on image) ───────────────────────────────────────────────────
+function TypeIn({ exercise, result, busy, onGrade }: SubProps) {
+  const points = exercise.points ?? [];
+  const [vals, setVals] = useState<Record<number, string>>({});
+  const reveal = (result?.reveal as { x: number; y: number; label: string }[] | undefined) ?? null;
+
+  return (
+    <div>
+      <div className="relative w-full overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {exercise.imageUrl ? <img src={exercise.imageUrl} alt={exercise.title} className="block w-full select-none" draggable={false} /> : <div className="grid h-48 place-items-center text-sm text-[var(--color-stone)]">No image</div>}
+        {points.map((p, i) => (
+          <span key={i} style={{ left: `${p.x}%`, top: `${p.y}%` }} className={`absolute -translate-x-1/2 -translate-y-1/2 grid h-6 w-6 place-items-center rounded-full text-[0.65rem] font-bold text-white ${result ? (result.results?.[i] ? 'bg-[var(--color-gold-deep)]' : 'bg-[var(--color-blush)]') : 'bg-[var(--color-ink)]'}`}>{i + 1}</span>
+        ))}
+      </div>
+      <ul className="mt-3 space-y-2">
+        {points.map((_, i) => (
+          <li key={i} className="flex items-center gap-2">
+            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--color-ink)] text-xs text-[var(--color-porcelain)]">{i + 1}</span>
+            <input value={vals[i] ?? ''} disabled={!!result} onChange={(e) => setVals((v) => ({ ...v, [i]: e.target.value }))} placeholder="Type your answer…"
+              className={`flex-1 rounded-[var(--radius-sm)] border bg-white px-3 py-1.5 text-sm ${result ? (result.results?.[i] ? 'border-[var(--color-gold)]' : 'border-[var(--color-blush)]') : 'border-[var(--color-line)]'}`} />
+            {result && !result.results?.[i] && <span className="text-xs text-[var(--color-gold-deep)]">{reveal?.[i]?.label}</span>}
+          </li>
+        ))}
+      </ul>
+      {!result && <div className="mt-3"><AButton size="sm" disabled={busy || Object.values(vals).filter((v) => v.trim()).length < points.length} onClick={() => onGrade(vals)}>{busy ? 'Checking…' : 'Check answers'}</AButton></div>}
+      {!result && <p className="mt-1.5 text-xs text-[var(--color-stone)]">Type what each numbered marker points to.</p>}
     </div>
   );
 }

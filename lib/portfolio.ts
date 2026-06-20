@@ -74,6 +74,28 @@ export async function myCourses(studentId: string): Promise<{ id: string; title:
   return [...seen].map(([id, title]) => ({ id, title }));
 }
 
+// BLD-538: per-course completion targets (staff set how many approved cases a
+// course needs). Only courses with a target the trainee is enrolled on appear.
+export type PortfolioProgress = { courseId: string; courseTitle: string; target: number; approved: number; submitted: number };
+export async function portfolioProgress(studentId: string): Promise<PortfolioProgress[]> {
+  const enrols = await db.enrolment.findMany({
+    where: { studentId, status: { in: ['PAID', 'ENROLLED', 'COMPLETED'] } },
+    select: { course: { select: { id: true, title: true, portfolioTarget: true } } },
+  });
+  const targeted = new Map<string, { title: string; target: number }>();
+  for (const e of enrols) if (e.course?.portfolioTarget && e.course.portfolioTarget > 0) targeted.set(e.course.id, { title: e.course.title, target: e.course.portfolioTarget });
+  if (targeted.size === 0) return [];
+  const entries = await db.portfolioEntry.findMany({ where: { studentId, courseId: { in: [...targeted.keys()] } }, select: { courseId: true, status: true } });
+  const tally = new Map<string, { approved: number; submitted: number }>();
+  for (const e of entries) {
+    if (!e.courseId) continue;
+    const t = tally.get(e.courseId) ?? { approved: 0, submitted: 0 };
+    if (e.status === 'APPROVED') t.approved++; else if (e.status === 'SUBMITTED') t.submitted++;
+    tally.set(e.courseId, t);
+  }
+  return [...targeted].map(([courseId, { title, target }]) => ({ courseId, courseTitle: title, target, approved: tally.get(courseId)?.approved ?? 0, submitted: tally.get(courseId)?.submitted ?? 0 }));
+}
+
 async function ownedCourseId(studentId: string, courseId: string | undefined): Promise<string | null> {
   const id = str(courseId).trim();
   if (!id) return null;

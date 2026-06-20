@@ -53,9 +53,12 @@ export async function POST(req: Request) {
     // ── Course learning meta ───────────────────────────────────────────────────
     case 'updateCourseMeta': {
       if (!b.courseId) return bad();
+      const ptRaw = b.portfolioTarget;
+      const ptNum = ptRaw === '' || ptRaw == null ? null : Math.round(Number(ptRaw));
+      const portfolioTarget = ptNum != null && Number.isFinite(ptNum) ? Math.max(0, Math.min(100, ptNum)) : null;
       await db.course.update({
         where: { id: String(b.courseId) },
-        data: { objectives: strList(b.objectives), welcome: str(b.welcome).slice(0, 2000) || null, preCourseInfo: str(b.preCourseInfo).slice(0, 20000) || null },
+        data: { objectives: strList(b.objectives), welcome: str(b.welcome).slice(0, 2000) || null, preCourseInfo: str(b.preCourseInfo).slice(0, 20000) || null, portfolioTarget },
       });
       return ok();
     }

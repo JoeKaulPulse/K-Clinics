@@ -7,7 +7,7 @@ import { ExercisePlayer, type ExercisePlay } from '@/components/academy/Exercise
 // BLD-535: trainee interactive-exercises board — grouped by course, expand to play.
 export type ExerciseGroup = { courseId: string; courseTitle: string; exercises: ExercisePlay[] };
 
-const TYPE_LABEL: Record<string, string> = { HOTSPOT: 'Image hotspots', MATCH: 'Match pairs', ORDER: 'Order the steps' };
+const TYPE_LABEL: Record<string, string> = { HOTSPOT: 'Image hotspots', MATCH: 'Match pairs', ORDER: 'Order the steps', LABEL: 'Label the diagram', TYPEIN: 'Name on image' };
 
 export function ExercisesBoard({ groups }: { groups: ExerciseGroup[] }) {
   const [open, setOpen] = useState<string | null>(null);

@@ -1891,6 +1891,7 @@ model Course {
   objectives     String[] @default([]) // course-level learning goals/objectives
   welcome        String? // intro shown when a student first opens the course
   preCourseInfo  String?  @db.Text // BLD-445: mandatory pre-course "please read" page; learners acknowledge before any lessons
+  portfolioTarget Int? // BLD-538: number of approved portfolio case studies needed to complete the course
   prerequisites  String?
   thinkificUrl   String? // theory platform link (shown in trainee portal)
   heroImage      String?

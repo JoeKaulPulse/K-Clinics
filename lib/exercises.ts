@@ -3,26 +3,34 @@ import { db } from '@/lib/db';
 import { currentTenantId } from '@/lib/tenant';
 import { scoreAndBadge } from '@/lib/academy-gamification';
 
-// ── BLD-535: interactive self-check exercises ────────────────────────────────
-// Three types, all graded SERVER-SIDE against the stored `config` so the answer
-// key never reaches the browser:
+// ── BLD-535 / BLD-536: interactive self-check exercises ──────────────────────
+// All graded SERVER-SIDE against the stored `config` so the answer key never
+// reaches the browser:
 //   HOTSPOT — click the right place on an image for each labelled structure.
 //             config: { spots: [{ label, x, y, r }] }   (x,y,r are % of image)
 //   MATCH   — pair each left item with its correct right item.
 //             config: { pairs: [{ left, right }] }
 //   ORDER   — put the steps into the correct sequence.
 //             config: { items: [string] }  (stored already in correct order)
+//   LABEL   — drag the right label onto each marked point on a diagram.
+//             config: { points: [{ x, y, label }] }
+//   TYPEIN  — type what each marked point on a diagram is.
+//             config: { targets: [{ x, y, accepted: [string] }] }
 
 export const EXERCISE_TYPES = [
   { key: 'HOTSPOT', label: 'Image hotspots' },
   { key: 'MATCH', label: 'Match pairs' },
   { key: 'ORDER', label: 'Order the steps' },
+  { key: 'LABEL', label: 'Label the diagram' },
+  { key: 'TYPEIN', label: 'Name on image (type)' },
 ] as const;
 export type ExerciseType = (typeof EXERCISE_TYPES)[number]['key'];
 
 export type HotspotSpot = { label: string; x: number; y: number; r: number };
 export type MatchPair = { left: string; right: string };
-type Config = { spots?: HotspotSpot[]; pairs?: MatchPair[]; items?: string[] };
+export type LabelPoint = { label: string; x: number; y: number };
+export type TypeinTarget = { accepted: string[]; x: number; y: number };
+type Config = { spots?: HotspotSpot[]; pairs?: MatchPair[]; items?: string[]; points?: LabelPoint[]; targets?: TypeinTarget[] };
 
 // ── safe parsing ─────────────────────────────────────────────────────────────
 const num = (v: unknown, d = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
@@ -43,8 +51,18 @@ function parseConfig(type: string, raw: unknown): Config {
     const items = Array.isArray(c.items) ? c.items : [];
     return { items: items.slice(0, 30).map((i) => sstr(i).slice(0, 200)).filter(Boolean) };
   }
+  if (type === 'LABEL') {
+    const points = Array.isArray(c.points) ? c.points : [];
+    return { points: points.slice(0, 30).map((p) => { const o = (p ?? {}) as Record<string, unknown>; return { label: sstr(o.label).slice(0, 120), x: clampPct(o.x), y: clampPct(o.y) }; }).filter((p) => p.label) };
+  }
+  if (type === 'TYPEIN') {
+    const targets = Array.isArray(c.targets) ? c.targets : [];
+    return { targets: targets.slice(0, 30).map((t) => { const o = (t ?? {}) as Record<string, unknown>; const accepted = (Array.isArray(o.accepted) ? o.accepted : []).map((a) => sstr(a).slice(0, 120)).filter(Boolean); return { accepted, x: clampPct(o.x), y: clampPct(o.y) }; }).filter((t) => t.accepted.length > 0) };
+  }
   return {};
 }
+
+const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
 
 const shuffle = <T,>(a: T[]): T[] => { const b = [...a]; for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
 
@@ -54,6 +72,8 @@ export type ExercisePlay = {
   labels?: string[]; // HOTSPOT — what to find (coordinates withheld)
   lefts?: string[]; rights?: string[]; // MATCH — rights shuffled
   items?: string[]; // ORDER — shuffled
+  points?: { x: number; y: number }[]; // LABEL / TYPEIN — marker positions (answers withheld)
+  bank?: string[]; // LABEL — shuffled label bank
   count: number; best: number | null;
 };
 
@@ -63,6 +83,8 @@ function toPlay(e: { id: string; title: string; type: string; instructions: stri
   if (e.type === 'HOTSPOT') return { ...base, labels: (cfg.spots ?? []).map((s) => s.label), count: cfg.spots?.length ?? 0 };
   if (e.type === 'MATCH') { const pairs = cfg.pairs ?? []; return { ...base, lefts: pairs.map((p) => p.left), rights: shuffle(pairs.map((p) => p.right)), count: pairs.length }; }
   if (e.type === 'ORDER') { const items = cfg.items ?? []; return { ...base, items: items.length > 1 ? reshuffle(items) : items, count: items.length }; }
+  if (e.type === 'LABEL') { const points = cfg.points ?? []; return { ...base, points: points.map((p) => ({ x: p.x, y: p.y })), bank: shuffle(points.map((p) => p.label)), count: points.length }; }
+  if (e.type === 'TYPEIN') { const targets = cfg.targets ?? []; return { ...base, points: targets.map((t) => ({ x: t.x, y: t.y })), count: targets.length }; }
   return { ...base, count: 0 };
 }
 // Avoid presenting ORDER already-correct: reshuffle until it differs (or give up).
@@ -114,6 +136,18 @@ export async function gradeExercise(studentId: string, exerciseId: string, answe
     total = items.length;
     items.forEach((it, i) => { const hit = ordered[i] === it; results.push(hit); if (hit) correct++; });
     reveal = items;
+  } else if (e.type === 'LABEL') {
+    const points = cfg.points ?? [];
+    const picks = (answer && typeof answer === 'object' ? answer : {}) as Record<string, unknown>;
+    total = points.length;
+    points.forEach((p, i) => { const chosen = sstr(picks[i] ?? picks[String(i)]); const hit = chosen === p.label; results.push(hit); if (hit) correct++; });
+    reveal = points; // {x,y,label} — player shows the correct label at each marker
+  } else if (e.type === 'TYPEIN') {
+    const targets = cfg.targets ?? [];
+    const typed = (answer && typeof answer === 'object' ? answer : {}) as Record<string, unknown>;
+    total = targets.length;
+    targets.forEach((t, i) => { const ans = norm(sstr(typed[i] ?? typed[String(i)])); const hit = !!ans && t.accepted.some((a) => norm(a) === ans); results.push(hit); if (hit) correct++; });
+    reveal = targets.map((t) => ({ x: t.x, y: t.y, label: t.accepted[0] ?? '' }));
   } else {
     return { ok: false, error: 'Unsupported exercise.' };
   }
