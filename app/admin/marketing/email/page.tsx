@@ -20,13 +20,15 @@ export default async function EmailDashboard() {
   const { db } = await import('@/lib/db');
   const { marketableClientWhere } = await import('@/lib/consent');
   const since = new Date(Date.now() - 30 * 86400000);
-  const [sent30, opened30, clicked30, bounced30, optedIn, campaigns] = await Promise.all([
+  const [sent30, opened30, clicked30, bounced30, optedIn, newsletterSubs, campaigns] = await Promise.all([
     db.emailEvent.count({ where: { kind: 'CAMPAIGN', status: 'SENT', createdAt: { gte: since } } }),
     db.emailEvent.count({ where: { kind: 'CAMPAIGN', openedAt: { not: null }, createdAt: { gte: since } } }),
     db.emailEvent.count({ where: { kind: 'CAMPAIGN', clickedAt: { not: null }, createdAt: { gte: since } } }),
     db.emailEvent.count({ where: { kind: 'CAMPAIGN', bouncedAt: { not: null }, createdAt: { gte: since } } }),
     // Reachable audience = lawful marketing recipients only (BLD-242).
     db.client.count({ where: marketableClientWhere() }),
+    // Newsletter sign-ups (website footer + waitlist forms) — the public list.
+    db.newsletterSubscriber.count({ where: { active: true } }),
     db.campaign.findMany({ where: { status: 'SENT' }, orderBy: { sentAt: 'desc' }, take: 12 }),
   ]);
 
@@ -102,17 +104,19 @@ export default async function EmailDashboard() {
         <div className="flex gap-2">
           <Link href="/admin/marketing/templates" className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)]">Templates</Link>
           <Link href="/admin/marketing/audiences" className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)]">Audiences</Link>
+          <Link href="/admin/marketing/subscribers" className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)]">Subscribers</Link>
           {sessionCan(session, 'campaigns.send') && <Link href="/admin/marketing/email/new" className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)]">New email</Link>}
         </div>
       </div>
       <p className="mt-1 text-sm text-[var(--color-stone)]">Send beautiful, on-brand emails through Resend and track opens, clicks &amp; bounces. Last 30 days.</p>
 
-      <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Kpi label="Sent" value={String(sent30)} />
         <Kpi label="Open rate" value={`${pct(opened30, sent30)}%`} sub={`${opened30} opened`} />
         <Kpi label="Click rate" value={`${pct(clicked30, sent30)}%`} sub={`${clicked30} clicked`} />
         <Kpi label="Bounce rate" value={`${pct(bounced30, sent30)}%`} sub={`${bounced30} bounced`} />
-        <Kpi label="Subscribers" value={String(optedIn)} sub="opted-in" />
+        <Kpi label="Opted-in clients" value={String(optedIn)} sub="marketable CRM contacts" />
+        <Kpi label="Newsletter subscribers" value={String(newsletterSubs)} sub="view the list →" href="/admin/marketing/subscribers" />
       </div>
 
       {canSend && reperm.total > 0 && (
@@ -199,12 +203,18 @@ export default async function EmailDashboard() {
   );
 }
 
-function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
+function Kpi({ label, value, sub, href }: { label: string; value: string; sub?: string; href?: string }) {
+  const body = (
+    <>
       <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{label}</p>
       <p className="mt-2 font-[family-name:var(--font-display)] text-3xl tabular-nums text-[var(--color-ink)]">{value}</p>
       {sub && <p className="text-xs text-[var(--color-stone)]">{sub}</p>}
-    </div>
+    </>
+  );
+  const cls = 'block rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5';
+  return href ? (
+    <Link href={href} className={`${cls} transition-colors hover:border-[var(--color-gold)]`}>{body}</Link>
+  ) : (
+    <div className={cls}>{body}</div>
   );
 }
