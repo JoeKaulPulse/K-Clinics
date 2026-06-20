@@ -64,7 +64,7 @@ export function ProgressBar({ pct, className, label }: { pct: number; className?
   return (
     <div className={className}>
       {label != null && <div className="mb-1.5 flex items-center justify-between text-xs text-[var(--color-stone)]"><span>{label}</span><span className="font-medium text-[var(--color-ink)]">{v}%</span></div>}
-      <div className="h-2 overflow-hidden rounded-full bg-[var(--color-line)]"><div className="h-full rounded-full bg-[var(--color-gold)] transition-[width] duration-500" style={{ width: `${v}%` }} /></div>
+      <div className="h-2 overflow-hidden rounded-full bg-[var(--color-line)]"><div className="kc-bar-enter h-full rounded-full bg-[var(--color-gold)] transition-[width] duration-500" style={{ width: `${v}%` }} /></div>
     </div>
   );
 }
@@ -84,7 +84,9 @@ export function EmptyState({ title, children, action, className }: { title: Reac
 // components/ui/Button is intentionally separate (heavier, for hero CTAs).
 type BtnVariant = 'primary' | 'secondary' | 'ink';
 type BtnSize = 'sm' | 'md';
-const btnBase = 'inline-flex items-center justify-center gap-2 rounded-full font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60';
+// Tactile press feedback (subtle scale-down on tap) + colour transitions, matching
+// the admin shell's nav links; reduced-motion users get colour only.
+const btnBase = 'inline-flex items-center justify-center gap-2 rounded-full font-medium transition-[transform,color,background-color,border-color] duration-200 active:scale-[0.97] motion-reduce:transition-colors motion-reduce:active:scale-100 disabled:cursor-not-allowed disabled:opacity-60';
 const btnSizes: Record<BtnSize, string> = { sm: 'px-3 py-1.5 text-xs', md: 'px-5 py-2 text-sm' };
 const btnVariants: Record<BtnVariant, string> = {
   primary: 'bg-[var(--color-gold)] text-white hover:bg-[var(--color-ink)]',

@@ -3,11 +3,21 @@ import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { AcademyPortalShell } from '@/components/academy/AcademyPortalShell';
 import { PageTitle, SectionTitle, Card } from '@/components/academy/ui';
+import { CountUp } from '@/components/motion/CountUp';
 import { pageMeta } from '@/lib/seo';
 import type { LeaderRow } from '@/lib/academy-gamification';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: 'Leaderboard — K Academy', description: 'Your XP, badges and where you rank in the academy.', path: '/academy/leaderboard' });
 export const dynamic = 'force-dynamic';
+
+// SVG medal for the badge count — themeable, replaces an emoji used as a UI icon.
+function Medal({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" className={className} fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M5.5 2 8 6l2.5-4" /><circle cx="8" cy="10.5" r="3.3" /><path d="M8 9v1.5l1 .6" />
+    </svg>
+  );
+}
 
 function Board({ title, rows, blurb }: { title: string; rows: LeaderRow[]; blurb?: string }) {
   return (
@@ -20,7 +30,7 @@ function Board({ title, rows, blurb }: { title: string; rows: LeaderRow[]; blurb
           <li key={r.studentId} className={`flex items-center gap-3 rounded-[var(--radius-lg)] border px-4 py-3 ${r.isMe ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/8' : 'border-[var(--color-line)] bg-[var(--color-porcelain)]'}`}>
             <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm font-semibold ${r.rank <= 3 ? 'bg-[var(--color-gold)] text-white' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{r.rank}</span>
             <span className="flex-1 text-sm font-medium">{r.name}{r.isMe && <span className="ml-1.5 text-xs text-[var(--color-gold)]">you</span>}</span>
-            {r.badges > 0 && <span className="text-xs text-[var(--color-stone)]">🏅 {r.badges}</span>}
+            {r.badges > 0 && <span className="inline-flex items-center gap-1 text-xs text-[var(--color-stone)]"><Medal className="h-3.5 w-3.5 text-[var(--color-gold)]" />{r.badges}</span>}
             <span className="tabular-nums text-sm font-semibold text-[var(--color-ink)]">{r.xp.toLocaleString()} XP</span>
           </li>
         ))}
@@ -51,8 +61,8 @@ export default async function LeaderboardPage() {
       {/* Your standing */}
       <Card className="grid gap-4 p-6 sm:grid-cols-[auto_1fr] sm:items-center">
         <div className="flex items-center gap-6">
-          <div className="text-center"><p className="font-[family-name:var(--font-display)] text-4xl text-[var(--color-ink)]">{standing.xp.toLocaleString()}</p><p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">XP</p></div>
-          <div className="text-center"><p className="font-[family-name:var(--font-display)] text-4xl text-[var(--color-ink)]">#{standing.rank}</p><p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">of {standing.total}</p></div>
+          <div className="text-center"><p className="font-[family-name:var(--font-display)] text-4xl text-[var(--color-ink)]"><CountUp value={standing.xp.toLocaleString()} /></p><p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">XP</p></div>
+          <div className="text-center"><p className="font-[family-name:var(--font-display)] text-4xl text-[var(--color-ink)]"><CountUp value={`#${standing.rank}`} /></p><p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">of {standing.total}</p></div>
         </div>
         <div className="sm:border-l sm:border-[var(--color-line)] sm:pl-6">
           <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">Badges</p>

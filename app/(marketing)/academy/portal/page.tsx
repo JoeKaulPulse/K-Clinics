@@ -9,6 +9,7 @@ import { InstallPrompt } from '@/components/academy/InstallPrompt';
 import { OnboardingHost } from '@/components/onboarding/OnboardingHost';
 import { ONBOARDING } from '@/lib/onboarding-steps';
 import { PageTitle, SectionTitle, Card, Stat, Pill, ProgressBar, EmptyState, AButton, Eyebrow } from '@/components/academy/ui';
+import { CountUp } from '@/components/motion/CountUp';
 import { pageMeta } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: 'Trainee Portal — K Academy', description: 'K Academy trainee portal — your courses, theory and practical dates.', path: '/academy/portal', noindex: true }); // BLD-341: private portal — never index
@@ -147,15 +148,15 @@ export default async function AcademyPortalPage() {
         <Card className="p-5">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
             <div className="flex items-center gap-3">
-              <span className="grid h-12 w-12 place-items-center rounded-full bg-[var(--color-gold)] font-[family-name:var(--font-display)] text-xl text-white">{lvl.level}</span>
+              <span className="grid h-12 w-12 place-items-center rounded-full bg-[var(--color-gold)] font-[family-name:var(--font-display)] text-xl text-white"><CountUp value={String(lvl.level)} /></span>
               <div>
                 <p className="font-medium">{lvl.title}</p>
                 <p className="text-xs text-[var(--color-stone)]">Level {lvl.level}{lvl.nextAt != null ? ` · ${(lvl.nextAt - standing.xp).toLocaleString()} XP to next` : ' · max'}</p>
               </div>
             </div>
-            <Stat label="XP" value={standing.xp.toLocaleString()} />
-            <Stat label="Badges" value={standing.badges.length} />
-            <Stat label="Rank" value={`#${standing.rank}`} />
+            <Stat label="XP" value={<CountUp value={standing.xp.toLocaleString()} />} />
+            <Stat label="Badges" value={<CountUp value={String(standing.badges.length)} />} />
+            <Stat label="Rank" value={<CountUp value={`#${standing.rank}`} />} />
             <Stat label="Time" value={totalMin >= 60 ? `${Math.floor(totalMin / 60)}h ${totalMin % 60}m` : `${totalMin}m`} />
             <AButton href="/academy/leaderboard" variant="secondary" size="sm" className="ml-auto">View progress →</AButton>
           </div>
