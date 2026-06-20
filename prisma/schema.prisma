@@ -1835,6 +1835,7 @@ model AcademyStudent {
   forumPosts          ForumPost[]
   portfolioEntries    PortfolioEntry[]
   exerciseAttempts    ExerciseAttempt[]
+  demoAttempts        DemoAttempt[]
   quizAttempts        QuizAttempt[]
   practiceAttempts    PracticeAttempt[]
   pointEvents         PointEvent[]
@@ -1913,6 +1914,7 @@ model Course {
   bundleItems         CourseBundleItem[]
   portfolioEntries    PortfolioEntry[]
   exercises           InteractiveExercise[]
+  demoVideos          DemoVideo[]
 
   @@unique([tenantId, slug]) // ClinicOS Ring 1 (BLD-301): per-tenant slug — replaces the global @unique
   @@index([active, order])
@@ -2375,6 +2377,62 @@ model ExerciseAttempt {
   completedAt DateTime            @default(now())
 
   @@unique([studentId, exerciseId])
+  @@index([tenantId])
+}
+
+// BLD-539: "spot the mistake" demo walkthroughs. Staff upload a video and mark
+// time windows where the practitioner does something wrong; learners watch and
+// press space when they think they see one. Graded server-side (mistake times
+// withheld from the player until after grading).
+model DemoVideo {
+  id          String        @id @default(cuid())
+  tenantId    String
+  course      Course?       @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  courseId    String?
+  title       String
+  description String?       @db.Text
+  videoUrl    String // Vercel Blob URL
+  durationSec Int? // optional, for UI
+  order       Int           @default(0)
+  active      Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  mistakes    DemoMistake[]
+  attempts    DemoAttempt[]
+
+  @@index([courseId, order])
+  @@index([tenantId])
+}
+
+model DemoMistake {
+  id        String    @id @default(cuid())
+  tenantId  String
+  video     DemoVideo @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  videoId   String
+  atSec     Float // when the mistake occurs (seconds)
+  windowSec Float     @default(3) // tolerance window around atSec
+  label     String // what's wrong (revealed after grading)
+  createdAt DateTime  @default(now())
+
+  @@index([videoId])
+  @@index([tenantId])
+}
+
+model DemoAttempt {
+  id             String         @id @default(cuid())
+  tenantId       String
+  student        AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId      String
+  video          DemoVideo      @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  videoId        String
+  spotted        Int
+  total          Int
+  falsePositives Int            @default(0)
+  scorePct       Int
+  attempts       Int            @default(1)
+  completedAt    DateTime       @default(now())
+
+  @@unique([studentId, videoId])
   @@index([tenantId])
 }
 
