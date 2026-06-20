@@ -31,12 +31,17 @@ export default async function AcademyPayPage({ params }: { params: Promise<{ enr
         ? 'This enrolment has been cancelled. Please get in touch if you think this is a mistake.'
         : null;
 
+  // An already-enrolled trainee paying an instalment/balance has already accepted
+  // their place — so only an unconfirmed (OFFERED/APPLIED) enrolment reads as
+  // "accept", the rest as "pay your balance" (audit finding).
+  const accepting = enrolment.status === 'OFFERED' || enrolment.status === 'APPLIED';
+
   return (
     <AcademyPortalShell firstName={student.firstName}>
       <div className="mb-7">
         {enrolment.course.level && <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-gold)]">K Academy · {enrolment.course.level}</p>}
-        <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl sm:text-4xl">Accept your place</h1>
-        <p className="mt-1 text-[var(--color-stone)]">Secure your place on {enrolment.course.title}.</p>
+        <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl sm:text-4xl">{accepting ? 'Accept your place' : 'Pay your balance'}</h1>
+        <p className="mt-1 text-[var(--color-stone)]">{accepting ? `Secure your place on ${enrolment.course.title}.` : `Settle the balance on ${enrolment.course.title}.`}</p>
       </div>
       <section className="max-w-2xl">
         {blocked || !money ? (
