@@ -36,6 +36,7 @@ export const ACADEMY_TENANT_MODELS: ReadonlySet<string> = new Set<string>([
   'flashcardReview',
   'forumThread',
   'forumPost',
+  'portfolioEntry',
   'quizAttempt',
   'examQuestion',
   'pastPaper',
