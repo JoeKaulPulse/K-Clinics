@@ -20,7 +20,7 @@ function variantNote(durationMin: number, courses: { sessions: number; totalPenc
   if (durationMin) parts.push(`${durationMin} min`);
   for (const c of courses) {
     const per = Math.round(c.totalPence / c.sessions);
-    const save = singlePence > 0 ? Math.round((1 - per / singlePence) * 100) : 0;
+    const save = singlePence > 0 && per < singlePence ? Math.round((1 - per / singlePence) * 100) : 0;
     parts.push(`course of ${c.sessions} ${formatPence(c.totalPence)} (${formatPence(per)}/session${save > 0 ? `, save ${save}%` : ''})`);
   }
   return parts.join(' · ');
@@ -70,7 +70,7 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
   // Group laser/IPL areas by body part (falls back to a flat list otherwise).
   const groupedAreas = /laser|ipl/i.test(t.slug) ? groupAreas(variants) : null;
   const variantRow = (v: (typeof variants)[number]) => {
-    const note = variantNote(v.durationMin, v.courses, v.pricePence);
+    const note = variantNote(v.durationMin, v.courses, v.offerPence ?? v.pricePence);
     const unavailable = v.status === 'COMING_SOON' || v.status === 'UNAVAILABLE';
     return (
       <li key={v.id} className="flex items-baseline justify-between gap-4 bg-[var(--color-porcelain)] px-6 py-5">

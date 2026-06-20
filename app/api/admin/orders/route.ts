@@ -20,16 +20,22 @@ export async function POST(req: Request) {
   if (body.status === 'REFUNDED') {
     const order = await db.order.findUnique({ where: { id: body.id }, select: { stripePaymentIntentId: true, totalPence: true, status: true, giftCardCode: true, giftCardPence: true } });
     if (!order) return NextResponse.json({ ok: false, error: 'Order not found.' }, { status: 404 });
-    if (order.status === 'REFUNDED') return NextResponse.json({ ok: false, error: 'Order already refunded.' }, { status: 409 });
+    // CAS guard: atomically claim the refund slot before touching Stripe.
+    // A concurrent retry that lost the race gets count===0 and bails out,
+    // preventing a second full refund on a transient 5xx re-submit.
+    const claimed = await db.order.updateMany({ where: { id: body.id, status: { not: 'REFUNDED' } }, data: { status: 'REFUNDED' } });
+    if (claimed.count === 0) return NextResponse.json({ ok: false, error: 'Order already refunded.' }, { status: 409 });
     if (order.stripePaymentIntentId) {
       const { stripe, stripeEnabled } = await import('@/lib/stripe');
       if (!stripeEnabled) return NextResponse.json({ ok: false, error: 'Stripe not configured.' }, { status: 503 });
       try {
         await stripe().refunds.create(
           { payment_intent: order.stripePaymentIntentId, amount: order.totalPence },
-          { idempotencyKey: `order-refund-${body.id}` },
+          { idempotencyKey: `order-refund-${body.id}-${order.totalPence}` },
         );
       } catch (e) {
+        // Roll back the status change so staff can retry after fixing Stripe config.
+        await db.order.updateMany({ where: { id: body.id, status: 'REFUNDED' }, data: { status: order.status } }).catch(() => {});
         return NextResponse.json({ ok: false, error: (e as Error).message || 'Refund failed at Stripe.' }, { status: 502 });
       }
     }

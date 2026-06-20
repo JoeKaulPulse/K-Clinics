@@ -316,12 +316,14 @@ export async function getXeroCashPence(): Promise<{ ok: boolean; pence: number; 
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) return { ok: false, pence: 0, label: conn.label };
-    const data = (await res.json()) as { Reports?: { Rows?: { RowType?: string; Rows?: { Cells?: { Value?: string }[] }[] }[] }[] };
-    // Sum the closing-balance cell (last cell) of each summary row.
+    const data = (await res.json()) as { Reports?: { Rows?: { RowType?: string; Rows?: { RowType?: string; Cells?: { Value?: string }[] }[] }[] }[] };
+    // Sum the closing-balance cell (last cell) of each data Row, skipping
+    // Header and SummaryRow entries which would double-count the total.
     let total = 0;
     const sections = data.Reports?.[0]?.Rows ?? [];
     for (const sec of sections) {
       for (const row of sec.Rows ?? []) {
+        if (row.RowType !== 'Row') continue;
         const cells = row.Cells ?? [];
         const last = cells[cells.length - 1]?.Value;
         const n = last ? parseFloat(last) : NaN;

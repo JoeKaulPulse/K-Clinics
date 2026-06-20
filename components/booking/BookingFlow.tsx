@@ -448,7 +448,7 @@ function courseAsVariant(v: Variant, sessions: number): Variant {
 // ── Account step (signup / login) ───────────────────────────────────────────
 function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string; gender: string | null; welcome: boolean; sms: boolean }) => void; setError: (e: string) => void }) {
   const [mode, setMode] = useState<'signup' | 'login'>('signup');
-  const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', password: '', gender: '', marketingOptIn: true, sms: false, consent: false, company: '' });
+  const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', password: '', gender: '', marketingOptIn: false, sms: false, consent: false, company: '' });
   const [busy, setBusy] = useState(false);
 
   async function signup() {

@@ -126,7 +126,7 @@ export async function chargeBooking(
     if (pi.status === 'succeeded') {
       await db.booking.update({
         where: { id: booking.id },
-        data: { chargePaymentIntentId: pi.id, chargedPence: amountPence, chargedAt: new Date() },
+        data: { chargePaymentIntentId: pi.id, chargedPence: pi.amount_received ?? amountPence, chargedAt: new Date() },
       });
       // VAT breakdown on the receipt once the clinic is VAT-registered (dormant otherwise).
       let vat: { netPence: number; vatPence: number; ratePct: number } | null = null;

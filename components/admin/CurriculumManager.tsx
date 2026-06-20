@@ -131,9 +131,6 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
-  // BLD-444: client-direct upload to Vercel Blob, hardened so it can't sit on
-  // "Uploading…" forever — sanitise the filename (spaces / # / ? in the pathname
-  // break the upload URL) and abort after 3 minutes with a clear error.
   // BLD-485: onUploadProgress is intentionally omitted. The @vercel/blob/client v2
   // streaming path (ReadableStream + duplex:'half' fetch) hangs on Safari and
   // certain Chrome versions. Without it the SDK falls back to a plain File-body

@@ -91,7 +91,8 @@ export default async function PricingPage() {
                                     <span className="mt-1 block space-y-0.5 text-sm text-[var(--color-stone)]">
                                       {v.courses.map((c) => {
                                         const per = Math.round(c.totalPence / c.sessions);
-                                        const save = v.pricePence > 0 ? Math.round((1 - per / v.pricePence) * 100) : 0;
+                                        const effectiveSingle = v.offerPence ?? v.pricePence;
+                                        const save = effectiveSingle > 0 && per < effectiveSingle ? Math.round((1 - per / effectiveSingle) * 100) : 0;
                                         return (
                                           <span key={c.sessions} className="block">
                                             Course of {c.sessions} — <span className="font-medium text-[var(--color-ink)]">{formatPence(c.totalPence)}</span>
