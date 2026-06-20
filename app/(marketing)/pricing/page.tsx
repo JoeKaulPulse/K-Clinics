@@ -91,7 +91,11 @@ export default async function PricingPage() {
                                     <span className="mt-1 block space-y-0.5 text-sm text-[var(--color-stone)]">
                                       {v.courses.map((c) => {
                                         const per = Math.round(c.totalPence / c.sessions);
-                                        const save = v.pricePence > 0 ? Math.round((1 - per / v.pricePence) * 100) : 0;
+                                        // Compare the per-session course rate against the EFFECTIVE single price
+                                        // (the live offer price when one applies), not the original list price —
+                                        // else a course dearer than the discounted single still shows a "saving".
+                                        const single = v.offerPence ?? v.pricePence;
+                                        const save = single > 0 ? Math.round((1 - per / single) * 100) : 0;
                                         return (
                                           <span key={c.sessions} className="block">
                                             Course of {c.sessions} — <span className="font-medium text-[var(--color-ink)]">{formatPence(c.totalPence)}</span>

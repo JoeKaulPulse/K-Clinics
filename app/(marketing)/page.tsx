@@ -165,14 +165,24 @@ export default async function HomePage() {
             lede="Advanced technology means little without the judgement to wield it. Our clinicians pair clinical rigour with an artist's eye — and the patience to do things properly."
           />
           <Stagger className="grid gap-px overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2">
-            {pillars.map((p) => (
-              <StaggerItem key={p.label} className="bg-[var(--color-porcelain)] p-9 md:p-10">
-                <CountUp value={p.stat} className="block font-[family-name:var(--font-display)] text-[clamp(3rem,2rem+2vw,4.5rem)] leading-none text-gold-gradient" />
-                <span className="sr-only">{p.stat}</span>
-                <p className="mt-4 font-medium">{p.label}</p>
-                <p className="mt-2 text-sm leading-relaxed text-[var(--color-stone)]">{p.text}</p>
-              </StaggerItem>
-            ))}
+            {pillars.map((p) => {
+              // Only count up genuine metrics (40+, 100%). Animating a small count
+              // ("2") or a categorical value ("Level 7") from 0 shows misleading
+              // mid-flight values ("1 Disciplines", "Level 3") — render those static.
+              const animate = /^\d/.test(p.stat) && parseFloat(p.stat) >= 10;
+              const numCls = 'block font-[family-name:var(--font-display)] text-[clamp(3rem,2rem+2vw,4.5rem)] leading-none text-gold-gradient';
+              return (
+                <StaggerItem key={p.label} className="bg-[var(--color-porcelain)] p-9 md:p-10">
+                  {animate ? (
+                    <><CountUp value={p.stat} className={numCls} /><span className="sr-only">{p.stat}</span></>
+                  ) : (
+                    <span className={numCls}>{p.stat}</span>
+                  )}
+                  <p className="mt-4 font-medium">{p.label}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--color-stone)]">{p.text}</p>
+                </StaggerItem>
+              );
+            })}
           </Stagger>
         </div>
       </section>

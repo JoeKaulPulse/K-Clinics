@@ -70,7 +70,8 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
   // Group laser/IPL areas by body part (falls back to a flat list otherwise).
   const groupedAreas = /laser|ipl/i.test(t.slug) ? groupAreas(variants) : null;
   const variantRow = (v: (typeof variants)[number]) => {
-    const note = variantNote(v.durationMin, v.courses, v.pricePence);
+    // Saving is measured against the effective single price (offer when live), not list.
+    const note = variantNote(v.durationMin, v.courses, v.offerPence ?? v.pricePence);
     const unavailable = v.status === 'COMING_SOON' || v.status === 'UNAVAILABLE';
     return (
       <li key={v.id} className="flex items-baseline justify-between gap-4 bg-[var(--color-porcelain)] px-6 py-5">
