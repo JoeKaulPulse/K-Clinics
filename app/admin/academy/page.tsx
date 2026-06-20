@@ -16,7 +16,7 @@ export default async function AdminAcademyPage() {
 
   const { db } = await import('@/lib/db');
   const now = new Date();
-  const [courses, newApplications, totalEnrolments, students, upcomingLive, openVacancies, newFunding, pendingReviews, openQuestions] = await Promise.all([
+  const [courses, newApplications, totalEnrolments, students, upcomingLive, openVacancies, newFunding, pendingReviews, openQuestions, totalBundles] = await Promise.all([
     db.course.findMany({ orderBy: [{ order: 'asc' }], include: { cohorts: { orderBy: { startAt: 'asc' } } } }),
     db.enrolment.count({ where: { status: 'APPLIED' } }),
     db.enrolment.count(),
@@ -26,6 +26,7 @@ export default async function AdminAcademyPage() {
     db.fundingApplication.count({ where: { status: 'NEW' } }),
     db.courseReview.count({ where: { status: 'PENDING' } }),
     db.lessonComment.count({ where: { parentId: null, isStaff: false, resolved: false, hidden: false } }),
+    db.courseBundle.count(),
   ]);
 
   const coursesView = courses.map((c) => ({
@@ -47,6 +48,7 @@ export default async function AdminAcademyPage() {
     { href: '/admin/academy/students', label: 'Trainees', value: String(students), sub: 'portal accounts' },
     { href: '/admin/academy/live-classes', label: 'Live classes', value: String(upcomingLive), sub: 'upcoming' },
     { href: '/admin/academy/reviews', label: 'Reviews & Q&A', value: String(pendingReviews + openQuestions), sub: `${pendingReviews} reviews · ${openQuestions} questions` },
+    { href: '/admin/academy/bundles', label: 'Bundles', value: String(totalBundles), sub: 'course pathways' },
     { href: '/admin/careers', label: 'Careers', value: String(openVacancies), sub: 'open roles' },
   ];
 

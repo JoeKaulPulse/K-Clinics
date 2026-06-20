@@ -6,7 +6,7 @@ import { ATTACHMENT_KINDS, DEFAULT_KIND } from '@/components/academy/attachment-
 
 type Link = { label: string; url: string };
 type Attachment = { label: string; url: string; sizeBytes?: number; kind?: string };
-type Lesson = { id: string; title: string; type: string; durationMin: number | null; minSeconds: number | null; videoUrl: string | null; audioUrl: string | null; embedUrl: string | null; attachments: Attachment[]; imageUrl: string | null; body: string; keyPoints: string[]; objectives: string[]; studyTips: string[]; homework: string | null; examRefs: string[]; citations: Link[]; resources: Link[]; pdfUrls: string[]; pdfNoDownload: string[]; requiresHomework: boolean };
+type Lesson = { id: string; title: string; type: string; durationMin: number | null; minSeconds: number | null; videoUrl: string | null; audioUrl: string | null; embedUrl: string | null; attachments: Attachment[]; imageUrl: string | null; body: string; keyPoints: string[]; objectives: string[]; studyTips: string[]; homework: string | null; examRefs: string[]; citations: Link[]; resources: Link[]; pdfUrls: string[]; pdfNoDownload: string[]; requiresHomework: boolean; preview: boolean };
 const LESSON_TYPES: { value: string; label: string }[] = [
   { value: 'TEXT', label: 'Text / reading' },
   { value: 'VIDEO', label: 'Video' },
@@ -122,7 +122,7 @@ function ModuleCard({ module: m, index, total, busy, act, onMove }: { module: Mo
 
 function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: Lesson; index: number; total: number; busy: boolean; act: Act; lessonIds: string[] }) {
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ title: l.title, type: l.type || 'TEXT', durationMin: l.durationMin ?? '', minSeconds: l.minSeconds ?? '', videoUrl: l.videoUrl ?? '', audioUrl: l.audioUrl ?? '', embedUrl: l.embedUrl ?? '', attachments: l.attachments ?? [], imageUrl: l.imageUrl ?? '', body: l.body, keyPoints: listToText(l.keyPoints), objectives: listToText(l.objectives), studyTips: listToText(l.studyTips), homework: l.homework ?? '', examRefs: listToText(l.examRefs), citations: linksToText(l.citations), resources: linksToText(l.resources), pdfUrls: l.pdfUrls, pdfNoDownload: l.pdfNoDownload ?? [], requiresHomework: l.requiresHomework });
+  const [f, setF] = useState({ title: l.title, type: l.type || 'TEXT', durationMin: l.durationMin ?? '', minSeconds: l.minSeconds ?? '', videoUrl: l.videoUrl ?? '', audioUrl: l.audioUrl ?? '', embedUrl: l.embedUrl ?? '', attachments: l.attachments ?? [], imageUrl: l.imageUrl ?? '', body: l.body, keyPoints: listToText(l.keyPoints), objectives: listToText(l.objectives), studyTips: listToText(l.studyTips), homework: l.homework ?? '', examRefs: listToText(l.examRefs), citations: linksToText(l.citations), resources: linksToText(l.resources), pdfUrls: l.pdfUrls, pdfNoDownload: l.pdfNoDownload ?? [], requiresHomework: l.requiresHomework, preview: l.preview ?? false });
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((s) => ({ ...s, [k]: v }));
   const move = (d: number) => { const ids = [...lessonIds]; const j = index + d; if (j < 0 || j >= ids.length) return; [ids[index], ids[j]] = [ids[j], ids[index]]; act({ op: 'reorderLessons', ids }); };
   const [uploading, setUploading] = useState(false);
@@ -149,7 +149,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
   const uploadErr = (e: unknown) => ((e as Error)?.name === 'AbortError' ? 'timed out after 3 min — check the connection or file size' : (e as Error)?.message || 'unknown');
   // Build the full save payload from a given form state snapshot.
   function lessonSavePayload(s: typeof f) {
-    return { op: 'updateLesson', id: l.id, title: s.title, type: s.type, durationMin: s.durationMin, minSeconds: s.minSeconds, videoUrl: s.videoUrl, audioUrl: s.audioUrl, embedUrl: s.embedUrl, attachments: s.attachments, imageUrl: s.imageUrl, body: s.body, keyPoints: textToList(s.keyPoints), objectives: textToList(s.objectives), studyTips: textToList(s.studyTips), homework: s.homework, examRefs: textToList(s.examRefs), citations: textToLinks(s.citations), resources: textToLinks(s.resources), pdfUrls: s.pdfUrls, pdfNoDownload: s.pdfNoDownload, requiresHomework: s.requiresHomework };
+    return { op: 'updateLesson', id: l.id, title: s.title, type: s.type, durationMin: s.durationMin, minSeconds: s.minSeconds, videoUrl: s.videoUrl, audioUrl: s.audioUrl, embedUrl: s.embedUrl, attachments: s.attachments, imageUrl: s.imageUrl, body: s.body, keyPoints: textToList(s.keyPoints), objectives: textToList(s.objectives), studyTips: textToList(s.studyTips), homework: s.homework, examRefs: textToList(s.examRefs), citations: textToLinks(s.citations), resources: textToLinks(s.resources), pdfUrls: s.pdfUrls, pdfNoDownload: s.pdfNoDownload, requiresHomework: s.requiresHomework, preview: s.preview };
   }
   async function uploadVideo(file: File) {
     setUploading(true);
@@ -236,6 +236,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
           </div>
           <label className={label}>Homework / assignment (Markdown, shown after the lesson)<textarea rows={3} className={`${field} mt-1`} value={f.homework} onChange={(e) => set('homework', e.target.value)} placeholder="Label a diagram of the skin layers and bring it to the practical day." /></label>
           <label className="flex items-center gap-2 text-xs text-[var(--color-stone)]"><input type="checkbox" checked={f.requiresHomework} onChange={(e) => set('requiresHomework', e.target.checked)} /> Require learners to submit homework files for this lesson (BLD-446)</label>
+          <label className="flex items-center gap-2 text-xs text-[var(--color-stone)]"><input type="checkbox" checked={f.preview} onChange={(e) => set('preview', e.target.checked)} /> Free taster — anyone can view this lesson before enrolling (shown on the public course page)</label>
           <label className={label}>Key points (one per line)<textarea rows={3} className={`${field} mt-1`} value={f.keyPoints} onChange={(e) => set('keyPoints', e.target.value)} /></label>
           <label className={label}>Maps to exam / syllabus (one per line — e.g. &ldquo;VTCT Level 4 Unit UV40539, LO1&rdquo;)<textarea rows={2} className={`${field} mt-1`} value={f.examRefs} onChange={(e) => set('examRefs', e.target.value)} /></label>
           <div className="grid gap-3 sm:grid-cols-2">

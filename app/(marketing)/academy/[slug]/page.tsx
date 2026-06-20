@@ -32,8 +32,8 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
   const course = await getCourse(slug);
   if (!course) notFound();
 
-  const { getPublishedReviews } = await import('@/lib/lms');
-  const rating = await getPublishedReviews(course.id);
+  const { getPublishedReviews, getPreviewLessons } = await import('@/lib/lms');
+  const [rating, previews] = await Promise.all([getPublishedReviews(course.id), getPreviewLessons(course.id)]);
 
   const cohortOptions = course.cohorts.map((h) => ({ id: h.id, label: `${fmt(h.startAt.toISOString())}${h.remaining <= 3 ? ` · ${h.remaining} places left` : ''}` }));
   const activePromo = getActivePromo(course);
@@ -98,6 +98,25 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
                     <li key={h.id} className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-4 py-3 text-sm">
                       <span className="font-medium text-[var(--color-ink)]">{fmt(h.startAt.toISOString())}{h.endAt ? ` – ${fmt(h.endAt.toISOString())}` : ''}</span>
                       <span className="text-[var(--color-stone)]">{h.location ?? 'Islington'}{h.trainer ? ` · ${h.trainer}` : ''} · {h.remaining > 0 ? `${h.remaining} place${h.remaining === 1 ? '' : 's'} left` : 'Full'}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {previews.length > 0 && (
+              <div>
+                <h2 className="font-[family-name:var(--font-display)] text-2xl">Try a free taster</h2>
+                <p className="mt-1 text-sm text-[var(--color-stone)]">Sample a lesson before you apply — no sign-up needed.</p>
+                <ul className="mt-4 space-y-2">
+                  {previews.map((p) => (
+                    <li key={p.id}>
+                      <Link href={`/academy/${slug}/taster/${p.id}`} className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-4 py-3 text-sm transition-colors hover:border-[var(--color-gold)]">
+                        <span className="text-[var(--color-gold)]">▶</span>
+                        <span className="font-medium text-[var(--color-ink)]">{p.title}</span>
+                        <span className="text-[var(--color-stone)]">· {p.moduleTitle}{p.durationMin ? ` · ${p.durationMin} min` : ''}</span>
+                        <span className="ml-auto text-xs font-medium text-[var(--color-gold)]">Free →</span>
+                      </Link>
                     </li>
                   ))}
                 </ul>

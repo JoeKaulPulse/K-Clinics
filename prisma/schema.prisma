@@ -1905,9 +1905,44 @@ model Course {
   fundingApplications FundingApplication[]
   reviews             CourseReview[]
   flashcardDecks      FlashcardDeck[]
+  bundleItems         CourseBundleItem[]
 
   @@unique([tenantId, slug]) // ClinicOS Ring 1 (BLD-301): per-tenant slug — replaces the global @unique
   @@index([active, order])
+  @@index([tenantId])
+}
+
+// BLD-532: a bundle / learning pathway grouping related courses (e.g. a Foundation
+// pathway). Marketing + grouping construct; learners still apply per course.
+model CourseBundle {
+  id          String             @id @default(cuid())
+  tenantId    String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  slug        String
+  title       String
+  summary     String?
+  description String?            @db.Text
+  heroImage   String?
+  pricePence  Int? // optional combined price (display only)
+  active      Boolean            @default(true)
+  order       Int                @default(0)
+  items       CourseBundleItem[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+model CourseBundleItem {
+  id        String       @id @default(cuid())
+  tenantId  String
+  bundle    CourseBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  bundleId  String
+  course    Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId  String
+  order     Int          @default(0)
+
+  @@index([bundleId, order])
   @@index([tenantId])
 }
 
@@ -1953,6 +1988,7 @@ model Lesson {
   title               String
   order               Int                  @default(0)
   type                LessonType           @default(TEXT) // BLD-529: primary content type
+  preview             Boolean              @default(false) // BLD-532: free taster lesson — viewable publicly before enrolment
   durationMin         Int?
   videoUrl            String? // native Blob/MP4 upload, YouTube/Vimeo embed, or a search link (pre-test explainer)
   audioUrl            String? // BLD-529: native audio (Blob/MP3) or hosted audio URL

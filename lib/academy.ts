@@ -64,3 +64,26 @@ export async function getCourse(slug: string): Promise<CourseView | null> {
   if (!c || !c.active) return null;
   return toView(c, await cohortsWithRemaining(c.id));
 }
+
+// ── BLD-532: bundles / learning pathways ─────────────────────────────────────
+export type BundleCourse = { slug: string; title: string; level: string | null; summary: string | null; pricePence: number };
+export type BundleView = { id: string; slug: string; title: string; summary: string | null; description: string | null; heroImage: string | null; pricePence: number | null; courses: BundleCourse[] };
+
+type BundleRow = { id: string; slug: string; title: string; summary: string | null; description: string | null; heroImage: string | null; pricePence: number | null; items: { course: { slug: string; title: string; level: string | null; summary: string | null; pricePence: number; active: boolean } }[] };
+function toBundleView(b: BundleRow): BundleView {
+  return {
+    id: b.id, slug: b.slug, title: b.title, summary: b.summary, description: b.description, heroImage: b.heroImage, pricePence: b.pricePence,
+    courses: b.items.filter((i) => i.course.active).map((i) => ({ slug: i.course.slug, title: i.course.title, level: i.course.level, summary: i.course.summary, pricePence: i.course.pricePence })),
+  };
+}
+
+export async function listBundles(): Promise<BundleView[]> {
+  const rows = await db.courseBundle.findMany({ where: { active: true }, orderBy: { order: 'asc' }, include: { items: { orderBy: { order: 'asc' }, include: { course: true } } } });
+  return rows.map(toBundleView).filter((b) => b.courses.length > 0);
+}
+
+export async function getBundle(slug: string): Promise<BundleView | null> {
+  const b = await db.courseBundle.findFirst({ where: { slug }, include: { items: { orderBy: { order: 'asc' }, include: { course: true } } } });
+  if (!b || !b.active) return null;
+  return toBundleView(b);
+}

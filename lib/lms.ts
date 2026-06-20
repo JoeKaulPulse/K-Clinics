@@ -544,6 +544,36 @@ export async function getCoursePreview(courseId: string): Promise<CourseLearning
   return { course, modules: moduleViews, progressPct: 0, certificateEligible: false, preCourseAck: true };
 }
 
+// ── BLD-532: free taster lessons (public, pre-enrolment) ─────────────────────
+
+/** Preview ("taster") lessons for a course — for the public course page. */
+export async function getPreviewLessons(courseId: string): Promise<{ id: string; title: string; durationMin: number | null; moduleTitle: string }[]> {
+  const rows = await db.lesson.findMany({
+    where: { preview: true, module: { courseId } },
+    orderBy: [{ module: { order: 'asc' } }, { order: 'asc' }],
+    select: { id: true, title: true, durationMin: true, module: { select: { title: true } } },
+  });
+  return rows.map((r) => ({ id: r.id, title: r.title, durationMin: r.durationMin, moduleTitle: r.module.title }));
+}
+
+/** A single taster lesson's content for the public viewer — only if it's flagged
+ *  preview and belongs to the given course. No quiz/notes/progress. */
+export async function getTasterLesson(courseSlug: string, lessonId: string): Promise<{ courseTitle: string; courseSlug: string; lesson: LessonView } | null> {
+  const l = await db.lesson.findFirst({
+    where: { id: lessonId, preview: true, module: { course: { slug: courseSlug } } },
+    include: { module: { select: { course: { select: { title: true, slug: true } } } } },
+  });
+  if (!l) return null;
+  const lesson: LessonView = {
+    id: l.id, title: l.title, order: l.order, durationMin: l.durationMin, minSeconds: null,
+    type: l.type, videoUrl: l.videoUrl, audioUrl: l.audioUrl, embedUrl: l.embedUrl, attachments: attArr(l.attachments), videoPositionSec: 0,
+    imageUrl: l.imageUrl, body: l.body,
+    keyPoints: strArr(l.keyPoints), objectives: strArr(l.objectives), studyTips: strArr(l.studyTips),
+    homework: null, examRefs: strArr(l.examRefs), steps: null, citations: arr(l.citations), resources: arr(l.resources), pdfUrls: strArr(l.pdfUrls), pdfNoDownload: strArr(l.pdfNoDownload), requiresHomework: false, submission: null, done: false, locked: false,
+  };
+  return { courseTitle: l.module.course.title, courseSlug: l.module.course.slug, lesson };
+}
+
 /** Lean progress % for one course (for the portal list). 0–100, or null if the
  *  course has no LMS content yet. */
 export async function courseProgress(studentId: string, courseId: string): Promise<{ pct: number; hasContent: boolean }> {
