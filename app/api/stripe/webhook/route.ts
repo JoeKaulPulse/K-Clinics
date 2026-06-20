@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { stripeEnabled, stripe } from '@/lib/stripe';
+import * as Sentry from '@sentry/nextjs';
 
 export const runtime = 'nodejs';
 
@@ -203,6 +204,7 @@ export async function POST(req: Request) {
     }
   } catch (e) {
     console.error('webhook handler error', e);
+    Sentry.captureException(e, { tags: { eventType: event.type } });
     // Return 500 for revenue-critical events so Stripe retries rather than
     // silently dropping the event on a transient DB failure.
     // BLD-412: setup_intent.succeeded must also retry — a 200 on DB failure

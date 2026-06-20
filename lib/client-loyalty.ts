@@ -336,14 +336,18 @@ export async function refundBookingPoints(bookingId: string): Promise<void> {
  *  Idempotent within the year (one BIRTHDAY row per client per ~year). */
 export async function awardBirthdayPoints(): Promise<number> {
   const today = new Date();
-  const clients = await db.client.findMany({ where: { dob: { not: null }, portalActive: true }, select: { id: true, dob: true, firstName: true } });
+  const { getTiers, tierForSpend } = await import('@/lib/membership');
+  const tiers = await getTiers();
+  const clients = await db.client.findMany({ where: { dob: { not: null }, portalActive: true }, select: { id: true, dob: true, firstName: true, membershipTier: true } });
   let n = 0;
   for (const c of clients) {
     if (!c.dob || c.dob.getMonth() !== today.getMonth() || c.dob.getDate() !== today.getDate()) continue;
     const since = new Date(Date.now() - 350 * 864e5);
     const recent = await db.clientPoints.findFirst({ where: { clientId: c.id, category: 'BIRTHDAY', createdAt: { gte: since } } });
     if (recent) continue;
-    const res = await awardClientPoints({ clientId: c.id, points: LOYALTY.birthdayBonus, category: 'BIRTHDAY', reason: 'Happy birthday from KClinics 🎂' });
+    const tier = tiers.find((t) => t.key === c.membershipTier) ?? tierForSpend(tiers, 0);
+    const points = tier?.birthdayBonusPoints ?? LOYALTY.birthdayBonus;
+    const res = await awardClientPoints({ clientId: c.id, points, category: 'BIRTHDAY', reason: 'Happy birthday from KClinics 🎂' });
     if (res.ok) n++;
   }
   return n;

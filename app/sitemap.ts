@@ -90,7 +90,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly' as const,
       priority: 0.7,
     })),
-    ...infoSlugs.map((slug) => ({
+    // BLD-535: refer-a-friend info page is incorrect (£50 vs live £25/£25) and
+    // redirects to /refer-a-friend — exclude from sitemap so search engines
+    // don't index the outdated commercial claim.
+    ...infoSlugs.filter((slug) => slug !== 'refer-a-friend').map((slug) => ({
       url: `${base}/info/${slug}`,
       lastModified: reviewed,
       changeFrequency: 'yearly' as const,

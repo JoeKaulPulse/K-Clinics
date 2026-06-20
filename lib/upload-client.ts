@@ -2,8 +2,6 @@
 
 import { upload } from '@vercel/blob/client';
 
-// Upload a file and return its public Blob URL.
-//
 // Small files go through the SAME-ORIGIN server route (/api/admin/blob-upload),
 // which is reliable — no CSP/CORS, no client-token dance. Files above the
 // serverless body limit fall back to the @vercel/blob client-direct path (the
