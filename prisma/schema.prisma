@@ -1834,6 +1834,7 @@ model AcademyStudent {
   forumThreads        ForumThread[]
   forumPosts          ForumPost[]
   portfolioEntries    PortfolioEntry[]
+  exerciseAttempts    ExerciseAttempt[]
   quizAttempts        QuizAttempt[]
   practiceAttempts    PracticeAttempt[]
   pointEvents         PointEvent[]
@@ -1910,6 +1911,7 @@ model Course {
   flashcardDecks      FlashcardDeck[]
   bundleItems         CourseBundleItem[]
   portfolioEntries    PortfolioEntry[]
+  exercises           InteractiveExercise[]
 
   @@unique([tenantId, slug]) // ClinicOS Ring 1 (BLD-301): per-tenant slug — replaces the global @unique
   @@index([active, order])
@@ -2336,6 +2338,43 @@ model PortfolioEntry {
   @@index([studentId, status])
   @@index([tenantId, status])
   @@index([courseId])
+}
+
+// BLD-535: interactive self-check exercises (hotspots on an image, match pairs,
+// order steps). Staff-authored per course; graded server-side against `config`.
+model InteractiveExercise {
+  id           String            @id @default(cuid())
+  tenantId     String
+  course       Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId     String
+  title        String
+  type         String // HOTSPOT | MATCH | ORDER
+  instructions String?           @db.Text
+  imageUrl     String? // HOTSPOT background image
+  config       Json // shape depends on type (see lib/exercises.ts)
+  order        Int               @default(0)
+  active       Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  attempts     ExerciseAttempt[]
+
+  @@index([courseId, order])
+  @@index([tenantId])
+}
+
+model ExerciseAttempt {
+  id          String              @id @default(cuid())
+  tenantId    String
+  student     AcademyStudent      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId   String
+  exercise    InteractiveExercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  exerciseId  String
+  scorePct    Int
+  attempts    Int                 @default(1)
+  completedAt DateTime            @default(now())
+
+  @@unique([studentId, exerciseId])
+  @@index([tenantId])
 }
 
 model QuizAttempt {
