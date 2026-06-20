@@ -110,12 +110,12 @@ function Match({ exercise, result, busy, onGrade }: SubProps) {
   const lefts = exercise.lefts ?? [];
   const rights = exercise.rights ?? [];
   const [sel, setSel] = useState<number | null>(null);
-  const [pairs, setPairs] = useState<Record<number, string>>({}); // leftIndex -> right text
+  const [pairs, setPairs] = useState<Record<number, number>>({}); // leftIndex -> rightIndex (index, so duplicate texts each work once)
   const usedRights = new Set(Object.values(pairs));
 
-  function assign(right: string) {
+  function assign(ri: number) {
     if (result || sel == null) return;
-    setPairs((p) => { const next = { ...p }; for (const k of Object.keys(next)) if (next[Number(k)] === right) delete next[Number(k)]; next[sel] = right; return next; });
+    setPairs((p) => { const next = { ...p }; for (const k of Object.keys(next)) if (next[Number(k)] === ri) delete next[Number(k)]; next[sel] = ri; return next; });
     setSel(null);
   }
 
@@ -128,7 +128,7 @@ function Match({ exercise, result, busy, onGrade }: SubProps) {
               <button onClick={() => !result && setSel(i)} disabled={!!result}
                 className={`flex w-full items-center justify-between gap-2 rounded-[var(--radius-sm)] border px-3 py-2 text-left text-sm ${result ? (result.results?.[i] ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10' : 'border-[var(--color-blush)] bg-[var(--color-blush)]/10') : sel === i ? 'border-[var(--color-ink)] ring-1 ring-[var(--color-ink)]' : 'border-[var(--color-line)]'}`}>
                 <span>{l}</span>
-                <span className="text-xs text-[var(--color-stone)]">{pairs[i] ? `→ ${pairs[i]}` : result ? '' : '(pick)'}</span>
+                <span className="text-xs text-[var(--color-stone)]">{i in pairs ? `→ ${rights[pairs[i]]}` : result ? '' : '(pick)'}</span>
               </button>
               {result && !result.results?.[i] && <p className="mt-0.5 pl-1 text-xs text-[var(--color-gold-deep)]">Correct: {(result.reveal as { left: string; right: string }[])?.[i]?.right}</p>}
             </li>
@@ -137,15 +137,15 @@ function Match({ exercise, result, busy, onGrade }: SubProps) {
         <ul className="flex flex-wrap content-start gap-2">
           {rights.map((r, i) => (
             <li key={i}>
-              <button onClick={() => assign(r)} disabled={!!result || sel == null}
-                className={`rounded-full border px-3 py-1.5 text-sm ${usedRights.has(r) ? 'border-[var(--color-line)] bg-[var(--color-bone)] text-[var(--color-stone)]' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'} disabled:opacity-60`}>
+              <button onClick={() => assign(i)} disabled={!!result || sel == null}
+                className={`rounded-full border px-3 py-1.5 text-sm ${usedRights.has(i) ? 'border-[var(--color-line)] bg-[var(--color-bone)] text-[var(--color-stone)]' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'} disabled:opacity-60`}>
                 {r}
               </button>
             </li>
           ))}
         </ul>
       </div>
-      {!result && <div className="mt-3"><AButton size="sm" disabled={busy || Object.keys(pairs).length < lefts.length} onClick={() => onGrade(pairs)}>{busy ? 'Checking…' : 'Check answers'}</AButton></div>}
+      {!result && <div className="mt-3"><AButton size="sm" disabled={busy || Object.keys(pairs).length < lefts.length} onClick={() => onGrade(Object.fromEntries(Object.entries(pairs).map(([li, ri]) => [li, rights[ri]])))}>{busy ? 'Checking…' : 'Check answers'}</AButton></div>}
       {!result && <p className="mt-1.5 text-xs text-[var(--color-stone)]">Tap an item on the left, then tap its match on the right.</p>}
     </div>
   );
@@ -186,13 +186,13 @@ function LabelDiagram({ exercise, result, busy, onGrade }: SubProps) {
   const points = exercise.points ?? [];
   const bank = exercise.bank ?? [];
   const [sel, setSel] = useState<number | null>(null);
-  const [assign, setAssign] = useState<Record<number, string>>({}); // pointIndex -> label
+  const [assign, setAssign] = useState<Record<number, number>>({}); // pointIndex -> bankIndex (index, so duplicate labels each work once)
   const used = new Set(Object.values(assign));
   const reveal = (result?.reveal as { x: number; y: number; label: string }[] | undefined) ?? null;
 
-  function put(lbl: string) {
+  function put(bi: number) {
     if (result || sel == null) return;
-    setAssign((a) => { const next = { ...a }; for (const k of Object.keys(next)) if (next[Number(k)] === lbl) delete next[Number(k)]; next[sel] = lbl; return next; });
+    setAssign((a) => { const next = { ...a }; for (const k of Object.keys(next)) if (next[Number(k)] === bi) delete next[Number(k)]; next[sel] = bi; return next; });
     setSel(null);
   }
 
@@ -204,17 +204,17 @@ function LabelDiagram({ exercise, result, busy, onGrade }: SubProps) {
         {points.map((p, i) => (
           <button key={i} onClick={() => !result && setSel(i)} disabled={!!result} style={{ left: `${p.x}%`, top: `${p.y}%` }}
             className={`absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border px-2 py-0.5 text-[0.7rem] font-medium ${result ? (result.results?.[i] ? 'border-[var(--color-gold-deep)] bg-[var(--color-gold)]/90 text-[var(--color-ink)]' : 'border-[var(--color-blush)] bg-[var(--color-blush)] text-white') : sel === i ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-porcelain)] ring-2 ring-[var(--color-ink)]' : 'border-[var(--color-ink)] bg-white text-[var(--color-ink)]'}`}>
-            {assign[i] ? assign[i] : result ? (reveal?.[i]?.label ?? i + 1) : i + 1}
+            {i in assign ? bank[assign[i]] : result ? (reveal?.[i]?.label ?? i + 1) : i + 1}
           </button>
         ))}
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         {bank.map((l, i) => (
-          <button key={i} onClick={() => put(l)} disabled={!!result || sel == null}
-            className={`rounded-full border px-3 py-1.5 text-sm ${used.has(l) ? 'border-[var(--color-line)] bg-[var(--color-bone)] text-[var(--color-stone)]' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'} disabled:opacity-60`}>{l}</button>
+          <button key={i} onClick={() => put(i)} disabled={!!result || sel == null}
+            className={`rounded-full border px-3 py-1.5 text-sm ${used.has(i) ? 'border-[var(--color-line)] bg-[var(--color-bone)] text-[var(--color-stone)]' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'} disabled:opacity-60`}>{l}</button>
         ))}
       </div>
-      {!result && <div className="mt-3"><AButton size="sm" disabled={busy || Object.keys(assign).length < points.length} onClick={() => onGrade(assign)}>{busy ? 'Checking…' : 'Check labels'}</AButton></div>}
+      {!result && <div className="mt-3"><AButton size="sm" disabled={busy || Object.keys(assign).length < points.length} onClick={() => onGrade(Object.fromEntries(Object.entries(assign).map(([pi, bi]) => [pi, bank[bi]])))}>{busy ? 'Checking…' : 'Check labels'}</AButton></div>}
       {!result && <p className="mt-1.5 text-xs text-[var(--color-stone)]">Tap a numbered marker, then tap its label below.</p>}
     </div>
   );
