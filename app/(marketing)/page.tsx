@@ -42,10 +42,10 @@ const featured = ['laser-hair-removal', 'smas-hifu-lifting', 'hydraglow-facial',
   .filter(Boolean) as typeof treatments;
 
 const pillars = [
-  { stat: '2', label: 'Disciplines, one roof', text: 'Advanced aesthetics and aesthetic dentistry, side by side.' },
-  { stat: '40+', label: 'Advanced treatments', text: 'One address for face, body, skin and smile.' },
-  { stat: 'Level 7', label: 'Qualified, prescriber-led', text: 'Injectables led by a Level 7–qualified practitioner, with a prescriber on hand.' },
-  { stat: '100%', label: 'Bespoke plans', text: 'Every protocol designed around one person — you.' },
+  { stat: '2', label: 'Disciplines, one roof', text: 'Advanced aesthetics and aesthetic dentistry, side by side.', countable: false },
+  { stat: '40+', label: 'Advanced treatments', text: 'One address for face, body, skin and smile.', countable: true },
+  { stat: 'Level 7', label: 'Qualified, prescriber-led', text: 'Injectables led by a Level 7–qualified practitioner, with a prescriber on hand.', countable: false },
+  { stat: '100%', label: 'Bespoke plans', text: 'Every protocol designed around one person — you.', countable: true },
 ];
 
 export default async function HomePage() {
@@ -167,8 +167,9 @@ export default async function HomePage() {
           <Stagger className="grid gap-px overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2">
             {pillars.map((p) => (
               <StaggerItem key={p.label} className="bg-[var(--color-porcelain)] p-9 md:p-10">
-                <CountUp value={p.stat} className="block font-[family-name:var(--font-display)] text-[clamp(3rem,2rem+2vw,4.5rem)] leading-none text-gold-gradient" />
-                <span className="sr-only">{p.stat}</span>
+                {p.countable
+                  ? <CountUp value={p.stat} className="block font-[family-name:var(--font-display)] text-[clamp(3rem,2rem+2vw,4.5rem)] leading-none text-gold-gradient" />
+                  : <span className="block font-[family-name:var(--font-display)] text-[clamp(3rem,2rem+2vw,4.5rem)] leading-none text-gold-gradient">{p.stat}</span>}
                 <p className="mt-4 font-medium">{p.label}</p>
                 <p className="mt-2 text-sm leading-relaxed text-[var(--color-stone)]">{p.text}</p>
               </StaggerItem>

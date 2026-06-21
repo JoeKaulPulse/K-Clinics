@@ -28,6 +28,7 @@
   --color-gold-deep: #816748;  /* AA gold for text on light (4.5:1 on porcelain) + interactive surfaces */
   --color-jade: #2f7152;       /* jade green — positive / success / active / healthy accent */
   --color-blush: #cdb4a3;      /* warm sand highlight */
+  --color-blush-deep: #8b4a4a; /* deep warm red — error / destructive text on light surfaces */
 
   /* Semantic surface tokens */
   --color-bg: var(--color-porcelain);

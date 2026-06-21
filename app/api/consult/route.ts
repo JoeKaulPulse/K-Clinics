@@ -99,12 +99,15 @@ export async function POST(req: Request) {
       await notifyStaffByPermission('clients.view', { kind: 'status', category: 'messages', priority: 'high', title: `New consultation enquiry: ${data.category}`, body: `${who}${data.treatments?.length ? ` · ${data.treatments.slice(0, 3).join(', ')}` : ''}`, href: `/admin/consultations/${consultation.id}` });
     } catch { /* non-fatal */ }
 
+    // Stable event ID shared with the browser pixel so Meta CAPI can deduplicate.
+    const eventId = data.eventId || globalThis.crypto.randomUUID();
+
     // Server-side Lead conversion (GA4 + Meta CAPI) — ad-blocker-proof, deduped
     // with the browser pixel via the shared eventId. Email only on marketing opt-in.
     try {
       const { sendLead } = await import('@/lib/conversions');
       await sendLead({
-        eventId: data.eventId || globalThis.crypto.randomUUID(),
+        eventId,
         clientId: client.id,
         email: data.marketingOptIn ? data.email : null,
         sourceUrl: req.headers.get('referer'),
@@ -129,7 +132,7 @@ export async function POST(req: Request) {
       ],
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, eventId });
   } catch (e) {
     console.error('consult error', e);
     return NextResponse.json({ ok: false, error: 'Something went wrong. Please try again or call us.' }, { status: 500 });

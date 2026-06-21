@@ -4,11 +4,6 @@ import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
 
-function clientIp(req: Request): string | null {
-  const xff = req.headers.get('x-forwarded-for');
-  return xff ? xff.split(',')[0].trim() : req.headers.get('x-real-ip');
-}
-
 export async function POST(req: Request) {
   if (!crmEnabled) {
     return NextResponse.json({ ok: false, error: 'Accounts are not enabled in this environment.' }, { status: 503 });
@@ -19,7 +14,7 @@ export async function POST(req: Request) {
   }
   if (parsed.data.company) return NextResponse.json({ ok: true, discount: { granted: false, percent: 15 } }); // honeypot
 
-  const { enforceRateLimit } = await import('@/lib/security/guard');
+  const { enforceRateLimit, clientIp } = await import('@/lib/security/guard');
   if (!(await enforceRateLimit(req, 'signup', 10, 600))) {
     return NextResponse.json({ ok: false, error: 'Too many attempts. Please wait a few minutes and try again.' }, { status: 429 });
   }

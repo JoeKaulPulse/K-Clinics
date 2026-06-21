@@ -45,7 +45,7 @@ export function EnquiryForm() {
         }),
       });
       const j = await res.json().catch(() => ({ ok: false }));
-      if (j.ok) { trackLead(); setStatus('sent'); } else mailtoFallback();
+      if (j.ok) { trackLead({ eventId: j.eventId }); setStatus('sent'); } else mailtoFallback();
     } catch {
       mailtoFallback();
     } finally {

@@ -40,7 +40,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <div className="overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)]">
           {p.images[0]
             // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={p.images[0]} alt={p.name} className="aspect-square w-full object-cover" />
+            ? <img src={p.images[0]} alt={p.name} className="aspect-square w-full object-cover" loading="eager" fetchPriority="high" />
             : <span className="grid aspect-square place-items-center text-5xl text-[var(--color-stone)]">▦</span>}
           {p.images.length > 1 && (
             <div className="flex gap-2 p-3">

@@ -13,7 +13,7 @@ export function MembershipCard({ status, locale }: { status: MembershipStatus; l
 
   return (
     <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-soft)]">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-5" style={{ background: `linear-gradient(110% 120% at 90% 0%, color-mix(in oklab, ${accent} 22%, transparent), transparent 60%)` }}>
+      <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-5" style={{ background: `radial-gradient(ellipse at 90% 0%, color-mix(in oklab, ${accent} 22%, transparent), transparent 60%)` }}>
         <div className="flex items-center gap-3">
           <span className="grid h-11 w-11 place-items-center rounded-full text-sm font-semibold text-white" style={{ background: accent }}>{tier.name.charAt(0)}</span>
           <div>
