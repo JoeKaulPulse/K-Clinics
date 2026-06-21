@@ -56,8 +56,12 @@ export async function POST(req: Request) {
         active: b.active === undefined ? true : !!b.active,
       };
       let slug: string | null = null;
-      if (b.id) { const u = await db.course.update({ where: { id: String(b.id) }, data, select: { slug: true } }); slug = u.slug; }
-      else {
+      if (b.id) {
+        const existing = await db.course.findFirst({ where: { id: String(b.id), tenantId }, select: { slug: true } });
+        if (!existing) return bad();
+        await db.course.update({ where: { id: String(b.id) }, data });
+        slug = existing.slug;
+      } else {
         const order = await db.course.count();
         const c = await db.course.create({ data: { ...data, tenantId, slug: `${slugify(data.title)}-${Date.now().toString(36).slice(-4)}`, order }, select: { slug: true } });
         slug = c.slug;
@@ -67,13 +71,17 @@ export async function POST(req: Request) {
     }
     case 'toggleCourse': {
       if (!body.id) return bad();
-      const c = await db.course.update({ where: { id: body.id }, data: { active: !!body.active }, select: { slug: true } });
+      const c = await db.course.findFirst({ where: { id: body.id, tenantId }, select: { slug: true } });
+      if (!c) return bad();
+      await db.course.update({ where: { id: body.id }, data: { active: !!body.active } });
       await revalidateAcademy(c.slug);
       return ok();
     }
     case 'removeCourse': {
       if (!body.id) return bad();
-      const c = await db.course.delete({ where: { id: body.id }, select: { slug: true } });
+      const c = await db.course.findFirst({ where: { id: body.id, tenantId }, select: { slug: true } });
+      if (!c) return bad();
+      await db.course.delete({ where: { id: body.id } });
       await revalidateAcademy(c.slug);
       return ok();
     }
@@ -92,7 +100,7 @@ export async function POST(req: Request) {
         accessStartAt: b.accessStartAt ? new Date(b.accessStartAt as string) : null,
         accessEndAt: b.accessEndAt ? new Date(b.accessEndAt as string) : null,
       };
-      if (b.id) await db.cohort.update({ where: { id: String(b.id) }, data });
+      if (b.id) await db.cohort.updateMany({ where: { id: String(b.id), tenantId }, data });
       else await db.cohort.create({ data: { ...data, tenantId, courseId: String(b.courseId) } });
       return ok();
     }
@@ -135,13 +143,13 @@ export async function POST(req: Request) {
         trainer: (b.trainer as string)?.trim() || null,
         description: (b.description as string)?.trim() || null,
       };
-      if (b.id) await db.liveClass.update({ where: { id: String(b.id) }, data });
+      if (b.id) await db.liveClass.updateMany({ where: { id: String(b.id), tenantId }, data });
       else await db.liveClass.create({ data: { ...data, tenantId, courseId: String(b.courseId) } });
       return ok();
     }
     case 'removeLiveClass': {
       if (!body.id) return bad();
-      await db.liveClass.delete({ where: { id: body.id } });
+      await db.liveClass.deleteMany({ where: { id: body.id, tenantId } });
       return ok();
     }
     case 'setStudentActive': {

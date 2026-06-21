@@ -24,7 +24,8 @@ export async function POST(req: Request) {
   const template = await db.consentTemplate.findUnique({ where: { key: reqRow.templateKey } });
   if (!template || !template.active) return NextResponse.json({ ok: false, error: 'Form unavailable.' }, { status: 409 });
 
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null;
+  const { clientIp } = await import('@/lib/security/guard');
+  const ip = clientIp(req);
   const userAgent = req.headers.get('user-agent');
 
   const { createSignedConsent } = await import('@/lib/consent');
