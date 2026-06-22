@@ -86,7 +86,7 @@ export default async function AppointmentsPage() {
                   <CancelButton
                     token={b.manageToken}
                     treatmentTitle={b.treatmentTitle}
-                    labels={{ cancel: t('appt.cancel'), confirm: t('appt.cancelConfirm'), lateFee: t('appt.cancelLateFee'), error: t('appt.cancelError') }}
+                    labels={{ cancel: t('appt.cancel'), cancelled: t('appt.cancelled'), confirm: t('appt.cancelConfirm'), lateFee: t('appt.cancelLateFee'), error: t('appt.cancelError') }}
                   />
                   {b.pricePence > 0 && (
                     <RedeemPoints

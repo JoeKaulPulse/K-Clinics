@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 export function CancelButton({ token, treatmentTitle, labels }: {
   token: string;
   treatmentTitle: string;
-  labels: { cancel: string; confirm: string; lateFee: string; error: string };
+  labels: { cancel: string; cancelled: string; confirm: string; lateFee: string; error: string };
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -30,11 +30,11 @@ export function CancelButton({ token, treatmentTitle, labels }: {
       if (!data.ok) { setErr(data.error || labels.error); return; }
       if (data.requiresAction) {
         // SCA required for the late fee — fall back to the manage page.
-        window.location.href = `/booking/manage?t=${token}`;
+        window.location.href = `/booking/manage?t=${encodeURIComponent(token)}`;
         return;
       }
       const fee = data.charged ?? 0;
-      setDone(fee > 0 ? `${labels.lateFee} £${(fee / 100).toFixed(2)}.` : 'Cancelled.');
+      setDone(fee > 0 ? `${labels.lateFee} £${(fee / 100).toFixed(2)}.` : labels.cancelled);
       router.refresh();
     } catch {
       setErr(labels.error);
