@@ -8,18 +8,9 @@ export async function isBreachedPassword(password: string): Promise<boolean> {
   if (!password || password.length < 1) return false;
   try {
     const sha1 = crypto.createHash('sha1').update(password).digest('hex').toUpperCase();
+    const prefix = sha1.slice(0, 5);
     const suffix = sha1.slice(5);
-    // Build the 5-char prefix by indexing into a constant hex alphabet so that
-    // static-analysis taint engines (CodeQL js/server-side-request-forgery) see
-    // only constant characters entering the URL — not password-derived bytes.
-    const HEX = '0123456789ABCDEF';
-    let safePrefix = '';
-    for (let i = 0; i < 5; i++) {
-      const idx = HEX.indexOf(sha1[i]);
-      if (idx < 0) return false; // sha1 output is always hex, so never reached
-      safePrefix += HEX[idx];
-    }
-    const res = await fetch(`https://api.pwnedpasswords.com/range/${safePrefix}`, { // lgtm[js/server-side-request-forgery]
+    const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
       headers: { 'Add-Padding': 'true' },
       cache: 'no-store',
       signal: AbortSignal.timeout(3000),
