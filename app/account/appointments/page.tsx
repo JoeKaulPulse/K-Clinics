@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { PortalShell } from '@/components/portal/PortalShell';
 import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
 import { RedeemPoints } from '@/components/portal/RedeemPoints';
+import { CancelButton } from '@/components/portal/CancelButton';
 import { Reveal } from '@/components/motion/Reveal';
 import { crmEnabled } from '@/lib/crm';
 import { formatPrice } from '@/lib/treatments';
@@ -82,6 +83,11 @@ export default async function AppointmentsPage() {
                   <Link href={`/booking/manage?t=${b.manageToken}`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
                     {t('appt.reschedule')}
                   </Link>
+                  <CancelButton
+                    token={b.manageToken}
+                    treatmentTitle={b.treatmentTitle}
+                    labels={{ cancel: t('appt.cancel'), confirm: t('appt.cancelConfirm'), lateFee: t('appt.cancelLateFee'), error: t('appt.cancelError') }}
+                  />
                   {b.pricePence > 0 && (
                     <RedeemPoints
                       bookingId={b.id}
