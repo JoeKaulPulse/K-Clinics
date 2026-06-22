@@ -151,12 +151,21 @@ export async function POST(req: Request) {
         }
         // BLD-567: re-credit any gift-card balance reserved at checkout when the
         // shop order payment fails, so the customer doesn't permanently lose the value.
+        // Idempotent + race-safe: claim the order PENDING→CANCELLED atomically and
+        // only credit when *this* call wins the transition. This guards against
+        //  • Stripe redelivering payment_failed or firing it per failed retry
+        //    (each would otherwise re-credit and inflate the balance); and
+        //  • a fail-then-succeed flow where the order already went PAID — we must
+        //    NOT credit back a reservation that the completed order consumed.
         if (pi.metadata?.kind === 'shop_order' && pi.metadata?.orderId) {
           try {
             const order = await db.order.findUnique({ where: { id: pi.metadata.orderId }, select: { giftCardCode: true, giftCardPence: true } });
             if (order?.giftCardCode && order.giftCardPence && order.giftCardPence > 0) {
-              const { creditVoucher } = await import('@/lib/gift-vouchers');
-              await creditVoucher(order.giftCardCode, order.giftCardPence);
+              const claimed = await db.order.updateMany({ where: { id: pi.metadata.orderId, status: 'PENDING' }, data: { status: 'CANCELLED' } });
+              if (claimed.count > 0) {
+                const { creditVoucher } = await import('@/lib/gift-vouchers');
+                await creditVoucher(order.giftCardCode, order.giftCardPence);
+              }
             }
           } catch (e) { console.error('[webhook] gift card re-credit failed:', (e as Error)?.message); }
         }
