@@ -19,7 +19,7 @@ export async function isBreachedPassword(password: string): Promise<boolean> {
       if (idx < 0) return false; // sha1 output is always hex, so never reached
       safePrefix += HEX[idx];
     }
-    const res = await fetch(`https://api.pwnedpasswords.com/range/${safePrefix}`, {
+    const res = await fetch(`https://api.pwnedpasswords.com/range/${safePrefix}`, { // lgtm[js/server-side-request-forgery]
       headers: { 'Add-Padding': 'true' },
       cache: 'no-store',
       signal: AbortSignal.timeout(3000),
