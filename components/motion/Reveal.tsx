@@ -43,7 +43,7 @@ export function Stagger({
   children,
   className,
   delay = 0,
-  gap = 0.09,
+  gap = 0.04,
 }: {
   children: ReactNode;
   className?: string;
