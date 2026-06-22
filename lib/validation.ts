@@ -56,7 +56,12 @@ export const assessmentSchema = z.object({
 
 export const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
+  // Login must accept whatever credential is already stored — a length policy
+  // here would retroactively lock out any admin whose existing password is
+  // shorter, with no reset path. Enforce minimum length on password *creation*
+  // (staff invite / reset), not at the login gate. The HIBP breach check in the
+  // login route already nudges weak/compromised passwords toward rotation.
+  password: z.string().min(1),
 });
 
 export const campaignSchema = z.object({

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Image from 'next/image';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { CartLink } from '@/components/shop/CartLink';
@@ -34,8 +35,7 @@ export default async function ShopPage() {
                 <Link href={`/shop/${p.slug}`} className="group block overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] transition-colors hover:border-[var(--color-gold)]">
                   <div className="aspect-square overflow-hidden bg-[var(--color-bone)]">
                     {p.images[0]
-                      // eslint-disable-next-line @next/next/no-img-element
-                      ? <img src={p.images[0]} alt={p.name} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                      ? <Image src={p.images[0]} alt={p.name} width={400} height={400} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
                       : <span className="grid h-full place-items-center text-4xl text-[var(--color-stone)]">▦</span>}
                   </div>
                   <div className="p-5">

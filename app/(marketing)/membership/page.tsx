@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
@@ -171,8 +172,7 @@ async function Leaderboard() {
           <StaggerItem key={e.id}>
             <div className="flex items-center gap-4 rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5">
               {e.photoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={e.photoUrl} alt={`${e.name} -- KClinics member`} width={56} height={56} loading="lazy" decoding="async" className="h-14 w-14 shrink-0 rounded-full object-cover" />
+                <Image src={e.photoUrl} alt={`${e.name} -- KClinics member`} width={56} height={56} className="h-14 w-14 shrink-0 rounded-full object-cover" />
               ) : (
                 <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[var(--color-ink)] font-[family-name:var(--font-display)] text-xl text-[var(--color-gold-soft)]" aria-hidden>
                   {(e.name[0] || '?').toUpperCase()}

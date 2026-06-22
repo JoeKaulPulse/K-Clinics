@@ -62,6 +62,13 @@ async function handleLogin(req: Request) {
     const after = await loginGate(email, req);
     return NextResponse.json({ ok: false, error: 'Invalid email or password.', requireCaptcha: after.requireCaptcha && turnstileConfigured, captchaSiteKey: siteKey }, { status: 401 });
   }
+  // BLD-571: reject passwords that appear in known breach databases (HIBP k-anonymity).
+  // Fails open — a network blip at HIBP never blocks a legitimate login.
+  const { isBreachedPassword } = await import('@/lib/security/breached-password');
+  if (await isBreachedPassword(parsed.data.password)) {
+    await recordSecurity('LOGIN_FAIL', 'admin', email, req, { reason: 'breached_password' });
+    return NextResponse.json({ ok: false, error: 'Your password appears in a known data breach. Please ask an owner to reset it before logging in.' }, { status: 401 });
+  }
   if (user.active === false) {
     await recordSecurity('LOGIN_FAIL', 'admin', email, req, { reason: 'deactivated' });
     return NextResponse.json({ ok: false, error: 'This account has been deactivated.' }, { status: 403 });

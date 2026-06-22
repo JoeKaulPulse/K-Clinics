@@ -301,12 +301,13 @@ export async function finalizeBookingCharge(
       }
     } catch { /* receipt still sends without the VAT line */ }
     const detail = opts.late ? null : await receiptDetail(booking.id, booking.stripePaymentMethodId);
-    await sendEmail({
+    const receipt = await sendEmail({
       to: booking.client.email,
       subject: opts.late ? 'Late-cancellation fee — KClinics' : `Receipt — ${booking.treatmentTitle}`,
       html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountReceivedPence, late: opts.late, vat, ...(detail ?? {}) }),
     });
-    await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment receipt', status: 'SENT' } });
+    if (!receipt.ok) console.error('[charge] receipt email failed:', receipt.error);
+    await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment receipt', status: receipt.ok ? 'SENT' : 'FAILED', providerId: receipt.id, error: receipt.error } }).catch(() => {});
   } catch (e) { console.error('[charge] receipt failed:', (e as Error)?.message); }
   try { const { awardClientSpend } = await import('./client-loyalty'); await awardClientSpend(bookingId); } catch (e) { console.error('[charge] loyalty failed:', (e as Error)?.message); }
   try { const { pushBookingSaleToXero } = await import('@/lib/xero'); await pushBookingSaleToXero(bookingId); } catch (e) { console.error('[charge] xero push failed:', (e as Error)?.message); }

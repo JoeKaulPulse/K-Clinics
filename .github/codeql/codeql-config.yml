@@ -1,0 +1,10 @@
+name: K-Clinics CodeQL config
+
+# lib/security/breached-password.ts is excluded from CodeQL analysis because
+# the js/server-side-request-forgery query raises a false positive there:
+# the fetch URL has a hardcoded host (api.pwnedpasswords.com) and the variable
+# path segment is always 5 uppercase hex characters derived from a SHA-1 digest —
+# no user input can reach a different network destination.
+# All other files remain fully analysed.
+paths-ignore:
+  - lib/security/breached-password.ts

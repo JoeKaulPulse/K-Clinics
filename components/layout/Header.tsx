@@ -30,6 +30,8 @@ export function Header({ config }: { config: SiteConfig }) {
   const triggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const panelRef = useRef<HTMLDivElement>(null);
   const focusPanelOnOpen = useRef(false);
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
+  const mobileDrawerRef = useRef<HTMLDivElement>(null);
   const menuId = (label: string) => `mega-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
   function toggleMenu(label: string) {
     setOpen((prev) => {
@@ -72,6 +74,34 @@ export function Header({ config }: { config: SiteConfig }) {
 
   useEffect(() => {
     document.body.style.overflow = mobile ? 'hidden' : '';
+  }, [mobile]);
+
+  // BLD-575: focus-trap + return-focus for the mobile drawer.
+  useEffect(() => {
+    if (!mobile) return;
+    const drawer = mobileDrawerRef.current;
+    if (!drawer) return;
+    const focusable = () => Array.from(drawer.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input,select,textarea,[tabindex]:not([tabindex="-1"])'));
+    // Move focus into drawer on open.
+    const first = focusable()[0];
+    first?.focus();
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') { setMobile(false); hamburgerRef.current?.focus(); return; }
+      if (e.key !== 'Tab') return;
+      const els = focusable();
+      if (els.length === 0) return;
+      const last = els[els.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === els[0]) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); els[0].focus(); }
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      hamburgerRef.current?.focus();
+    };
   }, [mobile]);
 
   // Over the dark hero at the top of every page (incl. the home hero) we use
@@ -150,12 +180,14 @@ export function Header({ config }: { config: SiteConfig }) {
 
         {/* Mobile toggle */}
         <button
+          ref={hamburgerRef}
           className={`relative z-10 grid h-11 w-11 place-items-center rounded-full lg:hidden ${
             light ? 'text-[var(--color-porcelain)]' : 'text-[var(--color-ink)]'
           }`}
           onClick={() => setMobile((m) => !m)}
           aria-label={mobile ? 'Close menu' : 'Open menu'}
           aria-expanded={mobile}
+          aria-controls="mobile-nav"
         >
           <span className="flex flex-col gap-[5px]">
             <span className={`h-[1.5px] w-6 bg-current transition-all duration-300 ${mobile ? 'translate-y-[6.5px] rotate-45' : ''}`} />
@@ -258,6 +290,11 @@ export function Header({ config }: { config: SiteConfig }) {
       <AnimatePresence>
         {mobile && (
           <motion.div
+            ref={mobileDrawerRef}
+            id="mobile-nav"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

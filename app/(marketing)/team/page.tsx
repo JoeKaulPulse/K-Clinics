@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
@@ -116,8 +117,7 @@ function Card({ m }: { m: TeamMember }) {
     <div id={`m-${m.id}`} className="flex h-full scroll-mt-28 flex-col rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6">
       <div className="flex items-center gap-4">
         {m.photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={m.photoUrl} alt={`${m.name}${m.title ? `, ${m.title}` : ''} — KClinics`} width={80} height={80} loading="lazy" decoding="async" className="h-20 w-20 shrink-0 rounded-full object-cover" />
+          <Image src={m.photoUrl} alt={`${m.name}${m.title ? `, ${m.title}` : ''} — KClinics`} width={80} height={80} className="h-20 w-20 shrink-0 rounded-full object-cover" />
         ) : (
           <span className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-[var(--color-ink)] font-[family-name:var(--font-display)] text-2xl text-[var(--color-gold-soft)]">{initials}</span>
         )}
