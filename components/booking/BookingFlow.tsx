@@ -373,14 +373,14 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
               {/* Promo code */}
               <div className="mt-6">
-                <label className={label}>Promo code (optional)</label>
+                <label htmlFor="bpromo" className={label}>Promo code (optional)</label>
                 <div className="mt-1 flex gap-2">
-                  <input value={promoInput} onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromo(null); }} placeholder="e.g. K10SUMMERREADY" className={`${field} uppercase`} />
+                  <input id="bpromo" value={promoInput} onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromo(null); }} placeholder="e.g. K10SUMMERREADY" className={`${field} uppercase`} />
                   <button type="button" onClick={applyPromo} disabled={promoBusy || !promoInput.trim()} className="shrink-0 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-4 text-sm font-medium hover:border-[var(--color-gold)] disabled:opacity-50">{promoBusy ? '…' : 'Apply'}</button>
                 </div>
                 {promo && (promo.ok
                   ? <p className="mt-1.5 text-sm text-[var(--color-jade,#3f7a5a)]">✓ {promo.label || 'Code applied'} — you save {money(promo.discountPence || 0)} on this treatment.</p>
-                  : <p className="mt-1.5 text-sm text-[var(--color-blush)]">{promo.error || 'That code isn’t valid.'}</p>)}
+                  : <p className="mt-1.5 text-sm text-[var(--color-blush-deep)]">{promo.error || "That code isn’t valid."}</p>)}
               </div>
 
               <div className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] p-4 text-sm">

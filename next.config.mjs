@@ -130,6 +130,11 @@ const nextConfig = {
     dangerouslyAllowSVG: true,
     contentDispositionType: 'inline',
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    // BLD-577: allow next/image to optimise user-uploaded content from Vercel Blob.
+    remotePatterns: [
+      { protocol: 'https', hostname: '*.public.blob.vercel-storage.com' },
+      { protocol: 'https', hostname: '*.blob.vercel-storage.com' },
+    ],
   },
   ...(isPages
     ? {

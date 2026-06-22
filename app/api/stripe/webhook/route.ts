@@ -127,6 +127,8 @@ export async function POST(req: Request) {
                   await logAudit({ action: 'PAYMENT_CHARGED', actor: 'stripe-webhook', bookingId: courseBookingId, clientId: booking.clientId, summary: `Course pre-paid via ${method} — £${(received / 100).toFixed(2)}`, meta: { kind: 'course_prepaid', method, amountPence: received, paymentIntentId: pi.id } });
                 } catch { /* non-fatal */ }
                 try { await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Course pre-paid in full via ${method} — £${(received / 100).toFixed(2)}`, author: 'stripe-webhook' } }); } catch { /* non-fatal */ }
+                // BLD-568: send the booking confirmation email to the client.
+                try { const { notifyBookingConfirmed } = await import('@/lib/booking-notify'); await notifyBookingConfirmed(courseBookingId); } catch { /* non-fatal */ }
               }
             }
           }
@@ -146,6 +148,17 @@ export async function POST(req: Request) {
             const { notifyStaffByPermission } = await import('@/lib/notifications');
             await notifyStaffByPermission('finance.view', { kind: 'status', category: 'finance', priority: 'urgent', title: 'Payment failed', body: reason.slice(0, 140), href: `/admin/bookings/${bookingId}` });
           } catch { /* non-fatal */ }
+        }
+        // BLD-567: re-credit any gift-card balance reserved at checkout when the
+        // shop order payment fails, so the customer doesn't permanently lose the value.
+        if (pi.metadata?.kind === 'shop_order' && pi.metadata?.orderId) {
+          try {
+            const order = await db.order.findUnique({ where: { id: pi.metadata.orderId }, select: { giftCardCode: true, giftCardPence: true } });
+            if (order?.giftCardCode && order.giftCardPence && order.giftCardPence > 0) {
+              const { creditVoucher } = await import('@/lib/gift-vouchers');
+              await creditVoucher(order.giftCardCode, order.giftCardPence);
+            }
+          } catch (e) { console.error('[webhook] gift card re-credit failed:', (e as Error)?.message); }
         }
         break;
       }
@@ -197,6 +210,12 @@ export async function POST(req: Request) {
         }
         try { const { pushBookingRefundToXero } = await import('@/lib/xero'); await pushBookingRefundToXero(booking.id, delta, 'Stripe refund'); } catch { /* non-fatal */ }
         try { const { logAudit } = await import('@/lib/audit'); await logAudit({ action: 'PAYMENT_REFUNDED', actor: 'stripe-webhook', bookingId: booking.id, clientId: booking.clientId, summary: `Webhook refund £${(delta / 100).toFixed(2)}${fully ? ' (full)' : ' (partial)'}`, meta: { delta, fully } }); } catch { /* non-fatal */ }
+        // BLD-569: email the client when a refund is issued directly in the Stripe
+        // dashboard (in-app refunds already send via refundBooking()).
+        try {
+          const { sendEmail, tmplRefund } = await import('@/lib/email');
+          await sendEmail({ to: booking.client.email, subject: `Refund processed — ${booking.treatmentTitle}`, html: tmplRefund({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, amountPence: delta, fully }) });
+        } catch { /* non-fatal */ }
         break;
       }
       default:

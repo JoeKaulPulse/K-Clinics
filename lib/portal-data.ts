@@ -10,20 +10,19 @@ export async function getDashboard(clientId: string) {
   // so a genuine failure there surfaces (retry + error boundary). The rest are
   // non-critical and are isolated — a single bad row or transient miss in any of
   // them must NOT take the whole page down (this used to 500 the appointments page).
-  const bookings = await withDbRetry(() => db.booking.findMany({ where: { clientId }, orderBy: { startAt: 'desc' } }));
-  const [client, statuses, discount] = await Promise.all([
+  // BLD-574: split into two bounded queries to cap memory for long-tenured clients.
+  // upcoming: next 10 confirmed/pending appointments; past: last 50.
+  const [upcoming, pastRaw, client, statuses, discount] = await Promise.all([
+    withDbRetry(() => db.booking.findMany({ where: { clientId, startAt: { gte: now }, status: { in: ['CONFIRMED', 'PENDING'] } }, orderBy: { startAt: 'asc' }, take: 10 })),
+    withDbRetry(() => db.booking.findMany({ where: { clientId, OR: [{ startAt: { lt: now } }, { status: { notIn: ['CONFIRMED', 'PENDING'] } }] }, orderBy: { startAt: 'desc' }, take: 50 })),
     db.client.findUnique({ where: { id: clientId } }).catch(() => null),
     assessmentStatus(clientId).catch(() => new Map<string, never>()),
     db.discountClaim.findFirst({ where: { clientId, status: 'ACTIVE' } }).catch(() => null),
   ]);
 
-  const upcoming = bookings
-    .filter((b) => b.startAt >= now && (b.status === 'CONFIRMED' || b.status === 'PENDING'))
-    .sort((a, b) => +a.startAt - +b.startAt);
-  const past = bookings.filter((b) => !upcoming.includes(b));
-
   // Invoices = bookings that were charged (service or late-cancel fee).
-  const invoices = bookings
+  const allBookings = [...upcoming, ...pastRaw];
+  const invoices = allBookings
     .filter((b) => b.chargedAt && b.chargedPence)
     .map((b) => ({
       id: b.id,
@@ -38,13 +37,13 @@ export async function getDashboard(clientId: string) {
   // Welcome offer banner — only while it's genuinely a *first-treatment* offer:
   // hide it once the client has booked or had a treatment, and never surface an
   // anti-abuse placeholder ("BLOCKED-…") code, even if such a claim was restored.
-  const hasTreatment = bookings.some((b) => b.status === 'PENDING' || b.status === 'CONFIRMED' || b.status === 'COMPLETED');
+  const hasTreatment = allBookings.some((b) => b.status === 'PENDING' || b.status === 'CONFIRMED' || b.status === 'COMPLETED');
   const showWelcome = discount && !hasTreatment && !discount.code.startsWith('BLOCKED-');
 
   return {
     client,
     upcoming,
-    past,
+    past: pastRaw,
     invoices,
     assessments: Object.fromEntries(statuses),
     discount: showWelcome ? { code: discount.code, percent: discount.percent } : null,

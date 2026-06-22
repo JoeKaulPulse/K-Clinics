@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Metadata } from 'next';
 import { AddToCart } from '@/components/shop/AddToCart';
 import { CartLink } from '@/components/shop/CartLink';
@@ -39,14 +40,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       <div className="grid gap-10 lg:grid-cols-2">
         <div className="overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)]">
           {p.images[0]
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={p.images[0]} alt={p.name} className="aspect-square w-full object-cover" loading="eager" fetchPriority="high" />
+            ? <Image src={p.images[0]} alt={p.name} width={800} height={800} className="aspect-square w-full object-cover" priority />
             : <span className="grid aspect-square place-items-center text-5xl text-[var(--color-stone)]">▦</span>}
           {p.images.length > 1 && (
             <div className="flex gap-2 p-3">
               {p.images.slice(1, 5).map((u, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={i} src={u} alt="" className="h-16 w-16 rounded object-cover" />
+                <Image key={i} src={u} alt="" width={64} height={64} className="h-16 w-16 rounded object-cover" />
               ))}
             </div>
           )}
