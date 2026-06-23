@@ -1608,6 +1608,24 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'No schema change: emailEvent logged under the existing MANUAL kind.',
     ],
   },
+  {
+    title: 'Skip-to-content link missing from admin layout — keyboard users tab entire nav on every page', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1232),
+    value: 8, effort: 1,
+    detail: 'EOD audit: admin had no skip link, so keyboard users tab the whole sidebar/header on every page.',
+    notes: ['Fix: added a focus-visible "Skip to content" link as the first focusable element in AdminShell + id=main-content/tabIndex on <main>. components/admin/AdminShell.tsx.'],
+  },
+  {
+    title: 'Footer copyright text fails WCAG AA contrast — color-mix at 55% opacity on dark surface', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1232),
+    value: 7, effort: 1,
+    detail: 'EOD audit: footer bottom row text was porcelain at 55% over the dark footer — below WCAG AA for small text.',
+    notes: ['Fix: raised the bottom row to porcelain 72% for AA contrast. components/layout/Footer.tsx.'],
+  },
+  {
+    title: 'next/image missing sizes prop on shop product images — full-viewport images served for thumbnails', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1232),
+    value: 7, effort: 1,
+    detail: 'EOD audit: shop product <Image> rendered full-width in a responsive grid with no sizes prop, so Next served oversized sources.',
+    notes: ['Fix: added sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw" to the shop product image. app/(marketing)/shop/page.tsx.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
