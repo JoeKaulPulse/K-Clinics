@@ -35,6 +35,10 @@ function ytId(url: string): string | null {
   return m ? m[1] : null;
 }
 
+// Short label for the in-lesson "Homework" chip (Tetiana — surface homework state).
+const HW_CHIP: Record<string, string> = { SUBMITTED: 'submitted', REVIEWED: 'reviewed', APPROVED: 'approved ✓', NEEDS_REVISION: 'needs revision' };
+const homeworkChipLabel = (status: string): string => HW_CHIP[status] ?? 'submitted';
+
 type Step =
   | { kind: 'intro' }
   | { kind: 'lesson'; mi: number; li: number }
@@ -270,6 +274,16 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
   const [mi, setMi] = useState(0);
   const [showExplainer, setShowExplainer] = useState(false);
   const [pdfView, setPdfView] = useState<{ index: number; name: string } | null>(null);
+  // Tetiana: surface attached PDFs / downloads / homework at the TOP of the lesson
+  // so they're obvious — the immersive flow is one card at a time, so resources
+  // rendered at the bottom were easy to miss. These chips scroll down to them.
+  const resourcesRef = useRef<HTMLDivElement>(null);
+  const hasPdfs = lesson.pdfUrls.length > 0;
+  const hasDownloads = lesson.attachments.length > 0;
+  const hasHomework = lesson.requiresHomework;
+  const hasResources = hasPdfs || hasDownloads || hasHomework;
+  const scrollToResources = () => resourcesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const chip = 'inline-flex items-center gap-1.5 rounded-full border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 px-3 py-1 text-xs font-medium text-[var(--color-gold)] transition-colors hover:bg-[var(--color-gold)]/20';
   const startedAt = useRef(Date.now());
   const cur = flow[Math.min(mi, flow.length - 1)];
   const last = mi >= flow.length - 1;
@@ -288,6 +302,13 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
         {explainerPoints.length >= 2 && <button onClick={() => setShowExplainer(true)} className="ml-auto shrink-0 rounded-full border border-white/20 px-2.5 py-1 text-[0.65rem] font-medium text-white/70 transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">▶ Explainer</button>}
         <span className={`shrink-0 text-xs tabular-nums text-white/30 ${explainerPoints.length >= 2 ? '' : 'ml-auto'}`}>{Math.min(mi + 1, flow.length)} / {flow.length}</span>
       </div>
+      {hasResources && (
+        <div className="mb-6 flex flex-wrap items-center gap-2">
+          {hasPdfs && <button onClick={scrollToResources} className={chip}>📄 {lesson.pdfUrls.length} PDF{lesson.pdfUrls.length > 1 ? 's' : ''}</button>}
+          {hasDownloads && <button onClick={scrollToResources} className={chip}>📎 {lesson.attachments.length} download{lesson.attachments.length > 1 ? 's' : ''}</button>}
+          {hasHomework && <button onClick={scrollToResources} className={chip}>✍ Homework{lesson.submission ? ` · ${homeworkChipLabel(lesson.submission.status)}` : ' to submit'}</button>}
+        </div>
+      )}
       {showExplainer && <ExplainerPlayer title={lesson.title} points={explainerPoints} onClose={() => setShowExplainer(false)} />}
       <div className="mb-8 h-1 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-[var(--color-gold)]/70 transition-[width] duration-300" style={{ width: `${pct}%` }} /></div>
 
@@ -299,6 +320,7 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
         </motion.div>
       </AnimatePresence>
 
+      <div ref={resourcesRef} className="scroll-mt-4">
       {lesson.pdfUrls.length > 0 && (
         <div className="mt-6 rounded-[var(--radius-lg)] border border-white/10 bg-white/5 p-4">
           <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-white/40">Lesson resources</p>
@@ -350,6 +372,7 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
       )}
 
       {lesson.requiresHomework && <HomeworkPanel lessonId={lesson.id} submission={lesson.submission} />}
+      </div>
     </div>
   );
 }
