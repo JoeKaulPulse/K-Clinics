@@ -240,6 +240,9 @@ export function AdminShell({
     <I18nProvider locale={locale}>
       <TeamChatProvider>
       <div className="flex min-h-screen bg-[var(--color-bone)]">
+        {/* BLD-597: keyboard skip-to-content — first focusable element, hidden
+            until focused, jumps past the sidebar/header to the main region. */}
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-[var(--radius-sm)] focus:bg-[var(--color-ink)] focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-[var(--color-porcelain)] focus:outline-none focus:ring-2 focus:ring-[var(--color-gold)]">Skip to content</a>
         {/* Desktop sidebar — navigation only; account moved to the top bar. */}
         <aside className="hidden shrink-0 flex-col border-r border-[var(--color-line)] bg-[var(--color-porcelain)] lg:flex lg:w-64">
           <div className="flex justify-center px-6 pb-5 pt-6">{brand}</div>
@@ -316,7 +319,7 @@ export function AdminShell({
           </header>
           {/* key={pathname} restarts the entrance on every navigation — a short
               fade-up that makes page changes feel composed rather than abrupt. */}
-          <main key={pathname} className="kc-page-enter flex-1 p-5 md:p-8 lg:p-10">
+          <main key={pathname} id="main-content" tabIndex={-1} className="kc-page-enter flex-1 p-5 md:p-8 lg:p-10 focus:outline-none">
             {allowed.has('dayclose.run') && <CloseDownReminder />}
             {children}
           </main>
