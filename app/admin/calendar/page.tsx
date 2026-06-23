@@ -7,6 +7,7 @@ import { getLocale } from '@/lib/locale';
 import { t } from '@/lib/i18n';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { CalendarBlockButton } from '@/components/admin/CalendarBlockButton';
+import { CalendarClosureButton } from '@/components/admin/CalendarClosureButton';
 import { clinicMinutesOfDay } from '@/lib/clinic-time';
 
 export const dynamic = 'force-dynamic';
@@ -42,8 +43,9 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     // Google "busy" mirrors are shown with their own label below.
     db.staffTimeOff.findMany({ where: { startAt: { lt: dayEnd }, endAt: { gt: dayStart }, status: { notIn: ['DECLINED', 'CANCELLED'] } } }),
   ]);
-  const closures = await db.clinicClosure.findMany({ where: { startAt: { lt: dayEnd }, endAt: { gt: dayStart } }, select: { reason: true } });
+  const closures = await db.clinicClosure.findMany({ where: { startAt: { lt: dayEnd }, endAt: { gt: dayStart } }, select: { id: true, reason: true } });
   const canManageSchedule = sessionCan(session, 'schedule.manage');
+  const closure = closures[0] ? { id: closures[0].id, reason: closures[0].reason } : null;
 
   // Columns: each clinician + an "Unassigned" column.
   const columns = [...clinicians.map((c) => ({ id: c.id, name: c.name || 'Clinician', color: c.color })), { id: null as string | null, name: 'Unassigned', color: null }];
@@ -73,6 +75,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           <Link href={`/admin/calendar?date=${iso(next)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 transition-colors duration-150 hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" aria-label="Next day">→</Link>
           <Link href="/admin/calendar" className="ml-2 rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-[var(--color-porcelain)] transition-colors duration-150 hover:bg-[var(--color-ink-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">Today</Link>
           {canManageSchedule && clinicians.length > 0 && <CalendarBlockButton clinicians={columns.filter((c) => c.id).map((c) => ({ id: c.id as string, name: c.name }))} dateISO={iso(dayStart)} />}
+          {canManageSchedule && <CalendarClosureButton dateISO={iso(dayStart)} closure={closure} />}
         </div>
       </div>
 
