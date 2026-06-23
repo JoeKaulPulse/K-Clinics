@@ -127,7 +127,7 @@ export function Footer({ config }: { config: SiteConfig }) {
       </div>
 
       {/* Payments + © */}
-      <div className="container-lux relative flex flex-col items-center gap-5 border-t border-white/10 py-7 text-xs text-[color-mix(in_oklab,var(--color-porcelain)_55%,transparent)] md:flex-row md:justify-between">
+      <div className="container-lux relative flex flex-col items-center gap-5 border-t border-white/10 py-7 text-xs text-[color-mix(in_oklab,var(--color-porcelain)_72%,transparent)] md:flex-row md:justify-between">
         <PaymentMarks />
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
           <Link href="/info/website-privacy-terms" className="transition-colors hover:text-[var(--color-gold)]">Privacy Policy</Link>
