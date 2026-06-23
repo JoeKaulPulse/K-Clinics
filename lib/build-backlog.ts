@@ -1588,6 +1588,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Blob path was already correct: /api/admin/academy/blob-token allows video/* up to 500 MB with a client-direct fallback above the ~4.4 MB serverless cap. A genuinely large/slow upload can still hit the existing 3-min timeout alert — separate from this persistence bug.',
     ],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'SMS dummy mode silently returns ok:true — no visibility when Twilio is unconfigured', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1225),
+    value: 5, effort: 2,
+    detail: 'lib/sms.ts returned { ok: true, id: dummy-sms } when Twilio env vars were absent, with only a console.log — so staff could believe appointment reminders/confirmations were being sent when they were not.',
+    notes: [
+      'Fix (no change to send behaviour): api-health Twilio check now reports AMBER (visible warning) not grey when unconfigured (Admin → Connections); sendSms dummy path logs console.warn + returns dummy:true; instrumentation.ts warns at startup when Twilio env vars are missing (mirrors the BLD-415 Sentry check). lib/sms.ts, lib/api-health.ts, instrumentation.ts.',
+      'ok:true kept so existing smsConfigured()-gated callers (booking-notify, automations) are unaffected.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

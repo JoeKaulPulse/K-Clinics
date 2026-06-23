@@ -10,15 +10,17 @@ export async function smsConfigured(): Promise<boolean> {
   return Boolean((await getSecret('TWILIO_ACCOUNT_SID')) && (await getSecret('TWILIO_AUTH_TOKEN')) && (await getSecret('TWILIO_FROM')));
 }
 
-export async function sendSms(to: string | null | undefined, body: string): Promise<{ ok: boolean; id?: string; error?: string }> {
+export async function sendSms(to: string | null | undefined, body: string): Promise<{ ok: boolean; id?: string; error?: string; dummy?: boolean }> {
   if (!to) return { ok: false, error: 'No phone number on file.' };
   const sid = await getSecret('TWILIO_ACCOUNT_SID');
   const authToken = await getSecret('TWILIO_AUTH_TOKEN');
   const from = await getSecret('TWILIO_FROM');
   if (!sid || !authToken || !from) {
-    // Dummy mode — log intent, pretend success so the flow can be exercised.
-    console.log(`[sms:dummy] → ${to}: ${body.slice(0, 80)}…`);
-    return { ok: true, id: 'dummy-sms' };
+    // Dummy mode — Twilio isn't configured, so nothing is actually sent. Warn (not
+    // log) so it's visible that a text was dropped, and flag dummy:true on the
+    // result so callers/monitoring can tell this apart from a real send (BLD-583).
+    console.warn(`[sms:dummy] Twilio not configured — text NOT sent → ${to}: ${body.slice(0, 80)}…`);
+    return { ok: true, dummy: true, id: 'dummy-sms' };
   }
   try {
     const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
