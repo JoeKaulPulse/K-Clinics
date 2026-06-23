@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   try {
     const { sendEmail, emailShell } = await import('@/lib/email');
     const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] || c));
-    const notifyTo = process.env.CAREERS_NOTIFY_EMAIL || process.env.CLINIC_NOTIFY_EMAIL || 'info@kclinics.co.uk';
+    const notifyTo = process.env.CAREERS_NOTIFY_EMAIL || process.env.CLINIC_NOTIFY_EMAIL || 'support@kclinics.co.uk';
     await Promise.allSettled([
       sendEmail({ to: notifyTo, subject: `New job application — ${d.roleTitle}`, html: emailShell({ preheader: `${d.name} applied for ${d.roleTitle}`, body: `<h1 style="font-size:22px;margin:0 0 16px;">New application</h1><p><strong>${esc(d.name)}</strong> applied for <strong>${esc(d.roleTitle)}</strong>.</p><p>Email: ${esc(d.email)}<br>Phone: ${esc(d.phone || '—')}${d.cvUrl ? `<br>CV: ${esc(d.cvUrl)}` : ''}</p>${d.coverNote ? `<p>${esc(d.coverNote)}</p>` : ''}` }) }),
       sendEmail({ to: d.email, subject: `Your application — ${d.roleTitle}`, html: emailShell({ preheader: `We've received your application`, body: `<h1 style="font-size:24px;margin:0 0 16px;">Thank you, ${esc(d.name.split(' ')[0])}.</h1><p>We've received your application for <strong>${esc(d.roleTitle)}</strong> at KClinics. If your experience matches what we're looking for, our team will be in touch.</p><p>With warmth,<br>The KClinics team</p>` }) }),
