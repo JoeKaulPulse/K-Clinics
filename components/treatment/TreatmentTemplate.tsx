@@ -12,6 +12,7 @@ import { Button, ArrowIcon } from '@/components/ui/Button';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { site } from '@/lib/site';
 import { pricingForTreatment, formatPence, statusLabel, type ServiceStatus } from '@/lib/services';
+import { getVatNote } from '@/lib/vat';
 
 /** Build the small print under a variant — duration + course price, per-session
  *  cost and the saving vs a single session (so the value of a course is clear). */
@@ -61,7 +62,7 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
   const related = t.related.map(getTreatment).filter(Boolean) as Treatment[];
 
   // Pricing + presentation status derived live from the admin catalogue (SSOT).
-  const pricing = await pricingForTreatment(t.slug);
+  const [pricing, vatNote] = await Promise.all([pricingForTreatment(t.slug), getVatNote()]);
   const fromPence = pricing?.fromPence ?? null;
   const fromOfferPence = pricing?.fromOfferPence ?? null;
   const offerName = pricing?.offerName ?? null;
@@ -289,6 +290,7 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
                 )}
                 <Button href="/pricing" variant="outline">Full price list <ArrowIcon /></Button>
               </div>
+              {vatNote && <p className="mt-4 text-xs text-[var(--color-stone)]">{vatNote}</p>}
             </Reveal>
             <Reveal delay={0.1}>
               {!enquiryOnly && variants.length ? (

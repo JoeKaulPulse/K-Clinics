@@ -260,8 +260,11 @@ export async function POST(req: Request) {
     // (payment_intent.succeeded already covers it; the explicit kind check keeps
     // the intent clear and survives any future narrowing of the type test.)
     const pmtKind = event.type.startsWith('payment_intent.') ? (event.data.object as { metadata?: { kind?: string } }).metadata?.kind : undefined;
+    // BLD-603: payment_intent.payment_failed must also retry — a 200 on DB failure
+    // loses the recordChargeFailure write, leaving staff blind to the failed charge.
     const critical =
       event.type === 'payment_intent.succeeded' ||
+      event.type === 'payment_intent.payment_failed' ||
       event.type === 'charge.refunded' ||
       event.type === 'setup_intent.succeeded' ||
       pmtKind === 'course_prepaid';
