@@ -18,6 +18,8 @@ const STATUS_LABEL: Record<string, string> = { APPLIED: 'Application received', 
 const fmtDate = (d: Date) => d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
 const fmtShort = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 const fmtTime = (d: Date) => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+// Module release date: "1 July" within this year, "1 July 2027" otherwise.
+const fmtRelease = (iso: string) => { const d = new Date(iso); return d.toLocaleDateString('en-GB', d.getFullYear() === new Date().getFullYear() ? { day: 'numeric', month: 'long' } : { day: 'numeric', month: 'long', year: 'numeric' }); };
 const gbp = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
 const ACTIVE = ['PAID', 'ENROLLED', 'COMPLETED'];
 
@@ -49,7 +51,7 @@ export default async function AcademyPortalPage() {
   const { db } = await import('@/lib/db');
   const sprof = await db.academyStudent.findUnique({ where: { id: student.id }, select: { onboardedAt: true, goals: true } });
   const acadOnb = sprof ? { pending: !sprof.onboardedAt, initial: { goals: sprof.goals ?? '' } } : null;
-  const { courseProgress, getStudentCalendar } = await import('@/lib/lms');
+  const { courseProgress, getStudentCalendar, getStudentSchedule } = await import('@/lib/lms');
   const { enrolmentMoney } = await import('@/lib/academy-payments');
   const enrolments = await db.enrolment.findMany({
     where: { studentId: student.id },
@@ -57,6 +59,8 @@ export default async function AcademyPortalPage() {
     include: { course: true, cohort: true },
   });
   const calendar = await getStudentCalendar(student.id);
+  // Content drip schedule — only surface courses that actually have something pending.
+  const schedule = (await getStudentSchedule(student.id)).filter((s) => s.hasUpcoming);
   const progress = new Map(
     await Promise.all(
       enrolments.filter((e) => ACTIVE.includes(e.status)).map(async (e) => [e.id, await courseProgress(student.id, e.courseId)] as const),
@@ -207,6 +211,32 @@ export default async function AcademyPortalPage() {
           </div>
         )}
       </section>
+
+      {/* Course schedule — when modules unlock (drip release) */}
+      {schedule.length > 0 && (
+        <section className="mt-10">
+          <SectionTitle sub="When each part of your course becomes available. Anything marked “Available now” is ready to study; the rest unlocks on the date shown.">Course schedule</SectionTitle>
+          <div className="space-y-4">
+            {schedule.map((c) => (
+              <Card key={c.courseId} className="p-5">
+                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                  <h3 className="font-[family-name:var(--font-display)] text-lg">{c.courseTitle}</h3>
+                  <AButton href={`/academy/learn/${c.slug}`} variant="secondary" size="sm">Open course →</AButton>
+                </div>
+                <ol className="space-y-1.5">
+                  {c.modules.map((m, i) => (
+                    <li key={m.id} className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2.5">
+                      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--color-bone)] text-xs font-medium text-[var(--color-stone)]">{i + 1}</span>
+                      <span className="flex-1 text-sm">{m.title}</span>
+                      {m.releaseAt ? <Pill tone="neutral">Opens {fmtRelease(m.releaseAt)}</Pill> : <Pill tone="good">Available now</Pill>}
+                    </li>
+                  ))}
+                </ol>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Upcoming classes */}
       {calendar.length > 0 && (
