@@ -1608,6 +1608,26 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'No schema change: emailEvent logged under the existing MANUAL kind.',
     ],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Replace all email addresses across the website with: support@kclinics.co.uk', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1229),
+    value: 5, effort: 2,
+    detail: 'Owner (inna.k) asked for a single contact address site-wide. Site config (lib/site.ts email/emailHref) + footer + contact page already used support@; remaining hardcoded hello@/info@ references were replaced.',
+    notes: [
+      'lib/info-pages.ts (all legal/policy contact lines), careers/academy/funding apply routes + booking-notify clinic-notify fallback (info@ → support@), lib/push.ts VAPID contact, and two admin input placeholders → support@.',
+      'Left unchanged: Resend sender/reply-to on the verified mail. subdomain (hello@mail.kclinics.co.uk / replies@reply.mail…) — changing them breaks delivery — and illustrative staff-account/alias placeholders (user@/name@/alias@/admin@).',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Full Day Closure', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1230),
+    value: 6, effort: 2,
+    detail: 'Owner (inna.k) wanted a "Clinic Closed" option on /admin/calendar to block all bookings for every staff member on selected dates — the calendar only let them block their own time.',
+    notes: [
+      'The ClinicClosure backend already existed and is enforced (model, /api/admin/closures, lib/availability.ts dayClosures). Gap was a create/reopen control on the calendar.',
+      'Fix: new CalendarClosureButton on the calendar day header (schedule.manage-gated) — "Close clinic" creates an all-day closure for the date; "Reopen clinic" removes it when already closed. components/admin/CalendarClosureButton.tsx, app/admin/calendar/page.tsx. No schema/backend change.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
