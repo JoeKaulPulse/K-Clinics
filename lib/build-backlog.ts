@@ -1608,6 +1608,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'No schema change: emailEvent logged under the existing MANUAL kind.',
     ],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Full Day Closure', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1230),
+    value: 6, effort: 2,
+    detail: 'Owner (inna.k) wanted a "Clinic Closed" option on /admin/calendar to block all bookings for every staff member on selected dates — the calendar only let them block their own time.',
+    notes: [
+      'The ClinicClosure backend already existed and is enforced (model, /api/admin/closures, lib/availability.ts dayClosures). Gap was a create/reopen control on the calendar.',
+      'Fix: new CalendarClosureButton on the calendar day header (schedule.manage-gated) — "Close clinic" creates an all-day closure for the date; "Reopen clinic" removes it when already closed. components/admin/CalendarClosureButton.tsx, app/admin/calendar/page.tsx. No schema/backend change.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
