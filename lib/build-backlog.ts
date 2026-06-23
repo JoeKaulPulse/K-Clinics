@@ -1578,6 +1578,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Opus 4.8 review found updateEnrolment, removeCohort, removeEnrolment in app/api/admin/academy/route.ts use db.enrolment.update/delete({ where: { id } }) with no tenantId filter. Create paths set tenantId. A permitted admin in one tenant could mutate another tenants enrolment/cohort by ID. Route is auth-gated (requirePermission). Fix: add tenantId filter to every update/delete where clause. Predates BLD-484; affects all existing ops.',
     notes: ['Logged from Opus 4.8 review of BLD-484 (2026-06-18). Low practical risk on single-clinic deploy; must be fixed before multi-tenant or if other clinics are onboarded.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'SMS dummy mode silently returns ok:true — no visibility when Twilio is unconfigured', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1225),
+    value: 5, effort: 2,
+    detail: 'lib/sms.ts returned { ok: true, id: dummy-sms } when Twilio env vars were absent, with only a console.log — so staff could believe appointment reminders/confirmations were being sent when they were not.',
+    notes: [
+      'Fix (no change to send behaviour): api-health Twilio check now reports AMBER (visible warning) not grey when unconfigured (Admin → Connections); sendSms dummy path logs console.warn + returns dummy:true; instrumentation.ts warns at startup when Twilio env vars are missing (mirrors the BLD-415 Sentry check). lib/sms.ts, lib/api-health.ts, instrumentation.ts.',
+      'ok:true kept so existing smsConfigured()-gated callers (booking-notify, automations) are unaffected.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
