@@ -73,7 +73,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (sessionCan(session, 'clients.clinical.view')) {
     const assessments = await db.healthAssessment.findMany({ where: { clientId: id }, orderBy: { submittedAt: 'desc' } });
     const { formatAssessment } = await import('@/lib/health-assessments');
-    out.healthAssessments = await Promise.all(assessments.map((a) => formatAssessment(a.id)));
+    const exportAudit = { actor: session?.email || 'unknown', actorRole: session?.role ?? undefined };
+    out.healthAssessments = await Promise.all(assessments.map((a) => formatAssessment(a.id, exportAudit)));
 
     // BLD-367 (Art. 15): attach the decrypted before-photo image to each record,
     // not just its metadata. Same decryption path as the authenticated serve
