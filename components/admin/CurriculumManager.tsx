@@ -152,13 +152,27 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
   }
   async function uploadVideo(file: File) {
     setUploading(true);
-    try { const url = await putFile(file, 'academy'); setF((s) => ({ ...s, videoUrl: url })); }
+    try {
+      const url = await putFile(file, 'academy');
+      // BLD-588: persist immediately. Previously the URL only lived in local state,
+      // so a video uploaded but was lost unless staff also clicked "Save lesson" —
+      // they reported it as "video not uploading". Auto-save mirrors uploadPdf/uploadAttachment.
+      const updated = { ...f, videoUrl: url };
+      setF(updated);
+      await act(lessonSavePayload(updated));
+    }
     catch (e) { alert('Upload failed: ' + uploadErr(e)); }
     finally { setUploading(false); }
   }
   async function uploadAudio(file: File) {
     setUploadingAudio(true);
-    try { const url = await putFile(file, 'academy/audio'); setF((s) => ({ ...s, audioUrl: url })); }
+    try {
+      const url = await putFile(file, 'academy/audio');
+      // BLD-588: auto-save the uploaded audio for the same reason as video above.
+      const updated = { ...f, audioUrl: url };
+      setF(updated);
+      await act(lessonSavePayload(updated));
+    }
     catch (e) { alert('Audio upload failed: ' + uploadErr(e)); }
     finally { setUploadingAudio(false); }
   }
