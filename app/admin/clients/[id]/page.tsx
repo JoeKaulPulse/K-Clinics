@@ -4,7 +4,7 @@ import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
-import { AddNote, PinToggle, SendEmail, StatusSelect } from '@/components/admin/ClientActions';
+import { AddNote, PinToggle, SendEmail, SendPortalInvite, StatusSelect } from '@/components/admin/ClientActions';
 import { EditClientDetails } from '@/components/admin/EditClientDetails';
 import { LeaderboardCard } from '@/components/admin/LeaderboardCard';
 import { DiscountAction } from '@/components/admin/DiscountActions';
@@ -183,6 +183,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
           <div className="flex items-center gap-2">
             <EditClientDetails client={{ id: c.id, firstName: c.firstName, lastName: c.lastName, email: c.email, phone: c.phone, dob: c.dob ? new Date(c.dob).toISOString() : null, gender: c.gender, genderSelfDescribe: c.genderSelfDescribe, allergies: c.allergies, notes: c.notes, marketingOptIn: c.marketingOptIn }} />
             <SendEmail clientId={c.id} email={c.email} />
+            <SendPortalInvite clientId={c.id} hasPassword={!!c.passwordHash} />
           </div>
         )}
       </div>

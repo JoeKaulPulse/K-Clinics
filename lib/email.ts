@@ -260,6 +260,22 @@ export function tmplPasswordReset(firstName: string, resetUrl: string) {
   });
 }
 
+// BLD-527: staff-issued passwordless login link for a client who has no password
+// yet (e.g. created manually by the clinic). Clicking it opens their account; they
+// can set a password later from their profile if they want one.
+export function tmplPortalInvite(firstName: string, activateUrl: string) {
+  return emailShell({
+    preheader: 'Your KClinics account is ready — open it with this secure link',
+    body: `${heroBand('secure')}
+    <h1 style="font-size:24px;margin:0 0 16px;color:#2a2420;">Open your KClinics account</h1>
+    <p>Hello ${escape(firstName)},</p>
+    <p>Your KClinics account is ready. Tap below to open it — no password needed. You can manage your appointments, save a card and set a password for next time if you’d like one.</p>
+    <p style="margin:28px 0;">${btn(activateUrl, 'Open my account')}</p>
+    <p style="color:#91766e;font-size:14px;">This is a private link just for you — please don’t share it. It’s valid for 7 days.</p>
+    <p style="margin-top:24px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
 export function tmplClinicNotify(data: {
   name: string; email: string; phone?: string; category: string; treatments: string[]; message?: string;
 }) {
