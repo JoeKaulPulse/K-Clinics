@@ -155,7 +155,6 @@ export default async function AcademyPortalPage() {
             </div>
             <Stat label="XP" value={standing.xp.toLocaleString()} />
             <Stat label="Badges" value={standing.badges.length} />
-            <Stat label="Rank" value={`#${standing.rank}`} />
             <Stat label="Time" value={totalMin >= 60 ? `${Math.floor(totalMin / 60)}h ${totalMin % 60}m` : `${totalMin}m`} />
             <AButton href="/academy/leaderboard" variant="secondary" size="sm" className="ml-auto">View progress →</AButton>
           </div>
