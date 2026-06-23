@@ -123,8 +123,10 @@ export function Header({ config }: { config: SiteConfig }) {
           <Logo mono={light} className={light ? 'text-[var(--color-porcelain)]' : ''} />
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary">
+        {/* Desktop nav — BLD-553: switch at xl (1280px) not lg (1024px). Between
+            those widths the full horizontal nav had no room and wrapped badly
+            ("Get My Plan" over 3 lines); tablet now gets the hamburger drawer. */}
+        <nav className="hidden items-center gap-1 xl:flex" aria-label="Primary">
           {primaryNav.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const hasMenu = !!item.columns;
@@ -169,7 +171,7 @@ export function Header({ config }: { config: SiteConfig }) {
           })}
         </nav>
 
-        <div className="hidden items-center gap-3 lg:flex">
+        <div className="hidden items-center gap-3 xl:flex">
           <Link href="/shop" className={`text-sm font-medium transition-colors hover:text-[var(--color-gold)] ${light ? 'text-[var(--color-porcelain)]' : 'text-[var(--color-ink)]'}`}>Shop</Link>
           <SiteSearch light={light} />
           <AccountMenu light={light} />
@@ -181,7 +183,7 @@ export function Header({ config }: { config: SiteConfig }) {
         {/* Mobile toggle */}
         <button
           ref={hamburgerRef}
-          className={`relative z-10 grid h-11 w-11 place-items-center rounded-full lg:hidden ${
+          className={`relative z-10 grid h-11 w-11 place-items-center rounded-full xl:hidden ${
             light ? 'text-[var(--color-porcelain)]' : 'text-[var(--color-ink)]'
           }`}
           onClick={() => setMobile((m) => !m)}
@@ -209,7 +211,7 @@ export function Header({ config }: { config: SiteConfig }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute inset-x-0 top-full hidden border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-porcelain)_94%,transparent)] backdrop-blur-2xl lg:block"
+            className="absolute inset-x-0 top-full hidden border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-porcelain)_94%,transparent)] backdrop-blur-2xl xl:block"
           >
             <div className="container-lux py-9" onMouseLeave={() => setPreview(null)}>
               {primaryNav
@@ -299,7 +301,7 @@ export function Header({ config }: { config: SiteConfig }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
-            className="fixed inset-0 top-0 z-0 h-[100dvh] overflow-y-auto bg-[var(--color-porcelain)] px-6 pb-12 pt-24 lg:hidden"
+            className="fixed inset-0 top-0 z-0 h-[100dvh] overflow-y-auto bg-[var(--color-porcelain)] px-6 pb-12 pt-24 xl:hidden"
           >
             <nav className="flex flex-col divide-y divide-[var(--color-line)]" aria-label="Mobile">
               {primaryNav.map((item, idx) => {
