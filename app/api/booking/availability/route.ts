@@ -4,6 +4,7 @@ import { crmEnabled } from '@/lib/crm';
 import { bookingFor } from '@/lib/treatments';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false, slots: [] }, { status: 503 });

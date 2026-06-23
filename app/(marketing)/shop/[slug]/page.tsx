@@ -40,7 +40,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       <div className="grid gap-10 lg:grid-cols-2">
         <div className="overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)]">
           {p.images[0]
-            ? <Image src={p.images[0]} alt={p.name} width={800} height={800} className="aspect-square w-full object-cover" priority />
+            ? <Image src={p.images[0]} alt={p.name} width={800} height={800} sizes="(max-width: 1024px) 100vw, 50vw" className="aspect-square w-full object-cover" priority />
             : <span className="grid aspect-square place-items-center text-5xl text-[var(--color-stone)]">▦</span>}
           {p.images.length > 1 && (
             <div className="flex gap-2 p-3">

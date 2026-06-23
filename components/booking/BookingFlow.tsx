@@ -403,6 +403,19 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
             </div>
           )}
 
+          {stage === 'card' && !isDemo && !clientSecret && (
+            <div>
+              <h3 className="font-[family-name:var(--font-display)] text-2xl">Something went wrong</h3>
+              <p className="mt-3 text-sm text-[var(--color-stone)]">We couldn&apos;t load the payment form. Please go back and try again.</p>
+              <button
+                onClick={() => { setStage('upsell'); setError(''); }}
+                className="mt-4 rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]"
+              >
+                Go back
+              </button>
+            </div>
+          )}
+
           {stage === 'card' && (isDemo || clientSecret) && (
             <div>
               <h3 className="font-[family-name:var(--font-display)] text-2xl">Secure your booking</h3>

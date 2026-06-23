@@ -316,7 +316,7 @@ export function AdminShell({
           </header>
           {/* key={pathname} restarts the entrance on every navigation — a short
               fade-up that makes page changes feel composed rather than abrupt. */}
-          <main key={pathname} className="kc-page-enter flex-1 p-5 md:p-8 lg:p-10">
+          <main id="admin-main" key={pathname} className="kc-page-enter flex-1 p-5 md:p-8 lg:p-10">
             {allowed.has('dayclose.run') && <CloseDownReminder />}
             {children}
           </main>
