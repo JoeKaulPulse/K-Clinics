@@ -1578,6 +1578,13 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Opus 4.8 review found updateEnrolment, removeCohort, removeEnrolment in app/api/admin/academy/route.ts use db.enrolment.update/delete({ where: { id } }) with no tenantId filter. Create paths set tenantId. A permitted admin in one tenant could mutate another tenants enrolment/cohort by ID. Route is auth-gated (requirePermission). Fix: add tenantId filter to every update/delete where clause. Predates BLD-484; affects all existing ops.',
     notes: ['Logged from Opus 4.8 review of BLD-484 (2026-06-18). Low practical risk on single-clinic deploy; must be fixed before multi-tenant or if other clinics are onboarded.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Primary nav does not collapse to a hamburger at tablet/intermediate widths (~1054px)', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1226),
+    value: 7, effort: 3,
+    detail: 'Owner live-site visual audit: around 1054px the full horizontal nav stayed and wrapped badly (Get My Plan over 3 lines, Sign in over 2) — header only had lg (1024px) desktop + mobile states, no tablet breakpoint.',
+    notes: ['Fix: moved the desktop/mobile switch from lg to xl (1280px) across all five nav surfaces in components/layout/Header.tsx (desktop nav, actions row, hamburger button, mega-menu, mobile drawer), so 1024–1279px gets the existing hamburger drawer.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
