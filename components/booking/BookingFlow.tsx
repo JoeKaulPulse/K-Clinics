@@ -416,6 +416,22 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
               </div>
             </div>
           )}
+
+          {/* BLD-592: card stage reached but the secure card step didn't initialise
+              (e.g. a transient SetupIntent failure). Previously this rendered nothing
+              but a Back button — give clear feedback and a retry instead of a blank. */}
+          {stage === 'card' && !isDemo && !clientSecret && (
+            <div>
+              <h3 className="font-[family-name:var(--font-display)] text-2xl">Secure your booking</h3>
+              <div className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-4 py-3 text-sm text-[var(--color-ink)]">
+                We couldn’t start the secure card step just now. Your slot is held for a moment — please try again.
+              </div>
+              <div className="mt-5 flex items-center gap-3">
+                <Button onClick={() => submitBooking()} disabled={submitting} variant="gold">{submitting ? 'Trying…' : 'Try again'} <ArrowIcon /></Button>
+                <button type="button" onClick={() => goBack()} className="text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Back</button>
+              </div>
+            </div>
+          )}
         </motion.div>
       </AnimatePresence>
 

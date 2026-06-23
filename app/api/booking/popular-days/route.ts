@@ -3,6 +3,8 @@ import { crmEnabled } from '@/lib/crm';
 import { bookingFor } from '@/lib/treatments';
 
 export const runtime = 'nodejs';
+// BLD-591: availability-derived — keep it live, never cached.
+export const dynamic = 'force-dynamic';
 
 // Soon-upcoming dates that already have bookings and still have availability —
 // surfaced as quick-pick chips so clients cluster onto already-staffed days.

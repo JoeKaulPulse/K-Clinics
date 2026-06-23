@@ -1628,6 +1628,24 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Fix: new CalendarClosureButton on the calendar day header (schedule.manage-gated) — "Close clinic" creates an all-day closure for the date; "Reopen clinic" removes it when already closed. components/admin/CalendarClosureButton.tsx, app/admin/calendar/page.tsx. No schema/backend change.',
     ],
   },
+  {
+    title: 'Booking availability API missing force-dynamic — real-time slots may be cached', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1231),
+    value: 9, effort: 1,
+    detail: 'EOD audit: app/api/booking/availability/route.ts had no force-dynamic, risking cached availability between users (double-booking / stale slots).',
+    notes: ['Fix: added export const dynamic = force-dynamic to app/api/booking/availability/route.ts and the availability-derived popular-days route. They are POST handlers (not cached by default), so this is defensive + makes the intent explicit, matching booking/live/*.'],
+  },
+  {
+    title: 'BookingFlow card stage renders blank when Stripe clientSecret is null', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1231),
+    value: 9, effort: 2,
+    detail: 'EOD audit: when stage===card but clientSecret was empty (transient SetupIntent failure), BookingFlow rendered nothing but a Back button — no feedback, no retry.',
+    notes: ['Fix: added an explicit stage===card && !isDemo && !clientSecret state with a clear message + Try again (re-runs submitBooking) and Back. The slot-conflict check prevents a duplicate booking on retry. components/booking/BookingFlow.tsx.'],
+  },
+  {
+    title: 'Stripe webhook returns HTTP 200 on handler exceptions — critical events never retried', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 5, effort: 2,
+    detail: 'EOD audit flagged the webhook swallowing handler errors with a 200 so Stripe never retries.',
+    notes: ['Already fixed on main (BLD-412 / BLD-399): app/api/stripe/webhook/route.ts outer catch returns HTTP 500 for critical events (payment_intent.succeeded, charge.refunded, setup_intent.succeeded, course_prepaid) so Stripe retries; only fire-and-forget side effects (Xero/GCal/loyalty) are swallowed. Board card was stale.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

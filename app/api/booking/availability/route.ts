@@ -4,6 +4,9 @@ import { crmEnabled } from '@/lib/crm';
 import { bookingFor } from '@/lib/treatments';
 
 export const runtime = 'nodejs';
+// BLD-591: never cache — availability must be computed live per request, or
+// Vercel could serve one user's slots to another and surface filled slots as free.
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false, slots: [] }, { status: 503 });
