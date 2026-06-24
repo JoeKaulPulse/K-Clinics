@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { TreatmentFinder } from '@/components/finder/TreatmentFinder';
-import { KMark } from '@/components/brand/marks';
+import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 
 const IDLE_MS = 90_000; // return to the attract screen after 90s of no touch
 
@@ -32,7 +32,7 @@ export function KioskShell({ prices }: { prices: Record<string, number | null> }
       >
         <span aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_-10%,color-mix(in_oklab,var(--color-gold)_26%,transparent),transparent_60%)]" />
         <span className="block h-24 w-16 text-[var(--color-gold-soft)]"><KMark animated /></span>
-        <p className="mt-10 text-sm uppercase tracking-[0.35em] text-[var(--color-gold-soft)]">KClinics · Islington</p>
+        <p className="mt-10 text-sm uppercase tracking-[0.35em] text-[var(--color-gold-soft)]">Islington · London</p>
         <h1 className="mt-5 max-w-3xl font-[family-name:var(--font-display)] text-[clamp(2.5rem,6vw,5rem)] leading-[1.04]">
           Discover your <span className="text-gold-shimmer">perfect</span> treatment.
         </h1>
@@ -50,8 +50,9 @@ export function KioskShell({ prices }: { prices: Record<string, number | null> }
     <div className="min-h-screen bg-[var(--color-porcelain)] px-6 py-8 md:px-10">
       <div className="mx-auto max-w-4xl">
         <div className="mb-6 flex items-center justify-between">
-          <span className="inline-flex items-center gap-2 text-sm uppercase tracking-[0.2em] text-[var(--color-stone)]">
-            <span className="block h-6 w-4 text-[var(--color-gold-deep)]"><KMark /></span> KClinics
+          <span className="inline-flex items-center gap-2 text-[var(--color-gold-deep)]" aria-label="KClinics">
+            <span className="block h-6 w-4"><KMark /></span>
+            <span className="block h-[0.6rem] w-[6.5rem]"><ClinicsWordmark /></span>
           </span>
           <button onClick={reset} className="rounded-full border border-[var(--color-line)] px-5 py-2 text-sm text-[var(--color-stone)] hover:border-[var(--color-gold)]">Start over</button>
         </div>
