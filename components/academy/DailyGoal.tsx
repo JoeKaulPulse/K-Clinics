@@ -7,6 +7,16 @@ import { KMascot } from '@/components/academy/KMascot';
 
 type Status = { tasks: number; goal: number; boxReady: boolean; boxOpened: boolean; streak: number };
 
+function Flame({ className = '' }: { className?: string }) {
+  // SVG flame for the streak indicator — themeable, consistent with the rest of
+  // the portal's icon language (replaces an emoji used as a UI icon).
+  return (
+    <svg viewBox="0 0 16 16" className={className} fill="currentColor" aria-hidden>
+      <path d="M8 1.5s3.7 2.8 3.7 6.4A3.7 3.7 0 0 1 8 11.6a1.9 1.9 0 0 0 1.9-1.9c0-1.2-1-1.8-1-3 0 0-2 1-2 3.1A2 2 0 0 0 8 11.6 3.7 3.7 0 0 1 4.3 7.9C4.3 5.6 6 3.9 6 3.9c0 1.3.9 1.9 1.6 1.3C8.6 4.4 8 2.6 8 1.5Z" />
+    </svg>
+  );
+}
+
 function GiftBox({ className = '' }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={className} fill="none">
@@ -41,7 +51,12 @@ export function DailyGoal({ status }: { status: Status }) {
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="font-[family-name:var(--font-display)] text-lg">Daily goal</p>
-          <p className="mt-0.5 text-sm text-[var(--color-stone)]">{Math.min(status.tasks, status.goal)} of {status.goal} done today{status.streak > 0 ? ` · 🔥 ${status.streak}-day streak` : ''}</p>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-sm text-[var(--color-stone)]">
+            <span>{Math.min(status.tasks, status.goal)} of {status.goal} done today</span>
+            {status.streak > 0 && (
+              <span className="inline-flex items-center gap-1 text-[var(--color-gold-deep)]"><span aria-hidden className="text-[var(--color-stone)]">·</span><Flame className="h-3.5 w-3.5 text-[var(--color-gold)]" /> {status.streak}-day streak</span>
+            )}
+          </p>
         </div>
         <button
           onClick={open}

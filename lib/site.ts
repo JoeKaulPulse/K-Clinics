@@ -13,8 +13,9 @@ export const site = {
   // Used for absolute URLs (metadata, sitemap, JSON-LD). Update at launch.
   url: 'https://kclinics.co.uk',
   locale: 'en_GB',
+  // Kept under ~155 chars so it isn't truncated in search results (SERP limit).
   description:
-    'KClinics is an Islington clinic uniting advanced laser & skin aesthetics with aesthetic dentistry — precision treatments, qualified clinicians, and an experience designed around you.',
+    'An Islington clinic uniting advanced laser & skin aesthetics with aesthetic dentistry — precision treatments from qualified clinicians, designed around you.',
 
   // ── Contact / NAP (Name, Address, Phone) ───────────────────────────────────
   // Landline via yay.com VoIP. All public phone references read from here.

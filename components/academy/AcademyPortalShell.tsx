@@ -77,7 +77,10 @@ export function AcademyPortalShell({ firstName, children }: { firstName?: string
       </div>
 
       <div className="mx-auto flex w-full max-w-[88rem] flex-1 flex-col px-[var(--gutter)]">
-        <main className="flex-1 py-9 md:py-12">{children}</main>
+        {/* key={pathname} restarts the entrance on every navigation — a short
+            fade-up that brings the portal's motion up to the admin shell + the
+            academy marketing pages (academy UI/UX audit: portal motion gap). */}
+        <main key={pathname} className="kc-page-enter flex-1 py-9 md:py-12">{children}</main>
 
         <footer className="mt-8 flex flex-col gap-3 border-t border-[var(--color-line)] py-7 text-xs text-[var(--color-stone)] sm:flex-row sm:items-center sm:justify-between print:hidden">
           <p>K Academy — accredited aesthetics training. Questions? Call{' '}
