@@ -9,7 +9,8 @@
 // Output: qa-output/admin/*.png + findings.json (gitignored — admin captures
 // contain client PII; do NOT commit them; redact before sharing).
 import { chromium } from 'playwright';
-import { mkdirSync, writeFileSync } from 'fs';
+import { mkdirSync, writeFileSync, existsSync, readdirSync } from 'fs';
+import { join } from 'path';
 
 const BASE = process.env.BASE_URL || 'https://kclinics.co.uk';
 // Trim the credentials: a stray leading/trailing space in the env var (a common
@@ -21,7 +22,31 @@ const AGENT_PROXY = process.env.HTTPS_PROXY || process.env.https_proxy || '';
 // On full-network Claude sessions HTTPS_PROXY points at a local agent proxy that
 // closes Chromium's TLS to the live site; route the browser direct in that case.
 const DIRECT = /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/i.test(AGENT_PROXY);
-const LAUNCH = DIRECT ? { proxy: { server: 'direct://', bypass: '*' } } : {};
+
+// Resolve a Chromium binary. Normally Playwright finds its own bundled build,
+// but some sandboxes pre-bake a browser whose build number doesn't match the
+// installed playwright version, and the CDN that would fetch the matching build
+// is blocked by the egress policy. In that case fall back to any chromium found
+// under PLAYWRIGHT_BROWSERS_PATH so the QA still runs. QA_CHROMIUM_PATH overrides.
+function resolveChromium() {
+  const override = process.env.QA_CHROMIUM_PATH?.trim();
+  if (override && existsSync(override)) return override;
+  const root = process.env.PLAYWRIGHT_BROWSERS_PATH?.trim();
+  if (!root || !existsSync(root)) return undefined;
+  // If the exact bundled build is present, let Playwright use it (return undefined).
+  try { if (chromium.executablePath() && existsSync(chromium.executablePath())) return undefined; } catch {}
+  const dirs = readdirSync(root).filter((d) => /^chromium-\d+$/.test(d)).sort();
+  for (const d of dirs.reverse()) {
+    const exe = join(root, d, 'chrome-linux', 'chrome');
+    if (existsSync(exe)) return exe;
+  }
+  return undefined;
+}
+const CHROMIUM_PATH = resolveChromium();
+const LAUNCH = {
+  ...(DIRECT ? { proxy: { server: 'direct://', bypass: '*' } } : {}),
+  ...(CHROMIUM_PATH ? { executablePath: CHROMIUM_PATH } : {}),
+};
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 if (!EMAIL || !PASS) { console.error('Missing QA_ADMIN_EMAIL / QA_ADMIN_PASSWORD in env.'); process.exit(2); }
