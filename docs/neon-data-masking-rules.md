@@ -11,11 +11,34 @@ A trial run on 2026-06-24 surfaced two traps:
    with **Masked columns = 1** — only `neon_auth.project_config.name`. Every real PII
    column was left `None`. The auto-detection cannot be trusted; you must set each rule
    below by hand, then **Apply masking rules**, then confirm the count jumps to dozens.
-2. **There are two Neon projects.** The patient data (`Client`, `Booking`, …) lives in
-   the **application** project (the one the app's `DATABASE_URL` points at, endpoint
-   `ep-red-sound-…`). The `neon-KClinicsOS` project holds only the `neon_auth` tables.
-   **Anonymise the application project** for QA data; the auth tables are a separate,
-   smaller surface (covered at the end).
+2. **There are multiple Neon databases.** Masking has to target the right one (see the
+   topology below). The patient data lives in the **clinic application** project, not the
+   `neon-KClinicsOS` project that was anonymised first in the trial.
+
+## Current situation & Neon topology (parked 2026-06-24)
+
+This was a trial of the Beta; **no database is currently masked correctly** and the work is
+parked pending the owner. What the trial mapped out:
+
+| Neon database | Endpoint | Contains | Masking target? |
+| --- | --- | --- | --- |
+| **Clinic app** (app `DATABASE_URL`) | `ep-red-sound-abzh3b7i` | `Client`, `Booking`, `CallRecord`, `AcademyStudent`, clinical PII | **Yes — primary.** Not yet masked. |
+| **`neon-KClinicsOS`** (shop + auth) | `ep-icy-sea-…` (branch `qa-anon`) | shop/e-commerce (`Customer`, `Order`, `GiftVoucher`, `Product`…) + `neon_auth` + `AdminUser` | Yes if anonymising shop QA. |
+| **`neon_auth`** schema | (within the above) | better-auth: `user`, `account`, `session`, `invitation` | Yes — small surface. |
+
+Trial outcome:
+- The `qa-anon` branch (off `neon-KClinicsOS`) came back **Masked columns = 1** — the Beta's
+  auto-detection masked essentially nothing; every real PII column was left `None`.
+- It also mis-masked a few non-PII columns (`Brand.name`, `organization.name`) as
+  "Synthetic Full Name" — those should be reverted to `None` (they're product/brand names).
+- `qa-anon` is an **unmasked copy** of the shop+auth data and should be **deleted**.
+- Direct verification from the sandbox isn't possible (Neon Postgres port is outside the
+  egress allowlist); verify by running the leak-check SQL in the Neon SQL Editor, or add
+  `*.eu-west-2.aws.neon.tech` to the environment's allowlist for a read-only check.
+
+Outstanding (owner): decide which DB(s) to anonymise, apply the per-column rules below on the
+correct project, **Apply masking rules**, confirm the masked-column count, run the leak-check,
+then (optionally) wire the masked branch as a non-prod `DATABASE_URL`. Delete `qa-anon`.
 
 ## How to apply
 
@@ -111,6 +134,45 @@ no realistic value needed). **Shift/Synthetic Date** = keep an age-realistic but
 | `session.userAgent` | Null |
 | `invitation.email` | Synthetic Email |
 | `verification.value` | Null |
+
+## Shop / e-commerce database (`neon-KClinicsOS`)
+
+A separate database (storefront + `neon_auth` + `AdminUser`) — relevant only if anonymising
+**shop** QA, not patient data. Set only the columns below; leave every other column (and the
+entire product catalogue) at `None`. First **revert** the auto-detector's wrong guesses:
+`Brand.name` and `organization.name` → `None` (product/brand names, not people).
+
+| Table.Column | Rule |
+| --- | --- |
+| `Customer.email` | Synthetic Email |
+| `Customer.name` | Synthetic Full Name |
+| `Customer.phone` | Synthetic Phone Number |
+| `Customer.notes`, `Customer.stripeCustomerId` | Null |
+| `Order.email` | Synthetic Email |
+| `Order.name`, `Order.shipName` | Synthetic Full Name |
+| `Order.phone` | Synthetic Phone Number |
+| `Order.shipLine1` | Synthetic Address (or Null) |
+| `Order.shipCity` | Synthetic City (or Null) |
+| `Order.shipPostcode` | Synthetic Postcode (or Null) |
+| `Order.shipLine2`, `Order.note`, `Order.trackingNumber`, `Order.stripeSessionId`, `Order.stripePaymentId` | Null |
+| `GiftVoucher.recipientEmail` | Synthetic Email |
+| `GiftVoucher.recipientName` | Synthetic Full Name |
+| `GiftVoucher.message` | Null |
+| `Review.author` | Synthetic Full Name |
+| `Review.email` | Synthetic Email |
+| `Review.body` | Null |
+| `NewsletterSubscriber.email` | Synthetic Email |
+| `AdminUser.email` | Synthetic Email |
+| `AdminUser.name` | Synthetic Full Name |
+| `AdminUser.passwordHash` | Null |
+| `AuditLog.actor` | Synthetic Email if it stores admin emails, else None |
+| `AuditLog.summary` | Null (audit text can contain names/emails) |
+| `Setting.value` | ⚠️ None by default, but blank it if any row holds an API key/secret (no per-row control in the UI) |
+
+Catalogue/config tables — leave **all** columns at `None`: `Brand` (after reverting name),
+`Category`, `Counter`, `Discount`, `EditorialArticle`, `Expense`, `MediaAsset`,
+`MembershipTier`, `Page`, `Product`, `ProductImage`, `ProductVariant`, `ProductTag`, `Tag`,
+`OrderItem`. (`neon_auth` rules are the same as the section above, plus `jwks.privateKey` → Null.)
 
 ## Verify before trusting the branch
 
