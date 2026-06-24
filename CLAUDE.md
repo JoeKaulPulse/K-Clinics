@@ -35,9 +35,12 @@ node scripts/visual-qa.mjs
 Drives headless Chromium through key journeys against `BASE_URL`, screenshots
 every step, captures console errors + failed requests, and writes
 `qa-output/report.md` + `report.json` + PNGs. It tags and cleans up the kiosk
-sessions it creates (needs `QA_TOKEN`). Optional: `QA_SELFIE=/path/to/photo.jpg`
-exercises the kiosk AI happy path. Playwright Chromium is installed by the
-session-start hook.
+sessions it creates (needs `QA_TOKEN`). The kiosk flow exercises the real AI
+happy path by default (uploads a bundled clinic face photo → ANALYZED → result
+card); `QA_SELFIE=/path/to/photo.jpg` overrides the photo, and `QA_SELFIE=none`
+forces the 1×1px placeholder to check the graceful-failure path. On full-network
+sessions the browser bypasses the agent proxy automatically (`QA_BROWSER_DIRECT=1/0`
+overrides). Playwright Chromium is installed by the session-start hook.
 
 ## Task reference IDs (tracing & search)
 

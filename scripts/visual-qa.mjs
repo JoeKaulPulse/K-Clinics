@@ -19,8 +19,9 @@
 //
 // Output: qa-output/<step>.png screenshots + qa-output/report.json + report.md.
 import { chromium } from 'playwright';
-import { mkdirSync, writeFileSync, rmSync, readFileSync } from 'fs';
+import { mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Target resolution: BASE_URL (the canonical variable for all routine tooling —
 // set it in the Claude Code environment) → NEXT_PUBLIC_SITE_URL → local dev.
@@ -51,16 +52,23 @@ const BROWSER_DIRECT = process.env.QA_BROWSER_DIRECT
 // to ignore the inherited proxy; `direct://` alone is rejected (ERR_PROXY_CONNECTION_FAILED).
 const LAUNCH_OPTS = BROWSER_DIRECT ? { proxy: { server: 'direct://', bypass: '*' } } : {};
 
-// Kiosk upload payload. Pass a real selfie (QA_SELFIE=/path/to/photo.jpg) to verify
-// the happy path end-to-end (analysis -> ANALYZED -> shareable result card). Without
-// one we fall back to a 1x1px placeholder: the AI legitimately can't read a blank
-// pixel, so it returns ANALYSIS_FAILED — which is expected, NOT a broken flow.
+// Kiosk upload payload. The kiosk flow exercises the REAL happy path end-to-end
+// (upload -> AI analysis -> ANALYZED -> shareable result card) by uploading an
+// analysable face. The default is a clinic marketing portrait shipped in the repo
+// (public/treatments/) — a real, clearly front-on face, business-owned so there is
+// no privacy concern. QA_SELFIE=/path/to/photo.jpg overrides it; QA_SELFIE=none
+// forces the 1x1px placeholder, which the AI legitimately can't read (returns
+// ANALYSIS_FAILED) — useful for verifying the graceful-failure path on purpose.
 const PLACEHOLDER_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
   'base64',
 );
-const SELFIE_PATH = process.env.QA_SELFIE || '';
-const HAS_REAL_SELFIE = Boolean(SELFIE_PATH);
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const DEFAULT_SELFIE = path.resolve(SCRIPT_DIR, '..', 'public/treatments/Deluxe-HydraFacial-Full-Face.jpg');
+const SELFIE_ENV = process.env.QA_SELFIE || '';
+const FORCE_PLACEHOLDER = /^(none|placeholder|0|false)$/i.test(SELFIE_ENV);
+const SELFIE_PATH = FORCE_PLACEHOLDER ? '' : (SELFIE_ENV || DEFAULT_SELFIE);
+const HAS_REAL_SELFIE = Boolean(SELFIE_PATH) && existsSync(SELFIE_PATH);
 const SELFIE_BYTES = HAS_REAL_SELFIE ? readFileSync(SELFIE_PATH) : PLACEHOLDER_PNG;
 const SELFIE_NAME = HAS_REAL_SELFIE ? path.basename(SELFIE_PATH) : 'selfie.png';
 const SELFIE_TYPE = /\.webp$/i.test(SELFIE_NAME) ? 'image/webp'
@@ -185,8 +193,10 @@ async function kioskFlow(browser) {
       // A real photo that fails or hangs points at a genuine AI-pipeline problem.
       note('P1', area, `analysis produced no result for a real selfie (last status: ${lastStatus || 'unknown'}) — kiosk happy path is broken.`);
     } else if (failed) {
-      // Expected: the 1x1px placeholder isn't an analysable photo. Not a defect.
-      note('P3', area, `analysis returned ${lastStatus} for the 1x1px placeholder image — expected (a blank pixel is not analysable). The pipeline ran and failed gracefully. Set QA_SELFIE=/path/to/selfie.jpg to verify the happy path + result card.`);
+      // Reached only when QA_SELFIE=none forces the 1x1px placeholder, which the AI
+      // legitimately can't read — graceful failure, not a defect. The default run
+      // uploads a real face and verifies the ANALYZED happy path + result card.
+      note('P3', area, `analysis returned ${lastStatus} for the forced 1x1px placeholder — expected (a blank pixel is not analysable); the pipeline failed gracefully. Unset QA_SELFIE (or point it at a real photo) to verify the happy path + result card.`);
     } else {
       note('P2', area, `no result within ~45s (last status: ${lastStatus || 'unknown'}). With the placeholder image this is most likely the failure path rather than a hang; set QA_SELFIE=/path/to/selfie.jpg to verify the happy path.`);
     }
