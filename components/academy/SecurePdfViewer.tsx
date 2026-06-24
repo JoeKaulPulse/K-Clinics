@@ -39,8 +39,8 @@ export function SecurePdfViewer({ lessonId, index, title, onClose }: { lessonId:
           canvas.style.width = `${viewport.width / ratio}px`;
           canvas.style.height = `${viewport.height / ratio}px`;
           host.appendChild(canvas);
-          const ctx = canvas.getContext('2d');
-          if (ctx) await page.render({ canvasContext: ctx, viewport }).promise;
+          // pdf.js v6: render takes the canvas element directly (canvasContext is legacy).
+          await page.render({ canvas, viewport }).promise;
         }
         if (!cancelled) setStatus('ready');
       } catch {
