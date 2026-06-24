@@ -4238,3 +4238,27 @@ model TaskAutomationRun {
   @@unique([automationId, occurrenceKey])
   @@index([automationId, createdAt])
 }
+
+// Business compliance & renewals tracking (BLD-587): insurance, licences,
+// certifications, equipment servicing, PAT testing, EICR, waste contracts and
+// any other recurring deadline. The admin dashboard surfaces what's expired or
+// due soon; the daily cron alerts staff at the configured thresholds.
+model ComplianceItem {
+  id               String    @id @default(cuid())
+  name             String
+  category         String    @default("Other") // Insurance | Licence | Certification | Equipment servicing | Waste contract | PAT testing | EICR | Other
+  provider         String?
+  reference        String? // policy / certificate / contract number
+  renewalAt        DateTime // expiry / next renewal date
+  costPence        Int? // optional annual cost
+  notes            String?   @db.Text
+  reminderDays     Int[]     @default([90, 60, 30]) // days-before thresholds to alert at
+  lastRemindedDays Int? // smallest threshold already alerted this cycle; reset to null on renewal
+  lastRenewedAt    DateTime?
+  active           Boolean   @default(true)
+  createdBy        String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([active, renewalAt])
+}
