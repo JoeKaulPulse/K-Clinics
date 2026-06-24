@@ -2,7 +2,7 @@ import 'server-only';
 import { db } from '@/lib/db';
 import { site } from '@/lib/site';
 
-const clinicEmail = () => process.env.CLINIC_NOTIFY_EMAIL || 'info@kclinics.co.uk';
+const clinicEmail = () => process.env.CLINIC_NOTIFY_EMAIL || 'support@kclinics.co.uk';
 const baseUrl = () => process.env.NEXT_PUBLIC_SITE_URL || site.url;
 const money = (p: number) => (p > 0 ? `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}` : 'On consultation');
 
@@ -42,7 +42,7 @@ export async function notifyAftercare(bookingId: string): Promise<void> {
 /**
  * Send booking-confirmation comms once a booking is CONFIRMED: client email
  * (with line items, forms prompt and an arrive-early note for first visits),
- * a clinic notification to info@kclinics.co.uk, and an SMS confirmation when the
+ * a clinic notification to support@kclinics.co.uk, and an SMS confirmation when the
  * client has opted into text reminders. Safe to call once per confirmation.
  *
  * Guaranteed never to throw: the booking is already CONFIRMED before this runs,
