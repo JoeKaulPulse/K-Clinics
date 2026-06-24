@@ -5,7 +5,7 @@ import { getSecret } from '@/lib/secrets';
 // Shared Google OAuth access-token resolver (auto-refreshing). Used by every
 // Google read/write API client — ad-spend, offline conversions, GA4 Data API,
 // Search Console — so the refresh flow lives in one place.
-export async function googleAccessToken(): Promise<string | null> {
+export async function googleAccessToken(opts?: { forceRefresh?: boolean }): Promise<string | null> {
   return validAccessToken('google', async (refreshToken) => {
     const id = await getSecret('GOOGLE_CLIENT_ID'), secret = await getSecret('GOOGLE_CLIENT_SECRET');
     if (!id || !secret) return null;
@@ -20,5 +20,5 @@ export async function googleAccessToken(): Promise<string | null> {
     if (!j?.access_token) return null;
     // Google doesn't return a new refresh_token on refresh — keep the existing one.
     return { access: String(j.access_token), refresh: refreshToken, expiresAt: j.expires_in ? Date.now() + Number(j.expires_in) * 1000 : null };
-  });
+  }, opts);
 }

@@ -95,13 +95,13 @@ export async function ga4FullReport(days = 28): Promise<Ga4FullReport> {
   try {
     const propertyId = await ga4PropertyId();
     if (!propertyId) return emptyFull(days, { error: 'GA4_PROPERTY_ID is not set — add the numeric property id (e.g. 123456789, GA4 → Admin → Property settings), not the G-XXXX measurement tag.' });
-    const token = await googleAccessToken();
+    let token = await googleAccessToken();
     if (!token) return emptyFull(days, { error: 'Google account is not connected (or its saved token could not be refreshed). Reconnect Google in Connections, granting the Analytics read permission.' });
 
     const range = [{ startDate: `${days}daysAgo`, endDate: 'today' }];
     // Two batches (max 5 reports each), run concurrently.
-    const [batchA, batchB] = await Promise.all([
-      batchRunReports(propertyId, token, [
+    const runAll = (tok: string) => Promise.all([
+      batchRunReports(propertyId, tok, [
         // 0 — overview totals (no dimensions)
         { dateRanges: range, metrics: [
           { name: 'activeUsers' }, { name: 'newUsers' }, { name: 'sessions' }, { name: 'screenPageViews' },
@@ -117,13 +117,25 @@ export async function ga4FullReport(days = 28): Promise<Ga4FullReport> {
         // 4 — devices
         { dateRanges: range, dimensions: [{ name: 'deviceCategory' }], metrics: [{ name: 'sessions' }, { name: 'activeUsers' }], orderBys: [{ metric: { metricName: 'sessions' }, desc: true }], limit: 6 },
       ]),
-      batchRunReports(propertyId, token, [
+      batchRunReports(propertyId, tok, [
         // 0 — top countries
         { dateRanges: range, dimensions: [{ name: 'country' }], metrics: [{ name: 'sessions' }, { name: 'activeUsers' }], orderBys: [{ metric: { metricName: 'sessions' }, desc: true }], limit: 10 },
         // 1 — landing pages (journey entry → conversion)
         { dateRanges: range, dimensions: [{ name: 'landingPage' }], metrics: [{ name: 'sessions' }, { name: 'conversions' }], orderBys: [{ metric: { metricName: 'sessions' }, desc: true }], limit: 12 },
       ]),
     ]);
+
+    let [batchA, batchB] = await runAll(token);
+    // A 401 means the stored access token is stale (some legacy rows keep a token
+    // that perpetually looks "fresh" and never auto-refreshes). Force one refresh
+    // via the refresh token and retry before giving up — so GA self-heals.
+    if (/\b401\b|UNAUTHENTICATED/i.test(batchA.error || batchB.error || '')) {
+      const refreshed = await googleAccessToken({ forceRefresh: true });
+      if (refreshed && refreshed !== token) {
+        token = refreshed;
+        [batchA, batchB] = await runAll(token);
+      }
+    }
 
     // Surface the real reason rather than rendering all-zeros as if it were real
     // traffic (an API error and a genuinely-empty range look identical otherwise).
