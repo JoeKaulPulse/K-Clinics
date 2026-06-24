@@ -25,7 +25,9 @@ export default async function ShopPage() {
   return (
     <>
       <PageHero eyebrow="Shop" title="Clinic-grade products" lede="Curated skincare and essentials — delivered to your door or collect in clinic.">
-        <div className="mt-5 flex justify-center"><CartLink /></div>
+        {/* Only show the cart pill when the shop is actually live — otherwise it's
+            an empty placeholder over the "coming soon" state (BLD-557). */}
+        {products.length > 0 && <div className="mt-5 flex justify-center"><CartLink /></div>}
       </PageHero>
       <section className="container-lux section">
         {products.length === 0 ? (
