@@ -63,7 +63,7 @@ const PAGES = [
   ['/admin/marketing', 'marketing'],
   ['/admin/inventory', 'inventory'],
   ['/admin/reports', 'reports'],
-  ['/admin/inbox', 'inbox'],
+  ['/admin/chat', 'chat'],
   ['/admin/build', 'build'],
   ['/admin/tasks', 'tasks'],
   ['/admin/settings', 'settings'],
@@ -104,7 +104,9 @@ for (const [path, name] of PAGES) {
   await sleep(2300);
   const status = resp ? resp.status() : 0;
   await page.screenshot({ path: `qa-output/admin/${name}.png`, fullPage: true }).catch(() => {});
-  const pageErrs = [...new Set(errs)].filter((e) => !/favicon|analytics\.|gtag|googletagmanager|hotjar|sentry/i.test(e));
+  // team-chat/stream is a long-lived SSE; navigating to the next page aborts the
+  // in-flight EventSource (net::ERR_ABORTED). That's expected, not a page error.
+  const pageErrs = [...new Set(errs)].filter((e) => !/favicon|analytics\.|gtag|googletagmanager|hotjar|sentry/i.test(e) && !/team-chat\/stream.*ERR_ABORTED/i.test(e));
   const redirected = !page.url().includes(path);
   console.log(`📸 ${name} [HTTP ${status}]${redirected ? ` → ${page.url()}` : ''}${pageErrs.length ? `  ⚠ ${pageErrs.length} err` : ''}`);
   if (status >= 400) findings.push(`[${name}] HTTP ${status} at ${path}`);
