@@ -15,7 +15,9 @@ const dur = (s: number) => {
 
 export async function GaTrafficWidget({ days = 28 }: { days?: number }) {
   const ga = await ga4FullReport(days);
-  if (!ga.configured) return null;
+  // Hide the widget unless GA is connected AND the Data API actually returned
+  // data — never surface a misleading all-zeros card on the dashboard.
+  if (!ga.configured || !ga.ok) return null;
 
   const W = 320, H = 44, P = 2;
   const trend = ga.trend;

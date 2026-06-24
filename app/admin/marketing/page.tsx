@@ -61,7 +61,7 @@ export default async function MarketingHubPage() {
         <Kpi label="New clients · 30 days" value={String(kpis.newClients30)} />
       </div>
 
-      {ga.configured && (
+      {ga.configured && ga.ok && (
         <section className="mt-8 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-[family-name:var(--font-display)] text-lg">Website traffic <span className="text-xs font-normal text-[var(--color-stone)]">· GA4 · 30 days</span></h2>
