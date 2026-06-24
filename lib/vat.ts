@@ -48,6 +48,18 @@ export type VatBreakdown = { netPence: number; vatPence: number; grossPence: num
 /** Split an amount into net/VAT/gross. When not registered (or exempt/zero), VAT
  *  is 0 and gross == net == the amount. `inclusive` means the amount already
  *  contains VAT. */
+/** Page-level note to display when the clinic is VAT-registered. Empty string when
+ *  not registered (the current default) so callers can gate on truthiness. */
+export async function getVatNote(): Promise<string> {
+  try {
+    const config = await getVatConfig();
+    if (!config.registered) return '';
+    return config.inclusive ? 'All prices include VAT.' : 'All prices are shown exclusive of VAT.';
+  } catch {
+    return '';
+  }
+}
+
 export function vatBreakdown(amountPence: number, cfg: VatConfig, cls: VatClass): VatBreakdown {
   const exempt = cls === 'EXEMPT' || cls === 'ZERO';
   const ratePct = cfg.registered && !exempt ? ratePctForClass(cls, cfg.defaultRatePct) : 0;

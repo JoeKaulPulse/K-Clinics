@@ -229,6 +229,15 @@ export default async function DashboardPage() {
               </div>
             </div>
           </Reveal>
+
+          {/* BLD-601: referral teaser */}
+          <Reveal delay={0.2}>
+            <Link href="/refer-a-friend" className="block overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-gold)]/30 bg-gradient-to-br from-[var(--color-bone)] to-[var(--color-sand)]/40 p-6 transition-colors hover:border-[var(--color-gold)]">
+              <RailHeading>{t('dash.referHeading')}</RailHeading>
+              <p className="mt-3 text-sm text-[var(--color-stone)]">{t('dash.referBody')}</p>
+              <span className="mt-4 inline-block text-sm font-medium text-[var(--color-gold)]">{t('dash.referCta')} →</span>
+            </Link>
+          </Reveal>
         </aside>
       </div>
 

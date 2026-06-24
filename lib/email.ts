@@ -316,7 +316,8 @@ export function tmplFollowUp(firstName: string, treatment: string, unsubUrl: str
     <p>It was a pleasure to welcome you for your ${escape(treatment)}. We wanted to check in and make sure you are delighted with your results.</p>
     <p>If you have any questions about aftercare, just reply — we are always here. When you are ready, we would love to see you again.</p>
     <p style="margin:28px 0;">${btn(site.url + site.booking.path, 'Book your next visit')}</p>
-    <p>With warmth,<br>The KClinics team</p>`,
+    <p>With warmth,<br>The KClinics team</p>
+    <p style="margin-top:20px;padding-top:16px;border-top:1px solid #e8ddd4;font-size:13px;color:#6b6461;">Know someone who would love KClinics? <a href="${site.url}/refer-a-friend" style="color:#a98a6d;text-decoration:underline;">Refer a friend</a> — you both receive <strong>£25 credit</strong> towards any treatment.</p>`,
   });
 }
 
@@ -325,10 +326,11 @@ export function tmplFollowUpQuestionnaire(o: { firstName: string; treatment: str
     preheader: `How is your skin a week after your ${o.treatment}?`,
     body: `${heroBand('followup')}
     <h1 style="font-size:24px;margin:0 0 16px;">How are you getting on, ${escape(o.firstName)}?</h1>
-    <p>It's been about a week since your <strong>${escape(o.treatment)}</strong>. We'd love a quick update on how you're feeling — it takes less than a minute, and lets us step in early if anything needs attention.</p>
+    <p>It’s been about a week since your <strong>${escape(o.treatment)}</strong>. We’d love a quick update on how you’re feeling — it takes less than a minute, and lets us step in early if anything needs attention.</p>
     <p style="margin:28px 0;">${btn(o.url, 'Share how you’re doing')}</p>
     <p>If you have any concerns at all, this goes straight to our clinical team.</p>
-    <p>With warmth,<br>The KClinics team</p>`,
+    <p>With warmth,<br>The KClinics team</p>
+    <p style="margin-top:20px;padding-top:16px;border-top:1px solid #e8ddd4;font-size:13px;color:#6b6461;">Know someone who would love KClinics? <a href="${site.url}/refer-a-friend" style="color:#a98a6d;text-decoration:underline;">Refer a friend</a> — you both receive <strong>£25 credit</strong> towards any treatment.</p>`,
   });
 }
 

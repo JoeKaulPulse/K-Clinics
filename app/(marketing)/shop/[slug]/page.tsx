@@ -7,6 +7,7 @@ import { CartLink } from '@/components/shop/CartLink';
 import { getProductBySlug, formatPence } from '@/lib/shop';
 import { crmEnabled } from '@/lib/crm';
 import { pageMeta, JsonLd, productLd, breadcrumbLd } from '@/lib/seo';
+import { getVatNote } from '@/lib/vat';
 
 export const revalidate = 3600;
 
@@ -23,6 +24,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   if (!p) notFound();
   const onSale = p.compareAtPence && p.compareAtPence > p.pricePence;
   const inStock = !(p.trackInventory && p.stockQty <= 0);
+  const vatNote = await getVatNote();
 
   return (
     <>
@@ -57,6 +59,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             {formatPence(p.pricePence)}
             {onSale ? <span className="ml-3 text-lg text-[var(--color-stone)] line-through">{formatPence(p.compareAtPence!)}</span> : null}
           </p>
+          {vatNote && <p className="mt-1 text-xs text-[var(--color-stone)]">{vatNote}</p>}
           {p.description && <p className="mt-5 whitespace-pre-line leading-relaxed text-[var(--color-stone)]">{p.description}</p>}
           {p.ageRestricted && <p className="mt-4 inline-block rounded-full bg-[var(--color-ink)] px-3 py-1 text-xs text-[var(--color-porcelain)]">Age-restricted — 18+ verification required at checkout</p>}
           <div className="mt-7">
