@@ -35,6 +35,22 @@ const IGNORE_HTTPS_ERRORS = process.env.QA_IGNORE_HTTPS_ERRORS
   : Boolean(process.env.NODE_EXTRA_CA_CERTS);
 const CONTEXT_OPTS = { viewport: VIEWPORT, ignoreHTTPSErrors: IGNORE_HTTPS_ERRORS };
 
+// Full-network Claude sessions export HTTPS_PROXY pointing at a local agent proxy
+// (e.g. http://127.0.0.1:44059) that re-terminates TLS via CONNECT. Node's fetch
+// rides it fine, but Chromium inherits the same env proxy and its TLS to the live
+// site is dropped at the inner handshake (ERR_CONNECTION_CLOSED) — ignoreHTTPSErrors
+// can't help because it's a closed connection, not a cert error. On these sessions
+// direct egress works, so we route the *browser* straight to the origin (Node calls
+// keep using the proxy). The transparent-gateway sandbox case has no explicit proxy
+// and is untouched. QA_BROWSER_DIRECT=1/0 forces the bypass either way.
+const AGENT_PROXY = process.env.HTTPS_PROXY || process.env.https_proxy || '';
+const BROWSER_DIRECT = process.env.QA_BROWSER_DIRECT
+  ? /^(1|true|yes)$/i.test(process.env.QA_BROWSER_DIRECT)
+  : /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/i.test(AGENT_PROXY);
+// `direct://` with an explicit catch-all bypass is the combination Chromium honours
+// to ignore the inherited proxy; `direct://` alone is rejected (ERR_PROXY_CONNECTION_FAILED).
+const LAUNCH_OPTS = BROWSER_DIRECT ? { proxy: { server: 'direct://', bypass: '*' } } : {};
+
 // Kiosk upload payload. Pass a real selfie (QA_SELFIE=/path/to/photo.jpg) to verify
 // the happy path end-to-end (analysis -> ANALYZED -> shareable result card). Without
 // one we fall back to a 1x1px placeholder: the AI legitimately can't read a blank
@@ -204,8 +220,8 @@ async function cleanup() {
 }
 
 async function main() {
-  console.log(`▶ Visual QA against ${BASE}`);
-  const browser = await chromium.launch();
+  console.log(`▶ Visual QA against ${BASE}${BROWSER_DIRECT ? ' (browser bypassing agent proxy → direct egress)' : ''}`);
+  const browser = await chromium.launch(LAUNCH_OPTS);
   try {
     // Static page visual checks (extend this list for other journeys).
     // /kiosk/display holds an open SSE channel + animation timers — use domcontentloaded so
