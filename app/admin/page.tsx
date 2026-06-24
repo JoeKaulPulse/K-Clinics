@@ -26,6 +26,7 @@ import { ReceptionistView } from '@/components/admin/dashboard/ReceptionistView'
 import { DeveloperView } from '@/components/admin/dashboard/DeveloperView';
 import { ContractorView } from '@/components/admin/dashboard/ContractorView';
 import { GaTrafficWidget } from '@/components/admin/dashboard/GaTrafficWidget';
+import { ComplianceWidget } from '@/components/admin/dashboard/ComplianceWidget';
 import { RoomPrepStatus } from '@/components/admin/rooms/RoomPrepStatus';
 
 export const dynamic = 'force-dynamic';
@@ -135,6 +136,7 @@ export default async function AdminOverview() {
   const canBuild = sessionCan(session, 'build.view');
   const canAutomations = sessionCan(session, 'automations.view');
   const canMarketing = sessionCan(session, 'campaigns.view');
+  const canCompliance = sessionCan(session, 'compliance.view');
   const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(); dayEnd.setHours(23, 59, 59, 999);
   // Comms health: transactional emails (booking confirmations/receipts/reminders)
@@ -376,6 +378,13 @@ export default async function AdminOverview() {
       {canMarketing && (
         <Suspense fallback={null}>
           <GaTrafficWidget days={28} />
+        </Suspense>
+      )}
+
+      {/* Compliance & renewals — only renders when something's expired or due soon. */}
+      {canCompliance && (
+        <Suspense fallback={null}>
+          <ComplianceWidget />
         </Suspense>
       )}
 

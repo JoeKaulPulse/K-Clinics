@@ -235,6 +235,13 @@ export async function GET(req: Request) {
     }
   } catch { /* non-fatal */ }
 
+  // BLD-587: compliance & renewals reminders — alert staff who can view compliance
+  // when an item crosses a 90/60/30-day threshold (or expires).
+  try {
+    const { runRenewalReminders } = await import('@/lib/renewals');
+    await runRenewalReminders();
+  } catch (e) { console.error('[cron] renewal reminders failed (continuing):', (e as Error)?.message); }
+
   // BLD-537: daily community digest to staff (new threads, replies, unanswered).
   let communityDigest = { sent: false, threads: 0, posts: 0 };
   try {
