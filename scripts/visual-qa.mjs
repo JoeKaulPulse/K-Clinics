@@ -240,6 +240,14 @@ async function main() {
     await visit(browser, '/', 'home', 'Homepage');
     await visit(browser, '/book', 'book', 'Booking flow');
     await visit(browser, '/gift-vouchers', 'gift', 'Gift vouchers');
+    // High-traffic public pages — visit() captures console errors, first-party
+    // 4xx/5xx and a settled full-page screenshot, so these guard against layout
+    // and runtime regressions on the core marketing journeys.
+    await visit(browser, '/treatments', 'treatments', 'Treatments index');
+    await visit(browser, '/pricing', 'pricing', 'Pricing');
+    await visit(browser, '/membership', 'membership', 'Membership');
+    await visit(browser, '/ai-consultation', 'ai-consultation', 'AI consultation (Get My Plan)');
+    await visit(browser, '/contact', 'contact', 'Contact');
     // Interactive kiosk journey (creates + cleans up a test session).
     await kioskFlow(browser);
   } finally {
