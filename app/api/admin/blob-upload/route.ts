@@ -10,7 +10,7 @@ export const runtime = 'nodejs';
 // CSP/CORS in the browser). Capped at the serverless body limit (~4.5 MB) — larger
 // files fall back to the client-direct path on the caller side. (BLD-485)
 const MAX = Math.floor(4.4 * 1024 * 1024); // stay under Vercel's ~4.5 MB body cap
-const OK = /^(image\/(png|jpe?g|webp|gif|avif|heic|heif)|video\/(mp4|quicktime|webm|x-m4v|3gpp)|application\/(pdf|zip|msword|vnd\.openxmlformats-officedocument\.(wordprocessingml\.document|spreadsheetml\.sheet)|vnd\.ms-excel)|text\/plain)$/i;
+const OK = /^(image\/(png|jpe?g|webp|gif|avif|heic|heif)|video\/(mp4|quicktime|webm|x-m4v|3gpp)|audio\/(mpeg|mp4|x-m4a|aac|wav|x-wav|webm|ogg)|application\/(pdf|zip|msword|vnd\.openxmlformats-officedocument\.(wordprocessingml\.document|spreadsheetml\.sheet|presentationml\.presentation)|vnd\.ms-excel|vnd\.ms-powerpoint)|text\/plain)$/i;
 
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });

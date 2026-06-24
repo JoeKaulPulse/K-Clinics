@@ -1597,6 +1597,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: [
       'Fix: uploadVideo + uploadAudio now auto-save the lesson immediately after upload (await act(lessonSavePayload(updated))), matching the PDF/attachment handlers. components/admin/CurriculumManager.tsx.',
       'Blob path was already correct: /api/admin/academy/blob-token allows video/* up to 500 MB with a client-direct fallback above the ~4.4 MB serverless cap. A genuinely large/slow upload can still hit the existing 3-min timeout alert — separate from this persistence bug.',
+      'Follow-up (closes the remaining failure modes): (1) the blob-token allowedContentTypes only listed a few video MIME types and NO audio — broadened to category wildcards (video/*, audio/*, image/*) + common docs so .mkv/.avi videos and all audio are accepted (Vercel Blob supports type/* wildcards). (2) The small-file server route /api/admin/blob-upload OK regex omitted audio — added audio/* types + pptx/ppt. (3) The flat 180s client timeout aborted large HD videos mid-upload — now scales with file size (3-min floor + ~1 min/10 MB, capped 30 min). components/admin/CurriculumManager.tsx, app/api/admin/academy/blob-token/route.ts, app/api/admin/blob-upload/route.ts.',
     ],
   },
   {
