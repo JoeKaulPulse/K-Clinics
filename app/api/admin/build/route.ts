@@ -108,6 +108,14 @@ export async function POST(req: Request) {
         const item = await board.addDependency(String(b.id), String(b.dependsOnId), session.email);
         return NextResponse.json({ ok: true, item });
       }
+      case 'promote-to-project': {
+        if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
+        if (!b.id) return NextResponse.json({ ok: false, error: 'Missing id.' }, { status: 400 });
+        if (!b.projectId && b.projectId !== '' && !String(b.name || '').trim()) return NextResponse.json({ ok: false, error: 'Pick a project or enter a name.' }, { status: 400 });
+        const item = await board.promoteToProject(String(b.id), { projectId: b.projectId !== undefined ? String(b.projectId) : undefined, name: b.name, summary: b.summary }, session.email);
+        if (!item) return NextResponse.json({ ok: false, error: 'Item not found.' }, { status: 404 });
+        return NextResponse.json({ ok: true, item });
+      }
       case 'dep-remove': {
         if (!(await manage())) return NextResponse.json({ ok: false, error: 'Needs permission.' }, { status: 403 });
         if (!b.id || !b.dependsOnId) return NextResponse.json({ ok: false, error: 'Missing ids.' }, { status: 400 });
