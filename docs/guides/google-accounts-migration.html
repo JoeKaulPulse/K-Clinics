@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Google Analytics &amp; Google Ads — Account Migration Guide</title>
+<style>
+  :root{
+    --ink:#26201b; --stone:#6f655c; --line:#e4ddd3; --bone:#f6f1ea; --gold:#b08a4f;
+    --blue:#1a73e8; --blue-bg:#e8f0fe; --green:#137333; --red:#b3261e; --paper:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{ font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--ink);
+        margin:0; font-size:12.5px; line-height:1.5; background:var(--paper); }
+  .page{ padding:42px 52px; }
+  h1{ font-size:25px; margin:0 0 4px; letter-spacing:-.2px; }
+  h2{ font-size:17px; margin:30px 0 8px; padding-bottom:6px; border-bottom:2px solid var(--gold); }
+  h3{ font-size:13.5px; margin:18px 0 6px; }
+  p{ margin:6px 0; }
+  .lead{ color:var(--stone); font-size:13px; max-width:60ch; }
+  .meta{ color:var(--stone); font-size:11px; margin-top:2px; }
+  ol.steps{ margin:8px 0 8px; padding-left:0; counter-reset:s; list-style:none; }
+  ol.steps>li{ position:relative; padding:7px 0 7px 38px; border-bottom:1px solid var(--line); }
+  ol.steps>li:before{ counter-increment:s; content:counter(s); position:absolute; left:0; top:6px;
+    width:24px; height:24px; border-radius:50%; background:var(--ink); color:#fff; font-weight:700;
+    font-size:12px; display:flex; align-items:center; justify-content:center; }
+  b,strong{ color:var(--ink); }
+  .ui{ display:inline-block; padding:1px 7px; border:1px solid var(--line); border-radius:5px;
+       background:var(--bone); font-weight:600; font-size:11.5px; white-space:nowrap; }
+  .btn{ display:inline-block; padding:2px 9px; border-radius:5px; background:var(--blue); color:#fff;
+        font-weight:600; font-size:11.5px; }
+  code{ background:var(--bone); border:1px solid var(--line); border-radius:4px; padding:0 5px; font-size:11.5px; }
+  .done{ margin:10px 0 4px; padding:9px 12px; border-radius:8px; background:#eaf5ee;
+         border:1px solid #bfe0cb; color:var(--green); font-size:11.5px; }
+  .done b{ color:var(--green); }
+  .note{ margin:10px 0; padding:9px 12px; border-radius:8px; background:var(--bone);
+         border:1px solid var(--line); color:var(--stone); font-size:11.5px; }
+  .warn{ margin:10px 0; padding:9px 12px; border-radius:8px; background:#fdecea;
+         border:1px solid #f3c2bd; color:var(--red); font-size:11.5px; }
+  figure{ margin:14px 0; }
+  figcaption{ color:var(--stone); font-size:10.5px; margin-top:5px; text-align:center; }
+  .fig-wrap{ border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#fbfaf8; }
+  svg{ display:block; width:100%; height:auto; }
+  .part{ page-break-inside:avoid; }
+  .pb{ page-break-before:always; }
+  table.tt{ border-collapse:collapse; width:100%; font-size:11.5px; margin:8px 0; }
+  table.tt th,table.tt td{ border:1px solid var(--line); padding:6px 8px; text-align:left; vertical-align:top; }
+  table.tt th{ background:var(--bone); }
+  a{ color:var(--blue); text-decoration:none; }
+  .src{ font-size:11px; color:var(--stone); }
+  .src li{ margin:3px 0; }
+  .kicker{ text-transform:uppercase; letter-spacing:.16em; font-size:10px; color:var(--gold); font-weight:700; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <p class="kicker">K Clinics · Operations guide</p>
+  <h1>Moving Google Analytics &amp; Google Ads into your K Clinics Workspace</h1>
+  <p class="meta">For the account owner · ~15 minutes · You need a computer (not a phone)</p>
+
+  <p class="lead" style="margin-top:14px;">
+    Your website statistics (<b>Google Analytics</b>) and your advertising account (<b>Google Ads</b>) are still
+    owned by your <b>old personal Google login</b> — the one that first set them up. Your new
+    <b>K Clinics Workspace login</b> (for example <code>owner@kclinics.co.uk</code>) has no access yet, so the
+    website cannot read your traffic and the Analytics page shows an error.
+  </p>
+  <p class="lead">
+    <b>Good news:</b> nothing gets moved or deleted — all your history stays exactly where it is. You simply
+    <b>give your new login permission</b> to the two accounts, then <b>connect it once</b> inside the K Clinics admin.
+    Follow the parts in order.
+  </p>
+
+  <div class="note">
+    <b>Have these ready before you start:</b><br>
+    1. Your <b>OLD</b> Google login (the one that owns Analytics &amp; Ads).<br>
+    2. Your <b>NEW</b> K Clinics login, e.g. <code>owner@kclinics.co.uk</code>. <b>Write it down</b> — you'll type it a few times.<br>
+    3. Both passwords. Do this at a desktop/laptop.
+  </div>
+
+  <!-- ============================ PART 1 ============================ -->
+  <div class="part">
+  <h2>Part 1 · Give your new login access to Google Analytics</h2>
+  <ol class="steps">
+    <li>Open a web browser and go to <code>analytics.google.com</code>. Sign in with your <b>OLD</b> Google login (the one that owns Analytics).</li>
+    <li>At the very <b>bottom-left</b> of the screen, click the <b>gear icon</b> <span class="ui">⚙ Admin</span>.</li>
+    <li>You'll now see two columns. If you have more than one website listed, click the <b>property dropdown</b> at the top and choose your <b>K Clinics</b> website property first. Then, in the right-hand column headed <b>Property</b>, click <span class="ui">Access management</span>.</li>
+    <li>At the <b>top-right</b> of the list, click the blue <span class="ui">＋</span> button, then click <span class="ui">Add users</span>.</li>
+    <li>In the <b>Email addresses</b> box, type your <b>NEW</b> K Clinics login exactly — e.g. <code>owner@kclinics.co.uk</code>.</li>
+    <li>Leave <span class="ui">Notify new users by email</span> <b>ticked</b>.</li>
+    <li>Under <b>Direct roles and data restrictions</b>, choose <span class="ui">Administrator</span>. <b>Leave the two data-restriction boxes unticked.</b></li>
+    <li>At the <b>top-right</b>, click <span class="btn">Add</span>.</li>
+  </ol>
+  <div class="done"><b>Done when:</b> your new email appears in the <b>Property access management</b> list with the role <b>Administrator</b>.</div>
+
+  <h3>Now copy your Property ID (you'll need it in Part 4)</h3>
+  <ol class="steps">
+    <li>Still in <span class="ui">⚙ Admin</span>, in the <b>Property</b> column click <span class="ui">Property details</span> (older menus call it <span class="ui">Property settings</span>).</li>
+    <li>Near the top you'll see <b>PROPERTY ID</b> — a number such as <code>123456789</code>. <b>This is NOT the G-XXXXXXX tag.</b> Copy the number and keep it for Part 4.</li>
+  </ol>
+
+  <figure>
+    <div class="fig-wrap">
+      <svg viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Google Analytics Add users dialog mockup">
+        <rect x="0" y="0" width="760" height="360" fill="#fbfaf8"/>
+        <!-- dialog -->
+        <rect x="40" y="28" width="680" height="304" rx="10" fill="#ffffff" stroke="#e4ddd3"/>
+        <text x="66" y="62" font-family="Arial" font-size="17" font-weight="700" fill="#26201b">Add roles and data restrictions</text>
+        <!-- Add button -->
+        <rect x="600" y="44" width="92" height="30" rx="6" fill="#1a73e8"/>
+        <text x="646" y="64" font-family="Arial" font-size="13" font-weight="700" fill="#ffffff" text-anchor="middle">Add</text>
+        <circle cx="712" cy="59" r="13" fill="none" stroke="#b3261e" stroke-width="2"/>
+        <text x="730" y="64" font-family="Arial" font-size="13" font-weight="700" fill="#b3261e">8</text>
+        <!-- email -->
+        <text x="66" y="104" font-family="Arial" font-size="12" font-weight="700" fill="#6f655c">Email addresses</text>
+        <rect x="66" y="112" width="500" height="34" rx="6" fill="#ffffff" stroke="#1a73e8" stroke-width="2"/>
+        <text x="80" y="134" font-family="Arial" font-size="13" fill="#26201b">owner@kclinics.co.uk</text>
+        <circle cx="586" cy="129" r="13" fill="none" stroke="#b3261e" stroke-width="2"/><text x="586" y="134" font-family="Arial" font-size="13" font-weight="700" fill="#b3261e" text-anchor="middle">5</text>
+        <!-- notify -->
+        <rect x="66" y="160" width="16" height="16" rx="3" fill="#1a73e8"/>
+        <path d="M69 168 l3 3 l6 -7" stroke="#fff" stroke-width="2" fill="none"/>
+        <text x="92" y="173" font-family="Arial" font-size="12.5" fill="#26201b">Notify new users by email</text>
+        <circle cx="250" cy="168" r="13" fill="none" stroke="#b3261e" stroke-width="2"/><text x="250" y="173" font-family="Arial" font-size="13" font-weight="700" fill="#b3261e" text-anchor="middle">6</text>
+        <!-- roles -->
+        <text x="66" y="206" font-family="Arial" font-size="12" font-weight="700" fill="#6f655c">Direct roles and data restrictions</text>
+        <rect x="66" y="216" width="626" height="34" rx="6" fill="#e8f0fe" stroke="#1a73e8"/>
+        <circle cx="86" cy="233" r="7" fill="#1a73e8"/><circle cx="86" cy="233" r="3" fill="#fff"/>
+        <text x="104" y="238" font-family="Arial" font-size="13" font-weight="700" fill="#1a73e8">Administrator</text>
+        <text x="240" y="238" font-family="Arial" font-size="12.5" fill="#6f655c">— full control of this property</text>
+        <circle cx="676" cy="233" r="13" fill="none" stroke="#b3261e" stroke-width="2"/><text x="676" y="238" font-family="Arial" font-size="13" font-weight="700" fill="#b3261e" text-anchor="middle">7</text>
+        <g opacity="0.6">
+          <circle cx="86" cy="270" r="7" fill="none" stroke="#6f655c"/><text x="104" y="275" font-family="Arial" font-size="12.5" fill="#6f655c">Editor</text>
+          <circle cx="206" cy="270" r="7" fill="none" stroke="#6f655c"/><text x="224" y="275" font-family="Arial" font-size="12.5" fill="#6f655c">Marketer</text>
+          <circle cx="336" cy="270" r="7" fill="none" stroke="#6f655c"/><text x="354" y="275" font-family="Arial" font-size="12.5" fill="#6f655c">Analyst</text>
+          <circle cx="446" cy="270" r="7" fill="none" stroke="#6f655c"/><text x="464" y="275" font-family="Arial" font-size="12.5" fill="#6f655c">Viewer</text>
+        </g>
+        <text x="66" y="312" font-family="Arial" font-size="11" fill="#6f655c">Google Analytics → ⚙ Admin → Property → Access management → ＋ Add users</text>
+      </svg>
+    </div>
+    <figcaption>Google Analytics — the “Add roles and data restrictions” panel (numbers match the steps above). Live screenshots: see the official link at the end.</figcaption>
+  </figure>
+  </div>
+
+  <!-- ============================ PART 2 ============================ -->
+  <div class="part pb">
+  <h2>Part 2 · Give your new login access to Google Ads</h2>
+  <ol class="steps">
+    <li>Go to <code>ads.google.com</code>. Sign in with your <b>OLD</b> Google login (the one that owns the ad account).</li>
+    <li>In the left-hand menu, click <span class="ui">Admin</span> (near the bottom). Then click <span class="ui">Access and security</span>.</li>
+    <li>Make sure the <span class="ui">Users</span> tab is selected (top of the table).</li>
+    <li>Click the blue <span class="ui">＋</span> button above the table.</li>
+    <li>In the <b>Email</b> box, type your <b>NEW</b> K Clinics login exactly — e.g. <code>owner@kclinics.co.uk</code>.</li>
+    <li>For <b>Select an access level</b>, choose <span class="ui">Admin</span>.</li>
+    <li>Click <span class="btn">Send invitation</span>.</li>
+  </ol>
+  <div class="done"><b>Done when:</b> your new email shows in the <b>Users</b> list with the status <b>“Invitation sent / pending.”</b></div>
+
+  <figure>
+    <div class="fig-wrap">
+      <svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Google Ads invite user dialog mockup">
+        <rect x="0" y="0" width="760" height="320" fill="#fbfaf8"/>
+        <rect x="40" y="26" width="680" height="268" rx="10" fill="#ffffff" stroke="#e4ddd3"/>
+        <text x="66" y="58" font-family="Arial" font-size="16" font-weight="700" fill="#26201b">Access and security</text>
+        <!-- tabs -->
+        <text x="66" y="86" font-family="Arial" font-size="12.5" font-weight="700" fill="#1a73e8">Users</text>
+        <rect x="62" y="92" width="44" height="3" fill="#1a73e8"/>
+        <text x="130" y="86" font-family="Arial" font-size="12.5" fill="#6f655c">Security</text>
+        <circle cx="84" cy="80" r="13" fill="none" stroke="#b3261e" stroke-width="2"/><text x="84" y="85" font-family="Arial" font-size="13" font-weight="700" fill="#b3261e" text-anchor="middle">3</text>
+        <!-- plus -->
+        <circle cx="676" cy="84" r="16" fill="#1a73e8"/><text x="676" y="90" font-family="Arial" font-size="20" font-weight="700" fill="#fff" text-anchor="middle">+</text>
+        <circle cx="676" cy="84" r="20" fill="none" stroke="#b3261e" stroke-width="2"/><text x="704" y="78" font-family="Arial" font-size="13" font-weight="700" fill="#b3261e">4</text>
+        <!-- invite panel -->
+        <rect x="66" y="112" width="626" height="158" rx="8" fill="#f6f1ea" stroke="#e4ddd3"/>
+        <text x="84" y="140" font-family="Arial" font-size="12" font-weight="700" fill="#6f655c">Email</text>
+        <rect x="84" y="148" width="420" height="32" rx="6" fill="#fff" stroke="#1a73e8" stroke-width="2"/>
+        <text x="98" y="169" font-family="Arial" font-size="13" fill="#26201b">owner@kclinics.co.uk</text>
+        <circle cx="524" cy="164" r="13" fill="none" stroke="#b3261e" stroke-width="2"/><text x="524" y="169" font-family="Arial" font-size="13" font-weight="700" fill="#b3261e" text-anchor="middle">5</text>
+        <text x="84" y="206" font-family="Arial" font-size="12" font-weight="700" fill="#6f655c">Select an access level</text>
+        <rect x="84" y="214" width="240" height="32" rx="6" fill="#fff" stroke="#1a73e8" stroke-width="2"/>
+        <text x="98" y="235" font-family="Arial" font-size="13" font-weight="700" fill="#26201b">Admin ▾</text>
+        <circle cx="344" cy="230" r="13" fill="none" stroke="#b3261e" stroke-width="2"/><text x="344" y="235" font-family="Arial" font-size="13" font-weight="700" fill="#b3261e" text-anchor="middle">6</text>
+        <rect x="500" y="214" width="176" height="32" rx="6" fill="#1a73e8"/>
+        <text x="588" y="235" font-family="Arial" font-size="12.5" font-weight="700" fill="#fff" text-anchor="middle">Send invitation</text>
+        <circle cx="668" cy="208" r="13" fill="none" stroke="#b3261e" stroke-width="2"/><text x="668" y="213" font-family="Arial" font-size="13" font-weight="700" fill="#b3261e" text-anchor="middle">7</text>
+      </svg>
+    </div>
+    <figcaption>Google Ads — <b>Admin → Access and security → Users → ＋</b>, then invite your new login as <b>Admin</b>.</figcaption>
+  </figure>
+  </div>
+
+  <!-- ============================ PART 3 ============================ -->
+  <div class="part">
+  <h2>Part 3 · Accept the invitations from your new login</h2>
+  <ol class="steps">
+    <li>Open a fresh browser window (or an <b>Incognito/Private</b> window so it doesn't reuse the old login).</li>
+    <li><b>Google Analytics:</b> usually <b>nothing to accept</b> — access is granted immediately. The “Notify” email is just a heads-up.</li>
+    <li><b>Google Ads:</b> open the inbox of your <b>NEW</b> login (e.g. <code>owner@kclinics.co.uk</code>). Find the email titled <b>“You’ve been invited to access a Google Ads account.”</b> Click <span class="btn">Accept invitation</span>, sign in with the new login if asked, and confirm.</li>
+  </ol>
+  <div class="done"><b>Done when:</b> signed in as your <b>new</b> login, you can see the ad account at <code>ads.google.com</code> and the website property at <code>analytics.google.com</code>.</div>
+  </div>
+
+  <!-- ============================ PART 4 ============================ -->
+  <div class="part">
+  <h2>Part 4 · Connect it inside the K Clinics admin</h2>
+  <ol class="steps">
+    <li>Sign in to the K Clinics admin at <code>kclinics.co.uk/admin</code> as usual.</li>
+    <li>In the left menu open <span class="ui">Marketing</span> → <span class="ui">Connections</span>.</li>
+    <li>On the <b>Google</b> row, click <span class="btn">Reconnect</span> (it may say <span class="ui">Connect</span>).</li>
+    <li>A Google sign-in window opens. <b>This is the important bit:</b> choose your <b>NEW</b> K Clinics login (<code>owner@kclinics.co.uk</code>) — <b>not</b> the old one. If it shows the old account, click <span class="ui">Use another account</span> and sign in with the new one.</li>
+    <li>On the blue permissions screen, <b>leave every box ticked</b> and click <span class="btn">Continue</span> (or <span class="ui">Allow</span>).</li>
+    <li>Now set the property number: open <span class="ui">Settings</span> → <span class="ui">Credentials</span>. Find <span class="ui">GA4 property ID (numeric)</span> and paste the number you copied in Part 1. Click <span class="btn">Save</span>.</li>
+  </ol>
+  <div class="done"><b>Done when:</b> open <span class="ui">Marketing → Website analytics</span> and reload — your visitor numbers appear instead of the red error banner.</div>
+
+  <figure>
+    <div class="fig-wrap">
+      <svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="K Clinics reconnect and Google account chooser mockup">
+        <rect x="0" y="0" width="760" height="250" fill="#fbfaf8"/>
+        <!-- connections row -->
+        <rect x="40" y="26" width="330" height="198" rx="10" fill="#ffffff" stroke="#e4ddd3"/>
+        <text x="60" y="52" font-family="Arial" font-size="12" font-weight="700" fill="#6f655c">Admin · Marketing · Connections</text>
+        <rect x="60" y="66" width="290" height="64" rx="8" fill="#f6f1ea" stroke="#e4ddd3"/>
+        <text x="76" y="92" font-family="Arial" font-size="13" font-weight="700" fill="#26201b">Google</text>
+        <text x="76" y="110" font-family="Arial" font-size="11" fill="#6f655c">Ads · Analytics · Search</text>
+        <rect x="246" y="84" width="86" height="28" rx="6" fill="#1a73e8"/>
+        <text x="289" y="103" font-family="Arial" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">Reconnect</text>
+        <circle cx="332" cy="98" r="13" fill="none" stroke="#b3261e" stroke-width="2"/><text x="332" y="103" font-family="Arial" font-size="12" font-weight="700" fill="#b3261e" text-anchor="middle">3</text>
+        <text x="60" y="160" font-family="Arial" font-size="11" fill="#6f655c">Then set Settings · Credentials ·</text>
+        <text x="60" y="176" font-family="Arial" font-size="11" font-weight="700" fill="#26201b">GA4 property ID (numeric)</text>
+        <rect x="60" y="186" width="200" height="26" rx="5" fill="#fff" stroke="#1a73e8" stroke-width="2"/>
+        <text x="72" y="204" font-family="Arial" font-size="12" fill="#26201b">123456789</text>
+        <!-- account chooser -->
+        <rect x="400" y="26" width="320" height="198" rx="10" fill="#ffffff" stroke="#e4ddd3"/>
+        <text x="420" y="52" font-family="Arial" font-size="13" font-weight="700" fill="#26201b">Choose an account</text>
+        <rect x="420" y="66" width="280" height="46" rx="8" fill="#e8f0fe" stroke="#1a73e8" stroke-width="2"/>
+        <circle cx="446" cy="89" r="13" fill="#137333"/><text x="446" y="93" font-family="Arial" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">K</text>
+        <text x="470" y="85" font-family="Arial" font-size="12.5" font-weight="700" fill="#26201b">owner@kclinics.co.uk</text>
+        <text x="470" y="101" font-family="Arial" font-size="10.5" fill="#137333">use this one ✓</text>
+        <circle cx="690" cy="89" r="13" fill="none" stroke="#b3261e" stroke-width="2"/><text x="690" y="93" font-family="Arial" font-size="12" font-weight="700" fill="#b3261e" text-anchor="middle">4</text>
+        <rect x="420" y="120" width="280" height="40" rx="8" fill="#f6f1ea" stroke="#e4ddd3"/>
+        <circle cx="446" cy="140" r="13" fill="#9aa0a6"/>
+        <text x="470" y="138" font-family="Arial" font-size="12" fill="#6f655c">old personal login</text>
+        <text x="470" y="152" font-family="Arial" font-size="10.5" fill="#b3261e">do not use</text>
+        <text x="420" y="186" font-family="Arial" font-size="12" fill="#1a73e8">＋ Use another account</text>
+      </svg>
+    </div>
+    <figcaption>Inside K Clinics: click <b>Reconnect</b>, then pick your <b>new</b> Workspace login in Google's account chooser, and paste the numeric Property ID.</figcaption>
+  </figure>
+  </div>
+
+  <!-- ============================ TROUBLESHOOT ============================ -->
+  <div class="part pb">
+  <h2>If something doesn’t work</h2>
+  <table class="tt">
+    <tr><th>What you see</th><th>What it means &amp; what to do</th></tr>
+    <tr><td>“You don’t have permission to add users”</td><td>You’re signed in with the wrong account. Sign in with the <b>original owner</b> login that created Analytics / Ads, then retry that part.</td></tr>
+    <tr><td>The analytics page still shows the red <b>401 / “returned an error”</b> banner after connecting</td><td>In Part 4 you must pick the <b>new</b> login in the Google window, and that login must have at least <b>Viewer</b> on the property (Part 1). Click <b>Reconnect</b> again and choose the new account.</td></tr>
+    <tr><td>Numbers look wrong / from the wrong site</td><td>The <b>Property ID</b> in Part 4 must be the number of the property that holds <b>this website’s</b> data. Re-check it in Analytics → ⚙ Admin → Property details.</td></tr>
+    <tr><td>You can’t find the invitation email (Ads)</td><td>Check spam, and confirm you typed the new email correctly in Part 2. You can re-send from the same <b>Users</b> list.</td></tr>
+  </table>
+
+  <h2>Optional · Full ownership later</h2>
+  <p class="lead">
+    The steps above <b>share</b> the accounts with your K Clinics login, which is all the website needs and keeps every
+    bit of history. If you later want the accounts <b>fully owned</b> by K Clinics (for billing and long-term control),
+    that’s a separate, heavier process — transferring ownership/billing — best done once everything above is working.
+    The official guide is linked below.
+  </p>
+
+  <h2>Official Google guides (with live screenshots)</h2>
+  <ul class="src">
+    <li>Add users to a Google Analytics property: <a href="https://support.google.com/analytics/answer/9305788">support.google.com/analytics/answer/9305788</a></li>
+    <li>Analytics access &amp; data-restriction management: <a href="https://support.google.com/analytics/answer/9305587">support.google.com/analytics/answer/9305587</a></li>
+    <li>Manage access to your Google Ads account: <a href="https://support.google.com/google-ads/answer/6372672">support.google.com/google-ads/answer/6372672</a></li>
+    <li>Transfer ownership of a Google Ads / Analytics account: <a href="https://support.google.com/google-ads/answer/44500">support.google.com/google-ads/answer/44500</a></li>
+  </ul>
+  <p class="meta" style="margin-top:18px;">If you get stuck on any step, send a screenshot of where you are and we’ll point you to the exact next click.</p>
+  </div>
+
+</div>
+</body>
+</html>
