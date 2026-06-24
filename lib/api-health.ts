@@ -166,7 +166,10 @@ async function checkResend(): Promise<Outcome> {
 async function checkTwilio(): Promise<Outcome> {
   const sid = await getSecret('TWILIO_ACCOUNT_SID');
   const tok = await getSecret('TWILIO_AUTH_TOKEN');
-  if (!has(sid) || !has(tok)) return { light: 'grey', detail: 'Not configured — SMS reminders off (email-only)' };
+  // BLD-583: amber (a visible warning), not grey — staff could otherwise assume
+  // texts are going out. Reminders/confirmations silently fall back to email-only
+  // until Twilio is configured. Add the keys in Admin → Connections to clear it.
+  if (!has(sid) || !has(tok)) return { light: 'amber', detail: 'Not configured — SMS reminders & confirmations are NOT being sent (clients get email only)' };
   try {
     const auth = Buffer.from(`${sid}:${tok}`).toString('base64');
     const { res, ms } = await timed(`https://api.twilio.com/2010-04-01/Accounts/${sid}.json`, { headers: { Authorization: `Basic ${auth}` } });

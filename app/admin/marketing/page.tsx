@@ -13,6 +13,7 @@ const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { maximumFra
 const TOOLS: { href: string; title: string; desc: string }[] = [
   { href: '/admin/marketing/campaigns', title: 'Campaigns', desc: 'Plan & run cross-channel campaigns — email, paid, SEO & landing pages, with AI assist.' },
   { href: '/admin/marketing/performance', title: 'Performance & forecast', desc: 'Revenue by source & campaign, attribution and a data-driven forecast.' },
+  { href: '/admin/marketing/analytics', title: 'Website analytics', desc: 'Live GA4 traffic — visits, time on site, top pages, channels, devices & journeys.' },
   { href: '/admin/marketing/audiences', title: 'Audiences', desc: 'Reusable client segments with live size estimates for targeting.' },
   { href: '/admin/marketing/subscribers', title: 'Newsletter subscribers', desc: 'Your real email audience — who signed up, from where, and who unsubscribed.' },
   { href: '/admin/brand', title: 'Brand kit', desc: 'Colours, fonts, logos & tone of voice — the source of brand truth.' },
@@ -39,6 +40,11 @@ export default async function MarketingHubPage() {
     kpis = { rev30: a.rev30 ?? 0, bookings30: a.bookings30 ?? 0, conversion: a.conversion ?? 0, newClients30: a.newClients30 ?? 0 };
   } catch { /* analytics optional */ }
 
+  const { ga4FullReport } = await import('@/lib/ga4-data');
+  const ga = await ga4FullReport(30);
+  const nf = (n: number) => Math.round(n).toLocaleString('en-GB');
+  const durM = (s: number) => { const m = Math.floor(s / 60), sec = Math.round(s % 60); return m > 0 ? `${m}m ${String(sec).padStart(2, '0')}s` : `${sec}s`; };
+
   const can = await sessionPermissions();
   const locale = await getLocale();
   return (
@@ -54,6 +60,21 @@ export default async function MarketingHubPage() {
         <Kpi label="Enquiry → booking" value={`${Math.round(kpis.conversion)}%`} />
         <Kpi label="New clients · 30 days" value={String(kpis.newClients30)} />
       </div>
+
+      {ga.configured && ga.ok && (
+        <section className="mt-8 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-[family-name:var(--font-display)] text-lg">Website traffic <span className="text-xs font-normal text-[var(--color-stone)]">· GA4 · 30 days</span></h2>
+            <Link href="/admin/marketing/analytics" className="text-xs text-[var(--color-gold)] hover:underline">Full analytics →</Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Kpi label="Visitors" value={nf(ga.totals.activeUsers)} />
+            <Kpi label="Sessions" value={nf(ga.totals.sessions)} />
+            <Kpi label="Page views" value={nf(ga.totals.pageViews)} />
+            <Kpi label="Avg. visit time" value={durM(ga.totals.avgSessionDuration)} />
+          </div>
+        </section>
+      )}
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {TOOLS.map((t) => (

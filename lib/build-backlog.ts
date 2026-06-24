@@ -57,6 +57,12 @@ export const PROJECTS: ProjectDef[] = [
     summary: 'Make the admin landing experience role-shaped: each user type lands on a daily view built around their job (developer → build/CI; clinician → appointments, rooms, prep, client info, appointment flow; receptionist → front-of-house; contractor → contracted tasks, time tracking, facility plans), and admins/owners can switch between views. Introduces two new roles (DEVELOPER, CONTRACTOR), new data (RoomPrep, TimeEntry, ContractorTask, FacilityDoc, AdminUser.preferredDashboardView), new cross-user interactions (prep handoff, room turnover, task assignment, time visibility) and a reusable view/widget set. Full spec: docs/projects/role-based-views.md.',
     originIdeaTitle: 'Role-based My Day & Dashboards — epic',
   },
+  {
+    slug: 'ga-analytics',
+    name: 'Full Google Analytics visualisation',
+    summary: 'Surface all the useful GA4 data inside the platform rather than sending the owner to the GA console: total visits/visitors, time on site, page views, top pages, traffic by channel, devices, countries and where visitors land/journey — across the marketing section and dashboard. Builds on the existing GA4 Data API client (lib/ga4-data.ts) and the connected Google account. Formed from the owner’s request to "add full visualisation of all GA data in platform".',
+    originIdeaTitle: 'Add full Google Analytics visualisation in the platform',
+  },
 ];
 
 // Who can unblock an input-required task. Resolved to an actual user from the
@@ -512,6 +518,11 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     value: 8, effort: 7,
     detail: 'Configurable VAT: per-service class (standard 20% / reduced / zero / exempt — dentistry exempt by default), inclusive/exclusive, finance-gated config, off until VAT-registered.',
     notes: ['Owner decisions captured: inclusive by default; off (No VAT) until registered; dentistry exempt, others standard 20%.', 'Foundation shipped (#384): lib/vat.ts + Finance → Financial controls VAT section + per-service vatClass. Display wiring (prices/receipts/reports) is the follow-up below.'],
+  },
+  {
+    title: 'VAT not displayed on public-facing prices -- Trading Standards compliance', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 9, effort: 4,
+    detail: 'UK Consumer Protection Regulations require VAT-inclusive pricing to be labelled on consumer-facing displays. Added getVatNote() to lib/vat.ts; wired into pricing/page, treatment template, shop listing, product detail, and shop cart (server wrapper + CartClient). Returns full sentence note based on vat_registered + prices_vat_inclusive settings.',
   },
   {
     title: 'Apply VAT to prices, receipts & reports when registered', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(390),
@@ -1577,6 +1588,96 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     value: 5, effort: 2,
     detail: 'Opus 4.8 review found updateEnrolment, removeCohort, removeEnrolment in app/api/admin/academy/route.ts use db.enrolment.update/delete({ where: { id } }) with no tenantId filter. Create paths set tenantId. A permitted admin in one tenant could mutate another tenants enrolment/cohort by ID. Route is auth-gated (requirePermission). Fix: add tenantId filter to every update/delete where clause. Predates BLD-484; affects all existing ops.',
     notes: ['Logged from Opus 4.8 review of BLD-484 (2026-06-18). Low practical risk on single-clinic deploy; must be fixed before multi-tenant or if other clinics are onboarded.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Video content is no uploading to courses.', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1224),
+    value: 9, effort: 1,
+    detail: 'Owner-reported (info@kclinics.co.uk): uploading a training video to a lesson failed or did not appear afterwards. Root cause: uploadVideo/uploadAudio in components/admin/CurriculumManager.tsx only set the URL in local React state and relied on a separate manual "Save lesson" click to persist it — so the upload was lost if staff navigated away first. uploadPdf/uploadAttachment already auto-saved; video/audio did not.',
+    notes: [
+      'Fix: uploadVideo + uploadAudio now auto-save the lesson immediately after upload (await act(lessonSavePayload(updated))), matching the PDF/attachment handlers. components/admin/CurriculumManager.tsx.',
+      'Blob path was already correct: /api/admin/academy/blob-token allows video/* up to 500 MB with a client-direct fallback above the ~4.4 MB serverless cap. A genuinely large/slow upload can still hit the existing 3-min timeout alert — separate from this persistence bug.',
+      'Follow-up (closes the remaining failure modes): (1) the blob-token allowedContentTypes only listed a few video MIME types and NO audio — broadened to category wildcards (video/*, audio/*, image/*) + common docs so .mkv/.avi videos and all audio are accepted (Vercel Blob supports type/* wildcards). (2) The small-file server route /api/admin/blob-upload OK regex omitted audio — added audio/* types + pptx/ppt. (3) The flat 180s client timeout aborted large HD videos mid-upload — now scales with file size (3-min floor + ~1 min/10 MB, capped 30 min). components/admin/CurriculumManager.tsx, app/api/admin/academy/blob-token/route.ts, app/api/admin/blob-upload/route.ts.',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'SMS dummy mode silently returns ok:true — no visibility when Twilio is unconfigured', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1225),
+    value: 5, effort: 2,
+    detail: 'lib/sms.ts returned { ok: true, id: dummy-sms } when Twilio env vars were absent, with only a console.log — so staff could believe appointment reminders/confirmations were being sent when they were not.',
+    notes: [
+      'Fix (no change to send behaviour): api-health Twilio check now reports AMBER (visible warning) not grey when unconfigured (Admin → Connections); sendSms dummy path logs console.warn + returns dummy:true; instrumentation.ts warns at startup when Twilio env vars are missing (mirrors the BLD-415 Sentry check). lib/sms.ts, lib/api-health.ts, instrumentation.ts.',
+      'ok:true kept so existing smsConfigured()-gated callers (booking-notify, automations) are unaffected.',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Client Account Access', type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1227),
+    value: 7, effort: 2,
+    detail: 'Owner-reported (info@kclinics.co.uk): manually-created clients cannot log in, and "Reset Password" sent no email. Root cause: requestPasswordReset only emails accounts that already have a passwordHash, and manually-created clients have none — so they can neither sign in nor receive a reset. There was also no admin action to send the existing passwordless activation link.',
+    notes: [
+      'Fix: added a staff "Send login link" action on the client profile (Admin → Clients → client). It issues a passwordless activation token (createAccountInvite) and emails the /account/activate link (new tmplPortalInvite), which signs the client in and lets them set a password later. Reuses the activation flow already used by request-card (BLD-482). app/admin/actions.ts (sendPortalInvite), components/admin/ClientActions.tsx (SendPortalInvite), app/admin/clients/[id]/page.tsx, lib/email.ts.',
+      'No schema change: emailEvent logged under the existing MANUAL kind.',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Replace all email addresses across the website with: support@kclinics.co.uk', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1229),
+    value: 5, effort: 2,
+    detail: 'Owner (inna.k) asked for a single contact address site-wide. Site config (lib/site.ts email/emailHref) + footer + contact page already used support@; remaining hardcoded hello@/info@ references were replaced.',
+    notes: [
+      'lib/info-pages.ts (all legal/policy contact lines), careers/academy/funding apply routes + booking-notify clinic-notify fallback (info@ → support@), lib/push.ts VAPID contact, and two admin input placeholders → support@.',
+      'Left unchanged: Resend sender/reply-to on the verified mail. subdomain (hello@mail.kclinics.co.uk / replies@reply.mail…) — changing them breaks delivery — and illustrative staff-account/alias placeholders (user@/name@/alias@/admin@).',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Full Day Closure', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1230),
+    value: 6, effort: 2,
+    detail: 'Owner (inna.k) wanted a "Clinic Closed" option on /admin/calendar to block all bookings for every staff member on selected dates — the calendar only let them block their own time.',
+    notes: [
+      'The ClinicClosure backend already existed and is enforced (model, /api/admin/closures, lib/availability.ts dayClosures). Gap was a create/reopen control on the calendar.',
+      'Fix: new CalendarClosureButton on the calendar day header (schedule.manage-gated) — "Close clinic" creates an all-day closure for the date; "Reopen clinic" removes it when already closed. components/admin/CalendarClosureButton.tsx, app/admin/calendar/page.tsx. No schema/backend change.',
+    ],
+  },
+
+  // ── Project: Full Google Analytics visualisation (ga-analytics) ─────────────
+  // Owner asked to surface all GA data in-platform (visits, time, pages,
+  // journeys) across marketing + dashboard. Epic + its work items below.
+  {
+    title: 'Full Google Analytics visualisation in the platform — epic', type: 'IDEA', urgency: 'P2', status: 'IN_PROGRESS', assignee: 'claude', project: 'ga-analytics',
+    value: 7, effort: 5,
+    detail: 'Surface all the useful GA4 data inside the admin instead of sending the owner to the Google Analytics console: total visits/visitors, time on site, page views, top pages, traffic by channel, devices, countries and where visitors land/journey — across the marketing section and the dashboard. Builds on the existing GA4 Data API client and connected Google account; no-ops cleanly until GA4_PROPERTY_ID is set.',
+    notes: ['Formed from the owner request: "Add in more data from google analytics in the admin marketing section & dashboard — total visits, time spent, pages, journey etc. Basically full visualisation of all GA data in platform."'],
+  },
+  {
+    title: 'GA4: expand the Data API client to a full batched report', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', project: 'ga-analytics',
+    value: 7, effort: 3,
+    detail: 'Grow lib/ga4-data.ts from a single channel report into ga4FullReport(): overview totals (visitors, new users, sessions, page views, avg session duration, engagement/bounce rate, views/session, conversions), daily sessions trend, top pages with avg engagement time, channels, device + country breakdowns, and landing pages (journey entry → conversion). Two batchRunReports calls run concurrently; degrades to configured:false when Google isn’t connected or GA4_PROPERTY_ID is unset.',
+    notes: ['Shipped on branch claude/ga4-analytics (PR pending GitHub reconnect). Keeps the existing ga4Performance() for the Performance page.'],
+  },
+  {
+    title: 'GA4: Website analytics page + marketing dashboard snapshot', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', project: 'ga-analytics',
+    value: 7, effort: 3,
+    detail: 'New /admin/marketing/analytics page: 7/28/90-day range selector, overview KPI tiles, an inline SVG daily-sessions trend, top pages, traffic by channel, device + country bars, and a landing-page/journey table — no chart dependency, house style. Marketing hub gains a GA traffic snapshot (visitors/sessions/views/avg time) linking through, plus a nav card.',
+    notes: ['Shipped on branch claude/ga4-analytics (PR pending GitHub reconnect).'],
+  },
+  {
+    title: 'GA4: dashboard widget for role-based dashboards', type: 'TASK', urgency: 'P3', status: 'IN_REVIEW', assignee: 'claude', project: 'ga-analytics',
+    value: 5, effort: 3,
+    detail: 'Add a compact GA traffic widget to the management dashboard so owners/marketers see live visits + trend on their landing dashboard, not only inside the marketing section. Reuses ga4FullReport().',
+    notes: ['Shipped on branch claude/ga4-analytics (PR pending GitHub reconnect): GaTrafficWidget (visitors/sessions/views/avg visit + mini sparkline), rendered on the admin/Management dashboard inside a Suspense boundary (campaigns.view-gated) so a slow GA call streams in without blocking the dashboard; renders nothing until GA is connected.'],
+  },
+  {
+    title: 'GA4: real-time active users + events/funnel breakdown', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude', project: 'ga-analytics',
+    value: 4, effort: 4,
+    detail: 'Layer GA4 realtime (runRealtimeReport — active users right now) onto the analytics page, and an events/key-events table (eventName counts) so the owner can see the on-site event funnel (view → engage → book) without leaving the platform.',
+  },
+  {
+    title: 'Board: “Promote to project” action in the UI', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 3,
+    detail: 'Owner noted the board had no way to turn an item into a project — projects were code-only (lib/build-backlog.ts PROJECTS, materialised by syncProjects). Added a UI path: a Project section on the task drawer (manager-gated) to promote an item into a new project (enter a name) or an existing one, or detach it.',
+    notes: ['Shipped on branch claude/ga4-analytics (PR pending GitHub reconnect): promoteToProject() in lib/build-board.ts (creates a DB-only project with a unique derived slug + PRJ ref, or links an existing one; logs a board event), a promote-to-project op on /api/admin/build (build.manage-gated), and the Project control in components/admin/BuildBoard.tsx. UI-created projects are DB-only and safe — syncProjects only upserts/links, never deletes.'],
   },
 ];
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import { Logo } from '@/components/brand/Logo';
 import { ResultCard, type KioskResultView } from './ResultCard';
 import { ClaimReward } from './ClaimReward';
 import { CameraCapture, type CapturedPhoto } from './capture/CameraCapture';
@@ -224,7 +225,7 @@ export function KioskSessionFlow({
       {/* WELCOME */}
       {step === 'welcome' && (
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm text-center">
-          <p className="font-[family-name:var(--font-display)] text-xs uppercase tracking-[0.3em] text-[var(--color-gold-soft)]">KClinics</p>
+          <div className="flex justify-center"><Logo mono /></div>
           <h1 className="mt-4 font-[family-name:var(--font-display)] text-4xl leading-tight">
             Discover your <span className="text-[var(--color-gold-bright)]">Skin &amp; Smile</span> Score
           </h1>
@@ -377,7 +378,7 @@ export function KioskSessionFlow({
       {/* DECLINED — AI age backstop couldn't confirm 18+ */}
       {step === 'declined' && (
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm text-center">
-          <p className="font-[family-name:var(--font-display)] text-xs uppercase tracking-[0.3em] text-[var(--color-gold-soft)]">KClinics</p>
+          <div className="flex justify-center"><Logo mono /></div>
           <h2 className="mt-4 font-[family-name:var(--font-display)] text-3xl leading-tight">Thanks for stopping by 💛</h2>
           <p className="mt-4 text-[var(--color-blush)]">
             This experience is for adults only, and we couldn’t be sure this time — so we haven’t created a result.

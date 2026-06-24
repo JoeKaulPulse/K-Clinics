@@ -124,7 +124,7 @@ export function Header({ config }: { config: SiteConfig }) {
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary">
+        <nav className="hidden items-center gap-1 xl:flex" aria-label="Primary">
           {primaryNav.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const hasMenu = !!item.columns;
@@ -169,7 +169,7 @@ export function Header({ config }: { config: SiteConfig }) {
           })}
         </nav>
 
-        <div className="hidden items-center gap-3 lg:flex">
+        <div className="hidden items-center gap-3 xl:flex">
           <Link href="/shop" className={`text-sm font-medium transition-colors hover:text-[var(--color-gold)] ${light ? 'text-[var(--color-porcelain)]' : 'text-[var(--color-ink)]'}`}>Shop</Link>
           <SiteSearch light={light} />
           <AccountMenu light={light} />
@@ -181,7 +181,7 @@ export function Header({ config }: { config: SiteConfig }) {
         {/* Mobile toggle */}
         <button
           ref={hamburgerRef}
-          className={`relative z-10 grid h-11 w-11 place-items-center rounded-full lg:hidden ${
+          className={`relative z-10 grid h-11 w-11 place-items-center rounded-full xl:hidden ${
             light ? 'text-[var(--color-porcelain)]' : 'text-[var(--color-ink)]'
           }`}
           onClick={() => setMobile((m) => !m)}
@@ -209,7 +209,7 @@ export function Header({ config }: { config: SiteConfig }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute inset-x-0 top-full hidden border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-porcelain)_94%,transparent)] backdrop-blur-2xl lg:block"
+            className="absolute inset-x-0 top-full hidden border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-porcelain)_94%,transparent)] backdrop-blur-2xl xl:block"
           >
             <div className="container-lux py-9" onMouseLeave={() => setPreview(null)}>
               {primaryNav
@@ -299,7 +299,7 @@ export function Header({ config }: { config: SiteConfig }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
-            className="fixed inset-0 top-0 z-0 h-[100dvh] overflow-y-auto bg-[var(--color-porcelain)] px-6 pb-12 pt-24 lg:hidden"
+            className="fixed inset-0 top-0 z-0 h-[100dvh] overflow-y-auto bg-[var(--color-porcelain)] px-6 pb-12 pt-24 xl:hidden"
           >
             <nav className="flex flex-col divide-y divide-[var(--color-line)]" aria-label="Mobile">
               {primaryNav.map((item, idx) => {
@@ -314,14 +314,19 @@ export function Header({ config }: { config: SiteConfig }) {
                   >
                     {item.columns ? (
                       <>
-                        <button
-                          onClick={() => setOpen(expanded ? null : item.label)}
-                          aria-expanded={expanded}
-                          className="flex w-full items-center justify-between font-[family-name:var(--font-display)] text-2xl"
-                        >
-                          {item.label}
-                          <svg viewBox="0 0 24 24" className={`h-5 w-5 text-[var(--color-stone)] transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        </button>
+                        <div className="flex w-full items-center justify-between">
+                          <Link href={item.href} onClick={() => setMobile(false)} className="font-[family-name:var(--font-display)] text-2xl">
+                            {item.label}
+                          </Link>
+                          <button
+                            onClick={() => setOpen(expanded ? null : item.label)}
+                            aria-expanded={expanded}
+                            className="grid h-9 w-9 place-items-center text-[var(--color-stone)]"
+                            aria-label={`${expanded ? 'Close' : 'Open'} ${item.label} submenu`}
+                          >
+                            <svg viewBox="0 0 24 24" className={`h-5 w-5 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          </button>
+                        </div>
                         {expanded && (
                           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5 overflow-hidden">
                             {item.columns.flatMap((c) => c.links).map((l) => (

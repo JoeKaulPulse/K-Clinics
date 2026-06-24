@@ -327,7 +327,7 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
         </>
       )}
 
-      {active && <TaskModal item={active} allItems={items} canManage={canManage} isAdmin={isAdmin} gh={gh} staff={staff} onClose={() => setActive(null)} onChange={load} patch={patch} />}
+      {active && <TaskModal item={active} allItems={items} projects={projects} canManage={canManage} isAdmin={isAdmin} gh={gh} staff={staff} onClose={() => setActive(null)} onChange={load} patch={patch} />}
       {ideaOpen && <IdeaModal onClose={() => setIdeaOpen(false)} onDone={load} />}
     </>
   );
@@ -490,8 +490,8 @@ function TimelineView({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => v
 }
 
 // ── Task detail modal ────────────────────────────────────────────────────────
-function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onChange, patch }: {
-  item: Item; allItems: Item[]; canManage: boolean; isAdmin: boolean; gh: { connected: boolean; repo: string | null };
+function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, onClose, onChange, patch }: {
+  item: Item; allItems: Item[]; projects: Project[]; canManage: boolean; isAdmin: boolean; gh: { connected: boolean; repo: string | null };
   staff: { email: string; name: string | null }[]; onClose: () => void; onChange: () => void; patch: (id: string, body: object) => void;
 }) {
   const d = durMs(item);
@@ -526,6 +526,17 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
   // Dependencies
   async function addDep(dependsOnId: string) { if (!dependsOnId) return; const r = await post({ op: 'dep-add', id: item.id, dependsOnId }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
   async function removeDep(dependsOnId: string) { const r = await post({ op: 'dep-remove', id: item.id, dependsOnId }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
+
+  // Project — promote this item into a new or existing project, or detach it.
+  const [projBusy, setProjBusy] = useState(false);
+  const [newProj, setNewProj] = useState(false);
+  const [projName, setProjName] = useState('');
+  async function promote(body: { projectId?: string; name?: string }) {
+    setProjBusy(true);
+    const r = await post({ op: 'promote-to-project', id: item.id, ...body });
+    setProjBusy(false);
+    if (r.ok) { setNewProj(false); setProjName(''); onChange(); } else alert(r.error || 'Could not update the project.');
+  }
   const depIds = new Set([item.id, ...item.dependencies.map((d) => d.dependsOn.id)]);
   const depDone = (s: string) => ['SHIPPED', 'CLOSED'].includes(s);
 
@@ -690,6 +701,31 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
             <input value={stTitle} onChange={(e) => setStTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addSub()} placeholder="Add a subtask…" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
             <label className="flex items-center gap-1 text-[0.65rem] text-[var(--color-stone)]"><input type="checkbox" checked={stOwner} onChange={(e) => setStOwner(e.target.checked)} className="h-3.5 w-3.5 accent-[var(--color-gold)]" /> owner input</label>
             <button onClick={addSub} disabled={stBusy || !stTitle.trim()} className="rounded-[var(--radius-sm)] bg-[var(--color-ink)] px-3 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">Add</button>
+          </div>
+        )}
+
+        {/* Project — group this item under a project (the UI promote action) */}
+        <h3 className="mt-5 text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">Project</h3>
+        {item.project ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+            <span className="rounded-full bg-[var(--color-gold)]/12 px-3 py-1 font-medium text-[var(--color-gold-deep)]">▣ {item.project.ref ? `${item.project.ref} · ` : ''}{item.project.name}</span>
+            {canManage && <button onClick={() => promote({ projectId: '' })} disabled={projBusy} className="text-[0.7rem] text-[var(--color-stone)] hover:underline disabled:opacity-50">remove from project</button>}
+          </div>
+        ) : !canManage ? (
+          <p className="mt-2 text-xs text-[var(--color-stone)]">Not part of a project.</p>
+        ) : newProj ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <input autoFocus value={projName} onChange={(e) => setProjName(e.target.value)} placeholder="New project name" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm" />
+            <button onClick={() => projName.trim() && promote({ name: projName.trim() })} disabled={projBusy || !projName.trim()} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-50">{projBusy ? 'Creating…' : 'Create & add'}</button>
+            <button onClick={() => { setNewProj(false); setProjName(''); }} className="text-[0.7rem] text-[var(--color-stone)] hover:underline">cancel</button>
+          </div>
+        ) : (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <select value="" disabled={projBusy} onChange={(e) => e.target.value && promote({ projectId: e.target.value })} className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-xs">
+              <option value="">Promote into an existing project…</option>
+              {projects.map((p) => <option key={p.id} value={p.id}>{p.ref ? `${p.ref} · ${p.name}` : p.name}</option>)}
+            </select>
+            <button onClick={() => setNewProj(true)} disabled={projBusy} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-bone)] disabled:opacity-50">+ New project</button>
           </div>
         )}
 

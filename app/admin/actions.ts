@@ -239,6 +239,39 @@ export async function sendManualEmail(clientId: string, to: string, subject: str
   return res.ok ? { ok: true } : { ok: false, error: res.error };
 }
 
+// BLD-527: email a client a passwordless login link. Manually-created clients
+// have no password, so they can neither sign in nor use "forgot password" (which
+// only emails accounts that already have one). This issues an activation token and
+// emails the /account/activate link, which signs them in and lets them set a
+// password later. Works for password-holders too (a magic sign-in link).
+export async function sendPortalInvite(clientId: string) {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'clients.edit')) return { ok: false, error: 'You don’t have permission to manage client accounts.' };
+  const { db } = await import('@/lib/db');
+  const client = await db.client.findUnique({ where: { id: clientId }, select: { id: true, email: true, firstName: true } });
+  if (!client) return { ok: false, error: 'Client not found.' };
+  if (!client.email) return { ok: false, error: 'This client has no email address on file.' };
+
+  const { createAccountInvite } = await import('@/lib/client-auth');
+  const token = await createAccountInvite(clientId);
+  if (!token) return { ok: false, error: 'Could not create the login link. Please try again.' };
+  const base = process.env.NEXT_PUBLIC_SITE_URL || '';
+  const url = `${base}/account/activate?token=${token}&id=${clientId}`;
+
+  const { sendEmail, tmplPortalInvite } = await import('@/lib/email');
+  const subject = 'Open your KClinics account';
+  const res = await sendEmail({ to: client.email, subject, html: tmplPortalInvite(client.firstName, url) });
+  await db.emailEvent.create({
+    data: { clientId, kind: 'MANUAL', to: client.email, subject, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error },
+  });
+  if (res.ok) {
+    await db.interaction.create({ data: { clientId, type: 'EMAIL', summary: 'Portal login link sent', author: session.email } });
+  }
+  revalidatePath(`/admin/clients/${clientId}`);
+  return res.ok ? { ok: true } : { ok: false, error: res.error || 'The email could not be sent (check the email provider is configured).' };
+}
+
 export async function toggleMarketing(clientId: string, optIn: boolean) {
   if (!crmEnabled) return;
   const session = await getSession();

@@ -302,7 +302,7 @@ export default function WorkspacePage() {
             <details className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
               <summary className="px-4 py-3 text-sm font-medium cursor-pointer">Create new group / shared inbox</summary>
               <form onSubmit={handleCreateGroup} className="p-4 space-y-3">
-                <input className={`${inputCls} w-full`} type="email" placeholder="hello@kclinics.co.uk" value={newGroupEmail} onChange={(e) => setNewGroupEmail(e.target.value)} required />
+                <input className={`${inputCls} w-full`} type="email" placeholder="support@kclinics.co.uk" value={newGroupEmail} onChange={(e) => setNewGroupEmail(e.target.value)} required />
                 <input className={`${inputCls} w-full`} placeholder="Display name (e.g. Front desk)" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} required />
                 <input className={`${inputCls} w-full`} placeholder="Description (optional)" value={newGroupDesc} onChange={(e) => setNewGroupDesc(e.target.value)} />
                 {createGroupError && <p className="text-xs text-red-600">{createGroupError}</p>}

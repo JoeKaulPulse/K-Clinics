@@ -6,6 +6,8 @@ import { Markdown } from '@/components/academy/Markdown';
 import { Glyph } from '@/components/ui/Glyph';
 import { LessonMedia, Downloads } from '@/components/academy/LessonMedia';
 import { LessonEngagement } from '@/components/academy/LessonEngagement';
+import { HomeworkPanel } from '@/components/academy/HomeworkPanel';
+import { SecurePdfViewer } from '@/components/academy/SecurePdfViewer';
 import type { CourseLearning, ModuleView, LessonView, QuizView } from '@/lib/lms';
 
 const fmtReleaseDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -199,6 +201,10 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
 }
 
 function LessonPanel({ lesson, done, onComplete, onNext }: { lesson: LessonView; done: boolean; onComplete: () => void; onNext?: () => void }) {
+  // View-only PDFs open in the secure in-app viewer (no download); downloadable
+  // ones are plain links. Kept in step with the immersive player.
+  const [pdfView, setPdfView] = useState<{ index: number; name: string } | null>(null);
+  const pdfIcon = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0 text-[var(--color-gold)]"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" /></svg>;
   return (
     <article>
       <p className="eyebrow mb-2">{lesson.durationMin ? `${lesson.durationMin} min` : 'Lesson'}</p>
@@ -215,6 +221,31 @@ function LessonPanel({ lesson, done, onComplete, onNext }: { lesson: LessonView;
       <div className="mt-2"><Markdown text={lesson.body} /></div>
 
       <Downloads items={lesson.attachments} />
+
+      {lesson.pdfUrls.length > 0 && (
+        <div className="mt-7 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5">
+          <p className="eyebrow mb-3">Lesson resources</p>
+          <ul className="space-y-2">
+            {lesson.pdfUrls.map((url, idx) => {
+              const raw = url.split('/').pop() ?? 'Document';
+              const name = (() => { try { return decodeURIComponent(raw); } catch { return raw; } })().replace(/^\d+-/, '');
+              const viewOnly = lesson.pdfNoDownload?.includes(url) ?? false;
+              return (
+                <li key={url}>
+                  {viewOnly ? (
+                    <button onClick={() => setPdfView({ index: idx, name })} className="flex w-full items-center gap-2.5 text-left text-sm text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-gold)]">{pdfIcon}<span className="truncate">{name}</span><span className="ml-auto shrink-0 text-xs text-[var(--color-stone)]">View only</span></button>
+                  ) : (
+                    <a href={url} download={name} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 text-sm text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-gold)]">{pdfIcon}<span className="truncate">{name}</span><span className="ml-auto shrink-0 text-xs text-[var(--color-stone)]">Download</span></a>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+      {pdfView && <SecurePdfViewer lessonId={lesson.id} index={pdfView.index} title={pdfView.name} onClose={() => setPdfView(null)} />}
+
+      {lesson.requiresHomework && <HomeworkPanel lessonId={lesson.id} submission={lesson.submission} tone="light" />}
 
       {lesson.keyPoints.length > 0 && (
         <div className="mt-7 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5">

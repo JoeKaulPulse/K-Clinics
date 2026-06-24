@@ -46,7 +46,7 @@ export function ShareScene({ variant }: { variant: 'share' | 'goodbye' }) {
           : 'No result this time. The screen is yours again in a moment.'}
       </p>
       <p className="text-[clamp(0.8rem,1.6vmin,1.1rem)] uppercase tracking-[0.3em] text-[rgba(246,236,227,0.45)]">
-        K Clinics · Islington, London
+        Islington · London
       </p>
     </div>
   );

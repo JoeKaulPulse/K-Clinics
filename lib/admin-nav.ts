@@ -87,6 +87,7 @@ export const navGroups: NavGroup[] = [
     { href: '/admin/devices', key: 'nav.devices', perm: 'settings.manage', keywords: 'hardware card terminal reader tyl natwest display screen kiosk printer registry' },
     { href: '/admin/day-close', key: 'nav.dayclose', perm: 'dayclose.run', keywords: 'cash up end of day reconciliation till' },
     { href: '/admin/facility', key: 'nav.facility', perm: 'facility.view', keywords: 'floor plan electrical plumbing equipment where things are maintenance knowledge base' },
+    { href: '/admin/compliance', key: 'nav.compliance', perm: 'compliance.view', keywords: 'compliance renewals insurance licence licences certification pat testing eicr equipment servicing waste contract expiry deadlines renewal dates reminders certificates' },
   ] },
   { heading: 'nav.group.marketing', icon: 'marketing', items: [
     { href: '/admin/marketing', key: 'nav.marketing', exact: true, perm: 'campaigns.view', keywords: 'hub overview' },

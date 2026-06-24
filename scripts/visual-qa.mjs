@@ -19,8 +19,9 @@
 //
 // Output: qa-output/<step>.png screenshots + qa-output/report.json + report.md.
 import { chromium } from 'playwright';
-import { mkdirSync, writeFileSync, rmSync, readFileSync } from 'fs';
+import { mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Target resolution: BASE_URL (the canonical variable for all routine tooling —
 // set it in the Claude Code environment) → NEXT_PUBLIC_SITE_URL → local dev.
@@ -35,16 +36,39 @@ const IGNORE_HTTPS_ERRORS = process.env.QA_IGNORE_HTTPS_ERRORS
   : Boolean(process.env.NODE_EXTRA_CA_CERTS);
 const CONTEXT_OPTS = { viewport: VIEWPORT, ignoreHTTPSErrors: IGNORE_HTTPS_ERRORS };
 
-// Kiosk upload payload. Pass a real selfie (QA_SELFIE=/path/to/photo.jpg) to verify
-// the happy path end-to-end (analysis -> ANALYZED -> shareable result card). Without
-// one we fall back to a 1x1px placeholder: the AI legitimately can't read a blank
-// pixel, so it returns ANALYSIS_FAILED — which is expected, NOT a broken flow.
+// Full-network Claude sessions export HTTPS_PROXY pointing at a local agent proxy
+// (e.g. http://127.0.0.1:44059) that re-terminates TLS via CONNECT. Node's fetch
+// rides it fine, but Chromium inherits the same env proxy and its TLS to the live
+// site is dropped at the inner handshake (ERR_CONNECTION_CLOSED) — ignoreHTTPSErrors
+// can't help because it's a closed connection, not a cert error. On these sessions
+// direct egress works, so we route the *browser* straight to the origin (Node calls
+// keep using the proxy). The transparent-gateway sandbox case has no explicit proxy
+// and is untouched. QA_BROWSER_DIRECT=1/0 forces the bypass either way.
+const AGENT_PROXY = process.env.HTTPS_PROXY || process.env.https_proxy || '';
+const BROWSER_DIRECT = process.env.QA_BROWSER_DIRECT
+  ? /^(1|true|yes)$/i.test(process.env.QA_BROWSER_DIRECT)
+  : /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/i.test(AGENT_PROXY);
+// `direct://` with an explicit catch-all bypass is the combination Chromium honours
+// to ignore the inherited proxy; `direct://` alone is rejected (ERR_PROXY_CONNECTION_FAILED).
+const LAUNCH_OPTS = BROWSER_DIRECT ? { proxy: { server: 'direct://', bypass: '*' } } : {};
+
+// Kiosk upload payload. The kiosk flow exercises the REAL happy path end-to-end
+// (upload -> AI analysis -> ANALYZED -> shareable result card) by uploading an
+// analysable face. The default is a clinic marketing portrait shipped in the repo
+// (public/treatments/) — a real, clearly front-on face, business-owned so there is
+// no privacy concern. QA_SELFIE=/path/to/photo.jpg overrides it; QA_SELFIE=none
+// forces the 1x1px placeholder, which the AI legitimately can't read (returns
+// ANALYSIS_FAILED) — useful for verifying the graceful-failure path on purpose.
 const PLACEHOLDER_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
   'base64',
 );
-const SELFIE_PATH = process.env.QA_SELFIE || '';
-const HAS_REAL_SELFIE = Boolean(SELFIE_PATH);
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const DEFAULT_SELFIE = path.resolve(SCRIPT_DIR, '..', 'public/treatments/Deluxe-HydraFacial-Full-Face.jpg');
+const SELFIE_ENV = process.env.QA_SELFIE || '';
+const FORCE_PLACEHOLDER = /^(none|placeholder|0|false)$/i.test(SELFIE_ENV);
+const SELFIE_PATH = FORCE_PLACEHOLDER ? '' : (SELFIE_ENV || DEFAULT_SELFIE);
+const HAS_REAL_SELFIE = Boolean(SELFIE_PATH) && existsSync(SELFIE_PATH);
 const SELFIE_BYTES = HAS_REAL_SELFIE ? readFileSync(SELFIE_PATH) : PLACEHOLDER_PNG;
 const SELFIE_NAME = HAS_REAL_SELFIE ? path.basename(SELFIE_PATH) : 'selfie.png';
 const SELFIE_TYPE = /\.webp$/i.test(SELFIE_NAME) ? 'image/webp'
@@ -169,8 +193,10 @@ async function kioskFlow(browser) {
       // A real photo that fails or hangs points at a genuine AI-pipeline problem.
       note('P1', area, `analysis produced no result for a real selfie (last status: ${lastStatus || 'unknown'}) — kiosk happy path is broken.`);
     } else if (failed) {
-      // Expected: the 1x1px placeholder isn't an analysable photo. Not a defect.
-      note('P3', area, `analysis returned ${lastStatus} for the 1x1px placeholder image — expected (a blank pixel is not analysable). The pipeline ran and failed gracefully. Set QA_SELFIE=/path/to/selfie.jpg to verify the happy path + result card.`);
+      // Reached only when QA_SELFIE=none forces the 1x1px placeholder, which the AI
+      // legitimately can't read — graceful failure, not a defect. The default run
+      // uploads a real face and verifies the ANALYZED happy path + result card.
+      note('P3', area, `analysis returned ${lastStatus} for the forced 1x1px placeholder — expected (a blank pixel is not analysable); the pipeline failed gracefully. Unset QA_SELFIE (or point it at a real photo) to verify the happy path + result card.`);
     } else {
       note('P2', area, `no result within ~45s (last status: ${lastStatus || 'unknown'}). With the placeholder image this is most likely the failure path rather than a hang; set QA_SELFIE=/path/to/selfie.jpg to verify the happy path.`);
     }
@@ -204,8 +230,8 @@ async function cleanup() {
 }
 
 async function main() {
-  console.log(`▶ Visual QA against ${BASE}`);
-  const browser = await chromium.launch();
+  console.log(`▶ Visual QA against ${BASE}${BROWSER_DIRECT ? ' (browser bypassing agent proxy → direct egress)' : ''}`);
+  const browser = await chromium.launch(LAUNCH_OPTS);
   try {
     // Static page visual checks (extend this list for other journeys).
     // /kiosk/display holds an open SSE channel + animation timers — use domcontentloaded so
@@ -214,6 +240,14 @@ async function main() {
     await visit(browser, '/', 'home', 'Homepage');
     await visit(browser, '/book', 'book', 'Booking flow');
     await visit(browser, '/gift-vouchers', 'gift', 'Gift vouchers');
+    // High-traffic public pages — visit() captures console errors, first-party
+    // 4xx/5xx and a settled full-page screenshot, so these guard against layout
+    // and runtime regressions on the core marketing journeys.
+    await visit(browser, '/treatments', 'treatments', 'Treatments index');
+    await visit(browser, '/pricing', 'pricing', 'Pricing');
+    await visit(browser, '/membership', 'membership', 'Membership');
+    await visit(browser, '/ai-consultation', 'ai-consultation', 'AI consultation (Get My Plan)');
+    await visit(browser, '/contact', 'contact', 'Contact');
     // Interactive kiosk journey (creates + cleans up a test session).
     await kioskFlow(browser);
   } finally {

@@ -21,10 +21,19 @@ export async function POST(req: Request) {
       body,
       request: req,
       onBeforeGenerateToken: async () => ({
+        // Category wildcards (Vercel Blob supports `type/*`) so any video/audio/
+        // image format a staff device produces is accepted — previously only a
+        // handful of video MIME types were allowed and audio was omitted entirely,
+        // so .mkv/.avi videos and all audio were silently rejected (BLD-588).
         allowedContentTypes: [
-          'video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v', 'video/3gpp',
-          'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/heic', 'image/heif',
-          'application/pdf', // BLD-407: lesson PDF attachments
+          'video/*', 'audio/*', 'image/*',
+          'application/pdf', // lesson PDF attachments (BLD-407)
+          // Common document attachments, for parity with the small-file route.
+          'application/zip', 'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          'application/vnd.ms-excel', 'application/vnd.ms-powerpoint', 'text/plain',
         ],
         maximumSizeInBytes: 500 * 1024 * 1024, // 500 MB — generous for HD course videos
         addRandomSuffix: true,

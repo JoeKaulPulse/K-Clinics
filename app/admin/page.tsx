@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { ReactElement } from 'react';
+import { Suspense, type ReactElement } from 'react';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { formatPrice } from '@/lib/treatments';
@@ -25,6 +25,8 @@ import { ClinicianView } from '@/components/admin/dashboard/ClinicianView';
 import { ReceptionistView } from '@/components/admin/dashboard/ReceptionistView';
 import { DeveloperView } from '@/components/admin/dashboard/DeveloperView';
 import { ContractorView } from '@/components/admin/dashboard/ContractorView';
+import { GaTrafficWidget } from '@/components/admin/dashboard/GaTrafficWidget';
+import { ComplianceWidget } from '@/components/admin/dashboard/ComplianceWidget';
 import { RoomPrepStatus } from '@/components/admin/rooms/RoomPrepStatus';
 
 export const dynamic = 'force-dynamic';
@@ -133,6 +135,8 @@ export default async function AdminOverview() {
   const canReviews = sessionCan(session, 'reviews.manage');
   const canBuild = sessionCan(session, 'build.view');
   const canAutomations = sessionCan(session, 'automations.view');
+  const canMarketing = sessionCan(session, 'campaigns.view');
+  const canCompliance = sessionCan(session, 'compliance.view');
   const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(); dayEnd.setHours(23, 59, 59, 999);
   // Comms health: transactional emails (booking confirmations/receipts/reminders)
@@ -368,6 +372,21 @@ export default async function AdminOverview() {
         <RevenueChart series={a.series} />
         <TopTreatments items={a.topTreatments} />
       </div>
+
+      {/* GA4 website-traffic snapshot — streams in independently so a slow GA API
+          call never delays the dashboard; renders nothing until GA is connected. */}
+      {canMarketing && (
+        <Suspense fallback={null}>
+          <GaTrafficWidget days={28} />
+        </Suspense>
+      )}
+
+      {/* Compliance & renewals — only renders when something's expired or due soon. */}
+      {canCompliance && (
+        <Suspense fallback={null}>
+          <ComplianceWidget />
+        </Suspense>
+      )}
 
       {/* Build & issues — live status of the work board */}
       {canBuild && (

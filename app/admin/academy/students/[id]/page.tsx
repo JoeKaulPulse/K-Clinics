@@ -5,6 +5,7 @@ import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { StudentActions } from '@/components/admin/StudentActions';
+import { EnrolInCourse } from '@/components/admin/EnrolInCourse';
 import { getLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
@@ -36,7 +37,7 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
   // BLD-528: linked clinic CRM client (same person), if any.
   const client = student.clientId ? await db.client.findUnique({ where: { id: student.clientId }, select: { id: true, firstName: true, lastName: true } }) : null;
 
-  const [enrolments, payments, lessonRows, quizRows, practiceRows, homeworkRows, badgeRows, passkeys, timeAgg, standing] = await Promise.all([
+  const [enrolments, payments, lessonRows, quizRows, practiceRows, homeworkRows, badgeRows, passkeys, timeAgg, standing, allCourses] = await Promise.all([
     db.enrolment.findMany({ where: { studentId: id }, orderBy: { createdAt: 'desc' }, include: { course: { select: { id: true, title: true, slug: true } }, cohort: { select: { startAt: true, name: true } } } }),
     db.enrolmentPayment.findMany({ where: { enrolment: { studentId: id } }, orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }] }),
     db.lessonProgress.findMany({ where: { studentId: id }, orderBy: { completedAt: 'desc' }, take: 60, include: { lesson: { select: { title: true, module: { select: { course: { select: { title: true } } } } } } } }),
@@ -47,7 +48,14 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
     db.studentPasskey.findMany({ where: { studentId: id }, orderBy: { createdAt: 'desc' } }),
     db.lessonProgress.aggregate({ where: { studentId: id }, _sum: { secondsSpent: true } }),
     (await import('@/lib/academy-gamification')).studentStanding(id).catch(() => null),
+    db.course.findMany({ where: { active: true }, orderBy: { order: 'asc' }, select: { id: true, title: true, level: true } }),
   ]);
+
+  // Courses this student can still be enrolled on (active, not already enrolled
+  // unless their only enrolment there was cancelled) — matches the duplicate
+  // guard in enrolStudentManually so the dropdown never offers a course that fails.
+  const liveCourseIds = new Set(enrolments.filter((e) => e.status !== 'CANCELLED').map((e) => e.course.id));
+  const enrolCandidates = allCourses.filter((c) => !liveCourseIds.has(c.id));
 
   const { academyLevel } = await import('@/lib/academy-levels');
   const { BADGES } = await import('@/lib/academy-gamification');
@@ -105,7 +113,7 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
       </div>
 
       <div className="mt-5">
-        <Card title="Enrolments &amp; payments" action={<Link href="/admin/academy/enrolments" className="text-xs text-[var(--color-gold)] hover:underline">Manage in pipeline →</Link>}>
+        <Card title="Enrolments &amp; payments" action={<div className="flex items-center gap-3"><EnrolInCourse studentEmail={student.email} studentName={`${student.firstName}${student.lastName ? ` ${student.lastName}` : ''}`} courses={enrolCandidates} /><Link href="/admin/academy/enrolments" className="text-xs text-[var(--color-gold)] hover:underline">Manage in pipeline →</Link></div>}>
           {enrolments.length === 0 ? <p className="text-sm text-[var(--color-stone)]">No enrolments.</p> : (
             <div className="space-y-3">
               {enrolments.map((e) => {
