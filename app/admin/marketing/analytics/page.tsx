@@ -52,13 +52,32 @@ export default async function GaAnalyticsPage({ searchParams }: { searchParams: 
         <div className="mt-8 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-8 text-center">
           <p className="font-[family-name:var(--font-display)] text-lg">Google Analytics isn’t connected yet</p>
           <p className="mx-auto mt-2 max-w-md text-sm text-[var(--color-stone)]">
-            Connect Google in <Link href="/admin/marketing/connections" className="underline">Connections</Link> and set the GA4 property id
-            (env <code className="rounded bg-[var(--color-bone)] px-1">GA4_PROPERTY_ID</code> — the numeric id, not the G-XXXX measurement tag)
-            to see full website analytics here.
+            {ga.error ?? 'Connect Google and set the GA4 property id to see full website analytics here.'}
           </p>
+          <p className="mx-auto mt-3 max-w-md text-xs text-[var(--color-stone)]">
+            Connect Google in <Link href="/admin/marketing/connections" className="underline">Connections</Link>; set the numeric id in
+            <code className="mx-1 rounded bg-[var(--color-bone)] px-1">GA4_PROPERTY_ID</code> (GA4 → Admin → Property settings — not the G-XXXX tag).
+          </p>
+        </div>
+      ) : !ga.ok ? (
+        <div className="mt-8 rounded-[var(--radius-lg)] border border-[var(--color-blush)]/50 bg-[var(--color-blush)]/10 p-6">
+          <p className="font-[family-name:var(--font-display)] text-lg text-[var(--color-ink)]">Google Analytics returned an error</p>
+          <p className="mt-2 text-sm text-[var(--color-ink)]">Google is connected, but the Data API rejected the request — so the figures below would be wrong. The numbers are hidden until this is fixed.</p>
+          <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-bone)] px-3 py-2 font-mono text-xs text-[var(--color-ink)]">{ga.error}</p>
+          <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-[var(--color-stone)]">
+            <li><strong>404 / “not found”:</strong> the <code className="rounded bg-[var(--color-bone)] px-1">GA4_PROPERTY_ID</code> is wrong — use the numeric Property ID (GA4 → Admin → Property settings), not the G-XXXX tag.</li>
+            <li><strong>403 / “permission”:</strong> the connected Google account isn’t a user on this GA4 property — add it (with at least Viewer) in GA4 → Admin → Property access management.</li>
+            <li><strong>403 / “Analytics Data API has not been used…”:</strong> enable the <em>Google Analytics Data API</em> in the Google Cloud project behind your OAuth client.</li>
+            <li><strong>401 / token:</strong> reconnect Google in <Link href="/admin/marketing/connections" className="underline">Connections</Link>.</li>
+          </ul>
         </div>
       ) : (
         <>
+          {ga.totals.sessions === 0 && ga.trend.length === 0 && (
+            <div className="mt-7 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-4 py-3 text-sm text-[var(--color-stone)]">
+              GA4 is connected and responding, but reports <strong>no traffic</strong> in this period. If you expect visits, the on-site tracking tag (G-XXXX) may not be firing — check it’s set in <Link href="/admin/seo" className="underline">Admin → SEO</Link> and that visitors accept the analytics cookie — or this may be a different property than the one the site reports to.
+            </div>
+          )}
           {/* Overview KPIs */}
           <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <Kpi label="Visitors" value={nf(ga.totals.activeUsers)} sub={`${nf(ga.totals.newUsers)} new`} />
