@@ -7,6 +7,7 @@ import { CartLink } from '@/components/shop/CartLink';
 import { activeProducts, formatPence } from '@/lib/shop';
 import { crmEnabled } from '@/lib/crm';
 import { pageMeta } from '@/lib/seo';
+import { getVatNote } from '@/lib/vat';
 
 export const revalidate = 3600;
 
@@ -18,6 +19,7 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({
 
 export default async function ShopPage() {
   let products: Awaited<ReturnType<typeof activeProducts>> = [];
+  const vatNote = await getVatNote();
   if (crmEnabled) { try { products = await activeProducts(); } catch { /* none */ } }
 
   return (
@@ -51,6 +53,7 @@ export default async function ShopPage() {
             ))}
           </div>
         )}
+        {vatNote && <p className="mt-8 text-center text-sm text-[var(--color-stone)]">{vatNote}</p>}
       </section>
     </>
   );

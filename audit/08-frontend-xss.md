@@ -8,9 +8,22 @@ Repo: `/home/user/K-Clinics` (Next.js 15 App Router, React 19, TypeScript). Sour
 
 The codebase is, on the whole, careful about client-side security. Open redirects are correctly guarded (both login forms validate the `from` param against `//` and require a leading `/`); there are no `postMessage` handlers; `target="_blank"` links almost universally carry `rel="noopener noreferrer"`; `NEXT_PUBLIC_*` usage is limited to genuinely public values (site URL, Stripe publishable key, Turnstile site key) with no secret leakage; `lib/tracking.ts` ships only consent-gated pixel IDs and no PII. JSON-LD output is hardened against `<script>` break-out (`lib/seo.tsx` `JsonLd`).
 
+> **RESOLVED (BLD-593).** A custom isomorphic allow-list sanitizer
+> (`lib/sanitize.ts`) now runs at every raw-HTML render sink: the public
+> journal page via `lib/blog.ts:57` (`html: sanitizeHtml(r.content)`), the CMS
+> `richText` block via `lib/blocks.ts:109` (`case 'html': return
+> sanitizeHtml((b.html || '').trim())`), and the admin block-editor preview via
+> `components/admin/BlockEditor.tsx:216` (`sanitizeHtml(b.html)`). The sanitizer
+> strips `<script>/<style>/<iframe>` and other dangerous elements with their
+> content, drops `on*` handlers / `style` / `srcdoc` / `formaction`, validates
+> URLs (only `http(s)`, `/`, `#`, `mailto:`, `tel:`), and rewrites the remaining
+> tags through an allow-list. The two HIGH findings and the MEDIUM admin-preview
+> finding below are closed at the render layer (the canonical sink). Import-time
+> sanitization remains a defence-in-depth nice-to-have, not a live exposure.
+
 The notable risks are concentrated in **two areas**:
 
-1. **Stored XSS via the Journal raw-HTML block.** The block renderer (`lib/blocks.ts`) escapes every block type *except* the `'html'` block, which is emitted verbatim (`blocksToHtml` line 107) and rendered with `dangerouslySetInnerHTML` on the **public** journal page (`app/(marketing)/journal/[slug]/page.tsx:73`). The same raw passthrough is reached automatically when WordPress posts are imported (`htmlToBlocks` wraps unrecognised markup in a raw `html` block). There is no HTML sanitizer anywhere in the repo. Write access is gated to `settings.manage` (owner/admin/manager), so this is admin/editor-authored stored XSS against site visitors rather than an anonymous vector — but imported third-party HTML is trusted as if it were first-party.
+1. **Stored XSS via the Journal raw-HTML block.** The block renderer (`lib/blocks.ts`) escapes every block type *except* the `'html'` block, which is emitted verbatim (`blocksToHtml` line 107) and rendered with `dangerouslySetInnerHTML` on the **public** journal page (`app/(marketing)/journal/[slug]/page.tsx:73`). The same raw passthrough is reached automatically when WordPress posts are imported (`htmlToBlocks` wraps unrecognised markup in a raw `html` block). There is no HTML sanitizer anywhere in the repo. Write access is gated to `settings.manage` (owner/admin/manager), so this is admin/editor-authored stored XSS against site visitors rather than an anonymous vector — but imported third-party HTML is trusted as if it were first-party. *(Resolved — see note above.)*
 
 2. **Session-replay coverage of the shop checkout.** `BehaviorRecorder` (mounted site-wide on the marketing layout) excludes `/admin`, `/account`, `/book`, `/booking`, but **not** `/shop`. The shop checkout (`/shop/checkout`, `/shop/cart`) collects name, email, phone, full address and DOB as plain inputs. Card data is safe (Stripe `PaymentElement` is a cross-origin iframe rrweb cannot read), and `maskAllInputs: true` masks input *values* — but rrweb does not mask PII rendered as visible **text** (order summaries, confirmations) unless tagged with the `kc-mask` class, which the checkout does not use.
 
@@ -23,14 +36,14 @@ The notable risks are concentrated in **two areas**:
 | Severity | Count |
 |----------|-------|
 | Critical | 0 |
-| High     | 2 |
-| Medium   | 2 |
+| High     | 0 (2 resolved — BLD-593) |
+| Medium   | 1 (1 resolved — BLD-593) |
 | Low      | 3 |
 | Info     | 3 |
 
 ## Findings
 
-### [HIGH] Raw-HTML Journal block renders unsanitized on the public site (stored XSS)
+### [HIGH — RESOLVED] Raw-HTML Journal block renders unsanitized on the public site (stored XSS)
 
 **Location:** `lib/blocks.ts:107` (`case 'html': return (b.html || '').trim();`); rendered at `app/(marketing)/journal/[slug]/page.tsx:73` (`<article ... dangerouslySetInnerHTML={{ __html: a.html }} />`) and `components/cms/SectionRenderer.tsx:117` (CMS `richText`). HTML originates from `Post.content` via `lib/blog.ts:56` (`html: r.content`).
 
@@ -45,7 +58,7 @@ The notable risks are concentrated in **two areas**:
 case 'html': return (b.html || '').trim();   // ⚠ no sanitization — verbatim into the public page
 ```
 
-### [HIGH] Imported WordPress HTML stored as a raw block and rendered unsanitized
+### [HIGH — RESOLVED at render] Imported WordPress HTML stored as a raw block and rendered unsanitized
 
 **Location:** `lib/blocks.ts:171` (`if (!matched) return [{ id: uid(), type: 'html', html: src }];`), reached from the importer and from `getPostForEdit` (`lib/blog.ts:99` `htmlToBlocks(p.content)`). Also `lib/blog.ts:50-57` returns `Post.content` directly as `html` for the public page.
 
@@ -65,7 +78,7 @@ case 'html': return (b.html || '').trim();   // ⚠ no sanitization — verbatim
 
 **Recommendation:** Add `/shop` (at least `/shop/(cart|checkout)`) to the exclusion regex, or switch those routes to `maskAllText: true`, or tag PII-bearing text nodes with `class="kc-mask"`. Document in the privacy notice that replays exclude checkout. Confirm no order-summary component prints raw PII on a recorded route.
 
-### [MEDIUM] Admin block-editor preview renders raw `html` block in-DOM
+### [MEDIUM — RESOLVED] Admin block-editor preview renders raw `html` block in-DOM
 
 **Location:** `components/admin/BlockEditor.tsx:215` (`<div className="be-p" dangerouslySetInnerHTML={{ __html: b.html }} />`).
 
@@ -139,10 +152,10 @@ case 'html': return (b.html || '').trim();   // ⚠ no sanitization — verbatim
 
 | # | File:line | Source of HTML | Sanitized? | Verdict |
 |---|-----------|----------------|------------|---------|
-| 1 | `app/(marketing)/journal/[slug]/page.tsx:73` | `Post.content` (admin/imported HTML, via `blog.ts`) → public page | No (raw `html` block passes through) | **HIGH — stored XSS sink** |
-| 2 | `components/cms/SectionRenderer.tsx:117` | `blocksToHtml(richText blocks)` (CMS) | Structured blocks escaped; `html` block raw | **HIGH — same sink as #1** |
+| 1 | `app/(marketing)/journal/[slug]/page.tsx:73` | `Post.content` (admin/imported HTML, via `blog.ts`) → public page | **Yes** — `sanitizeHtml(r.content)` (`blog.ts:57`) | **RESOLVED** (was HIGH) |
+| 2 | `components/cms/SectionRenderer.tsx:117` | `blocksToHtml(richText blocks)` (CMS) | **Yes** — `html` block sanitized (`blocks.ts:109`) | **RESOLVED** (was HIGH) |
 | 3 | `app/(marketing)/journal/[slug]/page.tsx:72` & `components/cms/SectionRenderer.tsx:116` | constant `JOURNAL_PROSE_CSS` / `PROSE_CSS` (`<style>`) | N/A — static literal | Safe |
-| 4 | `components/admin/BlockEditor.tsx:215` | raw `html` block, admin preview | No | **MEDIUM — admin-context XSS on import/paste** |
+| 4 | `components/admin/BlockEditor.tsx:216` | raw `html` block, admin preview | **Yes** — `sanitizeHtml(b.html)` | **RESOLVED** (was MEDIUM) |
 | 5 | `components/admin/BlockEditor.tsx:171-172` | `inlineToHtml(list item)` | Yes (`escHtml` + safe-URL markdown) | Safe |
 | 6 | `components/admin/BlockEditor.tsx:56` | constant `EDITOR_CSS` (`<style>`) | N/A — static literal | Safe |
 | 7 | `components/portal/SignupWizard.tsx:81` | i18n string + server-generated discount `code` (`[A-Z0-9-]`) | No (unescaped `pt()`), but value safe | **LOW — fragile, not exploitable today** |
