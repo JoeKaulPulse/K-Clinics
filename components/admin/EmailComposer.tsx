@@ -213,7 +213,7 @@ export function EmailComposer({ segments, tags, initial, templates = [] }: { seg
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <label className="text-xs text-[var(--color-stone)]">Preview text <span className="text-[var(--color-stone)]">(inbox snippet)</span><input value={preheader} onChange={(e) => setPreheader(e.target.value)} placeholder="Shown after the subject in most inboxes" className={`${field} mt-1 w-full`} /></label>
-            <label className="text-xs text-[var(--color-stone)]">Reply-to <span className="text-[var(--color-stone)]">(optional)</span><input value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder="hello@kclinics.co.uk" className={`${field} mt-1 w-full`} /></label>
+            <label className="text-xs text-[var(--color-stone)]">Reply-to <span className="text-[var(--color-stone)]">(optional)</span><input value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder="support@kclinics.co.uk" className={`${field} mt-1 w-full`} /></label>
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <label className="text-xs text-[var(--color-stone)]">Audience

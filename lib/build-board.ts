@@ -383,6 +383,41 @@ export async function removeDependency(itemId: string, dependsOnId: string, acto
   return db.buildItem.findUnique({ where: { id: itemId }, include: ITEM_INCLUDE });
 }
 
+/** Promote an item into a Project — either an existing project (by id) or a
+ *  brand-new one created from `name`. This is the board's "Promote to project"
+ *  action (the declarative PROJECTS list is code-only; this is the UI path).
+ *  Projects created here live only in the DB, which is safe: syncProjects only
+ *  ever upserts/links, never deletes, so a code rebuild won't remove them.
+ *  Passing projectId: '' detaches the item from its project. */
+export async function promoteToProject(itemId: string, opts: { projectId?: string; name?: string; summary?: string }, actor: string) {
+  const item = await db.buildItem.findUnique({ where: { id: itemId }, select: { id: true, title: true } });
+  if (!item) return null;
+
+  // Detach when an empty projectId is explicitly sent.
+  if (opts.projectId === '') {
+    await db.buildItem.update({ where: { id: itemId }, data: { projectId: null } });
+    await db.buildEvent.create({ data: { itemId, kind: 'status', actor, body: 'Removed from its project' } }).catch(() => {});
+    return db.buildItem.findUnique({ where: { id: itemId }, include: ITEM_INCLUDE });
+  }
+
+  let project = opts.projectId ? await db.buildProject.findUnique({ where: { id: opts.projectId } }) : null;
+  if (!project) {
+    const name = (opts.name || '').trim() || item.title;
+    const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'project';
+    // Ensure a unique slug (slug is @unique) by derivation — no new constraints.
+    let slug = base;
+    for (let i = 2; await db.buildProject.findUnique({ where: { slug } }); i++) slug = `${base}-${i}`;
+    project = await db.buildProject.create({ data: { slug, name, summary: (opts.summary || '').trim() || null } });
+    const { assignProjectRef } = await import('@/lib/task-refs');
+    await assignProjectRef(project.id).catch(() => {});
+    project = (await db.buildProject.findUnique({ where: { id: project.id } })) ?? project;
+  }
+
+  await db.buildItem.update({ where: { id: itemId }, data: { projectId: project.id } });
+  await db.buildEvent.create({ data: { itemId, kind: 'status', actor, body: `Promoted into project “${project.name}”${project.ref ? ` (${project.ref})` : ''}` } }).catch(() => {});
+  return db.buildItem.findUnique({ where: { id: itemId }, include: ITEM_INCLUDE });
+}
+
 /** True when every dependency of `itemId` has shipped/closed. */
 async function depsMet(itemId: string): Promise<boolean> {
   const deps = await db.buildDependency.findMany({ where: { itemId }, include: { dependsOn: { select: { status: true } } } });

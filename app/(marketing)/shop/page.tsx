@@ -7,6 +7,7 @@ import { CartLink } from '@/components/shop/CartLink';
 import { activeProducts, formatPence } from '@/lib/shop';
 import { crmEnabled } from '@/lib/crm';
 import { pageMeta } from '@/lib/seo';
+import { getVatNote } from '@/lib/vat';
 
 export const revalidate = 3600;
 
@@ -18,12 +19,15 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({
 
 export default async function ShopPage() {
   let products: Awaited<ReturnType<typeof activeProducts>> = [];
+  const vatNote = await getVatNote();
   if (crmEnabled) { try { products = await activeProducts(); } catch { /* none */ } }
 
   return (
     <>
       <PageHero eyebrow="Shop" title="Clinic-grade products" lede="Curated skincare and essentials — delivered to your door or collect in clinic.">
-        <div className="mt-5 flex justify-center"><CartLink /></div>
+        {/* Only show the cart pill when the shop is actually live — otherwise it's
+            an empty placeholder over the "coming soon" state (BLD-557). */}
+        {products.length > 0 && <div className="mt-5 flex justify-center"><CartLink /></div>}
       </PageHero>
       <section className="container-lux section">
         {products.length === 0 ? (
@@ -35,7 +39,7 @@ export default async function ShopPage() {
                 <Link href={`/shop/${p.slug}`} className="group block overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] transition-colors hover:border-[var(--color-gold)]">
                   <div className="aspect-square overflow-hidden bg-[var(--color-bone)]">
                     {p.images[0]
-                      ? <Image src={p.images[0]} alt={p.name} width={400} height={400} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                      ? <Image src={p.images[0]} alt={p.name} width={400} height={400} sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 400px" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
                       : <span className="grid h-full place-items-center text-4xl text-[var(--color-stone)]">▦</span>}
                   </div>
                   <div className="p-5">
@@ -51,6 +55,7 @@ export default async function ShopPage() {
             ))}
           </div>
         )}
+        {vatNote && <p className="mt-8 text-center text-sm text-[var(--color-stone)]">{vatNote}</p>}
       </section>
     </>
   );

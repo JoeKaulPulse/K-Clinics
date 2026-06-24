@@ -30,7 +30,7 @@ export async function POST(req: Request) {
       if (!stripeEnabled) return NextResponse.json({ ok: false, error: 'Stripe not configured.' }, { status: 503 });
       try {
         await stripe().refunds.create(
-          { payment_intent: order.stripePaymentIntentId, amount: order.totalPence },
+          { payment_intent: order.stripePaymentIntentId, amount: order.totalPence, metadata: { orderId: body.id } },
           { idempotencyKey: `order-refund-${body.id}-${order.totalPence}` },
         );
       } catch (e) {

@@ -2,6 +2,22 @@ import 'server-only';
 import { db } from '@/lib/db';
 import { encryptJson, decryptJson, integrityHash, verifyIntegrity } from '@/lib/crypto';
 import { getEffectiveQuestionnaire, getQuestionnaireAtVersion } from '@/lib/questionnaire-versions';
+import { logAudit } from '@/lib/audit';
+
+// BLD-595: one ASSESSMENT_VIEWED entry per (clientId, actor) per 30 min so the
+// audit trail is complete without flooding the log when staff navigate multiple
+// assessments in one session.
+const AUDIT_THROTTLE_MS = 30 * 60 * 1000;
+async function emitAssessmentView(clientId: string, actor: string, actorRole?: string) {
+  try {
+    const cutoff = new Date(Date.now() - AUDIT_THROTTLE_MS);
+    const recent = await db.auditEvent.findFirst({
+      where: { action: 'ASSESSMENT_VIEWED', clientId, actor, createdAt: { gte: cutoff } },
+      select: { id: true },
+    });
+    if (!recent) await logAudit({ action: 'ASSESSMENT_VIEWED', actor, actorRole, clientId, summary: 'Health assessment decrypted for clinical viewing' });
+  } catch { /* non-fatal */ }
+}
 
 /**
  * Append-only clinical store. A submission is encrypted, integrity-stamped and
@@ -73,9 +89,10 @@ export async function assessmentStatus(clientId: string) {
   return latestByType;
 }
 
-/** Decrypt + format an assessment for clinical display (caller MUST authorise). */
-export async function formatAssessment(id: string) {
-  const a = await readAssessment(id);
+/** Decrypt + format an assessment for clinical display (caller MUST authorise).
+ *  Pass `audit` to emit a throttled ASSESSMENT_VIEWED event for the actor. */
+export async function formatAssessment(id: string, audit?: { actor: string; actorRole?: string }) {
+  const a = await readAssessment(id, audit);
   if (!a) return null;
   const key = (a.questionnaire?.key as string) || a.questionnaireKey.split('@')[0];
   // Resolve the questionnaire AS OF the version this answer was captured under, so
@@ -129,8 +146,9 @@ export async function formatAssessment(id: string) {
   return { title: def?.title ?? key, version: a.version, submittedAt: a.submittedAt, tampered: a.tampered, sourceLocale, translatedNote, items };
 }
 
-/** Decrypt a single assessment — clinical access only (caller must authorise). */
-export async function readAssessment(id: string) {
+/** Decrypt a single assessment — clinical access only (caller must authorise).
+ *  Pass `audit` to emit a throttled ASSESSMENT_VIEWED event for the actor. */
+export async function readAssessment(id: string, audit?: { actor: string; actorRole?: string }) {
   const row = await db.healthAssessment.findUnique({ where: { id } });
   if (!row) return null;
   const ok = verifyIntegrity(row.cipher, {
@@ -147,5 +165,9 @@ export async function readAssessment(id: string) {
   } catch {
     return null;
   }
+  // BLD-595: emit ASSESSMENT_VIEWED on every successful decrypt so all callers
+  // (admin page, SAR export, future API routes) are covered. Throttled to prevent
+  // audit flood when multiple assessments are read in one session.
+  if (audit?.actor) await emitAssessmentView(row.clientId, audit.actor, audit.actorRole);
   return { ...row, tampered: !ok, ...data };
 }

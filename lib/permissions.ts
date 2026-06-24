@@ -122,6 +122,10 @@ export const PERMISSIONS: Permission[] = [
   // Time tracking (BLD-285 / PRJ-63.6)
   { key: 'timetracking.use', group: 'Facility', label: 'Clock in / out', description: 'Clock in and out of shifts and log breaks.' },
   { key: 'timetracking.manage', group: 'Facility', label: 'Manage timesheets', description: 'View and edit all staff shift records and timesheets.' },
+
+  // Compliance & renewals (BLD-587)
+  { key: 'compliance.view', group: 'Facility', label: 'View compliance & renewals', description: 'See business renewal dates (insurance, licences, PAT/EICR, servicing) and what is due.' },
+  { key: 'compliance.manage', group: 'Facility', label: 'Manage compliance & renewals', description: 'Add, edit and renew compliance items and their reminder dates.', sensitive: true },
 ];
 
 export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);

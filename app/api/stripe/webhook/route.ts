@@ -190,17 +190,35 @@ export async function POST(req: Request) {
         const charge = event.data.object;
         const piId = typeof charge.payment_intent === 'string' ? charge.payment_intent : null;
         if (!piId) break;
-        // Refunds raised in-app via refundBooking() carry metadata.bookingId and
-        // already run every side-effect themselves. Their webhook echo can race
-        // ahead of refundBooking's own DB write — without this skip we'd raise a
-        // SECOND Xero credit note and double-log the refund.
-        const originatedInApp = (charge.refunds?.data ?? []).some((r) => Boolean(r.metadata?.bookingId));
+        // Refunds raised in-app carry metadata.bookingId (booking refunds) or
+        // metadata.orderId (shop order refunds) and already run every side-effect
+        // themselves. Their webhook echo can race ahead of the in-app DB write —
+        // without this skip we'd double-log or double-credit gift cards.
+        const originatedInApp = (charge.refunds?.data ?? []).some((r) => Boolean(r.metadata?.bookingId) || Boolean(r.metadata?.orderId));
         if (originatedInApp) break;
         const booking = await db.booking.findFirst({
           where: { chargePaymentIntentId: piId },
           include: { client: true },
         });
-        if (!booking) break;
+        if (!booking) {
+          // Dashboard refund on a shop order — restore gift-card balance if applicable.
+          const order = await db.order.findFirst({
+            where: { stripePaymentIntentId: piId },
+            select: { id: true, giftCardCode: true, giftCardPence: true },
+          });
+          if (order?.giftCardCode && order.giftCardPence && order.giftCardPence > 0) {
+            // creditVoucher is NOT idempotent (it unconditionally increments the
+            // balance). charge.refunded redelivers and fires per partial refund,
+            // so claim the order's status → REFUNDED atomically and only credit
+            // when *this* call wins the transition. Mirrors the in-app refund
+            // route and the payment_failed order block.
+            const claimed = await db.order.updateMany({ where: { id: order.id, status: { not: 'REFUNDED' } }, data: { status: 'REFUNDED' } });
+            if (claimed.count > 0) {
+              try { const { creditVoucher } = await import('@/lib/gift-vouchers'); await creditVoucher(order.giftCardCode, order.giftCardPence); } catch { /* non-fatal */ }
+            }
+          }
+          break;
+        }
         const totalRefundedByStripe = charge.amount_refunded ?? 0;
         const alreadyRecorded = booking.refundedPence ?? 0;
         const delta = totalRefundedByStripe - alreadyRecorded;
@@ -242,8 +260,11 @@ export async function POST(req: Request) {
     // (payment_intent.succeeded already covers it; the explicit kind check keeps
     // the intent clear and survives any future narrowing of the type test.)
     const pmtKind = event.type.startsWith('payment_intent.') ? (event.data.object as { metadata?: { kind?: string } }).metadata?.kind : undefined;
+    // BLD-603: payment_intent.payment_failed must also retry — a 200 on DB failure
+    // loses the recordChargeFailure write, leaving staff blind to the failed charge.
     const critical =
       event.type === 'payment_intent.succeeded' ||
+      event.type === 'payment_intent.payment_failed' ||
       event.type === 'charge.refunded' ||
       event.type === 'setup_intent.succeeded' ||
       pmtKind === 'course_prepaid';

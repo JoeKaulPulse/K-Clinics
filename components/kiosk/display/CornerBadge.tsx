@@ -2,13 +2,18 @@
 // single-use, so during a live session we don't re-show the (already claimed)
 // QR — instead an elegant "one at a time" promise for queued passers-by.
 
+import { KMark, ClinicsWordmark } from '@/components/brand/marks';
+
 export function BrandCorner() {
   return (
     <div className="kd-brand-corner">
-      <p className="font-[family-name:var(--font-display)] text-[clamp(0.9rem,1.6vmin,1.3rem)] uppercase tracking-[0.34em] text-[var(--color-gold-soft)]">
-        K Clinics
-      </p>
-      <p className="mt-1 text-[clamp(0.55rem,1vmin,0.8rem)] uppercase tracking-[0.24em] text-[rgba(246,236,227,0.45)]">
+      {/* Brand rule: render the supplied logo mark — never typeset the brand
+          name as plain text in the logo's place. */}
+      <span className="inline-flex items-center gap-[1.2vmin] text-[var(--color-gold-soft)]" aria-label="KClinics">
+        <span className="block h-[3.6vmin] w-[2vmin]"><KMark /></span>
+        <span className="block h-[1.5vmin] w-[15vmin]"><ClinicsWordmark /></span>
+      </span>
+      <p className="mt-[1vmin] text-[clamp(0.55rem,1vmin,0.8rem)] uppercase tracking-[0.24em] text-[rgba(246,236,227,0.45)]">
         Islington · London
       </p>
     </div>

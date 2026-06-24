@@ -64,7 +64,7 @@ export async function POST(req: Request) {
   // Notify the academy + acknowledge the applicant (best-effort).
   try {
     const { sendEmail, emailShell } = await import('@/lib/email');
-    const notifyTo = process.env.ACADEMY_NOTIFY_EMAIL || process.env.CLINIC_NOTIFY_EMAIL || 'info@kclinics.co.uk';
+    const notifyTo = process.env.ACADEMY_NOTIFY_EMAIL || process.env.CLINIC_NOTIFY_EMAIL || 'support@kclinics.co.uk';
     const routeName = ROUTE_BY_KEY[d.route]?.name ?? d.route;
     const eligible = d.eligibleRoutes.map((k) => ROUTE_BY_KEY[k]?.name ?? k).join(', ') || '—';
     await Promise.allSettled([

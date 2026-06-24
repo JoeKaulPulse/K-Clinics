@@ -656,3 +656,46 @@ export async function getStudentCalendar(studentId: string): Promise<CalendarEve
   ];
   return events.sort((a, b) => +a.startAt - +b.startAt);
 }
+
+// ── Content release schedule (Tetiana — "what's coming next, and when") ───────
+
+export type ScheduleModule = { id: string; title: string; order: number; releaseAt: string | null };
+export type CourseSchedule = { courseId: string; courseTitle: string; slug: string; modules: ScheduleModule[]; hasUpcoming: boolean };
+
+/** Per-course module release timeline for a student's active enrolments. A module
+ *  is "available now" (releaseAt null) unless its cohort has a future drip date for
+ *  it, or the cohort's course-access window hasn't opened yet — in which case it
+ *  carries the date it unlocks. `hasUpcoming` flags courses with anything pending,
+ *  so the dashboard can show only schedules that actually tell the student something. */
+export async function getStudentSchedule(studentId: string): Promise<CourseSchedule[]> {
+  const enrols = await db.enrolment.findMany({
+    where: { studentId, status: { in: ['PAID', 'ENROLLED', 'COMPLETED'] } },
+    orderBy: { createdAt: 'desc' },
+    select: { courseId: true, cohortId: true, course: { select: { title: true, slug: true } }, cohort: { select: { accessStartAt: true } } },
+  });
+  if (enrols.length === 0) return [];
+  const now = Date.now();
+  const seen = new Set<string>();
+  const out: CourseSchedule[] = [];
+  for (const e of enrols) {
+    if (seen.has(e.courseId)) continue; // one schedule per course (most recent enrolment wins)
+    seen.add(e.courseId);
+    const modules = await db.courseModule.findMany({ where: { courseId: e.courseId }, orderBy: { order: 'asc' }, select: { id: true, title: true, order: true } });
+    if (modules.length === 0) continue;
+    const relMap = new Map<string, Date>();
+    if (e.cohortId) {
+      const rels = await db.cohortModuleRelease.findMany({ where: { cohortId: e.cohortId, module: { courseId: e.courseId } }, select: { moduleId: true, releaseAt: true } });
+      for (const r of rels) relMap.set(r.moduleId, r.releaseAt);
+    }
+    const accessStart = e.cohort?.accessStartAt && e.cohort.accessStartAt.getTime() > now ? e.cohort.accessStartAt : null;
+    let hasUpcoming = false;
+    const mods: ScheduleModule[] = modules.map((m) => {
+      const drip = relMap.get(m.id);
+      const release = drip && drip.getTime() > now ? drip : accessStart;
+      if (release) hasUpcoming = true;
+      return { id: m.id, title: m.title, order: m.order, releaseAt: release ? release.toISOString() : null };
+    });
+    out.push({ courseId: e.courseId, courseTitle: e.course.title, slug: e.course.slug, modules: mods, hasUpcoming });
+  }
+  return out;
+}

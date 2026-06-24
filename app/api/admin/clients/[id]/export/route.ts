@@ -41,6 +41,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   for (const con of c.consultations) { con.concerns = decClinical(con.concerns); con.message = decClinical(con.message); con.medicalNotes = decClinical(con.medicalNotes); }
   for (const bk of c.bookings) { bk.allergyNote = decClinical(bk.allergyNote); }
   for (const it of c.interactions) { it.detail = decClinical(it.detail); }
+  for (const cr of c.callRecords) { cr.transcript = decClinical(cr.transcript); } // BLD-602: call transcripts are encrypted at rest
 
   // Strip secrets from the dump.
   const { passwordHash, resetTokenHash, resetTokenExp, ...client } = c as Record<string, unknown> & { passwordHash?: unknown; resetTokenHash?: unknown; resetTokenExp?: unknown };
@@ -73,7 +74,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (sessionCan(session, 'clients.clinical.view')) {
     const assessments = await db.healthAssessment.findMany({ where: { clientId: id }, orderBy: { submittedAt: 'desc' } });
     const { formatAssessment } = await import('@/lib/health-assessments');
-    out.healthAssessments = await Promise.all(assessments.map((a) => formatAssessment(a.id)));
+    const exportAudit = { actor: session?.email || 'unknown', actorRole: session?.role ?? undefined };
+    out.healthAssessments = await Promise.all(assessments.map((a) => formatAssessment(a.id, exportAudit)));
 
     // BLD-367 (Art. 15): attach the decrypted before-photo image to each record,
     // not just its metadata. Same decryption path as the authenticated serve

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import { useHideAtFooter } from '@/components/chat/useHideAtFooter';
 
 type Msg = { id: string; sender: string; body: string; createdAt: string; from?: string; link?: string };
 const TOKEN_KEY = 'kc_chat_token';
@@ -15,6 +16,7 @@ export function LiveChat() {
   const [busy, setBusy] = useState(false);
   const lastAt = useRef<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  const atFooter = useHideAtFooter();
 
   useEffect(() => { setToken(localStorage.getItem(TOKEN_KEY)); }, []);
 
@@ -84,7 +86,7 @@ export function LiveChat() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-40 hidden md:block print:hidden">
+    <div className={`fixed bottom-5 right-5 z-40 hidden md:block print:hidden transition-all duration-300 ${atFooter && !open ? 'pointer-events-none translate-y-3 opacity-0' : 'opacity-100'}`}>
       <AnimatePresence>
         {open && (
           <motion.div

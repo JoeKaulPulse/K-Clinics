@@ -403,6 +403,19 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
             </div>
           )}
 
+          {stage === 'card' && !isDemo && !clientSecret && (
+            <div>
+              <h3 className="font-[family-name:var(--font-display)] text-2xl">Something went wrong</h3>
+              <p className="mt-3 text-sm text-[var(--color-stone)]">We couldn&apos;t load the payment form. Please go back and try again.</p>
+              <button
+                onClick={() => { setStage('upsell'); setError(''); }}
+                className="mt-4 rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]"
+              >
+                Go back
+              </button>
+            </div>
+          )}
+
           {stage === 'card' && (isDemo || clientSecret) && (
             <div>
               <h3 className="font-[family-name:var(--font-display)] text-2xl">Secure your booking</h3>
@@ -475,6 +488,23 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
       window.location.reload(); // re-render server-side with the signed-in client
     } catch { setError('Network error. Please try again.'); setBusy(false); }
   }
+  // Guest booking (BLD-550): same identity + consent, no password. Creates a
+  // passwordless account + session so the rest of the flow works; they get an
+  // email to set a password later.
+  async function guest() {
+    const digits = (f.phone.match(/\d/g) || []).length;
+    if (!f.firstName || !f.lastName.trim() || !/\S+@\S+\.\S+/.test(f.email) || digits < 7 || !f.dob || !f.consent) {
+      setError('Please complete all required fields (surname, a valid mobile, date of birth) and accept the terms.'); return;
+    }
+    setBusy(true); setError('');
+    try {
+      const res = await fetch('/api/booking/guest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firstName: f.firstName, lastName: f.lastName, email: f.email, phone: f.phone, dob: f.dob, gender: f.gender || undefined, marketingOptIn: f.marketingOptIn, consent: f.consent, locale: 'en', company: f.company }) });
+      const j = await res.json();
+      if (!j.ok) { setError(j.error || 'Could not continue as a guest.'); setBusy(false); return; }
+      if (f.sms && f.phone) { fetch('/api/account/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ smsReminders: true }) }).catch(() => {}); }
+      onAuthed({ firstName: f.firstName, gender: f.gender || null, welcome: !!j.discount?.granted, sms: f.sms && !!f.phone });
+    } catch { setError('Network error. Please try again.'); setBusy(false); }
+  }
 
   return (
     <div>
@@ -492,7 +522,7 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
           <div className="sm:col-span-2"><label htmlFor="bf-email" className={label}>Email *</label><input id="bf-email" type="email" autoComplete="email" className={field} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
           <div><label htmlFor="bf-phone" className={label}>Mobile *</label><input id="bf-phone" type="tel" autoComplete="tel" className={field} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
           <div><label htmlFor="bf-dob" className={label}>Date of birth *</label><input id="bf-dob" type="date" autoComplete="bday" className={field} value={f.dob} onChange={(e) => setF({ ...f, dob: e.target.value })} /></div>
-          <div className="sm:col-span-2"><label htmlFor="bf-password" className={label}>Password * (8+)</label><input id="bf-password" type="password" autoComplete="new-password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
+          <div className="sm:col-span-2"><label htmlFor="bf-password" className={label}>Password (8+) <span className="font-normal text-[var(--color-stone)]">— optional; or continue as a guest below</span></label><input id="bf-password" type="password" autoComplete="new-password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
           <div className="sm:col-span-2"><label htmlFor="bf-gender" className={label}>Gender (optional — tailors recommendations)</label>
             <select id="bf-gender" className={field} value={f.gender} onChange={(e) => setF({ ...f, gender: e.target.value })}>
               <option value="">Prefer not to say</option>
@@ -512,11 +542,18 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
         </div>
       )}
 
-      <div className="mt-8 flex items-center justify-between gap-4">
+      <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
         <button type="button" onClick={() => setMode(mode === 'signup' ? 'login' : 'signup')} className="text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">
           {mode === 'signup' ? 'Already have an account? Sign in' : 'New here? Create an account'}
         </button>
-        <Button onClick={() => !busy && (mode === 'signup' ? signup() : login())} variant="gold">{busy ? 'Please wait…' : mode === 'signup' ? 'Create account & continue' : 'Sign in'} <ArrowIcon /></Button>
+        <div className="flex flex-wrap items-center gap-3">
+          {mode === 'signup' && (
+            <button type="button" onClick={() => !busy && guest()} disabled={busy} className="text-sm font-medium text-[var(--color-stone)] underline-offset-4 hover:text-[var(--color-ink)] hover:underline disabled:opacity-50">
+              Continue as a guest
+            </button>
+          )}
+          <Button onClick={() => !busy && (mode === 'signup' ? signup() : login())} variant="gold">{busy ? 'Please wait…' : mode === 'signup' ? 'Create account & continue' : 'Sign in'} <ArrowIcon /></Button>
+        </div>
       </div>
     </div>
   );

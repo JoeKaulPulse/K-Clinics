@@ -4,7 +4,7 @@ import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
-import { AddNote, PinToggle, SendEmail, StatusSelect } from '@/components/admin/ClientActions';
+import { AddNote, PinToggle, SendEmail, SendPortalInvite, StatusSelect } from '@/components/admin/ClientActions';
 import { EditClientDetails } from '@/components/admin/EditClientDetails';
 import { LeaderboardCard } from '@/components/admin/LeaderboardCard';
 import { DiscountAction } from '@/components/admin/DiscountActions';
@@ -84,7 +84,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
       // BLD-423: wrap each assessment in its own try/catch so one corrupt cipher
       // doesn't crash the whole client page (readAssessment returns null on error).
       let f: Awaited<ReturnType<typeof formatAssessment>> | null = null;
-      try { f = await formatAssessment(a.id); } catch { /* skip corrupt record */ }
+      try { f = await formatAssessment(a.id, { actor: session?.email || 'unknown', actorRole: session?.role ?? undefined }); } catch { /* skip corrupt record */ }
       if (!f) continue;
       const current = !seenType.has(a.type);
       seenType.add(a.type);
@@ -140,13 +140,13 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
     } catch { /* AI section is best-effort */ }
   }
 
-  // Accountability (UK GDPR Art. 5(2) / Art. 32): record WHO viewed WHOSE clinical
-  // data whenever health/AI content was actually decrypted for display — not just
-  // on SAR export. No clinical content is placed in the summary.
-  if (clinical && (clinicalAssessments.length > 0 || aiAnalyses.length > 0)) {
+  // Accountability (UK GDPR Art. 5(2) / Art. 32): health assessment events are
+  // emitted inside readAssessment (throttled). Log AI analysis access separately
+  // since AI decryption doesn't go through readAssessment.
+  if (clinical && aiAnalyses.length > 0) {
     try {
       const { logAudit } = await import('@/lib/audit');
-      await logAudit({ action: 'ASSESSMENT_VIEWED', actor: session?.email || 'unknown', actorRole: session?.role, clientId: id, summary: 'Clinical record viewed (health/AI data decrypted for display)' });
+      await logAudit({ action: 'ASSESSMENT_VIEWED', actor: session?.email || 'unknown', actorRole: session?.role, clientId: id, summary: 'Clinical AI analysis decrypted for display' });
     } catch { /* audit is best-effort — never block the page */ }
   }
 
@@ -183,6 +183,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
           <div className="flex items-center gap-2">
             <EditClientDetails client={{ id: c.id, firstName: c.firstName, lastName: c.lastName, email: c.email, phone: c.phone, dob: c.dob ? new Date(c.dob).toISOString() : null, gender: c.gender, genderSelfDescribe: c.genderSelfDescribe, allergies: c.allergies, notes: c.notes, marketingOptIn: c.marketingOptIn }} />
             <SendEmail clientId={c.id} email={c.email} />
+            <SendPortalInvite clientId={c.id} hasPassword={!!c.passwordHash} />
           </div>
         )}
       </div>

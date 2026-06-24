@@ -7,6 +7,7 @@ import { Button, ArrowIcon } from '@/components/ui/Button';
 import { listServices, liveOffers, bestOffer, effectiveStatus, statusLabel, formatPence, type ServiceStatus } from '@/lib/services';
 import { getTreatment } from '@/lib/treatments';
 import { crmEnabled } from '@/lib/crm';
+import { getVatNote } from '@/lib/vat';
 
 type PricedRow = { id: string; name: string; courses: { sessions: number; totalPence: number }[]; status: ServiceStatus; pricePence: number; offerPence: number | null; offerName: string | null };
 type PricedService = { id: string; name: string; treatmentSlug: string; rows: PricedRow[] };
@@ -29,6 +30,7 @@ export default async function PricingPage() {
   // Safe (empty) when the CRM/DB isn't available, e.g. the static demo build.
   const groups = new Map<string, PricedService[]>();
   let offerItems: { name: string; price: number }[] = [];
+  const vatNote = await getVatNote();
   if (crmEnabled) {
     try {
       const [services, offers] = await Promise.all([listServices(false), liveOffers(false)]);
@@ -167,8 +169,8 @@ export default async function PricingPage() {
 
         <Reveal>
           <p className="mt-10 text-center text-sm text-[var(--color-stone)]">
-            All prices in GBP. Course prices show the total for the package. Your full, fixed quote is always agreed before treatment begins.
-          </p>
+            All prices in GBP. Course prices show the total for the package. Your full, fixed quote is always agreed before treatment begins.{vatNote ? ` ${vatNote}` : ''}
+</p>
         </Reveal>
       </section>
     </>

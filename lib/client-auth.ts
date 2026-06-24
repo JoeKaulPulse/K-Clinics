@@ -12,7 +12,8 @@ export type SignupInput = {
   email: string;
   phone?: string;
   dob?: string;
-  password: string;
+  password?: string;   // omitted for a guest (passwordless) booking — see `guest`
+  guest?: boolean;     // true → passwordless account, portal stays inactive until claimed (BLD-550)
   marketingOptIn?: boolean;
   locale?: string;
   gender?: string;
@@ -36,14 +37,19 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
   // Accounts are open to all ages (anyone can shop). The 18+ requirement is
   // enforced at the action — booking a treatment, claiming a gift card, or
   // buying an age-restricted product — not at signup.
+  // A guest books without a password (BLD-550); the account is created
+  // passwordless and claimed later via the activation email.
+  const isGuest = !input.password;
   const existing = await db.client.findUnique({ where: { email }, select: { passwordHash: true, source: true } });
   if (existing?.passwordHash) {
-    return { ok: false, error: 'An account already exists for this email. Try signing in.' };
+    return { ok: false, error: 'An account already exists for this email — please sign in instead.' };
   }
 
-  const { isBreachedPassword } = await import('@/lib/security/breached-password');
-  if (await isBreachedPassword(input.password)) {
-    return { ok: false, error: 'That password has appeared in a known data breach. Please choose a different one.' };
+  if (!isGuest) {
+    const { isBreachedPassword } = await import('@/lib/security/breached-password');
+    if (await isBreachedPassword(input.password!)) {
+      return { ok: false, error: 'That password has appeared in a known data breach. Please choose a different one.' };
+    }
   }
 
   const emailNorm = fingerprint.email(email);
@@ -70,7 +76,7 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
     grant = false; // don't grant if we can't verify; account still proceeds
   }
 
-  const passwordHash = await hashPassword(input.password);
+  const passwordHash = isGuest ? undefined : await hashPassword(input.password!);
 
   // Inclusive gender capture (optional). Self-description only kept for OTHER.
   const GENDERS = ['FEMALE', 'MALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_SAY'];
@@ -88,12 +94,15 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
       gender,
       genderSelfDescribe,
       passwordHash,
+      // Guests are portal-active (they need the session to finish booking and to
+      // see their appointment); "unclaimed" is represented by a null passwordHash.
+      // They set a password later via the activation email. (BLD-550)
       portalActive: true,
       locale: input.locale === 'uk' ? 'uk' : 'en',
       marketingOptIn: input.marketingOptIn || undefined,
       ...(input.marketingOptIn ? marketingConsentFields('registration') : {}),
       signupIp: input.ip || undefined,
-      source: existing?.source ?? 'portal-signup',
+      source: existing?.source ?? (isGuest ? 'guest-booking' : 'portal-signup'),
     },
     create: {
       email,
@@ -104,12 +113,15 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
       gender,
       genderSelfDescribe,
       passwordHash,
+      // Guests are portal-active (they need the session to finish booking and to
+      // see their appointment); "unclaimed" is represented by a null passwordHash.
+      // They set a password later via the activation email. (BLD-550)
       portalActive: true,
       locale: input.locale === 'uk' ? 'uk' : 'en',
       marketingOptIn: input.marketingOptIn ?? false,
       ...(input.marketingOptIn ? marketingConsentFields('registration') : {}),
       signupIp: input.ip || undefined,
-      source: 'portal-signup',
+      source: isGuest ? 'guest-booking' : 'portal-signup',
     },
   });
 
@@ -227,18 +239,31 @@ const hashesEqual = (a: string, b: string) => {
  *  emails a one-hour reset link only if the account exists. */
 export async function requestPasswordReset(email: string): Promise<{ ok: true }> {
   const client = await db.client.findUnique({ where: { email: email.trim().toLowerCase() } });
-  if (client?.passwordHash) {
-    const token = crypto.randomBytes(32).toString('hex');
-    await db.client.update({
-      where: { id: client.id },
-      data: { resetTokenHash: sha256(token), resetTokenExp: new Date(Date.now() + 60 * 60 * 1000) },
-    });
+  if (client) {
     const base = process.env.NEXT_PUBLIC_SITE_URL || '';
-    const url = `${base}/account/reset?token=${token}&id=${client.id}`;
     try {
-      const { sendEmail, tmplPasswordReset } = await import('@/lib/email');
-      const res = await sendEmail({ to: client.email, subject: 'Reset your KClinics password', html: tmplPasswordReset(client.firstName, url) });
-      await db.emailEvent.create({ data: { clientId: client.id, kind: 'PASSWORD_RESET', to: client.email, subject: 'Password reset', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error } });
+      const { sendEmail, tmplPasswordReset, tmplPortalInvite } = await import('@/lib/email');
+      if (client.passwordHash) {
+        const token = crypto.randomBytes(32).toString('hex');
+        await db.client.update({
+          where: { id: client.id },
+          data: { resetTokenHash: sha256(token), resetTokenExp: new Date(Date.now() + 60 * 60 * 1000) },
+        });
+        const url = `${base}/account/reset?token=${token}&id=${client.id}`;
+        const res = await sendEmail({ to: client.email, subject: 'Reset your KClinics password', html: tmplPasswordReset(client.firstName, url) });
+        await db.emailEvent.create({ data: { clientId: client.id, kind: 'PASSWORD_RESET', to: client.email, subject: 'Password reset', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error } });
+      } else {
+        // Passwordless account (manually created / migrated): a reset link is
+        // useless — there's no password to reset, so the old code sent nothing and
+        // staff saw "no email received". Send an activation magic link instead so
+        // they can get in and set a password from their profile. (BLD-527)
+        const token = await createAccountInvite(client.id);
+        if (token) {
+          const url = `${base}/account/activate?token=${token}&id=${client.id}`;
+          const res = await sendEmail({ to: client.email, subject: 'Access your KClinics account', html: tmplPortalInvite(client.firstName, url) });
+          await db.emailEvent.create({ data: { clientId: client.id, kind: 'PASSWORD_RESET', to: client.email, subject: 'Account access link', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error } });
+        }
+      }
     } catch {
       /* swallow — never reveal whether the email exists */
     }
