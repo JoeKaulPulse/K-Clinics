@@ -151,8 +151,10 @@ export function KioskDisplay({ svg, token, secret, theme = 'default' }: { svg: s
         )}
       </div>
 
-      {/* Corner chrome: brand always; "one at a time" badge during live sessions */}
-      <BrandCorner />
+      {/* Corner chrome: the attract scene carries its own logo lockup in the
+          eyebrow, so the corner brand mark only shows on the other scenes (where
+          it's the sole identity), alongside the "one at a time" live badge. */}
+      {scene !== 'attract' && <BrandCorner />}
       {scene !== 'attract' && <CornerBadge />}
     </main>
   );
