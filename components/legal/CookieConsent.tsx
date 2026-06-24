@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
 
@@ -35,11 +35,15 @@ function save(v: ConsentValue) {
   window.dispatchEvent(new CustomEvent('kc-consent', { detail: v }));
 }
 
+const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function CookieConsent() {
   const [show, setShow] = useState(false);
   const [customise, setCustomise] = useState(false);
   const [analytics, setAnalytics] = useState(false);
   const [marketing, setMarketing] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const prevFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!getConsent()) setShow(true);
@@ -48,6 +52,40 @@ export function CookieConsent() {
     window.addEventListener('kc-open-consent', open);
     return () => window.removeEventListener('kc-open-consent', open);
   }, []);
+
+  // Auto-focus first button on open; restore prior focus on close.
+  useEffect(() => {
+    if (show) {
+      prevFocusRef.current = document.activeElement as HTMLElement;
+      requestAnimationFrame(() => {
+        dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+      });
+    } else if (prevFocusRef.current) {
+      prevFocusRef.current.focus();
+      prevFocusRef.current = null;
+    }
+  }, [show]);
+
+  // Tab/Shift+Tab focus trap while the dialog is open.
+  useEffect(() => {
+    if (!show) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Tab') return;
+      const el = dialogRef.current;
+      if (!el) return;
+      const nodes = Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE));
+      if (nodes.length === 0) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [show]);
 
   function decide(a: boolean, m: boolean) {
     save({ necessary: true, analytics: a, marketing: m, ts: Date.now() });
@@ -58,17 +96,19 @@ export function CookieConsent() {
     <AnimatePresence>
       {show && (
         <motion.div
+          ref={dialogRef}
           initial={{ y: 24, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 24, opacity: 0 }}
           transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
           role="dialog"
           aria-label="Cookie consent"
+          aria-modal="true"
           className="fixed inset-x-3 bottom-3 z-[80] mx-auto max-w-2xl rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 shadow-[var(--shadow-lift)] md:inset-x-auto md:left-6 md:bottom-6 md:p-6"
         >
           <p className="font-[family-name:var(--font-display)] text-lg">Your privacy, your choice</p>
           <p className="mt-2 text-sm leading-relaxed text-[var(--color-stone)]">
-            We use essential cookies to make our site work. With your consent, we’d also like to use analytics and
+            We use essential cookies to make our site work. With your consent, we&apos;d also like to use analytics and
             marketing cookies to improve your experience. You can change your mind anytime. See our{' '}
             <Link href="/info/privacy-policy" className="underline">Privacy Policy</Link>.
           </p>
