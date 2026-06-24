@@ -1527,19 +1527,22 @@ model TreatmentSop {
 // ── Immutable audit log — every action across the booking→treatment→payment
 // lifecycle. Append-only: never updated or deleted. ─────────────────────────
 model AuditEvent {
-  id        String      @id @default(cuid())
-  action    AuditAction
-  booking   Booking?    @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-  bookingId String?
-  clientId  String?
-  actor     String // staff email or 'client' / 'system'
-  actorRole String?
-  summary   String
-  meta      Json?
-  createdAt DateTime    @default(now())
+  id          String      @id @default(cuid())
+  action      AuditAction
+  booking     Booking?    @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  bookingId   String?
+  enrolment   Enrolment?  @relation(fields: [enrolmentId], references: [id], onDelete: SetNull)
+  enrolmentId String?
+  clientId    String?
+  actor       String // staff email or 'client' / 'system'
+  actorRole   String?
+  summary     String
+  meta        Json?
+  createdAt   DateTime    @default(now())
 
   @@index([bookingId, createdAt])
   @@index([clientId, createdAt])
+  @@index([enrolmentId, createdAt])
   @@index([createdAt])
 }
 
@@ -2679,6 +2682,7 @@ model Enrolment {
   certificateRef      String?
   certificateIssuedAt DateTime?
   fundingApplications FundingApplication[]
+  auditEvents         AuditEvent[]
 
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
@@ -2687,6 +2691,8 @@ model Enrolment {
   @@index([courseId])
   @@index([applicantEmail])
   @@index([tenantId])
+  @@index([studentId])
+  @@index([studentId, status])
 }
 
 // BLD-528: itemised academy payments. One row per payment OR scheduled instalment.

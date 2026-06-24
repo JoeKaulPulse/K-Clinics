@@ -4,6 +4,7 @@ import { crmEnabled } from '@/lib/crm';
 import { stripeEnabled } from '@/lib/stripe';
 
 export const runtime = 'nodejs';
+export const maxDuration = 30;
 
 const schema = z.object({ bookingId: z.string().min(1) });
 
@@ -17,28 +18,54 @@ export async function POST(req: Request) {
   const { db } = await import('@/lib/db');
   const { stripe } = await import('@/lib/stripe');
 
-  const booking = await db.booking.findUnique({ where: { id: parsed.data.bookingId }, include: { client: true } });
+  let booking;
+  try {
+    booking = await db.booking.findUnique({ where: { id: parsed.data.bookingId }, include: { client: true } });
+  } catch (err) {
+    console.error('[booking/confirm] DB read failed:', (err as Error)?.message);
+    return NextResponse.json({ ok: false, error: 'Database unavailable' }, { status: 503 });
+  }
   if (!booking) return NextResponse.json({ ok: false, error: 'Booking not found' }, { status: 404 });
   if (booking.status === 'CONFIRMED') return NextResponse.json({ ok: true, already: true });
   if (!booking.stripeSetupIntentId) return NextResponse.json({ ok: false, error: 'No setup intent' }, { status: 400 });
 
-  const si = await stripe().setupIntents.retrieve(booking.stripeSetupIntentId);
+  let si;
+  try {
+    si = await stripe().setupIntents.retrieve(booking.stripeSetupIntentId);
+  } catch (err) {
+    console.error('[booking/confirm] Stripe retrieve failed:', (err as Error)?.message);
+    return NextResponse.json({ ok: false, error: 'Payment provider unavailable' }, { status: 502 });
+  }
   if (si.status !== 'succeeded' || !si.payment_method) {
     return NextResponse.json({ ok: false, error: 'Card not confirmed' }, { status: 400 });
   }
   const pmId = typeof si.payment_method === 'string' ? si.payment_method : si.payment_method.id;
 
   // Make this PM the customer default for future off-session charges.
-  await stripe().customers.update(booking.stripeCustomerId!, { invoice_settings: { default_payment_method: pmId } });
+  try {
+    await stripe().customers.update(booking.stripeCustomerId!, { invoice_settings: { default_payment_method: pmId } });
+  } catch (err) {
+    console.error('[booking/confirm] Stripe customer update failed:', (err as Error)?.message);
+    return NextResponse.json({ ok: false, error: 'Payment provider unavailable' }, { status: 502 });
+  }
 
-  await db.booking.update({
-    where: { id: booking.id },
-    data: { status: 'CONFIRMED', stripePaymentMethodId: pmId },
-  });
+  try {
+    await db.booking.update({
+      where: { id: booking.id },
+      data: { status: 'CONFIRMED', stripePaymentMethodId: pmId },
+    });
+  } catch (err) {
+    console.error('[booking/confirm] DB update failed:', (err as Error)?.message);
+    return NextResponse.json({ ok: false, error: 'Database unavailable' }, { status: 503 });
+  }
 
-  // Centralised confirmation comms (client + clinic email, SMS, forms prompt).
+  // Best-effort notifications; capped at 15 s so a provider hang never causes a 504.
+  // The booking is already CONFIRMED — the daily cron covers any deferred sends.
   const { notifyBookingConfirmed } = await import('@/lib/booking-notify');
-  await notifyBookingConfirmed(booking.id);
+  await Promise.race([
+    notifyBookingConfirmed(booking.id),
+    new Promise<void>((_, reject) => setTimeout(() => reject(new Error('notify timeout')), 15_000)),
+  ]).catch((err) => console.warn('[booking/confirm] notification timeout or error:', (err as Error)?.message));
 
   // Push to the shared clinic calendar (Hostinger CalDAV; no-op until configured).
   import('@/lib/hostinger-calendar').then((m) => m.pushBooking(booking.id)).catch(() => {});
