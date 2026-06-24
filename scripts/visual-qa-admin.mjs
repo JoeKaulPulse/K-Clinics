@@ -12,8 +12,11 @@ import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync } from 'fs';
 
 const BASE = process.env.BASE_URL || 'https://kclinics.co.uk';
-const EMAIL = process.env.QA_ADMIN_EMAIL;
-const PASS = process.env.QA_ADMIN_PASSWORD;
+// Trim the credentials: a stray leading/trailing space in the env var (a common
+// copy-paste artifact) is never part of an admin password and otherwise yields a
+// confusing "Invalid email or password" that looks like a wrong/breached password.
+const EMAIL = process.env.QA_ADMIN_EMAIL?.trim();
+const PASS = process.env.QA_ADMIN_PASSWORD?.trim();
 const AGENT_PROXY = process.env.HTTPS_PROXY || process.env.https_proxy || '';
 // On full-network Claude sessions HTTPS_PROXY points at a local agent proxy that
 // closes Chromium's TLS to the live site; route the browser direct in that case.
