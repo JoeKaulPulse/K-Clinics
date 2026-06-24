@@ -43,6 +43,11 @@ export const clientSignupSchema = z.object({
   company: z.string().optional(),
 });
 
+// Guest booking (BLD-550): the same identity + consent fields as signup, minus
+// the password. Creates a passwordless account so a first-time client can book
+// without choosing a password; they claim it later via an activation email.
+export const guestBookingSchema = clientSignupSchema.omit({ password: true });
+
 export const clientLoginSchema = z.object({
   email: z.string().email('Enter a valid email'),
   password: z.string().min(1, 'Enter your password'),
