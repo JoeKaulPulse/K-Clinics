@@ -60,7 +60,10 @@ export function ReportProblem() {
 
   return (
     <>
-      <button onClick={() => setOpen(true)} className="fixed bottom-5 right-5 z-40 rounded-full bg-[var(--color-ink)] px-4 py-2.5 text-sm font-medium text-[var(--color-porcelain)] shadow-[var(--shadow-lift)] hover:bg-[var(--color-gold-deep)]">⚑ Report a problem</button>
+      {/* Sit above the shared GuideHost "?" launcher (also fixed bottom-5 right-5):
+          stacking them vertically stops the round help button from overlapping
+          and clipping this pill's label to "Report a prob…". */}
+      <button onClick={() => setOpen(true)} className="fixed bottom-20 right-5 z-40 rounded-full bg-[var(--color-ink)] px-4 py-2.5 text-sm font-medium text-[var(--color-porcelain)] shadow-[var(--shadow-lift)] hover:bg-[var(--color-gold-deep)]">⚑ Report a problem</button>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[rgba(42,36,32,0.5)] p-4" onClick={() => setOpen(false)}>
