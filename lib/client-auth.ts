@@ -239,18 +239,31 @@ const hashesEqual = (a: string, b: string) => {
  *  emails a one-hour reset link only if the account exists. */
 export async function requestPasswordReset(email: string): Promise<{ ok: true }> {
   const client = await db.client.findUnique({ where: { email: email.trim().toLowerCase() } });
-  if (client?.passwordHash) {
-    const token = crypto.randomBytes(32).toString('hex');
-    await db.client.update({
-      where: { id: client.id },
-      data: { resetTokenHash: sha256(token), resetTokenExp: new Date(Date.now() + 60 * 60 * 1000) },
-    });
+  if (client) {
     const base = process.env.NEXT_PUBLIC_SITE_URL || '';
-    const url = `${base}/account/reset?token=${token}&id=${client.id}`;
     try {
-      const { sendEmail, tmplPasswordReset } = await import('@/lib/email');
-      const res = await sendEmail({ to: client.email, subject: 'Reset your KClinics password', html: tmplPasswordReset(client.firstName, url) });
-      await db.emailEvent.create({ data: { clientId: client.id, kind: 'PASSWORD_RESET', to: client.email, subject: 'Password reset', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error } });
+      const { sendEmail, tmplPasswordReset, tmplPortalInvite } = await import('@/lib/email');
+      if (client.passwordHash) {
+        const token = crypto.randomBytes(32).toString('hex');
+        await db.client.update({
+          where: { id: client.id },
+          data: { resetTokenHash: sha256(token), resetTokenExp: new Date(Date.now() + 60 * 60 * 1000) },
+        });
+        const url = `${base}/account/reset?token=${token}&id=${client.id}`;
+        const res = await sendEmail({ to: client.email, subject: 'Reset your KClinics password', html: tmplPasswordReset(client.firstName, url) });
+        await db.emailEvent.create({ data: { clientId: client.id, kind: 'PASSWORD_RESET', to: client.email, subject: 'Password reset', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error } });
+      } else {
+        // Passwordless account (manually created / migrated): a reset link is
+        // useless — there's no password to reset, so the old code sent nothing and
+        // staff saw "no email received". Send an activation magic link instead so
+        // they can get in and set a password from their profile. (BLD-527)
+        const token = await createAccountInvite(client.id);
+        if (token) {
+          const url = `${base}/account/activate?token=${token}&id=${client.id}`;
+          const res = await sendEmail({ to: client.email, subject: 'Access your KClinics account', html: tmplPortalInvite(client.firstName, url) });
+          await db.emailEvent.create({ data: { clientId: client.id, kind: 'PASSWORD_RESET', to: client.email, subject: 'Account access link', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error } });
+        }
+      }
     } catch {
       /* swallow — never reveal whether the email exists */
     }
