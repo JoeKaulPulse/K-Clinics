@@ -33,7 +33,9 @@ export const revalidate = 3600;
 // (it otherwise inherits only the layout defaults, with no social tags).
 export const generateMetadata = () => pageMeta({
   title: `${site.name} — ${site.tagline} | Islington, London`,
-  description: site.description,
+  // Dedicated ~155-char meta description: site.description is 182 chars and gets
+  // truncated in search results (BLD-559). Keeps the key terms + location.
+  description: 'Advanced laser, skin aesthetics and aesthetic dentistry in Islington, London. Precision treatments from qualified clinicians, in a calm, design-led clinic.',
   path: '/',
 });
 
