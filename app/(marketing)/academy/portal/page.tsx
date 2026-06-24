@@ -268,7 +268,7 @@ export default async function AcademyPortalPage() {
           </div>
         </section>
       )}
-      {acadOnb && <OnboardingHost pending={acadOnb.pending} title={ONBOARDING.academy.title} intro={ONBOARDING.academy.intro} steps={ONBOARDING.academy.steps} initial={acadOnb.initial} endpoint={ONBOARDING.academy.endpoint} />}
+      {acadOnb && <OnboardingHost pending={acadOnb.pending} title={ONBOARDING.academy.title} intro={ONBOARDING.academy.intro} steps={ONBOARDING.academy.steps} initial={acadOnb.initial} endpoint={ONBOARDING.academy.endpoint} waitForConsent />}
     </AcademyPortalShell>
   );
 }

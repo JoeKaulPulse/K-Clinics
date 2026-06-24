@@ -2,11 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { OnboardingModal, type OnbStep } from '@/components/onboarding/OnboardingModal';
+import { getConsent } from '@/components/legal/CookieConsent';
 
 // Auto-opens the onboarding for users who haven't completed it; if they skip,
 // it stays out of the way but shows a gentle "finish setting up" prompt.
-export function OnboardingHost({ pending, title, intro, steps, initial, endpoint }: {
-  pending: boolean; title: string; intro: string; steps: OnbStep[]; initial: Record<string, unknown>; endpoint: string;
+// `waitForConsent`: on surfaces that also show the cookie-consent banner (the
+// academy portal lives under the marketing layout), defer the auto-open until the
+// cookie choice is made so the two overlays don't stack on a first-run visit.
+export function OnboardingHost({ pending, title, intro, steps, initial, endpoint, waitForConsent = false }: {
+  pending: boolean; title: string; intro: string; steps: OnbStep[]; initial: Record<string, unknown>; endpoint: string; waitForConsent?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState(!pending);
@@ -15,8 +19,20 @@ export function OnboardingHost({ pending, title, intro, steps, initial, endpoint
     if (!pending) return;
     let dismissed = false;
     try { dismissed = sessionStorage.getItem('kc_onb_dismissed') === '1'; } catch { /* ignore */ }
-    if (!dismissed) { const t = setTimeout(() => setOpen(true), 700); return () => clearTimeout(t); }
-  }, [pending]);
+    if (dismissed) return;
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const start = () => { timer = setTimeout(() => setOpen(true), 700); };
+
+    // Cookie choice first where a banner shares the screen — otherwise open now.
+    if (waitForConsent && getConsent() === null) {
+      const onConsent = () => { window.removeEventListener('kc-consent', onConsent); start(); };
+      window.addEventListener('kc-consent', onConsent);
+      return () => { window.removeEventListener('kc-consent', onConsent); if (timer) clearTimeout(timer); };
+    }
+    start();
+    return () => { if (timer) clearTimeout(timer); };
+  }, [pending, waitForConsent]);
 
   if (done) return null;
 
