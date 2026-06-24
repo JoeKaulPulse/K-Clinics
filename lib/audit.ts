@@ -13,6 +13,7 @@ export async function logAudit(opts: {
   summary: string;
   bookingId?: string | null;
   clientId?: string | null;
+  enrolmentId?: string | null;
   meta?: Record<string, unknown>;
 }) {
   try {
@@ -24,6 +25,7 @@ export async function logAudit(opts: {
         summary: opts.summary,
         bookingId: opts.bookingId ?? null,
         clientId: opts.clientId ?? null,
+        enrolmentId: opts.enrolmentId ?? null,
         meta: opts.meta ? (opts.meta as object) : undefined,
       },
     });

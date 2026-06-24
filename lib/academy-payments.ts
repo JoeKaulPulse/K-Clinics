@@ -1,5 +1,6 @@
 import 'server-only';
 import { db } from '@/lib/db';
+import { logAudit } from '@/lib/audit';
 import { getActivePromo } from '@/lib/academy-utils';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -255,6 +256,13 @@ export async function finalizeEnrolmentPayment(piId: string, amountReceivedPence
   const updated = await applyPaidPayment(payment.enrolmentId, payment.amountPence);
   await notifyPaymentReceived(payment.enrolmentId, payment.amountPence).catch(() => {});
   await sendPaymentReceipt(payment.enrolmentId, payment.amountPence).catch(() => {});
+  await logAudit({
+    action: 'PAYMENT_CHARGED',
+    actor: 'system',
+    enrolmentId: payment.enrolmentId,
+    summary: `Academy payment £${(payment.amountPence / 100).toFixed(2)} confirmed via Stripe`,
+    meta: { amountPence: payment.amountPence, piId, methodType },
+  }).catch(() => {});
   return { ok: true, enrolmentId: payment.enrolmentId, courseSlug: updated?.courseSlug };
 }
 
