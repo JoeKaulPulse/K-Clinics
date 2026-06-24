@@ -140,12 +140,17 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
     // fallback only for files above the ~4.5 MB serverless cap (large HD videos).
     const { uploadBlob } = await import('@/lib/upload-client');
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 180_000);
+    // Scale the timeout to the file size: a 3-min floor plus ~1 min per 10 MB,
+    // capped at 30 min. The old flat 180s aborted large HD training videos on
+    // ordinary connections mid-upload — staff reported it as "video not uploading"
+    // (BLD-588).
+    const timeoutMs = Math.min(30 * 60_000, Math.max(180_000, Math.ceil(file.size / (10 * 1024 * 1024)) * 60_000));
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       return await uploadBlob(file, { folder, clientUploadUrl: '/api/admin/academy/blob-token', signal: controller.signal });
     } finally { clearTimeout(timer); }
   }
-  const uploadErr = (e: unknown) => ((e as Error)?.name === 'AbortError' ? 'timed out after 3 min — check the connection or file size' : (e as Error)?.message || 'unknown');
+  const uploadErr = (e: unknown) => ((e as Error)?.name === 'AbortError' ? 'timed out — the file may be very large or the connection slow; try compressing it or a smaller file' : (e as Error)?.message || 'unknown');
   // Build the full save payload from a given form state snapshot.
   function lessonSavePayload(s: typeof f) {
     return { op: 'updateLesson', id: l.id, title: s.title, type: s.type, durationMin: s.durationMin, minSeconds: s.minSeconds, videoUrl: s.videoUrl, audioUrl: s.audioUrl, embedUrl: s.embedUrl, attachments: s.attachments, imageUrl: s.imageUrl, body: s.body, keyPoints: textToList(s.keyPoints), objectives: textToList(s.objectives), studyTips: textToList(s.studyTips), homework: s.homework, examRefs: textToList(s.examRefs), citations: textToLinks(s.citations), resources: textToLinks(s.resources), pdfUrls: s.pdfUrls, pdfNoDownload: s.pdfNoDownload, requiresHomework: s.requiresHomework, preview: s.preview };
