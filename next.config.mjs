@@ -16,6 +16,11 @@ const csp = [
   "frame-ancestors 'self'",
   "form-action 'self'",
   "img-src 'self' data: blob: https:",
+  // Native <video>/<audio> playback is governed by media-src, which falls back
+  // to default-src 'self' when absent — that silently blocked every uploaded
+  // lesson video/audio on *.public.blob.vercel-storage.com (they appeared but
+  // wouldn't play). Mirror img-src so blob-hosted and direct https media play.
+  "media-src 'self' data: blob: https:",
   "font-src 'self' https://fonts.gstatic.com data:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "script-src 'self' 'unsafe-inline' https://js.stripe.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://maps.googleapis.com https://maps.gstatic.com https://connect.facebook.net",

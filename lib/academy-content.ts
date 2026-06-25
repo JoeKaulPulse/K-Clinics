@@ -3229,8 +3229,10 @@ export async function enrichCourseContentIfNeeded(): Promise<{ modules: number; 
   let modules = 0, lessons = 0, questions = 0;
 
   for (const cc of NEW_MODULES) {
-    const course = await db.course.findFirst({ where: { slug: cc.courseSlug }, select: { id: true, tenantId: true } }).catch(() => null);
-    if (!course) continue;
+    const course = await db.course.findFirst({ where: { slug: cc.courseSlug }, select: { id: true, tenantId: true, autoEnrich: true } }).catch(() => null);
+    // Skip courses staff have manually curated — re-seeding would resurrect the
+    // modules/lessons they deleted (the "deleted modules keep reappearing" bug).
+    if (!course || course.autoEnrich === false) continue;
     for (const m of cc.modules) {
       let mod = await db.courseModule.findFirst({ where: { courseId: course.id, title: m.title }, select: { id: true } });
       if (!mod) {
@@ -3260,8 +3262,8 @@ export async function enrichCourseContentIfNeeded(): Promise<{ modules: number; 
   }
 
   for (const slug of [...new Set(NEW_EXAM_QUESTIONS.map((q) => q.courseSlug))]) {
-    const course = await db.course.findFirst({ where: { slug }, select: { id: true, accreditations: true, tenantId: true } }).catch(() => null);
-    if (!course) continue;
+    const course = await db.course.findFirst({ where: { slug }, select: { id: true, accreditations: true, tenantId: true, autoEnrich: true } }).catch(() => null);
+    if (!course || course.autoEnrich === false) continue;
     const board = Array.isArray(course.accreditations) && course.accreditations.length ? course.accreditations[0] : null;
     const existing = new Set((await db.examQuestion.findMany({ where: { courseId: course.id }, select: { prompt: true } })).map((q) => q.prompt));
     for (const q of NEW_EXAM_QUESTIONS.filter((x) => x.courseSlug === slug)) {

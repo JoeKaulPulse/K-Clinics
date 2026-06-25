@@ -110,8 +110,9 @@ export async function hasSecret(name: string): Promise<boolean> {
 // Multi-tenant ClinicOS will need the same key (e.g. a JWT signing secret) to
 // hold a DIFFERENT value per tenant. Rather than a destructive composite-PK
 // change, a tenant-scoped value is stored under a namespaced key while global
-// values keep the bare name — so `name @id` still enforces uniqueness. The
-// ManagedSecret.tenantId column mirrors the scope for querying/admin display.
+// values keep the bare name — so `name @id` still enforces uniqueness. (No
+// tenantId column: that would pull ManagedSecret into the tenant-isolation
+// auto-scope and hide the global no-tenant rows — see the schema comment.)
 //
 // NOTE: nothing in the auth-verify hot path uses this yet — token verification
 // still reads process.env in lib/auth-edge.ts (edge runtime can't query the DB).
@@ -137,8 +138,8 @@ export async function setTenantSecret(name: string, value: string, tenantId: str
   const key = scopedName(tenantId, name);
   await db.managedSecret.upsert({
     where: { name: key },
-    update: { valueEnc, updatedBy: actor, tenantId },
-    create: { name: key, tenantId, valueEnc, updatedBy: actor },
+    update: { valueEnc, updatedBy: actor },
+    create: { name: key, valueEnc, updatedBy: actor },
   });
   invalidateSecretCache();
 }
