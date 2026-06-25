@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { AcademyPortalShell } from '@/components/academy/AcademyPortalShell';
 import { PageTitle, Card } from '@/components/academy/ui';
+import { BadgeIcon } from '@/components/academy/BadgeIcon';
 import { pageMeta } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: 'Your progress — K Academy', description: 'Your own XP, level and badges as you work through the academy.', path: '/academy/leaderboard' });
@@ -60,7 +61,7 @@ export default async function ProgressPage() {
             const has = earned.has(b.key);
             return (
               <span key={b.key} title={`${b.name} — ${b.description}`} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${has ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 text-[var(--color-ink)]' : 'border-[var(--color-line)] text-[var(--color-stone)] opacity-60'}`}>
-                <span className={has ? '' : 'grayscale'}>{b.icon}</span> {b.name}
+                <BadgeIcon name={b.icon} className={`h-3.5 w-3.5 ${has ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-stone)]'}`} /> {b.name}
               </span>
             );
           })}
