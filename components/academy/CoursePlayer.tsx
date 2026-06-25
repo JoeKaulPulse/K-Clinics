@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Markdown } from '@/components/academy/Markdown';
 import { Glyph } from '@/components/ui/Glyph';
 import { LessonMedia, Downloads } from '@/components/academy/LessonMedia';
+import { BadgeIcon } from '@/components/academy/BadgeIcon';
 import { LessonEngagement } from '@/components/academy/LessonEngagement';
 import { HomeworkPanel } from '@/components/academy/HomeworkPanel';
 import { SecurePdfViewer } from '@/components/academy/SecurePdfViewer';
@@ -191,7 +192,7 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
       {badgeToast.length > 0 && (
         <div className="fixed inset-x-0 bottom-6 z-[120] flex justify-center px-4" role="status" aria-live="polite">
           <div className="flex items-center gap-3 rounded-full border border-[var(--color-gold)] bg-[var(--color-porcelain)] px-5 py-3 shadow-[var(--shadow-soft)]">
-            <span className="text-xl">{badgeToast[0].icon}</span>
+            <BadgeIcon name={badgeToast[0].icon} className="h-5 w-5 text-[var(--color-gold-deep)]" />
             <span className="text-sm font-medium text-[var(--color-ink)]">{badgeToast.length === 1 ? `Badge earned — ${badgeToast[0].name}` : `${badgeToast.length} badges earned!`}</span>
           </div>
         </div>
