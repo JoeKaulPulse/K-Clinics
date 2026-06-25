@@ -1506,11 +1506,21 @@ model Setting {
 // effect without a redeploy. `name` is the env-var name (e.g. RESEND_API_KEY);
 // @id avoids @unique so the no-data-loss deploy gate accepts the new table.
 model ManagedSecret {
+  // `name` is the structural key: global secrets are stored under the bare name,
+  // per-tenant secrets under a namespaced "t:<tenantId>:<name>" key (see
+  // lib/secrets.ts scopedName). This keeps uniqueness structural — no composite
+  // @id change (destructive) and no new @unique on an existing table — while
+  // letting one key hold a different value per tenant (R15 groundwork, BLD-302).
   name      String   @id
+  // Populated for tenant-scoped rows (null = global). Queryable/displayable; the
+  // namespaced `name` is what enforces per-tenant uniqueness.
+  tenantId  String?
   valueEnc  String   @db.Text
   updatedBy String?
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
+
+  @@index([tenantId])
 }
 
 // ── SOP documents per treatment type ────────────────────────────────────────
