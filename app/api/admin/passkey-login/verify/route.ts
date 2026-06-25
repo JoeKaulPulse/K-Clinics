@@ -47,6 +47,19 @@ export async function POST(req: Request) {
   await db.webAuthnCredential.update({ where: { id: cred.id }, data: { counter: verification.authenticationInfo.newCounter, lastUsedAt: new Date() } });
 
   const { createSession } = await import('@/lib/auth');
+  const { is2faRequiredForRole } = await import('@/lib/security/twofa');
+
+  // Mirror the password-login 2FA policy (app/api/admin/login/route.ts):
+  // a passkey replaces password but not TOTP enrolment. If the role mandates
+  // 2FA and the user has not enrolled yet, issue a setup-only session so
+  // middleware confines them to the profile/enrolment page.
+  if (!user.totpEnabledAt && await is2faRequiredForRole(user.role)) {
+    await createSession({ sub: user.id, email: user.email, name: user.name || undefined, role: user.role, grant: user.permGrant ?? [], revoke: user.permRevoke ?? [], epoch: user.sessionEpoch ?? 0, needsSetup: true });
+    const setupRes = NextResponse.json({ ok: true, setup: true });
+    setupRes.cookies.set(LOGIN_CHALLENGE_COOKIE, '', { path: '/', maxAge: 0 });
+    return setupRes;
+  }
+
   await createSession({ sub: user.id, email: user.email, name: user.name || undefined, role: user.role, grant: user.permGrant ?? [], revoke: user.permRevoke ?? [], epoch: user.sessionEpoch ?? 0 });
 
   try {
