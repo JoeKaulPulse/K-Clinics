@@ -54,8 +54,23 @@ export async function GET(req: Request) {
       FROM "Enrolment" e JOIN "Cohort" c ON c.id = e."cohortId"
       ORDER BY c."startAt"`);
 
+    // What the admin pages scope to. The cohorts page enrolment query is
+    // tenant-scoped; compare what currentTenantId() resolves to vs the data tenant.
+    const { currentTenantId, ensureDefaultTenant } = await import('@/lib/tenant');
+    const cur = await currentTenantId().catch((e) => `ERR:${(e as Error).message}`);
+    const def = await ensureDefaultTenant().catch((e) => `ERR:${(e as Error).message}`);
+    const allTenants = await db.$queryRawUnsafe<Record<string, unknown>[]>(`SELECT id, name, slug, host FROM "Tenant" ORDER BY "createdAt"`).catch((e) => [{ note: (e as Error).message }]);
+    // The EXACT scoped query the cohorts page runs (through the tenant scope):
+    const scopedEnrol = await db.enrolment.findMany({ where: { cohortId: { not: null } }, select: { id: true, cohortId: true, tenantId: true } }).catch((e) => `ERR:${(e as Error).message}`);
+
     const map = (rows: Record<string, unknown>[]) => rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, n(v)])));
-    return NextResponse.json({ ok: true, tenants: map(tenants), cohorts: map(cohorts), links: map(links) }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({
+      ok: true,
+      tenantContext: { currentTenantId: cur, defaultTenant: def, dataTenant: 'cmqdhvf3w000304jyl1qxb3v7' },
+      allTenants,
+      scopedEnrolWithCohort: scopedEnrol,
+      tenants: map(tenants), cohorts: map(cohorts), links: map(links),
+    }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error)?.message }, { status: 500 });
   }
