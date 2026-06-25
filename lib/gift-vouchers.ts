@@ -208,8 +208,14 @@ export async function creditVoucher(code: string, amountPence: number): Promise<
   const c = code.trim().toUpperCase();
   const add = Math.max(0, Math.round(amountPence));
   if (!add) return;
-  await db.giftVoucher.updateMany({ where: { code: c }, data: { balancePence: { increment: add } } });
-  await db.giftVoucher.updateMany({ where: { code: c, status: 'REDEEMED' }, data: { status: 'ACTIVE' } });
+  // Cap the balance at the purchased face value (amountPence) so a Stripe webhook
+  // redelivery or a charge.refunded race can never re-credit past what the card is
+  // worth and let a client redeem more than they bought (BLD-646). LEAST is applied
+  // atomically in a single statement — no read-modify-write window — and is
+  // idempotent at the cap: once the balance is restored to amountPence, repeated
+  // credits add nothing. (Prisma can't compare/cap against another column, hence raw.)
+  await db.$executeRaw`UPDATE "GiftVoucher" SET "balancePence" = LEAST("balancePence" + ${add}, "amountPence") WHERE "code" = ${c}`;
+  await db.giftVoucher.updateMany({ where: { code: c, status: 'REDEEMED', balancePence: { gt: 0 } }, data: { status: 'ACTIVE' } });
 }
 
 /** Recipient claims/validates a voucher onto their account. The recipient must
