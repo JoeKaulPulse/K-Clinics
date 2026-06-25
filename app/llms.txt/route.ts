@@ -36,6 +36,7 @@ ${dentistry.map(line).join('\n')}
 
 ## Training (K Academy)
 - [Courses & enrolment](${base}/academy): Ofqual-regulated, VTCT & CPD-accredited; blended Thinkific theory + practical days + in-house VTCT exam; Clearpay finance available.
+- [Course bundles](${base}/academy/bundles): multi-course training packages at a combined price (individual bundles at /academy/bundles/<slug>).
 
 ## Opening hours (Europe/London)
 ${site.hours.map((h) => `- ${h.day}: ${h.open === 'Closed' ? 'Closed' : `${h.open}–${h.close}`}`).join('\n')}
