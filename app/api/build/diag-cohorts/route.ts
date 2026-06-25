@@ -63,11 +63,29 @@ export async function GET(req: Request) {
     // The EXACT scoped query the cohorts page runs (through the tenant scope):
     const scopedEnrol = await db.enrolment.findMany({ where: { cohortId: { not: null } }, select: { id: true, cohortId: true, tenantId: true } }).catch((e) => `ERR:${(e as Error).message}`);
 
+    // EXACT replica of the Cohorts page computation: the same course query (with
+    // cohorts include) and enrolment query, then the same per-cohort filter the
+    // CohortsBoard runs. If studentCount here is non-zero, the page works on
+    // current data and the "0 students" view is stale/cached.
+    const rawCourseCount = await db.$queryRawUnsafe<{ c: number }[]>(`SELECT count(*)::int AS c FROM "Course"`).then((r) => n(r[0]?.c)).catch(() => null);
+    let pageReplica: unknown;
+    try {
+      const courses = await db.course.findMany({ include: { cohorts: { orderBy: { startAt: 'asc' } } } });
+      const enrolments = await db.enrolment.findMany({ where: { cohortId: { not: null } }, select: { id: true, cohortId: true } });
+      pageReplica = {
+        scopedCourseCount: courses.length,
+        scopedEnrolCount: enrolments.length,
+        perCohort: courses.flatMap((c) => c.cohorts.map((h) => ({ cohortId: h.id, name: h.name, course: c.title, studentCount: enrolments.filter((e) => e.cohortId === h.id).length }))),
+      };
+    } catch (e) { pageReplica = `ERR:${(e as Error).message}`; }
+
     const map = (rows: Record<string, unknown>[]) => rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, n(v)])));
     return NextResponse.json({
       ok: true,
       tenantContext: { currentTenantId: cur, defaultTenant: def, dataTenant: 'cmqdhvf3w000304jyl1qxb3v7' },
       allTenants,
+      rawCourseCount,
+      pageReplica,
       scopedEnrolWithCohort: scopedEnrol,
       tenants: map(tenants), cohorts: map(cohorts), links: map(links),
     }, { headers: { 'Cache-Control': 'no-store' } });
