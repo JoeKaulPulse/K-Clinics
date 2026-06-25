@@ -27,6 +27,17 @@ async function courseSlugs(): Promise<string[]> {
   }
 }
 
+// Published academy bundles (DB-backed) so /academy/bundles/<slug> pages are
+// crawlable + AI-citable (BLD-651). Best-effort — an unreachable DB just omits them.
+async function bundleSlugs(): Promise<string[]> {
+  try {
+    const { listBundles } = await import('@/lib/academy');
+    return (await listBundles()).map((b) => b.slug);
+  } catch {
+    return [];
+  }
+}
+
 // Active shop products (DB-backed) so product pages are discoverable. Best-effort
 // — an unreachable DB at build/revalidate just omits them.
 async function shopProducts(): Promise<{ slug: string; updated: Date }[]> {
@@ -58,6 +69,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: '/gallery', priority: 0.6, freq: 'monthly' },
     { path: '/finance', priority: 0.6, freq: 'monthly' },
     { path: '/academy', priority: 0.8, freq: 'weekly' },
+    { path: '/academy/bundles', priority: 0.7, freq: 'monthly' },
     { path: '/academy/funding', priority: 0.65, freq: 'monthly' },
     { path: '/about', priority: 0.6, freq: 'monthly' },
     { path: '/team', priority: 0.7, freq: 'monthly' },
@@ -109,6 +121,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
     ...(await courseSlugs()).map((slug) => ({
       url: `${base}/academy/${slug}`,
+      lastModified: reviewed,
+      changeFrequency: 'monthly' as const,
+      priority: 0.6,
+    })),
+    ...(await bundleSlugs()).map((slug) => ({
+      url: `${base}/academy/bundles/${slug}`,
       lastModified: reviewed,
       changeFrequency: 'monthly' as const,
       priority: 0.6,

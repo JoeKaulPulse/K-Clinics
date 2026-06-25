@@ -89,7 +89,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
       <PageHero
         eyebrow="Booking"
         title="Reserve your appointment."
-        lede="Create your account, choose your treatment and a time that suits you. You won’t pay a penny until your treatment is delivered."
+        lede="Choose your treatment and a time that suits you — sign in or add your details when you’re ready to confirm. You won’t pay a penny until your treatment is delivered."
         gradient={['#7b6a5d', '#2a2420']}
       />
 
