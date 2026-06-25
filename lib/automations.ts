@@ -1,6 +1,7 @@
 import 'server-only';
 import { db } from './db';
 import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking, tmplAftercare, tmplSatisfaction, tmplRebook } from './email';
+import { ensureReviewRequest, reviewLink, googleReviewLink } from './review-system';
 import { site } from './site';
 import { escapeHtml } from './sanitize';
 import { marketableClientWhere } from './consent';
@@ -233,6 +234,7 @@ async function reviews(t: Tally) {
   const target = new Date(Date.now() - REVIEW_DAYS * 864e5);
   const start = new Date(target); start.setHours(0, 0, 0, 0);
   const end = new Date(target); end.setHours(23, 59, 59, 999);
+  const googleUrl = await googleReviewLink();
   // Deduplicate via emailEvent (Booking has no reviewSent flag; Appointment is the legacy model).
   const bookings = await db.booking.findMany({
     where: { status: 'COMPLETED', startAt: { gte: start, lte: end } },
@@ -242,7 +244,9 @@ async function reviews(t: Tally) {
     if (!canEmail(a.client)) continue;
     const already = await db.emailEvent.findFirst({ where: { clientId: a.clientId, kind: 'REVIEW_REQUEST', status: 'SENT', createdAt: { gte: start } } });
     if (already) continue;
-    const res = await sendEmail({ to: a.client.email, subject: "We'd love your thoughts", html: tmplReviewRequest(a.client.firstName, unsub(a.client.unsubToken)) });
+    const review = await ensureReviewRequest(a.id);
+    if (!review) continue;
+    const res = await sendEmail({ to: a.client.email, subject: "We'd love your thoughts", html: tmplReviewRequest(a.client.firstName, reviewLink(review.token), a.treatmentTitle || undefined, googleUrl || undefined) });
     await logEvent(a.clientId, 'REVIEW_REQUEST', a.client.email, 'Review request', res);
     res.ok ? t.reviews++ : t.errors++;
   }
