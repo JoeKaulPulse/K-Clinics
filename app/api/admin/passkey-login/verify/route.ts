@@ -6,9 +6,11 @@ import { LOGIN_CHALLENGE_COOKIE } from '@/lib/webauthn';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Public: verify a passkey assertion and, on success, create a full admin
-// session. A verified platform passkey is phishing-resistant and biometric-
-// backed, so it stands in for password + 2FA.
+// Public: verify a passkey assertion and, on success, create an admin session.
+// A verified platform passkey is phishing-resistant and biometric-backed, so it
+// stands in for the password. Roles that mandate TOTP must still enrol: if the
+// user has not, they get a setup-only session (see the is2faRequiredForRole
+// check below), matching app/api/admin/login/route.ts.
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
 
