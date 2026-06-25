@@ -182,7 +182,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
   return (
     <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6 md:p-10">
-      <div className="mb-8 flex items-center gap-2">
+      <div role="progressbar" aria-valuenow={stepIndex + 1} aria-valuemin={1} aria-valuemax={steps.length} aria-label={`Step ${stepIndex + 1} of ${steps.length}: ${steps[stepIndex]?.label ?? ''}`} className="mb-8 flex items-center gap-2">
         {steps.map((s, i) => (
           <div key={s.key} className="flex flex-1 flex-col gap-2">
             <div className="h-1 overflow-hidden rounded-full bg-[var(--color-sand)]">
@@ -341,7 +341,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                   {recommendations.map(({ service: s, variant: v }) => {
                     const ap = addOnPrice(v); const on = addOns.has(v.id);
                     return (
-                      <button key={v.id} type="button" onClick={() => setAddOns((prev) => { const n = new Set(prev); n.has(v.id) ? n.delete(v.id) : n.add(v.id); return n; })}
+                      <button key={v.id} type="button" aria-pressed={on} onClick={() => setAddOns((prev) => { const n = new Set(prev); n.has(v.id) ? n.delete(v.id) : n.add(v.id); return n; })}
                         className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border p-4 text-left transition-all ${on ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                         <span>
                           <span className="block text-sm font-medium">{s.name} — {v.name}</span>
@@ -366,7 +366,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                         {g.items.map((it) => {
                           const on = refreshments.has(it.id);
                           return (
-                            <button key={it.id} type="button" onClick={() => setRefreshments((p) => { const n = new Set(p); n.has(it.id) ? n.delete(it.id) : n.add(it.id); return n; })}
+                            <button key={it.id} type="button" aria-pressed={on} onClick={() => setRefreshments((p) => { const n = new Set(p); n.has(it.id) ? n.delete(it.id) : n.add(it.id); return n; })}
                               className={`rounded-full border px-3.5 py-1.5 text-sm transition-all ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                               {it.label}
                             </button>
