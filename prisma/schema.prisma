@@ -1901,6 +1901,10 @@ model Course {
   heroImage      String?
   featured       Boolean  @default(false)
   active         Boolean  @default(true)
+  // Once staff manually curate the curriculum (delete a seeded module/lesson),
+  // this flips false so the daily authored-content enrichment stops re-creating
+  // the modules they removed (Tetiana: "deleted modules keep reappearing").
+  autoEnrich     Boolean  @default(true)
   order          Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
