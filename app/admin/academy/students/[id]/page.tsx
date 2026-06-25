@@ -6,6 +6,7 @@ import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { StudentActions } from '@/components/admin/StudentActions';
 import { EnrolInCourse } from '@/components/admin/EnrolInCourse';
+import { BadgeIcon } from '@/components/academy/BadgeIcon';
 import { getLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
@@ -106,7 +107,7 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
           </div>
           {badgeRows.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
-              {badgeRows.map((b) => { const d = badgeByKey.get(b.badgeKey); return <span key={b.id} title={d?.description} className="rounded-full border border-[var(--color-line)] bg-white px-2.5 py-1 text-xs">{d?.icon ?? '🏅'} {d?.name ?? b.badgeKey}</span>; })}
+              {badgeRows.map((b) => { const d = badgeByKey.get(b.badgeKey); return <span key={b.id} title={d?.description} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-white px-2.5 py-1 text-xs"><BadgeIcon name={d?.icon} className="h-3.5 w-3.5 text-[var(--color-gold-deep)]" /> {d?.name ?? b.badgeKey}</span>; })}
             </div>
           )}
         </Card>

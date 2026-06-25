@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, type TargetAndTransition, type Transition } from 'motion/react';
 import { KMark } from '@/components/brand/marks';
+import { BadgeIcon } from '@/components/academy/BadgeIcon';
 import { mascotBlip } from '@/components/academy/mascotVoice';
 
 // The academy mascot — the brand K monogram, animated as a graceful character.
@@ -136,8 +137,8 @@ export function KCelebration({ variant, title, subtitle, badgeIcon, onDone, hold
         <div className="relative">
           <KMascot variant={variant} size={variant === 'complete' ? 104 : 90} />
           {variant === 'badge' && badgeIcon && (
-            <motion.span className="absolute -right-4 -top-2 text-3xl drop-shadow" initial={{ scale: 0 }} animate={{ scale: 1, rotate: [0, 360] }} transition={{ scale: { duration: 0.4, delay: 0.3 }, rotate: { duration: 6, repeat: Infinity, ease: 'linear' } }}>
-              {badgeIcon}
+            <motion.span className="absolute -right-4 -top-2 text-[var(--color-gold)] drop-shadow" initial={{ scale: 0 }} animate={{ scale: 1, rotate: [0, 360] }} transition={{ scale: { duration: 0.4, delay: 0.3 }, rotate: { duration: 6, repeat: Infinity, ease: 'linear' } }}>
+              <BadgeIcon name={badgeIcon} className="h-8 w-8" />
             </motion.span>
           )}
         </div>

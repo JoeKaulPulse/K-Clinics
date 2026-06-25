@@ -13,14 +13,16 @@ export const XP = { LESSON: 10, QUIZ_PASS: 25, QUIZ_PERFECT_BONUS: 10, PRACTICE_
 export type BadgeDef = { key: string; name: string; description: string; icon: string; bonus: number };
 
 /** Badge catalogue (data only — safe to send to the client for the locked/earned grid). */
+// `icon` is a semantic key resolved to a themeable SVG by components/academy/BadgeIcon
+// (BLD-545 — replaced emoji that rendered inconsistently and couldn't take the palette).
 export const BADGES: BadgeDef[] = [
-  { key: 'first-lesson', name: 'First steps', description: 'Completed your first lesson.', icon: '🌱', bonus: 5 },
-  { key: 'bookworm', name: 'Bookworm', description: 'Completed 10 lessons.', icon: '📚', bonus: 20 },
-  { key: 'assessed', name: 'Assessed', description: 'Passed your first assessment.', icon: '✅', bonus: 10 },
-  { key: 'flawless', name: 'Flawless', description: 'Scored 100% on an assessment.', icon: '🎯', bonus: 25 },
-  { key: 'graduate', name: 'Graduate', description: 'Completed a whole course.', icon: '🎓', bonus: 50 },
-  { key: 'grafter', name: 'Grafter', description: 'Answered 50 practice questions.', icon: '💪', bonus: 20 },
-  { key: 'sharp', name: 'Sharp shooter', description: 'Scored 90%+ on a practice set.', icon: '🔥', bonus: 20 },
+  { key: 'first-lesson', name: 'First steps', description: 'Completed your first lesson.', icon: 'seedling', bonus: 5 },
+  { key: 'bookworm', name: 'Bookworm', description: 'Completed 10 lessons.', icon: 'book', bonus: 20 },
+  { key: 'assessed', name: 'Assessed', description: 'Passed your first assessment.', icon: 'check', bonus: 10 },
+  { key: 'flawless', name: 'Flawless', description: 'Scored 100% on an assessment.', icon: 'target', bonus: 25 },
+  { key: 'graduate', name: 'Graduate', description: 'Completed a whole course.', icon: 'cap', bonus: 50 },
+  { key: 'grafter', name: 'Grafter', description: 'Answered 50 practice questions.', icon: 'dumbbell', bonus: 20 },
+  { key: 'sharp', name: 'Sharp shooter', description: 'Scored 90%+ on a practice set.', icon: 'flame', bonus: 20 },
 ];
 
 type Stats = { lessonsDone: number; quizzesPassed: number; perfectQuiz: boolean; coursesComplete: number; practiceQuestions: number; bestPracticePct: number };
@@ -147,7 +149,7 @@ export async function studentStanding(studentId: string): Promise<Standing> {
   const byKey = new Map(BADGES.map((b) => [b.key, b]));
   return {
     xp, rank: ahead + 1, total,
-    badges: owned.map((b) => { const def = byKey.get(b.badgeKey); return { key: b.badgeKey, name: def?.name ?? b.badgeKey, icon: def?.icon ?? '🏅', description: def?.description ?? '', awardedAt: b.awardedAt.toISOString() }; }),
+    badges: owned.map((b) => { const def = byKey.get(b.badgeKey); return { key: b.badgeKey, name: def?.name ?? b.badgeKey, icon: def?.icon ?? 'medal', description: def?.description ?? '', awardedAt: b.awardedAt.toISOString() }; }),
   };
 }
 
