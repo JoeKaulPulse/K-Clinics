@@ -64,7 +64,7 @@ const cssVar: Record<keyof ThemeTokens, string> = {
 };
 
 /** The active theme. (Palette is built-in; edit defaultTheme to change brand colours.) */
-export async function getTheme(): Promise<ThemeTokens> {
+export function getTheme(): ThemeTokens {
   return defaultTheme;
 }
 
