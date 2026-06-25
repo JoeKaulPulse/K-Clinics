@@ -207,11 +207,11 @@ export async function POST(req: Request) {
             select: { id: true, giftCardCode: true, giftCardPence: true },
           });
           if (order?.giftCardCode && order.giftCardPence && order.giftCardPence > 0) {
-            // creditVoucher is NOT idempotent (it unconditionally increments the
-            // balance). charge.refunded redelivers and fires per partial refund,
-            // so claim the order's status → REFUNDED atomically and only credit
-            // when *this* call wins the transition. Mirrors the in-app refund
-            // route and the payment_failed order block.
+            // creditVoucher now caps the balance at the card's face value (BLD-646)
+            // but is not per-call idempotent, and charge.refunded redelivers / fires
+            // per partial refund — so claim the order's status → REFUNDED atomically
+            // and only credit when *this* call wins the transition. Mirrors the
+            // in-app refund route and the payment_failed order block.
             const claimed = await db.order.updateMany({ where: { id: order.id, status: { not: 'REFUNDED' } }, data: { status: 'REFUNDED' } });
             if (claimed.count > 0) {
               try { const { creditVoucher } = await import('@/lib/gift-vouchers'); await creditVoucher(order.giftCardCode, order.giftCardPence); } catch { /* non-fatal */ }

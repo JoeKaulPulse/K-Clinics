@@ -43,7 +43,10 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
   // Deep-link preselect (e.g. from K Vision "Book →"): jump straight to the
   // variant step for that service when the client is already signed in.
   const validPreselect = preselect && catalogue.some((s) => s.id === preselect) ? preselect : '';
-  const [stage, setStage] = useState<Stage>(client.signedIn ? (validPreselect ? 'variant' : 'service') : 'account');
+  // BLD-634: everyone browses treatment → option → time → enhance first; the
+  // account/guest step is deferred to just before payment (highest intent), so
+  // first-time visitors are no longer gated behind sign-up to see the menu.
+  const [stage, setStage] = useState<Stage>(validPreselect ? 'variant' : 'service');
   const [serviceId, setServiceId] = useState(validPreselect);
   const [variantId, setVariantId] = useState('');
   const [sessions, setSessions] = useState(1);
@@ -166,9 +169,10 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
   }
 
   const steps: { key: Stage; label: string }[] = [
-    ...(authed ? [] : [{ key: 'account' as Stage, label: 'Account' }]),
     { key: 'service', label: 'Treatment' }, { key: 'variant', label: 'Option' },
-    { key: 'time', label: 'Time' }, { key: 'upsell', label: 'Enhance' }, { key: 'card', label: 'Confirm' },
+    { key: 'time', label: 'Time' }, { key: 'upsell', label: 'Enhance' },
+    ...(authed ? [] : [{ key: 'account' as Stage, label: 'Your details' }]),
+    { key: 'card', label: 'Confirm' },
   ];
   const stepIndex = Math.max(0, steps.findIndex((s) => s.key === stage));
 
@@ -191,12 +195,19 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
       <AnimatePresence mode="wait">
         <motion.div key={stage} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}>
-          {stage === 'account' && (
+          {stage === 'account' && (authed ? (
+            // Identity captured — the booking is being created (submitBooking moves
+            // us to the card step). Stays here on a transient error so they can retry.
+            <div className="py-8 text-center">
+              <h3 className="font-[family-name:var(--font-display)] text-2xl">{error ? 'That didn’t go through' : 'Securing your booking…'}</h3>
+              {error && <div className="mt-5"><Button onClick={() => { if (!submitting) submitBooking(); }} variant="gold">Try again <ArrowIcon /></Button></div>}
+            </div>
+          ) : (
             <AccountStep
-              onAuthed={(info) => { setAuthed(true); setFirstName(info.firstName); setGender(info.gender); setWelcome(info.welcome); setSmsPref(info.sms); setStage('service'); }}
+              onAuthed={(info) => { setAuthed(true); setFirstName(info.firstName); setGender(info.gender); setWelcome(info.welcome); setSmsPref(info.sms); setError(''); submitBooking(); }}
               setError={setError}
             />
-          )}
+          ))}
 
           {stage === 'service' && (
             <div>
@@ -434,20 +445,20 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
       {error && <p role="alert" aria-live="assertive" className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
 
-      {stage !== 'card' && stage !== 'account' && (
+      {stage !== 'card' && !(stage === 'account' && authed) && (
         <div className="mt-8 flex items-center justify-between gap-4">
           <button type="button" onClick={() => goBack()} className="text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Back</button>
           {stage === 'variant' && <Button onClick={() => variant && setStage('time')} variant={variant ? 'gold' : 'outline'} disabled={!variant}>Continue <ArrowIcon /></Button>}
           {stage === 'time' && <Button onClick={() => { if (!slot) return; setStage('upsell'); try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'begin_checkout', { currency: 'GBP', value: orderTotal / 100, items: [{ item_id: variantId, item_name: service?.name, item_category: service?.category }] }); } catch { /* analytics best-effort */ } }} variant={slot ? 'gold' : 'outline'} disabled={!slot}>Continue <ArrowIcon /></Button>}
-          {stage === 'upsell' && <Button onClick={() => { if (!aftercareAck) { setError('Please confirm you’ve read and agree to the aftercare instructions.'); return; } if (!ageDeclare) { setError('Please confirm you are 18 or over.'); return; } if (!submitting) submitBooking(); }} variant={aftercareAck && ageDeclare ? 'gold' : 'outline'}>{submitting ? 'Securing…' : isSameDay ? 'Request appointment' : 'Continue to confirm'} <ArrowIcon /></Button>}
-          {stage === 'service' && <span />}
+          {stage === 'upsell' && <Button onClick={() => { if (!aftercareAck) { setError('Please confirm you’ve read and agree to the aftercare instructions.'); return; } if (!ageDeclare) { setError('Please confirm you are 18 or over.'); return; } setError(''); if (!authed) { setStage('account'); return; } if (!submitting) submitBooking(); }} variant={aftercareAck && ageDeclare ? 'gold' : 'outline'}>{submitting ? 'Securing…' : !authed ? 'Continue' : isSameDay ? 'Request appointment' : 'Continue to confirm'} <ArrowIcon /></Button>}
+          {(stage === 'service' || stage === 'account') && <span />}
         </div>
       )}
     </div>
   );
 
   function goBack() {
-    const order: Stage[] = authed ? ['service', 'variant', 'time', 'upsell'] : ['account', 'service', 'variant', 'time', 'upsell'];
+    const order: Stage[] = authed ? ['service', 'variant', 'time', 'upsell'] : ['service', 'variant', 'time', 'upsell', 'account'];
     const i = order.indexOf(stage);
     if (i > 0) setStage(order[i - 1]);
   }
@@ -485,7 +496,9 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
       const res = await fetch('/api/account/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: f.email, password: f.password }) });
       const j = await res.json();
       if (!j.ok) { setError(j.error || 'Invalid email or password.'); setBusy(false); return; }
-      window.location.reload(); // re-render server-side with the signed-in client
+      // Finish in place — a reload here would wipe the treatment/time the visitor
+      // already chose (the account step now comes last, BLD-634).
+      onAuthed({ firstName: j.firstName || '', gender: j.gender ?? null, welcome: false, sms: false });
     } catch { setError('Network error. Please try again.'); setBusy(false); }
   }
   // Guest booking (BLD-550): same identity + consent, no password. Creates a
