@@ -7,12 +7,12 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Token-authed bulk import of Google reviews — Authorization: Bearer
-// BOARD_QUEUE_TOKEN. Used to load the existing Google review history before the
-// Business Profile API is approved; each row publishes on the public reviews
-// surface immediately. Idempotent: a stable googleName per (name|date|text) so
-// re-running never duplicates.
+// GOOGLE_REVIEW_IMPORT_TOKEN (distinct from BOARD_QUEUE_TOKEN so a token
+// compromise does not allow queue writes and vice-versa). Each row publishes on
+// the public reviews surface immediately. Idempotent: a stable googleName per
+// (name|date|text) so re-running never duplicates.
 function tokenOk(req: Request): boolean {
-  const expected = process.env.BOARD_QUEUE_TOKEN;
+  const expected = process.env.GOOGLE_REVIEW_IMPORT_TOKEN;
   if (!expected) return false;
   const got = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
   if (!got || got.length !== expected.length) return false;
