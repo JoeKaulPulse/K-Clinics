@@ -132,8 +132,14 @@ export async function getConsultation(id: string) {
   return c;
 }
 
-export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc' | 'desc'; flag?: string } = {}) {
+export const CLIENTS_PER_PAGE = 50;
+
+// Paginated client list. Returns the page of rows plus the total count and page
+// metadata so the admin list can show "X–Y of Z" and Prev/Next instead of
+// rendering hundreds of rows in one ~9500px-tall scroll (BLD-621).
+export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc' | 'desc'; flag?: string; page?: number; perPage?: number } = {}) {
   const { q, sort = 'created', dir = 'desc', flag } = opts;
+  const perPage = Math.min(Math.max(opts.perPage ?? CLIENTS_PER_PAGE, 1), 200);
   const and: Record<string, unknown>[] = [];
   if (q) and.push({ OR: [
     { firstName: { contains: q, mode: 'insensitive' } },
@@ -147,12 +153,18 @@ export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc'
   else if (flag === 'wordpress') and.push({ source: 'wordpress' });
   const SORTS: Record<string, string> = { name: 'firstName', email: 'email', created: 'createdAt', visit: 'lastVisitAt' };
   const field = SORTS[sort] || 'createdAt';
-  return db.client.findMany({
-    where: and.length ? { AND: and } : undefined,
+  const where = and.length ? { AND: and } : undefined;
+  const total = await db.client.count({ where });
+  const pages = Math.max(1, Math.ceil(total / perPage));
+  const page = Math.min(Math.max(opts.page ?? 1, 1), pages);
+  const rows = await db.client.findMany({
+    where,
     orderBy: { [field]: dir },
-    take: 200,
+    skip: (page - 1) * perPage,
+    take: perPage,
     select: { id: true, firstName: true, lastName: true, email: true, phone: true, marketingOptIn: true, source: true, tags: true, createdAt: true, lastVisitAt: true },
   });
+  return { rows, total, page, perPage, pages };
 }
 
 export async function getClient(id: string) {
