@@ -10,9 +10,12 @@ export const runtime = 'nodejs';
 // (HEIC/HEIF, .mov). Any board user (build.view) may attach.
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
-  const { requirePermission } = await import('@/lib/auth');
+  const { requirePermission, sessionIsAdmin } = await import('@/lib/auth');
   const session = await requirePermission('build.view');
   if (!session) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
+  // Admins may upload large video content (up to 1 GB); other board users keep
+  // the standard cap that comfortably covers phone videos.
+  const maxBytes = sessionIsAdmin(session) ? 1024 * 1024 * 1024 : 200 * 1024 * 1024;
   if (!process.env.BLOB_READ_WRITE_TOKEN) return NextResponse.json({ ok: false, error: 'File storage isn’t connected (add a Vercel Blob store).' }, { status: 400 });
 
   const body = (await req.json()) as HandleUploadBody;
@@ -25,7 +28,7 @@ export async function POST(req: Request) {
           'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/heic', 'image/heif',
           'video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v', 'video/3gpp',
         ],
-        maximumSizeInBytes: 200 * 1024 * 1024, // 200 MB — comfortably covers phone videos
+        maximumSizeInBytes: maxBytes, // 1 GB for admins, else 200 MB
         addRandomSuffix: true,
       }),
       // No-op: the client persists the resulting URL via the board's `attach` op.
