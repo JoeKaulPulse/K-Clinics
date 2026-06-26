@@ -441,7 +441,7 @@ function ListView({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => void 
           {sorted.map((i) => {
             const done = i.subtasks.filter((s) => s.status === 'DONE').length; const d = durMs(i); const r = ve(i);
             return (
-              <tr key={i.id} onClick={() => onOpen(i)} tabIndex={0} role="button" onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(i); } }} className="cursor-pointer border-t border-[var(--color-line)] bg-white hover:bg-[var(--color-bone)]">
+              <tr key={i.id} onClick={() => onOpen(i)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(i); } }} className="cursor-pointer border-t border-[var(--color-line)] bg-white hover:bg-[var(--color-bone)]">
                 <td className="px-3 py-2 font-mono text-xs text-[var(--color-stone)]">{i.ref || '—'}</td>
                 <td className="px-3 py-2 font-medium">{i.title}</td>
                 <td className="px-3 py-2 text-xs text-[var(--color-stone)]">{i.type}</td>

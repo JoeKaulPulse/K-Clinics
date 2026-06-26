@@ -53,7 +53,7 @@ function Row({ r, open, onToggle, canManage }: { r: OrderRow; open: boolean; onT
   const closed = r.status === 'REFUNDED' || r.status === 'CANCELLED';
   return (
     <>
-      <tr className="cursor-pointer border-t border-[var(--color-line)] hover:bg-[var(--color-bone)]/50" onClick={onToggle} tabIndex={0} role="button" onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}>
+      <tr className="cursor-pointer border-t border-[var(--color-line)] hover:bg-[var(--color-bone)]/50" onClick={onToggle} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}>
         <td className="p-3 font-medium">{r.number}<span className="block text-xs text-[var(--color-stone)]">{new Date(r.createdAt).toLocaleDateString('en-GB')}</span></td>
         <td className="p-3">{r.name}<span className="block text-xs text-[var(--color-stone)]">{r.email}</span></td>
         <td className="p-3">{money(r.totalPence)}</td>
