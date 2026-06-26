@@ -13,6 +13,7 @@ import { ChatDock } from '@/components/admin/teamchat/ChatDock';
 import { GuideHost } from '@/components/guide/GuideHost';
 import { CloseDownReminder } from '@/components/admin/CloseDownReminder';
 import { ReportProblem } from '@/components/admin/ReportProblem';
+import { ThemeToggle } from '@/components/admin/ThemeToggle';
 import { I18nProvider } from '@/components/i18n/I18nProvider';
 import { translator, isLocale, LOCALES, LOCALE_LABELS, DEFAULT_LOCALE, type Locale } from '@/lib/i18n';
 import { navGroups, type NavItem, type GroupIconKey } from '@/lib/admin-nav';
@@ -151,6 +152,19 @@ export function AdminShell({
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('mousedown', onClick); document.removeEventListener('keydown', onKey); };
   }, []);
+  // Re-assert the admin colour scheme on mount. The root <head> script themes
+  // the portal on a full load; this covers client-side navigation *into* admin,
+  // where that script doesn't re-run. (Leaving admin for the public site happens
+  // via a full load, which the script handles.)
+  useEffect(() => {
+    try {
+      const m = document.cookie.match(/(?:^|; )kc_admin_theme=([^;]+)/);
+      const v = m ? decodeURIComponent(m[1]) : 'system';
+      const dark = v === 'dark' || (v !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    } catch { /* no-op */ }
+  }, []);
+
   // Initials for the avatar, derived from the signed-in email local-part.
   const initials = (user || '').replace(/@.*/, '').split(/[.\-_ ]+/).filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase()).join('') || 'K';
 
@@ -290,7 +304,7 @@ export function AdminShell({
                   <svg className={`hidden text-[var(--color-stone)] transition-transform md:block ${profileOpen ? 'rotate-180' : ''}`} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m4 6 4 4 4-4" /></svg>
                 </button>
                 {profileOpen && (
-                  <div role="menu" className="kc-pop absolute right-0 z-40 mt-2 w-64 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white shadow-[var(--shadow-lift)]">
+                  <div role="menu" className="kc-pop absolute right-0 z-40 mt-2 w-64 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)]">
                     <div className="border-b border-[var(--color-line)] bg-[var(--color-bone)]/60 px-4 py-3">
                       <p className="text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone)]">Signed in as</p>
                       {user && <p className="mt-0.5 truncate text-sm font-medium text-[var(--color-ink)]">{user}</p>}
@@ -301,10 +315,13 @@ export function AdminShell({
                     </Link>
                     <label className="block px-4 py-2.5">
                       <span className="mb-1 block text-[0.6rem] uppercase tracking-[0.14em] text-[var(--color-stone)]">{t('shell.language')}</span>
-                      <select value={locale} onChange={(e) => changeLanguage(e.target.value as Locale)} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]">
+                      <select value={locale} onChange={(e) => changeLanguage(e.target.value as Locale)} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]">
                         {LOCALES.map((l) => <option key={l} value={l}>{LOCALE_LABELS[l]}</option>)}
                       </select>
                     </label>
+                    <div className="border-t border-[var(--color-line)]">
+                      <ThemeToggle />
+                    </div>
                     <button onClick={signOut} role="menuitem" className="flex w-full items-center gap-2.5 border-t border-[var(--color-line)] px-4 py-2.5 text-left text-sm text-[#b23b3b] transition-colors hover:bg-[color-mix(in_oklab,#b23b3b_10%,transparent)]">
                       <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M6 2.5H3.5v11H6M10.5 11l3-3-3-3M13 8H6.5" /></svg>
                       {t('shell.signOut')}
