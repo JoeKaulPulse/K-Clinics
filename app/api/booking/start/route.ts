@@ -104,7 +104,11 @@ export async function POST(req: Request) {
   // ── Validate the slot against the live availability engine ──
   const { isSlotFree, pickPractitioner, assignResources } = await import('@/lib/availability');
   const treatmentSlug = primary.service.treatmentSlug;
-  if (!(await withDbRetry(() => isSlotFree(d.startISO, totalDuration, treatmentSlug)))) {
+  // A waitlist claim link may offer a same-day slot inside the public 2h lead;
+  // relax the lead only for that genuine, still-live offer (BLD-336).
+  const { claimLeadOpts } = await import('@/lib/waitlist');
+  const leadOpts = await claimLeadOpts(d.waitlistToken, d.startISO);
+  if (!(await withDbRetry(() => isSlotFree(d.startISO, totalDuration, treatmentSlug, null, leadOpts)))) {
     return NextResponse.json({ ok: false, error: 'That time was just taken. Please choose another slot.' }, { status: 409 });
   }
   const { getSetting } = await import('@/lib/settings');
