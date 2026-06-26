@@ -78,6 +78,58 @@
   --gutter: clamp(1.375rem, 0.75rem + 4vw, 4.5rem);       /* page side padding */
 }
 
+/* ── Admin dark mode ──────────────────────────────────────────────────────────
+   Scoped to <html data-theme="dark">, which only the admin no-flash script sets
+   (lib/admin-theme.ts) — the public site never carries the attribute, so it
+   stays on the light brand palette. The admin UI is built on the --color-*
+   tokens, so redefining them here re-skins the whole portal. A warm dark that
+   keeps the taupe-&-gold identity rather than going cold grey.
+
+   Specificity note: html[data-theme="dark"] (0,1,1) beats both :root (0,1,0)
+   and the injected brand-theme <style> (:root, 0,1,0), so these win cleanly. */
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --color-ink: #ece3d9;        /* primary text on dark surfaces */
+  --color-ink-soft: #c9bbac;
+  --color-espresso: #b4a596;
+  --color-porcelain: #1e1813;  /* primary surface — cards, sidebar, header */
+  --color-bone: #161210;       /* page background — one step darker than cards */
+  --color-sand: #342b22;       /* solid divider / border */
+  --color-stone: #a89484;      /* muted body text — AA on the dark surfaces */
+  --color-stone-soft: #6d5e51; /* decorative only */
+  --color-gold: #c6a47f;
+  --color-gold-soft: #d6bb9b;
+  --color-gold-bright: #e7d4bb;
+  --color-gold-deep: #d9ba90;  /* gold text on dark (AA) */
+  --color-jade: #5fb083;       /* success/active — lifted for dark */
+  --color-blush: #cf9f8a;
+  --color-blush-deep: #e98a8a; /* error/destructive text on dark */
+  /* --color-line derives from --color-ink (now light), so the hairline turns
+     into a subtle light border on dark automatically. */
+  /* Shadows over near-black need real darkness to read as depth. */
+  --shadow-soft: 0 2px 8px -2px rgb(0 0 0 / 0.4), 0 12px 32px -12px rgb(0 0 0 / 0.55);
+  --shadow-lift: 0 8px 24px -8px rgb(0 0 0 / 0.5), 0 28px 64px -24px rgb(0 0 0 / 0.65);
+}
+
+/* Hardcoded utilities that don't go through the tokens. The compound selector
+   (0,1,1+) outranks Tailwind's single-class utilities, so no !important needed.
+   bg-white is overwhelmingly inputs and inner cards → map to a slightly-elevated
+   dark surface so they stay distinct from the page. text-white is left alone
+   (it sits on coloured buttons and should stay white). */
+html[data-theme='dark'] .bg-white { background-color: #241d17; }
+html[data-theme='dark'] .bg-neutral-50,
+html[data-theme='dark'] .bg-gray-50,
+html[data-theme='dark'] .bg-stone-50,
+html[data-theme='dark'] .bg-zinc-50 { background-color: #1b1611; }
+html[data-theme='dark'] .bg-neutral-100,
+html[data-theme='dark'] .bg-gray-100,
+html[data-theme='dark'] .bg-stone-100 { background-color: #221b15; }
+/* Plain dark text utilities used on light cards would vanish on dark. */
+html[data-theme='dark'] .text-neutral-900,
+html[data-theme='dark'] .text-gray-900,
+html[data-theme='dark'] .text-stone-900,
+html[data-theme='dark'] .text-black { color: var(--color-ink); }
+
 /* ── Base reset & globals ─────────────────────────────────────────────────── */
 @layer base {
   *,
