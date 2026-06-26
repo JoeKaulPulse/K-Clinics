@@ -31,6 +31,10 @@ export async function POST(req: Request) {
   const receivedPence = pi.amount_received ?? 0;
   if (receivedPence <= 0) return NextResponse.json({ ok: false, error: 'Payment not captured' }, { status: 409 });
   const { finalizeBookingCharge } = await import('@/lib/booking-actions');
-  await finalizeBookingCharge(bookingId, pi.id, receivedPence, { late: pi.metadata?.late === 'true' });
+  try {
+    await finalizeBookingCharge(bookingId, pi.id, receivedPence, { late: pi.metadata?.late === 'true' });
+  } catch {
+    return NextResponse.json({ ok: false, error: 'Booking could not be confirmed. Payment was taken — please contact us to confirm your appointment.' }, { status: 503 });
+  }
   return NextResponse.json({ ok: true });
 }
