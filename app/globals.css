@@ -36,6 +36,10 @@
   --color-muted: var(--color-stone);
   --color-accent: var(--color-gold);
   --color-line: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  /* Aliases some admin pages reference (previously undefined → always fell back
+     to a light literal, which broke in dark mode). Now real tokens so they flip. */
+  --color-surface-alt: #f9f5f0;                /* faint raised surface — table headers, chips */
+  --color-border: var(--color-line);
 
   /* ── Typography ─────────────────────────────────────────────────────────────
      Display: Fraunces (variable, optical) — editorial luxe serif.
@@ -104,6 +108,7 @@ html[data-theme='dark'] {
   --color-jade: #5fb083;       /* success/active — lifted for dark */
   --color-blush: #cf9f8a;
   --color-blush-deep: #e98a8a; /* error/destructive text on dark */
+  --color-surface-alt: #241d17; /* raised surface (table headers, chips) on dark */
   /* --color-line derives from --color-ink (now light), so the hairline turns
      into a subtle light border on dark automatically. */
   /* Shadows over near-black need real darkness to read as depth. */
