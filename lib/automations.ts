@@ -430,10 +430,12 @@ async function promoterFollowUp(t: Tally) {
     const { getSetting } = await import('@/lib/settings');
     if (!(await getSetting('nps_survey'))) return;
     const now = Date.now();
-    const from = new Date(now - 2 * 864e5); // responded between 1–2 days ago
-    const to = new Date(now - 1 * 864e5);
+    // 3-day overlapping lookback. The per-npsId dedup prevents double-send;
+    // the generous window ensures a late or skipped cron run doesn't permanently
+    // miss a promoter (unlike a tight [now-2d, now-1d] window that has no recovery).
+    const from = new Date(now - 3 * 864e5);
     const responses = await db.npsResponse.findMany({
-      where: { score: { gte: 9 }, respondedAt: { gte: from, lte: to }, clientId: { not: null } },
+      where: { score: { gte: 9 }, respondedAt: { gte: from, lte: new Date(now) }, clientId: { not: null } },
       include: { client: { select: { id: true, email: true, firstName: true, unsubscribed: true, marketingOptIn: true, marketingConsentAt: true, unsubToken: true } } },
       take: 200,
     });
@@ -452,7 +454,7 @@ async function promoterFollowUp(t: Tally) {
         <p style="margin:0 0 14px;">We're so glad to hear you had a great experience with us. Reviews like yours help other people find us — if you have a moment, we'd love you to share your thoughts.</p>
         ${googleCta}
         <p style="margin:14px 0 6px;font-size:14px;color:#91766e;">Or, <a href="${base}/book" style="color:#a98a6d;">book your next visit</a> whenever you're ready — we look forward to seeing you again.</p>`;
-      const res = await sendEmail({ to: c.email, subject: `Thank you, ${escapeHtml(c.firstName || 'there')} — you've made our day`, html: emailShell({ body, preheader: `We'd love you to share your experience.`, unsubUrl: unsub(c.unsubToken) }) });
+      const res = await sendEmail({ to: c.email, subject: `Thank you, ${c.firstName || 'there'} — you've made our day`, html: emailShell({ body, preheader: `We'd love you to share your experience.`, unsubUrl: unsub(c.unsubToken) }) });
       await db.emailEvent.create({ data: { clientId: c.id, kind: 'NPS_PROMOTER', to: c.email, subject: 'NPS promoter follow-up', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { npsId: r.id } } }).catch(() => {});
       res.ok ? t.npsPromoters++ : t.errors++;
     }
