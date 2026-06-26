@@ -13,11 +13,39 @@ import { site } from '@/lib/site';
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || site.url).replace(/\/$/, '');
 const CLAIM_WINDOW_MS = 6 * 60 * 60 * 1000; // 6h to act on an offered slot
+// BLD-336: a directly-offered freed slot uses a shorter lead than the public
+// 2-hour online-booking window — otherwise a same-day cancellation (the most
+// valuable kind for a waitlister) is never re-offered. 45 min keeps the claim
+// actionable (the waitlister still has to travel) while covering same-day frees.
+const REOFFER_LEAD_MINUTES = 45;
 const dayOnly = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
 
 /** Public URL of the one-click claim landing page for a token. */
 export function claimUrl(token: string): string {
   return `${SITE_URL}/waitlist/claim/${encodeURIComponent(token)}`;
+}
+
+/**
+ * Lead-window override for a booking being created from a waitlist claim link
+ * (BLD-336). Returns the reduced re-offer lead only when `token` is a live
+ * (NOTIFIED, unexpired) offer for exactly this slot; otherwise undefined, so the
+ * public 2-hour lead still applies to everything else. Lets a genuinely-freed
+ * same-day slot actually be booked by the waitlister we offered it to.
+ */
+export async function claimLeadOpts(token: string | undefined | null, startISO: string): Promise<{ leadMinutes: number } | undefined> {
+  if (!token) return undefined;
+  try {
+    const entry = await db.waitlistEntry.findFirst({
+      where: { claimToken: token, status: 'NOTIFIED' },
+      select: { offeredStart: true, expiresAt: true },
+    });
+    if (!entry?.offeredStart) return undefined;
+    if (entry.expiresAt && entry.expiresAt.getTime() < Date.now()) return undefined;
+    if (entry.offeredStart.toISOString() !== startISO) return undefined;
+    return { leadMinutes: REOFFER_LEAD_MINUTES };
+  } catch {
+    return undefined;
+  }
 }
 
 /** Add (or reuse) an ACTIVE waitlist entry for a client + treatment + window. */
@@ -49,7 +77,7 @@ export async function notifyOnFreedSlot(treatmentSlug: string, slotStart: Date):
     const { bookingFor } = await import('@/lib/treatments');
     const { isSlotFree } = await import('@/lib/availability');
     const { durationMin } = bookingFor(treatmentSlug);
-    if (!(await isSlotFree(slotStart.toISOString(), durationMin, treatmentSlug).catch(() => false))) return false;
+    if (!(await isSlotFree(slotStart.toISOString(), durationMin, treatmentSlug, null, { leadMinutes: REOFFER_LEAD_MINUTES }).catch(() => false))) return false;
 
     const day = dayOnly(slotStart);
     const entry = await db.waitlistEntry.findFirst({
@@ -114,10 +142,12 @@ export async function lookupClaim(token: string): Promise<ClaimLookup> {
     return { state: 'expired' };
   }
   // Confirm the slot is still actually bookable (it may have been taken since).
+  // Match the reduced re-offer lead used when the offer was sent, so a same-day
+  // slot we deliberately offered isn't then rejected here as "taken" (BLD-336).
   const { bookingFor } = await import('@/lib/treatments');
   const { isSlotFree } = await import('@/lib/availability');
   const { durationMin } = bookingFor(entry.treatmentSlug);
-  const free = await isSlotFree(entry.offeredStart.toISOString(), durationMin, entry.treatmentSlug).catch(() => false);
+  const free = await isSlotFree(entry.offeredStart.toISOString(), durationMin, entry.treatmentSlug, null, { leadMinutes: REOFFER_LEAD_MINUTES }).catch(() => false);
   if (!free) return { state: 'taken' };
   return { state: 'ok', entry: { id: entry.id, treatmentSlug: entry.treatmentSlug, treatmentTitle: entry.treatmentTitle, offeredStart: entry.offeredStart, clientId: entry.clientId } };
 }
