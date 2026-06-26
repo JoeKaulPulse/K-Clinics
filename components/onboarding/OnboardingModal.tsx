@@ -70,13 +70,13 @@ export function OnboardingModal({ title, intro, steps, initial, endpoint, onClos
 
               <div className="mt-2">
                 {(step.type === 'text' || step.type === 'tel' || step.type === 'date') && (
-                  <input type={step.type === 'text' ? 'text' : step.type} autoFocus value={(vals[step.key] as string) ?? ''} onChange={(e) => set(step.key, e.target.value)} placeholder={'placeholder' in step ? step.placeholder : ''} className={field} />
+                  <input type={step.type === 'text' ? 'text' : step.type} autoFocus aria-label={step.label} value={(vals[step.key] as string) ?? ''} onChange={(e) => set(step.key, e.target.value)} placeholder={'placeholder' in step ? step.placeholder : ''} className={field} />
                 )}
                 {step.type === 'textarea' && (
-                  <textarea autoFocus rows={4} value={(vals[step.key] as string) ?? ''} onChange={(e) => set(step.key, e.target.value)} placeholder={step.placeholder} className={field} />
+                  <textarea autoFocus aria-label={step.label} rows={4} value={(vals[step.key] as string) ?? ''} onChange={(e) => set(step.key, e.target.value)} placeholder={step.placeholder} className={field} />
                 )}
                 {step.type === 'select' && (
-                  <select value={(vals[step.key] as string) ?? ''} onChange={(e) => set(step.key, e.target.value)} className={field}>
+                  <select aria-label={step.label} value={(vals[step.key] as string) ?? ''} onChange={(e) => set(step.key, e.target.value)} className={field}>
                     <option value="">Choose…</option>
                     {step.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
