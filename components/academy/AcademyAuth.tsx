@@ -49,14 +49,14 @@ export function AcademyAuth() {
       <div className="mt-6 space-y-4">
         {mode === 'signup' && (
           <div className="grid gap-4 sm:grid-cols-2">
-            <div><label className={label}>First name *</label><input className={field} value={f.firstName} onChange={(e) => set('firstName', e.target.value)} /></div>
-            <div><label className={label}>Last name</label><input className={field} value={f.lastName} onChange={(e) => set('lastName', e.target.value)} /></div>
+            <div><label htmlFor="ac-firstName" className={label}>First name *</label><input id="ac-firstName" className={field} value={f.firstName} onChange={(e) => set('firstName', e.target.value)} /></div>
+            <div><label htmlFor="ac-lastName" className={label}>Last name</label><input id="ac-lastName" className={field} value={f.lastName} onChange={(e) => set('lastName', e.target.value)} /></div>
           </div>
         )}
-        <div><label className={label}>Email *</label><input type="email" className={field} value={f.email} onChange={(e) => set('email', e.target.value)} /></div>
-        {mode === 'signup' && <div><label className={label}>Phone</label><input type="tel" className={field} value={f.phone} onChange={(e) => set('phone', e.target.value)} /></div>}
-        {mode === 'signup' && <div><label className={label}>Date of birth *</label><input type="date" className={field} value={f.dob} onChange={(e) => set('dob', e.target.value)} /></div>}
-        <div><label className={label}>Password{mode === 'signup' ? ' (8+ characters) *' : ' *'}</label><input type="password" className={field} value={f.password} onChange={(e) => set('password', e.target.value)} /></div>
+        <div><label htmlFor="ac-email" className={label}>Email *</label><input id="ac-email" type="email" className={field} value={f.email} onChange={(e) => set('email', e.target.value)} /></div>
+        {mode === 'signup' && <div><label htmlFor="ac-phone" className={label}>Phone</label><input id="ac-phone" type="tel" className={field} value={f.phone} onChange={(e) => set('phone', e.target.value)} /></div>}
+        {mode === 'signup' && <div><label htmlFor="ac-dob" className={label}>Date of birth *</label><input id="ac-dob" type="date" className={field} value={f.dob} onChange={(e) => set('dob', e.target.value)} /></div>}
+        <div><label htmlFor="ac-password" className={label}>Password{mode === 'signup' ? ' (8+ characters) *' : ' *'}</label><input id="ac-password" type="password" className={field} value={f.password} onChange={(e) => set('password', e.target.value)} /></div>
         {mode === 'signup' && (
           <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]">
             <input type="checkbox" checked={f.ageDeclare} onChange={(e) => set('ageDeclare', e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]" />

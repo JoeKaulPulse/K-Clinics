@@ -53,10 +53,11 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Palette is editable from WordPress; injected as CSS variables here so a
-  // colour change in the CMS re-skins the entire site (falls back to defaults).
-  const theme = await getTheme();
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Palette is injected as CSS variables here so a colour change in theme.ts
+  // re-skins the entire site. getTheme() is synchronous (no I/O), so the
+  // root layout can be static and ISR pages qualify for static optimisation.
+  const theme = getTheme();
   return (
     <html lang="en-GB" className={`${GeistSans.variable} ${GeistMono.variable} ${fraunces.variable}`}>
       <head>
