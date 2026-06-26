@@ -397,7 +397,8 @@ export async function refundEnrolmentPayment(paymentId: string, staffEmail?: str
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Refund failed at Stripe.' };
   }
-  await db.enrolmentPayment.update({ where: { id: p.id }, data: { state: 'REFUNDED' } });
+  const claimed = await db.enrolmentPayment.updateMany({ where: { id: p.id, state: 'PAID' }, data: { state: 'REFUNDED' } });
+  if (claimed.count === 0) return { ok: true };
   await db.enrolment.update({ where: { id: p.enrolmentId }, data: { paidPence: { decrement: p.amountPence } } }).catch(() => {});
   await logAudit({
     action: 'PAYMENT_REFUNDED',
