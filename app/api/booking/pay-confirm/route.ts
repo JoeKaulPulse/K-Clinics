@@ -33,7 +33,8 @@ export async function POST(req: Request) {
   const { finalizeBookingCharge } = await import('@/lib/booking-actions');
   try {
     await finalizeBookingCharge(bookingId, pi.id, receivedPence, { late: pi.metadata?.late === 'true' });
-  } catch {
+  } catch (err) {
+    console.error('[pay-confirm] finalize failed for booking', bookingId, err);
     return NextResponse.json({ ok: false, error: 'Booking could not be confirmed. Payment was taken — please contact us to confirm your appointment.' }, { status: 503 });
   }
   return NextResponse.json({ ok: true });

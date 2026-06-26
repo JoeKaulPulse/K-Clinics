@@ -115,7 +115,7 @@ export async function eraseClientData(clientId: string) {
     db.promoRedemption.updateMany({ where: { clientId }, data: { email: null } }),
     db.promoRedemption.updateMany({ where: { email: client.email.toLowerCase() }, data: { email: null } }),
     // BLD-671: remove NewsletterSubscriber rows by email — no retention basis post-erasure.
-    db.newsletterSubscriber.deleteMany({ where: { email: client.email } }),
+    db.newsletterSubscriber.deleteMany({ where: { email: client.email.toLowerCase() } }),
   ]);
   await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
   try {
