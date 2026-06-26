@@ -5,8 +5,10 @@ import { startRegistration } from '@simplewebauthn/browser';
 
 type Passkey = { id: string; deviceName: string | null; createdAt: string; lastUsedAt: string | null };
 
-// Lets any staff member enrol a platform passkey (Face ID / Touch ID / Windows
-// Hello) for fast, phishing-resistant sign-in to the CRM.
+// Lets the owner enrol a platform passkey (Face ID / Touch ID / Windows Hello)
+// for fast, phishing-resistant sign-in to the CRM. Passkeys are the OWNER-only
+// export step-up credential, so the register API and the profile page both gate
+// this to OWNER — do not render it for other roles.
 export function PasskeyManager() {
   const [keys, setKeys] = useState<Passkey[]>([]);
   const [loaded, setLoaded] = useState(false);
