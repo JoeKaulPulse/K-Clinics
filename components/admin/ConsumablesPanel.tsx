@@ -57,7 +57,7 @@ export function ConsumablesPanel({ bookingId, items, used }: { bookingId: string
           <button onClick={add} disabled={pending} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">{pending ? '…' : 'Add'}</button>
         </div>
       )}
-      {err && <p className="mt-2 text-sm text-[var(--color-blush)]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[var(--color-blush)]">{err}</p>}
     </section>
   );
 }

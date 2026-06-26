@@ -303,7 +303,7 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
             <button onClick={connectGh} disabled={ghForm.busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{ghForm.busy ? 'Connecting…' : 'Connect & test'}</button>
             {canManage && gh.connected && <button onClick={disconnectGh} className="text-xs text-[var(--color-blush)] hover:underline">Disconnect</button>}
           </div>
-          {ghForm.error && <p className="mt-2 text-sm text-[var(--color-blush)]">{ghForm.error}</p>}
+          {ghForm.error && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[var(--color-blush)]">{ghForm.error}</p>}
         </div>
       )}
 
@@ -823,7 +823,7 @@ function IdeaModal({ onClose, onDone }: { onClose: () => void; onDone: () => voi
         <p className="mt-1 text-sm text-[var(--color-stone)]">Drop it in — Claude scores it (value/effort) and triages it into the workflow automatically.</p>
         <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus placeholder="The idea, in a line" className="mt-4 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
         <textarea value={detail} onChange={(e) => setDetail(e.target.value)} rows={4} placeholder="Any context, why it matters, links… (optional)" className="mt-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
-        {err && <p className="mt-2 text-sm text-[var(--color-blush)]">{err}</p>}
+        {err && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[var(--color-blush)]">{err}</p>}
         <div className="mt-4 flex justify-end gap-2">
           <button onClick={onClose} className="rounded-full px-4 py-2 text-sm text-[var(--color-stone)]">Cancel</button>
           <button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Adding…' : 'Add idea'}</button>

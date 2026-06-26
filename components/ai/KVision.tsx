@@ -157,7 +157,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
                   <div key={p.id} className="group relative aspect-square overflow-hidden rounded-2xl border border-white/10">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={p.dataUrl} alt={`Uploaded photo ${idx + 1}`} className="h-full w-full object-cover" />
-                    <button onClick={() => setPhotos((arr) => arr.filter((x) => x.id !== p.id))} className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-xs opacity-0 transition-opacity group-hover:opacity-100">✕</button>
+                    <button onClick={() => setPhotos((arr) => arr.filter((x) => x.id !== p.id))} aria-label="Remove photo" className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-xs opacity-0 transition-opacity group-hover:opacity-100">✕</button>
                   </div>
                 ))}
                 {photos.length < 4 && (
@@ -193,7 +193,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
           {stage === 'results' && result && <Results key="results" result={result} budget={budget} onRestart={() => { setResult(null); setPhotos([]); setConsent(false); setBudget(null); setStage('intro'); }} />}
         </AnimatePresence>
 
-        {error && <p className="mx-auto mt-6 max-w-2xl rounded-xl border border-[#d98c8c]/30 bg-[#d98c8c]/10 px-4 py-3 text-center text-sm text-[#f4d6d6]">{error}</p>}
+        {error && <p role="alert" aria-live="assertive" className="mx-auto mt-6 max-w-2xl rounded-xl border border-[#d98c8c]/30 bg-[#d98c8c]/10 px-4 py-3 text-center text-sm text-[#f4d6d6]">{error}</p>}
       </div>
 
       {/* Homepage-style scroll cue (intro only) */}

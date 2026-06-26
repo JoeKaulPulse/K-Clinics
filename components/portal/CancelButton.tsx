@@ -54,7 +54,7 @@ export function CancelButton({ token, treatmentTitle, labels }: {
       >
         {busy ? '…' : labels.cancel}
       </button>
-      {err && <p className="text-xs text-[var(--color-blush-deep)]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="text-xs text-[var(--color-blush-deep)]">{err}</p>}
     </div>
   );
 }

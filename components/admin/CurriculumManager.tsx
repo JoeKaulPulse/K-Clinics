@@ -441,7 +441,7 @@ function QuestionRow({ q, index, total, busy, act, ids, isSurvey = false }: { q:
                 <div key={i} className="flex items-center gap-2">
                   <input type={type === 'MULTI' ? 'checkbox' : 'radio'} checked={correct.includes(i)} onChange={() => toggleCorrect(i)} className="h-4 w-4 accent-[var(--color-gold)]" />
                   <input className={field} value={o} onChange={(e) => setOpt(i, e.target.value)} disabled={type === 'TRUEFALSE'} />
-                  {type !== 'TRUEFALSE' && options.length > 2 && <button onClick={() => delOpt(i)} className="text-xs text-[var(--color-blush)]">✕</button>}
+                  {type !== 'TRUEFALSE' && options.length > 2 && <button onClick={() => delOpt(i)} aria-label="Remove option" className="text-xs text-[var(--color-blush)]">✕</button>}
                 </div>
               ))}
             </div>

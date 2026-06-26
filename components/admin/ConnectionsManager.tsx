@@ -32,7 +32,7 @@ export function ConnectionsManager({ providers, flash }: { providers: Provider[]
   return (
     <div className="space-y-4">
       {flash.connected && <p className="rounded-[var(--radius-sm)] bg-[var(--color-jade)]/12 px-4 py-3 text-sm text-[var(--color-jade)]">Connected {flash.connected} ✓</p>}
-      {flash.error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-4 py-3 text-sm text-[var(--color-ink)]">Couldn’t complete that connection ({flash.error.replace(/_/g, ' ')}). Check the setup steps and try again.</p>}
+      {flash.error && <p role="alert" aria-live="assertive" className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-4 py-3 text-sm text-[var(--color-ink)]">Couldn’t complete that connection ({flash.error.replace(/_/g, ' ')}). Check the setup steps and try again.</p>}
 
       <div className="grid gap-4 md:grid-cols-2">
         {providers.map((p) => (

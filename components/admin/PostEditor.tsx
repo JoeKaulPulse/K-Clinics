@@ -81,7 +81,7 @@ export function PostEditor({ initial }: { initial: Initial }) {
               <option value="DRAFT">Draft (hidden)</option>
               <option value="PUBLISHED">Published (live)</option>
             </select>
-            {err && <p className="mt-3 text-sm text-[#c0392b]">{err}</p>}
+            {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[#c0392b]">{err}</p>}
             <div className="mt-4 flex flex-wrap gap-2">
               <button disabled={busy} onClick={() => save(f.status)} className="rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Saving…' : 'Save'}</button>
               {f.status !== 'PUBLISHED' && <button disabled={busy} onClick={() => save('PUBLISHED')} className="rounded-full border border-[var(--color-gold)] px-5 py-2.5 text-sm text-[var(--color-ink)] disabled:opacity-50">Save &amp; publish</button>}

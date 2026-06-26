@@ -61,7 +61,7 @@ export function ApplyForm({ courseId, courseTitle, cohorts }: { courseId: string
           I’d like to spread the cost with Clearpay financing.
         </label>
       </div>
-      {error && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
       <div className="mt-6"><Button onClick={() => !busy && submit()} variant="gold" size="lg">{busy ? 'Submitting…' : 'Submit application'} <ArrowIcon /></Button></div>
     </div>
   );

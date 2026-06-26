@@ -78,7 +78,7 @@ export function MediaGrid({ onPick, compact }: { onPick?: (asset: Asset) => void
         <p className="mt-1 text-xs text-[var(--color-stone)]">PNG, JPG, WebP, SVG · up to 8 MB each</p>
         <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => upload(e.target.files)} />
       </div>
-      {err && <p className="mt-3 text-sm text-[#c0392b]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[#c0392b]">{err}</p>}
       {needsStore && (
         <p className="mt-2 rounded-[var(--radius-md)] border border-[color-mix(in_oklab,#d9a441_45%,transparent)] bg-[var(--color-bone)] p-3 text-sm">
           To enable uploads: in Vercel open <strong>Storage → Create Database → Blob</strong>, connect it to this project (adds <code>BLOB_READ_WRITE_TOKEN</code>), then redeploy.

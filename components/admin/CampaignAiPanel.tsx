@@ -111,7 +111,7 @@ export function CampaignAiPanel({ campaignId, enabled, initial }: { campaignId: 
         </div>
       )}
       {!enabled && <p className="mt-2 text-xs text-[var(--color-blush)]">AI isn’t configured yet (missing ANTHROPIC_API_KEY).</p>}
-      {err && <p className="mt-2 text-sm text-[var(--color-blush)]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[var(--color-blush)]">{err}</p>}
 
       {pack && (
         <div className="mt-5 grid gap-6 lg:grid-cols-2">

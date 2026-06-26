@@ -132,7 +132,7 @@ export function Composer({ channel, meId, onSent, replyTo, onCancelReply }: {
         </div>
       )}
 
-      {error && <p className="mb-1 px-1 text-xs text-[#b23b3b]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mb-1 px-1 text-xs text-[#b23b3b]">{error}</p>}
 
       <div className="flex items-end gap-1">
         <button type="button" className={ICON} onClick={() => fileRef.current?.click()} aria-label="Attach file" title="Attach photo, video or file">

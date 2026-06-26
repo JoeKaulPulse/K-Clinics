@@ -72,7 +72,7 @@ export function ProductEditor({ data }: { data: ProductData }) {
                 <div key={i} className="relative">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={u} alt="" className="h-20 w-20 rounded border border-[var(--color-line)] object-cover" />
-                  <button onClick={() => set('images', f.images.filter((_, j) => j !== i))} className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-[var(--color-ink)] text-[0.6rem] text-white">✕</button>
+                  <button onClick={() => set('images', f.images.filter((_, j) => j !== i))} aria-label="Remove image" className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-[var(--color-ink)] text-[0.6rem] text-white">✕</button>
                 </div>
               ))}
             </div>

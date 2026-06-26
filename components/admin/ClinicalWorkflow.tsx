@@ -63,7 +63,7 @@ export function ClinicalWorkflow({ bookingId, sop, sopSteps, sopSaved, medicalFl
       {/* Timer + start/finish */}
       <Timer state={state} />
 
-      {err && <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-3 py-2 text-sm">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-3 py-2 text-sm">{err}</p>}
 
       <div className="mt-4 flex flex-wrap gap-2">
         {!started && !finished && (

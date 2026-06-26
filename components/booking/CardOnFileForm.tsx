@@ -59,7 +59,7 @@ function Inner({ token, onDone }: { token: string; onDone: () => void }) {
   return (
     <div>
       <PaymentElement />
-      {error && <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
       <div className="mt-6 flex justify-end">
         <Button onClick={submit} variant="gold" size="lg" disabled={busy}>{busy ? 'Saving…' : 'Save my card securely'}</Button>
       </div>

@@ -135,7 +135,7 @@ export function AssessmentRunner({ q, locale = 'en' }: { q: Questionnaire; local
               <p className="mt-4 max-w-lg text-[var(--color-stone)]">
                 {t('assess.submitIntro')}
               </p>
-              {error && <p className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
+              {error && <p role="alert" aria-live="assertive" className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
               <button onClick={submit} disabled={status === 'saving'} className="mt-8 rounded-full bg-[var(--color-gold)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)] disabled:opacity-60">
                 {status === 'saving' ? t('assess.saving') : t('assess.submit')}
               </button>

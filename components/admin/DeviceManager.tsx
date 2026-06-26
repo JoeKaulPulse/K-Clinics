@@ -81,7 +81,7 @@ export function DeviceManager({ devices, providers, rooms = [] }: { devices: Dev
             </label>
             <label className="text-xs text-[var(--color-stone)] sm:col-span-2">Notes<input className={`${f} mt-1`} value={form.notes} onChange={(e) => set('notes', e.target.value)} /></label>
           </div>
-          {error && <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-3 py-2 text-sm">{error}</p>}
+          {error && <p role="alert" aria-live="assertive" className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-3 py-2 text-sm">{error}</p>}
           <div className="mt-4 flex justify-end gap-3">
             <button onClick={() => { setForm(null); setError(null); }} className="px-4 py-2 text-sm text-[var(--color-stone)]">Cancel</button>
             <button onClick={save} disabled={pending} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white disabled:opacity-50">{pending ? 'Saving…' : 'Save device'}</button>

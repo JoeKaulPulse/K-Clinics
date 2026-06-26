@@ -82,7 +82,7 @@ export function ForumThreadView({ thread }: { thread: ForumThreadView }) {
           <label className="block text-xs font-medium text-[var(--color-stone)]">Your reply
             <textarea className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm" rows={4} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Add to the conversation…" maxLength={8000} />
           </label>
-          {error && <p className="mt-2 text-sm text-[var(--color-blush)]">{error}</p>}
+          {error && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[var(--color-blush)]">{error}</p>}
           <div className="mt-3"><AButton onClick={reply} disabled={busy || body.trim().length === 0} size="sm">{busy ? 'Posting…' : 'Post reply'}</AButton></div>
         </Card>
       )}

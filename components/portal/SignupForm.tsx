@@ -89,7 +89,7 @@ export function SignupForm() {
         <Link href="/info/terms-conditions" className="underline">Terms</Link> &{' '}
         <Link href="/info/privacy-policy" className="underline">Privacy Policy</Link>.
       </label>
-      {error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
       <button type="submit" disabled={loading} className="w-full rounded-full bg-[var(--color-gold-deep)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60">
         {loading ? 'Creating your account…' : 'Create account & claim 15% off'}
       </button>

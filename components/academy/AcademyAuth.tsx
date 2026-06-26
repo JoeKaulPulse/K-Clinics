@@ -71,7 +71,7 @@ export function AcademyAuth() {
           </button>
         )}
       </div>
-      {error && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
       <div className="mt-6 flex items-center justify-between gap-4">
         <button type="button" onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); }} className="text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">
           {mode === 'signup' ? 'Already registered? Sign in' : 'New here? Create an account'}

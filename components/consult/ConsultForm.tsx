@@ -203,7 +203,7 @@ export function ConsultForm() {
                 <input type="checkbox" checked={d.consent} onChange={(e) => set('consent', e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />
                 I consent to KClinics contacting me about my enquiry. *
               </label>
-              {error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
+              {error && <p role="alert" aria-live="assertive" className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
             </div>
           )}
         </motion.div>

@@ -189,7 +189,7 @@ function Editor({ entry, courses, treatmentSuggestions, onClose }: { entry: Entr
           )}
         </div>
 
-        {error && <p className="mt-3 text-sm text-[var(--color-blush)]">{error}</p>}
+        {error && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush)]">{error}</p>}
 
         {!readOnly && (
           <div className="mt-5 flex flex-wrap items-center gap-2">

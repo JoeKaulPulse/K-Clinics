@@ -79,7 +79,7 @@ export function MaintenanceScheduler({ windows, serviceOptions }: { windows: Win
               })}
             </div>
           </div>
-          {err && <p className="text-sm text-red-600 sm:col-span-2">{err}</p>}
+          {err && <p role="alert" aria-live="assertive" className="text-sm text-red-600 sm:col-span-2">{err}</p>}
           <div className="sm:col-span-2">
             <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Scheduling…' : 'Schedule window'}</button>
           </div>

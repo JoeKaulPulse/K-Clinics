@@ -689,7 +689,7 @@ function WaitlistCTA({ treatmentSlug, treatmentTitle, date, client }: { treatmen
         <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Email" aria-label="Email" className={inp} />
         <button type="button" onClick={join} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Joining…' : 'Join waitlist'}</button>
       </div>
-      {err && <p className="mt-1 text-xs text-[var(--color-blush-deep)]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-1 text-xs text-[var(--color-blush-deep)]">{err}</p>}
     </div>
   );
 }
