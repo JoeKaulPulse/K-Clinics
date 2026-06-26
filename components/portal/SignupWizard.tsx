@@ -8,6 +8,7 @@ import { authField, authLabel } from '@/components/portal/AuthShell';
 import { portalTranslator, PORTAL_LOCALE_COOKIE, type Locale } from '@/lib/i18n-portal';
 import { LOCALE_LABELS } from '@/lib/i18n';
 import { Glyph } from '@/components/ui/Glyph';
+import { escapeHtml } from '@/lib/sanitize';
 
 const STEPS = 4;
 
@@ -79,7 +80,7 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
         </motion.div>
         <h2 className="font-[family-name:var(--font-display)] text-2xl">{t('signup.doneTitle', { name: d.firstName })}</h2>
         {done.granted ? (
-          <p className="mx-auto mt-3 max-w-sm text-[var(--color-stone)]" dangerouslySetInnerHTML={{ __html: t('signup.discountReady', { percent: done.percent, code: `<span class="font-mono font-semibold text-[var(--color-gold-deep)]">${done.code}</span>` }) }} />
+          <p className="mx-auto mt-3 max-w-sm text-[var(--color-stone)]" dangerouslySetInnerHTML={{ __html: t('signup.discountReady', { percent: done.percent, code: `<span class="font-mono font-semibold text-[var(--color-gold-deep)]">${escapeHtml(done.code)}</span>` }) }} />
         ) : (
           <p className="mx-auto mt-3 max-w-sm text-[var(--color-stone)]">{done.reason}</p>
         )}
