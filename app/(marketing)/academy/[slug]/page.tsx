@@ -42,7 +42,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
     <>
       <JsonLd data={[
         breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Academy', path: '/academy' }, { name: course.title, path: `/academy/${slug}` }]),
-        courseLd({ title: course.title, description: course.summary || course.description || course.title, path: `/academy/${slug}`, pricePence: course.pricePence, durationText: course.durationText }),
+        courseLd({ title: course.title, description: course.summary || course.description || course.title, path: `/academy/${slug}`, pricePence: course.pricePence, durationText: course.durationText, accreditations: course.accreditations, level: course.level, teaches: course.outcomes.slice(0, 10), prerequisites: course.prerequisites }),
       ]} />
       <PageHero
         eyebrow={course.level ? `K Academy · ${course.level}` : 'K Academy'}

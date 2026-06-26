@@ -65,7 +65,7 @@ export function RichTextField({ value, onChange, className, placeholder, ariaLab
         onKeyDown={onKeyDown}
         className={`rt-field outline-none ${className || ''}`}
       />
-      <style>{`.rt-field:empty:before{content:attr(data-placeholder);color:var(--color-stone-soft);}
+      <style>{`.rt-field:empty:before{content:attr(data-placeholder);color:var(--color-stone);}
 .rt-field a{color:var(--color-gold);text-decoration:underline;}
 .rt-field{white-space:pre-wrap;word-break:break-word;}`}</style>
     </div>

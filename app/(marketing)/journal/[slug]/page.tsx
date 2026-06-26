@@ -130,7 +130,7 @@ const JOURNAL_PROSE_CSS = `
 .journal-prose blockquote{border-left:3px solid var(--color-gold);padding-left:1rem;margin:1.5rem 0;color:var(--color-stone);font-style:italic;}
 .journal-prose figure{margin:1.5rem 0;}
 .journal-prose figcaption{margin-top:0.5rem;font-size:0.85rem;color:var(--color-stone);text-align:center;}
-.journal-prose blockquote cite{display:block;margin-top:0.5rem;font-style:normal;font-size:0.85rem;color:var(--color-stone-soft);}
+.journal-prose blockquote cite{display:block;margin-top:0.5rem;font-style:normal;font-size:0.85rem;color:var(--color-stone);}
 .journal-prose hr{border:0;height:1px;background:linear-gradient(90deg,transparent,var(--color-line),transparent);margin:2.5rem 0;}
 .journal-prose .journal-callout{display:block;background:var(--color-bone);border:1px solid var(--color-line);border-left:3px solid var(--color-gold);border-radius:var(--radius-md);padding:1.1rem 1.3rem;margin:1.6rem 0;color:var(--color-ink-soft);}
 .journal-prose .journal-cta{margin:1.8rem 0;}
