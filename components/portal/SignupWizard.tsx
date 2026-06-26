@@ -135,8 +135,8 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
             {step === 1 && (
               <Step title={t('signup.nameTitle')} sub={t('signup.nameSub')}>
                 <div className="space-y-4">
-                  <div><label className={authLabel}>{t('field.firstName')}</label><input autoFocus className={authField} value={d.firstName} onChange={(e) => set('firstName', e.target.value)} onKeyDown={(e) => e.key === 'Enter' && next()} /></div>
-                  <div><label className={authLabel}>{t('field.lastName')}</label><input className={authField} value={d.lastName} onChange={(e) => set('lastName', e.target.value)} onKeyDown={(e) => e.key === 'Enter' && next()} /></div>
+                  <div><label htmlFor="sw-firstName" className={authLabel}>{t('field.firstName')}</label><input id="sw-firstName" autoFocus className={authField} value={d.firstName} onChange={(e) => set('firstName', e.target.value)} onKeyDown={(e) => e.key === 'Enter' && next()} /></div>
+                  <div><label htmlFor="sw-lastName" className={authLabel}>{t('field.lastName')}</label><input id="sw-lastName" className={authField} value={d.lastName} onChange={(e) => set('lastName', e.target.value)} onKeyDown={(e) => e.key === 'Enter' && next()} /></div>
                 </div>
               </Step>
             )}
@@ -144,19 +144,19 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
             {step === 2 && (
               <Step title={t('signup.contactTitle')} sub={t('signup.contactSub')}>
                 <div className="space-y-4">
-                  <div><label className={authLabel}>{t('field.email')}</label><input type="email" autoFocus autoComplete="email" className={authField} value={d.email} onChange={(e) => set('email', e.target.value)} onKeyDown={(e) => e.key === 'Enter' && next()} /></div>
+                  <div><label htmlFor="sw-email" className={authLabel}>{t('field.email')}</label><input id="sw-email" type="email" autoFocus autoComplete="email" className={authField} value={d.email} onChange={(e) => set('email', e.target.value)} onKeyDown={(e) => e.key === 'Enter' && next()} /></div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div><label className={authLabel}>{t('field.phone')}</label><input type="tel" autoComplete="tel" className={authField} value={d.phone} onChange={(e) => set('phone', e.target.value)} /></div>
-                    <div><label className={authLabel}>{t('field.dob')}</label><input type="date" className={authField} value={d.dob} onChange={(e) => set('dob', e.target.value)} /></div>
+                    <div><label htmlFor="sw-phone" className={authLabel}>{t('field.phone')}</label><input id="sw-phone" type="tel" autoComplete="tel" className={authField} value={d.phone} onChange={(e) => set('phone', e.target.value)} /></div>
+                    <div><label htmlFor="sw-dob" className={authLabel}>{t('field.dob')}</label><input id="sw-dob" type="date" className={authField} value={d.dob} onChange={(e) => set('dob', e.target.value)} /></div>
                   </div>
                   <div>
-                    <label className={authLabel}>{t('gender.label')} <span className="text-[var(--color-stone)]">({t('field.optional')})</span></label>
-                    <select className={authField} value={d.gender} onChange={(e) => set('gender', e.target.value)}>
+                    <label htmlFor="sw-gender" className={authLabel}>{t('gender.label')} <span className="text-[var(--color-stone)]">({t('field.optional')})</span></label>
+                    <select id="sw-gender" className={authField} value={d.gender} onChange={(e) => set('gender', e.target.value)}>
                       <option value="">{t('gender.unset')}</option>
                       {(['FEMALE', 'MALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_SAY'] as const).map((g) => <option key={g} value={g}>{t(`gender.${g}`)}</option>)}
                     </select>
                     {d.gender === 'OTHER' && (
-                      <input className={`${authField} mt-2`} maxLength={60} placeholder={t('gender.selfDescribe')} value={d.genderSelfDescribe} onChange={(e) => set('genderSelfDescribe', e.target.value)} />
+                      <input className={`${authField} mt-2`} maxLength={60} aria-label={t('gender.selfDescribe')} placeholder={t('gender.selfDescribe')} value={d.genderSelfDescribe} onChange={(e) => set('genderSelfDescribe', e.target.value)} />
                     )}
                   </div>
                 </div>
@@ -167,7 +167,7 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
               <Step title={t('signup.secureTitle')} sub={t('signup.secureSub')}>
                 <div className="space-y-4">
                   <input type="text" tabIndex={-1} autoComplete="off" aria-hidden value={d.company} onChange={(e) => set('company', e.target.value)} className="absolute -left-[9999px] h-0 w-0" />
-                  <div><label className={authLabel}>{t('field.password')}</label><input type="password" autoFocus autoComplete="new-password" minLength={8} className={authField} value={d.password} onChange={(e) => set('password', e.target.value)} /></div>
+                  <div><label htmlFor="sw-password" className={authLabel}>{t('field.password')}</label><input id="sw-password" type="password" autoFocus autoComplete="new-password" minLength={8} className={authField} value={d.password} onChange={(e) => set('password', e.target.value)} /></div>
                   <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]">
                     <input type="checkbox" checked={d.marketingOptIn} onChange={(e) => set('marketingOptIn', e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]" />
                     {t('signup.marketing')}

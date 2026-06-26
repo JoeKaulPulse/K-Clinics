@@ -149,15 +149,15 @@ export function FundingWizard({ financeApplyUrl }: { financeApplyUrl?: string })
           <h4 className="font-[family-name:var(--font-display)] text-xl">Apply for funding</h4>
           <p className="mt-1 text-sm text-[var(--color-stone)]">Leave your details and we’ll get the right funding started for you.</p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2"><label className={label}>Full name *</label><input className={field} value={c.name} onChange={(e) => setC((p) => ({ ...p, name: e.target.value }))} /></div>
-            <div><label className={label}>Email *</label><input type="email" className={field} value={c.email} onChange={(e) => setC((p) => ({ ...p, email: e.target.value }))} /></div>
-            <div><label className={label}>Phone</label><input type="tel" className={field} value={c.phone} onChange={(e) => setC((p) => ({ ...p, phone: e.target.value }))} /></div>
-            <div className="sm:col-span-2"><label className={label}>Which option are you most interested in?</label>
-              <select className={field} value={c.route} onChange={(e) => setC((p) => ({ ...p, route: e.target.value as FundingRouteKey }))}>
+            <div className="sm:col-span-2"><label htmlFor="fw-name" className={label}>Full name *</label><input id="fw-name" className={field} value={c.name} onChange={(e) => setC((p) => ({ ...p, name: e.target.value }))} /></div>
+            <div><label htmlFor="fw-email" className={label}>Email *</label><input id="fw-email" type="email" className={field} value={c.email} onChange={(e) => setC((p) => ({ ...p, email: e.target.value }))} /></div>
+            <div><label htmlFor="fw-phone" className={label}>Phone</label><input id="fw-phone" type="tel" className={field} value={c.phone} onChange={(e) => setC((p) => ({ ...p, phone: e.target.value }))} /></div>
+            <div className="sm:col-span-2"><label htmlFor="fw-route" className={label}>Which option are you most interested in?</label>
+              <select id="fw-route" className={field} value={c.route} onChange={(e) => setC((p) => ({ ...p, route: e.target.value as FundingRouteKey }))}>
                 {eligible.map((k) => <option key={k} value={k}>{ROUTE_BY_KEY[k].name}</option>)}
               </select>
             </div>
-            <div className="sm:col-span-2"><label className={label}>Anything else we should know?</label><textarea rows={3} className={field} value={c.message} onChange={(e) => setC((p) => ({ ...p, message: e.target.value }))} placeholder="Your goals, which course, any questions…" /></div>
+            <div className="sm:col-span-2"><label htmlFor="fw-message" className={label}>Anything else we should know?</label><textarea id="fw-message" rows={3} className={field} value={c.message} onChange={(e) => setC((p) => ({ ...p, message: e.target.value }))} placeholder="Your goals, which course, any questions…" /></div>
             <input type="text" tabIndex={-1} autoComplete="off" value={c.company} onChange={(e) => setC((p) => ({ ...p, company: e.target.value }))} className="absolute -left-[9999px] h-0 w-0" aria-hidden />
           </div>
           {error && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
