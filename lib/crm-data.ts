@@ -137,7 +137,7 @@ export const CLIENTS_PER_PAGE = 50;
 // Paginated client list. Returns the page of rows plus the total count and page
 // metadata so the admin list can show "X–Y of Z" and Prev/Next instead of
 // rendering hundreds of rows in one ~9500px-tall scroll (BLD-621).
-export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc' | 'desc'; flag?: string; page?: number; perPage?: number } = {}) {
+export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc' | 'desc'; flag?: string; page?: number; perPage?: number; includeTest?: boolean } = {}) {
   const { q, sort = 'created', dir = 'desc', flag } = opts;
   const perPage = Math.min(Math.max(opts.perPage ?? CLIENTS_PER_PAGE, 1), 200);
   const and: Record<string, unknown>[] = [];
@@ -151,6 +151,11 @@ export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc'
   else if (flag === 'review') and.push({ tags: { has: 'needs-name-review' } });
   else if (flag === 'likelytest') and.push({ tags: { has: 'likely-test' } });
   else if (flag === 'wordpress') and.push({ source: 'wordpress' });
+  // BLD-561: hide records tagged as likely test/junk by default so they don't
+  // clutter the list, search or count. Skipped when explicitly reviewing them
+  // (the "Likely test/junk" filter) or when the caller opts to include them.
+  const hidingTest = !opts.includeTest && flag !== 'likelytest';
+  if (hidingTest) and.push({ NOT: { tags: { has: 'likely-test' } } });
   const SORTS: Record<string, string> = { name: 'firstName', email: 'email', created: 'createdAt', visit: 'lastVisitAt' };
   const field = SORTS[sort] || 'createdAt';
   const where = and.length ? { AND: and } : undefined;
@@ -164,7 +169,9 @@ export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc'
     take: perPage,
     select: { id: true, firstName: true, lastName: true, email: true, phone: true, marketingOptIn: true, source: true, tags: true, createdAt: true, lastVisitAt: true },
   });
-  return { rows, total, page, perPage, pages };
+  // Count of records being hidden, so the list can offer a one-click reveal.
+  const hiddenTest = hidingTest ? await db.client.count({ where: { tags: { has: 'likely-test' } } }) : 0;
+  return { rows, total, page, perPage, pages, hiddenTest };
 }
 
 export async function getClient(id: string) {

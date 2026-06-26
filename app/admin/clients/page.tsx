@@ -4,6 +4,7 @@ import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { PageSearch } from '@/components/admin/PageSearch';
+import { ScanTestClientsButton } from '@/components/admin/ScanTestClientsButton';
 import { EmptyState } from '@/components/admin/EmptyState';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { getLocale } from '@/lib/locale';
@@ -11,7 +12,7 @@ import { t } from '@/lib/i18n';
 
 export const dynamic = 'force-dynamic';
 
-type SP = { q?: string; sort?: string; dir?: 'asc' | 'desc'; flag?: string; page?: string };
+type SP = { q?: string; sort?: string; dir?: 'asc' | 'desc'; flag?: string; page?: string; showtest?: string };
 
 const FLAGS = [
   { k: '', label: 'All' },
@@ -23,12 +24,14 @@ const FLAGS = [
 
 export default async function ClientsPage({ searchParams }: { searchParams: Promise<SP> }) {
   if (!crmEnabled) return <CrmDisabled />;
-  const { q = '', sort = 'created', dir = 'desc', flag = '', page: pageParam } = await searchParams;
+  const { q = '', sort = 'created', dir = 'desc', flag = '', page: pageParam, showtest } = await searchParams;
   const reqPage = Math.max(1, Number(pageParam) || 1);
+  const includeTest = showtest === '1';
   const { listClients } = await import('@/lib/crm-data');
   const session = await getSession();
   if (!sessionCan(session, 'clients.view')) redirect('/admin');
-  const { rows, total, page, pages, perPage } = await listClients({ q, sort, dir, flag, page: reqPage });
+  const { rows, total, page, pages, perPage, hiddenTest } = await listClients({ q, sort, dir, flag, page: reqPage, includeTest });
+  const canEdit = sessionCan(session, 'clients.edit');
 
   const can = await sessionPermissions();
   const locale = await getLocale();
@@ -38,11 +41,12 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   // the Prev/Next links carry a page through (they pass it explicitly).
   const qs = (over: Partial<SP>) => {
     const p = new URLSearchParams();
-    const merged = { q, sort, dir, flag, ...over };
+    const merged = { q, sort, dir, flag, showtest: includeTest ? '1' : '', ...over };
     if (merged.q) p.set('q', merged.q);
     if (merged.sort) p.set('sort', merged.sort);
     if (merged.dir) p.set('dir', merged.dir);
     if (merged.flag) p.set('flag', merged.flag);
+    if (merged.showtest === '1') p.set('showtest', '1');
     if (merged.page && Number(merged.page) > 1) p.set('page', String(merged.page));
     const s = p.toString();
     return s ? `?${s}` : '';
@@ -89,14 +93,25 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
       </div>
 
       {/* Filters */}
-      <div className="mt-5 flex flex-wrap gap-2">
+      <div className="mt-5 flex flex-wrap items-center gap-2">
         {FLAGS.map((f) => (
-          <Link key={f.k} href={`/admin/clients${qs({ flag: f.k })}`}
+          <Link key={f.k} href={`/admin/clients${qs({ flag: f.k, page: '' })}`}
             className={`rounded-full px-3.5 py-1.5 text-sm transition-colors ${flag === f.k ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'border border-[var(--color-line)] hover:bg-[var(--color-bone)]'}`}>
             {f.label}
           </Link>
         ))}
+        {canEdit && <ScanTestClientsButton />}
       </div>
+
+      {/* BLD-561: likely test/junk records are hidden from this list by default;
+          surface the count with a one-click reveal (nothing is deleted). */}
+      {flag !== 'likelytest' && (hiddenTest > 0 || includeTest) && (
+        <p className="mt-3 text-sm text-[var(--color-stone)]">
+          {includeTest
+            ? <>Showing {total} including test/junk records · <Link href={`/admin/clients${qs({ showtest: '', page: '' })}`} className="text-[var(--color-gold)] hover:underline">Hide them</Link></>
+            : <>{hiddenTest} likely test/junk {hiddenTest === 1 ? 'record is' : 'records are'} hidden · <Link href={`/admin/clients${qs({ showtest: '1', page: '' })}`} className="text-[var(--color-gold)] hover:underline">Show</Link> · <Link href={`/admin/clients${qs({ flag: 'likelytest', page: '' })}`} className="text-[var(--color-gold)] hover:underline">Review them</Link></>}
+        </p>
+      )}
 
       <div className="mt-5 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] tabular-nums">
         {/* Header row */}
