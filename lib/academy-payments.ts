@@ -378,6 +378,37 @@ export async function createInstalmentPlan(enrolmentId: string, input: { count: 
   return { ok: true };
 }
 
+/** Issue a Stripe refund for a PAID online academy payment and mark it REFUNDED. */
+export async function refundEnrolmentPayment(paymentId: string, staffEmail?: string): Promise<{ ok: boolean; error?: string }> {
+  const p = await db.enrolmentPayment.findUnique({
+    where: { id: paymentId },
+    select: { id: true, enrolmentId: true, amountPence: true, state: true, stripePaymentIntentId: true },
+  });
+  if (!p) return { ok: false, error: 'Payment not found.' };
+  if (p.state !== 'PAID') return { ok: false, error: 'Only PAID payments can be refunded.' };
+  if (!p.stripePaymentIntentId) return { ok: false, error: 'No Stripe charge on this payment — use Remove to correct it instead.' };
+  const { stripe, stripeEnabled } = await import('@/lib/stripe');
+  if (!stripeEnabled) return { ok: false, error: 'Stripe is not configured.' };
+  try {
+    await stripe().refunds.create(
+      { payment_intent: p.stripePaymentIntentId, metadata: { paymentId, enrolmentId: p.enrolmentId } },
+      { idempotencyKey: `academy-refund-${p.id}` },
+    );
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Refund failed at Stripe.' };
+  }
+  await db.enrolmentPayment.update({ where: { id: p.id }, data: { state: 'REFUNDED' } });
+  await db.enrolment.update({ where: { id: p.enrolmentId }, data: { paidPence: { decrement: p.amountPence } } }).catch(() => {});
+  await logAudit({
+    action: 'PAYMENT_REFUNDED',
+    actor: staffEmail || 'admin',
+    enrolmentId: p.enrolmentId,
+    summary: `Academy payment £${(p.amountPence / 100).toFixed(2)} refunded via Stripe`,
+    meta: { paymentId, amountPence: p.amountPence },
+  }).catch(() => {});
+  return { ok: true };
+}
+
 /** Delete a payment/instalment row. If it was PAID, roll back paidPence so the
  *  ledger stays correct (for corrections). */
 export async function removePayment(paymentId: string): Promise<{ ok: boolean }> {
