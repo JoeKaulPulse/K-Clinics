@@ -160,7 +160,7 @@ export function FundingWizard({ financeApplyUrl }: { financeApplyUrl?: string })
             <div className="sm:col-span-2"><label htmlFor="fw-message" className={label}>Anything else we should know?</label><textarea id="fw-message" rows={3} className={field} value={c.message} onChange={(e) => setC((p) => ({ ...p, message: e.target.value }))} placeholder="Your goals, which course, any questions…" /></div>
             <input type="text" tabIndex={-1} autoComplete="off" value={c.company} onChange={(e) => setC((p) => ({ ...p, company: e.target.value }))} className="absolute -left-[9999px] h-0 w-0" aria-hidden />
           </div>
-          {error && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
+          {error && <p role="alert" aria-live="assertive" className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
           <div className="mt-6"><Button onClick={() => !busy && submit()} variant="gold" size="lg">{busy ? 'Submitting…' : 'Submit funding enquiry'} <ArrowIcon /></Button></div>
           <p className="mt-3 text-xs text-[var(--color-stone)]">By submitting you agree we can contact you about funding for your training. Government and council funding depend on eligibility and approval; we’ll confirm what applies to you.</p>
         </div>
@@ -195,7 +195,7 @@ export function FundingWizard({ financeApplyUrl }: { financeApplyUrl?: string })
         <div><label className={label}>Have you lived in the UK or EU for the last 3 years (or have settled status)?</label><Seg value={a.residencyOk} onChange={(v) => setA((p) => ({ ...p, residencyOk: v }))} options={YES_NO} /></div>
         <div><label className={label}>Do you already hold a full Level 3 qualification?</label><Seg value={a.priorLevel3} onChange={(v) => setA((p) => ({ ...p, priorLevel3: v }))} options={YES_NO} /></div>
       </div>
-      {error && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
       <div className="mt-6"><Button onClick={seeOptions} variant="gold" size="lg">See my options <ArrowIcon /></Button></div>
     </div>
   );

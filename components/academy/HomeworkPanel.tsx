@@ -81,7 +81,7 @@ export function HomeworkPanel({ lessonId, submission, tone = 'dark' }: { lessonI
             <input type="file" accept="application/pdf,.doc,.docx,image/*" className="hidden" disabled={uploading} onChange={(e) => { const file = e.target.files?.[0]; if (file) addFile(file); e.currentTarget.value = ''; }} />
           </label>
           <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Add a note for your tutor (optional)…" className={`w-full rounded-[var(--radius-md)] border px-3 py-2 text-sm outline-none ${c.textarea}`} />
-          {error && <p className="text-sm text-[var(--color-blush)]">{error}</p>}
+          {error && <p role="alert" aria-live="assertive" className="text-sm text-[var(--color-blush)]">{error}</p>}
           <button onClick={submit} disabled={busy || uploading || files.length === 0} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-[var(--color-ink)] disabled:opacity-50">{busy ? 'Submitting…' : submission ? 'Resubmit homework' : 'Submit homework'}</button>
         </div>
       )}

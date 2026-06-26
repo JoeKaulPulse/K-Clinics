@@ -61,7 +61,7 @@ export function ClaimReward({ resultId, hasShared = false }: { resultId: string;
         <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" inputMode="email" placeholder="Email" autoComplete="email"
           className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-3 text-base outline-none focus:border-[var(--color-gold)]" />
       </div>
-      {error && <p className="mt-3 text-center text-sm text-[var(--color-blush)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-3 text-center text-sm text-[var(--color-blush)]">{error}</p>}
       <button onClick={claim} disabled={busy || !email.trim() || !firstName.trim()}
         className="mt-4 w-full rounded-[var(--radius-md)] bg-[var(--color-gold)] px-4 py-4 text-base font-medium text-[var(--color-ink)] transition hover:opacity-90 disabled:opacity-50">
         {busy ? 'Claiming…' : 'Create account & claim →'}

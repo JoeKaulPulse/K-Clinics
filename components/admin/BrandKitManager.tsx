@@ -46,7 +46,7 @@ export function BrandKitManager({ initial }: { initial: BrandKit }) {
                 <input value={c.role} onChange={(e) => setColor(i, { role: e.target.value })} placeholder="Where it's used" className="w-full bg-transparent text-xs text-[var(--color-stone)] outline-none" />
                 <span className="font-mono text-[0.65rem] uppercase text-[var(--color-stone)]">{c.hex}</span>
               </div>
-              <button onClick={() => removeColor(i)} className="shrink-0 text-xs text-[var(--color-blush)] hover:underline">✕</button>
+              <button onClick={() => removeColor(i)} aria-label="Remove colour" className="shrink-0 text-xs text-[var(--color-blush)] hover:underline">✕</button>
             </div>
           ))}
         </div>

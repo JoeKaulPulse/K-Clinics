@@ -239,9 +239,9 @@ export function EmailComposer({ segments, tags, initial, templates = [] }: { seg
                   <span className="text-[0.65rem] uppercase tracking-wide text-[var(--color-stone)]">{b.type}</span>
                   <span className="flex items-center gap-2 text-xs text-[var(--color-stone)]">
                     {'align' in b && <AlignToggle value={(b.align as Align) || 'left'} onChange={(a) => update(i, { align: a } as Partial<EmailBlock>)} />}
-                    <button onClick={() => move(i, -1)} className="hover:text-[var(--color-ink)]">↑</button>
-                    <button onClick={() => move(i, 1)} className="hover:text-[var(--color-ink)]">↓</button>
-                    <button onClick={() => remove(i)} className="text-[var(--color-blush)]">✕</button>
+                    <button onClick={() => move(i, -1)} aria-label="Move block up" className="hover:text-[var(--color-ink)]">↑</button>
+                    <button onClick={() => move(i, 1)} aria-label="Move block down" className="hover:text-[var(--color-ink)]">↓</button>
+                    <button onClick={() => remove(i)} aria-label="Remove block" className="text-[var(--color-blush)]">✕</button>
                   </span>
                 </div>
                 {(b.type === 'heading' || b.type === 'subheading') && <input value={b.text} onFocus={onFocus('block', i)} onChange={(e) => update(i, { text: e.target.value })} className={`${field} w-full`} />}

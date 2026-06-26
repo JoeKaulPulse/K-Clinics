@@ -64,7 +64,7 @@ export function EmailCampaignRows({ rows }: { rows: DraftRow[] }) {
           ))}
         </tbody>
       </table>
-      {err && <p className="border-t border-[var(--color-line)] bg-[var(--color-blush)]/10 p-2 text-center text-xs text-[var(--color-blush)]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="border-t border-[var(--color-line)] bg-[var(--color-blush)]/10 p-2 text-center text-xs text-[var(--color-blush)]">{err}</p>}
     </div>
   );
 }

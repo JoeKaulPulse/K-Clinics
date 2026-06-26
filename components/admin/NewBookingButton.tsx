@@ -181,7 +181,7 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
             </div>
             <textarea className={f} rows={2} placeholder="Notes (optional)" value={d.notes} onChange={(e) => set('notes', e.target.value)} />
 
-            {error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm">{error}</p>}
+            {error && <p role="alert" aria-live="assertive" className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm">{error}</p>}
             <div className="flex justify-end gap-3">
               <button onClick={onClose} className="px-4 py-2.5 text-sm text-[var(--color-stone)]">Cancel</button>
               {clash && <button onClick={() => submit(true)} disabled={pending} className="rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium hover:border-[var(--color-gold)] disabled:opacity-60">Book anyway</button>}

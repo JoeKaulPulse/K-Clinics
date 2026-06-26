@@ -128,7 +128,7 @@ function QuestionForm({ courses, existing, defaultCourseId, busy, act }: { cours
           <div key={i} className="flex items-center gap-2">
             <input type={f.type === 'MULTI' ? 'checkbox' : 'radio'} checked={f.correct.includes(i)} onChange={() => toggleCorrect(i)} className="h-4 w-4 accent-[var(--color-gold)]" />
             <input className={field} value={o} onChange={(e) => setOpt(i, e.target.value)} disabled={f.type === 'TRUEFALSE'} />
-            {f.type !== 'TRUEFALSE' && f.options.length > 2 && <button onClick={() => setF((s) => ({ ...s, options: s.options.filter((_, k) => k !== i), correct: s.correct.filter((k) => k !== i).map((k) => (k > i ? k - 1 : k)) }))} className="text-xs text-[var(--color-blush)]">✕</button>}
+            {f.type !== 'TRUEFALSE' && f.options.length > 2 && <button onClick={() => setF((s) => ({ ...s, options: s.options.filter((_, k) => k !== i), correct: s.correct.filter((k) => k !== i).map((k) => (k > i ? k - 1 : k)) }))} aria-label="Remove option" className="text-xs text-[var(--color-blush)]">✕</button>}
           </div>
         ))}
         {f.type !== 'TRUEFALSE' && <button onClick={() => setF((s) => ({ ...s, options: [...s.options, ''] }))} className="text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add option</button>}

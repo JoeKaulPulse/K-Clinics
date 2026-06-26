@@ -69,7 +69,7 @@ export function FollowUpForm({ token, treatment }: { token: string; treatment: s
         <label className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]" htmlFor="fc">Anything you’d like to tell us? (optional)</label>
         <textarea id="fc" rows={3} value={comment} onChange={(e) => setComment(e.target.value)} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 outline-none focus:border-[var(--color-gold)]" />
       </div>
-      {error && <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
       <button onClick={submit} disabled={busy} className="mt-5 rounded-full bg-[var(--color-gold)] px-6 py-3 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? 'Sending…' : 'Send'}</button>
     </div>
   );

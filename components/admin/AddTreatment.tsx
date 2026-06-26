@@ -55,7 +55,7 @@ export function AddTreatment({ bookingId, variants }: { bookingId: string; varia
           {pending ? 'Adding…' : selected && selected.pricePence > 0 ? `Add · ${money(selected.pricePence)}` : 'Add'}
         </button>
       </div>
-      {error && <p className="mt-2 text-xs text-[#b23b3b]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-2 text-xs text-[#b23b3b]">{error}</p>}
     </div>
   );
 }

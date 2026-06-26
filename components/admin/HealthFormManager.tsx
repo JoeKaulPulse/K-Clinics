@@ -79,7 +79,7 @@ export function HealthFormManager({ formKey, questions }: { formKey: string; que
             <textarea name="optionsText" rows={3} placeholder={'One option per line, e.g.\nYes\nNo\nNot sure'} className={field} />
           )}
           <label className="flex items-center gap-2 text-sm text-[var(--color-stone)]"><input type="checkbox" name="required" /> Required</label>
-          {error && <p className="text-xs text-[#b23b3b]">{error}</p>}
+          {error && <p role="alert" aria-live="assertive" className="text-xs text-[#b23b3b]">{error}</p>}
           <div className="flex gap-2">
             <button type="submit" disabled={pending} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{pending ? 'Adding…' : 'Add question'}</button>
             <button type="button" onClick={() => { setOpen(false); setError(null); }} className="px-3 py-2 text-sm text-[var(--color-stone)]">Cancel</button>

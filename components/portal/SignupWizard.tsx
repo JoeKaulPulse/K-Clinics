@@ -183,7 +183,7 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
         </AnimatePresence>
       </div>
 
-      {error && <p className="mt-2 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-2 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
 
       {/* Controls (hidden on the language step — selecting advances) */}
       {step > 0 && (

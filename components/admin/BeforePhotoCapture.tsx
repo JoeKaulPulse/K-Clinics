@@ -90,7 +90,7 @@ export function BeforePhotoCapture({ bookingId, clientId, photos, optOutSigned, 
               <div key={p.id} className="relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={`${baseUrl}/api/admin/bookings/before-photo/${p.id}`} alt={p.area ?? 'before'} className="h-24 w-24 rounded border border-[var(--color-line)] object-cover" />
-                {canManage && <button onClick={() => del(p.id)} className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-[var(--color-ink)] text-[0.6rem] text-white">✕</button>}
+                {canManage && <button onClick={() => del(p.id)} aria-label="Remove photo" className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-[var(--color-ink)] text-[0.6rem] text-white">✕</button>}
                 {p.area && <span className="mt-0.5 block max-w-24 truncate text-[0.6rem] text-[var(--color-stone)]">{p.area}</span>}
               </div>
             ))}
@@ -136,7 +136,7 @@ export function BeforePhotoCapture({ bookingId, clientId, photos, optOutSigned, 
                 </div>
               </>
             )}
-            {err && <p className="mt-2 text-sm text-[var(--color-blush)]">{err}</p>}
+            {err && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[var(--color-blush)]">{err}</p>}
 
             {/* Opt-out path — only when a photo is actually required (laser). */}
             {required && (

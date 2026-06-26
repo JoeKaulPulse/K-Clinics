@@ -434,7 +434,7 @@ function QuizPanel({ quiz, state, onGraded, onBadges, onNext }: { quiz: QuizView
       </ol>
       )}
 
-      {err && <p className="mt-4 text-sm text-[var(--color-blush)]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-4 text-sm text-[var(--color-blush)]">{err}</p>}
       <div className="mt-6 flex flex-wrap items-center gap-3">
         {result ? (
           !quiz.isSurvey && !noAttemptsLeft && <button onClick={retake} className="rounded-full bg-[var(--color-ink)] px-6 py-2.5 text-sm font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-espresso)]">Retake assessment</button>
