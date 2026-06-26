@@ -21,7 +21,10 @@ export default async function AcademySettingsPage() {
   return (
     <AcademyPortalShell firstName={student.firstName}>
       <PageTitle lede="Sound and sign-in preferences for your academy.">Settings</PageTitle>
-      <AcademySettings passkeys={passkeys.map((p) => ({ id: p.id, name: p.deviceName ?? 'Passkey', createdAt: p.createdAt.toISOString(), lastUsedAt: p.lastUsedAt?.toISOString() ?? null }))} />
+      <AcademySettings
+        hasPassword={Boolean(student.passwordHash)}
+        passkeys={passkeys.map((p) => ({ id: p.id, name: p.deviceName ?? 'Passkey', createdAt: p.createdAt.toISOString(), lastUsedAt: p.lastUsedAt?.toISOString() ?? null }))}
+      />
     </AcademyPortalShell>
   );
 }
