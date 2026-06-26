@@ -10,9 +10,12 @@ export const runtime = 'nodejs';
 // settings.manage; the curriculum editor saves the returned URL onto the lesson. (BLD-407)
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
-  const { requirePermission } = await import('@/lib/auth');
+  const { requirePermission, sessionIsAdmin } = await import('@/lib/auth');
   const session = await requirePermission('settings.manage');
   if (!session) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
+  // Admins may upload large HD course videos (up to 1 GB); other settings.manage
+  // holders keep the standard generous cap.
+  const maxBytes = sessionIsAdmin(session) ? 1024 * 1024 * 1024 : 500 * 1024 * 1024;
   if (!process.env.BLOB_READ_WRITE_TOKEN) return NextResponse.json({ ok: false, error: 'File storage isn’t connected (add a Vercel Blob store).' }, { status: 400 });
 
   const body = (await req.json()) as HandleUploadBody;
@@ -35,7 +38,7 @@ export async function POST(req: Request) {
           'application/vnd.openxmlformats-officedocument.presentationml.presentation',
           'application/vnd.ms-excel', 'application/vnd.ms-powerpoint', 'text/plain',
         ],
-        maximumSizeInBytes: 500 * 1024 * 1024, // 500 MB — generous for HD course videos
+        maximumSizeInBytes: maxBytes, // 1 GB for admins, else 500 MB
         addRandomSuffix: true,
       }),
       onUploadCompleted: async () => {},

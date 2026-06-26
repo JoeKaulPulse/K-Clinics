@@ -11,9 +11,12 @@ export const runtime = 'nodejs';
 // chat `send` op.
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
-  const { getSession } = await import('@/lib/auth');
+  const { getSession, sessionIsAdmin } = await import('@/lib/auth');
   const session = await getSession();
   if (!session) return NextResponse.json({ ok: false, error: 'Not signed in.' }, { status: 403 });
+  // Admins may upload large video content (up to 1 GB); other staff keep the
+  // standard cap that comfortably covers phone videos. (BLD-588)
+  const maxBytes = sessionIsAdmin(session) ? 1024 * 1024 * 1024 : 200 * 1024 * 1024;
   if (!process.env.BLOB_READ_WRITE_TOKEN) return NextResponse.json({ ok: false, error: 'File storage isn’t connected (add a Vercel Blob store).' }, { status: 400 });
 
   const body = (await req.json()) as HandleUploadBody;
@@ -29,7 +32,7 @@ export async function POST(req: Request) {
           'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
           'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ],
-        maximumSizeInBytes: 200 * 1024 * 1024, // 200 MB — covers phone videos
+        maximumSizeInBytes: maxBytes, // 1 GB for admins, else 200 MB
         addRandomSuffix: true,
       }),
       onUploadCompleted: async () => {},
