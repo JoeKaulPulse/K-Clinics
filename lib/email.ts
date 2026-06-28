@@ -914,6 +914,20 @@ export function tmplNps(o: { firstName: string; treatment?: string; baseUrl: str
   });
 }
 
+/** BLD-653: sent to promoters (score 9–10) once, with Google review + referral links. */
+export function tmplNpsPromoter(o: { firstName: string; googleUrl?: string | null; referUrl: string }) {
+  return emailShell({
+    preheader: 'Thank you — help spread the word',
+    body: `${heroBand('review')}
+    <h1 style="font-size:24px;margin:0 0 14px;">Thank you, ${escape(o.firstName)}.</h1>
+    <p>We're really glad to hear you'd recommend us — that means a lot to the whole team.</p>
+    ${o.googleUrl ? `<p>If you have a moment, a Google review makes a real difference: it helps people find us and trust us before they book.</p>
+    <p style="margin:24px 0;">${btn(o.googleUrl, 'Leave a Google review')}</p>` : ''}
+    <p style="margin-top:${o.googleUrl ? '20' : '28'}px;padding-top:16px;border-top:1px solid #e8ddd4;font-size:14px;color:#6b6461;">Know someone who'd love KClinics? <a href="${o.referUrl}" style="color:#a98a6d;text-decoration:underline;">Refer a friend</a> — you both receive <strong>£25 credit</strong> towards any treatment.</p>
+    <p style="margin-top:24px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
 export function tmplChatReply(o: { visitorName?: string | null; who: string; body: string }) {
   return emailShell({
     preheader: o.body.slice(0, 120),
