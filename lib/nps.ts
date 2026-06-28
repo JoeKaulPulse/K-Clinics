@@ -27,13 +27,43 @@ export async function npsSentRecently(clientId: string, days = 90): Promise<bool
 
 /** Record a score and/or comment from the capture page. Token-gated (no auth). */
 export async function recordNps(token: string, data: { score?: number; comment?: string }): Promise<{ ok: boolean; score?: number | null; error?: string }> {
-  const row = await db.npsResponse.findUnique({ where: { token }, select: { id: true } });
+  const row = await db.npsResponse.findUnique({
+    where: { token },
+    select: { id: true, score: true, clientId: true, client: { select: { email: true, firstName: true } } },
+  });
   if (!row) return { ok: false, error: 'This feedback link is invalid or has expired.' };
+  const prevScore = row.score;
   const update: { score?: number; respondedAt?: Date; comment?: string } = {};
   if (typeof data.score === 'number' && data.score >= 0 && data.score <= 10) { update.score = Math.round(data.score); update.respondedAt = new Date(); }
   if (typeof data.comment === 'string' && data.comment.trim()) update.comment = data.comment.trim().slice(0, 2000);
   if (Object.keys(update).length) await db.npsResponse.update({ where: { token }, data: update });
   const fresh = await db.npsResponse.findUnique({ where: { token }, select: { score: true } });
+  // BLD-653: send a promoter follow-up (Google review + refer-a-friend) once, when
+  // score first reaches 9–10. Non-fatal — email failure never blocks the score save.
+  if (update.score != null && update.score >= 9 && (prevScore == null || prevScore < 9) && row.client) {
+    const client = row.client;
+    const clientId = row.clientId;
+    const referUrl = `${baseUrl()}/account/rewards`;
+    Promise.resolve().then(async () => {
+      try {
+        const [{ sendEmail, tmplNpsPromoter }, { googleReviewLink }] = await Promise.all([
+          import('@/lib/email'),
+          import('@/lib/review-system'),
+        ]);
+        const googleUrl = await googleReviewLink().catch(() => null);
+        const res = await sendEmail({
+          to: client.email,
+          subject: 'Thank you — help spread the word',
+          html: tmplNpsPromoter({ firstName: client.firstName, googleUrl, referUrl }),
+        });
+        if (clientId) {
+          await db.emailEvent.create({
+            data: { clientId, kind: 'MANUAL', to: client.email, subject: 'NPS promoter follow-up', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { type: 'nps_promoter' } },
+          }).catch(() => {});
+        }
+      } catch { /* non-fatal */ }
+    }).catch(() => {});
+  }
   return { ok: true, score: fresh?.score ?? null };
 }
 
