@@ -6,6 +6,8 @@ import { BookingButtons } from '@/components/booking/BookingButtons';
 import { generalFaqs, allGeneralFaqs } from '@/lib/faqs';
 import { pageMeta, JsonLd, breadcrumbLd, faqLd } from '@/lib/seo';
 
+export const revalidate = false;
+
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Frequently Asked Questions | KClinics London',
   description:
