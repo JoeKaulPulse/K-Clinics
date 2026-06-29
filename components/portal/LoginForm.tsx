@@ -7,6 +7,7 @@ import { authField, authLabel } from '@/components/portal/AuthShell';
 import { Turnstile } from '@/components/security/Turnstile';
 import { portalTranslator, DEFAULT_LOCALE, type Locale } from '@/lib/i18n-portal';
 import { isLocale } from '@/lib/i18n';
+import { IS_STATIC_DEMO } from '@/lib/static-demo';
 
 function readCookieLocale(): Locale {
   if (typeof document === 'undefined') return DEFAULT_LOCALE;
@@ -45,8 +46,9 @@ function Inner() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, captchaToken }),
       });
-      // 404 = route not present (static GitHub Pages demo only).
-      if (res.status === 404) {
+      // 404 = route not present (static GitHub Pages demo only). On the live site
+      // a 404 is a real error — fall through to the generic message below.
+      if (res.status === 404 && IS_STATIC_DEMO) {
         setError(t('login.preview'));
         return;
       }

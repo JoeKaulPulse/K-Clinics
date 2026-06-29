@@ -13,6 +13,7 @@ const fraunces = Fraunces({
 import './globals.css';
 import { site } from '@/lib/site';
 import { getTheme, themeToCss } from '@/lib/theme';
+import { THEME_NO_FLASH_SCRIPT } from '@/lib/admin-theme';
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
@@ -63,6 +64,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         {/* WordPress-editable brand palette → CSS variable overrides. */}
         <style id="brand-theme" dangerouslySetInnerHTML={{ __html: themeToCss(theme) }} />
+        {/* Admin dark/system mode: resolve before paint, /admin only (no flash,
+            no leak onto the public site). See lib/admin-theme.ts. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_NO_FLASH_SCRIPT }} />
         {/* Fallback: ensure scroll-revealed content is visible without JS. */}
         <noscript>
           <style>{`[style*="opacity:0"]{opacity:1!important;transform:none!important;filter:none!important}`}</style>

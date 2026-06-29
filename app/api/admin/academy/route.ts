@@ -247,6 +247,12 @@ export async function POST(req: Request) {
       await removePayment(String(body.paymentId));
       return ok();
     }
+    case 'refundPayment': {
+      if (!body.paymentId) return bad();
+      const { refundEnrolmentPayment } = await import('@/lib/academy-payments');
+      const r = await refundEnrolmentPayment(String(body.paymentId), session.email);
+      return r.ok ? ok() : NextResponse.json({ ok: false, error: r.error }, { status: 400 });
+    }
     case 'sendActivation': {
       // Email a trainee a passwordless link into their portal.
       if (!body.studentId) return bad();
