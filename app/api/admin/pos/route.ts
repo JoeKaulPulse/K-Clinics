@@ -74,7 +74,7 @@ export async function POST(req: Request) {
       ...(email ? { customer_email: email } : {}),
       success_url: `${base}/pos-paid?n=${order.number}`,
       cancel_url: `${base}/pos-paid?cancelled=1`,
-    });
+    }, { idempotencyKey: `pos-checkout-${order.id}` });
     const QR = (await import('qrcode')).default;
     const qr = await QR.toDataURL(checkout.url || '', { margin: 1, width: 320 });
     return NextResponse.json({ ok: true, orderId: order.id, url: checkout.url, qr, totalPence: cart.subtotalPence, issues: cart.issues });
