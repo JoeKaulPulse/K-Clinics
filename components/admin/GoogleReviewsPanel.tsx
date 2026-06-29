@@ -110,7 +110,7 @@ function LocationSetup({ onReady }: { onReady: () => void }) {
     return (
       <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-amber-50 p-4">
         <p className="text-sm font-medium text-amber-900">We couldn’t reach Google just now</p>
-        {err && <p className="mt-1 text-sm text-amber-800">{err}</p>}
+        {err && <p role="alert" aria-live="assertive" className="mt-1 text-sm text-amber-800">{err}</p>}
         <button onClick={load} disabled={busy} className="mt-3 rounded-full border border-amber-300 px-4 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-50">Try again</button>
       </div>
     );
@@ -126,7 +126,7 @@ function LocationSetup({ onReady }: { onReady: () => void }) {
           <p className="text-sm font-medium">{l.title}</p>
           {l.address && <p className="text-xs text-[var(--color-stone)]">{l.address}</p>}
         </div>
-        {err && <p className="mt-2 text-xs text-[var(--color-blush)]">{err}</p>}
+        {err && <p role="alert" aria-live="assertive" className="mt-2 text-xs text-[var(--color-blush)]">{err}</p>}
         <button onClick={() => choose(l.ref)} disabled={busy} className="mt-3 rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Importing reviews…' : 'Use this & import reviews'}</button>
       </div>
     );
@@ -146,7 +146,7 @@ function LocationSetup({ onReady }: { onReady: () => void }) {
           </label>
         ))}
       </div>
-      {err && <p className="mt-2 text-xs text-[var(--color-blush)]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-2 text-xs text-[var(--color-blush)]">{err}</p>}
       <button onClick={() => choose(chosen)} disabled={busy || !chosen} className="mt-3 rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Importing reviews…' : 'Use this & import reviews'}</button>
     </div>
   );
@@ -246,7 +246,7 @@ function ManualAdd({ onAdded }: { onAdded: () => void }) {
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={input + ' w-auto'} />
       </div>
       <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} placeholder="Review text" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
-      {err && <p className="text-xs text-[var(--color-blush)]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="text-xs text-[var(--color-blush)]">{err}</p>}
       <div className="flex gap-2">
         <button onClick={add} disabled={busy || !comment.trim()} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Adding…' : 'Add review'}</button>
         <button onClick={() => setOpen(false)} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs text-[var(--color-stone)]">Cancel</button>
@@ -340,7 +340,7 @@ function GoogleReviewCard({ review, onChange }: { review: GReview; onChange: () 
       {open ? (
         <div className="mt-3">
           <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder="Write a public reply…" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
-          {err && <p className="mt-1 text-xs text-[var(--color-blush)]">{err}</p>}
+          {err && <p role="alert" aria-live="assertive" className="mt-1 text-xs text-[var(--color-blush)]">{err}</p>}
           <div className="mt-2 flex gap-2">
             <button onClick={send} disabled={busy || !text.trim()} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Posting…' : 'Post reply to Google'}</button>
             <button onClick={() => setOpen(false)} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs text-[var(--color-stone)]">Cancel</button>

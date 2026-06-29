@@ -51,7 +51,7 @@ export function RoomClosures({ rooms, closures }: { rooms: RoomOpt[]; closures: 
         <label className="text-xs text-[var(--color-stone)]">Reason<input className={`${inp} mt-1 block`} placeholder="Contractor — flooring" value={f.reason} onChange={(e) => set('reason', e.target.value)} /></label>
         <button onClick={add} disabled={pending} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{pending ? 'Saving…' : 'Block out'}</button>
       </div>
-      {err && <p className="mt-2 text-sm text-[var(--color-blush-deep)]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[var(--color-blush-deep)]">{err}</p>}
 
       {(active.length > 0 || upcoming.length > 0) && (
         <ul className="mt-5 space-y-2">

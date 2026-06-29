@@ -72,7 +72,7 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
           <label className="block text-sm text-[var(--color-stone)]">2. Enter the 6-digit code it shows:
             <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" placeholder="123456" className="mt-1 w-40 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
           </label>
-          {err && <p className="text-sm text-[var(--color-blush)]">{err}</p>}
+          {err && <p role="alert" aria-live="assertive" className="text-sm text-[var(--color-blush)]">{err}</p>}
           <div className="flex gap-2">
             <button onClick={confirm} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Verifying…' : 'Verify & enable'}</button>
             <button onClick={() => setStage('idle')} className="px-3 py-2 text-sm text-[var(--color-stone)]">Cancel</button>

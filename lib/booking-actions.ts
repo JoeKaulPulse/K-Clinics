@@ -369,6 +369,14 @@ export async function cancelBooking(
       feeWaived: late && opts.waiveFee ? true : false,
     },
   });
+  // BLD-336: reconcile any open in-treatment session so a cancelled booking
+  // doesn't leave a dangling ACTIVE appointmentSession. The session route already
+  // refuses new actions on a cancelled booking; this closes the existing row so
+  // it can't show as live in the diary. No-op when there's no open session.
+  await db.appointmentSession.updateMany({
+    where: { bookingId: booking.id, status: { not: 'COMPLETED' } },
+    data: { status: 'CANCELLED', completedAt: new Date() },
+  }).catch(() => {});
   await db.interaction.create({
     data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Cancelled ${booking.treatmentTitle}${late ? ' (within 24h)' : ''}${charged ? ` — charged £${(charged / 100).toFixed(2)}` : feeFailed ? ' — LATE FEE FAILED (follow up)' : opts.waiveFee && late ? ' — fee waived' : ''}`, author: opts.by },
   });

@@ -137,6 +137,40 @@ export async function performAcademyPasswordReset(studentId: string, token: stri
   return { ok: true };
 }
 
+/** Self-service password change from Academy Settings (BLD-547). The student is
+ *  already authenticated; we verify their current password (unless the account
+ *  is passwordless — activation-link only — in which case this sets the first
+ *  one), reject weak/breached choices, then bump the session epoch to sign out
+ *  every OTHER device and re-issue the current session so this one stays live. */
+export async function changeAcademyPassword(currentPassword: string, newPassword: string): Promise<{ ok: boolean; error?: string }> {
+  const student = await getCurrentStudent();
+  if (!student) return { ok: false, error: 'Please sign in again.' };
+  if (typeof newPassword !== 'string' || newPassword.length < 8) return { ok: false, error: 'Your new password must be at least 8 characters.' };
+
+  if (student.passwordHash) {
+    if (!currentPassword || !(await verifyPassword(currentPassword, student.passwordHash))) {
+      return { ok: false, error: 'Your current password is not correct.' };
+    }
+    if (currentPassword === newPassword) return { ok: false, error: 'Your new password must be different from your current one.' };
+  }
+
+  const { isBreachedPassword } = await import('@/lib/security/breached-password');
+  if (await isBreachedPassword(newPassword)) return { ok: false, error: 'That password has appeared in a known data breach. Please choose a different one.' };
+
+  const updated = await db.academyStudent.update({
+    where: { id: student.id },
+    data: { passwordHash: await hashPassword(newPassword), sessionEpoch: { increment: 1 } },
+    select: { sessionEpoch: true },
+  });
+  try {
+    const { sendEmail, tmplPasswordChanged } = await import('@/lib/email');
+    await sendEmail({ to: student.email, subject: 'Your K Academy password was changed', html: tmplPasswordChanged(student.firstName || 'there') });
+  } catch { /* best-effort */ }
+  // Keep this device signed in; the epoch bump above already revoked the rest.
+  await createAcademySession({ sub: student.id, email: student.email, firstName: student.firstName, epoch: updated.sessionEpoch });
+  return { ok: true };
+}
+
 // ── Offer onboarding (BLD-528) ──────────────────────────────────────────────
 // When staff make an offer, the applicant needs a way into the portal to accept
 // and pay — even if they never created an account. These helpers ensure a trainee

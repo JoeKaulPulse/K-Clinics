@@ -80,7 +80,7 @@ export function RedeemPoints({
         />
         <span className="w-20 text-right font-[family-name:var(--font-display)] text-lg text-[var(--color-gold)]">−{currency(pounds * 100)}</span>
       </div>
-      {err && <p className="mt-2 text-xs text-[var(--color-blush)]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-2 text-xs text-[var(--color-blush)]">{err}</p>}
       <div className="mt-3 flex gap-2">
         <button onClick={() => send(pounds * 100)} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
           {busy ? '…' : labels.apply}

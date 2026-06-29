@@ -7,6 +7,7 @@ import { isDemo } from '@/lib/booking-mode';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { GiftCardPreview } from '@/components/gift/GiftCardPreview';
 import { GIFT_CARD_THEMES, DEFAULT_THEME_ID } from '@/lib/gift-card-themes';
+import { trackPurchase } from '@/lib/analytics-events';
 
 const PRESETS = [2500, 5000, 7500, 10000, 15000, 25000];
 const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none focus:border-[var(--color-gold)]';
@@ -117,7 +118,7 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0,
                 </div>
               )}
 
-              {error && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
+              {error && <p role="alert" aria-live="assertive" className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
               <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
                 <span className="text-sm text-[var(--color-stone)]">Total <strong className="text-[var(--color-ink)]">{money(amountPence || 0)}</strong></span>
                 <Button onClick={() => !busy && start()} variant="gold" size="lg">{busy ? 'Please wait…' : 'Continue to payment'} <ArrowIcon /></Button>
@@ -145,10 +146,10 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0,
           <p className="mt-1 text-sm text-[var(--color-stone)]">Your card is charged now for the voucher value.</p>
           <div className="mt-5">
             <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#a98a6d', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
-              <PayStep voucherId={voucherId} clientSecret={clientSecret} onDone={(c) => { setCode(c); setStage('done'); }} onError={setError} />
+              <PayStep voucherId={voucherId} clientSecret={clientSecret} onDone={(c) => { trackPurchase({ valuePence: amountPence, eventId: voucherId, metaPurchase: true }); setCode(c); setStage('done'); }} onError={setError} />
             </Elements>
           </div>
-          {error && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
+          {error && <p role="alert" aria-live="assertive" className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
         </>
       )}
     </div>

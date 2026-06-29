@@ -48,7 +48,7 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
   }
 
   const navLink = (active: boolean, mobile = false) =>
-    `relative ${mobile ? 'shrink-0' : ''} rounded-full px-4 py-2 text-sm font-medium [transition:color_0.4s_var(--ease-lux),background-color_0.4s_var(--ease-lux)] ${
+    `relative ${mobile ? 'shrink-0' : ''} rounded-full px-4 py-3 text-sm font-medium [transition:color_0.4s_var(--ease-lux),background-color_0.4s_var(--ease-lux)] ${
       active ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)] shadow-[var(--shadow-soft)]' : 'text-[var(--color-ink-soft)] hover:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] hover:text-[var(--color-ink)]'
     }`;
 
@@ -83,7 +83,7 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
             <div className="flex items-center gap-3">
               <LanguageToggle locale={locale} onChange={changeLanguage} label={t('portal.language')} />
               <span className="hidden text-sm text-[var(--color-stone)] sm:block">{t('portal.greeting', { name: firstName })}</span>
-              <button onClick={signOut} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
+              <button onClick={signOut} className="rounded-full border border-[var(--color-line)] px-4 py-3 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
                 {t('portal.signOut')}
               </button>
             </div>

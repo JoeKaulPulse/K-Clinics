@@ -62,9 +62,14 @@ export default async function ProfilePage() {
         <TwoFactorSetup enabled={Boolean(me.totpEnabledAt)} />
       </div>
 
-      <div className="mt-6 max-w-xl">
-        <PasskeyManager />
-      </div>
+      {/* Passkeys are the OWNER-only export step-up credential (the register
+          API rejects every other role). Only render the enrolment UI for the
+          owner so staff aren't shown an "Add this device" button that 403s. */}
+      {me.role === 'OWNER' && (
+        <div className="mt-6 max-w-xl">
+          <PasskeyManager />
+        </div>
+      )}
 
       <div className="mt-6 max-w-xl rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
         <h3 className="font-[family-name:var(--font-display)] text-lg">Sessions</h3>

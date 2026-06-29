@@ -45,10 +45,10 @@ export function DemoCard({ onDone, onError }: { onDone: () => void; onError: (e:
             <span className="h-4 w-6 rounded-sm bg-[linear-gradient(135deg,#eb001b,#f79e1b)]" />
           </span>
         </div>
-        <input value={fmtNum} onChange={(e) => setNum(e.target.value)} inputMode="numeric" placeholder="Card number" maxLength={23} className={`${field} mb-3 font-[family-name:var(--font-mono)] tracking-wide`} />
+        <input value={fmtNum} onChange={(e) => setNum(e.target.value)} inputMode="numeric" placeholder="Card number" aria-label="Card number" maxLength={23} className={`${field} mb-3 font-[family-name:var(--font-mono)] tracking-wide`} />
         <div className="grid grid-cols-2 gap-3">
-          <input value={exp} onChange={(e) => setExp(e.target.value)} placeholder="MM / YY" maxLength={7} className={`${field} font-[family-name:var(--font-mono)]`} />
-          <input value={cvc} onChange={(e) => setCvc(e.target.value.replace(/\D/g, ''))} inputMode="numeric" placeholder="CVC" maxLength={4} className={`${field} font-[family-name:var(--font-mono)]`} />
+          <input value={exp} onChange={(e) => setExp(e.target.value)} placeholder="MM / YY" aria-label="Expiry date (MM / YY)" maxLength={7} className={`${field} font-[family-name:var(--font-mono)]`} />
+          <input value={cvc} onChange={(e) => setCvc(e.target.value.replace(/\D/g, ''))} inputMode="numeric" placeholder="CVC" aria-label="CVC security code" maxLength={4} className={`${field} font-[family-name:var(--font-mono)]`} />
         </div>
       </div>
 

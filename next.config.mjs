@@ -16,6 +16,11 @@ const csp = [
   "frame-ancestors 'self'",
   "form-action 'self'",
   "img-src 'self' data: blob: https:",
+  // Native <video>/<audio> playback is governed by media-src, which falls back
+  // to default-src 'self' when absent — that silently blocked every uploaded
+  // lesson video/audio on *.public.blob.vercel-storage.com (they appeared but
+  // wouldn't play). Mirror img-src so blob-hosted and direct https media play.
+  "media-src 'self' data: blob: https:",
   "font-src 'self' https://fonts.gstatic.com data:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "script-src 'self' 'unsafe-inline' https://js.stripe.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://maps.googleapis.com https://maps.gstatic.com https://connect.facebook.net",
@@ -121,7 +126,13 @@ const nextConfig = {
   // Exposed to client + server so image paths from /public can be prefixed with
   // the Pages sub-path. next/image does NOT prepend basePath to unoptimized
   // /public images in a static export, so we do it ourselves (see treatment-images).
-  env: { NEXT_PUBLIC_BASE_PATH: repoBase },
+  // NEXT_PUBLIC_STATIC_DEMO is true ONLY in the GitHub Pages static export (no
+  // /api routes). Portal forms use it to show a friendly "preview" result on a
+  // 404 instead of erroring — and crucially NOT on the live site, where a real
+  // API 404/503 must surface as a genuine error rather than silently faking
+  // success (a 404 blip previously made the signup wizard claim "account
+  // created" without creating one — clients then couldn't log in).
+  env: { NEXT_PUBLIC_BASE_PATH: repoBase, NEXT_PUBLIC_STATIC_DEMO: isPages ? 'true' : '' },
   images: {
     formats: ['image/avif', 'image/webp'],
     // GitHub Pages has no image optimiser; serve images as-is.

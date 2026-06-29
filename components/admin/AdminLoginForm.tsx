@@ -111,7 +111,7 @@ function Inner({ ssoEnabled }: { ssoEnabled: boolean }) {
 
       {captchaSiteKey && !twoFactor && <Turnstile siteKey={captchaSiteKey} onToken={setCaptchaToken} />}
 
-      {error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
 
       <button
         type="submit"

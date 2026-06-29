@@ -77,7 +77,11 @@ export async function POST(req: Request) {
     }
     case 'deleteModule': {
       if (!b.id) return bad();
+      // Mark the course as manually curated so the daily authored-content
+      // enrichment stops re-creating this deleted module (reappearing-modules bug).
+      const mod = await db.courseModule.findUnique({ where: { id: String(b.id) }, select: { courseId: true } });
       await db.courseModule.delete({ where: { id: String(b.id) } });
+      if (mod) await db.course.update({ where: { id: mod.courseId }, data: { autoEnrich: false } }).catch(() => {});
       return ok();
     }
     case 'reorderModules': {
@@ -125,7 +129,10 @@ export async function POST(req: Request) {
     }
     case 'deleteLesson': {
       if (!b.id) return bad();
+      // Same curation guard as deleteModule: stop enrichment resurrecting it.
+      const les = await db.lesson.findUnique({ where: { id: String(b.id) }, select: { module: { select: { courseId: true } } } });
       await db.lesson.delete({ where: { id: String(b.id) } });
+      if (les?.module) await db.course.update({ where: { id: les.module.courseId }, data: { autoEnrich: false } }).catch(() => {});
       return ok();
     }
     case 'reorderLessons': {

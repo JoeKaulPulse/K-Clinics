@@ -311,7 +311,7 @@ export function CameraCapture({
         )}
       </div>
 
-      {error && <p className="mt-3 text-center text-sm text-[var(--color-blush)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-3 text-center text-sm text-[var(--color-blush)]">{error}</p>}
 
       {/* Controls */}
       {phase === 'posing' && (

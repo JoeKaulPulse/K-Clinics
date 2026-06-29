@@ -35,7 +35,7 @@ export function SameDayRequestActions({ bookingId, when }: { bookingId: string; 
       <p className="text-sm text-[var(--color-ink)]">
         A client asked to come in today{when ? ` at ${when}` : ''}. Approve to confirm the appointment and notify them, or decline.
       </p>
-      {error && <p className="mt-2 text-sm text-[#b23b3b]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[#b23b3b]">{error}</p>}
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" onClick={approve} disabled={!!busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm font-medium text-[var(--color-porcelain)] transition-[transform,opacity] duration-150 ease-out hover:opacity-90 active:scale-[0.98] disabled:opacity-50 motion-reduce:transition-none">
           {busy === 'approve' ? 'Approving…' : 'Approve & confirm'}

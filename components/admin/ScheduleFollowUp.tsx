@@ -69,7 +69,7 @@ export function ScheduleFollowUp({
           <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={field} />
         </label>
       </div>
-      {error && <p className="mt-2 text-sm text-[#b23b3b]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[#b23b3b]">{error}</p>}
       {clash && (
         <label className="mt-2 flex items-center gap-2 text-xs text-[var(--color-stone)]">
           <input type="checkbox" checked={override} onChange={(e) => setOverride(e.target.checked)} className="h-4 w-4 accent-[var(--color-gold)]" />

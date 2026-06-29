@@ -268,7 +268,7 @@ export function KioskSessionFlow({
           <p className="mt-4 text-center text-xs text-[var(--color-stone)]">
             This experience is for adults only.
           </p>
-          {error && <p className="mt-3 text-center text-sm text-[var(--color-blush)]">{error}</p>}
+          {error && <p role="alert" aria-live="assertive" className="mt-3 text-center text-sm text-[var(--color-blush)]">{error}</p>}
           <button
             disabled={!consent || consentBusy}
             onClick={declareAgeAndContinue}
@@ -327,7 +327,7 @@ export function KioskSessionFlow({
             ))}
           </div>
 
-          {error && <p className="mt-4 text-sm text-[var(--color-blush)]">{error}</p>}
+          {error && <p role="alert" aria-live="assertive" className="mt-4 text-sm text-[var(--color-blush)]">{error}</p>}
 
           <button
             onClick={analyze}
@@ -412,7 +412,7 @@ export function KioskSessionFlow({
             </div>
           )}
 
-          {error && <p className="mt-4 text-sm text-[var(--color-blush)]">{error}</p>}
+          {error && <p role="alert" aria-live="assertive" className="mt-4 text-sm text-[var(--color-blush)]">{error}</p>}
 
           <label className="mt-6 block w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-gold)] px-6 py-4 text-lg font-medium text-[var(--color-gold-bright)]">
             {preview ? 'Retake photo' : 'Open camera'}

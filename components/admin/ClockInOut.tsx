@@ -119,7 +119,7 @@ export function ClockInOut({ onShift, onBreak, shiftStartIso, workedTodayMin, br
       {shiftStartIso && onShift && (
         <p className="mt-2 text-xs text-[var(--color-stone)]">Since {new Date(shiftStartIso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}</p>
       )}
-      {error && <p className="mt-2 text-xs text-[#b23b3b]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-2 text-xs text-[#b23b3b]">{error}</p>}
     </div>
   );
 }

@@ -61,7 +61,7 @@ export function FinanceUnlock({ hasPin, next }: { hasPin: boolean; next: string 
           className="mt-3 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-3 text-center text-2xl tracking-[0.5em] outline-none focus:border-[var(--color-gold)]"
         />
       )}
-      {err && <p className="mt-3 text-sm text-[var(--color-blush)]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush)]">{err}</p>}
       <button onClick={submit} disabled={busy} className="mt-5 w-full rounded-full bg-[var(--color-ink)] px-6 py-3 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">
         {busy ? 'Please wait…' : mode === 'set' ? 'Set PIN & unlock' : 'Unlock'}
       </button>

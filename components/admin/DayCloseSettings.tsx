@@ -99,7 +99,7 @@ export function DayCloseSettings({ initial }: { initial: DayCloseConfig }) {
                     />
                     note
                   </label>
-                  <button onClick={() => patchSection(si, { items: sec.items.filter((_, j) => j !== ii) })} className="px-1.5 text-xs text-[var(--color-blush)] hover:underline">✕</button>
+                  <button onClick={() => patchSection(si, { items: sec.items.filter((_, j) => j !== ii) })} aria-label="Remove item" className="px-1.5 text-xs text-[var(--color-blush)] hover:underline">✕</button>
                 </li>
               ))}
             </ul>

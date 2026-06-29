@@ -2,6 +2,48 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { verifyToken, verifyClientToken, verifyAcademyToken, SESSION_COOKIE, CLIENT_SESSION_COOKIE, ACADEMY_SESSION_COOKIE } from '@/lib/auth-edge';
 import { ATTRIB_COOKIE, ATTRIB_MAX_AGE, attributionFromUrl } from '@/lib/attribution';
 import { SEG_COOKIE, SEG_MAX_AGE, segmentFromUrl } from '@/lib/personalize';
+import { THEME_NO_FLASH_SCRIPT } from '@/lib/admin-theme';
+
+// ── Strict, nonce-based CSP for the authenticated CRM (/admin) ───────────────
+// The global CSP in next.config.mjs keeps 'unsafe-inline' in script-src — a
+// Next.js limitation for *statically* rendered pages (a per-request nonce can't
+// be baked into cached HTML). Every /admin page is force-dynamic, so here we can
+// issue a per-request nonce and drop 'unsafe-inline'. Next applies the nonce to
+// its own framework scripts; our two static inline scripts (the root no-flash
+// theme script and the consent-cert print handler) are allow-listed by hash.
+// 'strict-dynamic' lets nonced/hashed scripts load their own dependencies
+// (Stripe.js, Turnstile, Maps) while ignoring host allow-lists in modern
+// browsers. This response carries BOTH this strict policy and next.config's
+// looser one, and the browser enforces the intersection — so injected inline
+// scripts are blocked on /admin even though the global policy allows inline.
+const CONSENT_PRINT_HASH = 'vpK0BYDTnvuWKT6efssYKbSHyfV41FUkOUCnTjMrDws='; // app/admin/consent/cert/[id] print handler — refresh if that script changes
+let _noflashHash: string | null = null;
+async function noflashHash(): Promise<string> {
+  if (_noflashHash) return _noflashHash;
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(THEME_NO_FLASH_SCRIPT));
+  _noflashHash = btoa(String.fromCharCode(...new Uint8Array(digest)));
+  return _noflashHash;
+}
+// Keep the non-script directives in sync with next.config.mjs.
+async function adminCsp(nonce: string): Promise<string> {
+  const noflash = await noflashHash();
+  return [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'self'",
+    "form-action 'self'",
+    "img-src 'self' data: blob: https:",
+    "media-src 'self' data: blob: https:",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    `script-src 'self' 'nonce-${nonce}' 'sha256-${noflash}' 'sha256-${CONSENT_PRINT_HASH}' 'strict-dynamic' https:`,
+    "connect-src 'self' https://api.stripe.com https://m.stripe.network https://r.stripe.com https://challenges.cloudflare.com https://maps.googleapis.com https://vercel.com https://blob.vercel-storage.com https://*.blob.vercel-storage.com https://*.public.blob.vercel-storage.com https://*.sentry.io https://sentry.io https://connect.facebook.net https://graph.facebook.com",
+    "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com",
+    "worker-src 'self' blob:",
+    'upgrade-insecure-requests',
+  ].join('; ');
+}
 
 // Public client-portal pages (no auth required).
 const PUBLIC_ACCOUNT = new Set([
@@ -126,10 +168,19 @@ export async function middleware(req: NextRequest) {
       url.searchParams.set('setup2fa', '1');
       return NextResponse.redirect(url);
     }
+    // Per-request nonce → strict CSP (no 'unsafe-inline') for the dynamic CRM.
+    // Setting the policy on the REQUEST headers lets Next auto-nonce its own
+    // script tags; setting it on the response sends it to the browser.
+    const nonce = crypto.randomUUID().replace(/-/g, '');
+    const csp = await adminCsp(nonce);
+    const reqHeaders = new Headers(req.headers);
+    reqHeaders.set('x-nonce', nonce);
+    reqHeaders.set('content-security-policy', csp);
     // Slide the idle window: refresh the cookie lifetime on each request so an
     // active session stays alive (up to the JWT's 12h absolute cap) while an idle
     // one expires after the idle window.
-    const res = NextResponse.next();
+    const res = NextResponse.next({ request: { headers: reqHeaders } });
+    res.headers.set('content-security-policy', csp);
     const token = req.cookies.get(SESSION_COOKIE)?.value;
     if (token) res.cookies.set(SESSION_COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 60 * 60 * 2 });
     return res;

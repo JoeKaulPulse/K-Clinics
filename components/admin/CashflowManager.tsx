@@ -313,7 +313,7 @@ function Entries({ entries, canManage, uk }: { entries: Entry[]; canManage: bool
             </span>
             <span className="flex items-center gap-3">
               <span className={`${e.type === 'INCOME' ? 'text-[var(--color-jade)]' : 'text-[var(--color-stone)]'} tabular-nums`}>{gbp(e.amountPence)}</span>
-              {canManage && <button onClick={() => del(e.id)} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)]">✕</button>}
+              {canManage && <button onClick={() => del(e.id)} aria-label="Delete entry" className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)]">✕</button>}
             </span>
           </div>
         ))}

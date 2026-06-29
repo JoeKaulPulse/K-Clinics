@@ -96,7 +96,7 @@ export function CheckoutForm() {
               <label className="text-xs text-[var(--color-stone)]">Gift card code (optional)<input value={f.giftCardCode} onChange={(e) => set('giftCardCode', e.target.value)} placeholder="KC-XXXX-XXXX" className={`${field} font-mono`} /></label>
             </section>
 
-            {error && <p className="text-sm text-[var(--color-blush)]">{error}</p>}
+            {error && <p role="alert" aria-live="assertive" className="text-sm text-[var(--color-blush)]">{error}</p>}
             <Button onClick={() => !busy && f.name && f.email && startCheckout()} variant="gold" size="lg">{busy ? 'Please wait…' : 'Continue to payment'} <ArrowIcon /></Button>
           </>
         ) : (
@@ -132,7 +132,7 @@ function PayStep({ orderId, onDone }: { orderId: string; onDone: (no: string) =>
   return (
     <div>
       <PaymentElement />
-      {err && <p className="mt-3 text-sm text-[var(--color-blush)]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush)]">{err}</p>}
       <Button onClick={() => !busy && pay()} variant="gold" size="lg" className="mt-4 w-full">{busy ? 'Processing…' : 'Pay now'}</Button>
     </div>
   );

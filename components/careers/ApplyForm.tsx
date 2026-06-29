@@ -53,7 +53,7 @@ export function ApplyForm({ roles }: { roles: { id: string; title: string }[] })
         <div className="sm:col-span-2"><label htmlFor="apply-cover" className={label}>Cover note</label><textarea id="apply-cover" rows={4} className={field} value={f.coverNote} onChange={(e) => set('coverNote', e.target.value)} placeholder="Why you, why KClinics…" /></div>
         <input type="text" tabIndex={-1} autoComplete="off" value={f.company} onChange={(e) => set('company', e.target.value)} className="absolute -left-[9999px] h-0 w-0" aria-hidden />
       </div>
-      {error && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
       <div className="mt-6"><Button onClick={() => !busy && submit()} variant="gold" size="lg">{busy ? 'Submitting…' : 'Submit application'} <ArrowIcon /></Button></div>
     </div>
   );

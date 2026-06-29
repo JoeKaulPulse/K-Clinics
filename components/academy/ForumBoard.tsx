@@ -104,7 +104,7 @@ function Composer({ categories, onDone }: { categories: ForumCategoryDef[]; onDo
         <label className="block text-xs font-medium text-[var(--color-stone)]">Message
           <textarea className={`${field} mt-1`} rows={5} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Share your question, tip or update. Be kind — this is a space for the whole cohort." maxLength={8000} />
         </label>
-        {error && <p className="text-sm text-[var(--color-blush)]">{error}</p>}
+        {error && <p role="alert" aria-live="assertive" className="text-sm text-[var(--color-blush)]">{error}</p>}
         <div className="flex items-center gap-3">
           <AButton onClick={submit} disabled={busy || title.trim().length < 4 || body.trim().length < 2} size="sm">{busy ? 'Posting…' : 'Post to community'}</AButton>
           <AButton onClick={() => onDone()} variant="secondary" size="sm">Cancel</AButton>

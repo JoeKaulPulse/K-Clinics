@@ -184,16 +184,18 @@ function stageError(stage: string, err: unknown): Error {
   return e;
 }
 
-export async function loginClient(email: string, password: string): Promise<{ ok: boolean; error?: string; locale?: string }> {
+export async function loginClient(email: string, password: string): Promise<{ ok: boolean; error?: string; locale?: string; firstName?: string; gender?: string | null }> {
   // Select only what we need: a default findUnique pulls every column, so any
   // not-yet-migrated column in production would throw before we can sign in.
   // Retry once on a transient connection error (serverless cold-start blip).
-  let client: { id: string; email: string; firstName: string; passwordHash: string | null; locale: string; sessionEpoch: number } | null = null;
+  // firstName/gender are returned so the booking flow can finish in place after
+  // a deferred sign-in without a full reload that would wipe the selection (BLD-634).
+  let client: { id: string; email: string; firstName: string; gender: string | null; passwordHash: string | null; locale: string; sessionEpoch: number } | null = null;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       client = await db.client.findUnique({
         where: { email: email.trim().toLowerCase() },
-        select: { id: true, email: true, firstName: true, passwordHash: true, locale: true, sessionEpoch: true },
+        select: { id: true, email: true, firstName: true, gender: true, passwordHash: true, locale: true, sessionEpoch: true },
       });
       break;
     } catch (err) {
@@ -222,7 +224,7 @@ export async function loginClient(email: string, password: string): Promise<{ ok
   } catch (err) {
     throw stageError('session', err);
   }
-  return { ok: true, locale: client.locale === 'uk' ? 'uk' : 'en' };
+  return { ok: true, locale: client.locale === 'uk' ? 'uk' : 'en', firstName: client.firstName, gender: client.gender };
 }
 
 const sha256 = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
