@@ -113,10 +113,43 @@ async function matchRedirect(req: NextRequest): Promise<NextResponse | null> {
   return NextResponse.redirect(dest, hit.code === 302 ? 302 : 301);
 }
 
+// ── IP deny-list ─────────────────────────────────────────────────────────────
+// Manually-blocked IPs (admin Security → IP activity). Cached in module memory
+// per warm edge instance and refreshed from the internal /api/blocked-ips feed
+// at most once every 30s, so a blocked IP is denied page requests without a DB
+// hit per request. Fails OPEN (no block) on any fetch error — a telemetry
+// outage must never lock out legitimate visitors.
+let _blocked: { set: Set<string>; at: number } | null = null;
+async function blockedIps(origin: string): Promise<Set<string>> {
+  if (_blocked && Date.now() - _blocked.at < 30_000) return _blocked.set;
+  try {
+    const res = await fetch(`${origin}/api/blocked-ips`, { headers: { 'x-mw-block': '1' } });
+    if (res.ok) _blocked = { set: new Set((await res.json()) as string[]), at: Date.now() };
+  } catch { /* keep stale cache on failure */ }
+  return _blocked?.set ?? new Set();
+}
+// Edge-side real-client-IP extraction — mirrors lib/security/guard.ts clientIp:
+// platform headers can't be spoofed past the proxy; raw XFF is client-controlled
+// on its left, so use the last (proxy-appended) hop.
+function edgeClientIp(req: NextRequest): string {
+  const platform = req.headers.get('x-vercel-forwarded-for') || req.headers.get('x-real-ip');
+  if (platform) return platform.split(',').pop()!.trim();
+  const xff = req.headers.get('x-forwarded-for');
+  if (xff) { const parts = xff.split(',').map((s) => s.trim()).filter(Boolean); if (parts.length) return parts[parts.length - 1]; }
+  return 'unknown';
+}
+
 // Protect the staff CRM (/admin) and the client portal (/account); apply
 // admin-managed redirects on the public site. Runs on the edge.
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // ── IP deny-list — blocked IPs get nothing (checked before any work) ─────
+  const ip = edgeClientIp(req);
+  if (ip !== 'unknown') {
+    const set = await blockedIps(req.nextUrl.origin);
+    if (set.has(ip)) return new NextResponse('Access denied.', { status: 403 });
+  }
 
   // ── URL redirects (old WordPress URLs / printed QR destinations) ─────────
   const redirected = await matchRedirect(req);

@@ -121,6 +121,7 @@ export const navGroups: NavGroup[] = [
     { href: '/admin/workspace', key: 'nav.workspace', perm: 'settings.manage', keywords: 'google workspace email mailbox alias group seat directory' },
     { href: '/admin/staff', key: 'nav.staff', perm: 'staff.view', keywords: 'team users access roles permissions employees' },
     { href: '/admin/security', key: 'nav.security', perm: 'security.manage', keywords: 'login 2fa sessions audit centre' },
+    { href: '/admin/security/activity', key: 'nav.ipActivity', perm: 'security.manage', keywords: 'ip address device tracking block blocklist deny suspicious activity user agent mac address fingerprint geolocation visitor traffic' },
     { href: '/admin/activity', key: 'nav.activity', perm: 'staff.view', keywords: 'log history audit trail events' },
     { href: '/admin/site', key: 'nav.site', perm: 'settings.manage', keywords: 'globals config header footer settings' },
     { href: '/admin/locations', key: 'nav.locations', perm: 'settings.manage', keywords: 'clinics branches addresses sites' },

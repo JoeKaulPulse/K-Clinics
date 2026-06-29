@@ -11,7 +11,7 @@ import type { BuildType, BuildStatus, BuildUrgency } from '@prisma/client';
 export type NewBuildItem = {
   type?: BuildType; title: string; detail?: string; urgency?: BuildUrgency;
   assignee?: string; reportedBy?: string; pageUrl?: string; screenshots?: string[];
-  value?: number; effort?: number;
+  value?: number; effort?: number; projectId?: string;
 };
 
 /** Idempotently import Claude's working backlog (deduped by title) so the board
@@ -383,6 +383,29 @@ export async function removeDependency(itemId: string, dependsOnId: string, acto
   return db.buildItem.findUnique({ where: { id: itemId }, include: ITEM_INCLUDE });
 }
 
+/** Find-or-create a DB-only Project by name and return it (with its PRJ ref).
+ *  Used by the token-authed queue so an audit run can file all its findings
+ *  under one project. Idempotent: matches an existing project case-insensitively
+ *  by name first, otherwise creates one with a derived unique slug + PRJ ref.
+ *  Like promoteToProject's create path, this is safe against code rebuilds —
+ *  syncProjects only ever upserts/links, never deletes. */
+export async function ensureProject(name: string, summary?: string) {
+  const clean = (name || '').trim().slice(0, 120);
+  if (!clean) return null;
+  const existing = await db.buildProject.findFirst({ where: { name: { equals: clean, mode: 'insensitive' } } }).catch(() => null);
+  if (existing) {
+    if (!existing.ref) { const { assignProjectRef } = await import('@/lib/task-refs'); await assignProjectRef(existing.id).catch(() => {}); return (await db.buildProject.findUnique({ where: { id: existing.id } })) ?? existing; }
+    return existing;
+  }
+  const base = clean.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'project';
+  let slug = base;
+  for (let i = 2; await db.buildProject.findUnique({ where: { slug } }); i++) slug = `${base}-${i}`;
+  const project = await db.buildProject.create({ data: { slug, name: clean, summary: (summary || '').trim() || null } });
+  const { assignProjectRef } = await import('@/lib/task-refs');
+  await assignProjectRef(project.id).catch(() => {});
+  return (await db.buildProject.findUnique({ where: { id: project.id } })) ?? project;
+}
+
 /** Promote an item into a Project — either an existing project (by id) or a
  *  brand-new one created from `name`. This is the board's "Promote to project"
  *  action (the declarative PROJECTS list is code-only; this is the UI path).
@@ -474,6 +497,7 @@ export async function createBuildItem(input: NewBuildItem, actor: string) {
       screenshots: (input.screenshots || []).slice(0, 6),
       value: typeof input.value === 'number' ? Math.max(1, Math.min(10, Math.round(input.value))) : null,
       effort: typeof input.effort === 'number' ? Math.max(1, Math.min(10, Math.round(input.effort))) : null,
+      projectId: input.projectId || null,
       events: { create: { kind: 'created', actor, body: `Reported as ${type} · ${input.urgency ?? 'P2'}` } },
     },
     include: { events: true, subtasks: true },
