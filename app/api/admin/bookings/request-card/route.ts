@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   // "Send failed"). Every failure now surfaces a reason staff can act on.
   try {
     const { db } = await import('@/lib/db');
-    const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
+    const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, passwordHash: true, smsReminders: true, stripeCustomerId: true } } } });
     if (!booking) return NextResponse.json({ ok: false, error: 'Booking not found.' }, { status: 404 });
     if (booking.stripePaymentMethodId) return NextResponse.json({ ok: false, error: 'A card is already saved for this booking.' }, { status: 409 });
     if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(booking.status)) {
@@ -84,7 +84,7 @@ export async function POST(req: Request) {
       if (r.ok) sent.push('email');
       else sendErrors.push(`email: ${r.error || 'unknown error'}`);
     }
-    if (want === 'sms' || want === 'both') {
+    if ((want === 'sms' || want === 'both') && booking.client.smsReminders !== false) {
       const { sendSms } = await import('@/lib/sms');
       const msg = noAccount
         ? `KClinics: welcome to our new site — open your account and save a card to confirm your appointment (no payment now): ${actionUrl}`
