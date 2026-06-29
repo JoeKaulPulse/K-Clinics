@@ -217,6 +217,25 @@ export async function POST(req: Request) {
               try { const { creditVoucher } = await import('@/lib/gift-vouchers'); await creditVoucher(order.giftCardCode, order.giftCardPence); } catch { /* non-fatal */ }
             }
           }
+          // BLD-682: Dashboard refund on a gift-voucher purchase — restore balance and revert
+          // status REDEEMED → ACTIVE so the customer can still use their card.
+          // Idempotent: status flip only runs once (ACTIVE→ACTIVE is a no-op); creditVoucher
+          // caps at face value. Covers both gift_voucher and gift_package intents.
+          if (!order) {
+            const voucher = await db.giftVoucher.findFirst({
+              where: { stripePaymentIntentId: piId },
+              select: { id: true, code: true, status: true },
+            });
+            if (voucher && voucher.status !== 'CANCELLED') {
+              const refundedPence = charge.amount_refunded ?? 0;
+              if (refundedPence > 0) {
+                try {
+                  const { creditVoucher } = await import('@/lib/gift-vouchers');
+                  await creditVoucher(voucher.code, refundedPence);
+                } catch { /* non-fatal */ }
+              }
+            }
+          }
           break;
         }
         const totalRefundedByStripe = charge.amount_refunded ?? 0;
