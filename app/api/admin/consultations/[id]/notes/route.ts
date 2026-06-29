@@ -29,7 +29,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'CRM disabled.' }, { status: 503 });
 
   const session = await getSession();
-  if (!session || !sessionCan(session, 'consultations.view')) {
+  if (!session || !sessionCan(session, 'consultations.manage')) {
     return NextResponse.json({ ok: false, error: 'Forbidden.' }, { status: 403 });
   }
 
