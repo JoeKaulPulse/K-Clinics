@@ -9,6 +9,7 @@ import { portalTranslator, PORTAL_LOCALE_COOKIE, type Locale } from '@/lib/i18n-
 import { LOCALE_LABELS } from '@/lib/i18n';
 import { Glyph } from '@/components/ui/Glyph';
 import { escapeHtml } from '@/lib/sanitize';
+import { IS_STATIC_DEMO } from '@/lib/static-demo';
 
 const STEPS = 4;
 
@@ -61,7 +62,9 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...d, locale, ref: refCode || undefined }),
       });
-      if (res.status === 404) { setDone({ granted: true, code: 'WELCOME15', percent: 15 }); return; }
+      // Only the static demo (no /api) may pretend success on a 404. On the live
+      // site a 404 is a real failure — never claim an account was created.
+      if (res.status === 404 && IS_STATIC_DEMO) { setDone({ granted: true, code: 'WELCOME15', percent: 15 }); return; }
       const json = await res.json().catch(() => ({ ok: false, error: t('error.create') }));
       if (json.ok) setDone(json.discount);
       else setError(json.error || t('error.create'));
