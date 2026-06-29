@@ -62,7 +62,11 @@ export async function POST(req: Request) {
   const { stripe, ensureCustomer } = await import('@/lib/stripe');
   const { getSetting } = await import('@/lib/settings');
 
-  if (!(await withDbRetry(() => isSlotFree(d.startISO, durationMin, d.slug)))) {
+  // A waitlist claim link may offer a same-day slot inside the public 2h lead;
+  // relax the lead only for that genuine, still-live offer (BLD-336).
+  const { claimLeadOpts } = await import('@/lib/waitlist');
+  const leadOpts = await claimLeadOpts(d.waitlistToken, d.startISO);
+  if (!(await withDbRetry(() => isSlotFree(d.startISO, durationMin, d.slug, null, leadOpts)))) {
     return NextResponse.json({ ok: false, error: 'That time was just taken. Please choose another slot.' }, { status: 409 });
   }
 
