@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   // "Send failed"). Every failure now surfaces a reason staff can act on.
   try {
     const { db } = await import('@/lib/db');
-    const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, passwordHash: true, smsReminders: true } } } });
+    const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, passwordHash: true, smsReminders: true, stripeCustomerId: true } } } });
     if (!booking) return NextResponse.json({ ok: false, error: 'Booking not found.' }, { status: 404 });
     if (booking.stripePaymentMethodId) return NextResponse.json({ ok: false, error: 'A card is already saved for this booking.' }, { status: 409 });
     if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(booking.status)) {
