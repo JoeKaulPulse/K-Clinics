@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { crmEnabled } from '@/lib/crm';
+import { VOUCHER_MAX } from '@/lib/gift-vouchers';
 
 export const runtime = 'nodejs';
 
 const schema = z.object({
-  amountPence: z.number().int().positive(),
+  amountPence: z.number().int().positive().max(VOUCHER_MAX),
   purchaserName: z.string().min(1).max(120),
   purchaserEmail: z.string().email(),
   recipientName: z.string().max(120).optional().or(z.literal('')),
@@ -27,6 +28,10 @@ const schema = z.object({
 
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'Not available.' }, { status: 503 });
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!await enforceRateLimit(req, 'gift-voucher-create', 5, 600)) {
+    return NextResponse.json({ ok: false, error: 'Too many requests — please wait 10 minutes.' }, { status: 429 });
+  }
   const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message || 'Check your details.' }, { status: 422 });
   if (parsed.data.company) return NextResponse.json({ ok: true });

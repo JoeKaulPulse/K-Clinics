@@ -8,6 +8,10 @@ export const runtime = 'nodejs';
 // account doesn't have an adult DOB yet).
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!await enforceRateLimit(req, 'gift-card-claim', 5, 600)) {
+    return NextResponse.json({ ok: false, error: 'Too many attempts — please wait 10 minutes.' }, { status: 429 });
+  }
   const { getCurrentClient } = await import('@/lib/client-auth');
   const client = await getCurrentClient();
   if (!client) return NextResponse.json({ ok: false, error: 'Please sign in to claim your gift card.' }, { status: 401 });
