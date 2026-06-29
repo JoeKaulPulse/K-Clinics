@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { portalTranslator, type Locale } from '@/lib/i18n-portal';
+import { IS_STATIC_DEMO } from '@/lib/static-demo';
 
 const GENDERS = ['FEMALE', 'MALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_SAY'] as const;
 
@@ -29,12 +30,14 @@ export function ProfileForm({ initial, locale = 'en' }: { initial: Initial; loca
           marketingOptIn: d.marketingOptIn, smsReminders: d.smsReminders, newPassword: d.newPassword || undefined,
         }),
       });
-      if (res.status === 404 || res.status === 503) { setMsg(t('profile.saved')); return; }
-      const json = await res.json();
+      // Only the static demo may pretend a save succeeded. On the live site a
+      // 404/503 means the change was NOT saved — surface it rather than lying.
+      if ((res.status === 404 || res.status === 503) && IS_STATIC_DEMO) { setMsg(t('profile.saved')); return; }
+      const json = await res.json().catch(() => ({ ok: false }));
       setMsg(json.ok ? t('profile.saved') : json.error || t('profile.couldNotSave'));
       if (json.ok) { set('newPassword', ''); router.refresh(); }
     } catch {
-      setMsg('Saved (preview).');
+      setMsg(IS_STATIC_DEMO ? 'Saved (preview).' : t('profile.couldNotSave'));
     } finally {
       setSaving(false);
     }

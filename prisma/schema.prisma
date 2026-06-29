@@ -50,6 +50,7 @@ enum EmailKind {
   AFTERCARE
   SATISFACTION
   REBOOK_NUDGE
+  NPS_PROMOTER
 }
 
 enum EmailStatus {

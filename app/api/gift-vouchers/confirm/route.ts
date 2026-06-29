@@ -16,7 +16,10 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ ok: false, error: 'Invalid request' }, { status: 422 });
 
   const { db } = await import('@/lib/db');
-  const voucher = await db.giftVoucher.findUnique({ where: { id: parsed.data.voucherId }, select: { stripePaymentIntentId: true } });
+  const voucher = await db.giftVoucher.findUnique({
+    where: { id: parsed.data.voucherId },
+    select: { stripePaymentIntentId: true, amountPence: true, physicalFeePence: true, purchaserEmail: true },
+  });
   // The PaymentIntent id is the portion of the client_secret before `_secret_`.
   const providedPi = parsed.data.clientSecret.split('_secret_')[0];
   if (!voucher?.stripePaymentIntentId || !providedPi || providedPi !== voucher.stripePaymentIntentId) {
@@ -25,5 +28,10 @@ export async function POST(req: Request) {
 
   const { confirmVoucher } = await import('@/lib/gift-vouchers');
   const res = await confirmVoucher(parsed.data.voucherId);
+  if (res.ok) {
+    const { sendPurchase } = await import('@/lib/conversions');
+    const totalPence = (voucher.amountPence ?? 0) + (voucher.physicalFeePence ?? 0);
+    sendPurchase({ bookingId: parsed.data.voucherId, valuePence: totalPence, email: voucher.purchaserEmail }).catch(() => {});
+  }
   return NextResponse.json(res, { status: res.ok ? 200 : 400 });
 }
