@@ -1,5 +1,5 @@
 import 'server-only';
-import { db } from '@/lib/db';
+import { academyDb as db } from '@/lib/academy-db';
 
 // Content-growth engine. New modules/lessons/quizzes and exam-bank questions are
 // declared here and applied to the live courses idempotently (create-only, matched

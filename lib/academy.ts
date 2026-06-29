@@ -1,5 +1,5 @@
 import 'server-only';
-import { db } from '@/lib/db';
+import { academyDb as db } from '@/lib/academy-db';
 
 // ── K Academy catalogue (CRM-managed) ───────────────────────────────────────
 
