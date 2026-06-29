@@ -8,6 +8,10 @@ export const runtime = 'nodejs';
 // (if a gift card covers it) finalises immediately.
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!await enforceRateLimit(req, 'shop-checkout', 8, 600)) {
+    return NextResponse.json({ ok: false, error: 'Too many requests — please wait 10 minutes.' }, { status: 429 });
+  }
   const body = await req.json().catch(() => ({}));
   const items = Array.isArray(body.items) ? body.items.map((i: { productId: string; qty: number }) => ({ productId: String(i.productId), qty: Number(i.qty) })) : [];
   const name = String(body.name || '').trim().slice(0, 120);
