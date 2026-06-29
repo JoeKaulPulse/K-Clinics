@@ -4,6 +4,8 @@ import { Stagger, StaggerItem, Reveal } from '@/components/motion/Reveal';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
+export const revalidate = false;
+
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Special Offers & Savings | KClinics London',
   description:

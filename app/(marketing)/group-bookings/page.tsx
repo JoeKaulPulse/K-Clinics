@@ -4,6 +4,8 @@ import { Reveal } from '@/components/motion/Reveal';
 import { GroupBookingForm } from '@/components/booking/GroupBookingForm';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
+export const revalidate = false;
+
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Group & Party Bookings — Birthdays, Hen Parties | KClinics London',
   description: 'Book the clinic for your celebration — birthdays, hen and bridal parties, corporate days. A private, luxe aesthetics experience for your group in Islington, London.',
