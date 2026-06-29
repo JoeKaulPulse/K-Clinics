@@ -126,7 +126,13 @@ const nextConfig = {
   // Exposed to client + server so image paths from /public can be prefixed with
   // the Pages sub-path. next/image does NOT prepend basePath to unoptimized
   // /public images in a static export, so we do it ourselves (see treatment-images).
-  env: { NEXT_PUBLIC_BASE_PATH: repoBase },
+  // NEXT_PUBLIC_STATIC_DEMO is true ONLY in the GitHub Pages static export (no
+  // /api routes). Portal forms use it to show a friendly "preview" result on a
+  // 404 instead of erroring — and crucially NOT on the live site, where a real
+  // API 404/503 must surface as a genuine error rather than silently faking
+  // success (a 404 blip previously made the signup wizard claim "account
+  // created" without creating one — clients then couldn't log in).
+  env: { NEXT_PUBLIC_BASE_PATH: repoBase, NEXT_PUBLIC_STATIC_DEMO: isPages ? 'true' : '' },
   images: {
     formats: ['image/avif', 'image/webp'],
     // GitHub Pages has no image optimiser; serve images as-is.

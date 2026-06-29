@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { authField, authLabel } from '@/components/portal/AuthShell';
+import { IS_STATIC_DEMO } from '@/lib/static-demo';
 
 export function SignupForm() {
   const router = useRouter();
@@ -26,8 +27,9 @@ export function SignupForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(d),
       });
-      // 404 = route not present (static GitHub Pages demo only) — preview success.
-      if (res.status === 404) {
+      // 404 fakes success ONLY on the static GitHub Pages demo (no /api). On the
+      // live site a 404 is a real failure — fall through to the error below.
+      if (res.status === 404 && IS_STATIC_DEMO) {
         setDone({ granted: true, code: 'WELCOME15', percent: 15 });
         return;
       }
