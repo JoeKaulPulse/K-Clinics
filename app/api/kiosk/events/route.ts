@@ -8,6 +8,10 @@ const ALLOWED = new Set(['scan', 'consent', 'photo', 'analyzed', 'shared', 'clai
 
 // Public funnel-event sink the client can POST to (e.g. `scan`, `claimed`).
 export async function POST(req: Request) {
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!await enforceRateLimit(req, 'kiosk-events', 60, 600)) {
+    return NextResponse.json({ ok: false, error: 'Too many requests.' }, { status: 429 });
+  }
   const body = await req.json().catch(() => null);
   const event = typeof body?.event === 'string' ? body.event : null;
   const sessionId = typeof body?.sessionId === 'string' ? body.sessionId : null;

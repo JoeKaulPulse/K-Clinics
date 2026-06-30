@@ -50,10 +50,11 @@ export async function POST(req: Request) {
     const client = await db.client.upsert({
       where: { email: data.email.toLowerCase() },
       update: {
+        // Name fields are safe to update (lead capture refinement).
+        // phone and dob are intentionally omitted: an anonymous submitter knowing
+        // only an email address must not overwrite health data on an existing client.
         firstName: data.firstName,
         lastName: data.lastName || undefined,
-        phone: data.phone || undefined,
-        dob: data.dob ? new Date(data.dob) : undefined,
         marketingOptIn: data.marketingOptIn || undefined,
         ...(data.marketingOptIn ? marketingConsentFields('consult-form') : {}),
       },

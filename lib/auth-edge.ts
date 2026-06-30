@@ -51,6 +51,11 @@ export const adminSecret = (): Uint8Array => {
     if (process.env.NODE_ENV === 'production') throw new Error('ADMIN_JWT_SECRET is required in production.');
     return toKey('dev-insecure-secret-change-me');
   }
+  // BLD-705: warn when the secret is below 32 characters (256 bits) in production.
+  if (process.env.NODE_ENV === 'production' && s.length < 32) {
+    console.error('[auth] ADMIN_JWT_SECRET is too short — use at least 32 characters in production');
+    try { const Sentry = require('@sentry/nextjs'); Sentry.captureMessage('ADMIN_JWT_SECRET is too short', 'error'); } catch { /* Sentry not configured */ }
+  }
   return toKey(s);
 };
 
@@ -66,7 +71,7 @@ export const clientSecret = (): Uint8Array => {
 export async function verifyToken(token: string | undefined): Promise<Session | null> {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, adminSecret(), { audience: ADMIN_AUDIENCE });
+    const { payload } = await jwtVerify(token, adminSecret(), { audience: ADMIN_AUDIENCE, algorithms: ['HS256'] });
     return payload as unknown as Session;
   } catch {
     return null;
@@ -76,7 +81,7 @@ export async function verifyToken(token: string | undefined): Promise<Session | 
 export async function verifyClientToken(token: string | undefined): Promise<ClientSession | null> {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, clientSecret(), { audience: CLIENT_AUDIENCE });
+    const { payload } = await jwtVerify(token, clientSecret(), { audience: CLIENT_AUDIENCE, algorithms: ['HS256'] });
     return payload as unknown as ClientSession;
   } catch {
     return null;
@@ -96,7 +101,7 @@ export const academySecret = (): Uint8Array => {
 export async function verifyAcademyToken(token: string | undefined): Promise<AcademySession | null> {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, academySecret(), { audience: ACADEMY_AUDIENCE });
+    const { payload } = await jwtVerify(token, academySecret(), { audience: ACADEMY_AUDIENCE, algorithms: ['HS256'] });
     return payload as unknown as AcademySession;
   } catch {
     return null;

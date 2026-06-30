@@ -57,7 +57,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     });
     blobUrl = blob.url;
   } catch (e) {
-    return NextResponse.json({ ok: false, error: (e as Error)?.message || 'Upload failed.' }, { status: 500 });
+    console.error('[kiosk] blob upload failed:', (e as Error)?.message);
+    return NextResponse.json({ ok: false, error: 'Upload failed.' }, { status: 500 });
   }
 
   await db.kioskSession.update({
