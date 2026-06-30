@@ -3,6 +3,7 @@ import { PageHero } from '@/components/ui/PageHero';
 import { Stagger, StaggerItem, Reveal } from '@/components/motion/Reveal';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
+import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
 
 export const revalidate = false;
 
@@ -62,6 +63,8 @@ export default function OffersPage() {
           </div>
         </Reveal>
       </section>
+
+      <NewsletterCapture />
     </>
   );
 }

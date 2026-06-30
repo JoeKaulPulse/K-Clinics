@@ -5,6 +5,7 @@ import { BookingButtons } from '@/components/booking/BookingButtons';
 import { Stars } from '@/components/ui/Stars';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd, aggregateRatingLd } from '@/lib/seo';
+import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Client Reviews & Testimonials | KClinics London',
@@ -105,6 +106,8 @@ export default async function ReviewsPage() {
           </p>
         </Reveal>
       </section>
+
+      <NewsletterCapture />
     </>
   );
 }
