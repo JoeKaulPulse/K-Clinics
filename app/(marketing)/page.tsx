@@ -81,10 +81,10 @@ export default async function HomePage() {
               </p>
             </Reveal>
             <Reveal delay={0.05}>
-              <h2 className="text-display max-w-4xl">
+              <h1 className="text-display max-w-4xl">
                 The science of beautiful skin.{' '}
                 <span className="text-gold-gradient">The art of a perfect smile.</span>
-              </h2>
+              </h1>
             </Reveal>
           </div>
           <div className="flex flex-col justify-end lg:col-span-5">

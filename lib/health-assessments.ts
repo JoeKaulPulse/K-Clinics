@@ -16,7 +16,7 @@ async function emitAssessmentView(clientId: string, actor: string, actorRole?: s
       select: { id: true },
     });
     if (!recent) await logAudit({ action: 'ASSESSMENT_VIEWED', actor, actorRole, clientId, summary: 'Health assessment decrypted for clinical viewing' });
-  } catch { /* non-fatal */ }
+  } catch (err) { console.error('[health-assessments] emitAssessmentView failed — audit trail gap:', (err as Error)?.message); }
 }
 
 /**
