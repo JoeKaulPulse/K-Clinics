@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { KVision } from '@/components/ai/KVision';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
+import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Get My Plan — AI Skin, Smile & Hair Consultation | KClinics',
@@ -69,6 +70,8 @@ export default async function AiConsultationPage() {
           </p>
         </div>
       </section>
+
+      <NewsletterCapture />
     </>
   );
 }
