@@ -20,9 +20,11 @@ function getRedis(): Redis | null {
 export type RateResult = { allowed: boolean; count: number; limit: number; retryAfterSec: number };
 
 /** Count one hit for `key` within a `windowSec` window and report whether the
- *  caller is within `limit`. Fails open on store errors (never blocks a real
- *  user because the limiter is down). */
-export async function rateLimit(key: string, limit: number, windowSec: number): Promise<RateResult> {
+ *  caller is within `limit`. By default fails open on store errors so a limiter
+ *  outage never blocks legitimate traffic. Pass `failClosed: true` for
+ *  high-sensitivity scopes (finance PIN, promo validate) where a store outage
+ *  must not silently disable throttling. */
+export async function rateLimit(key: string, limit: number, windowSec: number, opts?: { failClosed?: boolean }): Promise<RateResult> {
   const r = getRedis();
   if (r) {
     try {
@@ -39,7 +41,11 @@ export async function rateLimit(key: string, limit: number, windowSec: number): 
     const count = await db.securityEvent.count({ where: { type: 'RATE_HIT', identifier: key, createdAt: { gte: since } } });
     await db.securityEvent.create({ data: { type: 'RATE_HIT', portal: 'rl', identifier: key } });
     return { allowed: count + 1 <= limit, count: count + 1, limit, retryAfterSec: windowSec };
-  } catch {
+  } catch (err) {
+    if (opts?.failClosed) {
+      console.error('[rate-limit] store unavailable — failing closed for sensitive scope:', key, (err as Error)?.message);
+      return { allowed: false, count: 0, limit, retryAfterSec: windowSec };
+    }
     return { allowed: true, count: 0, limit, retryAfterSec: windowSec };
   }
 }

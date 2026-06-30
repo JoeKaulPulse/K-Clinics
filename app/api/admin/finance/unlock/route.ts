@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
   // Default: unlock with the PIN.
   const { enforceRateLimit } = await import('@/lib/security/guard');
-  if (!(await enforceRateLimit(req, 'finance-unlock', 8, 300, 'admin'))) {
+  if (!(await enforceRateLimit(req, 'finance-unlock', 8, 300, 'admin', { failClosed: true }))) {
     return NextResponse.json({ ok: false, error: 'Too many attempts — wait a few minutes.' }, { status: 429 });
   }
   if (!(await hasFinancePin(session.sub))) return NextResponse.json({ ok: false, error: 'No PIN set yet.', needsSetup: true }, { status: 400 });
