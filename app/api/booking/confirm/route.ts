@@ -15,6 +15,16 @@ export async function POST(req: Request) {
   const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ ok: false, error: 'Invalid request' }, { status: 422 });
 
+  // BLD-700: rate-limit to prevent booking ID enumeration / SetupIntent probing.
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'booking-confirm', 10, 600))) {
+    return NextResponse.json({ ok: false, error: 'Too many requests. Please wait a moment and try again.' }, { status: 429 });
+  }
+
+  // BLD-700: resolve the signed-in client so we can enforce ownership below.
+  const { getCurrentClient } = await import('@/lib/client-auth');
+  const client = await getCurrentClient();
+
   const { db } = await import('@/lib/db');
   const { stripe } = await import('@/lib/stripe');
 
@@ -26,6 +36,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Database unavailable' }, { status: 503 });
   }
   if (!booking) return NextResponse.json({ ok: false, error: 'Booking not found' }, { status: 404 });
+
+  // BLD-700: ownership check — only the booking's owner may confirm it.
+  if (!client) return NextResponse.json({ ok: false, error: 'Authentication required.' }, { status: 401 });
+  if (booking.clientId !== client.id) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
   if (booking.status === 'CONFIRMED') return NextResponse.json({ ok: true, already: true });
   if (!booking.stripeSetupIntentId) return NextResponse.json({ ok: false, error: 'No setup intent' }, { status: 400 });
 

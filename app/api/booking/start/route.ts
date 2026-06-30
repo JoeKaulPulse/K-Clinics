@@ -218,9 +218,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, requested: true, bookingId: booking.id, manageToken: booking.manageToken });
   }
 
-  // Burn the welcome discount if it was the best offer used.
+  // BLD-703: burn the welcome discount via CAS (updateMany with status='ACTIVE' guard)
+  // to prevent double-apply under concurrent bookings. If count===0, a concurrent
+  // booking already burned it; log a warning but let this booking proceed.
   if (usedWelcome && welcomeClaim) {
-    await db.discountClaim.update({ where: { id: welcomeClaim.id }, data: { status: 'REDEEMED', redeemedBookingId: booking.id } });
+    const burned = await db.discountClaim.updateMany({ where: { id: welcomeClaim.id, status: 'ACTIVE' }, data: { status: 'REDEEMED', redeemedBookingId: booking.id } });
+    if (burned.count === 0) {
+      console.warn('[booking-start] welcome discount CAS miss — concurrent booking already burned claim', welcomeClaim.id, 'for booking', booking.id);
+    }
   }
   // Record the promo redemption (increments its usage counter).
   if (promo) {

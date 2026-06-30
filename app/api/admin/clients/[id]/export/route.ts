@@ -28,7 +28,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       waitlist: true,
       referralsMade: true,
       points: true, // loyalty ledger — the subject's own points history (BLD-315)
-      callRecords: { select: { id: true, direction: true, duration: true, callerNumber: true, answeredAt: true, endedAt: true, transcript: true, createdAt: true } },
+      // BLD-701: transcripts are clinical data — fetch without transcript here; added under clinical gate below.
+      callRecords: { select: { id: true, direction: true, duration: true, callerNumber: true, answeredAt: true, endedAt: true, createdAt: true } },
     },
   });
   if (!c) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
@@ -41,7 +42,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   for (const con of c.consultations) { con.concerns = decClinical(con.concerns); con.message = decClinical(con.message); con.medicalNotes = decClinical(con.medicalNotes); }
   for (const bk of c.bookings) { bk.allergyNote = decClinical(bk.allergyNote); }
   for (const it of c.interactions) { it.detail = decClinical(it.detail); }
-  for (const cr of c.callRecords) { cr.transcript = decClinical(cr.transcript); } // BLD-602: call transcripts are encrypted at rest
+  // BLD-701: transcripts are clinical data; decryption happens under the clinical gate below.
 
   // Strip secrets from the dump.
   const { passwordHash, resetTokenHash, resetTokenExp, ...client } = c as Record<string, unknown> & { passwordHash?: unknown; resetTokenHash?: unknown; resetTokenExp?: unknown };
@@ -76,6 +77,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const { formatAssessment } = await import('@/lib/health-assessments');
     const exportAudit = { actor: session?.email || 'unknown', actorRole: session?.role ?? undefined };
     out.healthAssessments = await Promise.all(assessments.map((a) => formatAssessment(a.id, exportAudit)));
+
+    // BLD-701: include call transcripts for clinical-permissioned staff only.
+    // Re-fetch with transcript selected and decrypt at-rest cipher.
+    const callRecordsWithTranscript = await db.callRecord.findMany({
+      where: { matchedClientId: id },
+      select: { id: true, direction: true, durationSec: true, fromNumber: true, toNumber: true, answeredAt: true, endedAt: true, transcript: true, createdAt: true },
+    });
+    out.callRecords = callRecordsWithTranscript.map((cr) => ({ ...cr, transcript: decClinical(cr.transcript) }));
 
     // BLD-367 (Art. 15): attach the decrypted before-photo image to each record,
     // not just its metadata. Same decryption path as the authenticated serve
