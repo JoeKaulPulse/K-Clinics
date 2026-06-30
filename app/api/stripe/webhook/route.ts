@@ -264,6 +264,28 @@ export async function POST(req: Request) {
         } catch { /* non-fatal */ }
         break;
       }
+      // BLD-689: when a Checkout session expires (customer closes tab), any
+      // gift-card balance reserved in the PENDING order stays locked permanently
+      // without this handler. Cancel the order and re-credit the balance.
+      // Idempotent + race-safe: uses the same PENDING→CANCELLED CAS pattern as
+      // payment_intent.payment_failed so redeliveries don't double-credit.
+      case 'checkout.session.expired': {
+        const session = event.data.object;
+        const orderId = session.metadata?.orderId;
+        if (orderId) {
+          try {
+            const order = await db.order.findFirst({ where: { id: orderId, status: 'PENDING' }, select: { id: true, giftCardCode: true, giftCardPence: true } });
+            if (order) {
+              const claimed = await db.order.updateMany({ where: { id: order.id, status: 'PENDING' }, data: { status: 'CANCELLED' } });
+              if (claimed.count > 0 && order.giftCardCode && order.giftCardPence && order.giftCardPence > 0) {
+                const { creditVoucher } = await import('@/lib/gift-vouchers');
+                await creditVoucher(order.giftCardCode, order.giftCardPence);
+              }
+            }
+          } catch (e) { console.error('[webhook] checkout.session.expired gift card re-credit failed:', (e as Error)?.message); }
+        }
+        break;
+      }
       default:
         break;
     }

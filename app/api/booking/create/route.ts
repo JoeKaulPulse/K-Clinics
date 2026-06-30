@@ -183,12 +183,14 @@ export async function POST(req: Request) {
     await redeemPromo(promo.promoId, { clientId: client.id, email: client.email, bookingId: booking.id, amountOffPence: promo.discountPence });
   }
 
-  // Burn the welcome discount so it can only ever be used once.
+  // BLD-703: burn the welcome discount via CAS (updateMany with status='ACTIVE' guard)
+  // to prevent double-apply under concurrent bookings. If count===0, a concurrent
+  // booking already burned it; log a warning but let this booking proceed.
   if (claim) {
-    await db.discountClaim.update({
-      where: { id: claim.id },
-      data: { status: 'REDEEMED', redeemedBookingId: booking.id },
-    });
+    const burned = await db.discountClaim.updateMany({ where: { id: claim.id, status: 'ACTIVE' }, data: { status: 'REDEEMED', redeemedBookingId: booking.id } });
+    if (burned.count === 0) {
+      console.warn('[booking-create] welcome discount CAS miss — concurrent booking already burned claim', claim.id, 'for booking', booking.id);
+    }
   }
 
   // SetupIntent — saves the card off-session, no charge.
