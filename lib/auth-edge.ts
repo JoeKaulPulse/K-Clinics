@@ -66,7 +66,7 @@ export const clientSecret = (): Uint8Array => {
 export async function verifyToken(token: string | undefined): Promise<Session | null> {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, adminSecret(), { audience: ADMIN_AUDIENCE });
+    const { payload } = await jwtVerify(token, adminSecret(), { audience: ADMIN_AUDIENCE, algorithms: ['HS256'] });
     return payload as unknown as Session;
   } catch {
     return null;
@@ -76,7 +76,7 @@ export async function verifyToken(token: string | undefined): Promise<Session | 
 export async function verifyClientToken(token: string | undefined): Promise<ClientSession | null> {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, clientSecret(), { audience: CLIENT_AUDIENCE });
+    const { payload } = await jwtVerify(token, clientSecret(), { audience: CLIENT_AUDIENCE, algorithms: ['HS256'] });
     return payload as unknown as ClientSession;
   } catch {
     return null;
@@ -96,7 +96,7 @@ export const academySecret = (): Uint8Array => {
 export async function verifyAcademyToken(token: string | undefined): Promise<AcademySession | null> {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, academySecret(), { audience: ACADEMY_AUDIENCE });
+    const { payload } = await jwtVerify(token, academySecret(), { audience: ACADEMY_AUDIENCE, algorithms: ['HS256'] });
     return payload as unknown as AcademySession;
   } catch {
     return null;

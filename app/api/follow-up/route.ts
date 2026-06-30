@@ -7,6 +7,10 @@ export const runtime = 'nodejs';
 const schema = z.object({ token: z.string().min(1), sentiment: z.enum(['great', 'ok', 'concerned']), comment: z.string().max(1000).optional().or(z.literal('')) });
 
 export async function POST(req: Request) {
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!await enforceRateLimit(req, 'follow-up', 10, 600)) {
+    return NextResponse.json({ ok: false, error: 'Too many requests.' }, { status: 429 });
+  }
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
   const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ ok: false, error: 'Please choose how you’re doing.' }, { status: 422 });

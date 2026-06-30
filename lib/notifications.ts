@@ -88,6 +88,16 @@ function inQuietHours(prefs: NotifPrefs, now = new Date()): boolean {
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] || c);
 
+/** Validate and escape a URL before splicing into an href attribute.
+ *  Accepts https://, http://, and root-relative paths. Falls back to '#'. */
+function safeHref(url: string): string {
+  try {
+    const u = new URL(url, 'https://placeholder.example');
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return '#';
+  } catch { return '#'; }
+  return url.replace(/"/g, '%22').replace(/'/g, '%27');
+}
+
 /** Phase 2 email: a copy when the recipient opted the category into email and the
  *  item is high/urgent. Urgent ignores quiet hours; high is held during them (the
  *  digest catches it). Best-effort; never blocks the in-app row. */
@@ -98,11 +108,11 @@ async function maybeEmail(email: string | undefined, prefs: NotifPrefs, category
   try {
     const { sendEmail, tmplManual } = await import('@/lib/email');
     const base = process.env.NEXT_PUBLIC_BASE_URL || 'https://kclinics.co.uk';
-    const link = n.href ? `${base}${n.href}` : null;
+    const link = n.href ? safeHref(`${base}${n.href}`) : null;
     const html = tmplManual(
       `<h2 style="margin:0 0 8px">${escapeHtml(n.title)}</h2>` +
       (n.body ? `<p style="margin:0 0 12px">${escapeHtml(n.body)}</p>` : '') +
-      (link ? `<p><a href="${link}">Open in the admin →</a></p>` : ''),
+      (link && link !== '#' ? `<p><a href="${link}">Open in the admin →</a></p>` : ''),
     );
     await sendEmail({ to: email, subject: n.title.slice(0, 120), html });
   } catch { /* non-fatal */ }
