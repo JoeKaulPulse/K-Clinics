@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation';
+import { getSession, sessionCan } from '@/lib/auth';
 import { WorkspaceClient } from '@/components/admin/WorkspaceClient';
 
 // Dynamic so the per-request CSP nonce (middleware) is applied to this page's
@@ -7,6 +9,9 @@ import { WorkspaceClient } from '@/components/admin/WorkspaceClient';
 // strict /admin CSP because a per-request nonce can't be baked into cached HTML.
 export const dynamic = 'force-dynamic';
 
-export default function WorkspacePage() {
+// BLD-707: server-side permission gate — only settings.manage can view this page.
+export default async function WorkspacePage() {
+  const session = await getSession();
+  if (!sessionCan(session, 'settings.manage')) redirect('/admin');
   return <WorkspaceClient />;
 }

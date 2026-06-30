@@ -39,6 +39,29 @@ export async function GET(req: Request) {
 
   const user = result.user;
   const { createSession } = await import('@/lib/auth');
+
+  // BLD-708: mirror the password-login 2FA-enrolment gate. If the role requires
+  // 2FA but the user hasn't enrolled yet, issue a setup-only session (middleware
+  // confines it to the profile/setup page) instead of a full session.
+  const { is2faRequiredForRole } = await import('@/lib/security/twofa');
+  if (!user.totpEnabledAt && (await is2faRequiredForRole(user.role))) {
+    await createSession({
+      sub: user.id,
+      email: user.email,
+      name: user.name || undefined,
+      role: user.role,
+      grant: user.permGrant ?? [],
+      revoke: user.permRevoke ?? [],
+      epoch: user.sessionEpoch ?? 0,
+      needsSetup: true,
+    });
+    try {
+      const { recordSecurity } = await import('@/lib/security/guard');
+      await recordSecurity('LOGIN_OK', 'admin', user.email, req, { sso: 'google', setup: true });
+    } catch { /* non-fatal */ }
+    return NextResponse.redirect(new URL('/admin/login?sso=setup', req.url));
+  }
+
   await createSession({
     sub: user.id,
     email: user.email,
