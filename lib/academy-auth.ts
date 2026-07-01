@@ -95,8 +95,9 @@ export async function bumpAcademyEpoch(studentId: string): Promise<void> {
 /** Begin a password reset for an academy trainee. Always resolves ok:true
  *  (no account enumeration); sends a one-hour link only if the account exists. */
 export async function requestAcademyPasswordReset(email: string): Promise<{ ok: true }> {
-  const student = await db.academyStudent.findFirst({ where: { email: email.trim().toLowerCase() }, select: { id: true, email: true, firstName: true, passwordHash: true } });
+  const student = await db.academyStudent.findFirst({ where: { email: email.trim().toLowerCase() }, select: { id: true, email: true, firstName: true, passwordHash: true, portalActive: true } });
   if (student?.passwordHash) {
+    // Normal case: the account has a password — email a reset link.
     const token = crypto.randomBytes(32).toString('hex');
     await db.academyStudent.update({
       where: { id: student.id },
@@ -110,6 +111,14 @@ export async function requestAcademyPasswordReset(email: string): Promise<{ ok: 
     } catch {
       /* swallow — never reveal whether the email exists */
     }
+  } else if (student?.portalActive) {
+    // Passwordless account (activation-link only — e.g. a trainee onboarded via an
+    // offer/"accept & pay" magic link who never set a password): a reset link is
+    // useless (there's no password to reset), so the old code sent NOTHING and the
+    // trainee saw "no email received" — the reported bug. Mirror the client portal
+    // (BLD-527): send an activation magic link so they can get in and set a
+    // password from Academy Settings.
+    await sendAccessLink(student.id).catch(() => {});
   }
   return { ok: true };
 }
