@@ -6,8 +6,7 @@ import { HideOnAcademyPortal } from '@/components/layout/HideOnAcademyPortal';
 import { PageTransition } from '@/components/motion/PageTransition';
 import { ScrollProgress } from '@/components/motion/ScrollProgress';
 import { Cursor } from '@/components/motion/Cursor';
-import dynamic from 'next/dynamic';
-const Intro = dynamic(() => import('@/components/motion/Intro').then((m) => m.Intro), { ssr: false });
+import { IntroLazy } from '@/components/motion/IntroLazy';
 import { WhatsAppButton } from '@/components/layout/WhatsAppButton';
 import { DeferredLiveChat } from '@/components/chat/DeferredLiveChat';
 import { MotionProvider } from '@/components/motion/MotionProvider';
@@ -24,7 +23,7 @@ export default async function MarketingLayout({ children }: { children: React.Re
   const [config, tracking] = await Promise.all([getSiteConfig(), getTrackingConfig()]);
   return (
     <MotionProvider>
-      <Intro />
+      <IntroLazy />
       <JsonLd data={[organizationLd(), websiteLd()]} />
       <ScrollProgress />
       <Cursor />
