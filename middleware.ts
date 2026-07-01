@@ -119,11 +119,17 @@ async function matchRedirect(req: NextRequest): Promise<NextResponse | null> {
 // at most once every 30s, so a blocked IP is denied page requests without a DB
 // hit per request. Fails OPEN (no block) on any fetch error — a telemetry
 // outage must never lock out legitimate visitors.
+// Trusted, non-user-controlled base for the internal feed. Never the request
+// Host (req.nextUrl.origin) — a client can spoof Host, which would turn this
+// self-fetch into an SSRF sink. NEXT_PUBLIC_SITE_URL is the canonical site URL
+// the rest of the app already uses for absolute links.
+const SELF_BASE = (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/$/, '');
 let _blocked: { set: Set<string>; at: number } | null = null;
-async function blockedIps(origin: string): Promise<Set<string>> {
+async function blockedIps(): Promise<Set<string>> {
   if (_blocked && Date.now() - _blocked.at < 30_000) return _blocked.set;
+  if (!SELF_BASE) return _blocked?.set ?? new Set(); // no trusted base → fail open
   try {
-    const res = await fetch(`${origin}/api/blocked-ips`, { headers: { 'x-mw-block': '1' } });
+    const res = await fetch(`${SELF_BASE}/api/blocked-ips`, { headers: { 'x-mw-block': '1' } });
     if (res.ok) _blocked = { set: new Set((await res.json()) as string[]), at: Date.now() };
   } catch { /* keep stale cache on failure */ }
   return _blocked?.set ?? new Set();
@@ -147,7 +153,7 @@ export async function middleware(req: NextRequest) {
   // ── IP deny-list — blocked IPs get nothing (checked before any work) ─────
   const ip = edgeClientIp(req);
   if (ip !== 'unknown') {
-    const set = await blockedIps(req.nextUrl.origin);
+    const set = await blockedIps();
     if (set.has(ip)) return new NextResponse('Access denied.', { status: 403 });
   }
 
