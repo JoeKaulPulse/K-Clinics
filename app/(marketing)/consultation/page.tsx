@@ -6,6 +6,8 @@ import { site } from '@/lib/site';
 import { getSiteConfig } from '@/lib/site-config';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
+export const revalidate = 3600;
+
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Book a Free Consultation — Islington, London | KClinics',
   description:

@@ -14,19 +14,36 @@ const schema = z.object({
   marketingOptIn: z.boolean().optional(),
   smsReminders: z.boolean().optional(),
   // Optional password change
+  currentPassword: z.string().optional(),
   newPassword: z.string().min(8).max(200).optional(),
 });
 
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
 
-  const { getClientSession, hashPassword } = await import('@/lib/auth');
+  const { getClientSession, hashPassword, verifyPassword } = await import('@/lib/auth');
   const session = await getClientSession();
   if (!session) return NextResponse.json({ ok: false, error: 'Please sign in.' }, { status: 401 });
 
   const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ ok: false, error: 'Check your details.' }, { status: 422 });
   const d = parsed.data;
+
+  // Password change requires current-password verification and is rate-limited.
+  if (d.newPassword) {
+    const { enforceRateLimit } = await import('@/lib/security/guard');
+    if (!await enforceRateLimit(req, 'profile-password-change', 5, 600)) {
+      return NextResponse.json({ ok: false, error: 'Too many attempts — please wait 10 minutes.' }, { status: 429 });
+    }
+    if (!d.currentPassword) {
+      return NextResponse.json({ ok: false, error: 'Enter your current password to set a new one.' }, { status: 400 });
+    }
+    const { db } = await import('@/lib/db');
+    const row = await db.client.findUnique({ where: { id: session.sub }, select: { passwordHash: true } });
+    if (!row?.passwordHash || !await verifyPassword(d.currentPassword, row.passwordHash)) {
+      return NextResponse.json({ ok: false, error: 'Current password is incorrect.' }, { status: 400 });
+    }
+  }
 
   const { db } = await import('@/lib/db');
   const data: Record<string, unknown> = {};

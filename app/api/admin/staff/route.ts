@@ -123,6 +123,18 @@ export async function POST(req: Request) {
     const securityRelevant = 'role' in data || 'permGrant' in data || 'permRevoke' in data || 'passwordHash' in data || data.active === false;
     if (securityRelevant) data.sessionEpoch = { increment: 1 };
     const updated = await db.adminUser.update({ where: { id }, data });
+    if (securityRelevant) {
+      try {
+        const { logAudit } = await import('@/lib/audit');
+        const changes: Record<string, unknown> = {};
+        if ('role' in data) changes.role = { before: target.role, after: data.role };
+        if ('permGrant' in data) changes.permGrant = { before: target.permGrant, after: data.permGrant };
+        if ('permRevoke' in data) changes.permRevoke = { before: target.permRevoke, after: data.permRevoke };
+        if ('passwordHash' in data) changes.password = 'changed';
+        if (data.active === false) changes.active = { before: target.active, after: false };
+        await logAudit({ action: 'SETTINGS_UPDATED', actor: actor.email, actorRole: actor.role, summary: `Staff security change on ${target.email}: ${Object.keys(changes).join(', ')}`, meta: { targetId: id, targetEmail: target.email, changes } });
+      } catch { /* non-fatal */ }
+    }
     return NextResponse.json({ ok: true, id: updated.id });
   }
 

@@ -33,6 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
     keywords: dentistryLive
       ? ['cosmetic dentist London', 'dental clinic Islington', 'veneers London', 'dental implants London']
       : ['cosmetic dentist London opening soon', 'new dental clinic Islington', 'veneers London waiting list', 'cosmetic dentistry coming soon London', 'register interest cosmetic dentist London'],
+    noindex: !dentistryLive,
   });
 }
 

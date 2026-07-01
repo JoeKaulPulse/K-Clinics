@@ -9,6 +9,8 @@ import { packages } from '@/lib/packages';
 import { pageMeta, JsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
 
+export const revalidate = false;
+
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Treatment Packages & Programmes in London | KClinics',
   description:
