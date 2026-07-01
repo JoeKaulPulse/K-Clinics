@@ -18,6 +18,16 @@ export async function POST(req: Request) {
       await unlock({ identifier: b.identifier || undefined, ip: b.ip || undefined });
       return NextResponse.json({ ok: true });
     }
+    case 'blockIp': {
+      const { blockIp } = await import('@/lib/security/ip-activity');
+      const ok = await blockIp(String(b.ip || ''), typeof b.reason === 'string' ? b.reason : null, session.email);
+      return NextResponse.json(ok ? { ok: true } : { ok: false, error: 'Enter a valid IP address.' }, { status: ok ? 200 : 400 });
+    }
+    case 'unblockIp': {
+      const { unblockIp } = await import('@/lib/security/ip-activity');
+      await unblockIp(String(b.ip || ''), session.email);
+      return NextResponse.json({ ok: true });
+    }
     case 'set2faPolicy': {
       const { setRequired2faRoles } = await import('@/lib/security/twofa');
       await setRequired2faRoles(Array.isArray(b.roles) ? b.roles : [], session.email);

@@ -52,14 +52,28 @@ export async function POST(req: Request) {
     if (b.action === 'create') {
       const items = Array.isArray(b.items) ? b.items.slice(0, 30) : [];
       if (!items.length) return NextResponse.json({ ok: false, error: 'No items.' }, { status: 400 });
+      // Optional: file every created item under one Project (e.g. a security
+      // audit). Find-or-create it once, then link each new item to it.
+      let projectId: string | undefined;
+      let projectRef: string | null = null;
+      if (b.project && typeof b.project === 'string') {
+        const proj = await board.ensureProject(b.project, typeof b.projectSummary === 'string' ? b.projectSummary : undefined);
+        if (proj) { projectId = proj.id; projectRef = proj.ref; }
+      }
       const created: { id: string; title: string }[] = [];
       const skipped: string[] = [];
       for (const it of items) {
         const title = String(it?.title || '').trim();
         if (!title) continue;
         // De-dupe against any existing item with the same title (avoids audit spam).
-        const dup = await db.buildItem.findFirst({ where: { title }, select: { id: true } }).catch(() => null);
-        if (dup) { skipped.push(title); continue; }
+        const dup = await db.buildItem.findFirst({ where: { title }, select: { id: true, projectId: true } }).catch(() => null);
+        if (dup) {
+          // Back-fill the project link on a pre-existing item so a re-run still
+          // groups it correctly, but don't otherwise touch it.
+          if (projectId && !dup.projectId) await db.buildItem.update({ where: { id: dup.id }, data: { projectId } }).catch(() => {});
+          skipped.push(title);
+          continue;
+        }
         const item = await board.createBuildItem({
           type: TYPES.includes(it?.type) ? it.type : 'TASK',
           title,
@@ -69,10 +83,11 @@ export async function POST(req: Request) {
           effort: Number.isFinite(it?.effort) ? it.effort : undefined,
           assignee: 'claude',
           reportedBy: 'routine',
+          projectId,
         }, 'routine');
         created.push({ id: item.id, title: item.title });
       }
-      return NextResponse.json({ ok: true, created, skipped, createdCount: created.length });
+      return NextResponse.json({ ok: true, created, skipped, createdCount: created.length, projectRef });
     }
     if (b.action === 'update') {
       // Look up by DB id or by reference ID (e.g. BLD-12) — refs are the

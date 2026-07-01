@@ -3031,6 +3031,25 @@ model SecurityEvent {
   @@index([createdAt])
 }
 
+// Manually-blocked IP addresses — the staff "deny list" behind the Activity &
+// blocking page (BLD security audit). An IP is blocked while it has an `active`
+// row; unblocking flips `active=false` (kept for the audit trail, never deleted).
+// No @unique on `ip` by design — the deploy gate refuses adding unique
+// constraints (potential data loss); uniqueness is enforced structurally
+// (block = reuse the open row or create one; unblock = deactivate all open rows).
+model BlockedIp {
+  id        String   @id @default(cuid())
+  ip        String
+  reason    String?
+  active    Boolean  @default(true)
+  createdBy String? // staff email who placed the block
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ip, active])
+  @@index([active, createdAt])
+}
+
 // Promotional discount codes — two kinds:
 //  • UNIVERSAL: one code anyone can use (e.g. "K10SUMMERREADY", 10% off in June)
 //  • PERSONAL:  a unique code generated per campaign recipient, tied to their email

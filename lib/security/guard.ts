@@ -55,6 +55,9 @@ export type LoginGate = { blocked: boolean; requireCaptcha: boolean; retryAfterS
 /** Decide whether this login attempt may proceed, before checking the password. */
 export async function loginGate(identifier: string, req: Request): Promise<LoginGate> {
   const ip = clientIp(req);
+  // Manually-blocked IPs are denied login outright (admin deny-list, cached).
+  const { isIpBlocked } = await import('@/lib/security/ip-activity');
+  if (await isIpBlocked(ip)) return { blocked: true, requireCaptcha: true, retryAfterSec: WINDOW_SEC };
   // Per-IP burst limit (fast path via Redis when configured): 30 / minute.
   const burst = await rateLimit(`login:${ip}`, 30, 60);
   const [acct, ipFails] = await Promise.all([
@@ -85,6 +88,12 @@ export async function unlock(opts: { identifier?: string; ip?: string }, portal:
  *  Records a RATE_LIMITED event when the limit is hit. */
 export async function enforceRateLimit(req: Request, scope: string, limit: number, windowSec: number, portal: Portal = 'client'): Promise<boolean> {
   const ip = clientIp(req);
+  // A blocked IP fails every rate-limited endpoint (admin deny-list, cached).
+  const { isIpBlocked } = await import('@/lib/security/ip-activity');
+  if (await isIpBlocked(ip)) {
+    await recordSecurity('RATE_LIMITED', portal, null, req, { scope, blocked: true });
+    return false;
+  }
   const r = await rateLimit(`${scope}:${ip}`, limit, windowSec);
   if (!r.allowed) await recordSecurity('RATE_LIMITED', portal, null, req, { scope });
   return r.allowed;
