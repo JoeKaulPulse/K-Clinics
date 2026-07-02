@@ -161,5 +161,22 @@ export async function POST(req: Request) {
       createdBy: actor.email,
     },
   });
+
+  // BLD-751: notify the new hire with their sign-in details, so credentials
+  // don't have to be relayed out-of-band by whoever created the account.
+  // Best-effort — a failed welcome email must not fail account creation.
+  try {
+    const { sendEmail, tmplStaffWelcome } = await import('@/lib/email');
+    const base = process.env.NEXT_PUBLIC_SITE_URL || '';
+    const res = await sendEmail({
+      to: created.email,
+      subject: 'Your K Clinics staff account',
+      html: tmplStaffWelcome({ name: name || created.email, email: created.email, tempPassword: password, loginUrl: `${base}/admin/login` }),
+    });
+    await db.emailEvent.create({ data: { kind: 'MANUAL', to: created.email, subject: 'Staff account created', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error } });
+  } catch (e) {
+    console.error('[admin/staff] welcome email failed (account still created):', (e as Error)?.message);
+  }
+
   return NextResponse.json({ ok: true, id: created.id });
 }
