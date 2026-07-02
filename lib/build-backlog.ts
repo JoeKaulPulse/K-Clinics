@@ -1679,6 +1679,27 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Owner noted the board had no way to turn an item into a project — projects were code-only (lib/build-backlog.ts PROJECTS, materialised by syncProjects). Added a UI path: a Project section on the task drawer (manager-gated) to promote an item into a new project (enter a name) or an existing one, or detach it.',
     notes: ['Shipped on branch claude/ga4-analytics (PR pending GitHub reconnect): promoteToProject() in lib/build-board.ts (creates a DB-only project with a unique derived slug + PRJ ref, or links an existing one; logs a board event), a promote-to-project op on /api/admin/build (build.manage-gated), and the Project control in components/admin/BuildBoard.tsx. UI-created projects are DB-only and safe — syncProjects only upserts/links, never deletes.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Gift-card balance can be permanently lost if a shop order fails to create', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'app/api/shop/checkout/route.ts:51-73 calls reserveVoucher() (atomically decrementing the card) before db.order.create(...), with no try/catch around the create — a transient DB error there leaves the reserved balance decremented with no order and no code path that ever restores it. Fix: wrap db.order.create in try/catch and call creditVoucher() on failure, or reserve the voucher only after the order row exists. Found in End-of-Day audit (finance/commerce discipline).',
+    notes: ['Fix: wrapped db.order.create in try/catch; on failure, calls creditVoucher() to restore the reserved gift-card balance before returning a 500. app/api/shop/checkout/route.ts.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Redeemed loyalty points don\'t reduce the amount charged for a booking', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 9, effort: 3,
+    detail: 'chargeBooking() charges the full booking.pricePence at every real charge site (lib/booking-actions.ts:355,504; admin manual charge in components/admin/BookingActions.tsx:35) — pointsRedeemedPence set by redeemPointsOnBooking (lib/client-loyalty.ts:284-318) is never subtracted anywhere a card is actually charged. A client who redeems points for money off still gets billed full price. Fix: subtract booking.pointsRedeemedPence from the amount passed to chargeBooking() at every call site, and pre-fill the admin charge UI net of it. Found in End-of-Day audit (finance/commerce discipline).',
+    notes: ['Fix: cancelBooking() and rescheduleBooking() late/reschedule fee charges in lib/booking-actions.ts now net off booking.pointsRedeemedPence before calling chargeBooking(). The admin manual-charge UI (components/admin/BookingActions.tsx) pre-fills and labels the amount net of redeemed points.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Failed Stripe SetupIntent creation leaves an orphaned booking holding the slot forever', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'app/api/booking/create/route.ts:125-207 creates a PENDING booking in its own transaction, then calls stripe().setupIntents.create() unprotected outside it. If Stripe throws, the outer catch returns a 503 but never deletes/cancels the already-created booking. lib/availability.ts treats PENDING bookings as slot-blocking indefinitely, and there\'s no cron that expires stale PENDING bookings with no setup intent. Fix: wrap the SetupIntent call so a failure cancels the just-created booking, or add a sweep that expires PENDING bookings older than N minutes with no stripeSetupIntentId. Found in End-of-Day audit (reliability discipline).',
+    notes: ['Fix: wrapped the SetupIntent call in try/catch; on failure the just-created booking is set to CANCELLED (freeing the slot immediately) and an audit log entry is recorded before returning a clean error. app/api/booking/create/route.ts.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

@@ -16,6 +16,7 @@ export function BookingActions({
   canManage = true,
   canCharge = true,
   prepaid = false,
+  pointsRedeemedPence = 0,
 }: {
   bookingId: string;
   status: string;
@@ -29,10 +30,14 @@ export function BookingActions({
   // BLD-399: a course pre-paid upfront via BNPL (Klarna/Clearpay). When true the
   // card-on-file charge UI is suppressed — the course is already paid in full.
   prepaid?: boolean;
+  // BLD-733: money off already redeemed against this booking via loyalty points.
+  // Nets out of the pre-filled charge amount so staff don't bill the pre-discount price.
+  pointsRedeemedPence?: number | null;
 }) {
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState('');
-  const [amount, setAmount] = useState((pricePence / 100).toFixed(2));
+  const netPricePence = Math.max(0, pricePence - (pointsRedeemedPence ?? 0));
+  const [amount, setAmount] = useState((netPricePence / 100).toFixed(2));
   const [waive, setWaive] = useState(false);
   const [reason, setReason] = useState('');
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -109,7 +114,13 @@ export function BookingActions({
               </span>
             )}
           </div>
-          <p className="mt-2 text-xs text-[var(--color-stone)]">{pricePence > 0 ? `Booked price ${money(pricePence)}. Adjust for add-ons or discounts.` : 'On-consultation booking — set the assessed amount.'}</p>
+          <p className="mt-2 text-xs text-[var(--color-stone)]">
+            {pricePence > 0
+              ? (pointsRedeemedPence ?? 0) > 0
+                ? `Booked price ${money(pricePence)}, less ${money(pointsRedeemedPence ?? 0)} redeemed loyalty points = ${money(netPricePence)}. Adjust for add-ons or discounts.`
+                : `Booked price ${money(pricePence)}. Adjust for add-ons or discounts.`
+              : 'On-consultation booking — set the assessed amount.'}
+          </p>
         </div>
       )}
 
