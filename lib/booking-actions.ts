@@ -409,7 +409,7 @@ export async function cancelBooking(
   const cancelEmail = await sendEmail({
     to: booking.client.email,
     subject: `Booking cancelled — ${booking.treatmentTitle}`,
-    html: tmplBookingCancelled({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, start: booking.startAt, feeCharged: charged || undefined }),
+    html: tmplBookingCancelled({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, start: booking.startAt, feeCharged: charged || undefined, feeDeclined: feeFailed ? chargeablePence : undefined }),
   });
   if (!cancelEmail.ok) console.error('[cancelBooking] email failed:', cancelEmail.error);
   await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Booking cancelled', status: cancelEmail.ok ? 'SENT' : 'FAILED', providerId: cancelEmail.id, error: cancelEmail.error } }).catch(() => {});
