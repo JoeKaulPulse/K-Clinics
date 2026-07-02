@@ -1680,10 +1680,25 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Shipped on branch claude/ga4-analytics (PR pending GitHub reconnect): promoteToProject() in lib/build-board.ts (creates a DB-only project with a unique derived slug + PRJ ref, or links an existing one; logs a board event), a promote-to-project op on /api/admin/build (build.manage-gated), and the Project control in components/admin/BuildBoard.tsx. UI-created projects are DB-only and safe — syncProjects only upserts/links, never deletes.'],
   },
   {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
     title: 'Before/after gallery photos bypass next/image entirely', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
     value: 8, effort: 3,
     detail: 'components/ui/BeforeAfter.tsx (used by the public /gallery page) renders real client photography as raw <img> tags with no width/height, no next/image, no lazy loading -- despite AVIF/WebP already being enabled in next.config.mjs. Every card in the grid ships full-size, unconverted originals and loads eagerly. Fix: swap both <img> tags for next/image with fill/explicit dimensions and sizes, matching the pattern already used in components/ui/MediaArt.tsx. Found in End-of-Day audit (performance discipline).',
     notes: ['Swapped both the after and before <img> tags in BeforeAfter.tsx for next/image Image components using fill (the existing container is already position:relative with an aspect-ratio className from PublicGallery.tsx) plus a responsive sizes attribute and object-cover, mirroring MediaArt.tsx. The drag/reveal slider logic (pointer handlers, clip-path, ref-based bounding-rect math) is untouched.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Mobile nav link set in plain gold fails AA contrast on porcelain background', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'The mobile drawer renders "Or request a free consultation" using text-[var(--color-gold)] (#a98a6d) on the porcelain (#f6ece3) mobile drawer background. Contrast is ~2.8:1, below WCAG AA\'s 4.5:1 minimum for normal text. docs/BRAND_GUIDELINES.md documents plain gold as decorative/large-text-only; --color-gold-deep (#816748) is the AA-safe text variant.',
+    notes: ['Fix: switched the "Or request a free consultation" link to text-[var(--color-gold-deep)]. components/layout/Header.tsx. Checked the rest of the mobile drawer for the same static-gold-text pattern — the only other gold usage there ("Sign in / My account") is a hover-only accent on ink-soft text, not a persistently-rendered gold string, so left unchanged as a different pattern.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Mobile header hides the "Book Now" CTA behind the hamburger menu', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'The CTA cluster including the "Book Now" button was wrapped in hidden ... xl:flex, so on mobile/tablet it never appeared in the top bar — only reachable after opening the hamburger drawer and scrolling to the bottom.',
+    notes: ['Fix: added a persistent compact "Book" button (same Button component, booking.path, and light/scroll-aware gold/ink variant as the desktop Book Now) to the mobile/tablet top bar, grouped with the hamburger toggle so both sit xl:hidden on the right. Full CTA cluster at xl+ is unchanged. components/layout/Header.tsx.'],
   },
 ];
 
