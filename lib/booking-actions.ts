@@ -347,13 +347,17 @@ export async function cancelBooking(
 
   const late = isWithin24h(booking);
   const shouldCharge = late && !opts.waiveFee && booking.pricePence > 0;
+  // BLD-733: net off any loyalty points the client already redeemed as money off
+  // this booking — otherwise the late fee bills the pre-discount price on top of
+  // a discount the client already paid for with points.
+  const chargeablePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0));
   let charged = 0;
   let requiresAction = false;
   let feeFailed = false;
 
   if (shouldCharge) {
-    const res = await chargeBooking(booking, booking.pricePence, { late: true });
-    if (res.ok) charged = booking.pricePence;
+    const res = await chargeBooking(booking, chargeablePence, { late: true });
+    if (res.ok) charged = chargeablePence;
     else if (res.requiresAction) requiresAction = true;
     else feeFailed = true; // charge declined — cancel anyway, but flag for follow-up.
   }
@@ -499,14 +503,17 @@ export async function rescheduleBooking(
   let requiresAction = false;
 
   // 4th+ reschedule incurs the full booking price — client self-service only;
-  // a staff/admin reschedule never charges a fee.
+  // a staff/admin reschedule never charges a fee. BLD-733: net off any loyalty
+  // points already redeemed as money off, so a client who redeemed points isn't
+  // billed the pre-discount price.
   if (!opts.admin && booking.rescheduleCount >= MAX_FREE_RESCHEDULES && booking.pricePence > 0) {
-    const res = await chargeBooking(booking, booking.pricePence, { late: false });
+    const rescheduleFeePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0));
+    const res = await chargeBooking(booking, rescheduleFeePence, { late: false });
     if (!res.ok) {
       if (res.requiresAction) requiresAction = true;
       else return { ok: false, error: res.error || 'Payment required for this reschedule could not be processed.' };
     } else {
-      charged = booking.pricePence;
+      charged = rescheduleFeePence;
     }
   }
 
