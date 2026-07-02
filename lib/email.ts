@@ -752,9 +752,11 @@ export function tmplBookingNotify(o: { name: string; email: string; phone?: stri
   });
 }
 
-export function tmplBookingCancelled(o: { firstName: string; treatment: string; start: Date; feeCharged?: number }) {
+export function tmplBookingCancelled(o: { firstName: string; treatment: string; start: Date; feeCharged?: number; feeDeclined?: number }) {
   const fee = o.feeCharged
     ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">As this cancellation was within 24 hours of your appointment, a late-cancellation fee of <strong>${fmtMoney(o.feeCharged)}</strong> has been charged to your card on file.</p>`
+    : o.feeDeclined
+    ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">As this cancellation was within 24 hours of your appointment, a late-cancellation fee of <strong>${fmtMoney(o.feeDeclined)}</strong> is due, but the card on file declined the charge. We'll be in touch to arrange collection — no further action is needed from you right now.</p>`
     : `<p>No charge has been taken. We hope to welcome you another time.</p>`;
   return emailShell({
     preheader: `Your ${o.treatment} booking has been cancelled`,
