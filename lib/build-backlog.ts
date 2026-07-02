@@ -1686,6 +1686,20 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'app/api/cron/kiosk-cleanup/route.ts has no top-level try/catch, no Sentry.captureException, and no CRON_ALERT_WEBHOOK_URL post — unlike its sibling crons (cron/daily, cron/dispatch). An exception mid-run (e.g. a Vercel Blob delete failing) aborts the GDPR photo-retention sweep with a bare 500 that nobody is watching. Fix: wrap the handler body in try/catch and report failures the same way cron/daily and cron/dispatch do. Found in End-of-Day audit (reliability discipline).',
     notes: ['Wrapped the two-pass GDPR sweep in a top-level try/catch. On failure: logs, reports to Sentry via captureException (matching the top-level-handler pattern used in app/api/stripe/webhook/route.ts), posts a failure summary to CRON_ALERT_WEBHOOK_URL when configured (matching cron/daily and cron/dispatch), and returns a 500 with the error message instead of an unhandled crash.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Mobile nav link set in plain gold fails AA contrast on porcelain background', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'The mobile drawer renders "Or request a free consultation" using text-[var(--color-gold)] (#a98a6d) on the porcelain (#f6ece3) mobile drawer background. Contrast is ~2.8:1, below WCAG AA\'s 4.5:1 minimum for normal text. docs/BRAND_GUIDELINES.md documents plain gold as decorative/large-text-only; --color-gold-deep (#816748) is the AA-safe text variant.',
+    notes: ['Fix: switched the "Or request a free consultation" link to text-[var(--color-gold-deep)]. components/layout/Header.tsx. Checked the rest of the mobile drawer for the same static-gold-text pattern — the only other gold usage there ("Sign in / My account") is a hover-only accent on ink-soft text, not a persistently-rendered gold string, so left unchanged as a different pattern.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Mobile header hides the "Book Now" CTA behind the hamburger menu', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'The CTA cluster including the "Book Now" button was wrapped in hidden ... xl:flex, so on mobile/tablet it never appeared in the top bar — only reachable after opening the hamburger drawer and scrolling to the bottom.',
+    notes: ['Fix: added a persistent compact "Book" button (same Button component, booking.path, and light/scroll-aware gold/ink variant as the desktop Book Now) to the mobile/tablet top bar, grouped with the hamburger toggle so both sit xl:hidden on the right. Full CTA cluster at xl+ is unchanged. components/layout/Header.tsx.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
