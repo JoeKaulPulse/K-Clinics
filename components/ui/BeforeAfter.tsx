@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import Image from 'next/image';
 import { GenerativeArt } from '@/components/ui/GenerativeArt';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -63,7 +64,14 @@ export function BeforeAfter({
     >
       {/* After (full) */}
       {afterSrc ? (
-        <img src={`${BASE}${afterSrc}`} alt={`${labelAfter} treatment`} className="h-full w-full object-cover" draggable={false} />
+        <Image
+          src={`${BASE}${afterSrc}`}
+          alt={`${labelAfter} treatment`}
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          className="object-cover"
+          draggable={false}
+        />
       ) : (
         <GenerativeArt from={afterGrad[0]} to={afterGrad[1]} className="h-full w-full" />
       )}
@@ -72,7 +80,14 @@ export function BeforeAfter({
       {/* Before (clipped to the left of the handle) */}
       <div className="pointer-events-none absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
         {beforeSrc ? (
-          <img src={`${BASE}${beforeSrc}`} alt={`${labelBefore} treatment`} className="h-full w-full object-cover" draggable={false} />
+          <Image
+            src={`${BASE}${beforeSrc}`}
+            alt={`${labelBefore} treatment`}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="object-cover"
+            draggable={false}
+          />
         ) : (
           <GenerativeArt from={beforeGrad[0]} to={beforeGrad[1]} seed={3} className="h-full w-full" />
         )}
