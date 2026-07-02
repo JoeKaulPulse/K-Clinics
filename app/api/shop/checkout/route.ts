@@ -61,16 +61,35 @@ export async function POST(req: Request) {
   const { getClientSession } = await import('@/lib/auth');
   const clientId = (await getClientSession())?.sub ?? null;
 
-  const order = await db.order.create({
-    data: {
-      number: await nextOrderNumber(), clientId, email, name, phone: body.phone ? String(body.phone).slice(0, 40) : null,
-      method, shipName: method === 'ship' ? (body.shipName || name).slice(0, 120) : null,
-      shipLine1: method === 'ship' ? String(body.shipLine1).slice(0, 160) : null, shipLine2: method === 'ship' ? (body.shipLine2 ? String(body.shipLine2).slice(0, 160) : null) : null,
-      shipCity: method === 'ship' ? (body.shipCity ? String(body.shipCity).slice(0, 80) : null) : null, shipPostcode: method === 'ship' ? String(body.shipPostcode).slice(0, 12) : null,
-      subtotalPence: cart.subtotalPence, shippingPence, giftCardCode, giftCardPence, totalPence, ageVerified,
-      items: { create: cart.lines.map((l) => ({ productId: l.productId, name: l.name, sku: l.sku, unitPence: l.unitPence, qty: l.qty, ageRestricted: l.ageRestricted })) },
-    },
-  });
+  // Re-credit the reserved gift-card balance if the order can't be created, or
+  // can't proceed to payment. Defined BEFORE the order.create call below so a
+  // failure creating the order itself can also be unwound (BLD-739) — otherwise
+  // the reserveVoucher() decrement above would be permanently lost with no order
+  // and no code path that restores it.
+  const undoReservation = async () => {
+    if (giftCardCode && giftCardPence > 0) {
+      const { creditVoucher } = await import('@/lib/gift-vouchers');
+      await creditVoucher(giftCardCode, giftCardPence).catch(() => {});
+    }
+  };
+
+  let order: Awaited<ReturnType<typeof db.order.create>>;
+  try {
+    order = await db.order.create({
+      data: {
+        number: await nextOrderNumber(), clientId, email, name, phone: body.phone ? String(body.phone).slice(0, 40) : null,
+        method, shipName: method === 'ship' ? (body.shipName || name).slice(0, 120) : null,
+        shipLine1: method === 'ship' ? String(body.shipLine1).slice(0, 160) : null, shipLine2: method === 'ship' ? (body.shipLine2 ? String(body.shipLine2).slice(0, 160) : null) : null,
+        shipCity: method === 'ship' ? (body.shipCity ? String(body.shipCity).slice(0, 80) : null) : null, shipPostcode: method === 'ship' ? String(body.shipPostcode).slice(0, 12) : null,
+        subtotalPence: cart.subtotalPence, shippingPence, giftCardCode, giftCardPence, totalPence, ageVerified,
+        items: { create: cart.lines.map((l) => ({ productId: l.productId, name: l.name, sku: l.sku, unitPence: l.unitPence, qty: l.qty, ageRestricted: l.ageRestricted })) },
+      },
+    });
+  } catch (e) {
+    console.error('[shop checkout] order create failed:', (e as Error)?.message);
+    await undoReservation();
+    return NextResponse.json({ ok: false, error: 'Could not start your order — please try again.' }, { status: 500 });
+  }
 
   // Fully covered by gift card → finalise now, no payment needed.
   if (totalPence <= 0) {
@@ -78,14 +97,6 @@ export async function POST(req: Request) {
     const r = await finalizeOrder(order.id);
     return NextResponse.json({ ok: true, paid: true, number: r.number, issues: cart.issues });
   }
-
-  // Re-credit the reserved gift-card balance if the order can't proceed to payment.
-  const undoReservation = async () => {
-    if (giftCardCode && giftCardPence > 0) {
-      const { creditVoucher } = await import('@/lib/gift-vouchers');
-      await creditVoucher(giftCardCode, giftCardPence).catch(() => {});
-    }
-  };
 
   const { stripe, stripeEnabled } = await import('@/lib/stripe');
   if (!stripeEnabled) { await db.order.delete({ where: { id: order.id } }).catch(() => {}); await undoReservation(); return NextResponse.json({ ok: false, error: 'Payments aren’t available right now.' }, { status: 503 }); }

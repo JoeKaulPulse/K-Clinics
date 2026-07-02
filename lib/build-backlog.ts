@@ -1688,6 +1688,27 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Gift-card balance can be permanently lost if a shop order fails to create', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'app/api/shop/checkout/route.ts:51-73 calls reserveVoucher() (atomically decrementing the card) before db.order.create(...), with no try/catch around the create — a transient DB error there leaves the reserved balance decremented with no order and no code path that ever restores it. Fix: wrap db.order.create in try/catch and call creditVoucher() on failure, or reserve the voucher only after the order row exists. Found in End-of-Day audit (finance/commerce discipline).',
+    notes: ['Fix: wrapped db.order.create in try/catch; on failure, calls creditVoucher() to restore the reserved gift-card balance before returning a 500. app/api/shop/checkout/route.ts.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Redeemed loyalty points don\'t reduce the amount charged for a booking', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 9, effort: 3,
+    detail: 'chargeBooking() charges the full booking.pricePence at every real charge site (lib/booking-actions.ts:355,504; admin manual charge in components/admin/BookingActions.tsx:35) — pointsRedeemedPence set by redeemPointsOnBooking (lib/client-loyalty.ts:284-318) is never subtracted anywhere a card is actually charged. A client who redeems points for money off still gets billed full price. Fix: subtract booking.pointsRedeemedPence from the amount passed to chargeBooking() at every call site, and pre-fill the admin charge UI net of it. Found in End-of-Day audit (finance/commerce discipline).',
+    notes: ['Fix: cancelBooking() and rescheduleBooking() late/reschedule fee charges in lib/booking-actions.ts now net off booking.pointsRedeemedPence before calling chargeBooking(). The admin manual-charge UI (components/admin/BookingActions.tsx) pre-fills and labels the amount net of redeemed points.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Failed Stripe SetupIntent creation leaves an orphaned booking holding the slot forever', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'app/api/booking/create/route.ts:125-207 creates a PENDING booking in its own transaction, then calls stripe().setupIntents.create() unprotected outside it. If Stripe throws, the outer catch returns a 503 but never deletes/cancels the already-created booking. lib/availability.ts treats PENDING bookings as slot-blocking indefinitely, and there\'s no cron that expires stale PENDING bookings with no setup intent. Fix: wrap the SetupIntent call so a failure cancels the just-created booking, or add a sweep that expires PENDING bookings older than N minutes with no stripeSetupIntentId. Found in End-of-Day audit (reliability discipline).',
+    notes: ['Fix: wrapped the SetupIntent call in try/catch; on failure the just-created booking is set to CANCELLED (freeing the slot immediately) and an audit log entry is recorded before returning a clean error. app/api/booking/create/route.ts.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
     title: 'Mobile nav link set in plain gold fails AA contrast on porcelain background', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
     value: 6, effort: 1,
     detail: 'The mobile drawer renders "Or request a free consultation" using text-[var(--color-gold)] (#a98a6d) on the porcelain (#f6ece3) mobile drawer background. Contrast is ~2.8:1, below WCAG AA\'s 4.5:1 minimum for normal text. docs/BRAND_GUIDELINES.md documents plain gold as decorative/large-text-only; --color-gold-deep (#816748) is the AA-safe text variant.',

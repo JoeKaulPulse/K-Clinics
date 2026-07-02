@@ -191,17 +191,32 @@ export async function POST(req: Request) {
     });
   }
 
-  // SetupIntent — saves the card off-session, no charge.
-  const setupIntent = await stripe().setupIntents.create({
-    customer: customerId,
-    usage: 'off_session',
-    payment_method_types: ['card'],
-    metadata: { bookingId: booking.id, clientId: client.id },
-  }, { idempotencyKey: `setup-${booking.id}` });
+  // SetupIntent — saves the card off-session, no charge. The booking is already
+  // committed (PENDING) above, and lib/availability.ts treats PENDING bookings as
+  // slot-blocking indefinitely — so an unguarded Stripe failure here would leave a
+  // dangling held slot with no code path to release it (BLD-737). Mirrors the
+  // recovery pattern in app/api/booking/start/route.ts.
+  try {
+    const setupIntent = await stripe().setupIntents.create({
+      customer: customerId,
+      usage: 'off_session',
+      payment_method_types: ['card'],
+      metadata: { bookingId: booking.id, clientId: client.id },
+    }, { idempotencyKey: `setup-${booking.id}` });
 
-  await db.booking.update({ where: { id: booking.id }, data: { stripeSetupIntentId: setupIntent.id } });
+    await db.booking.update({ where: { id: booking.id }, data: { stripeSetupIntentId: setupIntent.id } });
 
-  return NextResponse.json({ ok: true, bookingId: booking.id, clientSecret: setupIntent.client_secret });
+    return NextResponse.json({ ok: true, bookingId: booking.id, clientSecret: setupIntent.client_secret });
+  } catch (e) {
+    console.error('[booking/create] card setup could not start for', booking.id, e);
+    const se = e as { message?: string; code?: string; type?: string };
+    const reason = [se.type, se.code, se.message].filter(Boolean).join(' · ').slice(0, 300) || 'unknown error';
+    // Release the held slot (CANCELLED is excluded from the held-slot checks) so a
+    // failed attempt doesn't block the time, then return a clean, actionable error.
+    await db.booking.update({ where: { id: booking.id }, data: { status: 'CANCELLED' } }).catch(() => {});
+    await logAudit({ action: 'BOOKING_CANCELLED', actor: 'system', clientId: client.id, bookingId: booking.id, summary: `Auto-cancelled: secure card setup could not start — ${reason}` }).catch(() => {});
+    return NextResponse.json({ ok: false, error: 'We couldn’t start secure card setup. Please try again in a moment.' }, { status: 502 });
+  }
   } catch (e) {
     console.error('[booking/create] failed:', (e as Error)?.message);
     return NextResponse.json({ ok: false, error: 'We couldn’t hold your slot just now — please try again in a moment, or call us.' }, { status: 503 });
