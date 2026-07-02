@@ -1700,6 +1700,20 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'app/api/booking/create/route.ts:125-207 creates a PENDING booking in its own transaction, then calls stripe().setupIntents.create() unprotected outside it. If Stripe throws, the outer catch returns a 503 but never deletes/cancels the already-created booking. lib/availability.ts treats PENDING bookings as slot-blocking indefinitely, and there\'s no cron that expires stale PENDING bookings with no setup intent. Fix: wrap the SetupIntent call so a failure cancels the just-created booking, or add a sweep that expires PENDING bookings older than N minutes with no stripeSetupIntentId. Found in End-of-Day audit (reliability discipline).',
     notes: ['Fix: wrapped the SetupIntent call in try/catch; on failure the just-created booking is set to CANCELLED (freeing the slot immediately) and an audit log entry is recorded before returning a clean error. app/api/booking/create/route.ts.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Mobile nav link set in plain gold fails AA contrast on porcelain background', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'The mobile drawer renders "Or request a free consultation" using text-[var(--color-gold)] (#a98a6d) on the porcelain (#f6ece3) mobile drawer background. Contrast is ~2.8:1, below WCAG AA\'s 4.5:1 minimum for normal text. docs/BRAND_GUIDELINES.md documents plain gold as decorative/large-text-only; --color-gold-deep (#816748) is the AA-safe text variant.',
+    notes: ['Fix: switched the "Or request a free consultation" link to text-[var(--color-gold-deep)]. components/layout/Header.tsx. Checked the rest of the mobile drawer for the same static-gold-text pattern — the only other gold usage there ("Sign in / My account") is a hover-only accent on ink-soft text, not a persistently-rendered gold string, so left unchanged as a different pattern.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Mobile header hides the "Book Now" CTA behind the hamburger menu', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'The CTA cluster including the "Book Now" button was wrapped in hidden ... xl:flex, so on mobile/tablet it never appeared in the top bar — only reachable after opening the hamburger drawer and scrolling to the bottom.',
+    notes: ['Fix: added a persistent compact "Book" button (same Button component, booking.path, and light/scroll-aware gold/ink variant as the desktop Book Now) to the mobile/tablet top bar, grouped with the hamburger toggle so both sit xl:hidden on the right. Full CTA cluster at xl+ is unchanged. components/layout/Header.tsx.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

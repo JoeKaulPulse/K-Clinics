@@ -178,23 +178,40 @@ export function Header({ config }: { config: SiteConfig }) {
           </Button>
         </div>
 
-        {/* Mobile toggle */}
-        <button
-          ref={hamburgerRef}
-          className={`relative z-10 grid h-11 w-11 place-items-center rounded-full xl:hidden ${
-            light ? 'text-[var(--color-porcelain)]' : 'text-[var(--color-ink)]'
-          }`}
-          onClick={() => setMobile((m) => !m)}
-          aria-label={mobile ? 'Close menu' : 'Open menu'}
-          aria-expanded={mobile}
-          aria-controls="mobile-nav"
-        >
-          <span className="flex flex-col gap-[5px]">
-            <span className={`h-[1.5px] w-6 bg-current transition-all duration-300 ${mobile ? 'translate-y-[6.5px] rotate-45' : ''}`} />
-            <span className={`h-[1.5px] w-6 bg-current transition-all duration-300 ${mobile ? 'opacity-0' : ''}`} />
-            <span className={`h-[1.5px] w-6 bg-current transition-all duration-300 ${mobile ? '-translate-y-[6.5px] -rotate-45' : ''}`} />
-          </span>
-        </button>
+        {/* Mobile/tablet: hamburger + a persistent compact Book CTA (BLD-735).
+            The full CTA cluster above is xl+-only, so without this the
+            primary "Book Now" action was reachable only by opening the
+            hamburger drawer and scrolling to the bottom. Reuses the same
+            Button + booking.path as the desktop Book Now button, just sized
+            to fit the header bar. */}
+        <div className="flex items-center gap-2 xl:hidden">
+          <Button
+            href={booking.path}
+            size="md"
+            variant={light ? 'gold' : 'ink'}
+            magnetic={false}
+            className="!gap-1.5 !px-4 !py-2 !text-sm"
+          >
+            Book <ArrowIcon className="h-3.5 w-3.5" />
+          </Button>
+
+          <button
+            ref={hamburgerRef}
+            className={`relative z-10 grid h-11 w-11 place-items-center rounded-full ${
+              light ? 'text-[var(--color-porcelain)]' : 'text-[var(--color-ink)]'
+            }`}
+            onClick={() => setMobile((m) => !m)}
+            aria-label={mobile ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobile}
+            aria-controls="mobile-nav"
+          >
+            <span className="flex flex-col gap-[5px]">
+              <span className={`h-[1.5px] w-6 bg-current transition-all duration-300 ${mobile ? 'translate-y-[6.5px] rotate-45' : ''}`} />
+              <span className={`h-[1.5px] w-6 bg-current transition-all duration-300 ${mobile ? 'opacity-0' : ''}`} />
+              <span className={`h-[1.5px] w-6 bg-current transition-all duration-300 ${mobile ? '-translate-y-[6.5px] -rotate-45' : ''}`} />
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Desktop mega-menu */}
@@ -361,7 +378,7 @@ export function Header({ config }: { config: SiteConfig }) {
                 </svg>
                 Sign in / My account
               </Link>
-              <Link href="/consultation" className="mt-1 text-center text-sm font-medium text-[var(--color-gold)] underline-offset-4 hover:underline">
+              <Link href="/consultation" className="mt-1 text-center text-sm font-medium text-[var(--color-gold-deep)] underline-offset-4 hover:underline">
                 Or request a free consultation
               </Link>
               <a href={phoneHref} className="mt-2 text-center text-sm font-medium">
