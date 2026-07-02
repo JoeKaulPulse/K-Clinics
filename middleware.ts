@@ -145,6 +145,31 @@ function edgeClientIp(req: NextRequest): string {
   return 'unknown';
 }
 
+// ── CSRF: same-site check for cookie-authed, state-changing API calls ───────
+// SameSite=Lax (lib/auth.ts) stops cross-site *top-level navigations* from
+// carrying the session cookie, but doesn't cover same-site subdomains, older
+// embedded webviews, or browsers that don't yet honour SameSite. Sec-Fetch-Site
+// (sent by all modern browsers) and, as a fallback, Origin give a second,
+// independent signal that a state-changing request actually originated from
+// our own front end — checked ONLY when a session cookie is present, so
+// unauthenticated/public/token/webhook-authed routes (Stripe, yay.com, cron,
+// the board queue) are untouched.
+const STATE_CHANGING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+function crossSiteBlocked(req: NextRequest): boolean {
+  if (!STATE_CHANGING.has(req.method)) return false;
+  const hasSession = Boolean(
+    req.cookies.get(SESSION_COOKIE)?.value || req.cookies.get(CLIENT_SESSION_COOKIE)?.value || req.cookies.get(ACADEMY_SESSION_COOKIE)?.value,
+  );
+  if (!hasSession) return false;
+  const fetchSite = req.headers.get('sec-fetch-site');
+  // 'same-origin'/'none' (typed URL, bookmark, extension) are fine; anything
+  // else ('cross-site', 'same-site') is not our own front end.
+  if (fetchSite) return fetchSite !== 'same-origin' && fetchSite !== 'none';
+  const origin = req.headers.get('origin');
+  if (!origin) return false; // no independent signal available — SameSite=Lax still applies
+  try { return new URL(origin).host !== req.nextUrl.host; } catch { return true; }
+}
+
 // Protect the staff CRM (/admin) and the client portal (/account); apply
 // admin-managed redirects on the public site. Runs on the edge.
 export async function middleware(req: NextRequest) {
@@ -155,6 +180,13 @@ export async function middleware(req: NextRequest) {
   if (ip !== 'unknown') {
     const set = await blockedIps();
     if (set.has(ip)) return new NextResponse('Access denied.', { status: 403 });
+  }
+
+  // ── API routes: only the CSRF check applies (redirects/attribution below
+  // are marketing-page concerns) ────────────────────────────────────────────
+  if (pathname.startsWith('/api/')) {
+    if (crossSiteBlocked(req)) return NextResponse.json({ ok: false, error: 'Cross-site request blocked.' }, { status: 403 });
+    return NextResponse.next();
   }
 
   // ── URL redirects (old WordPress URLs / printed QR destinations) ─────────
@@ -250,7 +282,8 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Run on the app areas (auth) and the public site (redirects), but skip
-  // Next internals, API routes, and any request for a file with an extension.
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.[\\w]+$).*)'],
+  // Run on the app areas (auth), the public site (redirects) and API routes
+  // (CSRF check, BLD-698), but skip Next internals and any request for a file
+  // with an extension.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.[\\w]+$).*)'],
 };

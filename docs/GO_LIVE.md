@@ -95,3 +95,10 @@ You're in. Sidebar: **Overview · Bookings · Consultations · Clients · Campai
 ## Custom domain
 Vercel → Project → Settings → Domains → add `kclinics.co.uk`. Then update
 `NEXT_PUBLIC_SITE_URL` and `site.url` (`lib/site.ts`) to match.
+
+## Error monitoring (recommended)
+Set `SENTRY_DSN` (sentry.io → create a Next.js project → Client Keys) so
+unhandled server errors are captured and alerted on instead of silently
+dropped. Without it, `sentry.server.config.ts` / `sentry.edge.config.ts` /
+`instrumentation-client.ts` stay inert — visible as `not_configured` on
+`/api/health` and in **Admin → Integrations**.

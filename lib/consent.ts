@@ -18,6 +18,14 @@ export function marketingConsentFields(source: string) {
   return { marketingConsentAt: new Date(), marketingConsentSource: source.slice(0, 60), marketingConsentVersion: MARKETING_CONSENT_VERSION };
 }
 
+// Explicit consent for AI processing of facial/body photos (UK GDPR Art.9(2)(a)
+// special-category data + Art.13 third-country transfer to our AI provider).
+// Bump the version whenever the consent wording shown to the client changes.
+export const AI_CONSULTATION_CONSENT_VERSION = '2026-07-v1';
+export function aiConsultationConsentFields(source: string) {
+  return { consentAt: new Date(), consentVersion: AI_CONSULTATION_CONSENT_VERSION, consentSource: source.slice(0, 60) };
+}
+
 /**
  * Base Prisma where-clause for a client who may LAWFULLY receive marketing email
  * (BLD-242): opted in, not unsubscribed, AND with recorded consent evidence

@@ -2,6 +2,7 @@ import 'server-only';
 import { db } from '@/lib/db';
 import { encryptJson } from '@/lib/crypto';
 import { getSecret } from '@/lib/secrets';
+import { aiConsultationConsentFields } from '@/lib/consent';
 
 // ── "Get My Plan" — AI consultation engine ──────────────────────────────────
 // Cost-minimal: Claude Haiku by default (escalates to Sonnet only on low
@@ -78,7 +79,7 @@ export async function analysesThisMonth(clientId: string): Promise<number> {
 
 type Img = { area?: string; dataUrl: string };
 
-export async function analyze(opts: { clientId: string; areas: string[]; images: Img[]; storeImages: boolean; budgetPence: number | null; budgetLabel: string }): Promise<AnalyzeResult> {
+export async function analyze(opts: { clientId: string; areas: string[]; images: Img[]; storeImages: boolean; budgetPence: number | null; budgetLabel: string; consentSource?: string }): Promise<AnalyzeResult> {
   const key = await getSecret('ANTHROPIC_API_KEY');
   if (!key) return { ok: false, reason: 'unavailable', message: 'The consultation isn’t available right now.' };
   if ((await analysesThisMonth(opts.clientId)) >= MONTHLY_CAP) return { ok: false, reason: 'limit', message: `You’ve used your ${MONTHLY_CAP} plans this month. Book a visit and we’ll take it from here.` };
@@ -204,7 +205,7 @@ Use 1–4 phases and 1–2 treatments each — fewer when little is needed (a si
       findingsEnc: encryptJson(findings),
       planJson: { phases, extras, planTotalPence: planTotal, aboveBudget } as object,
       recommendedSlugs: phases.flatMap((p) => p.treatments.map((t) => t.slug)),
-      summary, tokensIn: parsed._in, tokensOut: parsed._out, consentAt: new Date(), storeImages: opts.storeImages,
+      summary, tokensIn: parsed._in, tokensOut: parsed._out, ...aiConsultationConsentFields(opts.consentSource || 'kvision-account'), storeImages: opts.storeImages,
       images: opts.storeImages ? { create: images.map((i) => ({ area: i.area || null, dataEnc: encryptJson(i.dataUrl) })) } : undefined,
     },
   });
