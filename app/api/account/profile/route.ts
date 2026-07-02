@@ -65,13 +65,22 @@ export async function POST(req: Request) {
     }
   }
   if (typeof d.smsReminders === 'boolean') data.smsReminders = d.smsReminders;
-  if (d.newPassword) data.passwordHash = await hashPassword(d.newPassword);
+  // BLD-736: bump sessionEpoch so any other (e.g. stolen) sessions are revoked.
+  // Re-issue THIS session below with the new epoch so the client who just
+  // changed their own password isn't immediately logged out (mirrors the
+  // admin profile route's changePassword op).
+  if (d.newPassword) {
+    data.passwordHash = await hashPassword(d.newPassword);
+    data.sessionEpoch = { increment: 1 };
+  }
 
   const updated = await db.client.update({ where: { id: session.sub }, data });
   // Alert the account holder whenever the password changes (security notice).
   if (d.newPassword) {
     const { notifyPasswordChanged } = await import('@/lib/client-auth');
     await notifyPasswordChanged(updated.email, updated.firstName);
+    const { createClientSession } = await import('@/lib/auth');
+    await createClientSession({ sub: session.sub, email: session.email, firstName: session.firstName, epoch: updated.sessionEpoch ?? 0 });
   }
   return NextResponse.json({ ok: true });
 }
