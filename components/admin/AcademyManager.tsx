@@ -25,7 +25,12 @@ export function Applications({ enrolments, courses }: { enrolments: Enrolment[];
   const router = useRouter();
   const [filter, setFilter] = useState('');
   const [open, setOpen] = useState<string | null>(null);
-  async function act(payload: object) { await post(payload); router.refresh(); }
+  async function act(payload: object) {
+    const r = await post(payload);
+    const j = await r.json().catch(() => null);
+    if (j && j.ok === false && j.error) { alert(j.error); return; }
+    router.refresh();
+  }
   const cohortsFor = (courseId: string) => courses.find((c) => c.id === courseId)?.cohorts ?? [];
 
   const shown = filter ? enrolments.filter((e) => e.status === filter) : enrolments;
