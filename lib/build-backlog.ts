@@ -1714,6 +1714,20 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'The CTA cluster including the "Book Now" button was wrapped in hidden ... xl:flex, so on mobile/tablet it never appeared in the top bar — only reachable after opening the hamburger drawer and scrolling to the bottom.',
     notes: ['Fix: added a persistent compact "Book" button (same Button component, booking.path, and light/scroll-aware gold/ink variant as the desktop Book Now) to the mobile/tablet top bar, grouped with the hamburger toggle so both sit xl:hidden on the right. Full CTA cluster at xl+ is unchanged. components/layout/Header.tsx.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Booking confirm button isn\'t disabled during Stripe submission — double-tap can double-charge', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 1,
+    detail: 'components/booking/BookingFlow.tsx:656 (CardStep) tracks a `submitting` state and swaps the button label to "Confirming..." but never passes `disabled={submitting}` to the Button component (which already supports it, components/ui/Button.tsx:106) — a fast double-tap during the stripe.confirmSetup + /api/booking/confirm round-trip can fire two submissions. Fix: pass disabled={submitting} to the Confirm booking button. Found in End-of-Day audit (UI/UX discipline).',
+    notes: ['Fix: added disabled={submitting} to the Confirm booking button. components/booking/BookingFlow.tsx.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Late-cancellation fee-decline email tells the client \'no charge has been taken\' even when a fee was declined', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'lib/booking-actions.ts:409-414 + lib/email.ts:735-738 — when a late-cancellation fee charge is declined, feeCharged stays false (only set when charged>0), so the client still receives the "No charge has been taken" email even though a fee is owed and the card was declined. Fix: add a distinct "fee declined, we\'ll follow up to collect it" email branch keyed off feeFailed. Found in End-of-Day audit (product/feature-gaps discipline).',
+    notes: ['Fix: tmplBookingCancelled() now takes an optional feeDeclined amount and renders a distinct "the charge was declined, we\'ll be in touch to collect it" message instead of falling through to "No charge has been taken." cancelBooking() passes chargeablePence as feeDeclined when the late-fee charge failed. lib/email.ts, lib/booking-actions.ts.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
