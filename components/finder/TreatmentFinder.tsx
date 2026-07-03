@@ -57,7 +57,10 @@ export function TreatmentFinder({ gender, prices = {} }: { gender?: string | nul
           <motion.div key={q.id} custom={dir} variants={slide} initial="enter" animate="center" exit="exit" transition={trans}>
             <h2 className="font-[family-name:var(--font-display)] text-[clamp(1.6rem,1.2rem+1.6vw,2.5rem)] leading-tight">{q.prompt}</h2>
             {q.help && <p className="mt-2 text-[var(--color-stone)]">{q.help}</p>}
-            <div className="mt-7 grid gap-3 sm:grid-cols-2">
+            {/* relative z-50: lifts the answer buttons above the fixed WhatsApp
+                launcher (z-40, bottom-5 right-5, mobile-only) so a tap that visually
+                lands on an option is never hijacked by the button underneath (BLD-769). */}
+            <div className="relative z-50 mt-7 grid gap-3 sm:grid-cols-2">
               {q.options.map((o) => (
                 <button
                   key={o.value}
