@@ -276,6 +276,26 @@ export function tmplPortalInvite(firstName: string, activateUrl: string) {
   });
 }
 
+// BLD-751: sent when an admin creates a new staff account, so credentials no
+// longer have to be relayed out-of-band. The temporary password is shown once,
+// with a strong prompt to change it after first login.
+export function tmplStaffWelcome(o: { name: string; email: string; tempPassword: string; loginUrl: string }) {
+  return emailShell({
+    preheader: 'Your K Clinics staff account is ready',
+    body: `${heroBand('secure')}
+    <h1 style="font-size:24px;margin:0 0 16px;color:#2a2420;">Your K Clinics staff account</h1>
+    <p>Hello ${escape(o.name)},</p>
+    <p>An account has been set up for you on the K Clinics admin. Here are your sign-in details:</p>
+    <table style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#3d352f;line-height:1.8;margin:16px 0;">
+      <tr><td style="color:#91766e;padding-right:16px;">Email</td><td><strong>${escape(o.email)}</strong></td></tr>
+      <tr><td style="color:#91766e;padding-right:16px;">Temporary password</td><td><strong>${escape(o.tempPassword)}</strong></td></tr>
+    </table>
+    <p style="margin:28px 0;">${btn(o.loginUrl, 'Sign in')}</p>
+    <p style="color:#91766e;font-size:14px;">Please sign in and change this password from your profile as soon as possible.</p>
+    <p style="margin-top:24px;">With warmth,<br>The K Clinics team</p>`,
+  });
+}
+
 export function tmplClinicNotify(data: {
   name: string; email: string; phone?: string; category: string; treatments: string[]; message?: string;
 }) {
@@ -732,9 +752,11 @@ export function tmplBookingNotify(o: { name: string; email: string; phone?: stri
   });
 }
 
-export function tmplBookingCancelled(o: { firstName: string; treatment: string; start: Date; feeCharged?: number }) {
+export function tmplBookingCancelled(o: { firstName: string; treatment: string; start: Date; feeCharged?: number; feeDeclined?: number }) {
   const fee = o.feeCharged
     ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">As this cancellation was within 24 hours of your appointment, a late-cancellation fee of <strong>${fmtMoney(o.feeCharged)}</strong> has been charged to your card on file.</p>`
+    : o.feeDeclined
+    ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">As this cancellation was within 24 hours of your appointment, a late-cancellation fee of <strong>${fmtMoney(o.feeDeclined)}</strong> is due, but the card on file declined the charge. We'll be in touch to arrange collection — no further action is needed from you right now.</p>`
     : `<p>No charge has been taken. We hope to welcome you another time.</p>`;
   return emailShell({
     preheader: `Your ${o.treatment} booking has been cancelled`,

@@ -411,10 +411,16 @@ export async function refundEnrolmentPayment(paymentId: string, staffEmail?: str
 }
 
 /** Delete a payment/instalment row. If it was PAID, roll back paidPence so the
- *  ledger stays correct (for corrections). */
-export async function removePayment(paymentId: string): Promise<{ ok: boolean }> {
-  const p = await db.enrolmentPayment.findUnique({ where: { id: paymentId }, select: { id: true, enrolmentId: true, amountPence: true, state: true } });
+ *  ledger stays correct (for corrections). Blocked for a row that was actually
+ *  charged via Stripe — removing it would leave the customer charged with no
+ *  ledger record of it; Refund (which reverses the Stripe charge) must be used
+ *  first. */
+export async function removePayment(paymentId: string): Promise<{ ok: boolean; error?: string }> {
+  const p = await db.enrolmentPayment.findUnique({ where: { id: paymentId }, select: { id: true, enrolmentId: true, amountPence: true, state: true, stripePaymentIntentId: true } });
   if (!p) return { ok: true };
+  if (p.state === 'PAID' && p.stripePaymentIntentId) {
+    return { ok: false, error: 'This payment was charged via Stripe — use Refund first, then remove the row.' };
+  }
   await db.enrolmentPayment.delete({ where: { id: p.id } });
   if (p.state === 'PAID') {
     await db.enrolment.update({ where: { id: p.enrolmentId }, data: { paidPence: { decrement: p.amountPence } } }).catch(() => {});

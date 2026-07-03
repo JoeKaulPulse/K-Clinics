@@ -244,8 +244,8 @@ export async function POST(req: Request) {
     case 'removePayment': {
       if (!body.paymentId) return bad();
       const { removePayment } = await import('@/lib/academy-payments');
-      await removePayment(String(body.paymentId));
-      return ok();
+      const r = await removePayment(String(body.paymentId));
+      return r.ok ? ok() : NextResponse.json({ ok: false, error: r.error }, { status: 400 });
     }
     case 'refundPayment': {
       if (!body.paymentId) return bad();
