@@ -1728,6 +1728,27 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'lib/booking-actions.ts:409-414 + lib/email.ts:735-738 — when a late-cancellation fee charge is declined, feeCharged stays false (only set when charged>0), so the client still receives the "No charge has been taken" email even though a fee is owed and the card was declined. Fix: add a distinct "fee declined, we\'ll follow up to collect it" email branch keyed off feeFailed. Found in End-of-Day audit (product/feature-gaps discipline).',
     notes: ['Fix: tmplBookingCancelled() now takes an optional feeDeclined amount and renders a distinct "the charge was declined, we\'ll be in touch to collect it" message instead of falling through to "No charge has been taken." cancelBooking() passes chargeablePence as feeDeclined when the late-fee charge failed. lib/email.ts, lib/booking-actions.ts.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Shop gift-card balance can be fully restored twice via a declined-then-retried card payment', type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'app/api/stripe/webhook/route.ts:160-171 credits back the full giftCardPence on payment_intent.payment_failed and cancels the order, but finalizeOrder\'s claim guard (status notIn [\'PAID\',\'FULFILLED\'], lib/shop.ts:96-106) still allows a later payment_intent.succeeded on a retried PaymentIntent to flip that CANCELLED order back to PAID. A customer whose first card attempt is declined keeps the full gift-card credit AND gets the order fulfilled once the retry succeeds. Found in End-of-Day audit (finance/commerce discipline).',
+    notes: ['Fix: the webhook only cancels the order and credits back the gift card once the PaymentIntent itself reaches Stripe\'s canceled state, not on every payment_failed event — a declined Elements attempt normally leaves the same PI alive at requires_payment_method for an immediate retry, so it no longer gets prematurely cancelled/credited. app/api/stripe/webhook/route.ts. Also excluded CANCELLED from finalizeOrder\'s claimable statuses as defence in depth, so a cancelled order can never be silently re-claimed PAID. lib/shop.ts.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Floating WhatsApp button overlaps and blocks a quiz answer on /treatment-finder (mobile)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'On a 375x812 mobile viewport, the fixed WhatsApp button (components/layout/WhatsAppButton.tsx:21) sits directly on top of the second answer option rendered by components/finder/TreatmentFinder.tsx:60-69 — taps in the overlap zone hit the WhatsApp icon instead of the quiz option. Found in End-of-Day audit (UI/UX discipline).',
+    notes: ['Fix: gave the quiz answer-options grid `relative z-50`, lifting it above the fixed WhatsApp launcher (z-40) so an overlapping tap always resolves to the answer button underneath it, not the launcher on top. components/finder/TreatmentFinder.tsx.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Wrong treatment photo live on 3 high-intent commercial pages (hydraglow-facial, cosmetic-injections, intimate-rejuvenation)', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 4, effort: 1,
+    detail: 'import/slug-image-map.json maps these 3 slugs to photos of unrelated procedures — a migration mapping error, since correctly-named matching files already sit unused in public/treatments/ (HydraGlow.jpg, Cosmetic-Injections.jpg, Intimate-rejuvenation.png). Found in End-of-Day audit (SEO/content discipline).',
+    notes: ['Fix: repointed the 3 slug entries in import/slug-image-map.json to their correctly-named, already-present files.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

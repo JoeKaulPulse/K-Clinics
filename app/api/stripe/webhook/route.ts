@@ -157,7 +157,16 @@ export async function POST(req: Request) {
         //    (each would otherwise re-credit and inflate the balance); and
         //  • a fail-then-succeed flow where the order already went PAID — we must
         //    NOT credit back a reservation that the completed order consumed.
-        if (pi.metadata?.kind === 'shop_order' && pi.metadata?.orderId) {
+        // BLD-761: a declined Elements attempt fires payment_failed while the
+        // PaymentIntent itself stays alive at requires_payment_method — the
+        // customer typically retries with a new card on that SAME PI seconds
+        // later. Cancelling the order and crediting back here on every failed
+        // attempt let that routine retry both restore the gift card AND still
+        // succeed the original PI, doubling its value. Only act once Stripe has
+        // actually given up on this PI (status canceled) — a live, retriable PI
+        // leaves the order PENDING so the eventual succeeded/failed webhook
+        // resolves it normally.
+        if (pi.metadata?.kind === 'shop_order' && pi.metadata?.orderId && pi.status === 'canceled') {
           try {
             const order = await db.order.findUnique({ where: { id: pi.metadata.orderId }, select: { giftCardCode: true, giftCardPence: true } });
             if (order?.giftCardCode && order.giftCardPence && order.giftCardPence > 0) {
