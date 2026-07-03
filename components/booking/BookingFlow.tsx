@@ -653,7 +653,7 @@ function CardStep({ bookingId, onDone, onError }: { bookingId: string; onDone: (
   return (
     <div>
       <PaymentElement />
-      <div className="mt-6 flex justify-end"><Button onClick={submit} variant="gold" size="lg">{submitting ? 'Confirming…' : 'Confirm booking'} <ArrowIcon /></Button></div>
+      <div className="mt-6 flex justify-end"><Button onClick={submit} disabled={submitting} variant="gold" size="lg">{submitting ? 'Confirming…' : 'Confirm booking'} <ArrowIcon /></Button></div>
     </div>
   );
 }
