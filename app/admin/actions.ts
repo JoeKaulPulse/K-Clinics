@@ -184,6 +184,13 @@ export async function eraseStudentData(studentId: string) {
     }),
     // Remove authentication credentials — no retention basis.
     db.studentPasskey.deleteMany({ where: { studentId } }),
+    // Redact denormalised name copies that survive on public-facing content —
+    // these are separate columns from AcademyStudent and were previously missed
+    // by this erasure action.
+    db.courseReview.updateMany({ where: { studentId }, data: { authorName: 'Erased' } }),
+    db.forumThread.updateMany({ where: { authorStudentId: studentId }, data: { authorName: 'Erased' } }),
+    db.forumPost.updateMany({ where: { authorStudentId: studentId }, data: { authorName: 'Erased' } }),
+    db.lessonComment.updateMany({ where: { authorStudentId: studentId }, data: { authorName: 'Erased' } }),
   ]);
   await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, summary: `Academy student ${student.email} data erased (GDPR Art.17)` });
   revalidatePath('/admin/academy');
