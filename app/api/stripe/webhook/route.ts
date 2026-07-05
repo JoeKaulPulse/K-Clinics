@@ -149,14 +149,26 @@ export async function POST(req: Request) {
             await notifyStaffByPermission('finance.view', { kind: 'status', category: 'finance', priority: 'urgent', title: 'Payment failed', body: reason.slice(0, 140), href: `/admin/bookings/${bookingId}` });
           } catch { /* non-fatal */ }
         }
-        // BLD-567: re-credit any gift-card balance reserved at checkout when the
-        // shop order payment fails, so the customer doesn't permanently lose the value.
-        // Idempotent + race-safe: claim the order PENDING→CANCELLED atomically and
-        // only credit when *this* call wins the transition. This guards against
-        //  • Stripe redelivering payment_failed or firing it per failed retry
-        //    (each would otherwise re-credit and inflate the balance); and
-        //  • a fail-then-succeed flow where the order already went PAID — we must
-        //    NOT credit back a reservation that the completed order consumed.
+        // BLD-761: a shop order's reserved gift-card balance is NOT re-credited
+        // here. A declined Elements attempt fires payment_failed while the
+        // PaymentIntent stays alive at requires_payment_method for an immediate
+        // retry on the SAME PI, so cancelling/crediting now would restore the
+        // gift card on a PI that then succeeds — doubling its value. The re-credit
+        // happens only once the PI reaches its terminal 'canceled' state, handled
+        // in the payment_intent.canceled case below. (payment_failed never carries
+        // status 'canceled' — that transition arrives as payment_intent.canceled.)
+        break;
+      }
+      case 'payment_intent.canceled': {
+        // The PaymentIntent reached its terminal 'canceled' state (the customer
+        // gave up and it was cancelled explicitly, Stripe auto-cancelled it, or a
+        // checkout session expired). Re-credit any gift-card balance reserved at
+        // checkout so the value isn't permanently lost (BLD-567/BLD-761).
+        // Idempotent + race-safe: only the caller that wins the PENDING→CANCELLED
+        // transition credits, so a redelivered event or a prior admin cancel can't
+        // double-credit, and an order that already went PAID (a retry succeeded
+        // first) is never touched.
+        const pi = event.data.object;
         if (pi.metadata?.kind === 'shop_order' && pi.metadata?.orderId) {
           try {
             const order = await db.order.findUnique({ where: { id: pi.metadata.orderId }, select: { giftCardCode: true, giftCardPence: true } });
