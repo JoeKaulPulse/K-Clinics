@@ -1681,6 +1681,13 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Client self-service password change doesn\'t revoke other sessions', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 2,
+    detail: 'app/api/account/profile/route.ts:32-46,68-70 updates passwordHash on password change but never bumps sessionEpoch -- unlike the admin (app/api/admin/profile/route.ts:42, "so any other stolen sessions are revoked") and academy (lib/academy-auth.ts changeAcademyPassword()) equivalents, which both increment it for exactly this reason. getClientSession() already checks session.epoch, the mechanism just isn\'t used here. A client with a stolen/copied session cookie keeps full account access after the legitimate owner "secures" the account by changing their password. Fix: add sessionEpoch: {increment: 1} and re-issue the caller\'s session, mirroring app/api/admin/profile/route.ts:38-43. Found in End-of-Day audit (security discipline).',
+    notes: ['Fix: app/api/account/profile/route.ts now sets sessionEpoch: {increment: 1} alongside passwordHash on password change, then re-issues the caller\'s own client-session cookie via createClientSession() (lib/auth.ts) with the new epoch so the account holder\'s own device stays signed in while every other outstanding session (old epoch) fails getClientSession()\'s epoch check on its next request.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
     title: 'Gift-card balance can be permanently lost if a shop order fails to create', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
     value: 7, effort: 2,
     detail: 'app/api/shop/checkout/route.ts:51-73 calls reserveVoucher() (atomically decrementing the card) before db.order.create(...), with no try/catch around the create — a transient DB error there leaves the reserved balance decremented with no order and no code path that ever restores it. Fix: wrap db.order.create in try/catch and call creditVoucher() on failure, or reserve the voucher only after the order row exists. Found in End-of-Day audit (finance/commerce discipline).',
