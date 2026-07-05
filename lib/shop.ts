@@ -102,8 +102,21 @@ export async function finalizeOrder(orderId: string): Promise<{ ok: boolean; num
   // Claim the order atomically — only the caller that actually flips it to PAID
   // proceeds to decrement stock / redeem the gift card / email. A concurrent
   // webhook + /confirm therefore can't double-decrement stock or double-redeem.
-  const claim = await db.order.updateMany({ where: { id: orderId, status: { notIn: ['PAID', 'FULFILLED'] } }, data: { status: 'PAID' } });
-  if (claim.count === 0) return { ok: true, number: order.number };
+  // CANCELLED is excluded too (BLD-761): a cancelled order already had its
+  // gift-card reservation credited back, so silently re-claiming it here on a
+  // late/retried PaymentIntent success would fulfil the order for free on top
+  // of that refund. Leave it CANCELLED for staff to review instead.
+  const claim = await db.order.updateMany({ where: { id: orderId, status: { notIn: ['PAID', 'FULFILLED', 'CANCELLED'] } }, data: { status: 'PAID' } });
+  if (claim.count === 0) {
+    // Lost the claim. Normally a concurrent caller already flipped it to
+    // PAID/FULFILLED (the intended idempotent no-op). But if it's now CANCELLED,
+    // a payment nonetheless succeeded against a cancelled order (whose gift-card
+    // reservation was already credited back) — a paid customer stranded with no
+    // fulfilment. Surface it for staff instead of returning silently. (BLD-761)
+    const now = await db.order.findUnique({ where: { id: orderId }, select: { status: true } });
+    if (now?.status === 'CANCELLED') console.error(`[shop] finalizeOrder: payment succeeded for CANCELLED order ${orderId} (${order.number}) — needs staff review; possible stranded payment.`);
+    return { ok: true, number: order.number };
+  }
 
   // Decrement stock for tracked products.
   for (const it of order.items) {
