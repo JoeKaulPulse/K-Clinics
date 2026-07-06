@@ -1770,6 +1770,20 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'import/slug-image-map.json maps these 3 slugs to photos of unrelated procedures — a migration mapping error, since correctly-named matching files already sit unused in public/treatments/ (HydraGlow.jpg, Cosmetic-Injections.jpg, Intimate-rejuvenation.png). Found in End-of-Day audit (SEO/content discipline).',
     notes: ['Fix: repointed the 3 slug entries in import/slug-image-map.json to their correctly-named, already-present files.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'CMS \'image + text\' content block bypasses next/image, ships full-resolution source PNGs to every visitor', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'components/cms/SectionRenderer.tsx:130 renders CMS-authored images with a raw <img src={img}> (has an eslint-disable-next-line @next/next/no-img-element) instead of next/image — no resize, no AVIF/WebP conversion, no responsive sizes/srcset. Source files in public/treatments/ run 1-2.3MB (e.g. ppm.png 2.3MB). MediaArt, used elsewhere in the same file, correctly wraps next/image.',
+    notes: ['Fix: replaced the raw <img> in the imageText case and the logos/partner-strip case with next/image, mirroring the fill + positioned-container pattern MediaArt already uses in the same file (added `relative` to the MaskReveal wrapper for the imageText case; used explicit width/height for the fixed-height logo images). Removed the now-unneeded eslint-disable comments. components/cms/SectionRenderer.tsx.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Before/after gallery and reviews are never linked from treatment or pricing pages', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'components/treatment/TreatmentTemplate.tsx (the template behind every /treatments/* and /dentistry/* page) has no reference to /gallery or /reviews anywhere in its sections — both exist only via footer/mega-menu nav (lib/nav.ts:135,165,185). A visitor deciding on a specific treatment\'s price never sees social proof or before/afters relevant to it.',
+    notes: ['Fix: added a small "See real results" / "Read verified reviews" link strip under the pricing column\'s VAT note, linking to /gallery and /reviews, styled to match the existing text-link pattern used elsewhere in the app (text-sm font-medium text-gold, hover:underline). components/treatment/TreatmentTemplate.tsx.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
