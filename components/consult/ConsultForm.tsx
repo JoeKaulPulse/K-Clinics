@@ -210,7 +210,11 @@ export function ConsultForm() {
       </AnimatePresence>
 
       {/* Nav */}
-      <div className="mt-8 flex items-center justify-between gap-4">
+      {/* relative z-50: lifts the step buttons above the fixed WhatsApp launcher
+          (z-40, bottom-5 right-5, mobile-only) so a tap that visually lands on
+          "Continue"/"Request consultation" is never hijacked by the button
+          underneath (same fix as TreatmentFinder, BLD-769). */}
+      <div className="relative z-50 mt-8 flex items-center justify-between gap-4">
         <button
           type="button"
           onClick={() => setStep((s) => Math.max(0, s - 1))}

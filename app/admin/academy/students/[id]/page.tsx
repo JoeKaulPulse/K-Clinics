@@ -76,7 +76,7 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
       <Link href="/admin/academy/students" className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Trainees</Link>
       <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl">{student.firstName} {student.lastName ?? ''}{!student.portalActive && <span className="ml-2 align-middle rounded-full bg-[var(--color-blush)]/15 px-2 py-0.5 text-xs text-[var(--color-blush)]">Suspended</span>}</h1>
+          <h1 className="font-[family-name:var(--font-display)] text-3xl">{student.firstName} {student.lastName ?? ''}{!student.portalActive && <span className="ml-2 align-middle rounded-full bg-[var(--color-blush)]/15 px-2 py-0.5 text-xs text-[var(--color-blush-deep)]">Suspended</span>}</h1>
           <p className="mt-1 text-sm text-[var(--color-stone)]">{student.email}{student.phone ? ` · ${student.phone}` : ''}</p>
           <p className="mt-1 text-xs text-[var(--color-stone)]">Clinic client: {client ? <Link href={`/admin/clients/${client.id}`} className="text-[var(--color-gold)] hover:underline">{client.firstName} {client.lastName ?? ''} →</Link> : <span>not linked</span>}</p>
         </div>
