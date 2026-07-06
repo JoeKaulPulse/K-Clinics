@@ -1,6 +1,6 @@
 import 'server-only';
 import crypto from 'crypto';
-import { db } from '@/lib/db';
+import { academyDb as db } from '@/lib/academy-db';
 import { hashPassword, verifyPassword, createAcademySession, getAcademySession } from '@/lib/auth';
 
 const sha256 = (s: string) => crypto.createHash('sha256').update(s).digest('hex');

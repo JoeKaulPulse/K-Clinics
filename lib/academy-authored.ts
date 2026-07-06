@@ -1,5 +1,5 @@
 import 'server-only';
-import { db } from '@/lib/db';
+import { academyDb as db } from '@/lib/academy-db';
 
 // Hand-authored bite-size flows for flagship lessons — tighter than auto-chunk,
 // with mascot lines, illustrations and interspersed checks (incl. the new
