@@ -77,7 +77,7 @@ export function StaffManager({ staff, canManage, actorRole }: { staff: Staff[]; 
                         <button onClick={() => setProfileFor(s)} className="text-sm font-medium text-[var(--color-stone)] hover:underline" title="Public team-page profile">
                           Profile{s.profile?.publicProfile ? ' ✓' : ''}
                         </button>
-                        <button onClick={() => setEditing(s)} className="text-sm font-medium text-[var(--color-gold)] hover:underline">
+                        <button onClick={() => setEditing(s)} className="text-sm font-medium text-[var(--color-gold-deep)] hover:underline">
                           Edit
                         </button>
                       </span>

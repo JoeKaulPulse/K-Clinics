@@ -137,6 +137,7 @@ export default async function AdminOverview() {
   const canAutomations = sessionCan(session, 'automations.view');
   const canMarketing = sessionCan(session, 'campaigns.view');
   const canCompliance = sessionCan(session, 'compliance.view');
+  const canRoomsPrep = sessionCan(session, 'rooms.prep.manage');
   const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(); dayEnd.setHours(23, 59, 59, 999);
   // Comms health: transactional emails (booking confirmations/receipts/reminders)
@@ -147,7 +148,7 @@ export default async function AdminOverview() {
   // Load the whole dashboard through a couple of quick retries, so a single
   // transient DB blip doesn't 500 the overview (it recomposes the queries each
   // attempt — safe, as these are all reads).
-  const [o, a, pendingTimeOff, myTasks, stockItems, expiringSoon, ordersToFulfil, retailProducts, todaysBookings, reqConsent, reqPhoto, gReviewAgg, googleUnreplied, buildOpen, buildBlocked, buildUnsynced, failedComms] = await withDbRetry(() => Promise.all([
+  const [o, a, pendingTimeOff, myTasks, stockItems, expiringSoon, ordersToFulfil, retailProducts, todaysBookings, reqConsent, reqPhoto, gReviewAgg, googleUnreplied, buildOpen, buildBlocked, buildUnsynced, failedComms, unchargedCompleted, sameDayRequests, treatments, roomsToday] = await withDbRetry(() => Promise.all([
     getOverview(),
     getAnalytics(),
     canApproveTimeOff ? db.staffTimeOff.count({ where: { status: 'PENDING' } }) : Promise.resolve(0),
@@ -165,15 +166,19 @@ export default async function AdminOverview() {
     canBuild ? db.buildItem.count({ where: { status: 'BLOCKED' } }) : Promise.resolve(0),
     canBuild ? db.buildItem.count({ where: { githubUrl: null } }) : Promise.resolve(0),
     canAutomations ? db.emailEvent.count({ where: { status: 'FAILED', campaignId: null, createdAt: { gte: commsSince } } }) : Promise.resolve(0),
+    // BLD-768: these four are independent of the batch above and of each other —
+    // folded in so they run in parallel rather than as a serial waterfall on every
+    // (force-dynamic, uncached) dashboard load. The genuinely dependent chains
+    // (todayNotReady ← todaysBookings; nextBk → nextRoom → nextRoomPrep) stay below.
+    canFinance ? db.booking.count({ where: { status: 'COMPLETED', chargedAt: null, pricePence: { gt: 0 }, finishedAt: { gte: new Date(Date.now() - 30 * 864e5) } } }) : Promise.resolve(0),
+    canBookings ? db.booking.count({ where: { status: 'REQUESTED' } }).catch(() => 0) : Promise.resolve(0),
+    loadBookingTreatments(),
+    canRoomsPrep ? import('@/lib/room-prep').then((m) => m.getRoomsForDay()).catch(() => []) : Promise.resolve([]),
   ]));
   const googleAvg = gReviewAgg?._avg.starRating ?? null;
   const googleCount = gReviewAgg?._count._all ?? 0;
   const lowStock = stockItems.filter((i) => i.lowStockAt > 0 && i.currentQty <= i.lowStockAt).length;
   const productsLow = retailProducts.filter((p) => p.stockQty <= p.lowStockThreshold).length;
-  // Completed treatments in the last 30 days that haven't been charged (revenue at risk).
-  const unchargedCompleted = canFinance
-    ? await db.booking.count({ where: { status: 'COMPLETED', chargedAt: null, pricePence: { gt: 0 }, finishedAt: { gte: new Date(Date.now() - 30 * 864e5) } } })
-    : 0;
 
   // Today's appointments still missing consent or a laser before-photo.
   let todayNotReady = 0;
@@ -188,7 +193,6 @@ export default async function AdminOverview() {
     const photoSet = new Set([...photoRows.map((p) => p.bookingId), ...signedRows.filter((s) => s.kind === 'photo_opt_out').map((s) => s.bookingId)]);
     todayNotReady = todaysBookings.filter((b) => (reqConsent && !consentSet.has(b.id)) || (reqPhoto && isLaserTreatment(b.treatmentSlug) && !photoSet.has(b.id))).length;
   }
-  const sameDayRequests = canBookings ? await db.booking.count({ where: { status: 'REQUESTED' } }).catch(() => 0) : 0;
   const attention = [
     { show: canAutomations && failedComms > 0, label: 'Confirmation emails failing', value: failedComms, href: '/admin/automations', tone: 'red' },
     { show: sameDayRequests > 0, label: 'Same-day requests to action', value: sameDayRequests, href: '/admin/bookings?filter=REQUESTED', tone: 'amber' },
@@ -234,7 +238,6 @@ export default async function AdminOverview() {
   const locale = await getLocale();
 
   // ── Front-of-house essentials: the next client arrival (clock/weather above) ──
-  const treatments = await loadBookingTreatments();
   const endOfToday = new Date(now); endOfToday.setHours(23, 59, 59, 999);
   const nextBk = canBookings
     ? await db.booking.findFirst({
@@ -251,7 +254,7 @@ export default async function AdminOverview() {
   const canClinical = sessionCan(session, 'clients.clinical.view');
   const nextRoom = nextBk ? await db.resource.findFirst({ where: { kind: 'ROOM', bookings: { some: { id: nextBk.id } } }, select: { id: true, name: true } }).catch(() => null) : null;
   // The next arrival's room prep state (for the live arrival-prep checklist).
-  const { getRoomPrepFor, getRoomsForDay } = await import('@/lib/room-prep');
+  const { getRoomPrepFor } = await import('@/lib/room-prep');
   const nextRoomPrep = nextRoom ? await getRoomPrepFor(nextRoom.id).catch(() => null) : null;
   const nextArrival: NextArrival | null = nextBk ? {
     id: nextBk.id,
@@ -270,8 +273,6 @@ export default async function AdminOverview() {
     allergies: canClinical ? decClinical(nextBk.client.allergies) ?? null : null,
     medicalFlag: canClinical ? decClinical(nextBk.client.medicalFlag) ?? null : null,
   } : null;
-  // Rooms board (front-of-house / clinician): availability + prep for the day.
-  const roomsToday = canRoomsPrep ? await getRoomsForDay().catch(() => []) : [];
 
   return (
     <AdminShell user={session?.email} can={can} locale={locale}>

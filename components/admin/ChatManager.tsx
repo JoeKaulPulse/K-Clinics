@@ -127,8 +127,8 @@ export function ChatManager() {
               <div className="flex items-center gap-3 text-xs">
                 {headerEmail && <button onClick={emailTranscript} disabled={busy} title={`Email the chat to ${headerEmail}`} className="font-medium text-[var(--color-gold-deep)] hover:underline disabled:opacity-50">✉ Email chat</button>}
                 {meta?.mode === 'AI'
-                  ? <button onClick={() => setMode('STAFF')} className="font-medium text-[var(--color-gold)] hover:underline">Take over</button>
-                  : <button onClick={() => setMode('AI')} className="font-medium text-[var(--color-gold)] hover:underline">Resume AI</button>}
+                  ? <button onClick={() => setMode('STAFF')} className="font-medium text-[var(--color-gold-deep)] hover:underline">Take over</button>
+                  : <button onClick={() => setMode('AI')} className="font-medium text-[var(--color-gold-deep)] hover:underline">Resume AI</button>}
                 <button onClick={close} className="text-[var(--color-stone)] hover:text-[var(--color-blush)]">Close chat</button>
               </div>
             </div>

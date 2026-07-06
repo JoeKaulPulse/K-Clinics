@@ -352,7 +352,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                           <span className="block text-sm font-medium">{s.name} — {v.name}</span>
                           <span className="text-xs text-[var(--color-stone)]">+{v.durationMin} min · save {money(ap.saved)}</span>
                         </span>
-                        <span className="shrink-0 text-right text-sm font-medium text-[var(--color-gold)]">
+                        <span className="shrink-0 text-right text-sm font-medium text-[var(--color-gold-deep)]">
                           <span className="mr-1 text-xs text-[var(--color-stone)] line-through">{money(v.pricePence)}</span>{money(ap.price)}
                         </span>
                       </button>
