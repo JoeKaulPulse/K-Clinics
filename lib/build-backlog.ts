@@ -1770,6 +1770,27 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'import/slug-image-map.json maps these 3 slugs to photos of unrelated procedures — a migration mapping error, since correctly-named matching files already sit unused in public/treatments/ (HydraGlow.jpg, Cosmetic-Injections.jpg, Intimate-rejuvenation.png). Found in End-of-Day audit (SEO/content discipline).',
     notes: ['Fix: repointed the 3 slug entries in import/slug-image-map.json to their correctly-named, already-present files.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Gift-card purchase refund re-credits the card instead of debiting it — double payout', type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    value: 9, effort: 3,
+    detail: 'app/api/stripe/webhook/route.ts:236-250 — on charge.refunded for a GiftVoucher\'s OWN purchase PaymentIntent, the handler calls creditVoucher() (lib/gift-vouchers.ts:207-219), which INCREASES the balance and flips REDEEMED back to ACTIVE. There is no in-app "refund voucher" action (only "cancel", which never touches Stripe: app/api/admin/gift-vouchers/route.ts:27-31), so a Stripe-dashboard refund of a voucher purchase gives the customer their cash back AND keeps/regrows a spendable card up to full face value.',
+    notes: ['Fix: the charge.refunded handler now distinguishes a voucher\'s OWN purchase PaymentIntent from an order that merely redeemed a voucher as a discount (the latter still credits back correctly, unchanged). On the voucher\'s own purchase, it debits the balance and cancels the card outright once the whole purchase has been refunded, via a new debitVoucherForPurchaseRefund() in lib/gift-vouchers.ts, CAS-guarded by a new additive GiftVoucher.purchaseRefundedPence watermark column (prisma/schema.prisma) mirroring the existing Booking.refundedPence pattern so redelivered/partial-then-full refund events can\'t double-debit. app/api/stripe/webhook/route.ts, lib/gift-vouchers.ts, prisma/schema.prisma.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Cancelled or refunded shop orders never restock inventory', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'lib/shop.ts:124 decrements Product.stockQty when an order is finalized, but neither app/api/admin/orders/route.ts\'s CANCELLED/REFUNDED branches nor lib/shop.ts contains any corresponding increment — stock is permanently lost on every cancelled or refunded paid order.',
+    notes: ['Fix: added restockOrder() to lib/shop.ts, which increments stockQty back for trackInventory items and is idempotent via a new additive Order.restockedAt CAS column (prisma/schema.prisma) so redeliveries or a re-cancelled order can\'t double-restock. Wired it into app/api/admin/orders/route.ts\'s REFUNDED and CANCELLED branches (gated on the order having actually been PAID/FULFILLED beforehand) and into the shop-order dashboard-refund path in app/api/stripe/webhook/route.ts\'s charge.refunded handler. app/api/admin/orders/route.ts, app/api/stripe/webhook/route.ts, lib/shop.ts, prisma/schema.prisma.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Academy enrolment payments are never reconciled when refunded outside the app (Stripe Dashboard)', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 4,
+    detail: 'The charge.refunded webhook case (app/api/stripe/webhook/route.ts:201-278) reconciles db.booking, db.order and db.giftVoucher, but has NO db.enrolmentPayment branch. In-app refunds go through refundEnrolmentPayment (lib/academy-payments.ts:382-411), but a refund issued directly in the Stripe dashboard leaves the payment state PAID and Enrolment.paidPence un-decremented — money leaves the Stripe balance with no matching ledger entry, and paidPence-gated course access stays unlocked.',
+    notes: ['Fix: added reconcileEnrolmentPaymentRefund() to lib/academy-payments.ts, mirroring refundEnrolmentPayment\'s DB-side effects (EnrolmentPayment PAID→REFUNDED via CAS, Enrolment.paidPence decremented, audit log) without re-issuing the Stripe refund or requiring an admin actor (attributed to \'stripe-webhook\' instead). Wired into the charge.refunded handler in app/api/stripe/webhook/route.ts as the fallback case once a booking, shop order and gift-voucher purchase have all been ruled out, gated on Stripe reporting the charge fully refunded. lib/academy-payments.ts, app/api/stripe/webhook/route.ts.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

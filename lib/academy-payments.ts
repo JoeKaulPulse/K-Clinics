@@ -410,6 +410,32 @@ export async function refundEnrolmentPayment(paymentId: string, staffEmail?: str
   return { ok: true };
 }
 
+/** PRJ-918.12: reconcile an academy payment refunded directly in the Stripe
+ *  dashboard (out-of-band — bypasses refundEnrolmentPayment above). Mirrors
+ *  that function's DB-side effects (payment row → REFUNDED, Enrolment.paidPence
+ *  rolled back, audit log) without re-issuing the Stripe refund (already done)
+ *  or requiring a staff actor — this runs from the webhook, which has no
+ *  request/admin context, so the audit entry is attributed to the webhook
+ *  itself. Idempotent via the PAID → REFUNDED CAS: a redelivered webhook event,
+ *  or one that arrives after an in-app refund already completed, is a no-op. */
+export async function reconcileEnrolmentPaymentRefund(piId: string): Promise<void> {
+  const payment = await db.enrolmentPayment.findFirst({
+    where: { stripePaymentIntentId: piId, state: 'PAID' },
+    select: { id: true, enrolmentId: true, amountPence: true },
+  });
+  if (!payment) return;
+  const claimed = await db.enrolmentPayment.updateMany({ where: { id: payment.id, state: 'PAID' }, data: { state: 'REFUNDED' } });
+  if (claimed.count === 0) return; // lost the race — another caller already reconciled it
+  await db.enrolment.update({ where: { id: payment.enrolmentId }, data: { paidPence: { decrement: payment.amountPence } } }).catch(() => {});
+  await logAudit({
+    action: 'PAYMENT_REFUNDED',
+    actor: 'stripe-webhook',
+    enrolmentId: payment.enrolmentId,
+    summary: `Academy payment £${(payment.amountPence / 100).toFixed(2)} refunded via Stripe dashboard`,
+    meta: { paymentId: payment.id, amountPence: payment.amountPence, piId },
+  }).catch(() => {});
+}
+
 /** Delete a payment/instalment row. If it was PAID, roll back paidPence so the
  *  ledger stays correct (for corrections). Blocked for a row that was actually
  *  charged via Stripe — removing it would leave the customer charged with no
