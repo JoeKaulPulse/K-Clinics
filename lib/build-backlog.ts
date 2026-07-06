@@ -1770,6 +1770,20 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'import/slug-image-map.json maps these 3 slugs to photos of unrelated procedures — a migration mapping error, since correctly-named matching files already sit unused in public/treatments/ (HydraGlow.jpg, Cosmetic-Injections.jpg, Intimate-rejuvenation.png). Found in End-of-Day audit (SEO/content discipline).',
     notes: ['Fix: repointed the 3 slug entries in import/slug-image-map.json to their correctly-named, already-present files.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Right-to-erasure sweep excludes the Task model — client name and clinical concern survive under an \'erased\' client', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'lib/followup.ts:46-49 creates a Task with the client\'s real name in the title (e.g. "Follow-up concern — Jane Doe (Botox)") and a quoted clinical concern in detail. eraseClientData\'s transaction (app/admin/actions.ts:59-105, ~25 explicit deletes/updates) never touches db.task, so these rows keep pre-erasure identity and clinical text forever, still linked by clientId to the now-pseudonymised client.',
+    notes: ['Fix: added db.task.deleteMany({ where: { clientId } }) to eraseClientData\'s transaction, alongside the existing Interaction/ConsultationNote hard-deletes it already follows the same pattern for — Task rows created from a follow-up concern have no retention basis once the client is erased. app/admin/actions.ts.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Resend bounce/complaint webhook silently swallows the unsubscribe write — hard bounces and spam complaints can keep receiving email', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'app/api/webhooks/resend/route.ts:68-73 — on email.complained/email.bounced, the db.client.update(... unsubscribed: true ...) compliance write is wrapped in try/catch with no logging, no Sentry, no retry, and the route always returns 200 regardless of the write\'s outcome — so Resend never redelivers. A transient DB error at that exact line means a client who bounced or complained keeps getting marketing email indefinitely with no operator visibility.',
+    notes: ['Fix: the unsubscribe-write catch block now logs the error and calls Sentry.captureException (matching the pattern used in app/api/stripe/webhook/route.ts) and returns a 500 so Resend retries the delivery-status webhook. Success path and other event types are unchanged. app/api/webhooks/resend/route.ts.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
