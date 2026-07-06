@@ -155,7 +155,7 @@ export async function POST(req: Request) {
         if (bookingId) {
           const { recordChargeFailure } = await import('@/lib/booking-actions');
           const reason = pi.last_payment_error?.message || 'The card was declined.';
-          await recordChargeFailure(bookingId, reason);
+          await recordChargeFailure(bookingId, reason, typeof pi.amount === 'number' ? pi.amount : undefined);
           try {
             const { notifyStaffByPermission } = await import('@/lib/notifications');
             await notifyStaffByPermission('finance.view', { kind: 'status', category: 'finance', priority: 'urgent', title: 'Payment failed', body: reason.slice(0, 140), href: `/admin/bookings/${bookingId}` });
@@ -225,33 +225,44 @@ export async function POST(req: Request) {
           include: { client: true },
         });
         if (!booking) {
-          // Not a booking charge — check, in turn, whether this PaymentIntent is a
-          // shop order, a gift-voucher's own purchase, or an academy enrolment
-          // payment. Each PI belongs to exactly one of these, so the first match wins.
-          //
-          // Dashboard refund on a shop order — restore gift-card balance if applicable
-          // and restock any trackInventory items (PRJ-918.10): a PAID/FULFILLED order
-          // already decremented stock at finalizeOrder time, so a refund permanently
-          // loses that stock unless we give it back here too. restockOrder is
-          // idempotent (CAS on Order.restockedAt), so a redelivered event can't
-          // double-restock.
+          // Dashboard refund on a shop order — reconcile partial AND full refunds
+          // (BLD-767) and restock on a full refund (PRJ-918.10).
           const order = await db.order.findFirst({
             where: { stripePaymentIntentId: piId },
-            select: { id: true, status: true, giftCardCode: true, giftCardPence: true },
+            select: { id: true, giftCardCode: true, giftCardPence: true, totalPence: true, refundedPence: true, status: true },
           });
-          if (order?.giftCardCode && order.giftCardPence && order.giftCardPence > 0) {
-            // creditVoucher now caps the balance at the card's face value (BLD-646)
-            // but is not per-call idempotent, and charge.refunded redelivers / fires
-            // per partial refund — so claim the order's status → REFUNDED atomically
-            // and only credit when *this* call wins the transition. Mirrors the
-            // in-app refund route and the payment_failed order block.
-            const wasStockDecremented = order.status === 'PAID' || order.status === 'FULFILLED';
-            const claimed = await db.order.updateMany({ where: { id: order.id, status: { not: 'REFUNDED' } }, data: { status: 'REFUNDED' } });
-            if (claimed.count > 0) {
-              if (wasStockDecremented) {
-                try { const { restockOrder } = await import('@/lib/shop'); await restockOrder(order.id); } catch (e) { console.error('[webhook] order restock failed:', (e as Error)?.message); }
+          if (order && order.status !== 'REFUNDED' && order.totalPence > 0) {
+            const totalRefunded = charge.amount_refunded ?? 0;
+            const already = order.refundedPence ?? 0;
+            const delta = totalRefunded - already;
+            if (delta > 0) {
+              const newTotal = already + delta;
+              const fully = newTotal >= order.totalPence;
+              const wasStockDecremented = order.status === 'PAID' || order.status === 'FULFILLED';
+              // BLD-767: credit the gift card only in proportion to the card refund,
+              // and flip REFUNDED (and restock) only once the whole card charge is
+              // refunded — the old code credited the FULL balance and closed the order
+              // on ANY partial refund. CAS on refundedPence guards redeliveries.
+              const claimed = await db.order.updateMany({
+                where: { id: order.id, refundedPence: order.refundedPence },
+                data: { refundedPence: newTotal, ...(fully ? { status: 'REFUNDED' } : {}) },
+              });
+              if (claimed.count > 0) {
+                if (order.giftCardCode && order.giftCardPence > 0) {
+                  const creditBefore = Math.round((order.giftCardPence * already) / order.totalPence);
+                  const creditAfter = Math.round((order.giftCardPence * newTotal) / order.totalPence);
+                  const credit = creditAfter - creditBefore;
+                  if (credit > 0) {
+                    try { const { creditVoucher } = await import('@/lib/gift-vouchers'); await creditVoucher(order.giftCardCode, credit); } catch { /* non-fatal */ }
+                  }
+                }
+                // PRJ-918.10: return tracked stock once the order is fully refunded
+                // (decremented at finalizeOrder); restockOrder is idempotent (CAS on
+                // Order.restockedAt).
+                if (fully && wasStockDecremented) {
+                  try { const { restockOrder } = await import('@/lib/shop'); await restockOrder(order.id); } catch (e) { console.error('[webhook] order restock failed:', (e as Error)?.message); }
+                }
               }
-              try { const { creditVoucher } = await import('@/lib/gift-vouchers'); await creditVoucher(order.giftCardCode, order.giftCardPence); } catch (e) { console.error('[webhook] gift card re-credit failed:', (e as Error)?.message); }
             }
           }
           // PRJ-918.2: a gift-voucher's OWN purchase PaymentIntent was refunded. This

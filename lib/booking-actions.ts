@@ -7,6 +7,7 @@ import {
   tmplBookingCancelled,
   tmplChargeReceipt,
   tmplPaymentActionRequired,
+  tmplPaymentDeclined,
   tmplBookingRescheduled,
 } from './email';
 import { logAudit } from './audit';
@@ -323,12 +324,28 @@ export async function finalizeBookingCharge(
  * decline/expiry that happens after the synchronous attempt is visible to staff
  * rather than silently lost. Leaves a follow-up note on the client + audit log.
  */
-export async function recordChargeFailure(bookingId: string, reason: string): Promise<void> {
-  const booking = await db.booking.findUnique({ where: { id: bookingId } });
+export async function recordChargeFailure(bookingId: string, reason: string, amountPence?: number): Promise<void> {
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
   if (!booking) return;
   const msg = `Card charge failed — follow up: ${reason}`.slice(0, 200);
   try { await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: msg, author: 'system' } }); } catch { /* non-fatal */ }
   try { await logAudit({ action: 'PAYMENT_FAILED', actor: 'system', summary: msg, bookingId, clientId: booking.clientId }); } catch { /* non-fatal */ }
+  // BLD-757: tell the CLIENT their card was declined. Off-session charges
+  // (post-treatment / late-fee / reschedule) have no live checkout, so previously
+  // only staff were notified and the client only found out when chased. Email + SMS
+  // are both best-effort — a failure here must not break failure-recording above.
+  const pence = typeof amountPence === 'number' && amountPence > 0 ? amountPence : booking.pricePence;
+  try {
+    const html = tmplPaymentDeclined({ firstName: booking.client.firstName || 'there', treatment: booking.treatmentTitle, pricePence: pence });
+    const res = await sendEmail({ to: booking.client.email, subject: 'A problem with your payment — KClinics', html });
+    await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment declined', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error } }).catch(() => {});
+  } catch (e) { console.error('[charge-fail] client email failed:', (e as Error)?.message); }
+  try {
+    if (booking.client.phone) {
+      const { sendSms } = await import('@/lib/sms');
+      await sendSms(booking.client.phone, `KClinics: we couldn't take payment for your ${booking.treatmentTitle} — your card was declined. Please call us or reply to your email to update payment.`);
+    }
+  } catch (e) { console.error('[charge-fail] client SMS failed:', (e as Error)?.message); }
 }
 
 /**

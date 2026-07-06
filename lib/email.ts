@@ -896,6 +896,21 @@ export function tmplPaymentActionRequired(o: { firstName: string; treatment: str
   });
 }
 
+// BLD-757: an off-session charge (post-treatment / late-fee / reschedule) was
+// declined. The client can't self-serve a fix here (there's no live checkout), so
+// this simply asks them to get in touch — previously only staff were alerted, so
+// the client had no idea their card was declined until chased.
+export function tmplPaymentDeclined(o: { firstName: string; treatment: string; pricePence: number }) {
+  return emailShell({
+    preheader: 'There was a problem taking your payment',
+    body: `${heroBand('secure')}
+    <h1 style="font-size:24px;margin:0 0 16px;">A quick note about your payment, ${escape(o.firstName)}.</h1>
+    <p>We tried to take the payment of <strong>${fmtMoney(o.pricePence)}</strong> for your ${escape(o.treatment)}, but your card was declined.</p>
+    <p>Please reply to this email or call the clinic and we'll take payment on a different card. If you've already sorted this with us, you can ignore this message.</p>
+    <p>With warmth,<br>The KClinics team</p>`,
+  });
+}
+
 export function tmplNoShow(o: { firstName: string; treatment: string; start: Date; rebookUrl: string; feePence?: number | null }) {
   const when = o.start.toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
   return emailShell({

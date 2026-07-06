@@ -93,6 +93,18 @@ export async function POST(req: Request) {
     }
   }
 
+  // BLD-763: 'Cancel' must never silently close a PAID order — that leaves the
+  // customer charged with nothing to show for it. A paid order can only be closed
+  // through the REFUNDED path above (Stripe refund + gift-card restore). Cancelling
+  // is for pre-payment orders only, where no money has moved.
+  if (body.status === 'CANCELLED') {
+    const ord = await db.order.findUnique({ where: { id: body.id }, select: { status: true } });
+    if (!ord) return NextResponse.json({ ok: false, error: 'Order not found.' }, { status: 404 });
+    if (ord.status === 'PAID' || ord.status === 'FULFILLED') {
+      return NextResponse.json({ ok: false, error: 'This order has been paid — use “Mark refunded” to refund the customer (and restore any gift-card balance) instead of cancelling.' }, { status: 409 });
+    }
+  }
+
   const data: Record<string, unknown> = {};
   if (body.status && ['PENDING', 'PAID', 'FULFILLED', 'CANCELLED', 'REFUNDED'].includes(body.status)) data.status = body.status;
   if (body.fulfillment && ['unfulfilled', 'shipped', 'collected'].includes(body.fulfillment)) data.fulfillment = body.fulfillment;
