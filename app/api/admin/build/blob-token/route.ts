@@ -21,10 +21,13 @@ export async function POST(req: Request) {
       body,
       request: req,
       onBeforeGenerateToken: async () => ({
-        allowedContentTypes: [
-          'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/heic', 'image/heif',
-          'video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v', 'video/3gpp',
-        ],
+        // Category wildcards (Vercel Blob supports `type/*`) so any video/image/
+        // audio format a staff phone produces is accepted. The old explicit list
+        // (a handful of video MIME types) silently rejected .mkv/.avi/.mpeg and any
+        // clip whose browser-reported type fell outside it — the token generation
+        // failed and the upload surfaced only as "Upload failed" (BLD-778). Mirrors
+        // the academy route's fix (BLD-588).
+        allowedContentTypes: ['video/*', 'image/*', 'audio/*'],
         maximumSizeInBytes: 200 * 1024 * 1024, // 200 MB — comfortably covers phone videos
         addRandomSuffix: true,
       }),

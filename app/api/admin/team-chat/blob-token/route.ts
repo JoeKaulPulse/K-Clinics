@@ -22,9 +22,12 @@ export async function POST(req: Request) {
       body,
       request: req,
       onBeforeGenerateToken: async () => ({
+        // Category wildcards (Vercel Blob supports `type/*`) so any video/image/
+        // audio a staff phone produces is accepted — the old explicit list rejected
+        // .mkv/.avi/.mpeg and any clip whose browser-reported type fell outside it,
+        // surfacing only as "Upload failed" (BLD-778, mirrors academy BLD-588).
         allowedContentTypes: [
-          'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/heic', 'image/heif',
-          'video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v', 'video/3gpp',
+          'video/*', 'image/*', 'audio/*',
           'application/pdf', 'text/plain', 'application/zip',
           'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
           'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

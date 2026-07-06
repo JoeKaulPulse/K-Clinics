@@ -23,7 +23,7 @@ type Project = { id: string; ref: string | null; slug: string; name: string; sum
 // A task's reference ID with its title, for any list that needs both (cards,
 // dependency chips, dropdowns) — refs are the searchable/traceable handle.
 const withRef = (r: { ref: string | null; title: string }) => (r.ref ? `${r.ref} · ${r.title}` : r.title);
-const isVideo = (url: string) => /\.(mp4|mov|webm|m4v|3gp)(\?|$)/i.test(url);
+const isVideo = (url: string) => /\.(mp4|mov|webm|m4v|3gp|mkv|avi|mpe?g|wmv|m2ts|mts)(\?|$)/i.test(url);
 // Count of pending owner-input subtasks on an item → the red "user-gated" badge.
 const gatedCount = (i: Item) => i.subtasks.filter((s) => s.ownerInput && s.status !== 'DONE').length;
 
@@ -33,10 +33,30 @@ const gatedCount = (i: Item) => i.subtasks.filter((s) => s.ownerInput && s.statu
 // never get stuck on "Uploading…", and images gracefully fall back to the
 // server route if the client-direct path fails.
 const SERVER_MAX = 4 * 1024 * 1024;       // stay under the serverless body limit
-const UPLOAD_TIMEOUT_MS = 90_000;
+// Scale the upload timeout to the file size: a 3-min floor plus ~1 min per 10 MB,
+// capped at 30 min. The old flat 90s aborted large HD storefront videos mid-upload
+// on ordinary connections — owner reported it as "video not uploading" (BLD-778,
+// mirrors the academy fix in BLD-588).
+const uploadTimeoutMs = (size: number) => Math.min(30 * 60_000, Math.max(180_000, Math.ceil(size / (10 * 1024 * 1024)) * 60_000));
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
-  return Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('timed out — check your connection and retry')), ms))]);
+  return Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('timed out — the file may be very large or the connection slow; try compressing it or a smaller file')), ms))]);
 }
+// Browsers sometimes report an empty file.type for phone videos. Vercel Blob's
+// handleUpload validates the content type, and an empty type resolves to
+// application/octet-stream — rejected. Infer a real type from the extension so the
+// upload is accepted (BLD-778).
+const EXT_MIME: Record<string, string> = {
+  mp4: 'video/mp4', m4v: 'video/x-m4v', mov: 'video/quicktime', webm: 'video/webm', '3gp': 'video/3gpp',
+  mkv: 'video/x-matroska', avi: 'video/x-msvideo', mpeg: 'video/mpeg', mpg: 'video/mpeg',
+  wmv: 'video/x-ms-wmv', mts: 'video/mp2t', m2ts: 'video/mp2t',
+  heic: 'image/heic', heif: 'image/heif', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+  webp: 'image/webp', gif: 'image/gif', avif: 'image/avif',
+};
+const fileExt = (name: string) => (name.split('.').pop() || '').toLowerCase();
+const inferType = (file: File): string | undefined => file.type || EXT_MIME[fileExt(file.name)];
+// A video by MIME type OR by extension — some phone pickers report an empty type,
+// so extension is the fallback that keeps such clips off the images-only server route.
+const looksVideo = (file: File): boolean => /^video\//.test(file.type) || /\.(mp4|mov|webm|m4v|3gp|mkv|avi|mpe?g|wmv|m2ts|mts)$/i.test(file.name);
 async function serverUpload(file: File): Promise<string> {
   const fd = new FormData(); fd.append('file', file);
   const r = await fetch('/api/admin/build/upload', { method: 'POST', body: fd }).then((x) => x.json()).catch(() => ({ ok: false, error: 'network error' }));
@@ -45,18 +65,22 @@ async function serverUpload(file: File): Promise<string> {
 }
 async function clientUpload(file: File): Promise<string> {
   const { upload } = await import('@vercel/blob/client');
-  const blob = await upload(file.name || `file-${Date.now()}`, file, { access: 'public', handleUploadUrl: '/api/admin/build/blob-token', contentType: file.type || undefined });
+  const safe = (file.name || `file-${Date.now()}`).replace(/[^A-Za-z0-9._-]+/g, '-').replace(/-+/g, '-').slice(-120) || 'file';
+  const blob = await upload(`build/${Date.now().toString(36)}-${safe}`, file, { access: 'public', handleUploadUrl: '/api/admin/build/blob-token', contentType: inferType(file) });
   return blob.url;
 }
 async function uploadOne(file: File): Promise<string> {
-  const isVid = /^video\//.test(file.type);
+  const isVid = looksVideo(file);
   const big = file.size > SERVER_MAX;
-  if (!isVid && !big) return withTimeout(serverUpload(file), UPLOAD_TIMEOUT_MS);
+  const ms = uploadTimeoutMs(file.size);
+  // Videos and large files must go client-direct (bypasses the ~4.5 MB serverless
+  // body limit); small images use the proven same-origin server route.
+  if (!isVid && !big) return withTimeout(serverUpload(file), ms);
   try {
-    return await withTimeout(clientUpload(file), UPLOAD_TIMEOUT_MS);
+    return await withTimeout(clientUpload(file), ms);
   } catch (e) {
     // Graceful fallback: an image small enough for the server route can still go that way.
-    if (!isVid && file.size <= 12 * 1024 * 1024) return withTimeout(serverUpload(file), UPLOAD_TIMEOUT_MS);
+    if (!isVid && file.size <= 12 * 1024 * 1024) return withTimeout(serverUpload(file), ms);
     throw e;
   }
 }
