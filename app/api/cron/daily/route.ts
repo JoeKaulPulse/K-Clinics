@@ -79,16 +79,21 @@ export async function GET(req: Request) {
   try {
     const { googleEnabled, syncAllCalendars } = await import('@/lib/google-calendar');
     if (googleEnabled()) gcal = await syncAllCalendars(); // parked while on Hostinger
-  } catch {
-    /* never fail the cron on a calendar sync issue */
+  } catch (e) {
+    // BLD-772: count + log so an expired refresh token (calendar busy-time sync
+    // silently going stale, risking double-bookings) trips the cron's failure alert
+    // instead of failing invisibly — matching every sibling block in this cron.
+    failures++; console.error('[cron] Google Calendar sync failed (continuing):', (e as Error)?.message);
   }
   // Import the latest Google Business reviews (no-op until connected).
   let gbiz = { ok: false, imported: 0 };
   try {
     const { googleBusinessConnected, syncGoogleReviews } = await import('@/lib/google-business');
     if (await googleBusinessConnected()) gbiz = await syncGoogleReviews();
-  } catch {
-    /* never fail the cron on a review sync issue */
+  } catch (e) {
+    // BLD-772: count + log so a broken Google Business connection (review import
+    // silently stale) trips the cron's failure alert rather than failing invisibly.
+    failures++; console.error('[cron] Google Business review sync failed (continuing):', (e as Error)?.message);
   }
   // Behaviour-analytics retention: prune old session replays (90d) and heatmap
   // points (180d) so storage stays bounded and we hold data no longer than needed.

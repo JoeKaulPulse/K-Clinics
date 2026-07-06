@@ -324,15 +324,29 @@ export async function getIntegrations(): Promise<Integration[]> {
   });
 
   // ── Error monitoring (Sentry) ──
-  const sentryDsn = present('SENTRY_DSN');
+  // BLD-687: server/edge Sentry accepts SENTRY_DSN *or* NEXT_PUBLIC_SENTRY_DSN, but
+  // the browser SDK (instrumentation-client.ts) reads ONLY NEXT_PUBLIC_SENTRY_DSN —
+  // so both are needed for full coverage. Reflect that precisely; otherwise a
+  // half-configured setup reads as healthy while a whole runtime's errors are
+  // silently dropped.
+  const sentryServerDsn = present('SENTRY_DSN') || present('NEXT_PUBLIC_SENTRY_DSN');
+  const sentryClientDsn = present('NEXT_PUBLIC_SENTRY_DSN');
+  const sentryStatus: IntegrationStatus =
+    sentryServerDsn && sentryClientDsn ? 'connected' : sentryServerDsn || sentryClientDsn ? 'partial' : 'not_configured';
   items.push({
     id: 'sentry',
     name: 'Error monitoring (Sentry)',
     category: 'Observability',
-    description: 'Captures and alerts on unhandled server errors and exceptions.',
-    status: sentryDsn ? 'connected' : 'not_configured',
-    detail: sentryDsn ? 'Configured — errors will be reported' : 'SENTRY_DSN is not set — all server errors are silently dropped.',
-    envVars: [{ name: 'SENTRY_DSN', set: sentryDsn }],
+    description: 'Captures and alerts on unhandled server, edge and browser errors.',
+    status: sentryStatus,
+    detail:
+      sentryStatus === 'connected' ? 'Configured — server, edge and client errors are reported'
+        : sentryStatus === 'partial' ? (sentryClientDsn ? 'Client only — also set SENTRY_DSN so server/edge errors are reported' : 'Server only — also set NEXT_PUBLIC_SENTRY_DSN so browser errors are reported')
+          : 'Not set — every unhandled error (server, edge and client) is silently dropped. Set SENTRY_DSN + NEXT_PUBLIC_SENTRY_DSN.',
+    envVars: [
+      { name: 'SENTRY_DSN', set: sentryServerDsn },
+      { name: 'NEXT_PUBLIC_SENTRY_DSN', set: sentryClientDsn, optional: true },
+    ],
   });
 
   return items;

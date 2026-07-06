@@ -64,6 +64,10 @@ export async function GET(req: Request) {
       hasClientJwtSecret: Boolean(process.env.CLIENT_JWT_SECRET),
       hasHealthEncryptionKey: Boolean(process.env.HEALTH_ENCRYPTION_KEY),
       hasHealthHmacKey: Boolean(process.env.HEALTH_HMAC_KEY),
+      // BLD-687: without a Sentry DSN every unhandled error is silently dropped —
+      // make its absence directly visible on the deploy health probe.
+      hasSentryDsn: Boolean(process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN),
+      hasClientSentryDsn: Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN),
     };
     try {
       const { SignJWT, jwtVerify } = await import('jose');
