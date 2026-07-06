@@ -45,9 +45,15 @@ export function Footer({ config }: { config: SiteConfig }) {
       {/* CTA band */}
       <div className="container-lux relative border-b border-white/10 py-20 text-center md:py-28">
         <p className="eyebrow mb-5">Begin your transformation</p>
-        <h2 className="text-display mx-auto max-w-3xl text-balance text-[var(--color-porcelain)]">
+        {/* Promotional CTA line, not a document-structure heading. It was an <h2>
+            that — because the footer flushes to the HTML stream before the async
+            page content — became the FIRST heading on every page, so the homepage's
+            outline opened with an h2 before the hero's h1 (BLD-692). Styled text
+            keeps the visual identical while leaving the heading outline to lead
+            with each page's real h1. */}
+        <p className="text-display mx-auto max-w-3xl text-balance text-[var(--color-porcelain)]">
           Your most confident self is one appointment away.
-        </h2>
+        </p>
         <p className="mx-auto mt-5 max-w-xl text-[color-mix(in_oklab,var(--color-porcelain)_72%,transparent)]">
           New clients enjoy 15% off their first visit, and every consultation is complimentary.
         </p>
