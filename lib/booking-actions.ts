@@ -324,17 +324,35 @@ export async function finalizeBookingCharge(
  * decline/expiry that happens after the synchronous attempt is visible to staff
  * rather than silently lost. Leaves a follow-up note on the client + audit log.
  */
-export async function recordChargeFailure(bookingId: string, reason: string, amountPence?: number): Promise<void> {
+export async function recordChargeFailure(bookingId: string, reason: string, opts: { amountPence?: number; piId?: string; errorCode?: string } = {}): Promise<void> {
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
   if (!booking) return;
   const msg = `Card charge failed — follow up: ${reason}`.slice(0, 200);
   try { await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: msg, author: 'system' } }); } catch { /* non-fatal */ }
   try { await logAudit({ action: 'PAYMENT_FAILED', actor: 'system', summary: msg, bookingId, clientId: booking.clientId }); } catch { /* non-fatal */ }
+
   // BLD-757: tell the CLIENT their card was declined. Off-session charges
   // (post-treatment / late-fee / reschedule) have no live checkout, so previously
-  // only staff were notified and the client only found out when chased. Email + SMS
-  // are both best-effort — a failure here must not break failure-recording above.
-  const pence = typeof amountPence === 'number' && amountPence > 0 ? amountPence : booking.pricePence;
+  // only staff were notified and the client only found out when chased.
+  //
+  // Skip when the failure is `authentication_required`: that isn't a decline —
+  // chargeBooking already emailed the client a "confirm your payment" pay-link, so
+  // a "your card was declined" note here would contradict it.
+  if (opts.errorCode === 'authentication_required') return;
+  // Notify once per PaymentIntent. Stripe delivers payment_intent.payment_failed
+  // at-least-once (and this branch is in the webhook's retry set), so without this
+  // CAS a redelivery would re-email + re-SMS the client. When there's no PI id to
+  // dedupe on, fall through and notify (best-effort).
+  if (opts.piId) {
+    const claimed = await db.booking.updateMany({
+      where: { id: bookingId, OR: [{ chargeFailNotifiedPi: null }, { chargeFailNotifiedPi: { not: opts.piId } }] },
+      data: { chargeFailNotifiedPi: opts.piId },
+    });
+    if (claimed.count === 0) return; // already told the client about this PI's failure
+  }
+
+  // Email + SMS are best-effort — a failure here must not break the records above.
+  const pence = typeof opts.amountPence === 'number' && opts.amountPence > 0 ? opts.amountPence : booking.pricePence;
   try {
     const html = tmplPaymentDeclined({ firstName: booking.client.firstName || 'there', treatment: booking.treatmentTitle, pricePence: pence });
     const res = await sendEmail({ to: booking.client.email, subject: 'A problem with your payment — KClinics', html });

@@ -155,7 +155,11 @@ export async function POST(req: Request) {
         if (bookingId) {
           const { recordChargeFailure } = await import('@/lib/booking-actions');
           const reason = pi.last_payment_error?.message || 'The card was declined.';
-          await recordChargeFailure(bookingId, reason, typeof pi.amount === 'number' ? pi.amount : undefined);
+          await recordChargeFailure(bookingId, reason, {
+            amountPence: typeof pi.amount === 'number' ? pi.amount : undefined,
+            piId: pi.id,
+            errorCode: pi.last_payment_error?.code,
+          });
           try {
             const { notifyStaffByPermission } = await import('@/lib/notifications');
             await notifyStaffByPermission('finance.view', { kind: 'status', category: 'finance', priority: 'urgent', title: 'Payment failed', body: reason.slice(0, 140), href: `/admin/bookings/${bookingId}` });

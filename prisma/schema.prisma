@@ -624,6 +624,10 @@ model Booking {
   chargePaymentIntentId String?
   chargedPence          Int?
   chargedAt             DateTime?
+  // The PaymentIntent id the client was last told a charge failed for, so a
+  // redelivered payment_intent.payment_failed webhook doesn't re-email/SMS the
+  // client. Additive; nullable. (BLD-757)
+  chargeFailNotifiedPi  String?
   // BNPL course pre-payment (BLD-399; BLD-409 course context). BNPL methods
   // (Klarna/Clearpay) can't be saved off-session, so for a course the client
   // pays the full price upfront via a Stripe Checkout link. Set when the

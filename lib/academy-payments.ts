@@ -256,6 +256,10 @@ export async function startEnrolmentPayment(studentId: string, enrolmentId: stri
 export async function finalizeEnrolmentPayment(piId: string, amountReceivedPence: number, currency: string, methodType?: string | null): Promise<{ ok: boolean; enrolmentId?: string; courseSlug?: string }> {
   const payment = await db.enrolmentPayment.findFirst({
     where: { stripePaymentIntentId: piId },
+    // Deterministic pick (oldest first) so the webhook and the synchronous confirm
+    // endpoint always claim the SAME row, even in the rare case two rows reference
+    // one PI — belt-and-braces against a doubled paidPence. (BLD-762)
+    orderBy: { createdAt: 'asc' },
     select: { id: true, enrolmentId: true, amountPence: true, state: true },
   });
   if (!payment) return { ok: false };
