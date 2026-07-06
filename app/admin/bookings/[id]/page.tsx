@@ -11,6 +11,7 @@ import { RequestCardButton } from '@/components/admin/RequestCardButton';
 import { ClinicalWorkflow } from '@/components/admin/ClinicalWorkflow';
 import { ConsumablesPanel } from '@/components/admin/ConsumablesPanel';
 import { ClinicalNote } from '@/components/admin/ClinicalNote';
+import { LogIncident } from '@/components/admin/LogIncident';
 import { BookingLocation } from '@/components/admin/BookingLocation';
 import { ConsentPanel } from '@/components/admin/ConsentPanel';
 import { BeforePhotoCapture } from '@/components/admin/BeforePhotoCapture';
@@ -343,6 +344,8 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
           /></div>
           {canConsumables && <ConsumablesPanel bookingId={b.id} items={stockItems} used={used} />}
           {canClinical && <div data-tour="clinical-note"><ClinicalNote bookingId={b.id} initial={clinicalNote} savedBy={b.clinicalNoteBy} savedAt={b.clinicalNoteAt ? b.clinicalNoteAt.toISOString() : null} /></div>}
+          {/* Internal incident (accident) form, pre-linked to this appointment (BLD-760) */}
+          {sessionCan(session, 'clients.edit') && <LogIncident clientId={b.client.id} bookingId={b.id} />}
           {multiLocation && activeLocations.length > 0 && <BookingLocation bookingId={b.id} current={b.locationId} locations={activeLocations} />}
           <div data-tour="clinical-actions">
             <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Actions</h2>

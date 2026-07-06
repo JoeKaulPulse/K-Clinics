@@ -21,6 +21,7 @@ const NOTE_STYLE: Record<string, { label: string; dot: string; badge: string }> 
   SMS: { label: 'SMS', dot: 'bg-[var(--color-stone-soft)]', badge: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
   APPOINTMENT: { label: 'Appointment', dot: 'bg-green-400', badge: 'bg-green-100 text-green-800' },
   SYSTEM: { label: 'System', dot: 'bg-[var(--color-line)]', badge: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
+  INCIDENT: { label: 'Incident', dot: 'bg-red-500', badge: 'bg-red-100 text-red-800' },
 };
 const noteStyle = (t: string) => NOTE_STYLE[t] ?? NOTE_STYLE.NOTE;
 
@@ -32,6 +33,7 @@ const genderLabel = (g: string, selfDescribe?: string | null) =>
 import { MedicalFlagEditor } from '@/components/admin/MedicalFlagEditor';
 import { PatchTestEditor } from '@/components/admin/PatchTestEditor';
 import { ClientTasks } from '@/components/admin/ClientTasks';
+import { LogIncident } from '@/components/admin/LogIncident';
 import { DataPrivacy } from '@/components/admin/DataPrivacy';
 import { sessionCan } from '@/lib/auth';
 import { fmtClinicTime, fmtClinicDate } from '@/lib/clinic-time';
@@ -412,6 +414,18 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
               result={c.patchTestResult}
               setBy={c.patchTestSetBy}
               setAt={c.patchTestDate ? c.patchTestDate.toISOString() : null}
+            />
+          )}
+
+          {/* Internal incident (accident) log — staff-only (BLD-760) */}
+          {sessionCan(session, 'clients.edit') && (
+            <LogIncident
+              clientId={c.id}
+              bookings={c.bookings.map((b) => ({
+                id: b.id,
+                title: b.treatmentTitle,
+                date: new Date(b.startAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+              }))}
             />
           )}
 

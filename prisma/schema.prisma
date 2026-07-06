@@ -27,6 +27,7 @@ enum InteractionType {
   SMS
   APPOINTMENT
   SYSTEM
+  INCIDENT // internal incident/accident logged against the client (BLD-760)
 }
 
 enum EmailKind {
@@ -180,6 +181,7 @@ enum AuditAction {
   TASK_ASSIGNED // an internal task was assigned to a colleague (PRJ-63.11)
   TASK_COMPLETED // an assigned task was marked done (PRJ-63.11)
   ROOM_TURNOVER // a room was handed over for cleaning after a session (PRJ-63.11)
+  INCIDENT_LOGGED // a staff-only internal incident/accident form was recorded (BLD-760)
 }
 
 enum ReviewStatus {
@@ -357,6 +359,7 @@ model Client {
 
   consultations  Consultation[]
   interactions   Interaction[]
+  incidents      Incident[]
   appointments   Appointment[]
   bookings       Booking[]
   followUps      FollowUp[]
@@ -499,6 +502,34 @@ model Interaction {
 
   @@index([clientId, createdAt])
   @@index([clientId, pinned])
+}
+
+// Internal Incident (Accident) form — staff-only record of an incident during or
+// after a treatment. Never exposed in the client portal (admin routes/pages only).
+// Free-text fields that may carry health/personal data (description, injury,
+// actionTaken, witnesses) are AES-256-GCM encrypted at rest via encClinical, the
+// same as Interaction.detail. Optionally tied to the specific appointment. (BLD-760)
+model Incident {
+  id               String    @id @default(cuid())
+  client           Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId         String
+  booking          Booking?  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  bookingId        String?
+  occurredAt       DateTime
+  category         String    @default("Other") // Slip/trip/fall, Burn/scald, Allergic reaction, Equipment, Needlestick, Other
+  severity         String    @default("minor") // minor | moderate | serious
+  location         String? // where in the clinic it happened
+  description      String // encrypted — what happened
+  injury           String? // encrypted — injury sustained, if any
+  actionTaken      String? // encrypted — first aid / action taken
+  witnesses        String? // encrypted — names of any witnesses
+  riddorReportable Boolean   @default(false) // flagged as RIDDOR-reportable (UK)
+  createdBy        String // staff email who logged it
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([clientId, createdAt])
+  @@index([bookingId])
 }
 
 model Appointment {
@@ -649,6 +680,7 @@ model Booking {
 
   auditEvents AuditEvent[]
   reviews     Review[]
+  incidents   Incident[] // internal incident/accident forms tied to this appointment (BLD-760)
   items       BookingItem[] // line items: primary treatment + any upsell add-ons
   followUp    FollowUp? // post-treatment follow-up questionnaire
   liveSession AppointmentSession? // BLD-138 interactive in-clinic session
@@ -3613,6 +3645,10 @@ model Order {
   giftCardCode          String?
   giftCardPence         Int         @default(0)
   totalPence            Int
+  // Cumulative amount refunded to the card via Stripe, tracked so partial refunds
+  // reconcile correctly (mirrors Booking.refundedPence). Additive; 0 for every
+  // existing order (fully-refunded legacy orders are already status REFUNDED). (BLD-767)
+  refundedPence         Int         @default(0)
   ageVerified           Boolean     @default(false)
   status                OrderStatus @default(PENDING)
   fulfillment           String      @default("unfulfilled") // unfulfilled | shipped | collected
