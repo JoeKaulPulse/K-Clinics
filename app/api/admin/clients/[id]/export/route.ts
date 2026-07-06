@@ -41,7 +41,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   for (const con of c.consultations) { con.concerns = decClinical(con.concerns); con.message = decClinical(con.message); con.medicalNotes = decClinical(con.medicalNotes); }
   for (const bk of c.bookings) { bk.allergyNote = decClinical(bk.allergyNote); }
   for (const it of c.interactions) { it.detail = decClinical(it.detail); }
-  for (const cr of c.callRecords) { cr.transcript = decClinical(cr.transcript); } // BLD-602: call transcripts are encrypted at rest
+  // BLD-701: a call transcript is clinical/health free-text — its plaintext is
+  // gated on clients.clinical.view below (decrypted there), NOT here, so a
+  // non-clinical exporter with only clients.export gets call metadata but a null
+  // transcript rather than the decrypted contents. (transcript stays encrypted
+  // in `c.callRecords` until the gate.)
 
   // Strip secrets from the dump.
   const { passwordHash, resetTokenHash, resetTokenExp, ...client } = c as Record<string, unknown> & { passwordHash?: unknown; resetTokenHash?: unknown; resetTokenExp?: unknown };
@@ -72,6 +76,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   // BLD-315: use the revocable permission, not the role-based canViewClinical.
   if (sessionCan(session, 'clients.clinical.view')) {
+    // BLD-701: only the clinical gate may read the decrypted call transcript.
+    for (const cr of c.callRecords) { cr.transcript = decClinical(cr.transcript); }
     const assessments = await db.healthAssessment.findMany({ where: { clientId: id }, orderBy: { submittedAt: 'desc' } });
     const { formatAssessment } = await import('@/lib/health-assessments');
     const exportAudit = { actor: session?.email || 'unknown', actorRole: session?.role ?? undefined };
@@ -89,6 +95,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       return [p.id, image] as const;
     }));
     out.beforePhotos = beforePhotos.map((p) => ({ ...p, image: imageById.get(p.id) ?? null }));
+  } else {
+    // BLD-701: no clinical permission — strip the (still-encrypted) transcript so
+    // the export carries call metadata only, never the health free-text.
+    for (const cr of c.callRecords) { cr.transcript = null; }
   }
 
   const { logAudit } = await import('@/lib/audit');
