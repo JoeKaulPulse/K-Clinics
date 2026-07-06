@@ -1681,63 +1681,63 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Before/after gallery photos bypass next/image entirely', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Before/after gallery photos bypass next/image entirely', type: 'TASK', urgency: 'P1', status: 'SHIPPED', pr: PR(1536), assignee: 'claude',
     value: 8, effort: 3,
     detail: 'components/ui/BeforeAfter.tsx (used by the public /gallery page) renders real client photography as raw <img> tags with no width/height, no next/image, no lazy loading -- despite AVIF/WebP already being enabled in next.config.mjs. Every card in the grid ships full-size, unconverted originals and loads eagerly. Fix: swap both <img> tags for next/image with fill/explicit dimensions and sizes, matching the pattern already used in components/ui/MediaArt.tsx. Found in End-of-Day audit (performance discipline).',
     notes: ['Swapped both the after and before <img> tags in BeforeAfter.tsx for next/image Image components using fill (the existing container is already position:relative with an aspect-ratio className from PublicGallery.tsx) plus a responsive sizes attribute and object-cover, mirroring MediaArt.tsx. The drag/reveal slider logic (pointer handlers, clip-path, ref-based bounding-rect math) is untouched.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'kiosk-cleanup cron has no error handling — GDPR photo-retention sweep can silently fail', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'kiosk-cleanup cron has no error handling — GDPR photo-retention sweep can silently fail', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', pr: PR(1535), assignee: 'claude',
     value: 6, effort: 2,
     detail: 'app/api/cron/kiosk-cleanup/route.ts has no top-level try/catch, no Sentry.captureException, and no CRON_ALERT_WEBHOOK_URL post — unlike its sibling crons (cron/daily, cron/dispatch). An exception mid-run (e.g. a Vercel Blob delete failing) aborts the GDPR photo-retention sweep with a bare 500 that nobody is watching. Fix: wrap the handler body in try/catch and report failures the same way cron/daily and cron/dispatch do. Found in End-of-Day audit (reliability discipline).',
     notes: ['Wrapped the two-pass GDPR sweep in a top-level try/catch. On failure: logs, reports to Sentry via captureException (matching the top-level-handler pattern used in app/api/stripe/webhook/route.ts), posts a failure summary to CRON_ALERT_WEBHOOK_URL when configured (matching cron/daily and cron/dispatch), and returns a 500 with the error message instead of an unhandled crash.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Client self-service password change doesn\'t revoke other sessions', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Client self-service password change doesn\'t revoke other sessions', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', pr: PR(1534), assignee: 'claude',
     value: 8, effort: 2,
     detail: 'app/api/account/profile/route.ts:32-46,68-70 updates passwordHash on password change but never bumps sessionEpoch -- unlike the admin (app/api/admin/profile/route.ts:42, "so any other stolen sessions are revoked") and academy (lib/academy-auth.ts changeAcademyPassword()) equivalents, which both increment it for exactly this reason. getClientSession() already checks session.epoch, the mechanism just isn\'t used here. A client with a stolen/copied session cookie keeps full account access after the legitimate owner "secures" the account by changing their password. Fix: add sessionEpoch: {increment: 1} and re-issue the caller\'s session, mirroring app/api/admin/profile/route.ts:38-43. Found in End-of-Day audit (security discipline).',
     notes: ['Fix: app/api/account/profile/route.ts now sets sessionEpoch: {increment: 1} alongside passwordHash on password change, then re-issues the caller\'s own client-session cookie via createClientSession() (lib/auth.ts) with the new epoch so the account holder\'s own device stays signed in while every other outstanding session (old epoch) fails getClientSession()\'s epoch check on its next request.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Gift-card balance can be permanently lost if a shop order fails to create', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Gift-card balance can be permanently lost if a shop order fails to create', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', pr: PR(1533), assignee: 'claude',
     value: 7, effort: 2,
     detail: 'app/api/shop/checkout/route.ts:51-73 calls reserveVoucher() (atomically decrementing the card) before db.order.create(...), with no try/catch around the create — a transient DB error there leaves the reserved balance decremented with no order and no code path that ever restores it. Fix: wrap db.order.create in try/catch and call creditVoucher() on failure, or reserve the voucher only after the order row exists. Found in End-of-Day audit (finance/commerce discipline).',
     notes: ['Fix: wrapped db.order.create in try/catch; on failure, calls creditVoucher() to restore the reserved gift-card balance before returning a 500. app/api/shop/checkout/route.ts.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Redeemed loyalty points don\'t reduce the amount charged for a booking', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Redeemed loyalty points don\'t reduce the amount charged for a booking', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', pr: PR(1533), assignee: 'claude',
     value: 9, effort: 3,
     detail: 'chargeBooking() charges the full booking.pricePence at every real charge site (lib/booking-actions.ts:355,504; admin manual charge in components/admin/BookingActions.tsx:35) — pointsRedeemedPence set by redeemPointsOnBooking (lib/client-loyalty.ts:284-318) is never subtracted anywhere a card is actually charged. A client who redeems points for money off still gets billed full price. Fix: subtract booking.pointsRedeemedPence from the amount passed to chargeBooking() at every call site, and pre-fill the admin charge UI net of it. Found in End-of-Day audit (finance/commerce discipline).',
     notes: ['Fix: cancelBooking() and rescheduleBooking() late/reschedule fee charges in lib/booking-actions.ts now net off booking.pointsRedeemedPence before calling chargeBooking(). The admin manual-charge UI (components/admin/BookingActions.tsx) pre-fills and labels the amount net of redeemed points.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Failed Stripe SetupIntent creation leaves an orphaned booking holding the slot forever', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Failed Stripe SetupIntent creation leaves an orphaned booking holding the slot forever', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', pr: PR(1533), assignee: 'claude',
     value: 8, effort: 3,
     detail: 'app/api/booking/create/route.ts:125-207 creates a PENDING booking in its own transaction, then calls stripe().setupIntents.create() unprotected outside it. If Stripe throws, the outer catch returns a 503 but never deletes/cancels the already-created booking. lib/availability.ts treats PENDING bookings as slot-blocking indefinitely, and there\'s no cron that expires stale PENDING bookings with no setup intent. Fix: wrap the SetupIntent call so a failure cancels the just-created booking, or add a sweep that expires PENDING bookings older than N minutes with no stripeSetupIntentId. Found in End-of-Day audit (reliability discipline).',
     notes: ['Fix: wrapped the SetupIntent call in try/catch; on failure the just-created booking is set to CANCELLED (freeing the slot immediately) and an audit log entry is recorded before returning a clean error. app/api/booking/create/route.ts.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Mobile nav link set in plain gold fails AA contrast on porcelain background', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Mobile nav link set in plain gold fails AA contrast on porcelain background', type: 'TASK', urgency: 'P1', status: 'SHIPPED', pr: PR(1532), assignee: 'claude',
     value: 6, effort: 1,
     detail: 'The mobile drawer renders "Or request a free consultation" using text-[var(--color-gold)] (#a98a6d) on the porcelain (#f6ece3) mobile drawer background. Contrast is ~2.8:1, below WCAG AA\'s 4.5:1 minimum for normal text. docs/BRAND_GUIDELINES.md documents plain gold as decorative/large-text-only; --color-gold-deep (#816748) is the AA-safe text variant.',
     notes: ['Fix: switched the "Or request a free consultation" link to text-[var(--color-gold-deep)]. components/layout/Header.tsx. Checked the rest of the mobile drawer for the same static-gold-text pattern — the only other gold usage there ("Sign in / My account") is a hover-only accent on ink-soft text, not a persistently-rendered gold string, so left unchanged as a different pattern.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Mobile header hides the "Book Now" CTA behind the hamburger menu', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Mobile header hides the "Book Now" CTA behind the hamburger menu', type: 'TASK', urgency: 'P1', status: 'SHIPPED', pr: PR(1532), assignee: 'claude',
     value: 8, effort: 3,
     detail: 'The CTA cluster including the "Book Now" button was wrapped in hidden ... xl:flex, so on mobile/tablet it never appeared in the top bar — only reachable after opening the hamburger drawer and scrolling to the bottom.',
     notes: ['Fix: added a persistent compact "Book" button (same Button component, booking.path, and light/scroll-aware gold/ink variant as the desktop Book Now) to the mobile/tablet top bar, grouped with the hamburger toggle so both sit xl:hidden on the right. Full CTA cluster at xl+ is unchanged. components/layout/Header.tsx.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Booking confirm button isn\'t disabled during Stripe submission — double-tap can double-charge', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Booking confirm button isn\'t disabled during Stripe submission — double-tap can double-charge', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', pr: PR(1550), assignee: 'claude',
     value: 8, effort: 1,
     detail: 'components/booking/BookingFlow.tsx:656 (CardStep) tracks a `submitting` state and swaps the button label to "Confirming..." but never passes `disabled={submitting}` to the Button component (which already supports it, components/ui/Button.tsx:106) — a fast double-tap during the stripe.confirmSetup + /api/booking/confirm round-trip can fire two submissions. Fix: pass disabled={submitting} to the Confirm booking button. Found in End-of-Day audit (UI/UX discipline).',
     notes: ['Fix: added disabled={submitting} to the Confirm booking button. components/booking/BookingFlow.tsx.'],
@@ -1751,21 +1751,21 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Shop gift-card balance can be fully restored twice via a declined-then-retried card payment', type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Shop gift-card balance can be fully restored twice via a declined-then-retried card payment', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', pr: PR(1569), assignee: 'claude',
     value: 6, effort: 2,
     detail: 'app/api/stripe/webhook/route.ts:160-171 credits back the full giftCardPence on payment_intent.payment_failed and cancels the order, but finalizeOrder\'s claim guard (status notIn [\'PAID\',\'FULFILLED\'], lib/shop.ts:96-106) still allows a later payment_intent.succeeded on a retried PaymentIntent to flip that CANCELLED order back to PAID. A customer whose first card attempt is declined keeps the full gift-card credit AND gets the order fulfilled once the retry succeeds. Found in End-of-Day audit (finance/commerce discipline).',
     notes: ['Fix: the webhook only cancels the order and credits back the gift card once the PaymentIntent itself reaches Stripe\'s canceled state, not on every payment_failed event — a declined Elements attempt normally leaves the same PI alive at requires_payment_method for an immediate retry, so it no longer gets prematurely cancelled/credited. app/api/stripe/webhook/route.ts. Also excluded CANCELLED from finalizeOrder\'s claimable statuses as defence in depth, so a cancelled order can never be silently re-claimed PAID. lib/shop.ts.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Floating WhatsApp button overlaps and blocks a quiz answer on /treatment-finder (mobile)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Floating WhatsApp button overlaps and blocks a quiz answer on /treatment-finder (mobile)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', pr: PR(1569), assignee: 'claude',
     value: 7, effort: 2,
     detail: 'On a 375x812 mobile viewport, the fixed WhatsApp button (components/layout/WhatsAppButton.tsx:21) sits directly on top of the second answer option rendered by components/finder/TreatmentFinder.tsx:60-69 — taps in the overlap zone hit the WhatsApp icon instead of the quiz option. Found in End-of-Day audit (UI/UX discipline).',
     notes: ['Fix: gave the quiz answer-options grid `relative z-50`, lifting it above the fixed WhatsApp launcher (z-40) so an overlapping tap always resolves to the answer button underneath it, not the launcher on top. components/finder/TreatmentFinder.tsx.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Wrong treatment photo live on 3 high-intent commercial pages (hydraglow-facial, cosmetic-injections, intimate-rejuvenation)', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Wrong treatment photo live on 3 high-intent commercial pages (hydraglow-facial, cosmetic-injections, intimate-rejuvenation)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', pr: PR(1569), assignee: 'claude',
     value: 4, effort: 1,
     detail: 'import/slug-image-map.json maps these 3 slugs to photos of unrelated procedures — a migration mapping error, since correctly-named matching files already sit unused in public/treatments/ (HydraGlow.jpg, Cosmetic-Injections.jpg, Intimate-rejuvenation.png). Found in End-of-Day audit (SEO/content discipline).',
     notes: ['Fix: repointed the 3 slug entries in import/slug-image-map.json to their correctly-named, already-present files.'],
