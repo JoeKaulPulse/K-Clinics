@@ -1840,6 +1840,13 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'components/layout/WhatsAppButton.tsx:21 (fixed bottom-5 right-5, md:hidden) sits 4px from components/motion/BackToTop.tsx:28 (fixed bottom-6 right-6, shown on ALL breakpoints past scrollY 1400) — both float in the same mobile corner. Separately, components/consult/ConsultForm.tsx:213\'s step-nav "Continue"/"Request consultation" button uses the same bottom-right layout that components/finder/TreatmentFinder.tsx:60-64 already had to fix (comment cites BLD-769, already shipped) by adding relative z-50 to lift it above the WhatsApp launcher — ConsultForm never got that same fix.',
     notes: ['Fix: BackToTop is now hidden below the md breakpoint (hidden md:grid) so it no longer shares the mobile corner with the WhatsApp launcher, which is mobile-only (md:hidden) — the two now never render together. Also added the same relative z-50 treatment from TreatmentFinder to ConsultForm\'s step-nav bar so a tap on "Continue"/"Request consultation" can no longer be hijacked by the WhatsApp button underneath. components/motion/BackToTop.tsx, components/consult/ConsultForm.tsx.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Meta CAPI gift-voucher Purchase event sends the buyer\'s email regardless of marketing consent', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1594),
+    value: 5, effort: 1,
+    detail: 'app/api/gift-vouchers/confirm/route.ts:32-34 called sendPurchase({ ..., email: voucher.purchaserEmail }) unconditionally, unlike every other conversion call site (app/admin/bookings/actions.ts:92, app/api/booking/start/route.ts:239, app/api/consult/route.ts:109), which all gate email on marketingOptIn. The voucher checkout never collects a marketing opt-in at all, so the purchaser\'s hashed email was sent to Meta\'s Advanced Matching with no consent signal.',
+    notes: ['Fix: on confirm, look up an existing Client by purchaser email and only forward the email to sendPurchase if that client is marketingOptIn and not unsubscribed; otherwise pass null (default-closed, matching the other call sites). app/api/gift-vouchers/confirm/route.ts.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
