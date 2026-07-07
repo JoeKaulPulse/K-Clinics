@@ -4,6 +4,7 @@ import { crmEnabled } from '@/lib/crm';
 import { stripeEnabled } from '@/lib/stripe';
 import { bookingFor } from '@/lib/treatments';
 import { encClinical, decClinical } from '@/lib/clinical-crypto';
+import { CLINIC_TZ } from '@/lib/clinic-time';
 
 export const runtime = 'nodejs';
 
@@ -205,7 +206,7 @@ export async function POST(req: Request) {
   // a member of staff approves first. Notify the team and return a "requested" state.
   if (sameDayRequest) {
     const { logAudit } = await import('@/lib/audit');
-    await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Same-day appointment requested: ${title} on ${start.toLocaleString('en-GB', { timeZone: 'Europe/London' })}`, meta: { totalPence: totalPrice, sameDayRequest: true } });
+    await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Same-day appointment requested: ${title} on ${start.toLocaleString('en-GB', { timeZone: CLINIC_TZ })}`, meta: { totalPence: totalPrice, sameDayRequest: true } });
     try {
       const { notifyStaffByPermission } = await import('@/lib/notifications');
       await notifyStaffByPermission('bookings.manage', {
@@ -213,7 +214,7 @@ export async function POST(req: Request) {
         title: 'Same-day appointment request',
         // Clinic-local time — the server runs in UTC, so an implicit-timezone render
         // here told staff the wrong request time during BST (BLD-795).
-        body: `${client.firstName || 'A client'} requested ${title} today at ${start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}. Approve or decline.`,
+        body: `${client.firstName || 'A client'} requested ${title} today at ${start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: CLINIC_TZ })}. Approve or decline.`,
         href: `/admin/bookings/${booking.id}`,
       });
     } catch { /* best-effort */ }
@@ -231,7 +232,7 @@ export async function POST(req: Request) {
   }
 
   const { logAudit } = await import('@/lib/audit');
-  await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Booking created: ${title}${sessions > 1 ? ` (course of ${sessions})` : ''} on ${start.toLocaleString('en-GB', { timeZone: 'Europe/London' })}`, meta: { totalPence: totalPrice, items: items.length, sessions } });
+  await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Booking created: ${title}${sessions > 1 ? ` (course of ${sessions})` : ''} on ${start.toLocaleString('en-GB', { timeZone: CLINIC_TZ })}`, meta: { totalPence: totalPrice, items: items.length, sessions } });
 
   // Server-side Schedule conversion (GA4 begin_checkout + Meta CAPI Schedule),
   // deduped with the browser pixel via the booking id. The Purchase event fires

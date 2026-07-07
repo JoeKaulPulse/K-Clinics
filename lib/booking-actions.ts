@@ -10,6 +10,7 @@ import {
   tmplBookingRescheduled,
 } from './email';
 import { logAudit } from './audit';
+import { CLINIC_TZ } from './clinic-time';
 import type { Booking, Client } from '@prisma/client';
 
 const CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -416,7 +417,7 @@ export async function cancelBooking(
 
   try {
     const { notifyStaffByPermission } = await import('@/lib/notifications');
-    const when = booking.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+    const when = booking.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: CLINIC_TZ });
     await notifyStaffByPermission('bookings.view', { kind: 'status', category: 'bookings', priority: 'high', title: `Booking cancelled: ${booking.treatmentTitle}`, body: `${booking.client.firstName || 'A client'} · ${when}`, href: `/admin/bookings/${booking.id}` });
   } catch { /* non-fatal */ }
   return { ok: true, charged, requiresAction, feeFailed };
@@ -526,7 +527,7 @@ export async function rescheduleBooking(
     data: {
       clientId: booking.clientId,
       type: 'APPOINTMENT',
-      summary: `Rescheduled ${booking.treatmentTitle} from ${booking.startAt.toLocaleString('en-GB', { timeZone: 'Europe/London' })} to ${newStart.toLocaleString('en-GB', { timeZone: 'Europe/London' })}${charged ? ` — charged £${(charged / 100).toFixed(2)} (reschedule ${booking.rescheduleCount + 1})` : ''}`,
+      summary: `Rescheduled ${booking.treatmentTitle} from ${booking.startAt.toLocaleString('en-GB', { timeZone: CLINIC_TZ })} to ${newStart.toLocaleString('en-GB', { timeZone: CLINIC_TZ })}${charged ? ` — charged £${(charged / 100).toFixed(2)} (reschedule ${booking.rescheduleCount + 1})` : ''}`,
       author: opts.by,
     },
   });
@@ -564,7 +565,7 @@ export async function rescheduleBooking(
 
   try {
     const { notifyStaffByPermission } = await import('@/lib/notifications');
-    const when = newStart.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+    const when = newStart.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: CLINIC_TZ });
     await notifyStaffByPermission('bookings.view', { kind: 'status', category: 'bookings', priority: 'high', title: `Booking rescheduled: ${booking.treatmentTitle}`, body: `${booking.client.firstName || 'A client'} · now ${when}`, href: `/admin/bookings/${booking.id}` });
   } catch { /* non-fatal */ }
   return { ok: true, charged, requiresAction };

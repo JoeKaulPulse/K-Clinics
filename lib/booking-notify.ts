@@ -1,6 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db';
 import { site } from '@/lib/site';
+import { CLINIC_TZ } from '@/lib/clinic-time';
 
 const clinicEmail = () => process.env.CLINIC_NOTIFY_EMAIL || 'support@kclinics.co.uk';
 const baseUrl = () => process.env.NEXT_PUBLIC_SITE_URL || site.url;
@@ -101,7 +102,7 @@ async function sendBookingConfirmation(bookingId: string): Promise<void> {
     const { recommendedNext, formatInterval } = await import('@/lib/treatment-intervals');
     const completed = await db.booking.count({ where: { clientId: c.id, treatmentSlug: booking.treatmentSlug, status: 'COMPLETED' } });
     const rec = recommendedNext(booking.treatmentSlug, completed + 1, booking.startAt);
-    if (rec) nextNote = `For best results, we recommend your next ${booking.treatmentTitle} session ${formatInterval(rec.weeks)} after this one — around ${rec.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'Europe/London' })}.`;
+    if (rec) nextNote = `For best results, we recommend your next ${booking.treatmentTitle} session ${formatInterval(rec.weeks)} after this one — around ${rec.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: CLINIC_TZ })}.`;
   } catch { /* recommendation is best-effort */ }
 
   const { sendEmail, tmplBookingConfirmation, tmplBookingNotify, bookingIcs } = await import('@/lib/email');
