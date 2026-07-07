@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Section } from '@/lib/sections';
 import { blocksToHtml, slugifyHeading, type Block } from '@/lib/blocks';
 import { PageHero } from '@/components/ui/PageHero';
@@ -124,10 +125,9 @@ function SectionView({ section: { type, data } }: { section: Section }) {
       const img = str(data.image);
       return (
         <section className="container-lux grid items-center gap-12 py-20 md:grid-cols-2 md:py-28">
-          <MaskReveal className={`aspect-[4/5] overflow-hidden rounded-[var(--radius-2xl)] shadow-[var(--shadow-lift)] ${right ? 'md:order-2' : ''}`}>
+          <MaskReveal className={`relative aspect-[4/5] overflow-hidden rounded-[var(--radius-2xl)] shadow-[var(--shadow-lift)] ${right ? 'md:order-2' : ''}`}>
             {img
-              // eslint-disable-next-line @next/next/no-img-element
-              ? <img src={img} alt={str(data.heading)} className="h-full w-full object-cover" style={{ objectPosition: str(data.focal, '50% 50%') }} />
+              ? <Image src={img} alt={str(data.heading)} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" style={{ objectPosition: str(data.focal, '50% 50%') }} />
               : <MediaArt src="" from="#a98a6d" to="#7b6a5d" alt={str(data.heading)} className="h-full w-full" />}
           </MaskReveal>
           <Reveal delay={0.1}>
@@ -306,8 +306,7 @@ function SectionView({ section: { type, data } }: { section: Section }) {
           <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-6">
             {arr<{ label: string; image: string }>(data.items).map((it, i) => (
               it.image
-                // eslint-disable-next-line @next/next/no-img-element
-                ? <img key={i} src={it.image} alt={it.label || ''} className="h-9 w-auto opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0" />
+                ? <Image key={i} src={it.image} alt={it.label || ''} width={160} height={36} className="h-9 w-auto object-contain opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0" />
                 : <span key={i} className="font-[family-name:var(--font-display)] text-xl text-[var(--color-stone)]">{it.label}</span>
             ))}
           </div>
