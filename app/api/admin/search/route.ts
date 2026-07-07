@@ -34,7 +34,7 @@ export async function GET(req: Request) {
         .map((c) => ({ id: c.id, title: fullName(c.firstName, c.lastName, c.email) + (c.medicalFlag ? ' ⚠' : ''), sub: c.email, href: `/admin/clients/${c.id}` }))),
     safe(can('bookings.view'), async () =>
       (await db.booking.findMany({ where: { OR: [{ treatmentTitle: ci }, { client: nameOr }, { client: { email: ci } }] }, orderBy: { startAt: 'desc' }, take: 12, select: { id: true, treatmentTitle: true, startAt: true, status: true, client: { select: { firstName: true, lastName: true } } } }))
-        .map((b) => ({ id: b.id, title: b.treatmentTitle, sub: `${fullName(b.client.firstName, b.client.lastName)} · ${b.startAt.toLocaleDateString('en-GB')} · ${b.status.toLowerCase()}`, href: `/admin/bookings/${b.id}` }))),
+        .map((b) => ({ id: b.id, title: b.treatmentTitle, sub: `${fullName(b.client.firstName, b.client.lastName)} · ${b.startAt.toLocaleDateString('en-GB', { timeZone: 'Europe/London' })} · ${b.status.toLowerCase()}`, href: `/admin/bookings/${b.id}` }))),
     safe(can('consultations.view'), async () =>
       // NB: concerns/message are encrypted at rest, so they can't be matched by a
       // SQL `contains` filter — consultations are searched by client name only.

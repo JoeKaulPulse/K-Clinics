@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import { createManualBooking, searchClientsForBooking, logCallNote, resendBookingConfirmation } from '@/app/admin/bookings/create-action';
+import { clinicLocalToUTC, CLINIC_TZ } from '@/lib/clinic-time';
 
 type Variant = { id: string; name: string; durationMin: number; pricePence: number };
 type Treatment = { slug: string; title: string; group: string; variants?: Variant[] };
@@ -73,14 +74,16 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
   const baseTitle = treatments.find((t) => t.slug === d.treatmentSlug)?.title || 'your treatment';
   const variantName = variants.find((v) => v.id === d.variantId)?.name;
   const treatmentTitle = (d.asConsultation && !isConsultationCat) ? `${baseTitle} — Consultation` : variantName ? `${baseTitle} — ${variantName}` : baseTitle;
-  const whenLabel = d.date ? new Date(`${d.date}T${d.time}`).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '—';
+  // Staff type the CLINIC's wall-clock time — convert via Europe/London, never the
+  // device timezone (a roaming/misconfigured device would silently shift the booking).
+  const whenLabel = d.date ? clinicLocalToUTC(d.date, d.time).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: CLINIC_TZ }) : '—';
 
   function submit(override = false) {
     setError('');
     if (tab === 'existing' && !selected) return setError('Find and select the client, or switch to “New client”.');
     if (tab === 'new' && (!d.firstName.trim() || !/\S+@\S+\.\S+/.test(d.email))) return setError('New client needs a first name and a valid email.');
     if (!d.date) return setError('Choose a date.');
-    const startISO = new Date(`${d.date}T${d.time}`).toISOString();
+    const startISO = clinicLocalToUTC(d.date, d.time).toISOString();
     start(async () => {
       const r = await createManualBooking({
         clientId: selected?.id,

@@ -163,7 +163,7 @@ export async function POST(req: Request) {
   const { logAudit } = await import('@/lib/audit');
   await logAudit({
     action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id,
-    summary: `Booking created: ${treatment.title} on ${start.toLocaleString('en-GB')}`,
+    summary: `Booking created: ${treatment.title} on ${start.toLocaleString('en-GB', { timeZone: 'Europe/London' })}`,
     meta: { treatmentSlug: d.slug, pricePence: finalPrice },
   });
   if (practitionerId) {

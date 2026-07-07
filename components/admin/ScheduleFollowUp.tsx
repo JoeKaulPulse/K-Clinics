@@ -3,11 +3,13 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { scheduleFollowUpAction } from '@/app/admin/bookings/create-action';
+import { clinicLocalToUTC, CLINIC_TZ } from '@/lib/clinic-time';
 
 // Staff-only follow-up scheduler on the booking detail. Pre-fills the recommended
 // next-session date for course treatments, checks room/clinician availability on
 // submit, and books the appointment for the same client + treatment. Not shown to
-// clients. Times are entered in the booker's local time (UK clinic = Europe/London).
+// clients. Times are entered as clinic wall-clock time (Europe/London), converted
+// explicitly — never via the device's ambient timezone.
 export function ScheduleFollowUp({
   fromBookingId,
   recommendedDate,
@@ -30,11 +32,13 @@ export function ScheduleFollowUp({
   async function book() {
     if (!date || !time) { setError('Pick a date and a time.'); return; }
     setBusy(true); setError(''); setClash(false);
-    const startISO = new Date(`${date}T${time}`).toISOString();
+    // Staff enter the CLINIC's wall-clock time — convert via Europe/London, never
+    // the device timezone (a roaming/misconfigured device would shift the booking).
+    const startISO = clinicLocalToUTC(date, time).toISOString();
     const res = await scheduleFollowUpAction({ fromBookingId, startISO, override });
     setBusy(false);
     if (res.ok) {
-      setDone({ id: res.bookingId!, when: new Date(startISO).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) });
+      setDone({ id: res.bookingId!, when: new Date(startISO).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: CLINIC_TZ }) });
     } else {
       setError(res.error || 'Could not book this time.');
       if ((res as { clash?: boolean }).clash) setClash(true);

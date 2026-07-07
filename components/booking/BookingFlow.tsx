@@ -317,7 +317,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                             return (
                               <button key={s} type="button" onClick={() => setSlot(s)} title={isPref ? 'Sooner-seen slot — fits neatly with the day’s other appointments' : undefined} className={`relative rounded-full border px-4 py-2.5 text-sm transition-all ${selected ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : isPref ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                                 {!selected && isPref && <span aria-hidden className="mr-1 text-[var(--color-gold)]">★</span>}
-                                {new Date(s).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                                {new Date(s).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
                               </button>
                             );
                           })}
@@ -431,7 +431,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
             <div>
               <h3 className="font-[family-name:var(--font-display)] text-2xl">Secure your booking</h3>
               <div className="mt-2 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] p-4 text-sm text-[var(--color-stone)]">
-                <p><strong className="text-[var(--color-ink)]">{service?.name}</strong> · {slot && new Date(slot).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                <p><strong className="text-[var(--color-ink)]">{service?.name}</strong> · {slot && new Date(slot).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}</p>
                 <p className="mt-1">We securely save your card now — <strong>no payment is taken</strong> until your treatment is delivered. Free cancellation up to 24 hours before; within 24 hours the full fee applies.</p>
               </div>
               <div className="mt-5">
@@ -580,7 +580,7 @@ function RequestReceived({ firstName, treatment, slot }: { firstName: string; tr
       </div>
       <h2 className="text-title">Request received{firstName ? `, ${firstName}` : ''}.</h2>
       <p className="mx-auto mt-4 max-w-md text-[var(--color-stone)]">
-        We&rsquo;ve asked the team to confirm {treatment || 'your appointment'}{slot ? ` for ${new Date(slot).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}` : ''}. We&rsquo;ll be in touch shortly. Nothing is charged until we confirm. You can see this request in <a href="/account" className="link-underline font-medium text-[var(--color-ink)]">your account</a>.
+        We&rsquo;ve asked the team to confirm {treatment || 'your appointment'}{slot ? ` for ${new Date(slot).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}` : ''}. We&rsquo;ll be in touch shortly. Nothing is charged until we confirm. You can see this request in <a href="/account" className="link-underline font-medium text-[var(--color-ink)]">your account</a>.
       </p>
     </motion.div>
   );
@@ -603,7 +603,7 @@ function Done({ firstName, treatment, slot, orderTotal, variantId, category, boo
       </div>
       <h2 className="text-title">You’re booked in{firstName ? `, ${firstName}` : ''}.</h2>
       <p className="mx-auto mt-4 max-w-md text-[var(--color-stone)]">
-        {treatment}{slot ? ` · ${new Date(slot).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}` : ''}.
+        {treatment}{slot ? ` · ${new Date(slot).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}` : ''}.
         {' '}Your card is securely saved — no payment is taken until your treatment is delivered. We’ve emailed your confirmation.
       </p>
       <p className="mx-auto mt-4 max-w-md text-sm text-[var(--color-stone)]">

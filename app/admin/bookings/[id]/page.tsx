@@ -111,7 +111,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
     const completed = await db.booking.count({ where: { clientId: visitPrefs.clientId, treatmentSlug: visitPrefs.treatmentSlug, status: 'COMPLETED' } });
     const rec = recommendedNext(visitPrefs.treatmentSlug, completed + 1, visitPrefs.startAt);
     if (rec) {
-      nextRec = `${formatInterval(rec.weeks)} (≈ ${rec.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})`;
+      nextRec = `${formatInterval(rec.weeks)} (≈ ${rec.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' })})`;
       followUpRecDate = rec.date.toLocaleDateString('en-CA', { timeZone: 'Europe/London' }); // YYYY-MM-DD
       followUpRecTime = rec.date.toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour12: false, hour: '2-digit', minute: '2-digit' });
       followUpRecLabel = formatInterval(rec.weeks);

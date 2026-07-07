@@ -1153,7 +1153,7 @@ function NextVisitStep({ p, sessData, api, onContinue, onSkip }: {
           <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--color-gold)] text-white" aria-hidden><CheckIcon large /></span>
           <p className="mt-4 font-[family-name:var(--font-display)] text-2xl">You’re booked in</p>
           <p className="mt-2 text-[var(--color-stone)]">
-            {p.booking.treatmentTitle} — {d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} at {d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}.
+            {p.booking.treatmentTitle} — {d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/London' })} at {d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}.
             Your card stays on file; a confirmation is on its way.
           </p>
         </div>
@@ -1180,7 +1180,7 @@ function NextVisitStep({ p, sessData, api, onContinue, onSkip }: {
             : slots.map((s) => (
               <button key={s} type="button" role="option" aria-selected={slot === s} onClick={() => setSlot(s)}
                 className={`min-h-11 rounded-full border px-4 py-2 text-sm tabular-nums transition-colors ${slot === s ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}>
-                {new Date(s).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                {new Date(s).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
               </button>
             ))}
         </div>

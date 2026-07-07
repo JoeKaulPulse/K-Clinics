@@ -48,6 +48,17 @@ export function clinicWallTimeToUTC(dateISO: string, minutesOfDay: number): Date
   return new Date(guess - off * 60000); // …then shifted by the real London offset.
 }
 
+/** The UTC instant for a staff-entered clinic-local date + "HH:MM" time.
+ *  Use this for every manual date/time entry (phone bookings, follow-ups,
+ *  reschedules) instead of `new Date(`${date}T${time}`)`, which silently uses
+ *  the DEVICE's timezone — wrong whenever the browser/server isn't on
+ *  Europe/London (roaming phone, misconfigured OS, UTC server). Pure Intl
+ *  logic, safe in both server and client components. */
+export function clinicLocalToUTC(dateISO: string, hhmm: string): Date {
+  const [h = 0, m = 0] = hhmm.split(':').map(Number);
+  return clinicWallTimeToUTC(dateISO, h * 60 + m);
+}
+
 /** Minutes since clinic-local midnight for an instant (e.g. 08:00Z in BST → 540). */
 export function clinicMinutesOfDay(at: Date): number {
   const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {

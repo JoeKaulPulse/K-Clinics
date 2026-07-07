@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { chargeBookingAction, refundBookingAction, setBookingStatus, cancelBookingAction, rescheduleBookingAction } from '@/app/admin/bookings/actions';
+import { clinicLocalToUTC } from '@/lib/clinic-time';
 
 const money = (p: number) => `£${(p / 100).toFixed(2)}`;
 
@@ -171,7 +172,10 @@ export function BookingActions({
             <input type="datetime-local" value={newWhen} onChange={(e) => setNewWhen(e.target.value)}
               className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
             <button disabled={pending || !newWhen} onClick={() => start(async () => {
-              const r = await rescheduleBookingAction(bookingId, new Date(newWhen).toISOString());
+              // datetime-local gives "YYYY-MM-DDTHH:MM" — staff mean CLINIC wall-clock
+              // time, so convert via Europe/London, not the device's ambient timezone.
+              const [dPart, tPart] = newWhen.split('T');
+              const r = await rescheduleBookingAction(bookingId, clinicLocalToUTC(dPart, tPart || '00:00').toISOString());
               setMsg(r.ok ? 'Rescheduled — the client has been emailed the new time.' : r.error || 'Could not reschedule.');
               if (r.ok) setNewWhen('');
             })} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">{pending ? 'Moving…' : 'Reschedule'}</button>

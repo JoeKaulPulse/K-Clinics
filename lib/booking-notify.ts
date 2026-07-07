@@ -101,7 +101,7 @@ async function sendBookingConfirmation(bookingId: string): Promise<void> {
     const { recommendedNext, formatInterval } = await import('@/lib/treatment-intervals');
     const completed = await db.booking.count({ where: { clientId: c.id, treatmentSlug: booking.treatmentSlug, status: 'COMPLETED' } });
     const rec = recommendedNext(booking.treatmentSlug, completed + 1, booking.startAt);
-    if (rec) nextNote = `For best results, we recommend your next ${booking.treatmentTitle} session ${formatInterval(rec.weeks)} after this one — around ${rec.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}.`;
+    if (rec) nextNote = `For best results, we recommend your next ${booking.treatmentTitle} session ${formatInterval(rec.weeks)} after this one — around ${rec.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'Europe/London' })}.`;
   } catch { /* recommendation is best-effort */ }
 
   const { sendEmail, tmplBookingConfirmation, tmplBookingNotify, bookingIcs } = await import('@/lib/email');
