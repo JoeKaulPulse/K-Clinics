@@ -250,7 +250,6 @@ export default async function AdminOverview() {
         },
       }).catch(() => null)
     : null;
-  const canRoomsPrep = sessionCan(session, 'rooms.prep.manage');
   const canClinical = sessionCan(session, 'clients.clinical.view');
   const nextRoom = nextBk ? await db.resource.findFirst({ where: { kind: 'ROOM', bookings: { some: { id: nextBk.id } } }, select: { id: true, name: true } }).catch(() => null) : null;
   // The next arrival's room prep state (for the live arrival-prep checklist).
