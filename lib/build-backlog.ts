@@ -1784,6 +1784,27 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'app/api/webhooks/resend/route.ts:68-73 — on email.complained/email.bounced, the db.client.update(... unsubscribed: true ...) compliance write is wrapped in try/catch with no logging, no Sentry, no retry, and the route always returns 200 regardless of the write\'s outcome — so Resend never redelivers. A transient DB error at that exact line means a client who bounced or complained keeps getting marketing email indefinitely with no operator visibility.',
     notes: ['Fix: the unsubscribe-write catch block now logs the error and calls Sentry.captureException (matching the pattern used in app/api/stripe/webhook/route.ts) and returns a 500 so Resend retries the delivery-status webhook. Success path and other event types are unchanged. app/api/webhooks/resend/route.ts.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Safety-critical warnings (allergy, tampered record, suspended) render in near-invisible contrast', type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    value: 9, effort: 2,
+    detail: 'app/admin/bookings/[id]/page.tsx:381 shows a client\'s allergy/dietary warning in text-[var(--color-blush)] (#cdb4a3 on #efe3d7, ~1.7:1 contrast — needs 4.5:1) — effectively invisible to staff scanning the page. Same broken pattern on the "tampered record" flag (app/admin/clients/[id]/page.tsx:345) and the "Suspended" badge (app/admin/academy/students/[id]/page.tsx:79). --color-blush-deep (5.7:1 contrast) already exists in app/globals.css:31 for exactly this case.',
+    notes: ['Fix: swapped the allergy/dietary warning (app/admin/bookings/[id]/page.tsx), the tampered-record integrity flag and the discount-claim fraud flag (app/admin/clients/[id]/page.tsx), the Suspended student badge (app/admin/academy/students/[id]/page.tsx), and the medical-flag warning icon (components/admin/MedicalFlagEditor.tsx) from text-[var(--color-blush)] to text-[var(--color-blush-deep)], matching the existing 5.7:1-contrast token used elsewhere for error/destructive text on light surfaces.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Shop checkout \'Continue to payment\' silently does nothing when required fields are empty', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 1,
+    detail: 'components/shop/CheckoutForm.tsx:100 — onClick={() => !busy && f.name && f.email && startCheckout()} guards the click but never shows an error or disables the button when name/email are blank. A shopper who misses a field just sees the button do nothing, unlike every sibling form (GiftVoucherFlow, GroupBookingForm, ApplyForm) which validates inline.',
+    notes: ['Fix: added disabled={busy || !f.name || !f.email} to the Continue to payment Button, and added a guard at the top of startCheckout() that calls setError(\'Please enter your name and email.\') for the same missing-field case, matching the setError pattern already used by GiftVoucherFlow and ApplyForm. components/shop/CheckoutForm.tsx.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Floating WhatsApp button overlaps Back-to-top and hijacks taps on the consult-form submit button (mobile)', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'components/layout/WhatsAppButton.tsx:21 (fixed bottom-5 right-5, md:hidden) sits 4px from components/motion/BackToTop.tsx:28 (fixed bottom-6 right-6, shown on ALL breakpoints past scrollY 1400) — both float in the same mobile corner. Separately, components/consult/ConsultForm.tsx:213\'s step-nav "Continue"/"Request consultation" button uses the same bottom-right layout that components/finder/TreatmentFinder.tsx:60-64 already had to fix (comment cites BLD-769, already shipped) by adding relative z-50 to lift it above the WhatsApp launcher — ConsultForm never got that same fix.',
+    notes: ['Fix: BackToTop is now hidden below the md breakpoint (hidden md:grid) so it no longer shares the mobile corner with the WhatsApp launcher, which is mobile-only (md:hidden) — the two now never render together. Also added the same relative z-50 treatment from TreatmentFinder to ConsultForm\'s step-nav bar so a tap on "Continue"/"Request consultation" can no longer be hijacked by the WhatsApp button underneath. components/motion/BackToTop.tsx, components/consult/ConsultForm.tsx.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

@@ -29,7 +29,7 @@ export function MedicalFlagEditor({ clientId, initial, setBy, setAt }: { clientI
     <section>
       <div className="mb-3 flex items-center gap-2">
         <h2 className="font-[family-name:var(--font-display)] text-xl">Medical flag</h2>
-        {hasFlag && <span aria-hidden className="text-[var(--color-blush)]">⚠</span>}
+        {hasFlag && <span aria-hidden className="text-[var(--color-blush-deep)]">⚠</span>}
       </div>
       <div className={`rounded-[var(--radius-md)] border p-4 ${hasFlag ? 'border-[var(--color-blush)] bg-[var(--color-blush)]/12' : 'border-[var(--color-line)] bg-[var(--color-porcelain)]'}`}>
         {!editing ? (
