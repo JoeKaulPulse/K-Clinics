@@ -213,10 +213,19 @@ export async function POST(req: Request) {
           include: { client: true },
         });
         if (!booking) {
-          // Dashboard refund on a shop order — restore gift-card balance if applicable.
+          // Not a booking charge — check, in turn, whether this PaymentIntent is a
+          // shop order, a gift-voucher's own purchase, or an academy enrolment
+          // payment. Each PI belongs to exactly one of these, so the first match wins.
+          //
+          // Dashboard refund on a shop order — restore gift-card balance if applicable
+          // and restock any trackInventory items (PRJ-918.10): a PAID/FULFILLED order
+          // already decremented stock at finalizeOrder time, so a refund permanently
+          // loses that stock unless we give it back here too. restockOrder is
+          // idempotent (CAS on Order.restockedAt), so a redelivered event can't
+          // double-restock.
           const order = await db.order.findFirst({
             where: { stripePaymentIntentId: piId },
-            select: { id: true, giftCardCode: true, giftCardPence: true },
+            select: { id: true, status: true, giftCardCode: true, giftCardPence: true },
           });
           if (order?.giftCardCode && order.giftCardPence && order.giftCardPence > 0) {
             // creditVoucher now caps the balance at the card's face value (BLD-646)
@@ -224,28 +233,62 @@ export async function POST(req: Request) {
             // per partial refund — so claim the order's status → REFUNDED atomically
             // and only credit when *this* call wins the transition. Mirrors the
             // in-app refund route and the payment_failed order block.
+            const wasStockDecremented = order.status === 'PAID' || order.status === 'FULFILLED';
             const claimed = await db.order.updateMany({ where: { id: order.id, status: { not: 'REFUNDED' } }, data: { status: 'REFUNDED' } });
             if (claimed.count > 0) {
-              try { const { creditVoucher } = await import('@/lib/gift-vouchers'); await creditVoucher(order.giftCardCode, order.giftCardPence); } catch { /* non-fatal */ }
+              if (wasStockDecremented) {
+                try { const { restockOrder } = await import('@/lib/shop'); await restockOrder(order.id); } catch (e) { console.error('[webhook] order restock failed:', (e as Error)?.message); }
+              }
+              try { const { creditVoucher } = await import('@/lib/gift-vouchers'); await creditVoucher(order.giftCardCode, order.giftCardPence); } catch (e) { console.error('[webhook] gift card re-credit failed:', (e as Error)?.message); }
             }
           }
-          // BLD-682: Dashboard refund on a gift-voucher purchase — restore balance and revert
-          // status REDEEMED → ACTIVE so the customer can still use their card.
-          // Idempotent: status flip only runs once (ACTIVE→ACTIVE is a no-op); creditVoucher
-          // caps at face value. Covers both gift_voucher and gift_package intents.
+          // PRJ-918.2: a gift-voucher's OWN purchase PaymentIntent was refunded. This
+          // is distinct from the order case above (an order that merely redeemed a
+          // voucher as a discount — that one still credits back, correctly, since
+          // the customer's cash for THAT purchase wasn't refunded). Here the customer
+          // got their money back for buying the gift card itself, so the old
+          // behaviour — creditVoucher, which increased the balance and revived a
+          // REDEEMED card — was a double payout: cash back AND a spendable (or
+          // regrown) card. Debit/cancel it instead. purchaseRefundedPence is the
+          // watermark of how much of the purchase we've already reconciled (mirrors
+          // the booking.refundedPence CAS above), so a redelivered event or a
+          // partial-then-full refund pair can't double-debit.
           if (!order) {
             const voucher = await db.giftVoucher.findFirst({
               where: { stripePaymentIntentId: piId },
-              select: { id: true, code: true, status: true },
+              select: { id: true, amountPence: true, purchaseRefundedPence: true },
             });
-            if (voucher && voucher.status !== 'CANCELLED') {
-              const refundedPence = charge.amount_refunded ?? 0;
-              if (refundedPence > 0) {
-                try {
-                  const { creditVoucher } = await import('@/lib/gift-vouchers');
-                  await creditVoucher(voucher.code, refundedPence);
-                } catch { /* non-fatal */ }
+            if (voucher) {
+              const totalRefundedByStripe = charge.amount_refunded ?? 0;
+              const alreadyRecorded = voucher.purchaseRefundedPence ?? 0;
+              const delta = totalRefundedByStripe - alreadyRecorded;
+              if (delta > 0) {
+                const claimedV = await db.giftVoucher.updateMany({
+                  where: { id: voucher.id, purchaseRefundedPence: alreadyRecorded },
+                  data: { purchaseRefundedPence: totalRefundedByStripe },
+                });
+                if (claimedV.count > 0) {
+                  try {
+                    const { debitVoucherForPurchaseRefund } = await import('@/lib/gift-vouchers');
+                    await debitVoucherForPurchaseRefund(voucher.id, Math.min(delta, voucher.amountPence), totalRefundedByStripe);
+                  } catch (e) { console.error('[webhook] voucher purchase refund debit failed:', (e as Error)?.message); }
+                }
               }
+            }
+            // PRJ-918.12: not a booking, shop order or voucher purchase — check
+            // whether this PaymentIntent paid an academy enrolment fee/deposit/
+            // balance. Stripe-dashboard refunds bypass refundEnrolmentPayment, which
+            // is the only place that otherwise flips the payment row to REFUNDED and
+            // rolls back Enrolment.paidPence, so without this the payment stays PAID
+            // and paidPence-gated course access stays unlocked after the money has
+            // left the Stripe balance. reconcileEnrolmentPaymentRefund mirrors that
+            // function's DB effects; no admin actor is available here (out-of-band),
+            // so its audit entry is attributed to the webhook.
+            if (!voucher && charge.refunded) {
+              try {
+                const { reconcileEnrolmentPaymentRefund } = await import('@/lib/academy-payments');
+                await reconcileEnrolmentPaymentRefund(piId);
+              } catch (e) { console.error('[webhook] enrolment payment refund reconcile failed:', (e as Error)?.message); }
             }
           }
           break;

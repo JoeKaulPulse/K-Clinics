@@ -218,6 +218,27 @@ export async function creditVoucher(code: string, amountPence: number): Promise<
   await db.giftVoucher.updateMany({ where: { code: c, status: 'REDEEMED', balancePence: { gt: 0 } }, data: { status: 'ACTIVE' } });
 }
 
+/** Debit a voucher's balance because ITS OWN purchase was refunded — NOT a
+ *  booking/order that redeemed it as a discount (that case still credits back
+ *  via creditVoucher above). A refund of the purchase itself means the
+ *  customer got their money back for buying the card, so the card must lose
+ *  spending power, never gain it (PRJ-918.2 — the old code called creditVoucher
+ *  here, a double payout: cash back AND a spendable/regrown card).
+ *  `deltaPence` is capped by the caller to at most the card's face value;
+ *  GREATEST floors the balance at 0 so this can never go negative. Once
+ *  `totalRefundedPence` (Stripe's cumulative amount_refunded on the purchase)
+ *  reaches the card's face value, the card is cancelled outright so it can
+ *  never be redeemed again for money that was returned. */
+export async function debitVoucherForPurchaseRefund(voucherId: string, deltaPence: number, totalRefundedPence: number): Promise<void> {
+  const delta = Math.max(0, Math.round(deltaPence));
+  if (!delta) return;
+  await db.$executeRaw`UPDATE "GiftVoucher" SET "balancePence" = GREATEST("balancePence" - ${delta}, 0) WHERE id = ${voucherId}`;
+  const v = await db.giftVoucher.findUnique({ where: { id: voucherId }, select: { amountPence: true } });
+  if (v && totalRefundedPence >= v.amountPence) {
+    await db.giftVoucher.updateMany({ where: { id: voucherId, status: { not: 'CANCELLED' } }, data: { status: 'CANCELLED' } });
+  }
+}
+
 /** Recipient claims/validates a voucher onto their account. The recipient must
  *  be 18+ (gift cards are for treatments). The API ensures the client is 18+
  *  before calling this. */

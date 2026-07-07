@@ -2966,6 +2966,12 @@ model GiftVoucher {
   expiresAt             DateTime?
   claimedByClientId     String?
   claimedAt             DateTime?
+  // PRJ-918.2: cumulative amount Stripe has refunded against THIS voucher's OWN
+  // purchase PaymentIntent (not a redemption elsewhere) that we've already
+  // reconciled — the watermark for the charge.refunded webhook CAS, mirroring
+  // Booking.refundedPence. Debited from balancePence (never credited) so a
+  // refunded purchase can't also leave a spendable card.
+  purchaseRefundedPence Int       @default(0)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
@@ -3596,6 +3602,11 @@ model Order {
   fulfillment           String      @default("unfulfilled") // unfulfilled | shipped | collected
   trackingNote          String?
   stripePaymentIntentId String?     @unique
+  // PRJ-918.10: set once stock has been restored for this order (on a CANCELLED
+  // or REFUNDED transition from a stock-decremented PAID/FULFILLED state). Guards
+  // restockOrder() so a redelivered webhook or a re-cancelled order can't
+  // increment stockQty back more than once.
+  restockedAt           DateTime?
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
 

@@ -45,6 +45,27 @@ export async function POST(req: Request) {
       try { const { creditVoucher } = await import('@/lib/gift-vouchers'); await creditVoucher(order.giftCardCode, order.giftCardPence); }
       catch (e) { console.error('[orders] gift-card balance restore failed for', body.id, (e as Error)?.message); }
     }
+    // PRJ-918.10: give back stock decremented at finalizeOrder time — only if the
+    // order was actually in a stock-decremented state (PAID/FULFILLED) before this
+    // refund. restockOrder is itself idempotent (CAS on Order.restockedAt), so a
+    // retried/duplicate refund request can't double-restock.
+    if (order.status === 'PAID' || order.status === 'FULFILLED') {
+      try { const { restockOrder } = await import('@/lib/shop'); await restockOrder(body.id); }
+      catch (e) { console.error('[orders] restock failed for', body.id, (e as Error)?.message); }
+    }
+  }
+
+  // PRJ-918.10: same restock as above, for a direct CANCELLED transition (no
+  // Stripe refund is issued here — cancelling doesn't move money — but stock
+  // must still come back if it had been decremented). Guarded the same way:
+  // only restock from a PAID/FULFILLED state, and restockOrder's own CAS stops
+  // an order that's already CANCELLED from being restocked again.
+  if (body.status === 'CANCELLED') {
+    const cancelling = await db.order.findUnique({ where: { id: body.id }, select: { status: true } });
+    if (cancelling && (cancelling.status === 'PAID' || cancelling.status === 'FULFILLED')) {
+      try { const { restockOrder } = await import('@/lib/shop'); await restockOrder(body.id); }
+      catch (e) { console.error('[orders] restock failed for', body.id, (e as Error)?.message); }
+    }
   }
 
   const data: Record<string, unknown> = {};

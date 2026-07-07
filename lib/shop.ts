@@ -147,3 +147,23 @@ export async function finalizeOrder(orderId: string): Promise<{ ok: boolean; num
 
   return { ok: true, number: order.number };
 }
+
+/** Restore stock decremented at finalizeOrder time when a paid/fulfilled order
+ *  is later cancelled or refunded (PRJ-918.10). Idempotent: the CAS on
+ *  Order.restockedAt means only the first caller for a given order actually
+ *  increments stockQty, so a re-cancelled order, a webhook redelivery, or the
+ *  admin route and a dashboard-refund webhook racing on the same order can't
+ *  double-restock. Callers are responsible for only invoking this when the
+ *  order was actually in a stock-decremented state (PAID/FULFILLED) before the
+ *  cancel/refund — this function does not check that itself. */
+export async function restockOrder(orderId: string): Promise<void> {
+  const { db } = await import('@/lib/db');
+  const claimed = await db.order.updateMany({ where: { id: orderId, restockedAt: null }, data: { restockedAt: new Date() } });
+  if (claimed.count === 0) return; // already restocked
+  const order = await db.order.findUnique({ where: { id: orderId }, select: { items: { select: { productId: true, qty: true } } } });
+  if (!order) return;
+  for (const it of order.items) {
+    if (!it.productId) continue;
+    await db.product.updateMany({ where: { id: it.productId, trackInventory: true }, data: { stockQty: { increment: it.qty } } }).catch(() => {});
+  }
+}
