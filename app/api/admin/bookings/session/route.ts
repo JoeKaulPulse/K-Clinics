@@ -118,7 +118,7 @@ export async function POST(req: Request) {
         const { logAudit } = await import('@/lib/audit');
         await logAudit({
           action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId,
-          summary: `Session answer "${field}" edited (previously saved ${new Date(prev.at).toLocaleString('en-GB')} by ${prev.by})`,
+          summary: `Session answer "${field}" edited (previously saved ${new Date(prev.at).toLocaleString('en-GB', { timeZone: CLINIC_TZ })} by ${prev.by})`,
         }).catch(() => {});
       }
       return ok();
