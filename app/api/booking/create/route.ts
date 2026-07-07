@@ -3,6 +3,7 @@ import { bookingCreateSchema } from '@/lib/validation';
 import { crmEnabled } from '@/lib/crm';
 import { stripeEnabled } from '@/lib/stripe';
 import { getTreatment, bookingFor } from '@/lib/treatments';
+import { CLINIC_TZ } from '@/lib/clinic-time';
 
 export const runtime = 'nodejs';
 
@@ -163,7 +164,7 @@ export async function POST(req: Request) {
   const { logAudit } = await import('@/lib/audit');
   await logAudit({
     action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id,
-    summary: `Booking created: ${treatment.title} on ${start.toLocaleString('en-GB')}`,
+    summary: `Booking created: ${treatment.title} on ${start.toLocaleString('en-GB', { timeZone: CLINIC_TZ })}`,
     meta: { treatmentSlug: d.slug, pricePence: finalPrice },
   });
   if (practitionerId) {

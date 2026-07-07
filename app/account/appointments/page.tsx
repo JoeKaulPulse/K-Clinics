@@ -8,6 +8,7 @@ import { RedeemPoints } from '@/components/portal/RedeemPoints';
 import { CancelButton } from '@/components/portal/CancelButton';
 import { Reveal } from '@/components/motion/Reveal';
 import { crmEnabled } from '@/lib/crm';
+import { CLINIC_TZ, clinicDateISO } from '@/lib/clinic-time';
 import { formatPrice } from '@/lib/treatments';
 import { pt } from '@/lib/i18n-portal';
 import type { Locale } from '@/lib/i18n';
@@ -62,8 +63,8 @@ export default async function AppointmentsPage() {
                 <div className="flex items-center gap-4">
                   {/* Date chip */}
                   <div className="grid h-14 w-14 shrink-0 place-items-center rounded-[var(--radius-md)] bg-[var(--color-ink)] text-[var(--color-porcelain)]">
-                    <span className="font-[family-name:var(--font-display)] text-lg leading-none">{b.startAt.getDate()}</span>
-                    <span className="text-[0.6rem] uppercase tracking-wide">{b.startAt.toLocaleDateString(lc, { month: 'short' })}</span>
+                    <span className="font-[family-name:var(--font-display)] text-lg leading-none">{Number(clinicDateISO(b.startAt).slice(-2))}</span>
+                    <span className="text-[0.6rem] uppercase tracking-wide">{b.startAt.toLocaleDateString(lc, { month: 'short', timeZone: CLINIC_TZ })}</span>
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
@@ -71,7 +72,7 @@ export default async function AppointmentsPage() {
                       <span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-wide ${STATUS_STYLE[b.status] || ''}`}>{t(`status.${b.status}`)}</span>
                     </div>
                     <p className="text-sm text-[var(--color-stone)]">
-                      {b.startAt.toLocaleDateString(lc, { weekday: 'long', day: 'numeric', month: 'long' })} · {b.startAt.toLocaleTimeString(lc, { hour: '2-digit', minute: '2-digit' })}
+                      {b.startAt.toLocaleDateString(lc, { weekday: 'long', day: 'numeric', month: 'long', timeZone: CLINIC_TZ })} · {b.startAt.toLocaleTimeString(lc, { hour: '2-digit', minute: '2-digit', timeZone: CLINIC_TZ })}
                       <span className="ml-2 text-[var(--color-gold)]">· {when}</span>
                     </p>
                   </div>
@@ -119,7 +120,7 @@ export default async function AppointmentsPage() {
                 {b.treatmentTitle}
                 <span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-wide ${STATUS_STYLE[b.status] || ''}`}>{t(`status.${b.status}`)}</span>
               </span>
-              <span className="text-[var(--color-stone)]">{b.startAt.toLocaleDateString(lc, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+              <span className="text-[var(--color-stone)]">{b.startAt.toLocaleDateString(lc, { day: 'numeric', month: 'short', year: 'numeric', timeZone: CLINIC_TZ })}</span>
             </li>
           ))}
         </ul>
