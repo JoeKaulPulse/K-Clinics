@@ -342,7 +342,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                       </p>
                       <p className="text-xs text-[var(--color-stone)]">v{a.version} · {new Date(a.submittedAt).toLocaleDateString('en-GB')}</p>
                     </div>
-                    {a.tampered && <p className="mt-1 text-xs font-medium text-[var(--color-blush)]">⚠ Integrity check failed — record may have been altered.</p>}
+                    {a.tampered && <p className="mt-1 text-xs font-medium text-[var(--color-blush-deep)]">⚠ Integrity check failed — record may have been altered.</p>}
                     {a.translatedNote && <p className="mt-1 inline-block rounded-full bg-[var(--color-bone)] px-2.5 py-0.5 text-[0.65rem] text-[var(--color-stone)]">🌐 {a.translatedNote}</p>}
                     <dl className="mt-3 space-y-2">
                       {a.items.map((it) => (
@@ -427,7 +427,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                         {dc.percent}% · {dc.status.toLowerCase()}
                       </span>
                     </div>
-                    {dc.flagged && <p className="mt-1 text-xs font-medium text-[var(--color-blush)]">⚠ Flagged — matched an existing claim.</p>}
+                    {dc.flagged && <p className="mt-1 text-xs font-medium text-[var(--color-blush-deep)]">⚠ Flagged — matched an existing claim.</p>}
                     <div className="mt-2 flex items-center gap-2">
                       {dc.status === 'ACTIVE' && <DiscountAction claimId={dc.id} action="revoke" label="Revoke" />}
                       {(dc.status === 'BLOCKED' || dc.status === 'REVOKED') && <DiscountAction claimId={dc.id} action="restore" label="Grant anyway" />}

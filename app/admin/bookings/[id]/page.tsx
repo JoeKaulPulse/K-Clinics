@@ -378,7 +378,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
         <div className="mt-6 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)] p-4 text-sm">
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-stone)]">Visit prep</p>
           {visitPrefs.refreshments.length > 0 && <p>☕ Refreshments: <span className="font-medium text-[var(--color-ink)]">{visitPrefs.refreshments.map(refreshmentLabel).join(', ')}</span></p>}
-          {visitPrefs.allergyNote && <p className="text-[var(--color-blush)]">⚠ Allergies/dietary: <span className="font-medium">{visitPrefs.allergyNote}</span></p>}
+          {visitPrefs.allergyNote && <p className="text-[var(--color-blush-deep)]">⚠ Allergies/dietary: <span className="font-medium">{visitPrefs.allergyNote}</span></p>}
           <p className="text-[var(--color-stone)]">Aftercare agreed: {visitPrefs.aftercareAckAt ? `Yes (${visitPrefs.aftercareAckAt.toLocaleDateString('en-GB')})` : 'Not yet'}</p>
           {nextRec && <p className="text-[var(--color-stone)]">Recommended next session: <span className="font-medium text-[var(--color-ink)]">{nextRec}</span></p>}
         </div>
