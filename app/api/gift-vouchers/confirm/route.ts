@@ -31,7 +31,15 @@ export async function POST(req: Request) {
   if (res.ok) {
     const { sendPurchase } = await import('@/lib/conversions');
     const totalPence = (voucher.amountPence ?? 0) + (voucher.physicalFeePence ?? 0);
-    sendPurchase({ bookingId: parsed.data.voucherId, valuePence: totalPence, email: voucher.purchaserEmail }).catch(() => {});
+    // PRJ-918.13: the purchaser gave no marketing consent at checkout (no opt-in
+    // field on this form), so only pass their email to Meta/GA4 if they're
+    // already an opted-in, non-unsubscribed client from elsewhere.
+    const purchaser = await db.client.findFirst({
+      where: { email: voucher.purchaserEmail },
+      select: { marketingOptIn: true, unsubscribed: true },
+    });
+    const consentedEmail = purchaser?.marketingOptIn && !purchaser.unsubscribed ? voucher.purchaserEmail : null;
+    sendPurchase({ bookingId: parsed.data.voucherId, valuePence: totalPence, email: consentedEmail }).catch(() => {});
   }
   return NextResponse.json(res, { status: res.ok ? 200 : 400 });
 }
