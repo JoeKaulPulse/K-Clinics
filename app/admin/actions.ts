@@ -68,6 +68,11 @@ export async function eraseClientData(clientId: string) {
     db.consultationNote.deleteMany({ where: { consultation: { clientId } } }),
     // Hard-delete the records that exist only to serve the data subject.
     db.interaction.deleteMany({ where: { clientId } }),
+    // PRJ-918.6: Task rows auto-created from a follow-up concern (lib/followup.ts)
+    // embed the client's real name in the title and a quoted clinical concern in
+    // detail, linked directly via clientId — no retention basis once erased. Same
+    // treatment as ConsultationNote/Interaction above: hard-delete.
+    db.task.deleteMany({ where: { clientId } }),
     db.healthAssessment.deleteMany({ where: { clientId } }),
     db.beforePhoto.deleteMany({ where: { clientId } }),
     db.aiAnalysis.deleteMany({ where: { clientId } }),
