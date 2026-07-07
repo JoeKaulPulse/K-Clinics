@@ -85,6 +85,8 @@ export async function getAnalytics() {
     topTreatments,
     today: todays.map((b) => ({
       id: b.id,
+      // Clinic-local — the server runs in UTC, so an implicit-timezone render put
+      // the dashboard's "today" list an hour off during BST (BLD-795).
       time: b.startAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: CLINIC_TZ }),
       treatment: b.treatmentTitle,
       client: [b.client.firstName, b.client.lastName].filter(Boolean).join(' '),

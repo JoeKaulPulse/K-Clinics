@@ -22,6 +22,7 @@ export function ConsentSigner({
   const [name, setName] = useState(defaultName);
   const [ticks, setTicks] = useState<boolean[]>(acknowledgements.map(() => false));
   const [hasSig, setHasSig] = useState(false);
+  const [typedSig, setTypedSig] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [readPct, setReadPct] = useState(0);
@@ -36,9 +37,10 @@ export function ConsentSigner({
     setErr('');
     if (!name.trim()) return setErr('Please type your full name.');
     if (!allTicked) return setErr('Please confirm every statement first.');
-    if (!hasSig) return setErr('Please sign in the box.');
-    const signatureDataUrl = padRef.current?.toDataURL() ?? '';
-    if (!signatureDataUrl) return setErr('Please sign in the box.');
+    const typedTrim = typedSig.trim();
+    if (!hasSig && typedTrim.length < 2) return setErr('Please sign in the box, or type your name to sign.');
+    const signatureDataUrl = hasSig ? (padRef.current?.toDataURL() ?? '') : renderTypedSignature(typedTrim);
+    if (!signatureDataUrl) return setErr('Please sign in the box, or type your name to sign.');
     setBusy(true);
     const res = await fetch('/api/consent/sign', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -175,9 +177,22 @@ export function ConsentSigner({
               <div className="mt-5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--color-stone)]">Signature</span>
-                  {hasSig && <button type="button" onClick={() => padRef.current?.clear()} className="min-h-9 rounded-full px-3 text-xs text-[var(--color-stone)] transition-colors hover:text-[var(--color-ink)]">Start again</button>}
+                  {(hasSig || typedSig) && (
+                    <button type="button" onClick={() => { padRef.current?.clear(); setTypedSig(''); }} className="min-h-9 rounded-full px-3 text-xs text-[var(--color-stone)] transition-colors hover:text-[var(--color-ink)]">Start again</button>
+                  )}
                 </div>
                 <SignaturePad handleRef={padRef} hasSig={hasSig} onInk={setHasSig} />
+                <div className="mt-3">
+                  <label htmlFor="typed-signature" className="block text-xs font-medium uppercase tracking-[0.16em] text-[var(--color-stone)]">
+                    Can’t draw? Type your full name to sign
+                  </label>
+                  <input
+                    id="typed-signature" value={typedSig} onChange={(e) => setTypedSig(e.target.value)}
+                    autoComplete="off" placeholder="Type your full name here"
+                    className="mt-1.5 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-3 text-base italic outline-none transition-colors focus:border-[var(--color-gold)]"
+                    style={{ fontFamily: 'var(--font-display), cursive' }}
+                  />
+                </div>
               </div>
 
               {err && <p role="alert" aria-live="assertive" className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-3 py-2 text-sm">{err}</p>}
@@ -198,6 +213,22 @@ export function ConsentSigner({
       </AnimatePresence>
     </div>
   );
+}
+
+// Keyboard/switch-access fallback for the pointer-only ink pad (BLD-796): renders
+// a typed name as an image, so a typed signature seals into the consent record
+// exactly like a drawn one — same signatureDataUrl contract, same tamper-evident guarantee.
+function renderTypedSignature(text: string): string {
+  const canvas = document.createElement('canvas');
+  canvas.width = 600; canvas.height = 176;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#2a2420';
+  ctx.font = 'italic 48px "Brush Script MT", cursive';
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2, canvas.width - 40);
+  return canvas.toDataURL('image/png');
 }
 
 type SignaturePadHandle = { toDataURL: () => string; clear: () => void };

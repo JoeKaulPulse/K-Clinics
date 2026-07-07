@@ -33,7 +33,20 @@ export async function recordNps(token: string, data: { score?: number; comment?:
   if (typeof data.score === 'number' && data.score >= 0 && data.score <= 10) { update.score = Math.round(data.score); update.respondedAt = new Date(); }
   if (typeof data.comment === 'string' && data.comment.trim()) update.comment = data.comment.trim().slice(0, 2000);
   if (Object.keys(update).length) await db.npsResponse.update({ where: { token }, data: update });
-  const fresh = await db.npsResponse.findUnique({ where: { token }, select: { score: true } });
+  const fresh = await db.npsResponse.findUnique({ where: { token }, select: { score: true, treatment: true, comment: true } });
+  // A detractor (0-6) is a client flagging serious dissatisfaction — staff should
+  // hear about it now, same as a low star review (BLD-800).
+  if (typeof fresh?.score === 'number' && fresh.score <= 6) {
+    try {
+      const { notifyStaffByPermission } = await import('@/lib/notifications');
+      await notifyStaffByPermission('reviews.manage', {
+        kind: 'status', category: 'reviews', priority: 'high',
+        title: `NPS detractor: ${fresh.score}/10${fresh.treatment ? ` — ${fresh.treatment}` : ''}`,
+        body: (fresh.comment || '').slice(0, 140) || undefined,
+        href: '/admin/nps',
+      });
+    } catch { /* non-fatal */ }
+  }
   return { ok: true, score: fresh?.score ?? null };
 }
 

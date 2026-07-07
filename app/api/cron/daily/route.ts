@@ -19,7 +19,16 @@ export async function GET(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'CRM disabled' }, { status: 503 });
 
   const { runDailyAutomations } = await import('@/lib/automations');
-  const result = await runDailyAutomations();
+  // BLD-801: unlike every step below, this one had no try/catch — a throw here
+  // used to skip every remaining cron job for the day and never reach the
+  // failure-summary alert. Same fallback-and-continue pattern as the rest of the file.
+  let result: Awaited<ReturnType<typeof runDailyAutomations>>;
+  try {
+    result = await runDailyAutomations();
+  } catch (e) {
+    console.error('[cron] daily automations failed (continuing):', (e as Error)?.message);
+    result = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, errors: 1 };
+  }
   // BLD-153: count failures so the cron doesn't silently return 200 when work
   // failed. Vercel Cron / the status page key off the HTTP status + ok flag.
   let failures = result.errors;

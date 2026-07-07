@@ -212,6 +212,8 @@ export async function POST(req: Request) {
       await notifyStaffByPermission('bookings.manage', {
         kind: 'status',
         title: 'Same-day appointment request',
+        // Clinic-local time — the server runs in UTC, so an implicit-timezone render
+        // here told staff the wrong request time during BST (BLD-795).
         body: `${client.firstName || 'A client'} requested ${title} today at ${start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: CLINIC_TZ })}. Approve or decline.`,
         href: `/admin/bookings/${booking.id}`,
       });
