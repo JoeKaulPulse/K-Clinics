@@ -21,13 +21,13 @@ const WIN_BACK_MONTHS = 6;
 const TIER_NUDGE_PENCE = 20000;   // nudge clients within £200 of the next tier
 const ANNIVERSARY_POINTS = 1000;  // bonus points on a membership anniversary
 
-type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; errors: number };
+type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; npsDetractors: number; errors: number };
 
 export async function runDailyAutomations(): Promise<Tally> {
-  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, errors: 0 };
+  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, errors: 0 };
   const { staffWeeklyDigest, staffReengagement } = await import('@/lib/staff-emails');
   // BLD-120: allSettled so one failing automation can't abort the rest.
-  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t)]);
+  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t), detractorFollowUp(t)]);
   for (const r of results) {
     if (r.status === 'rejected') { t.errors++; console.error('[automations] unhandled automation failure:', r.reason); }
   }
@@ -459,6 +459,36 @@ async function promoterFollowUp(t: Tally) {
       res.ok ? t.npsPromoters++ : t.errors++;
     }
   } catch (e) { t.errors++; console.error('[automations] NPS promoter follow-up failed:', (e as Error)?.message); }
+}
+
+// BLD-800: NPS detractors (score 0-6) get a same-tone service-recovery email ~24h
+// after responding — an apology and a direct way to reach the clinic, mirroring the
+// care shown to promoters but with no review/rebook ask. Care-class (canEmailCare),
+// not gated on marketing consent — this is service recovery, not marketing.
+async function detractorFollowUp(t: Tally) {
+  try {
+    const { getSetting } = await import('@/lib/settings');
+    if (!(await getSetting('nps_survey'))) return;
+    const now = Date.now();
+    const from = new Date(now - 3 * 864e5);
+    const responses = await db.npsResponse.findMany({
+      where: { score: { lte: 6 }, respondedAt: { gte: from, lte: new Date(now) }, clientId: { not: null } },
+      include: { client: { select: { id: true, email: true, firstName: true, unsubscribed: true } } },
+      take: 200,
+    });
+    for (const r of responses) {
+      const c = r.client;
+      if (!c || !canEmailCare(c)) continue;
+      const dup = await db.emailEvent.findFirst({ where: { clientId: c.id, kind: 'NPS_DETRACTOR', status: 'SENT', meta: { path: ['npsId'], equals: r.id } } });
+      if (dup) continue;
+      const body = `
+        <h1 style="margin:0 0 12px;font-size:25px;">${escapeHtml(c.firstName || 'Hello')}, we&rsquo;re sorry we fell short</h1>
+        <p style="margin:0 0 14px;">Thank you for the honest feedback — it matters, and we&rsquo;d like the chance to put things right. Please reply to this email or call us on 020 8050 0750 and we&rsquo;ll do everything we can to help.</p>`;
+      const res = await sendEmail({ to: c.email, subject: `${c.firstName || 'Hello'}, we'd like to make this right`, html: emailShell({ body, preheader: `We'd like the chance to put things right.` }) });
+      await db.emailEvent.create({ data: { clientId: c.id, kind: 'NPS_DETRACTOR', to: c.email, subject: 'NPS detractor follow-up', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { npsId: r.id } } }).catch(() => {});
+      res.ok ? t.npsDetractors++ : t.errors++;
+    }
+  } catch (e) { t.errors++; console.error('[automations] NPS detractor follow-up failed:', (e as Error)?.message); }
 }
 
 async function logEvent(clientId: string, kind: 'BIRTHDAY' | 'FOLLOW_UP' | 'WIN_BACK' | 'REVIEW_REQUEST' | 'APPOINTMENT_REMINDER' | 'FORM_REMINDER', to: string, subject: string, res: { ok: boolean; id?: string; error?: string }) {

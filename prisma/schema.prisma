@@ -51,6 +51,7 @@ enum EmailKind {
   SATISFACTION
   REBOOK_NUDGE
   NPS_PROMOTER
+  NPS_DETRACTOR
 }
 
 enum EmailStatus {
