@@ -291,6 +291,10 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
                 <Button href="/pricing" variant="outline">Full price list <ArrowIcon /></Button>
               </div>
               {vatNote && <p className="mt-4 text-xs text-[var(--color-stone)]">{vatNote}</p>}
+              <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+                <Link href="/gallery" className="font-medium text-[var(--color-gold)] hover:underline">See real results →</Link>
+                <Link href="/reviews" className="font-medium text-[var(--color-gold)] hover:underline">Read verified reviews →</Link>
+              </div>
             </Reveal>
             <Reveal delay={0.1}>
               {!enquiryOnly && variants.length ? (
