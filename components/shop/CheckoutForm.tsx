@@ -26,6 +26,7 @@ export function CheckoutForm() {
   const estTotal = subtotalPence + shipping;
 
   async function startCheckout() {
+    if (!f.name.trim() || !f.email.trim()) { setError('Please enter your name and email.'); return; }
     setError(''); setBusy(true);
     const res = await fetch('/api/shop/checkout', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -97,7 +98,7 @@ export function CheckoutForm() {
             </section>
 
             {error && <p role="alert" aria-live="assertive" className="text-sm text-[var(--color-blush)]">{error}</p>}
-            <Button onClick={() => !busy && f.name && f.email && startCheckout()} variant="gold" size="lg">{busy ? 'Please wait…' : 'Continue to payment'} <ArrowIcon /></Button>
+            <Button onClick={() => !busy && startCheckout()} disabled={busy || !f.name || !f.email} variant="gold" size="lg">{busy ? 'Please wait…' : 'Continue to payment'} <ArrowIcon /></Button>
           </>
         ) : (
           <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
