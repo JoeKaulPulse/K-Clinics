@@ -1847,6 +1847,28 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'app/api/gift-vouchers/confirm/route.ts:32-34 called sendPurchase({ ..., email: voucher.purchaserEmail }) unconditionally, unlike every other conversion call site (app/admin/bookings/actions.ts:92, app/api/booking/start/route.ts:239, app/api/consult/route.ts:109), which all gate email on marketingOptIn. The voucher checkout never collects a marketing opt-in at all, so the purchaser\'s hashed email was sent to Meta\'s Advanced Matching with no consent signal.',
     notes: ['Fix: on confirm, look up an existing Client by purchaser email and only forward the email to sendPurchase if that client is marketingOptIn and not unsubscribed; otherwise pass null (default-closed, matching the other call sites). app/api/gift-vouchers/confirm/route.ts.'],
   },
+  {
+    title: 'System-wide appointment time mismatch (14:45 requested shows as 15:45) (BLD-795)', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude',
+    value: 9, effort: 3,
+    detail: 'Owner-reported (issue #1597): a booking requested for one time displayed an hour later once confirmed. Two root causes. (a) Several server-side renders of a booking startAt lacked an explicit timeZone, so on Vercel\'s UTC runtime they showed the wrong hour during BST while other surfaces (which already set Europe/London) were correct. (b) Staff manual date/time entry parsed "YYYY-MM-DDTHH:MM" with new Date(`${date}T${time}`), which uses the DEVICE timezone — a non-UK/misconfigured staff device could silently store a wrong instant.',
+    notes: [
+      'Added clinicLocalToUTC(dateISO, "HH:MM") to lib/clinic-time.ts, delegating to the proven clinicWallTimeToUTC (correct for BST + GMT). Wired into every staff manual-entry point: components/admin/NewBookingButton.tsx, components/admin/ScheduleFollowUp.tsx, components/admin/BookingActions.tsx (reschedule).',
+      'Added explicit timeZone: Europe/London to ~10 other server-side renders of booking times: staff notifications (lib/booking-actions.ts, app/api/booking/start/route.ts), audit summaries (app/api/booking/create/route.ts, app/api/admin/bookings/session/route.ts), admin search, dashboard today list (lib/crm-data.ts), portal appointments + hero, booking flow, next-visit recommendation. Only the timeZone key was added; no format strings changed.',
+      'Verified no double-conversion: rescheduleBooking re-parses the passed value as an absolute instant (new Date(newStartISO)); client-facing and in-session flows use server-provided absolute slot ISO strings, not wall-clock parsing.',
+      'Residual: other admin datetime-local surfaces (ScheduleManager, TimeOffManager, LiveClassManager, RoomClosures, MaintenanceScheduler) still parse with new Date(value) — same latent device-timezone class, out of this scope; flagged for a follow-up as staff availability feeds slot generation.',
+    ],
+  },
+  {
+    title: 'Keyboard-operable consent signing + NPS detractor alerts + cron isolation (BLD-796, BLD-800, BLD-801)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 3,
+    detail: 'Three accessibility/reliability fixes shipped together. BLD-796: the consent signature pad was pointer-only, unusable by keyboard/switch users. BLD-800: NPS detractors (score 0-6) had no staff alert and no service-recovery follow-up, unlike low star reviews and NPS promoters. BLD-801: the daily-cron automations step was the only step with no try/catch, so a throw skipped every remaining job and never reached the failure-summary alert.',
+    notes: [
+      'BLD-796: added a "type your full name to sign" fallback in components/consent/ConsentSigner.tsx that renders the typed name to a canvas image (data:image/png), satisfying the existing signatureDataUrl.startsWith("data:image/") API contract. Whitespace-only input is rejected (trimmed length must be >= 2), mirroring the blank-canvas guard.',
+      'BLD-800: NPS detractors now trigger a high-priority staff notification (lib/nps.ts, mirroring the review-rating flow) and a detractorFollowUp daily automation (lib/automations.ts) — a service-recovery apology gated on canEmailCare (transactional, not marketing), deduped per-npsId via emailEvent kind NPS_DETRACTOR. Backed by an additive NPS_DETRACTOR value on the EmailKind enum (prisma/schema.prisma).',
+      'BLD-801: wrapped runDailyAutomations() in try/catch with a Tally-shaped fallback in app/api/cron/daily/route.ts, matching the pattern used by every other cron step so one failure no longer aborts the day.',
+      'Shipped on branch claude/bold-rubin-dq27hf (commits b4060e2, 8f5a9b0) pending merge to main.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
