@@ -4,6 +4,7 @@ import { crmEnabled } from '@/lib/crm';
 import { stripeEnabled } from '@/lib/stripe';
 import { bookingFor } from '@/lib/treatments';
 import { encClinical, decClinical } from '@/lib/clinical-crypto';
+import { CLINIC_TZ } from '@/lib/clinic-time';
 
 export const runtime = 'nodejs';
 
@@ -205,13 +206,13 @@ export async function POST(req: Request) {
   // a member of staff approves first. Notify the team and return a "requested" state.
   if (sameDayRequest) {
     const { logAudit } = await import('@/lib/audit');
-    await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Same-day appointment requested: ${title} on ${start.toLocaleString('en-GB')}`, meta: { totalPence: totalPrice, sameDayRequest: true } });
+    await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Same-day appointment requested: ${title} on ${start.toLocaleString('en-GB', { timeZone: CLINIC_TZ })}`, meta: { totalPence: totalPrice, sameDayRequest: true } });
     try {
       const { notifyStaffByPermission } = await import('@/lib/notifications');
       await notifyStaffByPermission('bookings.manage', {
         kind: 'status',
         title: 'Same-day appointment request',
-        body: `${client.firstName || 'A client'} requested ${title} today at ${start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}. Approve or decline.`,
+        body: `${client.firstName || 'A client'} requested ${title} today at ${start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: CLINIC_TZ })}. Approve or decline.`,
         href: `/admin/bookings/${booking.id}`,
       });
     } catch { /* best-effort */ }

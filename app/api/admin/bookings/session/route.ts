@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
+import { CLINIC_TZ } from '@/lib/clinic-time';
 
 export const runtime = 'nodejs';
 
@@ -317,7 +318,7 @@ export async function POST(req: Request) {
         await db.appointmentSession.update({ where: { bookingId }, data: { data: data as object } }).catch(() => {});
       }
       const { logAudit } = await import('@/lib/audit');
-      await logAudit({ action: 'BOOKING_CREATED', actor: session.email, actorRole: session.role, bookingId: next.id, clientId: current.clientId, summary: `Next visit booked in-session for ${next.startAt.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} (${next.status})` }).catch(() => {});
+      await logAudit({ action: 'BOOKING_CREATED', actor: session.email, actorRole: session.role, bookingId: next.id, clientId: current.clientId, summary: `Next visit booked in-session for ${next.startAt.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: CLINIC_TZ })} (${next.status})` }).catch(() => {});
       // The confirmation the farewell screen promises — email + .ics + clinic copy.
       if (next.status === 'CONFIRMED') {
         try { const { notifyBookingConfirmed } = await import('@/lib/booking-notify'); await notifyBookingConfirmed(next.id); } catch (e) { console.error('[session] rebook confirmation failed:', (e as Error)?.message); }
