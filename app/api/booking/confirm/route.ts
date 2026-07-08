@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 import { stripeEnabled } from '@/lib/stripe';
 
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
     booking = await db.booking.findUnique({ where: { id: parsed.data.bookingId }, include: { client: true } });
   } catch (err) {
     console.error('[booking/confirm] DB read failed:', (err as Error)?.message);
+    Sentry.captureException(err, { tags: { route: 'booking/confirm', stage: 'db-read' } });
     return NextResponse.json({ ok: false, error: 'Database unavailable' }, { status: 503 });
   }
   if (!booking) return NextResponse.json({ ok: false, error: 'Booking not found' }, { status: 404 });
@@ -34,6 +36,7 @@ export async function POST(req: Request) {
     si = await stripe().setupIntents.retrieve(booking.stripeSetupIntentId);
   } catch (err) {
     console.error('[booking/confirm] Stripe retrieve failed:', (err as Error)?.message);
+    Sentry.captureException(err, { tags: { route: 'booking/confirm', stage: 'stripe-retrieve' } });
     return NextResponse.json({ ok: false, error: 'Payment provider unavailable' }, { status: 502 });
   }
   if (si.status !== 'succeeded' || !si.payment_method) {
@@ -46,6 +49,7 @@ export async function POST(req: Request) {
     await stripe().customers.update(booking.stripeCustomerId!, { invoice_settings: { default_payment_method: pmId } });
   } catch (err) {
     console.error('[booking/confirm] Stripe customer update failed:', (err as Error)?.message);
+    Sentry.captureException(err, { tags: { route: 'booking/confirm', stage: 'stripe-customer-update' } });
     return NextResponse.json({ ok: false, error: 'Payment provider unavailable' }, { status: 502 });
   }
 
@@ -56,6 +60,7 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     console.error('[booking/confirm] DB update failed:', (err as Error)?.message);
+    Sentry.captureException(err, { tags: { route: 'booking/confirm', stage: 'db-update' } });
     return NextResponse.json({ ok: false, error: 'Database unavailable' }, { status: 503 });
   }
 

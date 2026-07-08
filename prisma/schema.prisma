@@ -649,6 +649,12 @@ model Booking {
   @@index([clientId])
   @@index([practitionerId])
   @@index([marketingCampaignId])
+  // PRJ-939.7: the public booking-widget availability lookup (cliniciansForDay,
+  // slot search in lib/availability.ts) filters by status IN (...) AND startAt
+  // BETWEEN ..., often with locationId too — composite indexes let Postgres use
+  // one index instead of scanning on the busiest customer-facing query.
+  @@index([status, startAt])
+  @@index([locationId, startAt])
 }
 
 // ── Interactive appointment session (BLD-138) ───────────────────────────────

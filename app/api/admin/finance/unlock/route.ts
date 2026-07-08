@@ -14,6 +14,14 @@ export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}));
   const { hasFinancePin, setFinancePin, verifyFinancePin, grantFinanceUnlock } = await import('@/lib/finance-lock');
 
+  // PRJ-939.3: rate-limit BOTH the unlock path and the set/change-PIN path —
+  // 'set' also verifies a guessed currentPin and was previously unguarded,
+  // letting a session brute-force the 6-digit PIN with no attempt cap.
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'finance-unlock', 8, 300, 'admin'))) {
+    return NextResponse.json({ ok: false, error: 'Too many attempts — wait a few minutes.' }, { status: 429 });
+  }
+
   if (b.op === 'set') {
     // First-time setup (or there's no PIN yet). Changing an existing PIN needs the old one.
     if (await hasFinancePin(session.sub)) {
@@ -26,10 +34,6 @@ export async function POST(req: Request) {
   }
 
   // Default: unlock with the PIN.
-  const { enforceRateLimit } = await import('@/lib/security/guard');
-  if (!(await enforceRateLimit(req, 'finance-unlock', 8, 300, 'admin'))) {
-    return NextResponse.json({ ok: false, error: 'Too many attempts — wait a few minutes.' }, { status: 429 });
-  }
   if (!(await hasFinancePin(session.sub))) return NextResponse.json({ ok: false, error: 'No PIN set yet.', needsSetup: true }, { status: 400 });
   if (!(await verifyFinancePin(session.sub, String(b.pin || '')))) return NextResponse.json({ ok: false, error: 'Incorrect PIN.' }, { status: 400 });
   await grantFinanceUnlock(session.sub);

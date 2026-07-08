@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 import { stripeEnabled } from '@/lib/stripe';
 
@@ -35,6 +36,7 @@ export async function POST(req: Request) {
     await finalizeBookingCharge(bookingId, pi.id, receivedPence, { late: pi.metadata?.late === 'true' });
   } catch (err) {
     console.error('[pay-confirm] finalize failed for booking', bookingId, err);
+    Sentry.captureException(err, { tags: { route: 'booking/pay-confirm' }, extra: { bookingId } });
     return NextResponse.json({ ok: false, error: 'Booking could not be confirmed. Payment was taken — please contact us to confirm your appointment.' }, { status: 503 });
   }
   return NextResponse.json({ ok: true });
