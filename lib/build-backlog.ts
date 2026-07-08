@@ -1869,7 +1869,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: 'Finance PIN brute-force gap, booking-confirm Sentry coverage, staff security-change notifications, booking availability index (PRJ-939.3, PRJ-939.4, PRJ-939.7, PRJ-939.8)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Finance PIN brute-force gap, booking-confirm Sentry coverage, staff security-change notifications, booking availability index (PRJ-939.3, PRJ-939.4, PRJ-939.7, PRJ-939.8)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1616),
     value: 7, effort: 2,
     detail: 'Four End-of-Day audit findings shipped together. PRJ-939.3: the finance PIN change endpoint (app/api/admin/finance/unlock/route.ts) rate-limited the unlock path but not the set/change-PIN path, which also verifies a guessed currentPin -- unlimited brute-force. PRJ-939.4: staff 2FA reset and admin-driven password reset (app/api/admin/staff/route.ts) sent no notification to the affected staff member, so a compromised staff.manage account could silently strip 2FA or change a colleague\'s password. PRJ-939.7: lib/availability.ts\'s hot-path booking query (status IN (...) AND startAt BETWEEN ..., often + locationId) had no composite index to match. PRJ-939.8: booking-confirmation failures (app/api/booking/confirm/route.ts, app/api/booking/pay-confirm/route.ts) only console.error\'d, never reaching Sentry, unlike the Stripe webhook.',
     notes: [
@@ -1880,7 +1880,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: 'Manual Price Override (BLD-812)', type: 'TASK', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Manual Price Override (BLD-812)', type: 'TASK', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1616),
     value: 8, effort: 2,
     detail: 'Owner-reported: staff creating a booking manually (phone/walk-in) could only use the treatment\'s default price, with no way to enter a custom amount for a promotion, special offer, or one-off agreed rate.',
     notes: [
