@@ -14,7 +14,7 @@ type Result = { bookingId: string; manageToken?: string; hasCard?: boolean; clie
 const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-gold)]';
 const priceLabel = (p: number) => (p > 0 ? `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}` : 'On consultation');
 
-export function NewBookingButton({ treatments }: { treatments: Treatment[] }) {
+export function NewBookingButton({ treatments, isAdmin = false }: { treatments: Treatment[]; isAdmin?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -24,12 +24,12 @@ export function NewBookingButton({ treatments }: { treatments: Treatment[] }) {
         </svg>
         New phone booking
       </button>
-      <AnimatePresence>{open && <Modal treatments={treatments} onClose={() => setOpen(false)} />}</AnimatePresence>
+      <AnimatePresence>{open && <Modal treatments={treatments} isAdmin={isAdmin} onClose={() => setOpen(false)} />}</AnimatePresence>
     </>
   );
 }
 
-function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () => void }) {
+function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAdmin: boolean; onClose: () => void }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState('');
@@ -47,7 +47,7 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
   const [matches, setMatches] = useState<Found[]>([]);
   const [selected, setSelected] = useState<Found | null>(null);
   const [selectedGroup, setSelectedGroup] = useState(firstGroup);
-  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', treatmentSlug: firstSlug, variantId: treatments.find((t) => t.slug === firstSlug)?.variants?.[0]?.id ?? '', asConsultation: false, sessions: 1, date: '', time: '10:00', notes: '' });
+  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', treatmentSlug: firstSlug, variantId: treatments.find((t) => t.slug === firstSlug)?.variants?.[0]?.id ?? '', asConsultation: false, sessions: 1, date: '', time: '10:00', notes: '', overridePrice: false, overridePriceValue: '' });
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD((p) => ({ ...p, [k]: v }));
   // The standalone "Consultation" category is already a consultation; the toggle
   // is for booking a *real* treatment category as a consultation (BLD-208).
@@ -83,7 +83,11 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
     if (tab === 'existing' && !selected) return setError('Find and select the client, or switch to “New client”.');
     if (tab === 'new' && (!d.firstName.trim() || !/\S+@\S+\.\S+/.test(d.email))) return setError('New client needs a first name and a valid email.');
     if (!d.date) return setError('Choose a date.');
+    if (isAdmin && d.overridePrice && (d.overridePriceValue.trim() === '' || Number(d.overridePriceValue) < 0 || !Number.isFinite(Number(d.overridePriceValue)))) {
+      return setError('Enter a valid override price.');
+    }
     const startISO = clinicLocalToUTC(d.date, d.time).toISOString();
+    const overridePricePence = isAdmin && d.overridePrice ? Math.round(Number(d.overridePriceValue) * 100) : undefined;
     start(async () => {
       const r = await createManualBooking({
         clientId: selected?.id,
@@ -91,7 +95,7 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
         lastName: selected?.lastName || d.lastName,
         email: selected?.email || d.email,
         phone: selected?.phone || d.phone,
-        treatmentSlug: d.treatmentSlug, variantId: d.asConsultation ? undefined : (d.variantId || undefined), asConsultation: d.asConsultation, sessions: d.sessions, startISO, notes: d.notes, override,
+        treatmentSlug: d.treatmentSlug, variantId: d.asConsultation ? undefined : (d.variantId || undefined), asConsultation: d.asConsultation, sessions: d.sessions, startISO, notes: d.notes, override, overridePricePence,
       });
       if (r.ok) setResult(r as Result);
       else { setError(r.error || 'Could not create booking.'); setClash(Boolean(r.clash)); }
@@ -182,6 +186,20 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
               <input className={f} type="date" value={d.date} onChange={(e) => set('date', e.target.value)} />
               <input className={f} type="time" value={d.time} onChange={(e) => set('time', e.target.value)} />
             </div>
+            {/* BLD-812: admin-only custom price for this specific appointment
+                (promotions, special agreed rates) — never shown to non-admin staff. */}
+            {isAdmin && (
+              <div className="space-y-2 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-line)] p-3">
+                <label className="flex items-center gap-2 text-sm text-[var(--color-stone)]">
+                  <input type="checkbox" checked={d.overridePrice} onChange={(e) => set('overridePrice', e.target.checked)} />
+                  Override price for this booking (admin only)
+                </label>
+                {d.overridePrice && (
+                  <input className={f} type="number" min={0} step="0.01" inputMode="decimal" placeholder="Custom total price (£)"
+                    value={d.overridePriceValue} onChange={(e) => set('overridePriceValue', e.target.value)} />
+                )}
+              </div>
+            )}
             <textarea className={f} rows={2} placeholder="Notes (optional)" value={d.notes} onChange={(e) => set('notes', e.target.value)} />
 
             {error && <p role="alert" aria-live="assertive" className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm">{error}</p>}

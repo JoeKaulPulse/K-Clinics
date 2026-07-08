@@ -1868,6 +1868,27 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'BLD-801: wrapped runDailyAutomations() in try/catch with a Tally-shaped fallback in app/api/cron/daily/route.ts, matching the pattern used by every other cron step so one failure no longer aborts the day.',
     ],
   },
+  {
+    title: 'Finance PIN brute-force gap, booking-confirm Sentry coverage, staff security-change notifications, booking availability index (PRJ-939.3, PRJ-939.4, PRJ-939.7, PRJ-939.8)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1616),
+    value: 7, effort: 2,
+    detail: 'Four End-of-Day audit findings shipped together. PRJ-939.3: the finance PIN change endpoint (app/api/admin/finance/unlock/route.ts) rate-limited the unlock path but not the set/change-PIN path, which also verifies a guessed currentPin -- unlimited brute-force. PRJ-939.4: staff 2FA reset and admin-driven password reset (app/api/admin/staff/route.ts) sent no notification to the affected staff member, so a compromised staff.manage account could silently strip 2FA or change a colleague\'s password. PRJ-939.7: lib/availability.ts\'s hot-path booking query (status IN (...) AND startAt BETWEEN ..., often + locationId) had no composite index to match. PRJ-939.8: booking-confirmation failures (app/api/booking/confirm/route.ts, app/api/booking/pay-confirm/route.ts) only console.error\'d, never reaching Sentry, unlike the Stripe webhook.',
+    notes: [
+      'PRJ-939.3: moved enforceRateLimit(\'finance-unlock\') above both the \'set\' and default/unlock branches in app/api/admin/finance/unlock/route.ts, so a PIN-change attempt with a guessed currentPin is capped at 8 attempts / 5 minutes same as unlock.',
+      'PRJ-939.4: added tmplStaffSecurityChange (lib/email.ts) and sent it from the reset2fa branch and the password-change branch (when the actor changes someone ELSE\'s password) in app/api/admin/staff/route.ts -- best-effort, never blocks the change itself.',
+      'PRJ-939.7: added @@index([status, startAt]) and @@index([locationId, startAt]) to the Booking model (prisma/schema.prisma) -- additive, safe under the prisma db push gate.',
+      'PRJ-939.8: added Sentry.captureException at every catch site in app/api/booking/confirm/route.ts and app/api/booking/pay-confirm/route.ts, tagged by route/stage, matching the pattern already used in app/api/stripe/webhook/route.ts.',
+    ],
+  },
+  {
+    title: 'Manual Price Override (BLD-812)', type: 'TASK', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1616),
+    value: 8, effort: 2,
+    detail: 'Owner-reported: staff creating a booking manually (phone/walk-in) could only use the treatment\'s default price, with no way to enter a custom amount for a promotion, special offer, or one-off agreed rate.',
+    notes: [
+      'Added an admin-only "Override price for this booking" field to the New Phone Booking modal (components/admin/NewBookingButton.tsx), gated on sessionIsAdmin (OWNER/ADMIN only) and passed through to createManualBooking (app/admin/bookings/create-action.ts).',
+      'The server action re-validates the admin check server-side (never trusts the client flag), validates the override as a non-negative integer amount in pence, and uses it as the booking\'s total price instead of the computed treatment/variant price x sessions.',
+      'Every override is written to the audit log (BOOKING_CREATED) recording both the default and overridden total, so the discount/promotion is traceable.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

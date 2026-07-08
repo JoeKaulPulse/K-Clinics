@@ -537,6 +537,22 @@ export function tmplPasswordChanged(firstName: string) {
   });
 }
 
+// PRJ-939.4: a colleague with staff.manage can silently strip another staff
+// member's 2FA or change their password — this notifies the affected staff
+// member so they'd notice if it wasn't them.
+export function tmplStaffSecurityChange(o: { name: string; change: 'password' | '2fa'; loginUrl: string }) {
+  const label = o.change === 'password' ? 'password was changed' : 'two-factor authentication was reset';
+  return emailShell({
+    preheader: `Your KClinics staff account ${label}`,
+    body: `<h1 style="font-size:24px;margin:0 0 16px;color:#2a2420;">Your staff account ${label}</h1>
+    <p>Hello ${escape(o.name)},</p>
+    <p>This is a confirmation that your K Clinics staff account's ${label}, carried out by another team member with account-management access.</p>
+    <p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">If you weren’t expecting this, please contact an owner or admin right away so we can secure your account.</p>
+    <p style="margin:24px 0;">${btn(o.loginUrl, 'Sign in')}</p>
+    <p>With warmth,<br>The K Clinics team</p>`,
+  });
+}
+
 // ── Gift voucher templates ───────────────────────────────────────────────────
 // The card renders the buyer's chosen design (lib/gift-card-themes). A solid
 // background colour is set first so Outlook (which drops linear-gradient) still
