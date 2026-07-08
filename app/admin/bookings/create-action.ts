@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
-import { getSession, sessionCan } from '@/lib/auth';
+import { getSession, sessionCan, sessionIsAdmin } from '@/lib/auth';
 import { bookingFor, getTreatment } from '@/lib/treatments';
 
 /** Search existing clients for the phone-booking flow (name / email / phone),
@@ -41,6 +41,9 @@ export async function createManualBooking(input: {
   startISO: string;
   notes?: string;
   override?: boolean;
+  /** BLD-812: admin-only custom total price for this booking (pence), e.g. a
+   *  promotion or one-off agreed rate. Overrides the treatment/variant price. */
+  overridePricePence?: number;
 }) {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
@@ -57,6 +60,10 @@ export async function createManualBooking(input: {
   if (!input.clientId && (!input.email || !input.firstName)) return { ok: false, error: 'Name and email are required for a new client.' };
   const start = new Date(input.startISO);
   if (isNaN(+start)) return { ok: false, error: 'Invalid date/time.' };
+  // BLD-812: only admins/owners may override the treatment price.
+  if (input.overridePricePence != null && !sessionIsAdmin(session)) {
+    return { ok: false, error: 'Only an admin can override the price.' };
+  }
   // BLD-192: staff bookings must NOT inherit the public 2-hour online lead window
   // — reception books same-day and just-arrived clients all the time. We only
   // block times more than 15 minutes in the past (unless "book anyway" is ticked),
@@ -100,7 +107,17 @@ export async function createManualBooking(input: {
   // appointment); the course size + total price live on the primary line item
   // (the detail page reads item.sessions). Consultations are always single.
   const sessions = consultBooking ? 1 : Math.max(1, Math.min(50, Math.round(Number(input.sessions) || 1)));
-  const totalPence = (pricePence ?? 0) * sessions;
+  const defaultTotalPence = (pricePence ?? 0) * sessions;
+  // BLD-812: admin override replaces the computed total (e.g. a promotion or a
+  // custom price agreed with the client) — validated as a non-negative integer.
+  let totalPence = defaultTotalPence;
+  let priceOverridden = false;
+  if (input.overridePricePence != null) {
+    const overridden = Math.round(Number(input.overridePricePence));
+    if (!Number.isFinite(overridden) || overridden < 0) return { ok: false, error: 'Invalid override price.' };
+    totalPence = overridden;
+    priceOverridden = true;
+  }
   const end = new Date(start.getTime() + durationMin * 60000);
 
   const { db } = await import('@/lib/db');
@@ -144,6 +161,18 @@ export async function createManualBooking(input: {
   await db.interaction.create({
     data: { clientId: client.id, type: 'APPOINTMENT', summary: `Booking created by staff: ${bookingTitle}`, author: session.email },
   });
+  if (priceOverridden) {
+    const { logAudit } = await import('@/lib/audit');
+    await logAudit({
+      action: 'BOOKING_CREATED',
+      actor: session.email,
+      actorRole: session.role,
+      bookingId: booking.id,
+      clientId: client.id,
+      summary: `Price overridden on manual booking: £${(totalPence / 100).toFixed(2)} instead of £${(defaultTotalPence / 100).toFixed(2)}`,
+      meta: { defaultTotalPence, overriddenTotalPence: totalPence },
+    });
+  }
 
   // Staff incentive: reward the prior practitioner for a secured repeat booking.
   try { const { awardForRebooking } = await import('@/lib/gamification'); await awardForRebooking(booking.id); } catch { /* non-fatal */ }
