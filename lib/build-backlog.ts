@@ -1889,6 +1889,33 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Every override is written to the audit log (BOOKING_CREATED) recording both the default and overridden total, so the discount/promotion is traceable.',
     ],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Discounted payment-link charges get silently rejected by the Stripe webhook (BLD-797)', type: 'ERROR', urgency: 'P1', status: 'IN_PROGRESS', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'app/api/stripe/webhook/route.ts requires amount_received >= booking.pricePence for booking_balance payments, but staff-created payment links (app/api/admin/bookings/session/route.ts) can legitimately charge less than pricePence when discounted. A successful, discounted Stripe charge fails the underpayment guard and the booking is never finalised.',
+    notes: [
+      'Fix: the paylink case now stamps the agreed amount into payment_intent_data.metadata.expectedPence; the webhook\'s underpayment guard checks against that when present, falling back to booking.pricePence only when it is absent (preserving the original anti-tampering check for the case with no staff-set expectation). app/api/admin/bookings/session/route.ts, app/api/stripe/webhook/route.ts.',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Academy enrolment can be cancelled with a paid fee kept -- no refund, no warning (BLD-764)', type: 'TASK', urgency: 'P1', status: 'IN_PROGRESS', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'app/api/admin/academy/route.ts lets an admin flip an enrolment straight to CANCELLED via a plain status dropdown (components/admin/AcademyManager.tsx) -- no confirm(), unlike the adjacent Remove button -- without ever calling refundEnrolmentPayment, sending any cancellation silently past a paid fee.',
+    notes: [
+      'Fix: selecting CANCELLED in the status dropdown now requires a confirm() naming the amount already paid (if any) and pointing to the separate Refund button for that payment -- matching the confirm() pattern already used by every other destructive control on this page. components/admin/AcademyManager.tsx. Deliberately does not auto-refund: cancellation and refund are staff-judgement decisions (some cancellations are non-refundable per T&Cs) that should stay two explicit actions.',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Exclude noindexed dentistry pages from sitemap.xml (BLD-839)', type: 'TASK', urgency: 'P1', status: 'IN_PROGRESS', assignee: 'claude',
+    value: 5, effort: 1,
+    detail: '/dentistry and 6 dentistry treatment pages render <meta name="robots" content="noindex, nofollow"> live while dentistryLive is false, yet all 7 URLs were still listed in sitemap.xml -- app/sitemap.ts built treatmentSlugs and the /dentistry static path without checking the same dentistryLive flag app/(marketing)/[slug]/page.tsx and app/(marketing)/dentistry/page.tsx already use to noindex them.',
+    notes: [
+      'Fix: sitemap() now reads getSiteConfig().dentistryLive and excludes the /dentistry static path and any treatment slug in the dentistry category when it is false, so the sitemap never advertises a URL the page itself marks noindex. app/sitemap.ts.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

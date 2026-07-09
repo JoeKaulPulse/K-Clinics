@@ -178,7 +178,10 @@ export async function POST(req: Request) {
       const checkout = await stripe().checkout.sessions.create({
         mode: 'payment',
         line_items: [{ quantity: 1, price_data: { currency: 'gbp', unit_amount: amountPence, product_data: { name: b?.treatmentTitle || 'Treatment' } } }],
-        payment_intent_data: { metadata: { bookingId, kind: 'booking_balance' } },
+        // BLD-797: stamp the agreed (possibly discounted) amount so the webhook's
+        // underpayment guard validates against what staff actually asked for,
+        // not the booking's undiscounted pricePence.
+        payment_intent_data: { metadata: { bookingId, kind: 'booking_balance', expectedPence: String(amountPence) } },
         success_url: `${base}/pos-paid?booking=1`,
         cancel_url: `${base}/pos-paid?cancelled=1`,
       });
