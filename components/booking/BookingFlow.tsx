@@ -200,7 +200,12 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
             // us to the card step). Stays here on a transient error so they can retry.
             <div className="py-8 text-center">
               <h3 className="font-[family-name:var(--font-display)] text-2xl">{error ? 'That didn’t go through' : 'Securing your booking…'}</h3>
-              {error && <div className="mt-5"><Button onClick={() => { if (!submitting) submitBooking(); }} variant="gold">Try again <ArrowIcon /></Button></div>}
+              {error && (
+                <div className="mt-5 flex items-center justify-center gap-4">
+                  <button type="button" onClick={() => { setError(''); setStage('upsell'); }} className="text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Change time or details</button>
+                  <Button onClick={() => { if (!submitting) submitBooking(); }} variant="gold">Try again <ArrowIcon /></Button>
+                </div>
+              )}
             </div>
           ) : (
             <AccountStep
