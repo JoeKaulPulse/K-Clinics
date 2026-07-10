@@ -1927,12 +1927,20 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'CSP blocks Google Tag Manager -- GA4/Meta Ads tracking broken sitewide (BLD-845)', type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'CSP blocks Google Tag Manager -- GA4/Meta Ads tracking broken sitewide (BLD-845)', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(1619),
     value: 9, effort: 1,
     detail: 'next.config.mjs script-src allowlist omitted https://www.googletagmanager.com, but components/marketing/TrackingScripts.tsx loads gtag/js from that host. Every page load threw a CSP violation and the script was blocked, so no GA4 pageviews/events or Google Ads conversion tracking fired anywhere on the site.',
     notes: [
       'Fix: added https://www.googletagmanager.com to script-src. Also added the GA4/Ads collect endpoints (google-analytics.com, googleadservices.com, googleads.g.doubleclick.net) plus googletagmanager.com to connect-src, since gtag\'s config/collect beacons need connect-src separately from the script-src load -- fixing script-src alone would have let gtag.js load but its actual pageview/conversion beacons would still have been silently blocked. next.config.mjs.',
-      'Pushed to branch claude/csp-gtm-bld845. Not yet opened as a PR -- the GitHub App connection for this org is disconnected (same root cause as the BLD-831 note above: "GitHub access is not enabled for this session, an org admin must connect the Claude GitHub App"). npx tsc --noEmit and npm run build both pass clean; needs an org admin to reconnect the GitHub App before a PR can be opened and merged.',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'SAR issue (BLD-843)', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(1620),
+    value: 8, effort: 1,
+    detail: 'Clicking "Export all data (SAR)" on a client profile (app/api/admin/clients/[id]/export/route.ts) returned HTTP 500 instead of the GDPR Art. 15 export. Root cause: the callRecords select clause referenced two fields that do not exist on the CallRecord model -- duration and callerNumber -- which throws an unhandled PrismaClientValidationError before the response can be built.',
+    notes: [
+      'Fix: corrected the select to the real schema field names -- durationSec (not duration) and fromNumber/toNumber (not the nonexistent callerNumber). app/api/admin/clients/[id]/export/route.ts. Every other relation/model in the same export handler was cross-checked against prisma/schema.prisma and is valid; this was the only schema-drift mismatch.',
     ],
   },
 ];
