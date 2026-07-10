@@ -1889,6 +1889,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Every override is written to the audit log (BOOKING_CREATED) recording both the default and overridden total, so the discount/promotion is traceable.',
     ],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Booking flow strands client if account creation succeeds but booking-start fails', type: 'ERROR', urgency: 'P0', status: 'IN_PROGRESS', assignee: 'claude',
+    value: 9, effort: 3,
+    detail: 'components/booking/BookingFlow.tsx:203,448 -- after AccountStep.onAuthed fires, submitBooking() runs while stage stays \'account\'; on any /api/booking/start error (slot taken, age gate, treatment unavailable) the back/nav is hidden and only \'Try again\' resends the identical failing request, with no way to change time/details short of a full reload.',
+    notes: [
+      'Fix: added a "Change time or details" link next to "Try again" in the account/authed error state, which clears the error and returns to the upsell step (aftercare/age confirm) -- from there the existing back nav reaches time/variant/service. authed stays true so retrying does not repeat AccountStep. components/booking/BookingFlow.tsx.',
+      'Pushed to branch claude/booking-flow-strand-bld831. Not yet opened as a PR -- the GitHub MCP connector\'s OAuth token expired mid-run and could not be re-authorised from this non-interactive session (org admin needs to reconnect it). npx tsc --noEmit and npm run build (DB_SYNC_NONFATAL=true, Postgres unreachable from this sandbox) both pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
