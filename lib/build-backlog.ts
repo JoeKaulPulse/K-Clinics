@@ -1899,6 +1899,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Pushed to branch claude/booking-flow-strand-bld831. Not yet opened as a PR -- the GitHub MCP connector\'s OAuth token expired mid-run and could not be re-authorised from this non-interactive session (org admin needs to reconnect it). npx tsc --noEmit and npm run build (DB_SYNC_NONFATAL=true, Postgres unreachable from this sandbox) both pass clean.',
     ],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'SAR issue (BLD-843)', type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 1,
+    detail: 'Clicking "Export all data (SAR)" on a client profile (app/api/admin/clients/[id]/export/route.ts) returned HTTP 500 instead of the GDPR Art. 15 export. Root cause: the callRecords select clause referenced two fields that do not exist on the CallRecord model -- duration and callerNumber -- which throws an unhandled PrismaClientValidationError before the response can be built.',
+    notes: [
+      'Fix: corrected the select to the real schema field names -- durationSec (not duration) and fromNumber/toNumber (not the nonexistent callerNumber). app/api/admin/clients/[id]/export/route.ts. Every other relation/model in the same export handler was cross-checked against prisma/schema.prisma and is valid; this was the only schema-drift mismatch.',
+      'Pushed to branch claude/sar-export-500-bld843. Not yet opened as a PR -- the GitHub App connection for this org is disconnected (same root cause as the BLD-831 note above), so PR creation/merge is blocked pending an org admin reconnecting it. npx tsc --noEmit and npm run build both pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
