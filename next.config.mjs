@@ -23,12 +23,16 @@ const csp = [
   "media-src 'self' data: blob: https:",
   "font-src 'self' https://fonts.gstatic.com data:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "script-src 'self' 'unsafe-inline' https://js.stripe.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://maps.googleapis.com https://maps.gstatic.com https://connect.facebook.net",
+  "script-src 'self' 'unsafe-inline' https://js.stripe.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://maps.googleapis.com https://maps.gstatic.com https://connect.facebook.net https://www.googletagmanager.com",
   // NB: the @vercel/blob *client* SDK performs client-direct uploads via
   // https://vercel.com/api/blob (not the storage host directly), so vercel.com
   // MUST be allowed here or every client-direct upload (team chat, academy PDFs,
   // homework, build attachments) is CSP-blocked in the browser.
-  "connect-src 'self' https://api.stripe.com https://m.stripe.network https://r.stripe.com https://challenges.cloudflare.com https://maps.googleapis.com https://vercel.com https://blob.vercel-storage.com https://*.blob.vercel-storage.com https://*.public.blob.vercel-storage.com https://*.sentry.io https://sentry.io https://connect.facebook.net https://graph.facebook.com",
+  // google-analytics.com/googletagmanager.com/googleadservices.com carry the
+  // GA4 + Google Ads conversion beacons that components/marketing/TrackingScripts.tsx
+  // fires via gtag() — script-src alone lets gtag.js load but its collect/config
+  // calls still need connect-src or they silently fail.
+  "connect-src 'self' https://api.stripe.com https://m.stripe.network https://r.stripe.com https://challenges.cloudflare.com https://maps.googleapis.com https://vercel.com https://blob.vercel-storage.com https://*.blob.vercel-storage.com https://*.public.blob.vercel-storage.com https://*.sentry.io https://sentry.io https://connect.facebook.net https://graph.facebook.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://www.googleadservices.com https://googleads.g.doubleclick.net",
   "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com",
   "worker-src 'self' blob:",
   'upgrade-insecure-requests',
