@@ -1899,6 +1899,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Pushed to branch claude/booking-flow-strand-bld831. Not yet opened as a PR -- the GitHub MCP connector\'s OAuth token expired mid-run and could not be re-authorised from this non-interactive session (org admin needs to reconnect it). npx tsc --noEmit and npm run build (DB_SYNC_NONFATAL=true, Postgres unreachable from this sandbox) both pass clean.',
     ],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'CSP blocks Google Tag Manager -- GA4/Meta Ads tracking broken sitewide (BLD-845)', type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    value: 9, effort: 1,
+    detail: 'next.config.mjs script-src allowlist omitted https://www.googletagmanager.com, but components/marketing/TrackingScripts.tsx loads gtag/js from that host. Every page load threw a CSP violation and the script was blocked, so no GA4 pageviews/events or Google Ads conversion tracking fired anywhere on the site.',
+    notes: [
+      'Fix: added https://www.googletagmanager.com to script-src. Also added the GA4/Ads collect endpoints (google-analytics.com, googleadservices.com, googleads.g.doubleclick.net) plus googletagmanager.com to connect-src, since gtag\'s config/collect beacons need connect-src separately from the script-src load -- fixing script-src alone would have let gtag.js load but its actual pageview/conversion beacons would still have been silently blocked. next.config.mjs.',
+      'Pushed to branch claude/csp-gtm-bld845. Not yet opened as a PR -- the GitHub App connection for this org is disconnected (same root cause as the BLD-831 note above: "GitHub access is not enabled for this session, an org admin must connect the Claude GitHub App"). npx tsc --noEmit and npm run build both pass clean; needs an org admin to reconnect the GitHub App before a PR can be opened and merged.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
