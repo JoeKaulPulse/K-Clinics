@@ -1869,7 +1869,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: 'Finance PIN brute-force gap, booking-confirm Sentry coverage, staff security-change notifications, booking availability index (PRJ-939.3, PRJ-939.4, PRJ-939.7, PRJ-939.8)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1616),
+    title: 'Finance PIN brute-force gap, booking-confirm Sentry coverage, staff security-change notifications, booking availability index (PRJ-939.3, PRJ-939.4, PRJ-939.7, PRJ-939.8)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1616),
     value: 7, effort: 2,
     detail: 'Four End-of-Day audit findings shipped together. PRJ-939.3: the finance PIN change endpoint (app/api/admin/finance/unlock/route.ts) rate-limited the unlock path but not the set/change-PIN path, which also verifies a guessed currentPin -- unlimited brute-force. PRJ-939.4: staff 2FA reset and admin-driven password reset (app/api/admin/staff/route.ts) sent no notification to the affected staff member, so a compromised staff.manage account could silently strip 2FA or change a colleague\'s password. PRJ-939.7: lib/availability.ts\'s hot-path booking query (status IN (...) AND startAt BETWEEN ..., often + locationId) had no composite index to match. PRJ-939.8: booking-confirmation failures (app/api/booking/confirm/route.ts, app/api/booking/pay-confirm/route.ts) only console.error\'d, never reaching Sentry, unlike the Stripe webhook.',
     notes: [
@@ -1880,7 +1880,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: 'Manual Price Override (BLD-812)', type: 'TASK', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1616),
+    title: 'Manual Price Override (BLD-812)', type: 'TASK', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(1616),
     value: 8, effort: 2,
     detail: 'Owner-reported: staff creating a booking manually (phone/walk-in) could only use the treatment\'s default price, with no way to enter a custom amount for a promotion, special offer, or one-off agreed rate.',
     notes: [
@@ -1891,12 +1891,38 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Booking flow strands client if account creation succeeds but booking-start fails', type: 'ERROR', urgency: 'P0', status: 'IN_PROGRESS', assignee: 'claude',
+    title: 'Discounted payment-link charges get silently rejected by the Stripe webhook (BLD-797)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1618),
+    value: 7, effort: 2,
+    detail: 'app/api/stripe/webhook/route.ts requires amount_received >= booking.pricePence for booking_balance payments, but staff-created payment links (app/api/admin/bookings/session/route.ts) can legitimately charge less than pricePence when discounted. A successful, discounted Stripe charge fails the underpayment guard and the booking is never finalised.',
+    notes: [
+      'Fix: the paylink case now stamps the agreed amount into payment_intent_data.metadata.expectedPence; the webhook\'s underpayment guard checks against that when present, falling back to booking.pricePence only when it is absent (preserving the original anti-tampering check for the case with no staff-set expectation). app/api/admin/bookings/session/route.ts, app/api/stripe/webhook/route.ts.',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Academy enrolment can be cancelled with a paid fee kept -- no refund, no warning (BLD-764)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1618),
+    value: 6, effort: 1,
+    detail: 'app/api/admin/academy/route.ts lets an admin flip an enrolment straight to CANCELLED via a plain status dropdown (components/admin/AcademyManager.tsx) -- no confirm(), unlike the adjacent Remove button -- without ever calling refundEnrolmentPayment, sending any cancellation silently past a paid fee.',
+    notes: [
+      'Fix: selecting CANCELLED in the status dropdown now requires a confirm() naming the amount already paid (if any) and pointing to the separate Refund button for that payment -- matching the confirm() pattern already used by every other destructive control on this page. components/admin/AcademyManager.tsx. Deliberately does not auto-refund: cancellation and refund are staff-judgement decisions (some cancellations are non-refundable per T&Cs) that should stay two explicit actions.',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Exclude noindexed dentistry pages from sitemap.xml (BLD-839)', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1618),
+    value: 5, effort: 1,
+    detail: '/dentistry and 6 dentistry treatment pages render <meta name="robots" content="noindex, nofollow"> live while dentistryLive is false, yet all 7 URLs were still listed in sitemap.xml -- app/sitemap.ts built treatmentSlugs and the /dentistry static path without checking the same dentistryLive flag app/(marketing)/[slug]/page.tsx and app/(marketing)/dentistry/page.tsx already use to noindex them.',
+    notes: [
+      'Fix: sitemap() now reads getSiteConfig().dentistryLive and excludes the /dentistry static path and any treatment slug in the dentistry category when it is false, so the sitemap never advertises a URL the page itself marks noindex. app/sitemap.ts.',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Booking flow strands client if account creation succeeds but booking-start fails', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(1617),
     value: 9, effort: 3,
     detail: 'components/booking/BookingFlow.tsx:203,448 -- after AccountStep.onAuthed fires, submitBooking() runs while stage stays \'account\'; on any /api/booking/start error (slot taken, age gate, treatment unavailable) the back/nav is hidden and only \'Try again\' resends the identical failing request, with no way to change time/details short of a full reload.',
     notes: [
       'Fix: added a "Change time or details" link next to "Try again" in the account/authed error state, which clears the error and returns to the upsell step (aftercare/age confirm) -- from there the existing back nav reaches time/variant/service. authed stays true so retrying does not repeat AccountStep. components/booking/BookingFlow.tsx.',
-      'Pushed to branch claude/booking-flow-strand-bld831. Not yet opened as a PR -- the GitHub MCP connector\'s OAuth token expired mid-run and could not be re-authorised from this non-interactive session (org admin needs to reconnect it). npx tsc --noEmit and npm run build (DB_SYNC_NONFATAL=true, Postgres unreachable from this sandbox) both pass clean.',
     ],
   },
 ];

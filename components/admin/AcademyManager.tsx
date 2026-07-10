@@ -71,7 +71,21 @@ export function Applications({ enrolments, courses }: { enrolments: Enrolment[];
                       </td>
                       <td className="px-2">{e.courseTitle}</td>
                       <td className="px-2">
-                        <select value={e.status} onChange={(ev) => act({ op: 'updateEnrolment', id: e.id, status: ev.target.value })} className={field} aria-label="Status">
+                        <select
+                          value={e.status}
+                          onChange={(ev) => {
+                            const next = ev.target.value;
+                            // BLD-764: cancelling does not itself refund a paid fee (use the
+                            // Refund button below, per payment, for that) -- unlike every
+                            // other destructive action here this dropdown had no confirm().
+                            if (next === 'CANCELLED' && !confirm(e.paidPence > 0
+                              ? `Cancel this enrolment? £${(e.paidPence / 100).toFixed(2)} already paid will NOT be refunded automatically -- use the Refund button on the payment below if one is owed.`
+                              : 'Cancel this enrolment?')) return;
+                            act({ op: 'updateEnrolment', id: e.id, status: next });
+                          }}
+                          className={field}
+                          aria-label="Status"
+                        >
                           {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                         </select>
                         {e.offeredAt && <span className="mt-1 block text-[0.65rem] text-[var(--color-stone)]">Offered {fmtDate(e.offeredAt)}</span>}

@@ -1,9 +1,10 @@
 import type { MetadataRoute } from 'next';
 import { site } from '@/lib/site';
-import { treatmentSlugs } from '@/lib/treatments';
+import { treatmentSlugs, dentistry } from '@/lib/treatments';
 import { packages } from '@/lib/packages';
 import { infoSlugs } from '@/lib/info-pages';
 import { articles } from '@/lib/articles';
+import { getSiteConfig } from '@/lib/site-config';
 
 // ISR so newly-published academy courses (DB-backed) appear without a redeploy.
 export const revalidate = 3600;
@@ -52,6 +53,11 @@ async function shopProducts(): Promise<{ slug: string; updated: Date }[]> {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const reviewed = CONTENT_REVIEWED;
   const base = site.url;
+  // BLD-839: dentistry treatment pages render noindex (app/(marketing)/[slug]/page.tsx,
+  // app/(marketing)/dentistry/page.tsx) while dentistryLive is false -- keep them, and
+  // the /dentistry hub, out of the sitemap too, so we never advertise noindexed URLs.
+  const { dentistryLive } = await getSiteConfig();
+  const dentistrySlugs = new Set(dentistry.map((t) => t.slug));
 
   const staticPaths: { path: string; priority: number; freq: MetadataRoute.Sitemap[number]['changeFrequency'] }[] = [
     { path: '/', priority: 1, freq: 'weekly' },
@@ -61,7 +67,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: '/treatment-finder', priority: 0.75, freq: 'monthly' },
     { path: '/ai-consultation', priority: 0.8, freq: 'monthly' },
     { path: '/journal', priority: 0.7, freq: 'weekly' },
-    { path: '/dentistry', priority: 0.9, freq: 'weekly' },
+    ...(dentistryLive ? [{ path: '/dentistry', priority: 0.9, freq: 'weekly' as const }] : []),
     { path: '/packages', priority: 0.8, freq: 'monthly' },
     { path: '/pricing', priority: 0.8, freq: 'monthly' },
     { path: '/offers', priority: 0.7, freq: 'weekly' },
@@ -91,7 +97,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: p.freq,
       priority: p.priority,
     })),
-    ...treatmentSlugs.map((slug) => ({
+    ...treatmentSlugs.filter((slug) => dentistryLive || !dentistrySlugs.has(slug)).map((slug) => ({
       url: `${base}/${slug}`,
       lastModified: reviewed,
       changeFrequency: 'monthly' as const,

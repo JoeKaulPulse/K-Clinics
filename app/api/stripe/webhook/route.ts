@@ -29,11 +29,23 @@ export async function POST(req: Request) {
         const bookingId = pi.metadata?.bookingId;
         if (bookingId) {
           // BLD-396: guard against underpayment on full-balance booking charges.
+          // BLD-797: a staff-created payment link (app/api/admin/bookings/session/route.ts
+          // 'paylink' case) can legitimately charge less than booking.pricePence for an
+          // agreed discount -- it stamps the intended amount into expectedPence so the
+          // guard checks against what staff actually asked for, not the undiscounted price.
           if (pi.metadata?.kind === 'booking_balance') {
-            const bk = await db.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true } });
-            if (bk && (pi.amount_received ?? 0) < bk.pricePence) {
-              console.error('[webhook] booking balance underpayment — not finalising:', { received: pi.amount_received, expected: bk.pricePence, bookingId });
-              break;
+            const expectedPence = pi.metadata?.expectedPence ? Number(pi.metadata.expectedPence) : undefined;
+            if (expectedPence !== undefined) {
+              if ((pi.amount_received ?? 0) < expectedPence) {
+                console.error('[webhook] booking balance underpayment — not finalising:', { received: pi.amount_received, expected: expectedPence, bookingId });
+                break;
+              }
+            } else {
+              const bk = await db.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true } });
+              if (bk && (pi.amount_received ?? 0) < bk.pricePence) {
+                console.error('[webhook] booking balance underpayment — not finalising:', { received: pi.amount_received, expected: bk.pricePence, bookingId });
+                break;
+              }
             }
           }
           // Idempotent: records the charge, emails the receipt and credits loyalty
