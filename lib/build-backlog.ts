@@ -1943,6 +1943,33 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Fix: corrected the select to the real schema field names -- durationSec (not duration) and fromNumber/toNumber (not the nonexistent callerNumber). app/api/admin/clients/[id]/export/route.ts. Every other relation/model in the same export handler was cross-checked against prisma/schema.prisma and is valid; this was the only schema-drift mismatch.',
     ],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Kiosk AI analysis failures never reach Sentry -- flagship demo fails silently (BLD-851)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1621),
+    value: 7, effort: 2,
+    detail: 'lib/kiosk-ai.ts -- provider failures during the in-clinic kiosk AI skin analysis flow only console.error; nothing is reported to Sentry or alerts staff. A provider outage silently breaks the flagship in-clinic demo with no one aware until a customer complains.',
+    notes: [
+      'Fix: added Sentry.captureException to the outer catch blocks of both analyzeKioskPhoto and analyzeKioskPhotosV2, matching the pattern already used in app/api/stripe/webhook/route.ts and app/api/booking/confirm/route.ts. lib/kiosk-ai.ts.',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Stripe SetupIntent failure silently auto-cancels bookings with no alert (BLD-852)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1621),
+    value: 7, effort: 2,
+    detail: 'app/api/booking/start/route.ts -- when Stripe SetupIntent creation fails, the booking is auto-cancelled with only a console/audit-log trace, no Sentry or staff notification. A Stripe outage would silently cancel every card-protected booking sitewide with nobody aware.',
+    notes: [
+      'Fix: added Sentry.captureException alongside the existing audit log at the same catch site. app/api/booking/start/route.ts.',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: "Homepage 3-step 'first hello' section invisible on mobile for most visitors (BLD-846)", type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1621),
+    value: 8, effort: 2,
+    detail: 'components/home/PinnedExperience.tsx -- the pinned scrollytelling version is hidden md:block (768px+); the fallback stacked layout only rendered when prefers-reduced-motion is on. Standard-motion mobile visitors (the majority) got neither: the section collapsed to just its heading.',
+    notes: [
+      'Fix: the stacked fallback now always renders below the md breakpoint via CSS (md:hidden unless reduce), independent of the JS reduce flag, mirroring the pattern already used in components/home/HorizontalGallery.tsx. components/home/PinnedExperience.tsx.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
