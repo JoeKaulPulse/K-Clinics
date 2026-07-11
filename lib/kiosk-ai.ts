@@ -1,4 +1,5 @@
 import 'server-only';
+import * as Sentry from '@sentry/nextjs';
 import { getSecret } from '@/lib/secrets';
 
 // Kiosk Skin & Smile AI analysis — lightweight, friendly, non-clinical.
@@ -144,6 +145,7 @@ export async function analyzeKioskPhoto(photoUrl: string): Promise<KioskAiResult
     return { headline, skinScore, smileScore, insights, treatments };
   } catch (e) {
     console.error('[kiosk-ai] analysis failed:', (e as Error)?.message);
+    Sentry.captureException(e, { tags: { fn: 'analyzeKioskPhoto' } });
     return null;
   }
 }
@@ -373,6 +375,7 @@ export async function analyzeKioskPhotosV2(photoUrls: string[]): Promise<KioskAi
     return { clearlyOver21, headline, skinScore, smileScore, bestPhotoIndex, observations, treatments, shareCaption };
   } catch (e) {
     console.error('[kiosk-ai] v2 analysis failed:', (e as Error)?.message);
+    Sentry.captureException(e, { tags: { fn: 'analyzeKioskPhotosV2' } });
     return null;
   }
 }

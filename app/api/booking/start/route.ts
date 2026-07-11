@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { bookingStartSchema } from '@/lib/validation';
 import { crmEnabled } from '@/lib/crm';
 import { stripeEnabled } from '@/lib/stripe';
@@ -294,6 +295,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, bookingId: booking.id, needCard: true, clientSecret: setupIntent.client_secret });
   } catch (e) {
     console.error('[booking-start] card setup could not start for', booking.id, e);
+    Sentry.captureException(e, { tags: { route: 'booking/start', stage: 'setup-intent' } });
     // Capture the real Stripe reason in the audit log so it's visible in the admin
     // (no server-log access needed to diagnose, e.g. a bad key vs a missing customer).
     const se = e as { message?: string; code?: string; type?: string };

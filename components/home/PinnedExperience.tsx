@@ -36,17 +36,17 @@ export function PinnedExperience() {
         <h2 className="text-title mx-auto max-w-3xl text-[var(--color-porcelain)]">Considered from the first hello.</h2>
       </div>
 
-      {reduce ? (
-        <div className="container-lux relative grid gap-10 pb-[var(--space-section)] md:grid-cols-3">
-          {steps.map((s) => (
-            <div key={s.n} className="border-t border-white/15 pt-6">
-              <p className="font-[family-name:var(--font-display)] text-5xl text-[var(--color-gold)]/45">{s.n}</p>
-              <h3 className="mt-4 font-[family-name:var(--font-display)] text-2xl text-[var(--color-porcelain)]">{s.t}</h3>
-              <p className="mt-3 leading-relaxed text-[color-mix(in_oklab,var(--color-porcelain)_70%,transparent)]">{s.d}</p>
-            </div>
-          ))}
-        </div>
-      ) : (
+      <div className={`container-lux relative grid gap-10 pb-[var(--space-section)] md:grid-cols-3 ${reduce ? '' : 'md:hidden'}`}>
+        {steps.map((s) => (
+          <div key={s.n} className="border-t border-white/15 pt-6">
+            <p className="font-[family-name:var(--font-display)] text-5xl text-[var(--color-gold)]/45">{s.n}</p>
+            <h3 className="mt-4 font-[family-name:var(--font-display)] text-2xl text-[var(--color-porcelain)]">{s.t}</h3>
+            <p className="mt-3 leading-relaxed text-[color-mix(in_oklab,var(--color-porcelain)_70%,transparent)]">{s.d}</p>
+          </div>
+        ))}
+      </div>
+
+      {!reduce && (
         <div ref={ref} className="relative hidden md:block" style={{ height: `${steps.length * 100}vh` }}>
           <div className="sticky top-0 flex h-screen items-center">
             <div className="container-lux grid w-full grid-cols-2 items-center gap-16">
