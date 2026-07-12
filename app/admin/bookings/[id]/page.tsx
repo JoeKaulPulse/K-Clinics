@@ -222,10 +222,13 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
           {/* Health & consent — clinical safety at a glance */}
           <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
             <p className="eyebrow mb-3 text-[var(--color-stone)]">Health &amp; consent</p>
-            {b.client.medicalFlag && (
+            {canClinical && b.client.medicalFlag && (
               <p className="mb-3 rounded-[var(--radius-sm)] bg-[color-mix(in_oklab,#c0392b_14%,transparent)] px-3 py-2 text-sm font-medium text-[var(--color-ink)]">⚠ {b.client.medicalFlag}</p>
             )}
-            {b.client.allergies && <p className="mb-3 text-sm"><span className="text-[var(--color-stone)]">Allergies:</span> {b.client.allergies}</p>}
+            {canClinical && b.client.allergies && <p className="mb-3 text-sm"><span className="text-[var(--color-stone)]">Allergies:</span> {b.client.allergies}</p>}
+            {!canClinical && (b.client.medicalFlag || b.client.allergies) && (
+              <p className="mb-3 text-sm text-[var(--color-stone)]">Clinical notes on file — ask a clinician to review.</p>
+            )}
             {b.client.assessments.length === 0 ? (
               <p className="text-sm text-[var(--color-stone)]">No health or consent forms on file.</p>
             ) : (
@@ -294,7 +297,8 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             sop={{ title: sop.title, content: sop.content }}
             sopSteps={sopSteps}
             sopSaved={sopSaved}
-            medicalFlag={b.client.medicalFlag}
+            medicalFlag={canClinical ? b.client.medicalFlag : null}
+            hasMedicalFlag={!!b.client.medicalFlag}
             state={{
               sopAcknowledgedAt: b.sopAcknowledgedAt?.toISOString() ?? null,
               medicalFlagReviewedAt: b.medicalFlagReviewedAt?.toISOString() ?? null,

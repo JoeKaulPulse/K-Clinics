@@ -11,7 +11,10 @@ type Props = {
   sop: { title: string; content: string };
   sopSteps: SopStep[];
   sopSaved: SavedItem[] | null;
+  /** Redacted to null for viewers without clients.clinical.view. */
   medicalFlag: string | null;
+  /** Whether a flag exists on file, independent of the viewer's permission to see its text. */
+  hasMedicalFlag: boolean;
   state: {
     sopAcknowledgedAt: string | null;
     medicalFlagReviewedAt: string | null;
@@ -23,12 +26,12 @@ type Props = {
   };
 };
 
-export function ClinicalWorkflow({ bookingId, sop, sopSteps, sopSaved, medicalFlag, state }: Props) {
+export function ClinicalWorkflow({ bookingId, sop, sopSteps, sopSaved, medicalFlag, hasMedicalFlag, state }: Props) {
   const [pending, start] = useTransition();
   const [err, setErr] = useState('');
 
   const sopOk = !!state.sopAcknowledgedAt;
-  const flagOk = !medicalFlag || !!state.medicalFlagReviewedAt;
+  const flagOk = !hasMedicalFlag || !!state.medicalFlagReviewedAt;
   const started = !!state.startedAt;
   const finished = !!state.finishedAt;
 
@@ -41,19 +44,23 @@ export function ClinicalWorkflow({ bookingId, sop, sopSteps, sopSaved, medicalFl
       <p className="mb-5 text-sm text-[var(--color-stone)]">Complete the pre-checks, then run the appointment clock.</p>
 
       {/* Medical flag */}
-      {medicalFlag && (
+      {hasMedicalFlag && (
         <div className={`mb-4 rounded-[var(--radius-md)] border p-4 ${flagOk ? 'border-[var(--color-line)] bg-[var(--color-bone)]' : 'border-[var(--color-blush)] bg-[var(--color-blush)]/15'}`}>
           <p className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink)]">
             <span aria-hidden>⚠</span> Medical flag
           </p>
-          <p className="mt-1 text-sm text-[var(--color-ink-soft)]">{medicalFlag}</p>
+          {medicalFlag ? (
+            <p className="mt-1 text-sm text-[var(--color-ink-soft)]">{medicalFlag}</p>
+          ) : (
+            <p className="mt-1 text-sm text-[var(--color-ink-soft)]">On file — ask a clinician with clinical access to review before starting.</p>
+          )}
           {flagOk ? (
             <p className="mt-2 text-xs text-[var(--color-jade)]">Reviewed ✓</p>
-          ) : (
+          ) : medicalFlag ? (
             <button disabled={pending} onClick={() => run(() => reviewMedicalFlag(bookingId))} className="mt-3 rounded-full bg-[var(--color-ink)] px-4 py-2 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-60">
               I’ve reviewed this medical flag
             </button>
-          )}
+          ) : null}
         </div>
       )}
 

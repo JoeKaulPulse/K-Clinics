@@ -137,6 +137,7 @@ export default async function AdminOverview() {
   const canAutomations = sessionCan(session, 'automations.view');
   const canMarketing = sessionCan(session, 'campaigns.view');
   const canCompliance = sessionCan(session, 'compliance.view');
+  const canClinical = sessionCan(session, 'clients.clinical.view');
   const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(); dayEnd.setHours(23, 59, 59, 999);
   // Comms health: transactional emails (booking confirmations/receipts/reminders)
@@ -265,8 +266,10 @@ export default async function AdminOverview() {
     roomPrep: nextRoomPrep?.status,
     canManageRoom: canRoomsPrep,
     drinks: nextBk.refreshments ?? [],
-    allergies: decClinical(nextBk.client.allergies) ?? null,
-    medicalFlag: decClinical(nextBk.client.medicalFlag) ?? null,
+    // clients.clinical.view-gated — non-clinical staff (e.g. front desk on the
+    // default STAFF dashboard) get no clinical data, matching ReceptionistView.
+    allergies: canClinical ? decClinical(nextBk.client.allergies) ?? null : null,
+    medicalFlag: canClinical ? decClinical(nextBk.client.medicalFlag) ?? null : null,
   } : null;
   // Rooms board (front-of-house / clinician): availability + prep for the day.
   const roomsToday = canRoomsPrep ? await getRoomsForDay().catch(() => []) : [];
