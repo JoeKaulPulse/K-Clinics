@@ -1954,6 +1954,53 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Residual (not fixed, flagged for a follow-up item): app/admin/clients/[id]/page.tsx passes allergies into EditClientDetails gated only by clients.edit, which FRONT_DESK holds without clients.clinical.view -- a narrower, separate disclosure path out of scope for this PR.',
     ],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: "can't open the course materials", type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1623),
+    detail: 'Owner-reported (info@kclinics.co.uk): students reported course materials/files would not open, while staff saw nothing wrong on their side.',
+    notes: [
+      'Root cause: staff preview lesson PDFs via the raw admin Blob link in CurriculumManager.tsx, which never runs the student-side access checks (enrolment status, cohort access window, module drip-lock) that the authenticated proxy (app/api/academy/pdf/route.ts, via lib/lms.ts resolveLessonPdf) enforces on every open -- so staff structurally cannot reproduce a student-side access-check failure, and any student whose enrolment/cohort state trips one of those checks got a generic "This document could not be opened" with nothing logged.',
+      'Fix: resolveLessonPdf now returns a specific denial reason (not-enrolled, locked, lesson-not-found, bad-index) instead of a bare null. The proxy route reports the diagnostic reasons to Sentry (unauthenticated/bad-request excluded as expected background noise) and returns the reason to the client; SecurePdfViewer shows an actionable message per reason. lib/lms.ts, app/api/academy/pdf/route.ts, components/academy/SecurePdfViewer.tsx.',
+      'Could not identify the specific affected students this run -- DATABASE_URL is not reachable from this sandbox network for a direct read-only query. The next occurrence will surface in Sentry with the exact reason and student id.',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Client-edit dialog leaks decrypted allergies to staff without clinical-view permission', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1623),
+    value: 7, effort: 2,
+    detail: "app/admin/clients/[id]/page.tsx passes c.allergies (decrypted by getClient()) into EditClientDetails, gated only by clients.edit -- held by FRONT_DESK which lacks clients.clinical.view. Same leak class as BLD-848 and flagged as an explicit unfixed residual in that commit's own notes.",
+    notes: [
+      'Redacting the value alone would have created a worse bug: the edit form always submits allergies in its save payload, so a non-clinical save (e.g. just updating a phone number) would silently overwrite the real encrypted allergies with the redacted blank.',
+      'Fix: the allergies field is now hidden and omitted from the save payload entirely for viewers without clients.clinical.view, not just blanked -- a new canEditAllergies prop drives both. components/admin/EditClientDetails.tsx, app/admin/clients/[id]/page.tsx.',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Global admin search decrypts and surfaces clinical data without clinical-view permission', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1623),
+    value: 7, effort: 2,
+    detail: 'app/api/admin/search/route.ts gates client results on clients.view only yet flags medicalFlag in the dropdown, and gates consultation results on consultations.view only yet decrypts and shows a concerns snippet -- both bypass the dedicated clients.clinical.view permission that the client profile page and SAR export correctly enforce.',
+    notes: [
+      'Fix: both now additionally require clients.clinical.view before including the medicalFlag indicator or the decrypted concerns snippet -- the underlying client/consultation rows are still findable by name, just without the clinical detail. app/api/admin/search/route.ts.',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Deepgram and Google Cloud Translation process health data as undisclosed sub-processors', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1623),
+    value: 6, effort: 1,
+    detail: "app/api/admin/bookings/transcribe/route.ts streams raw clinician voice-note audio to Deepgram's API, and lib/health-assessments.ts sends decrypted health-questionnaire free-text answers to Google Cloud Translation -- neither appeared in the privacy policy's processor list.",
+    notes: [
+      'Fix: added both to the "Sharing your data" processor list and the "International transfers" section in lib/info-pages.ts.',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Stripe SetupIntent failure in booking/create route never reaches Sentry (twin of BLD-852)', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1623),
+    value: 8, effort: 2,
+    detail: 'app/api/booking/create/route.ts -- when stripe().setupIntents.create() throws, the booking is cancelled and audit-logged but only console.error, no Sentry.captureException. The route comment says this mirrors app/api/booking/start/route.ts (BLD-852), but that fix does not cover this sibling route.',
+    notes: [
+      'Fix: added Sentry.captureException in the catch, same pattern as the booking/start fix (BLD-852, PR #1621). app/api/booking/create/route.ts.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
