@@ -181,7 +181,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
         </div>
         {sessionCan(session, 'clients.edit') && (
           <div className="flex items-center gap-2">
-            <EditClientDetails client={{ id: c.id, firstName: c.firstName, lastName: c.lastName, email: c.email, phone: c.phone, dob: c.dob ? new Date(c.dob).toISOString() : null, gender: c.gender, genderSelfDescribe: c.genderSelfDescribe, allergies: c.allergies, notes: c.notes, marketingOptIn: c.marketingOptIn }} />
+            <EditClientDetails client={{ id: c.id, firstName: c.firstName, lastName: c.lastName, email: c.email, phone: c.phone, dob: c.dob ? new Date(c.dob).toISOString() : null, gender: c.gender, genderSelfDescribe: c.genderSelfDescribe, allergies: clinical ? c.allergies : null, notes: c.notes, marketingOptIn: c.marketingOptIn, canEditAllergies: clinical }} />
             <SendEmail clientId={c.id} email={c.email} />
             <SendPortalInvite clientId={c.id} hasPassword={!!c.passwordHash} />
           </div>
