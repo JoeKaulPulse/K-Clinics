@@ -302,7 +302,8 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             sop={{ title: sop.title, content: sop.content }}
             sopSteps={sopSteps}
             sopSaved={sopSaved}
-            medicalFlag={b.client.medicalFlag}
+            medicalFlag={canClinical ? b.client.medicalFlag : null}
+            hasMedicalFlag={!!b.client.medicalFlag}
             state={{
               sopAcknowledgedAt: b.sopAcknowledgedAt?.toISOString() ?? null,
               medicalFlagReviewedAt: b.medicalFlagReviewedAt?.toISOString() ?? null,
