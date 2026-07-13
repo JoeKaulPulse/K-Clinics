@@ -248,6 +248,7 @@ export default async function AdminOverview() {
       }).catch(() => null)
     : null;
   const canRoomsPrep = sessionCan(session, 'rooms.prep.manage');
+  const canClinical = sessionCan(session, 'clients.clinical.view');
   const nextRoom = nextBk ? await db.resource.findFirst({ where: { kind: 'ROOM', bookings: { some: { id: nextBk.id } } }, select: { id: true, name: true } }).catch(() => null) : null;
   // The next arrival's room prep state (for the live arrival-prep checklist).
   const { getRoomPrepFor, getRoomsForDay } = await import('@/lib/room-prep');
@@ -265,8 +266,9 @@ export default async function AdminOverview() {
     roomPrep: nextRoomPrep?.status,
     canManageRoom: canRoomsPrep,
     drinks: nextBk.refreshments ?? [],
-    allergies: decClinical(nextBk.client.allergies) ?? null,
-    medicalFlag: decClinical(nextBk.client.medicalFlag) ?? null,
+    // clients.clinical.view gated — same redaction as ReceptionistView (front-of-house never sees clinical data).
+    allergies: canClinical ? decClinical(nextBk.client.allergies) ?? null : null,
+    medicalFlag: canClinical ? decClinical(nextBk.client.medicalFlag) ?? null : null,
   } : null;
   // Rooms board (front-of-house / clinician): availability + prep for the day.
   const roomsToday = canRoomsPrep ? await getRoomsForDay().catch(() => []) : [];
