@@ -1943,6 +1943,15 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Fix: corrected the select to the real schema field names -- durationSec (not duration) and fromNumber/toNumber (not the nonexistent callerNumber). app/api/admin/clients/[id]/export/route.ts. Every other relation/model in the same export handler was cross-checked against prisma/schema.prisma and is valid; this was the only schema-drift mismatch.',
     ],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Clinical data (medical flags/allergies) exposed to non-clinical staff roles (BLD-848)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1622),
+    value: 8, effort: 3,
+    detail: 'app/admin/page.tsx and app/admin/bookings/[id]/page.tsx rendered decrypted medicalFlag/allergies on the default STAFF-role dashboard and on any bookings.view-gated booking page, bypassing the dedicated clients.clinical.view permission entirely -- the exact leak components/admin/dashboard/ReceptionistView.tsx was built to prevent, reached via a different route.',
+    notes: [
+      'Fix: app/admin/page.tsx now omits allergies/medicalFlag from the dashboard "Up next" ArrivalPrep card unless the viewer has clients.clinical.view, mirroring ReceptionistView\'s existing redaction. app/admin/bookings/[id]/page.tsx now gates the Health & consent card\'s medical flag/allergy text behind the same canClinical check already used elsewhere on the page, showing a neutral placeholder instead. components/admin/ClinicalWorkflow.tsx (the pre-treatment medical-flag review safety gate) intentionally keeps the raw flag -- out of scope for this leak.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
