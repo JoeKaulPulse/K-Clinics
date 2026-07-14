@@ -376,6 +376,7 @@ function AuthStep({ onDone, onError, onBack }: { onDone: (firstName?: string) =>
   const [busy, setBusy] = useState(false);
   const input = 'w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-[#f4ece1] outline-none placeholder:text-[#9a8f80] focus:border-[var(--color-gold,#c8a96a)]';
   async function go() {
+    if (busy) return;
     setBusy(true); onError('');
     const url = mode === 'signup' ? '/api/account/signup' : '/api/account/login';
     const body = mode === 'signup' ? { firstName: f.firstName, email: f.email, password: f.password, locale: 'en', company: f.company } : { email: f.email, password: f.password };
@@ -394,7 +395,7 @@ function AuthStep({ onDone, onError, onBack }: { onDone: (firstName?: string) =>
       </div>
       <div className="mt-6 flex items-center justify-between gap-4">
         <button onClick={() => setMode(mode === 'signup' ? 'login' : 'signup')} className="text-sm text-[#cdbfae] hover:text-[#f4ece1]">{mode === 'signup' ? 'Have an account? Sign in' : 'New here? Create one'}</button>
-        <button onClick={() => !busy && go()} className="rounded-full bg-[var(--color-gold,#c8a96a)] px-6 py-3 text-sm font-medium text-[#0c0b0a] disabled:opacity-50">{busy ? 'Please wait…' : mode === 'signup' ? 'Create & continue' : 'Sign in'}</button>
+        <button onClick={go} disabled={busy} className="rounded-full bg-[var(--color-gold,#c8a96a)] px-6 py-3 text-sm font-medium text-[#0c0b0a] disabled:opacity-50">{busy ? 'Please wait…' : mode === 'signup' ? 'Create & continue' : 'Sign in'}</button>
       </div>
     </motion.div>
   );

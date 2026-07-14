@@ -55,6 +55,7 @@ export function ConsultForm() {
     step === 3;
 
   async function submit() {
+    if (status === 'sending') return;
     setStatus('sending');
     setError('');
     // Shared id so the browser Lead event de-duplicates against the server-side
@@ -227,7 +228,7 @@ export function ConsultForm() {
             Continue <ArrowIcon />
           </Button>
         ) : (
-          <Button onClick={() => d.consent && status !== 'sending' && submit()} variant={d.consent ? 'gold' : 'outline'}>
+          <Button onClick={() => d.consent && submit()} disabled={status === 'sending'} variant={d.consent ? 'gold' : 'outline'}>
             {status === 'sending' ? 'Sending…' : 'Request consultation'} <ArrowIcon />
           </Button>
         )}

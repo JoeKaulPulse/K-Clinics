@@ -68,6 +68,14 @@ const redirects = async () => [
   // redirecting to the compliant, generically-named injectables page.
   { source: '/botox', destination: '/cosmetic-injections', permanent: true },
   { source: '/kybella', destination: '/cosmetic-injections', permanent: true },
+  // BLD-886: these info/[slug] stubs now have dedicated routes and only
+  // render redirect() from within a statically-generated page (dynamicParams
+  // false), which Next bakes as an indexable 200 + client-side meta-refresh
+  // rather than a real 3xx. Redirect at the edge instead so crawlers see the
+  // move and don't index /info/* as a duplicate of the dedicated route.
+  { source: '/info/careers', destination: '/careers', permanent: true },
+  { source: '/info/refer-a-friend', destination: '/refer-a-friend', permanent: true },
+  { source: '/info/gift-vouchers', destination: '/gift-vouchers', permanent: true },
 ];
 
 const nextConfig = {

@@ -18,6 +18,11 @@ const CONTENT_REVIEWED = new Date('2026-06-01T00:00:00Z');
 // Fallback academy slugs if the DB can't be reached at build/revalidate time.
 const FALLBACK_COURSE_SLUGS = ['level-2-foundation-skin-laser', 'level-3-laser-aesthetic-therapies', 'level-4-certificate-aesthetic-practice', 'advanced-aesthetics-level-5-7'];
 
+// info/[slug] stubs that redirect() to a dedicated route (see REDIRECTS in
+// app/(marketing)/info/[slug]/page.tsx) — the dedicated route is sitemapped
+// instead, this one shouldn't be indexed as a separate duplicate (BLD-886).
+const REDIRECTED_INFO_SLUGS = new Set(['careers', 'refer-a-friend', 'gift-vouchers']);
+
 async function courseSlugs(): Promise<string[]> {
   try {
     const { listCourses } = await import('@/lib/academy');
@@ -109,10 +114,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly' as const,
       priority: 0.7,
     })),
-    // BLD-535: refer-a-friend info page is incorrect (£50 vs live £25/£25) and
-    // redirects to /refer-a-friend — exclude from sitemap so search engines
-    // don't index the outdated commercial claim.
-    ...infoSlugs.filter((slug) => slug !== 'refer-a-friend').map((slug) => ({
+    // BLD-535/BLD-886: careers, refer-a-friend and gift-vouchers info stubs
+    // redirect() to their own dedicated routes (already listed above) — exclude
+    // the /info/* duplicates so search engines don't index them separately.
+    ...infoSlugs.filter((slug) => !REDIRECTED_INFO_SLUGS.has(slug)).map((slug) => ({
       url: `${base}/info/${slug}`,
       lastModified: reviewed,
       changeFrequency: 'yearly' as const,
