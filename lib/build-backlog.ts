@@ -2003,7 +2003,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Staff paylink Checkout session has no Stripe idempotency key', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Staff paylink Checkout session has no Stripe idempotency key', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1626),
     value: 7, effort: 1,
     detail: 'app/api/admin/bookings/session/route.ts checkout.sessions.create for the "paylink" action had no idempotencyKey, unlike every other checkout.sessions.create/paymentIntents.create call in the codebase. A double-click or client retry could create two live payment links for the same booking balance.',
     notes: [
@@ -2012,7 +2012,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Redirect stub pages (careers/gift-vouchers) served as indexable 200-status duplicates', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Redirect stub pages (careers/gift-vouchers) served as indexable 200-status duplicates', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1626),
     value: 7, effort: 2,
     detail: 'app/(marketing)/info/[slug]/page.tsx redirect()s careers/refer-a-friend/gift-vouchers, but the route is statically generated, so Next bakes it as a client-side meta-refresh served with HTTP 200, not a 3xx -- both a duplicate-content and stale-sitemap-entry problem.',
     notes: [
@@ -2021,7 +2021,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: "Consultation/signup forms have no double-submit guard -- risk of duplicate leads/accounts", type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: "Consultation/signup forms have no double-submit guard -- risk of duplicate leads/accounts", type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1626),
     value: 7, effort: 2,
     detail: 'components/consult/ConsultForm.tsx relied solely on an onClick closure check; submit() had no internal reentrancy guard. components/ai/KVision.tsx AuthStep go() had the same gap and never set the button\'s disabled attribute, so its disabled:opacity-50 class was dead CSS.',
     notes: [
