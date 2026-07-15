@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { connection } from 'next/server';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Reveal } from '@/components/motion/Reveal';
@@ -24,7 +25,11 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day
 export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const a = await getBlogPost(slug);
-  if (!a) notFound();
+  // BLD-895: an unmatched slug must render as a genuine per-request 404, not an
+  // ISR-cached page — Next's Full Route Cache doesn't persist the notFound()
+  // status on a revalidate hit, which soft-404s (200) on repeat visits.
+  // connection() opts just this branch out of the cache so it's always live.
+  if (!a) { await connection(); notFound(); }
 
   const related = (a.related ?? []).map(getTreatment).filter(Boolean);
   const more = await moreBlogCards(a.slug, 2);

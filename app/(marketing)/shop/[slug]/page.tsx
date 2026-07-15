@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { connection } from 'next/server';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Metadata } from 'next';
@@ -18,10 +19,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
-  if (!crmEnabled) notFound();
+  // BLD-895: force a live per-request 404 for an unmatched slug — see
+  // journal/[slug]/page.tsx for why the ISR-cached branch soft-404s otherwise.
+  if (!crmEnabled) { await connection(); notFound(); }
   const { slug } = await params;
   const p = await getProductBySlug(slug).catch(() => null);
-  if (!p) notFound();
+  if (!p) { await connection(); notFound(); }
   const onSale = p.compareAtPence && p.compareAtPence > p.pricePence;
   const inStock = !(p.trackInventory && p.stockQty <= 0);
   const vatNote = await getVatNote();

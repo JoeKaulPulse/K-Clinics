@@ -83,7 +83,14 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const heldResources = await db.resource.findMany({ where: { bookings: { some: { id } } }, orderBy: { kind: 'asc' }, select: { name: true, kind: true, floor: true } });
   // Hospitality + aftercare + recommended next session for staff.
   const visitPrefs = await db.booking.findUnique({ where: { id }, select: { refreshments: true, allergyNote: true, aftercareAckAt: true, treatmentSlug: true, startAt: true, clientId: true } });
-  if (visitPrefs?.allergyNote) { const { decClinical } = await import('@/lib/clinical-crypto'); visitPrefs.allergyNote = decClinical(visitPrefs.allergyNote); }
+  // BLD-896: allergyNote is clinical data — same gate as the "Health & consent"
+  // box below (canClinical), so FRONT_DESK/STAFF without clients.clinical.view
+  // never see it decrypted, here or in the "Visit prep" panel.
+  const canClinical = sessionCan(session, 'clients.clinical.view');
+  if (visitPrefs?.allergyNote) {
+    if (canClinical) { const { decClinical } = await import('@/lib/clinical-crypto'); visitPrefs.allergyNote = decClinical(visitPrefs.allergyNote); }
+    else visitPrefs.allergyNote = null;
+  }
   const { refreshmentLabel } = await import('@/lib/hospitality');
 
   // BLD-211 — clinicians eligible to perform this treatment (competent or generalist),
@@ -149,7 +156,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   }
 
   // Clinical treatment note (clinical staff only) — decrypt for display.
-  const canClinical = sessionCan(session, 'clients.clinical.view');
+  // (canClinical computed earlier, alongside the visitPrefs.allergyNote gate.)
   let clinicalNote = '';
   if (canClinical && b.clinicalNoteEnc) {
     try {
