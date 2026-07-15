@@ -2001,6 +2001,35 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Fix: added Sentry.captureException in the catch, same pattern as the booking/start fix (BLD-852, PR #1621). app/api/booking/create/route.ts.',
     ],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Dynamic catch-all routes return HTTP 200 instead of 404 (soft 404s), including /booking', type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1627),
+    value: 9, effort: 5,
+    detail: '[slug], journal/[slug], academy/[slug], shop/[slug] all call notFound() for unmatched slugs but production still returns HTTP 200. /booking is also a natural URL guess for the real booking flow and dead-ends visitors.',
+    notes: [
+      'Partial fix: /booking had no page.tsx of its own, so it fell through to the catch-all and soft-404d instead of reaching /book. Added a real 3xx redirect in next.config.mjs.',
+      'Investigated a connection()-based fix for the soft-404 status itself, but reverted it after a full production build showed it forces the WHOLE [slug] route (treatment + CMS pages -- the highest-traffic pages on the site) to lose ISR/SSG caching, since Partial Prerendering is not enabled. Not an acceptable trade for a 404-status edge case.',
+      'Live header inspection found two DIFFERENT root causes bundled under this item: [slug] is a genuine ISR-cache/status bug (x-nextjs-prerender: 1, x-vercel-cache: STALE, still 200); journal/academy/shop [slug] routes are already fully dynamic per-request (x-vercel-cache: MISS, no prerender header) yet still return 200 -- a separate bug. Left open pending a live preview deploy to diagnose safely (this sandbox cannot reach the DB or run the dev server against real data).',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: "Booking detail 'Visit prep' panel leaks decrypted allergy note to non-clinical staff", type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1627),
+    value: 7, effort: 1,
+    detail: "app/admin/bookings/[id]/page.tsx fetches visitPrefs.allergyNote separately and unconditionally decClinical-decrypts it, then renders it in the 'Visit prep' box with no clients.clinical.view check, unlike the 'Health & consent' box on the same page which correctly redacts medicalFlag/allergies.",
+    notes: [
+      'Fix: gated the decrypt and the "Visit prep" render behind the same canClinical (clients.clinical.view) check used by the "Health & consent" box on the same page.',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: "Cookie consent banner covers hero CTA on mobile for every first-time visitor", type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1627),
+    value: 8, effort: 2,
+    detail: 'components/legal/CookieConsent.tsx had no max-height/scroll cap on the mobile banner; on a 375x812 viewport it covered from mid-hero to the bottom, hiding the "Book online"/"Free consultation" CTAs until the visitor interacted with it.',
+    notes: [
+      'Fix: capped the mobile banner to max-h-[38vh] overflow-y-auto; md: reverts to the original uncapped desktop layout.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
