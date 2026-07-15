@@ -104,7 +104,7 @@ export function CookieConsent() {
           role="dialog"
           aria-label="Cookie consent"
           aria-modal="true"
-          className="fixed inset-x-3 bottom-3 z-[80] mx-auto max-w-2xl rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 shadow-[var(--shadow-lift)] md:inset-x-auto md:left-6 md:bottom-6 md:p-6"
+          className="fixed inset-x-3 bottom-3 z-[80] mx-auto max-h-[38vh] max-w-2xl overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 shadow-[var(--shadow-lift)] md:inset-x-auto md:left-6 md:bottom-6 md:max-h-none md:overflow-visible md:p-6"
         >
           <p className="font-[family-name:var(--font-display)] text-lg">Your privacy, your choice</p>
           <p className="mt-2 text-sm leading-relaxed text-[var(--color-stone)]">

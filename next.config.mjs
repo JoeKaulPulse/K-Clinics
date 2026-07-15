@@ -68,6 +68,10 @@ const redirects = async () => [
   // redirecting to the compliant, generically-named injectables page.
   { source: '/botox', destination: '/cosmetic-injections', permanent: true },
   { source: '/kybella', destination: '/cosmetic-injections', permanent: true },
+  // /booking is a natural URL guess for the real booking flow at /book (which
+  // has no page.tsx of its own, so it fell through to the marketing catch-all
+  // and soft-404'd instead of reaching the booking flow). BLD-895.
+  { source: '/booking', destination: '/book', permanent: true },
 ];
 
 const nextConfig = {
