@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation';
-import { connection } from 'next/server';
 import type { Metadata } from 'next';
 import { treatmentSlugs } from '@/lib/treatments';
 import { lowestPenceForTreatment } from '@/lib/services';
@@ -66,11 +65,5 @@ export default async function TreatmentPage({ params }: { params: Promise<{ slug
     );
   }
 
-  // BLD-895: force a live per-request 404 for an unmatched slug — dynamicParams
-  // is true here (any admin-published page can appear without a redeploy), but
-  // Next's Full Route Cache doesn't persist the notFound() status on a
-  // revalidate hit, so a repeat visit to a bad slug soft-404s (200). connection()
-  // opts just this branch out of the cache so it's always rendered live.
-  await connection();
   notFound();
 }

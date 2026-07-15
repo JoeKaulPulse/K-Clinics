@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { connection } from 'next/server';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { ApplyForm } from '@/components/academy/ApplyForm';
@@ -31,9 +30,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const { getCourse } = await import('@/lib/academy');
   const course = await getCourse(slug);
-  // BLD-895: force a live per-request 404 for an unmatched slug — see
-  // journal/[slug]/page.tsx for why the ISR-cached branch soft-404s otherwise.
-  if (!course) { await connection(); notFound(); }
+  if (!course) notFound();
 
   const { getPublishedReviews, getPreviewLessons } = await import('@/lib/lms');
   const [rating, previews] = await Promise.all([getPublishedReviews(course.id), getPreviewLessons(course.id)]);
