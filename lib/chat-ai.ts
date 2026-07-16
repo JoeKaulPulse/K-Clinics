@@ -1,4 +1,5 @@
 import 'server-only';
+import * as Sentry from '@sentry/nextjs';
 import { db } from '@/lib/db';
 import { site } from '@/lib/site';
 import { getSecret } from '@/lib/secrets';
@@ -139,7 +140,10 @@ async function callHaiku(key: string, system: string, messages: { role: 'user' |
       });
       if (!res.ok) {
         if (res.status >= 500 && attempt === 0) { await new Promise((r) => setTimeout(r, 600)); continue; }
-        console.error('[chat-ai] anthropic', res.status, await res.text().catch(() => '')); return null;
+        const body = await res.text().catch(() => '');
+        console.error('[chat-ai] anthropic', res.status, body);
+        Sentry.captureMessage('[chat-ai] anthropic call failed', { level: 'error', tags: { area: 'chat-ai', status: String(res.status) } });
+        return null;
       }
       const j = await res.json();
       const text = j?.content?.find((c: { type: string }) => c.type === 'text')?.text ?? '';
@@ -150,6 +154,7 @@ async function callHaiku(key: string, system: string, messages: { role: 'user' |
     } catch (e) {
       if (attempt === 0) { await new Promise((r) => setTimeout(r, 600)); continue; }
       console.error('[chat-ai] call failed:', (e as Error)?.message);
+      Sentry.captureException(e, { tags: { area: 'chat-ai' } });
       return null;
     }
   }

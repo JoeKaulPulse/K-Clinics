@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
@@ -108,6 +109,8 @@ export async function POST(req: Request) {
     await db.order.update({ where: { id: order.id }, data: { stripePaymentIntentId: pi.id } });
     return NextResponse.json({ ok: true, clientSecret: pi.client_secret, orderId: order.id, totalPence, issues: cart.issues });
   } catch (e) {
+    console.error('[shop checkout] payment intent create failed:', (e as Error)?.message);
+    Sentry.captureException(e, { tags: { area: 'shop-checkout' } });
     await db.order.delete({ where: { id: order.id } }).catch(() => {});
     await undoReservation();
     return NextResponse.json({ ok: false, error: (e as Error).message || 'Could not start payment.' }, { status: 500 });
