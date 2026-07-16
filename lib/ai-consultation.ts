@@ -1,4 +1,5 @@
 import 'server-only';
+import * as Sentry from '@sentry/nextjs';
 import { db } from '@/lib/db';
 import { encryptJson } from '@/lib/crypto';
 import { getSecret } from '@/lib/secrets';
@@ -228,7 +229,10 @@ async function callClaude(key: string, model: string, system: string, content: o
       });
       if (!res.ok) {
         if (res.status >= 500 && attempt === 0) { await new Promise((r) => setTimeout(r, 600)); continue; }
-        console.error('[get-my-plan] anthropic', res.status, await res.text().catch(() => '')); return null;
+        const body = await res.text().catch(() => '');
+        console.error('[get-my-plan] anthropic', res.status, body);
+        Sentry.captureMessage('[get-my-plan] anthropic call failed', { level: 'error', tags: { area: 'ai-consultation', status: String(res.status) } });
+        return null;
       }
       const j = await res.json();
       const text = j?.content?.find((c: { type: string }) => c.type === 'text')?.text ?? '';
@@ -237,6 +241,7 @@ async function callClaude(key: string, model: string, system: string, content: o
     } catch (e) {
       if (attempt === 0) { await new Promise((r) => setTimeout(r, 600)); continue; }
       console.error('[get-my-plan] call failed:', (e as Error)?.message);
+      Sentry.captureException(e, { tags: { area: 'ai-consultation' } });
       return null;
     }
   }
