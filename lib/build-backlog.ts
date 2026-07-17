@@ -2032,7 +2032,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Patch Test Status Tracking', type: 'TASK', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Patch Test Status Tracking', type: 'TASK', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1632),
     value: 6, effort: 2,
     detail: 'Staff had no way to see whether a client had completed a valid patch test without searching through appointments/notes -- there was no structured "patch test" concept anywhere in the product (only prose inside the laser consent form).',
     notes: [
