@@ -2032,6 +2032,22 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: "Footer 'United Kingdom' caption functions as a banned strap-line under the logo", type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1629),
+    value: 7, effort: 1,
+    detail: "components/layout/Footer.tsx:64 rendered a tracked-out uppercase 'United Kingdom' label directly beneath the K-monogram/wordmark on every page -- the strap-line-under-the-logo pattern docs/BRAND_GUIDELINES.md prohibits.",
+    notes: [
+      'Fix: removed the caption. The full postal address and "Registered in England & Wales" already appear elsewhere in the same footer, so no information was lost.',
+    ],
+  },
+  {
+    title: 'Shop nav link hidden below 1280px -- /shop unreachable from mobile/tablet menu', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1629),
+    value: 7, effort: 2,
+    detail: "components/layout/Header.tsx -- the Shop link only existed inside a 'hidden ... xl:flex' cluster, absent from the mobile hamburger menu (lib/nav.ts primaryNav has no Shop entry). Any visitor under the xl breakpoint (phone or tablet) had no way to reach /shop except typing the URL directly.",
+    notes: [
+      'Fix: added a Shop link to the mobile drawer nav in components/layout/Header.tsx (kept out of lib/nav.ts primaryNav to avoid duplicating it in the desktop mega-menu bar, since desktop already shows Shop in its own standalone cluster).',
+    ],
+  },
+  {
     title: 'Clinical before/after photos accessible to front-desk staff without clinical.view permission', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1630),
     value: 7, effort: 2,
     detail: "app/api/admin/bookings/before-photo/[id]/route.ts granted access via clients.clinical.view OR bookings.manage -- FRONT_DESK holds bookings.manage by default despite being documented as having no clinical health data access, letting any front-desk user view decrypted clinical photos meant for clinical staff only.",
