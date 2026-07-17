@@ -2030,6 +2030,15 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Fix: capped the mobile banner to max-h-[38vh] overflow-y-auto; md: reverts to the original uncapped desktop layout.',
     ],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Loyalty points refunded even when they already reduced the late-cancellation fee (double-dip)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'cancelBooking() (lib/booking-actions.ts) nets the late-cancellation fee by pointsRedeemedPence but then unconditionally called refundBookingPoints() afterwards regardless of whether that reduced fee was actually charged -- a client could redeem points for a discount, then late-cancel to pay the reduced fee AND get the points back, repeatably.',
+    notes: [
+      'Fix: only call refundBookingPoints() when charged === 0 -- covers the three cases where the points were not actually consumed (no fee due, the charge failed, or it needs further customer action) while skipping the refund when the fee was successfully charged at the points-discounted price. rescheduleBooking() already had the correct pattern (nets the fee, never refunds points) and was left unchanged.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

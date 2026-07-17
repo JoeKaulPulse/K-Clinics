@@ -397,12 +397,21 @@ export async function cancelBooking(
   // Remove from the clinician's Google Calendar too (no-op while parked).
   import('@/lib/google-calendar').then((m) => m.removeBookingFromClinician(booking.id)).catch(() => {});
 
-  // Return any loyalty points the client had applied to this booking.
-  try {
-    const { refundBookingPoints } = await import('@/lib/client-loyalty');
-    await refundBookingPoints(booking.id);
-  } catch (e) {
-    console.error('[cancelBooking] points refund failed (continuing):', (e as Error)?.message);
+  // Return any loyalty points the client had applied to this booking -- but
+  // only when they weren't already consumed as a discount on a late-cancellation
+  // fee that actually got charged (BLD-915: chargeablePence above already nets
+  // the fee by pointsRedeemedPence, so refunding here too let a client redeem
+  // points for a discount, late-cancel to pay the reduced fee, and get the
+  // points back as well, repeatably). charged === 0 covers every case where the
+  // points weren't consumed: no fee due, the charge failed, or it needs further
+  // action from the client.
+  if (charged === 0) {
+    try {
+      const { refundBookingPoints } = await import('@/lib/client-loyalty');
+      await refundBookingPoints(booking.id);
+    } catch (e) {
+      console.error('[cancelBooking] points refund failed (continuing):', (e as Error)?.message);
+    }
   }
 
   // Cancellation email (free vs late-fee) — best-effort, with its outcome recorded
