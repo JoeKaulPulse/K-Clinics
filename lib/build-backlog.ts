@@ -2032,6 +2032,38 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: "Footer 'United Kingdom' caption functions as a banned strap-line under the logo", type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1629),
+    value: 7, effort: 1,
+    detail: "components/layout/Footer.tsx:64 rendered a tracked-out uppercase 'United Kingdom' label directly beneath the K-monogram/wordmark on every page -- the strap-line-under-the-logo pattern docs/BRAND_GUIDELINES.md prohibits.",
+    notes: [
+      'Fix: removed the caption. The full postal address and "Registered in England & Wales" already appear elsewhere in the same footer, so no information was lost.',
+    ],
+  },
+  {
+    title: 'Shop nav link hidden below 1280px -- /shop unreachable from mobile/tablet menu', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1629),
+    value: 7, effort: 2,
+    detail: "components/layout/Header.tsx -- the Shop link only existed inside a 'hidden ... xl:flex' cluster, absent from the mobile hamburger menu (lib/nav.ts primaryNav has no Shop entry). Any visitor under the xl breakpoint (phone or tablet) had no way to reach /shop except typing the URL directly.",
+    notes: [
+      'Fix: added a Shop link to the mobile drawer nav in components/layout/Header.tsx (kept out of lib/nav.ts primaryNav to avoid duplicating it in the desktop mega-menu bar, since desktop already shows Shop in its own standalone cluster).',
+    ],
+  },
+  {
+    title: 'Clinical before/after photos accessible to front-desk staff without clinical.view permission', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1630),
+    value: 7, effort: 2,
+    detail: "app/api/admin/bookings/before-photo/[id]/route.ts granted access via clients.clinical.view OR bookings.manage -- FRONT_DESK holds bookings.manage by default despite being documented as having no clinical health data access, letting any front-desk user view decrypted clinical photos meant for clinical staff only.",
+    notes: [
+      'Fix: dropped the bookings.manage fallback so only clients.clinical.view gates the decrypt/serve route, matching every other clinical-data endpoint. Capture/delete (the sibling before-photo/route.ts) correctly stay on bookings.manage -- front desk can still take the photo, just not view it back.',
+    ],
+  },
+  {
+    title: 'Right-to-erasure leaves client leaderboard photo/name and concerns/gender fields uncleared', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1630),
+    value: 7, effort: 2,
+    detail: 'app/admin/actions.ts eraseClientData pseudonymised core PII but never reset leaderboardOptIn/leaderboardPhotoUrl/leaderboardDisplayName -- so an erased client\'s real photo and name stayed live on the public /membership leaderboard -- and never cleared the free-text concerns/genderSelfDescribe fields, despite clearing the equally sensitive allergies field on the same row.',
+    notes: [
+      'Fix: added all five fields (leaderboardOptIn, leaderboardPhotoUrl, leaderboardDisplayName, concerns, genderSelfDescribe) to the same erasure transaction as the rest of the Client row.',
+    ],
+  },
+  {
     title: 'Loyalty points refunded even when they already reduced the late-cancellation fee (double-dip)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1631),
     value: 7, effort: 2,
     detail: 'cancelBooking() (lib/booking-actions.ts) nets the late-cancellation fee by pointsRedeemedPence but then unconditionally called refundBookingPoints() afterwards regardless of whether that reduced fee was actually charged -- a client could redeem points for a discount, then late-cancel to pay the reduced fee AND get the points back, repeatably.',

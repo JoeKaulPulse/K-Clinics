@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!crmEnabled) return new NextResponse('Disabled', { status: 503 });
   const { requirePermission } = await import('@/lib/auth');
-  const session = (await requirePermission('clients.clinical.view')) || (await requirePermission('bookings.manage'));
+  const session = await requirePermission('clients.clinical.view');
   if (!session) return new NextResponse('Forbidden', { status: 403 });
 
   const { id } = await params;

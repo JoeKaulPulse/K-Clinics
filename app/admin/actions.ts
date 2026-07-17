@@ -55,6 +55,13 @@ export async function eraseClientData(clientId: string) {
         phone: null, dob: null, notes: null, allergies: null, medicalFlag: null, medicalFlagSetBy: null, medicalFlagAt: null,
         marketingOptIn: false, unsubscribed: true, portalActive: false, passwordHash: null,
         resetTokenHash: null, resetTokenExp: null,
+        // BLD-912: leaderboardOptIn:true clients are queried onto the public
+        // /membership leaderboard by photo+name, and concerns/genderSelfDescribe
+        // are free-text special-category-adjacent fields — none had a retention
+        // basis and none were reset by the fields above, so an erased client's
+        // real photo/name stayed live publicly and their free-text answers on file.
+        leaderboardOptIn: false, leaderboardPhotoUrl: null, leaderboardDisplayName: null,
+        concerns: [], genderSelfDescribe: null,
       },
     }),
     // Retain bookings/consultations (financial/clinical-audit basis) but strip the
