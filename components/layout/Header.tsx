@@ -362,6 +362,11 @@ export function Header({ config }: { config: SiteConfig }) {
                   </motion.div>
                 );
               })}
+              <div className="py-4">
+                <Link href="/shop" onClick={() => setMobile(false)} className="block font-[family-name:var(--font-display)] text-2xl">
+                  Shop
+                </Link>
+              </div>
             </nav>
             <div className="mt-8 flex flex-col gap-3">
               <Button href={booking.path} size="lg" className="w-full">
