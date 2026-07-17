@@ -2032,7 +2032,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: "Footer 'United Kingdom' caption functions as a banned strap-line under the logo", type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: "Footer 'United Kingdom' caption functions as a banned strap-line under the logo", type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1629),
     value: 7, effort: 1,
     detail: "components/layout/Footer.tsx:64 rendered a tracked-out uppercase 'United Kingdom' label directly beneath the K-monogram/wordmark on every page -- the strap-line-under-the-logo pattern docs/BRAND_GUIDELINES.md prohibits.",
     notes: [
@@ -2040,7 +2040,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: 'Shop nav link hidden below 1280px -- /shop unreachable from mobile/tablet menu', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Shop nav link hidden below 1280px -- /shop unreachable from mobile/tablet menu', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1629),
     value: 7, effort: 2,
     detail: "components/layout/Header.tsx -- the Shop link only existed inside a 'hidden ... xl:flex' cluster, absent from the mobile hamburger menu (lib/nav.ts primaryNav has no Shop entry). Any visitor under the xl breakpoint (phone or tablet) had no way to reach /shop except typing the URL directly.",
     notes: [
