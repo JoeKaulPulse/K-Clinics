@@ -61,7 +61,6 @@ export function Footer({ config }: { config: SiteConfig }) {
         {/* Brand + newsletter */}
         <div className="lg:col-span-4">
           <Logo mono size="footer" className="text-[var(--color-porcelain)]" />
-          <p className="mt-4 text-sm uppercase tracking-[0.16em] text-[color-mix(in_oklab,var(--color-porcelain)_55%,transparent)]">United Kingdom</p>
           <p className="mt-5 max-w-xs text-sm leading-relaxed text-[color-mix(in_oklab,var(--color-porcelain)_64%,transparent)]">
             Receive considered tips on skin, smile and aesthetics — plus new treatments, seasonal edits and member-only offers.
           </p>
