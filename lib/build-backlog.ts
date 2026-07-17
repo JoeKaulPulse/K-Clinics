@@ -2032,7 +2032,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Loyalty points refunded even when they already reduced the late-cancellation fee (double-dip)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Loyalty points refunded even when they already reduced the late-cancellation fee (double-dip)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1631),
     value: 7, effort: 2,
     detail: 'cancelBooking() (lib/booking-actions.ts) nets the late-cancellation fee by pointsRedeemedPence but then unconditionally called refundBookingPoints() afterwards regardless of whether that reduced fee was actually charged -- a client could redeem points for a discount, then late-cancel to pay the reduced fee AND get the points back, repeatably.',
     notes: [
