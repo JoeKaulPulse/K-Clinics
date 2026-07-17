@@ -30,6 +30,7 @@ const GENDER_LABEL: Record<string, string> = {
 const genderLabel = (g: string, selfDescribe?: string | null) =>
   g === 'OTHER' && selfDescribe ? selfDescribe : (GENDER_LABEL[g] ?? g);
 import { MedicalFlagEditor } from '@/components/admin/MedicalFlagEditor';
+import { PatchTestEditor } from '@/components/admin/PatchTestEditor';
 import { ClientTasks } from '@/components/admin/ClientTasks';
 import { DataPrivacy } from '@/components/admin/DataPrivacy';
 import { sessionCan } from '@/lib/auth';
@@ -401,6 +402,16 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
               initial={c.medicalFlag}
               setBy={c.medicalFlagSetBy}
               setAt={c.medicalFlagAt ? c.medicalFlagAt.toISOString() : null}
+            />
+          )}
+
+          {/* Patch test status (clinical staff only) */}
+          {clinical && (
+            <PatchTestEditor
+              clientId={c.id}
+              result={c.patchTestResult}
+              setBy={c.patchTestSetBy}
+              setAt={c.patchTestDate ? c.patchTestDate.toISOString() : null}
             />
           )}
 
