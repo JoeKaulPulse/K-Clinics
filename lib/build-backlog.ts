@@ -2047,6 +2047,22 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Fix: added a Shop link to the mobile drawer nav in components/layout/Header.tsx (kept out of lib/nav.ts primaryNav to avoid duplicating it in the desktop mega-menu bar, since desktop already shows Shop in its own standalone cluster).',
     ],
   },
+  {
+    title: 'Clinical before/after photos accessible to front-desk staff without clinical.view permission', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1630),
+    value: 7, effort: 2,
+    detail: "app/api/admin/bookings/before-photo/[id]/route.ts granted access via clients.clinical.view OR bookings.manage -- FRONT_DESK holds bookings.manage by default despite being documented as having no clinical health data access, letting any front-desk user view decrypted clinical photos meant for clinical staff only.",
+    notes: [
+      'Fix: dropped the bookings.manage fallback so only clients.clinical.view gates the decrypt/serve route, matching every other clinical-data endpoint. Capture/delete (the sibling before-photo/route.ts) correctly stay on bookings.manage -- front desk can still take the photo, just not view it back.',
+    ],
+  },
+  {
+    title: 'Right-to-erasure leaves client leaderboard photo/name and concerns/gender fields uncleared', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1630),
+    value: 7, effort: 2,
+    detail: 'app/admin/actions.ts eraseClientData pseudonymised core PII but never reset leaderboardOptIn/leaderboardPhotoUrl/leaderboardDisplayName -- so an erased client\'s real photo and name stayed live on the public /membership leaderboard -- and never cleared the free-text concerns/genderSelfDescribe fields, despite clearing the equally sensitive allergies field on the same row.',
+    notes: [
+      'Fix: added all five fields (leaderboardOptIn, leaderboardPhotoUrl, leaderboardDisplayName, concerns, genderSelfDescribe) to the same erasure transaction as the rest of the Client row.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
