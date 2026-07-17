@@ -2064,6 +2064,14 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'Loyalty points refunded even when they already reduced the late-cancellation fee (double-dip)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1631),
+    value: 7, effort: 2,
+    detail: 'cancelBooking() (lib/booking-actions.ts) nets the late-cancellation fee by pointsRedeemedPence but then unconditionally called refundBookingPoints() afterwards regardless of whether that reduced fee was actually charged -- a client could redeem points for a discount, then late-cancel to pay the reduced fee AND get the points back, repeatably.',
+    notes: [
+      'Fix: only call refundBookingPoints() when charged === 0 -- covers the three cases where the points were not actually consumed (no fee due, the charge failed, or it needs further customer action) while skipping the refund when the fee was successfully charged at the points-discounted price. rescheduleBooking() already had the correct pattern (nets the fee, never refunds points) and was left unchanged.',
+    ],
+  },
+  {
     title: 'Patch Test Status Tracking', type: 'TASK', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1632),
     value: 6, effort: 2,
     detail: 'Staff had no way to see whether a client had completed a valid patch test without searching through appointments/notes -- there was no structured "patch test" concept anywhere in the product (only prose inside the laser consent form).',
