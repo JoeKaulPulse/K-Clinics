@@ -2030,6 +2030,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Fix: capped the mobile banner to max-h-[38vh] overflow-y-auto; md: reverts to the original uncapped desktop layout.',
     ],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Patch Test Status Tracking', type: 'TASK', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'Staff had no way to see whether a client had completed a valid patch test without searching through appointments/notes -- there was no structured "patch test" concept anywhere in the product (only prose inside the laser consent form).',
+    notes: [
+      'Fix (MVP): added Client.patchTestResult/patchTestDate/patchTestSetBy (mirrors the existing medicalFlag triad -- additive, no new model) plus a PatchTestEditor card on the client profile (clinical staff only) next to Medical flag, and POST /api/admin/patch-test to record PASSED/FAILED.',
+      'Deliberately out of scope: automatic detection (there is no bookable "Patch Test" service or booking-derived signal to key off) and pre-booking eligibility gating (needs an owner decision on the validity window -- how many months a pass stays valid -- before a gate can be built safely). This ships the visible status; gating is a natural follow-up once that policy is set.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

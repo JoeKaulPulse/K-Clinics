@@ -144,6 +144,7 @@ enum AuditAction {
   APPOINTMENT_COMPLETED
   SOP_ACKNOWLEDGED
   MEDICAL_FLAG_REVIEWED
+  PATCH_TEST_RECORDED
   PAYMENT_CHARGED
   PAYMENT_FAILED
   PAYMENT_REFUNDED
@@ -335,6 +336,14 @@ model Client {
   medicalFlag      String?
   medicalFlagSetBy String?
   medicalFlagAt    DateTime?
+
+  // ── Patch test status (BLD-844) ──────────────────────────────────────────
+  // Staff-recorded PASSED/FAILED result so front desk can see at a glance
+  // whether a client is eligible for patch-test-gated treatments (laser etc.)
+  // without searching through appointments/notes.
+  patchTestResult String? // 'PASSED' | 'FAILED'
+  patchTestDate   DateTime?
+  patchTestSetBy  String?
 
   // ── Public loyalty leaderboard (PRJ-1.11) ────────────────────────────────
   // Only clients who explicitly opt in appear on the public leaderboard.
