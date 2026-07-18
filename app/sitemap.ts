@@ -50,6 +50,22 @@ async function shopProducts(): Promise<{ slug: string; updated: Date }[]> {
   }
 }
 
+// Journal cards: DB-backed posts (lib/blog.ts listBlogCards, source of truth for
+// /journal and /journal/[slug]) plus any native article not overridden in the DB.
+// Falls back to the static articles array if the DB is unreachable (BLD-917 —
+// the static `articles` array alone only covered 6 of 72+ live journal URLs).
+async function journalCards(): Promise<{ slug: string; updated: Date }[]> {
+  try {
+    const { listBlogCards } = await import('@/lib/blog');
+    const cards = await listBlogCards();
+    return cards.length
+      ? cards.map((c) => ({ slug: c.slug, updated: new Date(c.published) }))
+      : articles.map((a) => ({ slug: a.slug, updated: new Date(a.updated || a.published) }));
+  } catch {
+    return articles.map((a) => ({ slug: a.slug, updated: new Date(a.updated || a.published) }));
+  }
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const reviewed = CONTENT_REVIEWED;
   const base = site.url;
@@ -118,10 +134,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'yearly' as const,
       priority: 0.3,
     })),
-    ...articles.map((a) => ({
-      url: `${base}/journal/${a.slug}`,
+    ...(await journalCards()).map((c) => ({
+      url: `${base}/journal/${c.slug}`,
       // Real per-article date so freshness signals are trustworthy.
-      lastModified: new Date(a.updated || a.published),
+      lastModified: c.updated,
       changeFrequency: 'monthly' as const,
       priority: 0.55,
     })),
