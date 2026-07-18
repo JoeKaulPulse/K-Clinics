@@ -2080,6 +2080,14 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Deliberately out of scope: automatic detection (there is no bookable "Patch Test" service or booking-derived signal to key off) and pre-booking eligibility gating (needs an owner decision on the validity window -- how many months a pass stays valid -- before a gate can be built safely). This ships the visible status; gating is a natural follow-up once that policy is set.',
     ],
   },
+  {
+    title: 'Sitemap lists only 6 of 72+ live, indexable journal articles (BLD-917)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 9, effort: 3,
+    detail: 'app/sitemap.ts built journal entries from the static lib/articles.ts array (6 items), but /journal and /journal/[slug] actually pull from the DB-backed CMS via listBlogCards()/getBlogPost() in lib/blog.ts -- live /journal lists 72 article links, all 200 with canonicals and no noindex, yet sitemap.xml only contained the 6 static ones.',
+    notes: [
+      'Fix: app/sitemap.ts now calls listBlogCards() (DB posts + any native article not overridden in the DB, same source /journal itself uses) via a best-effort try/catch, falling back to the static articles array only if the DB is unreachable -- same pattern already used for courseSlugs()/shopProducts() on the same file.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
