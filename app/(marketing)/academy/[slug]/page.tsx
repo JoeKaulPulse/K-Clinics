@@ -15,7 +15,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const { getCourse } = await import('@/lib/academy');
   const c = await getCourse(slug).catch(() => null);
-  if (!c) return pageMeta({ title: 'Course — K Academy', description: 'Accredited aesthetics training at K Academy.', path: `/academy/${slug}` });
+  // See BLD-895: notFound() here (not just in the page body) is what actually
+  // sets the HTTP 404 status for this generateStaticParams-less dynamic route.
+  if (!c) notFound();
   return pageMeta({
     title: `${c.title}${c.level ? ` (${c.level})` : ''} — K Academy`,
     description: c.summary || `Accredited aesthetics training: ${c.title} at K Academy, Islington.`,

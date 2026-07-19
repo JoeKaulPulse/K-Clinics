@@ -14,7 +14,10 @@ export const revalidate = 3600;
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const p = crmEnabled ? await getProductBySlug(slug).catch(() => null) : null;
-  return pageMeta({ title: p ? `${p.name} | KClinics Shop` : 'Shop | KClinics', description: p?.description?.slice(0, 155) || 'Shop clinic-grade products at KClinics.', path: `/shop/${slug}` });
+  // See BLD-895: notFound() here (not just in the page body) is what actually
+  // sets the HTTP 404 status for this generateStaticParams-less dynamic route.
+  if (!crmEnabled || !p) notFound();
+  return pageMeta({ title: `${p.name} | KClinics Shop`, description: p.description?.slice(0, 155) || 'Shop clinic-grade products at KClinics.', path: `/shop/${slug}` });
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
