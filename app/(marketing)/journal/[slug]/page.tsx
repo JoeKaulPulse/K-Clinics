@@ -15,13 +15,7 @@ export const revalidate = 3600;
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const a = await getBlogPost(slug);
-  // notFound() called here (rather than in the page body alone) sets the real
-  // HTTP 404 status: this route has no generateStaticParams, so Next renders it
-  // under the (marketing) group's loading.tsx Suspense boundary, which flushes
-  // a 200 status before the page component's own notFound() can take effect
-  // (BLD-895). generateMetadata resolves before that boundary commits, so its
-  // notFound() call is the one that actually reaches the response headers.
-  if (!a) notFound();
+  if (!a) return {};
   return pageMeta({ title: `${a.title} | KClinics Journal`, description: a.metaDescription, path: `/journal/${a.slug}`, keywords: a.keywords, ownOgImage: true });
 }
 

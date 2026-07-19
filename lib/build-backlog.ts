@@ -2081,22 +2081,11 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: 'Sitemap lists only 6 of 72+ live, indexable journal articles (BLD-917)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1633),
+    title: 'Sitemap lists only 6 of 72+ live, indexable journal articles (BLD-917)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
     value: 9, effort: 3,
     detail: 'app/sitemap.ts built journal entries from the static lib/articles.ts array (6 items), but /journal and /journal/[slug] actually pull from the DB-backed CMS via listBlogCards()/getBlogPost() in lib/blog.ts -- live /journal lists 72 article links, all 200 with canonicals and no noindex, yet sitemap.xml only contained the 6 static ones.',
     notes: [
       'Fix: app/sitemap.ts now calls listBlogCards() (DB posts + any native article not overridden in the DB, same source /journal itself uses) via a best-effort try/catch, falling back to the static articles array only if the DB is unreachable -- same pattern already used for courseSlugs()/shopProducts() on the same file.',
-      'Merged (#1633); this entry was left at IN_REVIEW after merge in that PR and never advanced -- correcting the status here so the board stops listing it as open work.',
-    ],
-  },
-  {
-    title: 'Dynamic catch-all routes return HTTP 200 instead of 404 (soft 404s), including /booking', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(1634),
-    value: 9, effort: 5,
-    detail: 'app/(marketing)/[slug]/page.tsx, journal/[slug], academy/[slug], shop/[slug] all call notFound() for unmatched slugs, but production still returned HTTP 200 with the not-found UI on /waitlist, /totally-fake-slug, /journal/fake-article, /academy/fake-course, /shop/fake-product -- confirmed live via curl. /packages/[slug] and /info/[slug] correctly return 404 because they set dynamicParams = false, so Next resolves unknown params at the routing layer before ever reaching React.',
-    notes: [
-      'Root cause: journal/academy/shop/[slug] and the marketing [slug] catch-all have no (or partial) generateStaticParams, so unknown slugs render under the (marketing) route group\'s loading.tsx Suspense boundary -- Next flushes that boundary\'s 200 status before the page component\'s own notFound() call can take effect. A prior attempt (recorded on this item) tried a connection()-based fix and reverted it after a production build showed it defeats ISR/SSG caching on [slug] (the highest-traffic pages on the site).',
-      'Fix: call notFound() from each route\'s generateMetadata instead of only from the page body -- Next.js explicitly supports this, and generateMetadata resolves before the Suspense boundary commits, so its notFound() call is the one that reaches the response status. No change to dynamicParams/revalidate/generateStaticParams, so cached ISR responses for known treatment/CMS/course/product/article slugs are untouched. Verified: npx tsc --noEmit clean, npm run build clean, route table shows the same dynamic/ISR segment types as before this change.',
-      'The Vercel preview for this PR sits behind Deployment Protection (SSO wall) that this session could not authenticate through, so the live 404-status fix could not be curl-verified pre-merge the way BLD-917 was. Verification is a post-merge production check (see PR test plan) -- revert immediately if /journal, /academy or /shop start 500ing or a known-good slug regresses to 404.',
     ],
   },
 ];
