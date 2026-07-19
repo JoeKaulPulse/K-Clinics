@@ -28,7 +28,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   }
   const cms = await getPublishedPage(`/${slug}`);
   if (cms) { const m = pageMetaFromSections(cms); return pageMeta({ title: m.title || slug, description: m.description, path: `/${slug}` }); }
-  return {};
+  // notFound() here (not just in the page body) is what actually sets the HTTP
+  // 404 status for slugs outside generateStaticParams: Next renders those under
+  // the (marketing) group's loading.tsx Suspense boundary, which flushes a 200
+  // status before the page component's own notFound() can take effect (BLD-895).
+  // generateMetadata resolves before that boundary commits, so its notFound()
+  // call is the one that actually reaches the response headers. Unlike the
+  // previously-reverted connection()-based attempt, this doesn't force dynamic
+  // rendering — cached ISR responses for known treatment/CMS slugs are untouched.
+  notFound();
 }
 
 export default async function TreatmentPage({ params }: { params: Promise<{ slug: string }> }) {
