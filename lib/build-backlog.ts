@@ -2010,6 +2010,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Partial fix: /booking had no page.tsx of its own, so it fell through to the catch-all and soft-404d instead of reaching /book. Added a real 3xx redirect in next.config.mjs.',
       'Investigated a connection()-based fix for the soft-404 status itself, but reverted it after a full production build showed it forces the WHOLE [slug] route (treatment + CMS pages -- the highest-traffic pages on the site) to lose ISR/SSG caching, since Partial Prerendering is not enabled. Not an acceptable trade for a 404-status edge case.',
       'Live header inspection found two DIFFERENT root causes bundled under this item: [slug] is a genuine ISR-cache/status bug (x-nextjs-prerender: 1, x-vercel-cache: STALE, still 200); journal/academy/shop [slug] routes are already fully dynamic per-request (x-vercel-cache: MISS, no prerender header) yet still return 200 -- a separate bug. Left open pending a live preview deploy to diagnose safely (this sandbox cannot reach the DB or run the dev server against real data).',
+      'Second attempt (this session): tried calling notFound() from each route\'s generateMetadata instead of only the page body, on the theory that the shared (marketing)/loading.tsx Suspense boundary flushes a 200 status before the page body\'s own notFound() can take effect, and that generateMetadata resolves before that boundary commits (Next.js docs describe generateMetadata as supporting notFound()/redirect() for exactly this). Shipped as PR #1634, verified tsc/build clean and no ISR regression (real slugs stayed 200, [slug] stayed SSG) -- but a mandatory post-merge production curl check showed the fake-slug status was STILL 200 after the deploy went live (confirmed against a fresh, uncached response). The generateMetadata theory does not hold for this app in practice. Reverted immediately (PR reverting 15f91a90). Root cause remains open -- the fix needs to be verified against a live/preview deploy BEFORE merging next time, not diagnosed from code reading + docs alone; this session could not reach the Vercel preview URL (sits behind Deployment Protection/SSO that could not be authenticated through non-interactively) so verification only happened post-merge on production, which is why the failed attempt reached prod at all.',
     ],
   },
   {
@@ -2081,11 +2082,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: 'Sitemap lists only 6 of 72+ live, indexable journal articles (BLD-917)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Sitemap lists only 6 of 72+ live, indexable journal articles (BLD-917)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1633),
     value: 9, effort: 3,
     detail: 'app/sitemap.ts built journal entries from the static lib/articles.ts array (6 items), but /journal and /journal/[slug] actually pull from the DB-backed CMS via listBlogCards()/getBlogPost() in lib/blog.ts -- live /journal lists 72 article links, all 200 with canonicals and no noindex, yet sitemap.xml only contained the 6 static ones.',
     notes: [
       'Fix: app/sitemap.ts now calls listBlogCards() (DB posts + any native article not overridden in the DB, same source /journal itself uses) via a best-effort try/catch, falling back to the static articles array only if the DB is unreachable -- same pattern already used for courseSlugs()/shopProducts() on the same file.',
+      'Merged (#1633); this entry was left at IN_REVIEW after merge in a prior session and never advanced -- correcting the status here so the board stops listing it as open work.',
     ],
   },
 ];
