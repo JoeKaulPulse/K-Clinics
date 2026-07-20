@@ -68,10 +68,8 @@ export async function POST(req: Request) {
   // the reserveVoucher() decrement above would be permanently lost with no order
   // and no code path that restores it.
   const undoReservation = async () => {
-    if (giftCardCode && giftCardPence > 0) {
-      const { creditVoucher } = await import('@/lib/gift-vouchers');
-      await creditVoucher(giftCardCode, giftCardPence).catch(() => {});
-    }
+    const { undoVoucherReservation } = await import('@/lib/gift-vouchers');
+    await undoVoucherReservation(giftCardCode, giftCardPence);
   };
 
   let order: Awaited<ReturnType<typeof db.order.create>>;

@@ -214,6 +214,19 @@ export async function refundBooking(
   // so skip Stripe and just record the refund below; staff hand the cash back. Calling
   // Stripe here failed with "No such payment_intent: 'ext_cash'".
   const isExternalPayment = (booking.chargePaymentIntentId || '').startsWith('ext_');
+  // BLD-882: a voucher-settled booking DOES have a reversal rail, unlike cash —
+  // the refund goes back onto the voucher (capped at face value by
+  // creditVoucher). Without this, "refunded" would be recorded while the
+  // client's card value stayed silently spent.
+  if (booking.chargePaymentIntentId === 'ext_gift-voucher') {
+    if (!booking.giftVoucherCode) return { ok: false, error: 'This booking was paid by gift voucher but the voucher code is missing — refund it manually from the voucher manager.' };
+    try {
+      const { creditVoucher } = await import('@/lib/gift-vouchers');
+      await creditVoucher(booking.giftVoucherCode, amount);
+    } catch (e) {
+      return { ok: false, error: `Couldn’t return the balance to voucher ${booking.giftVoucherCode} — try again. (${(e as Error)?.message || 'unknown error'})` };
+    }
+  }
   if (!isExternalPayment) {
     try {
       await stripe().refunds.create({
@@ -243,6 +256,23 @@ export async function refundBooking(
   // Reverse loyalty points once the booking is fully refunded (best-effort).
   if (fully) {
     try { const { refundBookingPoints } = await import('@/lib/client-loyalty'); await refundBookingPoints(booking.id); } catch { /* non-fatal */ }
+  }
+
+  // BLD-882: a partial-voucher booking's chargedPence is the card remainder
+  // only — when THAT is fully refunded, the voucher-covered portion goes back
+  // on the voucher too, mirroring the orders route's restore-on-money-reversal
+  // (BLD-393). Best-effort with a loud trail: the card refund above has already
+  // happened, so a credit failure must not unwind the whole refund.
+  if (fully && booking.chargePaymentIntentId !== 'ext_gift-voucher' && (booking.giftVoucherPence ?? 0) > 0 && booking.giftVoucherCode) {
+    try {
+      const { creditVoucher } = await import('@/lib/gift-vouchers');
+      await creditVoucher(booking.giftVoucherCode, booking.giftVoucherPence);
+      await logAudit({ action: 'REWARD_REDEEMED', actor: opts.actor || 'system', bookingId: booking.id, clientId: booking.clientId, summary: `Gift voucher ${booking.giftVoucherCode} restored on full refund — £${(booking.giftVoucherPence / 100).toFixed(2)} back on the voucher` }).catch(() => {});
+    } catch (e) {
+      console.error('[refund] voucher restore failed:', (e as Error)?.message);
+      const Sentry = await import('@sentry/nextjs');
+      Sentry.captureException(e, { tags: { area: 'gift-vouchers', stage: 'refund-restore' } });
+    }
   }
 
   await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Refunded £${(amount / 100).toFixed(2)} for ${booking.treatmentTitle}${opts.reason ? ` — ${opts.reason}` : ''}`, author: opts.actor || 'system' } }).catch(() => {});
@@ -411,6 +441,31 @@ export async function cancelBooking(
       await refundBookingPoints(booking.id);
     } catch (e) {
       console.error('[cancelBooking] points refund failed (continuing):', (e as Error)?.message);
+    }
+  }
+
+  // BLD-882: return a reserved-but-unconsumed gift-voucher application. The
+  // discriminator is the PRE-CANCEL chargedAt (read at the top, before any late
+  // fee lands): a booking already charged before cancellation consumed its
+  // voucher as part of that settled sale (fully by voucher, or netted off a
+  // card/cash remainder) — returning consumed value is a refund decision, made
+  // deliberately via refundBooking, never automatic. A late fee charged DURING
+  // this cancellation is computed from pricePence and never spends the voucher,
+  // so the reservation still returns. Guarded clear so a concurrent removal
+  // can't double-credit.
+  if ((booking.giftVoucherPence ?? 0) > 0 && booking.giftVoucherCode && !booking.chargedAt) {
+    try {
+      const cleared = await db.booking.updateMany({
+        where: { id: booking.id, giftVoucherCode: booking.giftVoucherCode, giftVoucherPence: booking.giftVoucherPence },
+        data: { giftVoucherCode: null, giftVoucherPence: 0 },
+      });
+      if (cleared.count > 0) {
+        const { creditVoucher } = await import('@/lib/gift-vouchers');
+        await creditVoucher(booking.giftVoucherCode, booking.giftVoucherPence);
+        await logAudit({ action: 'REWARD_REDEEMED', actor: opts.by, bookingId: booking.id, clientId: booking.clientId, summary: `Gift voucher ${booking.giftVoucherCode} returned on cancellation — £${(booking.giftVoucherPence / 100).toFixed(2)} back on the voucher` }).catch(() => {});
+      }
+    } catch (e) {
+      console.error('[cancelBooking] voucher re-credit failed (continuing):', (e as Error)?.message);
     }
   }
 

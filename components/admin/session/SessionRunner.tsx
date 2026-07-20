@@ -34,6 +34,7 @@ type Props = {
   booking: {
     id: string; treatmentSlug: string; treatmentTitle: string; startAt: string; durationMin: number; pricePence: number;
     chargedAt: string | null;
+    giftVoucherCode: string | null; giftVoucherPence: number;
     refreshments: string[]; addOns: { id: string; label: string; pricePence: number }[];
   };
   photos: {
@@ -803,6 +804,45 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
   const [discType, setDiscType] = useState<'percent' | 'amount'>('percent');
   const [discVal, setDiscVal] = useState('');
   const [discReason, setDiscReason] = useState('');
+  // BLD-882 — gift voucher against the treatment sale. Applying reserves the
+  // balance server-side (atomic); a full cover settles the booking (the SSE
+  // snapshot flips to Paid), a partial one is netted off SERVER-SIDE by every
+  // charge op. The amount field always means the agreed price — the remainder
+  // is derived, never written back, so a reload, a second till or a discount
+  // can't double-count the voucher.
+  const [vOpen, setVOpen] = useState(false);
+  const [vCode, setVCode] = useState('');
+  const [vApplied, setVApplied] = useState<{ code: string; pence: number } | null>(
+    p.booking.giftVoucherCode && (p.booking.giftVoucherPence ?? 0) > 0 && !p.booking.chargedAt
+      ? { code: p.booking.giftVoucherCode, pence: p.booking.giftVoucherPence }
+      : null,
+  );
+  const [vBusy, setVBusy] = useState(false);
+  const [vErr, setVErr] = useState('');
+  // What the chosen method will actually collect (the server nets the same way).
+  const duePence = Math.max(0, amountPence - (vApplied?.pence ?? 0));
+  const voucherExceedsAmount = !!vApplied && amountPence <= vApplied.pence;
+  async function applyVoucher() {
+    if (vBusy || !vCode.trim() || amountPence <= 0) return;
+    setVBusy(true); setVErr('');
+    const res = (await api({ op: 'voucher', code: vCode.trim(), amountPence, ...discParams })) as { ok: boolean; error?: string; appliedPence?: number; settled?: boolean };
+    setVBusy(false);
+    if (!res.ok) { setVErr(res.error || 'Could not apply the voucher.'); return; }
+    if (res.settled) return; // fully covered — the stream flips this card to Paid
+    setVApplied({ code: vCode.trim().toUpperCase(), pence: res.appliedPence || 0 });
+    setVCode('');
+    setLinkQr(null); // a previously-minted QR no longer matches the remainder
+  }
+  async function removeVoucher() {
+    if (vBusy || !vApplied) return;
+    setVBusy(true); setVErr('');
+    const res = await api({ op: 'voucher-remove' });
+    setVBusy(false);
+    if (!res.ok) { setVErr(res.error || 'Could not remove the voucher.'); return; }
+    setVApplied(null);
+    setVOpen(true);
+    setLinkQr(null); // a QR minted for the netted remainder is stale now
+  }
   const discParams = discReason.trim() ? { discountReason: discReason.trim(), originalPence: p.booking.pricePence } : {};
   function applyDiscount() {
     const base = p.booking.pricePence;
@@ -886,6 +926,26 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
               )}
             </div>
 
+            {/* BLD-882: gift voucher — applies to the amount before any method collects the rest */}
+            <div className="mt-2">
+              {vApplied ? (
+                <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3 text-sm">
+                  <span>Gift voucher <span className="font-medium">{vApplied.code}</span> — {money(vApplied.pence)} applied. {money(duePence)} left to collect.</span>
+                  <button type="button" onClick={removeVoucher} disabled={vBusy} className="text-xs text-[var(--color-gold)] underline-offset-2 hover:underline disabled:opacity-50">{vBusy ? 'Removing…' : 'Remove'}</button>
+                  {voucherExceedsAmount && <span className="w-full text-xs text-red-700">The voucher covers more than the current amount — remove it and apply again at the new price.</span>}
+                </div>
+              ) : !vOpen ? (
+                <button type="button" onClick={() => setVOpen(true)} className="text-xs text-[var(--color-gold)] underline-offset-2 hover:underline">Redeem a gift voucher</button>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3 text-sm">
+                  <input value={vCode} onChange={(e) => { setVCode(e.target.value); setVErr(''); }} onKeyDown={(e) => e.key === 'Enter' && applyVoucher()} placeholder="Voucher code" aria-label="Gift voucher code" className="min-w-[10rem] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 uppercase outline-none focus:border-[var(--color-gold)]" />
+                  <button type="button" onClick={applyVoucher} disabled={vBusy || !vCode.trim()} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-40">{vBusy ? 'Applying…' : 'Apply'}</button>
+                  <span className="text-xs text-[var(--color-stone)]">Covers up to the amount above; any leftover stays on the voucher.</span>
+                </div>
+              )}
+              {vErr && <p className="mt-1 text-xs text-red-700">{vErr}</p>}
+            </div>
+
             {/* The action for the chosen method */}
             <div className="mt-3">
               {method === 'card' && (
@@ -900,7 +960,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={linkQr.qr} alt="Payment QR code" width={120} height={120} className="rounded-[var(--radius-sm)]" />
                   <div className="min-w-0 text-sm">
-                    <p className="font-medium">Scan to pay {money(amountPence)}</p>
+                    <p className="font-medium">Scan to pay {money(duePence)}</p>
                     <p className="mt-1 text-[var(--color-stone)]">The client scans this with their phone camera. This screen updates to “Paid” automatically once it goes through.</p>
                     {linkQr.url && <a href={linkQr.url} target="_blank" rel="noreferrer" className="mt-1 inline-block break-all text-xs text-[var(--color-gold)] underline">Open the payment page</a>}
                   </div>
@@ -928,7 +988,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                 <div>
                   <button type="button" disabled={payBusy || !live.finishedAt} onClick={takeCash}
                     className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
-                    {payBusy ? 'Recording…' : `Record ${money(amountPence)} cash`}
+                    {payBusy ? 'Recording…' : `Record ${money(duePence)} cash`}
                   </button>
                   <p className="mt-2 max-w-md text-xs text-[var(--color-stone)]">Records the sale as paid in cash against this booking. Remember to put the cash in the drawer — it’s included in the day-close total.</p>
                 </div>

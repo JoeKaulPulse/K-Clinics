@@ -71,6 +71,10 @@ export async function POST(req: Request) {
           try {
             const order = await db.order.findUnique({ where: { id: pi.metadata.orderId }, select: { totalPence: true } });
             if (order && pi.currency === 'gbp' && pi.amount_received >= order.totalPence) {
+              // Record the PI on the order — POS QR sales go through Checkout
+              // Sessions and never had one stored, which silently disabled the
+              // Stripe leg of "Mark refunded" on those orders (BLD-926).
+              await db.order.updateMany({ where: { id: pi.metadata.orderId, stripePaymentIntentId: null }, data: { stripePaymentIntentId: pi.id } }).catch(() => {});
               const { finalizeOrder } = await import('@/lib/shop');
               await finalizeOrder(pi.metadata.orderId);
             } else {
@@ -207,6 +211,27 @@ export async function POST(req: Request) {
         }
         break;
       }
+      // BLD-882: a POS Checkout link that was never paid expires (24h). Without
+      // this backstop an abandoned QR sale — staff crashed mid-cancel, till tab
+      // closed — sits PENDING forever with any gift-voucher reservation
+      // permanently stranded (no PaymentIntent ever exists for an unopened
+      // session, so no payment_intent.* event fires). Claim + re-credit here,
+      // mirroring the POS cancel op; both claims are atomic so they can't
+      // double-credit.
+      case 'checkout.session.expired': {
+        const s = event.data.object as { metadata?: { orderId?: string } };
+        const orderId = s.metadata?.orderId;
+        if (orderId) {
+          const o = await db.order.findUnique({ where: { id: orderId }, select: { giftCardCode: true, giftCardPence: true } });
+          const claimed = await db.order.updateMany({ where: { id: orderId, status: 'PENDING' }, data: { status: 'CANCELLED' } });
+          if (claimed.count > 0 && o?.giftCardCode && o.giftCardPence > 0) {
+            const { undoVoucherReservation } = await import('@/lib/gift-vouchers');
+            await undoVoucherReservation(o.giftCardCode, o.giftCardPence);
+          }
+        }
+        break;
+      }
+
       // BLD-123: refunds issued directly in the Stripe dashboard bypass the app.
       // Reconcile: compute the delta vs what's already recorded and run the same
       // post-refund side-effects (loyalty reversal, Xero credit note, audit log).
@@ -353,6 +378,9 @@ export async function POST(req: Request) {
       event.type === 'payment_intent.payment_failed' ||
       event.type === 'charge.refunded' ||
       event.type === 'setup_intent.succeeded' ||
+      // BLD-882: the expired-session claim releases a stranded voucher
+      // reservation — a DB failure before the claim commits must retry.
+      event.type === 'checkout.session.expired' ||
       pmtKind === 'course_prepaid';
     if (critical) return NextResponse.json({ received: false, error: 'Handler failed' }, { status: 500 });
   }

@@ -2152,6 +2152,31 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'components/consult/ConsultForm.tsx relied on an onClick closure status check that reads a stale value on a fast double-click, firing two POST /api/consult requests; components/ai/KVision.tsx go() had the same pattern and never set the actual disabled attribute.',
     notes: ['Fix: ref-based reentrancy guards inside submit()/go() (a ref flips synchronously, before any re-render) plus real disabled attributes on both buttons.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Gift vouchers have no redemption path anywhere in the product', type: 'IDEA', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1638),
+    value: 9, effort: 5,
+    detail: 'Marketing promised vouchers redeemable in clinic against any treatment/product/consultation, but only the shop checkout gift-card box worked. Owner call (2026-07-20): any sale, partial allowed, leftover stays on the voucher, no cash change.',
+    notes: [
+      'POS: voucher-check preview (read-only, nothing reserved on abandoned baskets), atomic reserveVoucher at checkout with re-credit on every failure path, full-cover finalises as paid, card QR charges the remainder only, cancel op expires the Stripe link before claiming so pay-vs-cancel cannot race, and a checkout.session.expired webhook backstop releases reservations from abandoned QRs.',
+      'Bookings: voucher op settles fully (ext_gift-voucher channel) or records a partial application on additive Booking.giftVoucherCode/Pence columns; EVERY charge path nets the voucher server-side (chargeBookingAction + paylink/terminal/external), so a reloaded till or second device cannot collect the full price on top of the reservation. voucher-remove re-credits with compensation on failure; cancelBooking returns unconsumed reservations; refundBooking returns voucher-settled money to the voucher and restores the voucher portion on full refund of a part-voucher booking.',
+      'Money paths passed an 8-angle adversarial review; the confirmed findings (client-only netting, cancel race, refund rail, expiry backstop, Stripe 30p minimum) were fixed before merge. Two policy questions filed separately: day-close/Xero treatment of voucher-settled revenue.',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Privacy policy omits Meta, Google Ads and Sentry as data processors', type: 'IDEA', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1638),
+    value: 8, effort: 3,
+    detail: 'lib/meta-audiences.ts uploads hashed client email/phone to Meta Custom Audiences, lib/conversions.ts sends hashed email to Meta CAPI and gclid+booking value to Google Ads, and Sentry receives error/session data -- none were disclosed as recipients in the privacy policy.',
+    notes: ['Owner approved the standard-phrasing disclosure this session (PRJ-939.5): Google Ads folded into the Google entry, Meta (hashed contact details only) and Sentry added to the "Sharing your data" list, and Meta + Sentry added to the international-transfers section in lib/info-pages.ts.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'POS card orders never store stripePaymentIntentId -- Mark refunded silently skips the Stripe refund', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1638),
+    value: 8, effort: 1,
+    detail: 'POS QR sales are paid via a Stripe Checkout Session; the webhook finalised by metadata.orderId but nothing wrote order.stripePaymentIntentId, so the orders route Mark refunded restocked, credited any gift card and flipped to REFUNDED while its Stripe refund leg was silently skipped. Found by the BLD-882 adversarial review.',
+    notes: ['Fix: the shop_order webhook finalisation now records pi.id on the order (guarded, first writer wins). Pre-existing POS card orders still lack a PI -- refund those directly in Stripe.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
