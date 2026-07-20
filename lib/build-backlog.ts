@@ -2226,6 +2226,13 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'text-[var(--color-blush)] (#cdb4a3, 1.69:1 on porcelain / 1.56:1 on bone, needs 4.5:1) rendered error/status/delete-link text on light surfaces across the admin, academy, portal, shop and marketing forms.',
     notes: ['Fix: 201 occurrences across 100 files swapped to --color-blush-deep (#8b4a4a, 5.68:1; dark-mode variant #e98a8a), the same mechanical pattern as the gold->gold-deep sweep; bg tints/borders untouched. Deliberately left: 24 kiosk usages (hard-coded dark shell, blush passes at 7.77:1 there) and NewsletterForm (renders only inside dark ink surfaces -- the audit named it from a context-free grep).'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Booking flow selection buttons convey selected state by colour only, no ARIA state', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1640),
+    value: 8, effort: 3,
+    detail: 'BookingFlow treatment list, variant list, single/course toggle, popular days and time slots -- plus the ManageClient reschedule slots -- were single-select buttons with no aria-pressed, distinguished only by a gold border/fill (WCAG 4.1.2 + 1.4.1) on the primary revenue flow.',
+    notes: ['Fix: aria-pressed on all six button groups, matching the pattern the add-on and refreshment buttons in the same file already used.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

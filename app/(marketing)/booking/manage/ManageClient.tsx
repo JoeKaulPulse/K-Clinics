@@ -198,6 +198,7 @@ export function ManageClient({ token, booking }: { token: string; booking: B }) 
                     {slots.map((s) => (
                       <button
                         key={s.startISO}
+                        aria-pressed={selectedSlot === s.startISO}
                         onClick={() => setSelectedSlot(s.startISO)}
                         className={`rounded-full px-3 py-1 text-sm transition ${selectedSlot === s.startISO ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'border border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}
                       >
