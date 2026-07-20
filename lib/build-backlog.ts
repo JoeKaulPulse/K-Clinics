@@ -2003,7 +2003,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Dynamic catch-all routes return HTTP 200 instead of 404 (soft 404s), including /booking', type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1627),
+    title: 'Dynamic catch-all routes return HTTP 200 instead of 404 (soft 404s), including /booking', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(1627),
     value: 9, effort: 5,
     detail: '[slug], journal/[slug], academy/[slug], shop/[slug] all call notFound() for unmatched slugs but production still returns HTTP 200. /booking is also a natural URL guess for the real booking flow and dead-ends visitors.',
     notes: [
@@ -2112,49 +2112,49 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Staff paylink Checkout session has no Stripe idempotency key', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1637),
+    title: 'Staff paylink Checkout session has no Stripe idempotency key', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1637),
     value: 7, effort: 1,
     detail: 'app/api/admin/bookings/session/route.ts checkout.sessions.create for the paylink action had no idempotencyKey, unlike every other charge site -- a double-click before the chargedAt guard reflects completion could create two live payment links for the same booking balance.',
     notes: ['Fix: { idempotencyKey: `paylink-${bookingId}-${amountPence}` } on the create call, matching pos-checkout-${order.id} in app/api/admin/pos/route.ts.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: "Homepage 3-step 'first hello' section invisible on mobile for most visitors", type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1637),
+    title: "Homepage 3-step 'first hello' section invisible on mobile for most visitors", type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1637),
     value: 8, effort: 2,
     detail: 'components/home/PinnedExperience.tsx rendered the pinned scrollytelling version hidden md:block and the stacked fallback only under prefers-reduced-motion -- standard-motion mobile visitors (the majority) got neither, just the heading.',
     notes: ['Fix: the stacked layout is now CSS-gated (md:hidden when motion is on, md:grid-cols-3 under reduced motion) independent of the JS reduce flag, the same pattern as HorizontalGallery.tsx:40 SwipeRail.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Kiosk AI analysis failures never reach Sentry — flagship demo fails silently', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1637),
+    title: 'Kiosk AI analysis failures never reach Sentry — flagship demo fails silently', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1637),
     value: 7, effort: 2,
     detail: 'lib/kiosk-ai.ts provider failures during the in-clinic kiosk skin analysis only console.error -- a provider outage silently breaks the flagship demo with nobody aware.',
     notes: ['Fix: Sentry.captureException (tags area:kiosk-ai) in both catch blocks -- the v1 analysis path and the v2 multi-photo path -- matching lib/chat-ai.ts and lib/ai-consultation.ts.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Stripe SetupIntent failure silently auto-cancels bookings with no alert', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1637),
+    title: 'Stripe SetupIntent failure silently auto-cancels bookings with no alert', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1637),
     value: 7, effort: 2,
     detail: 'app/api/booking/start/route.ts -- when SetupIntent creation fails the booking is auto-cancelled with only a console/audit-log trace. A Stripe outage would silently cancel every card-protected booking sitewide.',
     notes: ['Fix: Sentry.captureException (tags route:booking/start, stage:setup-intent) alongside the existing audit log, matching the booking/create twin fixed in #1623. Note: an earlier backlog note claimed this was fixed in "PR #1621" -- no such change ever reached the route; the board TRIAGE status was correct.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Redirect stub pages (careers/gift-vouchers) served as indexable 200-status duplicates', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1637),
+    title: 'Redirect stub pages (careers/gift-vouchers) served as indexable 200-status duplicates', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1637),
     value: 7, effort: 2,
     detail: 'app/(marketing)/info/[slug] maps careers/refer-a-friend/gift-vouchers to redirect(), but the route is statically generated so Next baked a client-side meta-refresh served with HTTP 200 and a self-referencing canonical -- full duplicate content, two of the three still sitemap-listed.',
     notes: ['Fix: true 308s in next.config.mjs redirects() for all three slugs; excluded from generateStaticParams (no baked duplicates exist any more); sitemap filter extended from refer-a-friend-only to all three.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Consultation/signup forms have no double-submit guard -- risk of duplicate leads/accounts', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1637),
+    title: 'Consultation/signup forms have no double-submit guard -- risk of duplicate leads/accounts', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1637),
     value: 7, effort: 2,
     detail: 'components/consult/ConsultForm.tsx relied on an onClick closure status check that reads a stale value on a fast double-click, firing two POST /api/consult requests; components/ai/KVision.tsx go() had the same pattern and never set the actual disabled attribute.',
     notes: ['Fix: ref-based reentrancy guards inside submit()/go() (a ref flips synchronously, before any re-render) plus real disabled attributes on both buttons.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Gift vouchers have no redemption path anywhere in the product', type: 'IDEA', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1638),
+    title: 'Gift vouchers have no redemption path anywhere in the product', type: 'IDEA', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(1638),
     value: 9, effort: 5,
     detail: 'Marketing promised vouchers redeemable in clinic against any treatment/product/consultation, but only the shop checkout gift-card box worked. Owner call (2026-07-20): any sale, partial allowed, leftover stays on the voucher, no cash change.',
     notes: [
@@ -2165,63 +2165,63 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Privacy policy omits Meta, Google Ads and Sentry as data processors', type: 'IDEA', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1638),
+    title: 'Privacy policy omits Meta, Google Ads and Sentry as data processors', type: 'IDEA', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1638),
     value: 8, effort: 3,
     detail: 'lib/meta-audiences.ts uploads hashed client email/phone to Meta Custom Audiences, lib/conversions.ts sends hashed email to Meta CAPI and gclid+booking value to Google Ads, and Sentry receives error/session data -- none were disclosed as recipients in the privacy policy.',
     notes: ['Owner approved the standard-phrasing disclosure this session (PRJ-939.5): Google Ads folded into the Google entry, Meta (hashed contact details only) and Sentry added to the "Sharing your data" list, and Meta + Sentry added to the international-transfers section in lib/info-pages.ts.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'POS card orders never store stripePaymentIntentId -- Mark refunded silently skips the Stripe refund', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1638),
+    title: 'POS card orders never store stripePaymentIntentId -- Mark refunded silently skips the Stripe refund', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1638),
     value: 8, effort: 1,
     detail: 'POS QR sales are paid via a Stripe Checkout Session; the webhook finalised by metadata.orderId but nothing wrote order.stripePaymentIntentId, so the orders route Mark refunded restocked, credited any gift card and flipped to REFUNDED while its Stripe refund leg was silently skipped. Found by the BLD-882 adversarial review.',
     notes: ['Fix: the shop_order webhook finalisation now records pi.id on the order (guarded, first writer wins). Pre-existing POS card orders still lack a PI -- refund those directly in Stripe.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'SAR export leaks clinical data to non-clinical staff and omits other clinical fields', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1639),
+    title: 'SAR export leaks clinical data to non-clinical staff and omits other clinical fields', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1639),
     value: 8, effort: 3,
     detail: 'app/api/admin/clients/[id]/export/route.ts decrypted medicalFlag/allergies/consultation concerns/medicalNotes/allergyNote/CLINICAL interactions/call transcripts for any clients.export holder; only assessments and photos were gated. The export also omitted ConsultationNote entirely and shipped Booking.clinicalNoteEnc as raw ciphertext.',
     notes: ['Fix: all clinical free-text decrypts only under clients.clinical.view; a non-clinical export carries an explicit clinicalDataWithheld notice and the audit line records the withholding. Consultation staff notes now included; the clinical note decrypts under the gate and the cipher never leaves the server. Folds in the BLD-701 transcript gating pending on PR #1574 (that PR can drop its export-route hunk at its next rebase).'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Stripe webhook sub-handlers swallow financial reconciliation errors, invisible to Sentry', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1639),
+    title: 'Stripe webhook sub-handlers swallow financial reconciliation errors, invisible to Sentry', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1639),
     value: 8, effort: 3,
     detail: 'Order finalization, gift-voucher confirmation, gift-card re-credits, restock and refund reconciliation each ran in an inner try/catch that only console.error-ed -- the outer Sentry capture never fired for them, so a transient failure left a paid order un-finalized or a refund un-reconciled with zero alerting.',
     notes: ['Fix: Sentry.captureException in all seven inner catches, tagged area:stripe-webhook + a sub tag per path (order-finalize, voucher-confirm, giftcard-recredit-failed-payment, order-restock, giftcard-recredit-refund, voucher-purchase-refund-debit, enrolment-refund-reconcile).'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Google Calendar cancellation desync -- delete failures swallowed silently, event stays live', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1639),
+    title: 'Google Calendar cancellation desync -- delete failures swallowed silently, event stays live', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1639),
     value: 8, effort: 3,
     detail: 'removeBookingFromClinician wrapped the Calendar DELETE in .catch(()=>{}) then unconditionally cleared googleEventId and reported success -- a cancelled appointment could stay live on the clinician calendar with no record the sync failed.',
     notes: ['Fix: googleEventId clears only when Google confirms the event is gone (2xx, or 404/410 already-deleted); failures console.error + Sentry.captureException (area:google-calendar) and keep the id so the desync is visible and retryable.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'Academy payment finalization is non-atomic -- student can pay and stay locked out', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1639),
+    title: 'Academy payment finalization is non-atomic -- student can pay and stay locked out', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1639),
     value: 8, effort: 3,
     detail: 'finalizeEnrolmentPayment claimed the payment row (PENDING->PAID) then called applyPaidPayment as a separate write; a crash between the two left the payment PAID with the enrolment never advanced, and the redelivery branch treated already-claimed as already-applied so it could never self-heal.',
     notes: ['Fix: claim + applyPaidPayment now run in one db.$transaction (applyPaidPayment accepts a transaction client) -- PAID implies the enrolment advanced. Notifications/receipt/audit stay outside the transaction as best-effort.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: 'K Vision signup always fails validation -- the Get My Plan account gate is unpassable for new users', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1639),
+    title: 'K Vision signup always fails validation -- the Get My Plan account gate is unpassable for new users', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1639),
     value: 9, effort: 2,
     detail: 'components/ai/KVision.tsx AuthStep posts firstName/email/password but clientSignupSchema requires lastName, phone, dob and consent:true -- every signup from the flagship AI flow 422d (verified live). Found while implementing BLD-870: there were no conversions to track because the flow could not convert.',
     notes: ['Fix: a kvision-scoped schema (source:"kvision" selects it in the signup route) accepts the designed name+email+password shape -- those fields are optional in SignupInput and the DB -- and the auth step gains a "By continuing you agree to our terms and privacy policy" line.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: "K Vision AI 'Get My Plan' lead flow fires zero conversion-tracking events", type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1639),
+    title: "K Vision AI 'Get My Plan' lead flow fires zero conversion-tracking events", type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1639),
     value: 8, effort: 3,
     detail: 'The flagship homepage lead-gen mechanic gated the AI plan behind account creation but fired no trackLead/sendLead anywhere -- invisible to GA4/Meta, so ad platforms could not optimise toward it and funnel reporting undercounted leads.',
     notes: ['Fix: successful K Vision signups fire trackLead (browser) and sendLead (GA4 + Meta CAPI, server) exactly like /api/consult, deduped via a shared eventId. No hashed email is sent -- the surface has no marketing opt-in. Shipped together with the BLD-928 signup fix that made the flow convertible at all.'],
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
-    title: '--color-blush used as readable text fails WCAG contrast (1.69:1) across 20+ files', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1639),
+    title: '--color-blush used as readable text fails WCAG contrast (1.69:1) across 20+ files', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1639),
     value: 8, effort: 3,
     detail: 'text-[var(--color-blush)] (#cdb4a3, 1.69:1 on porcelain / 1.56:1 on bone, needs 4.5:1) rendered error/status/delete-link text on light surfaces across the admin, academy, portal, shop and marketing forms.',
     notes: ['Fix: 201 occurrences across 100 files swapped to --color-blush-deep (#8b4a4a, 5.68:1; dark-mode variant #e98a8a), the same mechanical pattern as the gold->gold-deep sweep; bg tints/borders untouched. Deliberately left: 24 kiosk usages (hard-coded dark shell, blush passes at 7.77:1 there) and NewsletterForm (renders only inside dark ink surfaces -- the audit named it from a context-free grep).'],
