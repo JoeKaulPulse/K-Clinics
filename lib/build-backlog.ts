@@ -2090,6 +2090,15 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Merged (#1633); this entry was left at IN_REVIEW after merge in a prior session and never advanced -- correcting the status here so the board stops listing it as open work.',
     ],
   },
+  {
+    title: 'Focus rings, academy payment idempotency, order-cancel refund, cropped photos (BLD-755, BLD-762, BLD-763, BLD-834)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1636),
+    value: 8, effort: 3,
+    detail: 'Four independent EOD-audit findings batched into one PR: no visible keyboard focus indicator on SiteSearch/NewsletterForm/RegisterInterest/ReferralCard (BLD-755); academy enrolment PaymentIntent idempotency key derived from a freshly-created row id instead of a stable enrolmentId+kind+amount, double-charge risk on retry (BLD-762); shop order "Cancel" on a paid order skipped the Stripe refund/gift-card-restore/email that "Mark refunded" performs (BLD-763); SMAS HIFU Lifting and HydraGlow Facial photos cropped onto plain background on the homepage carousel (BLD-834).',
+    notes: [
+      'BLD-834: Rosacea Treatment and Laser Wrinkle Removal (also named in the finding) currently render the generative-art placeholder, not a photo -- no mapped image exists for either slug, so the crop bug does not reproduce for them today. Not fixed here; needs a product/design call on sourcing or re-cropping an asset, logged separately on the board.',
+      'npx tsc --noEmit and npm run build both pass clean (DB URL unset for the build check -- this sandbox cannot reach Postgres directly; no schema changes in this PR).',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
