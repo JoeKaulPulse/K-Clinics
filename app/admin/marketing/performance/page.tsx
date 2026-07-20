@@ -116,7 +116,7 @@ function Table({ title, rows, empty }: { title: string; rows: { label: string; b
           <tbody>
             {rows.map((r, i) => (
               <tr key={i} className="border-t border-[var(--color-line)]">
-                <td className="py-2 capitalize">{r.href ? <Link href={r.href} className="hover:text-[var(--color-gold)]">{r.label}</Link> : r.label}</td>
+                <td className="py-2 capitalize">{r.href ? <Link href={r.href} className="hover:text-[var(--color-gold-deep)]">{r.label}</Link> : r.label}</td>
                 <td className="py-2">{r.bookings}</td>
                 <td className="py-2 text-right font-medium">{money(r.revenuePence)}</td>
               </tr>

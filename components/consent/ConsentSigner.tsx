@@ -91,7 +91,7 @@ export function ConsentSigner({
       <AnimatePresence mode="wait">
         {act === 'read' && (
           <motion.section key="read" {...fade}>
-            <p className="text-center text-xs uppercase tracking-[0.2em] text-[var(--color-gold)]">Step 1 · Read</p>
+            <p className="text-center text-xs uppercase tracking-[0.2em] text-[var(--color-gold-deep)]">Step 1 · Read</p>
             <h2 className="mt-1 text-center font-[family-name:var(--font-display)] text-2xl">{title}</h2>
 
             <div className="relative mt-5 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
@@ -125,7 +125,7 @@ export function ConsentSigner({
 
         {act === 'agree' && (
           <motion.section key="agree" {...fade}>
-            <p className="text-center text-xs uppercase tracking-[0.2em] text-[var(--color-gold)]">Step 2 · Confirm</p>
+            <p className="text-center text-xs uppercase tracking-[0.2em] text-[var(--color-gold-deep)]">Step 2 · Confirm</p>
             <h2 className="mt-1 text-center font-[family-name:var(--font-display)] text-2xl">Tap each statement to confirm</h2>
             <p className="mt-1 text-center text-xs tabular-nums text-[var(--color-stone)]">{ticks.filter(Boolean).length} of {acknowledgements.length} confirmed</p>
 
@@ -166,7 +166,7 @@ export function ConsentSigner({
 
         {act === 'sign' && (
           <motion.section key="sign" {...fade}>
-            <p className="text-center text-xs uppercase tracking-[0.2em] text-[var(--color-gold)]">Step 3 · Sign</p>
+            <p className="text-center text-xs uppercase tracking-[0.2em] text-[var(--color-gold-deep)]">Step 3 · Sign</p>
             <h2 className="mt-1 text-center font-[family-name:var(--font-display)] text-2xl">{kind === 'photo_opt_out' ? 'Sign to decline' : 'Sign to consent'}</h2>
 
             <div className="mt-5 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">

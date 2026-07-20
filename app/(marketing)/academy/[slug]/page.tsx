@@ -115,7 +115,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
                         <span className="text-[var(--color-gold)]">▶</span>
                         <span className="font-medium text-[var(--color-ink)]">{p.title}</span>
                         <span className="text-[var(--color-stone)]">· {p.moduleTitle}{p.durationMin ? ` · ${p.durationMin} min` : ''}</span>
-                        <span className="ml-auto text-xs font-medium text-[var(--color-gold)]">Free →</span>
+                        <span className="ml-auto text-xs font-medium text-[var(--color-gold-deep)]">Free →</span>
                       </Link>
                     </li>
                   ))}

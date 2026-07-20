@@ -66,7 +66,7 @@ export default async function ReorderPage() {
             {L('Everything at or below its low-stock level, grouped by supplier, with quantities rounded up to the minimum order quantity.', 'Усі позиції на рівні або нижче порогу, згруповані за постачальником, з кількістю, округленою до мінімального замовлення.')}
           </p>
         </div>
-        <Link href="/admin/inventory" className="text-sm text-[var(--color-gold)] hover:underline">{L('Inventory', 'Склад')} →</Link>
+        <Link href="/admin/inventory" className="text-sm text-[var(--color-gold-deep)] hover:underline">{L('Inventory', 'Склад')} →</Link>
       </div>
 
       {toReorder.length === 0 ? (

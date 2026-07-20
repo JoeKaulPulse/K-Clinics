@@ -111,7 +111,7 @@ function ModuleCard({ module: m, index, total, busy, act, onMove }: { module: Mo
             <div className="space-y-2">
               {m.lessons.map((l, li) => <LessonRow key={l.id} lesson={l} index={li} total={m.lessons.length} busy={busy} act={act} lessonIds={m.lessons.map((x) => x.id)} />)}
             </div>
-            <button onClick={() => act({ op: 'createLesson', moduleId: m.id })} disabled={busy} className="mt-2 text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add lesson</button>
+            <button onClick={() => act({ op: 'createLesson', moduleId: m.id })} disabled={busy} className="mt-2 text-xs font-medium text-[var(--color-gold-deep)] hover:underline">+ Add lesson</button>
           </div>
 
           {/* Quiz */}
@@ -282,7 +282,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
                       <input type="checkbox" checked={canDownload} onChange={(e) => setF((s) => ({ ...s, pdfNoDownload: e.target.checked ? s.pdfNoDownload.filter((u) => u !== url) : [...s.pdfNoDownload, url] }))} />
                       Download
                     </label>
-                    <a href={url} target="_blank" rel="noreferrer" className="shrink-0 text-[var(--color-gold)] hover:underline">View</a>
+                    <a href={url} target="_blank" rel="noreferrer" className="shrink-0 text-[var(--color-gold-deep)] hover:underline">View</a>
                     <button type="button" onClick={() => setF((s) => ({ ...s, pdfUrls: s.pdfUrls.filter((_, j) => j !== i), pdfNoDownload: s.pdfNoDownload.filter((u) => u !== url) }))} className="shrink-0 text-[var(--color-blush-deep)] hover:underline">Remove</button>
                   </div>
                 );
@@ -303,7 +303,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
                     {ATTACHMENT_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
                   </select>
                   <input className={`${field} min-w-[10rem] flex-1`} value={a.label} onChange={(e) => setF((s) => ({ ...s, attachments: s.attachments.map((x, j) => j === i ? { ...x, label: e.target.value } : x) }))} placeholder="File label shown to learner" />
-                  <a href={a.url} target="_blank" rel="noreferrer" className="shrink-0 text-[var(--color-gold)] hover:underline">View</a>
+                  <a href={a.url} target="_blank" rel="noreferrer" className="shrink-0 text-[var(--color-gold-deep)] hover:underline">View</a>
                   <button type="button" onClick={() => setF((s) => ({ ...s, attachments: s.attachments.filter((_, j) => j !== i) }))} className="shrink-0 text-[var(--color-blush-deep)] hover:underline">Remove</button>
                 </div>
               ))}
@@ -334,7 +334,7 @@ function QuizBlock({ module: m, busy, act }: { module: Module; busy: boolean; ac
     return (
       <div>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">Assessment</p>
-        <button onClick={() => act({ op: 'upsertQuiz', moduleId: m.id, title, passMark, ...settings })} disabled={busy} className="text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add a quiz to this module</button>
+        <button onClick={() => act({ op: 'upsertQuiz', moduleId: m.id, title, passMark, ...settings })} disabled={busy} className="text-xs font-medium text-[var(--color-gold-deep)] hover:underline">+ Add a quiz to this module</button>
       </div>
     );
   }
@@ -362,7 +362,7 @@ function QuizBlock({ module: m, busy, act }: { module: Module; busy: boolean; ac
         <div className="mt-3 space-y-2">
           {q.questions.map((qq, qi) => <QuestionRow key={qq.id} q={qq} index={qi} total={q.questions.length} busy={busy} act={act} ids={q.questions.map((x) => x.id)} isSurvey={isSurvey} />)}
         </div>
-        <button onClick={() => act({ op: 'createQuestion', quizId: q.id })} disabled={busy} className="mt-2 text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add question</button>
+        <button onClick={() => act({ op: 'createQuestion', quizId: q.id })} disabled={busy} className="mt-2 text-xs font-medium text-[var(--color-gold-deep)] hover:underline">+ Add question</button>
       </div>
     </div>
   );
@@ -445,7 +445,7 @@ function QuestionRow({ q, index, total, busy, act, ids, isSurvey = false }: { q:
                 </div>
               ))}
             </div>
-            {type !== 'TRUEFALSE' && <button onClick={addOpt} className="mt-2 text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add option</button>}
+            {type !== 'TRUEFALSE' && <button onClick={addOpt} className="mt-2 text-xs font-medium text-[var(--color-gold-deep)] hover:underline">+ Add option</button>}
           </div>
           )}
           <div>

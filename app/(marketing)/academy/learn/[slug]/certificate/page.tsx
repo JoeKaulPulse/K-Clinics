@@ -58,7 +58,7 @@ export default async function CertificatePage({ params }: { params: Promise<{ sl
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl text-gold-gradient md:text-5xl">{name}</h1>
           <p className="mt-5 text-sm text-[var(--color-stone)]">has successfully completed the theory assessments for</p>
           <h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl">{learning.course.title}</h2>
-          {learning.course.level && <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[var(--color-gold)]">{learning.course.level}</p>}
+          {learning.course.level && <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[var(--color-gold-deep)]">{learning.course.level}</p>}
 
           {course?.accreditations.length ? (
             <p className="mx-auto mt-6 max-w-md text-[0.7rem] uppercase tracking-[0.14em] text-[var(--color-stone)]">{course.accreditations.map((a) => ACCREDITATION_LABELS[a] ?? a).join(' · ')}</p>

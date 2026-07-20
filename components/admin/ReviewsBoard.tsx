@@ -89,7 +89,7 @@ function QuestionRow({ q, busy, act }: { q: QuestionItem; busy: boolean; act: (p
       <p className="text-xs text-[var(--color-stone)]">{q.courseTitle} · {q.moduleTitle} · <span className="font-medium text-[var(--color-ink-soft)]">{q.lessonTitle}</span></p>
       <div className="mt-1.5 flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium">{q.authorName}</span>
-        {q.pinned && <span className="text-[0.65rem] uppercase tracking-wide text-[var(--color-gold)]">📌 Pinned</span>}
+        {q.pinned && <span className="text-[0.65rem] uppercase tracking-wide text-[var(--color-gold-deep)]">📌 Pinned</span>}
         {q.resolved && <span className="rounded-full bg-[var(--color-line)] px-2 py-0.5 text-[0.65rem] text-[var(--color-stone)]">Answered</span>}
         {q.hidden && <span className="rounded-full bg-[var(--color-line)] px-2 py-0.5 text-[0.65rem] text-[var(--color-stone)]">Hidden</span>}
         <span className="ml-auto text-xs text-[var(--color-stone)]">{fmt(q.createdAt)}</span>
@@ -100,7 +100,7 @@ function QuestionRow({ q, busy, act }: { q: QuestionItem; busy: boolean; act: (p
         <ul className="mt-3 space-y-2 border-l-2 border-[var(--color-line)] pl-3">
           {q.replies.map((r) => (
             <li key={r.id} className="text-sm">
-              <span className="font-medium">{r.authorName}</span>{r.isStaff && <span className="ml-2 rounded-full bg-[var(--color-gold)]/15 px-2 py-0.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-gold)]">Staff</span>}
+              <span className="font-medium">{r.authorName}</span>{r.isStaff && <span className="ml-2 rounded-full bg-[var(--color-gold)]/15 px-2 py-0.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-gold-deep)]">Staff</span>}
               <span className="ml-2 text-xs text-[var(--color-stone)]">{fmt(r.createdAt)}</span>
               <p className="mt-0.5 whitespace-pre-line text-[var(--color-ink-soft)]">{r.body}</p>
             </li>

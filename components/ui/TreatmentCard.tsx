@@ -61,7 +61,7 @@ export async function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: nu
             {t.title}
           </h3>
           <p className="mt-2.5 flex-1 text-sm leading-relaxed text-[var(--color-stone)]">{t.tagline}</p>
-          <span className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-gold)]">
+          <span className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-gold-deep)]">
             <span className="relative">
               Discover
               <span className="absolute -bottom-0.5 left-0 h-px w-full origin-right scale-x-0 bg-current transition-transform duration-500 [transition-timing-function:var(--ease-lux)] group-hover:origin-left group-hover:scale-x-100" />

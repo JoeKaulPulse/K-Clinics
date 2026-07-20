@@ -31,8 +31,8 @@ export async function GaTrafficWidget({ days = 28 }: { days?: number }) {
   return (
     <Link href="/admin/marketing/analytics" className="group mt-6 block rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 transition-colors hover:border-[var(--color-gold)]">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="font-[family-name:var(--font-display)] text-xl transition-colors group-hover:text-[var(--color-gold)]">Website traffic <span className="text-xs font-normal text-[var(--color-stone)]">· GA4 · {days} days</span></p>
-        <span className="text-sm text-[var(--color-gold)]">Full analytics →</span>
+        <p className="font-[family-name:var(--font-display)] text-xl transition-colors group-hover:text-[var(--color-gold-deep)]">Website traffic <span className="text-xs font-normal text-[var(--color-stone)]">· GA4 · {days} days</span></p>
+        <span className="text-sm text-[var(--color-gold-deep)]">Full analytics →</span>
       </div>
       <div className="mt-4 flex flex-wrap items-end gap-x-8 gap-y-4">
         <Stat label="Visitors" value={nf(ga.totals.activeUsers)} />

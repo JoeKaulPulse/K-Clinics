@@ -59,7 +59,7 @@ function AssignmentPicker({
           );
         })}
       </div>
-      <button type="button" onClick={() => setOpen((v) => !v)} className="mt-2.5 text-xs text-[var(--color-gold)] hover:underline">
+      <button type="button" onClick={() => setOpen((v) => !v)} className="mt-2.5 text-xs text-[var(--color-gold-deep)] hover:underline">
         {open ? 'Hide' : 'Specific services'}{selSlugs.length ? ` · ${selSlugs.length} selected` : ''}
       </button>
       {open && (
@@ -176,7 +176,7 @@ function Card({ r, services, groups }: { r: TemplateRow; services: Service[]; gr
           <label className="text-xs text-[var(--color-stone)]">Category
             <select value={category} onChange={(e) => setCategory(e.target.value)} className="ml-1.5 rounded-[var(--radius-xs)] border border-[var(--color-line)] bg-white px-2 py-1 text-xs outline-none focus:border-[var(--color-gold)]">{Array.from(new Set([...CATEGORIES, category])).map((c) => <option key={c} value={c}>{c}</option>)}</select>
           </label>
-          <button onClick={() => setPreview((v) => !v)} className="text-xs text-[var(--color-gold)] hover:underline">{preview ? 'Edit' : 'Preview'}</button>
+          <button onClick={() => setPreview((v) => !v)} className="text-xs text-[var(--color-gold-deep)] hover:underline">{preview ? 'Edit' : 'Preview'}</button>
           <button onClick={toggle} className="text-xs text-[var(--color-stone)] hover:underline">{r.active ? 'Disable' : 'Enable'}</button>
         </div>
       </div>

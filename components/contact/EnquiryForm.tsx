@@ -125,7 +125,7 @@ export function EnquiryForm() {
 
       <p className="mt-4 text-xs leading-relaxed text-[var(--color-stone)]">
         By submitting, you agree to be contacted about your enquiry. We never share your details. Read our{' '}
-        <a href="/info/website-privacy-terms" className="underline hover:text-[var(--color-gold)]">Privacy Policy</a>.
+        <a href="/info/website-privacy-terms" className="underline hover:text-[var(--color-gold-deep)]">Privacy Policy</a>.
       </p>
     </form>
   );

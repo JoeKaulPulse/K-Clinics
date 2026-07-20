@@ -73,15 +73,15 @@ export default async function AppointmentsPage() {
                     </div>
                     <p className="text-sm text-[var(--color-stone)]">
                       {b.startAt.toLocaleDateString(lc, { weekday: 'long', day: 'numeric', month: 'long', timeZone: CLINIC_TZ })} · {b.startAt.toLocaleTimeString(lc, { hour: '2-digit', minute: '2-digit', timeZone: CLINIC_TZ })}
-                      <span className="ml-2 text-[var(--color-gold)]">· {when}</span>
+                      <span className="ml-2 text-[var(--color-gold-deep)]">· {when}</span>
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <a href={`/api/account/calendar/${b.manageToken}`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
+                  <a href={`/api/account/calendar/${b.manageToken}`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">
                     {t('appt.addCalendar')}
                   </a>
-                  <Link href={`/booking/manage?t=${b.manageToken}`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
+                  <Link href={`/booking/manage?t=${b.manageToken}`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">
                     {t('appt.reschedule')}
                   </Link>
                   <CancelButton
@@ -106,7 +106,7 @@ export default async function AppointmentsPage() {
           })}
         </ul>
       ) : (
-        <p className="mb-10 text-[var(--color-stone)]">{t('appt.none')} <Link href="/book" className="font-medium text-[var(--color-gold)]">{t('appt.bookNow')} →</Link></p>
+        <p className="mb-10 text-[var(--color-stone)]">{t('appt.none')} <Link href="/book" className="font-medium text-[var(--color-gold-deep)]">{t('appt.bookNow')} →</Link></p>
       )}
       </Reveal>
 

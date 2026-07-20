@@ -147,7 +147,7 @@ export function MediaField({ value, onChange, label }: { value: string; onChange
         <div className="flex-1">
           <input className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={value} placeholder="https://… or choose from library" onChange={(e) => onChange(e.target.value)} />
         </div>
-        <button type="button" onClick={() => setOpen(true)} className="shrink-0 rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Library</button>
+        <button type="button" onClick={() => setOpen(true)} className="shrink-0 rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">Library</button>
         {value && <button type="button" onClick={() => onChange('')} className="shrink-0 text-sm text-[var(--color-stone)] hover:text-[#c0392b]">Clear</button>}
       </div>
 

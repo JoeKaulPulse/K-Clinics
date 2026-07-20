@@ -55,13 +55,13 @@ export default async function BundlePage({ params }: { params: Promise<{ slug: s
                     <Link href={`/academy/${c.slug}`} className="group flex items-start gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5 transition-colors hover:border-[var(--color-gold)]">
                       <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--color-ink)] font-[family-name:var(--font-display)] text-sm text-[var(--color-gold-soft)]">{i + 1}</span>
                       <span className="flex-1">
-                        {c.level && <span className="block text-xs uppercase tracking-[0.16em] text-[var(--color-gold)]">{c.level}</span>}
+                        {c.level && <span className="block text-xs uppercase tracking-[0.16em] text-[var(--color-gold-deep)]">{c.level}</span>}
                         <span className="block font-[family-name:var(--font-display)] text-lg leading-tight text-[var(--color-ink)]">{c.title}</span>
                         {c.summary && <span className="mt-1 block text-sm text-[var(--color-ink-soft)]">{c.summary}</span>}
                       </span>
                       <span className="shrink-0 text-right">
                         <span className="block text-sm font-medium text-[var(--color-ink)]">{formatFee(c.pricePence)}</span>
-                        <span className="text-xs text-[var(--color-gold)] group-hover:underline">View →</span>
+                        <span className="text-xs text-[var(--color-gold-deep)] group-hover:underline">View →</span>
                       </span>
                     </Link>
                   </li>

@@ -22,19 +22,19 @@ export function StudentActions({ studentId, email, portalActive, hasClient }: { 
     router.refresh();
     setTimeout(() => setDone(''), 4000);
   }
-  const btn = 'rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold)] disabled:opacity-50';
+  const btn = 'rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)] disabled:opacity-50';
   return (
     <div className="flex flex-wrap items-center gap-2">
       <button
         onClick={() => act('setStudentActive', { id: studentId, active: !portalActive }, portalActive ? 'Suspended' : 'Reactivated', portalActive ? 'Suspend this trainee’s portal access?' : undefined)}
         disabled={!!busy}
-        className={portalActive ? `${btn} hover:!border-[var(--color-blush)] hover:!text-[var(--color-blush-deep)]` : 'rounded-full border border-[var(--color-gold)] px-4 py-1.5 text-sm text-[var(--color-gold)]'}
+        className={portalActive ? `${btn} hover:!border-[var(--color-blush)] hover:!text-[var(--color-blush-deep)]` : 'rounded-full border border-[var(--color-gold)] px-4 py-1.5 text-sm text-[var(--color-gold-deep)]'}
       >{portalActive ? 'Suspend access' : 'Reactivate'}</button>
       <button onClick={() => act('sendActivation', { studentId }, 'Access link sent')} disabled={!!busy} className={btn}>Email portal link</button>
       <button onClick={() => act('resetStudentPassword', { email }, 'Reset email sent')} disabled={!!busy} className={btn}>Send password reset</button>
       {!hasClient && <button onClick={() => act('linkClient', { studentId }, 'Client linked')} disabled={!!busy} className={btn}>Link clinic client</button>}
       {busy && <span className="text-xs text-[var(--color-stone)]">Working…</span>}
-      {done && <span className="text-xs text-[var(--color-gold)]">{done} ✓</span>}
+      {done && <span className="text-xs text-[var(--color-gold-deep)]">{done} ✓</span>}
     </div>
   );
 }

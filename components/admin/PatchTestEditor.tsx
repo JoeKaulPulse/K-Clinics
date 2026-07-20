@@ -28,7 +28,7 @@ export function PatchTestEditor({ clientId, result, setBy, setAt }: { clientId: 
     <section>
       <div className="mb-3 flex items-center gap-2">
         <h2 className="font-[family-name:var(--font-display)] text-xl">Patch test</h2>
-        {passed && <span aria-hidden className="text-[var(--color-gold)]">✓</span>}
+        {passed && <span aria-hidden className="text-[var(--color-gold-deep)]">✓</span>}
         {failed && <span aria-hidden className="text-[var(--color-blush-deep)]">⚠</span>}
       </div>
       <div className={`rounded-[var(--radius-md)] border p-4 ${failed ? 'border-[var(--color-blush)] bg-[var(--color-blush)]/12' : passed ? 'border-[var(--color-line)] bg-[var(--color-porcelain)]' : 'border-[var(--color-line)] bg-[var(--color-porcelain)]'}`}>

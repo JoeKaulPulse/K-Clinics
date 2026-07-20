@@ -77,7 +77,7 @@ export function ArrivalPrep({ a }: { a: NextArrival }) {
       <div className="p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <Link href={`/admin/clients/${a.clientId}`} className="font-[family-name:var(--font-display)] text-xl hover:text-[var(--color-gold)]">{a.clientName}</Link>
+            <Link href={`/admin/clients/${a.clientId}`} className="font-[family-name:var(--font-display)] text-xl hover:text-[var(--color-gold-deep)]">{a.clientName}</Link>
             <p className="mt-0.5 text-sm text-[var(--color-stone)]">{a.treatment}{a.practitioner ? ` · with ${a.practitioner}` : ''}</p>
           </div>
           <Link href={`/admin/bookings/${a.id}`} className="shrink-0 rounded-full border border-[var(--color-line)] px-3.5 py-1.5 text-sm transition-colors hover:bg-[var(--color-bone)]">Open booking →</Link>

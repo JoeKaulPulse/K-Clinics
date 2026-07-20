@@ -88,7 +88,7 @@ export function EnrolmentCheckout(props: {
               {busy ? 'Please wait…' : `Pay ${money(outstandingPence)} now`}
             </button>
             {canDeposit && (
-              <button onClick={() => !busy && start('deposit')} disabled={busy} className="rounded-full border border-[var(--color-line)] px-6 py-2.5 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)] disabled:opacity-60">
+              <button onClick={() => !busy && start('deposit')} disabled={busy} className="rounded-full border border-[var(--color-line)] px-6 py-2.5 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)] disabled:opacity-60">
                 Pay {money(depositPence!)} deposit to reserve
               </button>
             )}

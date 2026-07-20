@@ -9,7 +9,7 @@ import type { CommentView } from '@/lib/lms';
 const fmt = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
 function StaffBadge() {
-  return <span className="rounded-full bg-[var(--color-gold)]/15 px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-[var(--color-gold)]">K Academy</span>;
+  return <span className="rounded-full bg-[var(--color-gold)]/15 px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-[var(--color-gold-deep)]">K Academy</span>;
 }
 
 function CommentCard({ c, onReply, onDelete }: { c: CommentView; onReply: (parentId: string, body: string) => Promise<void>; onDelete: (id: string) => void }) {
@@ -27,13 +27,13 @@ function CommentCard({ c, onReply, onDelete }: { c: CommentView; onReply: (paren
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="font-medium text-[var(--color-ink)]">{c.authorName}</span>
         {c.isStaff && <StaffBadge />}
-        {c.pinned && <span className="text-[0.65rem] uppercase tracking-wide text-[var(--color-gold)]">📌 Pinned</span>}
+        {c.pinned && <span className="text-[0.65rem] uppercase tracking-wide text-[var(--color-gold-deep)]">📌 Pinned</span>}
         {c.resolved && <span className="rounded-full bg-[var(--color-line)] px-2 py-0.5 text-[0.65rem] text-[var(--color-stone)]">Answered</span>}
         <span className="ml-auto text-xs text-[var(--color-stone)]">{fmt(c.createdAt)}</span>
       </div>
       <p className="mt-1.5 whitespace-pre-line text-sm text-[var(--color-ink-soft)]">{c.body}</p>
       <div className="mt-2 flex items-center gap-3 text-xs">
-        <button onClick={() => setReplying((v) => !v)} className="text-[var(--color-gold)] hover:underline">Reply</button>
+        <button onClick={() => setReplying((v) => !v)} className="text-[var(--color-gold-deep)] hover:underline">Reply</button>
         {c.mine && <button onClick={() => onDelete(c.id)} className="text-[var(--color-stone)] hover:text-[var(--color-blush-deep)] hover:underline">Delete</button>}
       </div>
 

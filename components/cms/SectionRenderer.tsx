@@ -39,7 +39,7 @@ function TocSection({ data, headings }: { data: Record<string, unknown>; heading
         <ul className="space-y-1.5">
           {headings.map((h, i) => (
             <li key={i} className={h.level === 3 ? 'pl-4' : ''}>
-              <a href={`#${h.slug}`} className="text-sm text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-gold)]">{h.text.replace(/[*_`]/g, '')}</a>
+              <a href={`#${h.slug}`} className="text-sm text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-gold-deep)]">{h.text.replace(/[*_`]/g, '')}</a>
             </li>
           ))}
         </ul>
@@ -337,7 +337,7 @@ function SectionView({ section: { type, data } }: { section: Section }) {
               <div key={i} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
                 <h3 className="font-[family-name:var(--font-display)] text-lg">{it.title}</h3>
                 {it.text && <p className="mt-2 text-sm text-[var(--color-stone)]">{it.text}</p>}
-                {it.linkLabel && it.linkHref && <Link href={it.linkHref} className="mt-3 inline-block text-sm font-medium text-[var(--color-gold)] hover:underline">{it.linkLabel} →</Link>}
+                {it.linkLabel && it.linkHref && <Link href={it.linkHref} className="mt-3 inline-block text-sm font-medium text-[var(--color-gold-deep)] hover:underline">{it.linkLabel} →</Link>}
               </div>
             ))}
           </div>
@@ -397,7 +397,7 @@ async function ContactInfoSection({ data }: { data: Record<string, unknown> }) {
         <div>
           <p className="eyebrow mb-3">Address</p>
           <p className="font-[family-name:var(--font-display)] text-2xl leading-snug">{c.address.street}<br />{c.address.locality}<br />{c.address.region} {c.address.postalCode}</p>
-          <a href={c.mapLink} target="_blank" rel="noopener noreferrer" className="link-underline mt-3 inline-block text-sm font-medium text-[var(--color-gold)]">Get directions →</a>
+          <a href={c.mapLink} target="_blank" rel="noopener noreferrer" className="link-underline mt-3 inline-block text-sm font-medium text-[var(--color-gold-deep)]">Get directions →</a>
         </div>
         <div className="grid grid-cols-2 gap-8">
           <div><p className="eyebrow mb-2">Call</p><a href={c.phoneHref} className="link-underline text-lg">{c.phone}</a></div>

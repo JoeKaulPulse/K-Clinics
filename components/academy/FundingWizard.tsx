@@ -138,7 +138,7 @@ export function FundingWizard({ financeApplyUrl }: { financeApplyUrl?: string })
               </div>
               <p className="mt-1 text-sm text-[var(--color-ink-soft)]">{r.detail}</p>
               {r.key === 'course_finance' && financeApplyUrl && (
-                <a href={financeApplyUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm font-medium text-[var(--color-gold)] hover:underline">Apply with monthly finance →</a>
+                <a href={financeApplyUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm font-medium text-[var(--color-gold-deep)] hover:underline">Apply with monthly finance →</a>
               )}
               {r.note && <p className="mt-2 text-xs text-[var(--color-stone)]">{r.note}</p>}
             </li>

@@ -78,7 +78,7 @@ export function StaffManager({ staff, canManage, actorRole }: { staff: Staff[]; 
                         <button onClick={() => setProfileFor(s)} className="text-sm font-medium text-[var(--color-stone)] hover:underline" title="Public team-page profile">
                           Profile{s.profile?.publicProfile ? ' ✓' : ''}
                         </button>
-                        <button onClick={() => setEditing(s)} className="text-sm font-medium text-[var(--color-gold)] hover:underline">
+                        <button onClick={() => setEditing(s)} className="text-sm font-medium text-[var(--color-gold-deep)] hover:underline">
                           Edit
                         </button>
                       </span>
@@ -233,7 +233,7 @@ function Editor({ staff, actorRole, onClose, onSaved }: { staff: Staff | null; a
           <p className="eyebrow mb-1">Access control</p>
           <p className="mb-4 text-sm text-[var(--color-stone)]">
             Defaults come from the role; toggles below override them for this person.{' '}
-            {role === 'OWNER' && <span className="text-[var(--color-gold)]">Owners always have full access.</span>}
+            {role === 'OWNER' && <span className="text-[var(--color-gold-deep)]">Owners always have full access.</span>}
           </p>
           <div className="space-y-5">
             {PERMISSION_GROUPS.map((group) => (
@@ -255,7 +255,7 @@ function Editor({ staff, actorRole, onClose, onSaved }: { staff: Staff | null; a
                           <span className="flex items-center gap-1.5 text-sm font-medium">
                             {p.label}
                             {p.sensitive && <span className="rounded bg-[var(--color-blush)]/30 px-1.5 py-0.5 text-[0.6rem] uppercase tracking-wide">sensitive</span>}
-                            {overridden && <span className="text-[0.6rem] text-[var(--color-gold)]">• custom</span>}
+                            {overridden && <span className="text-[0.6rem] text-[var(--color-gold-deep)]">• custom</span>}
                           </span>
                           <span className="mt-0.5 block text-xs text-[var(--color-stone)]">{p.description}</span>
                         </span>

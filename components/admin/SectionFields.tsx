@@ -110,7 +110,7 @@ function FieldInput({ field: f, value, data, onChange }: { field: Field; value: 
               </div>
             </div>
           ))}
-          <button onClick={() => onChange([...items, blank()])} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">+ Add {f.itemLabel || 'item'}</button>
+          <button onClick={() => onChange([...items, blank()])} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">+ Add {f.itemLabel || 'item'}</button>
         </div>
       </div>
     );

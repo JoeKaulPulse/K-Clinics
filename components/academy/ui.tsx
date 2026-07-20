@@ -15,7 +15,7 @@ const cx = (...parts: Array<string | false | null | undefined>) => parts.filter(
 export function PageTitle({ children, lede, eyebrow, className }: { children: ReactNode; lede?: ReactNode; eyebrow?: ReactNode; className?: string }) {
   return (
     <header className={cx('mb-8', className)}>
-      {eyebrow && <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-gold)]">{eyebrow}</p>}
+      {eyebrow && <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-gold-deep)]">{eyebrow}</p>}
       <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl">{children}</h1>
       {lede && <p className="mt-2 max-w-2xl text-[var(--color-stone)]">{lede}</p>}
     </header>
@@ -33,7 +33,7 @@ export function SectionTitle({ children, sub, className }: { children: ReactNode
 }
 
 export function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
-  return <p className={cx('text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-gold)]', className)}>{children}</p>;
+  return <p className={cx('text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-gold-deep)]', className)}>{children}</p>;
 }
 
 /** The one portal card. radius-lg + line border; `tone` sets the surface, `accent`
@@ -90,7 +90,7 @@ const btnBase = 'inline-flex items-center justify-center gap-2 rounded-full font
 const btnSizes: Record<BtnSize, string> = { sm: 'px-3 py-1.5 text-xs', md: 'px-5 py-2 text-sm' };
 const btnVariants: Record<BtnVariant, string> = {
   primary: 'bg-[var(--color-gold)] text-white hover:bg-[var(--color-ink)]',
-  secondary: 'border border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]',
+  secondary: 'border border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]',
   ink: 'bg-[var(--color-ink)] text-[var(--color-porcelain)] hover:bg-[var(--color-espresso)]',
 };
 export function AButton({ children, href, onClick, variant = 'primary', size = 'md', className, external, type = 'button', disabled, ariaLabel }: { children: ReactNode; href?: string; onClick?: () => void; variant?: BtnVariant; size?: BtnSize; className?: string; external?: boolean; type?: 'button' | 'submit'; disabled?: boolean; ariaLabel?: string }) {

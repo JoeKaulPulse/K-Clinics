@@ -225,7 +225,7 @@ export function SessionRunner(p: Props) {
             )}
             {active && !isMine && !presenting && !sessionDone && (
               <button type="button" disabled={pending} onClick={() => run(() => api({ op: 'claim' }))}
-                className="shrink-0 rounded-full border border-[var(--color-gold)] px-3 py-1.5 text-xs font-medium text-[var(--color-gold)] transition-colors hover:bg-[var(--color-gold)] hover:text-white disabled:opacity-50">
+                className="shrink-0 rounded-full border border-[var(--color-gold)] px-3 py-1.5 text-xs font-medium text-[var(--color-gold-deep)] transition-colors hover:bg-[var(--color-gold)] hover:text-white disabled:opacity-50">
                 Take over
               </button>
             )}
@@ -278,7 +278,7 @@ export function SessionRunner(p: Props) {
                   >
                     <span aria-hidden className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[10px] transition-colors ${
                       state === 'done' ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white'
-                      : state === 'current' ? 'border-[var(--color-gold)] text-[var(--color-gold)]'
+                      : state === 'current' ? 'border-[var(--color-gold)] text-[var(--color-gold-deep)]'
                       : 'border-[var(--color-line)] text-[var(--color-stone)]'}`}>
                       {state === 'done' ? <CheckIcon /> : i + 1}
                     </span>
@@ -306,7 +306,7 @@ export function SessionRunner(p: Props) {
 
           <AnimatePresence mode="wait">
             <motion.section key={step} {...fade} className={`mx-auto max-w-2xl ${presenting && clientSafe ? 'text-lg' : ''}`}>
-              <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-gold)]">{def.kicker}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-gold-deep)]">{def.kicker}</p>
               <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl leading-tight sm:text-5xl">
                 {def.title.replace('{name}', p.client.firstName)}
               </h1>
@@ -475,7 +475,7 @@ function SafetyStep({ p, live, pending, presenting, onReviewFlag, onSaveSop, onC
           <p className="text-sm font-semibold">Medical flag</p>
           <p className="mt-1 text-sm text-[var(--color-stone)]">{p.client.medicalFlag}</p>
           {flagDone
-            ? <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-[var(--color-gold)]"><CheckIcon /> Reviewed</p>
+            ? <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-[var(--color-gold-deep)]"><CheckIcon /> Reviewed</p>
             : <button type="button" disabled={pending} onClick={onReviewFlag} className="mt-3 min-h-11 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">I’ve reviewed this flag</button>}
         </div>
       )}
@@ -483,7 +483,7 @@ function SafetyStep({ p, live, pending, presenting, onReviewFlag, onSaveSop, onC
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm font-semibold">{p.sop.title}</p>
-          <span className={`text-xs tabular-nums ${allChecked ? 'text-[var(--color-gold)]' : 'text-[var(--color-stone)]'}`}>{items.filter((i) => i.checked).length}/{items.length}</span>
+          <span className={`text-xs tabular-nums ${allChecked ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-stone)]'}`}>{items.filter((i) => i.checked).length}/{items.length}</span>
         </div>
         <ul className="mt-4 space-y-3">
           {p.sop.steps.map((s, i) => (
@@ -510,7 +510,7 @@ function SafetyStep({ p, live, pending, presenting, onReviewFlag, onSaveSop, onC
           <button type="button" disabled={pending} onClick={() => onSaveSop(items, allChecked)} className="min-h-11 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">
             {allChecked ? 'Complete checklist' : 'Save progress'}
           </button>
-          {sopDone && <span className="inline-flex items-center gap-1.5 text-xs text-[var(--color-gold)]"><CheckIcon /> Acknowledged</span>}
+          {sopDone && <span className="inline-flex items-center gap-1.5 text-xs text-[var(--color-gold-deep)]"><CheckIcon /> Acknowledged</span>}
         </div>
       </div>
 
@@ -911,7 +911,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
             {/* BLD-207: ad-hoc discount / price adjustment (applies to the amount taken by any method) */}
             <div className="mt-3">
               {!discOpen ? (
-                <button type="button" onClick={() => setDiscOpen(true)} className="text-xs text-[var(--color-gold)] underline-offset-2 hover:underline">Apply a discount / adjust price</button>
+                <button type="button" onClick={() => setDiscOpen(true)} className="text-xs text-[var(--color-gold-deep)] underline-offset-2 hover:underline">Apply a discount / adjust price</button>
               ) : (
                 <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3 text-sm">
                   <div className="flex items-center rounded-full border border-[var(--color-line)] bg-white p-0.5 text-xs">
@@ -931,11 +931,11 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
               {vApplied ? (
                 <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3 text-sm">
                   <span>Gift voucher <span className="font-medium">{vApplied.code}</span> — {money(vApplied.pence)} applied. {money(duePence)} left to collect.</span>
-                  <button type="button" onClick={removeVoucher} disabled={vBusy} className="text-xs text-[var(--color-gold)] underline-offset-2 hover:underline disabled:opacity-50">{vBusy ? 'Removing…' : 'Remove'}</button>
+                  <button type="button" onClick={removeVoucher} disabled={vBusy} className="text-xs text-[var(--color-gold-deep)] underline-offset-2 hover:underline disabled:opacity-50">{vBusy ? 'Removing…' : 'Remove'}</button>
                   {voucherExceedsAmount && <span className="w-full text-xs text-red-700">The voucher covers more than the current amount — remove it and apply again at the new price.</span>}
                 </div>
               ) : !vOpen ? (
-                <button type="button" onClick={() => setVOpen(true)} className="text-xs text-[var(--color-gold)] underline-offset-2 hover:underline">Redeem a gift voucher</button>
+                <button type="button" onClick={() => setVOpen(true)} className="text-xs text-[var(--color-gold-deep)] underline-offset-2 hover:underline">Redeem a gift voucher</button>
               ) : (
                 <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3 text-sm">
                   <input value={vCode} onChange={(e) => { setVCode(e.target.value); setVErr(''); }} onKeyDown={(e) => e.key === 'Enter' && applyVoucher()} placeholder="Voucher code" aria-label="Gift voucher code" className="min-w-[10rem] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 uppercase outline-none focus:border-[var(--color-gold)]" />
@@ -962,7 +962,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                   <div className="min-w-0 text-sm">
                     <p className="font-medium">Scan to pay {money(duePence)}</p>
                     <p className="mt-1 text-[var(--color-stone)]">The client scans this with their phone camera. This screen updates to “Paid” automatically once it goes through.</p>
-                    {linkQr.url && <a href={linkQr.url} target="_blank" rel="noreferrer" className="mt-1 inline-block break-all text-xs text-[var(--color-gold)] underline">Open the payment page</a>}
+                    {linkQr.url && <a href={linkQr.url} target="_blank" rel="noreferrer" className="mt-1 inline-block break-all text-xs text-[var(--color-gold-deep)] underline">Open the payment page</a>}
                   </div>
                 </div>
               ) : (

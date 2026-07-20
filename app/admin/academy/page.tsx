@@ -69,7 +69,7 @@ export default async function AdminAcademyPage() {
             <span className="text-xs uppercase tracking-wide text-[var(--color-stone)]">{c.label}</span>
             <span className="mt-1 block font-[family-name:var(--font-display)] text-3xl text-[var(--color-ink)]">{c.value}</span>
             <span className="text-xs text-[var(--color-stone)]">{c.sub}</span>
-            <span className="mt-2 block text-xs text-[var(--color-gold)] opacity-0 transition-opacity group-hover:opacity-100">Open →</span>
+            <span className="mt-2 block text-xs text-[var(--color-gold-deep)] opacity-0 transition-opacity group-hover:opacity-100">Open →</span>
           </Link>
         ))}
       </div>

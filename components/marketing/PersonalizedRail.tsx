@@ -31,7 +31,7 @@ export function PersonalizedRail({ heading, subheading, count = 6, showGiftCard 
         {ordered.map((t) => (
           <Link key={t.slug} href={`/${t.slug}`} className="group rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 transition-colors hover:border-[var(--color-gold)]">
             <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">{t.group}</p>
-            <h3 className="mt-1 font-[family-name:var(--font-display)] text-xl transition-colors group-hover:text-[var(--color-gold)]">{t.title}</h3>
+            <h3 className="mt-1 font-[family-name:var(--font-display)] text-xl transition-colors group-hover:text-[var(--color-gold-deep)]">{t.title}</h3>
             {t.tagline && <p className="mt-2 text-sm text-[var(--color-stone)]">{t.tagline}</p>}
           </Link>
         ))}

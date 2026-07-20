@@ -66,7 +66,7 @@ export function Applications({ enrolments, courses }: { enrolments: Enrolment[];
                     <tr className="border-t border-[var(--color-line)] align-top">
                       <td className="py-2 pr-2">
                         <span className="font-medium">{e.applicantName}</span>
-                        {e.financeInterest && <span className="ml-1 rounded-full bg-[var(--color-gold)]/15 px-1.5 py-0.5 text-[0.6rem] text-[var(--color-gold)]">Finance</span>}
+                        {e.financeInterest && <span className="ml-1 rounded-full bg-[var(--color-gold)]/15 px-1.5 py-0.5 text-[0.6rem] text-[var(--color-gold-deep)]">Finance</span>}
                         {!e.studentId && <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[0.6rem] text-amber-800" title="No trainee account linked yet — make an offer to create one">No account</span>}
                         <span className="block text-xs text-[var(--color-stone)]">{e.applicantEmail}{e.applicantPhone ? ` · ${e.applicantPhone}` : ''}</span>
                         <span className="block text-xs text-[var(--color-stone)]">Applied {fmtDate(e.createdAt)}{e.preCourseAckAt ? ' · pre-course read ✓' : ''}</span>
@@ -110,7 +110,7 @@ export function Applications({ enrolments, courses }: { enrolments: Enrolment[];
                               {e.status === 'OFFERED' ? 'Resend offer' : 'Make offer'}
                             </button>
                           )}
-                          <button onClick={() => setOpen(isOpen ? null : e.id)} className="text-xs text-[var(--color-gold)] hover:underline">{isOpen ? 'Close' : 'Payments'} ({e.payments.length})</button>
+                          <button onClick={() => setOpen(isOpen ? null : e.id)} className="text-xs text-[var(--color-gold-deep)] hover:underline">{isOpen ? 'Close' : 'Payments'} ({e.payments.length})</button>
                           <button onClick={() => { if (confirm('Remove this application?')) act({ op: 'removeEnrolment', id: e.id }); }} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
                         </div>
                       </td>
@@ -189,7 +189,7 @@ export function EnrolStudent({ courses }: { courses: Course[] }) {
           <label className="flex items-end gap-2 text-sm text-[var(--color-stone)]"><input type="checkbox" checked={f.sendLink} onChange={(e) => set('sendLink', e.target.checked)} className="h-4 w-4 accent-[var(--color-gold)]" />Email them a one-click portal link</label>
           <div className="sm:col-span-2 flex items-center gap-3">
             <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">{busy ? 'Adding…' : 'Add to course'}</button>
-            {msg && <span className={`text-sm ${msg.includes('✓') ? 'text-[var(--color-gold)]' : 'text-[var(--color-blush-deep)]'}`}>{msg}</span>}
+            {msg && <span className={`text-sm ${msg.includes('✓') ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-blush-deep)]'}`}>{msg}</span>}
           </div>
         </div>
       )}
@@ -240,7 +240,7 @@ function PaymentPanel({ enrolment: e, onAct }: { enrolment: Enrolment; onAct: (p
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-wide ${STATE_BADGE[p.state] ?? STATE_BADGE.SCHEDULED}`}>{p.state}</span>
-                  {p.state !== 'PAID' && <button onClick={() => onAct({ op: 'markPaymentPaid', paymentId: p.id, method: p.method || 'BANK_TRANSFER' })} className="text-xs text-[var(--color-gold)] hover:underline">Mark paid</button>}
+                  {p.state !== 'PAID' && <button onClick={() => onAct({ op: 'markPaymentPaid', paymentId: p.id, method: p.method || 'BANK_TRANSFER' })} className="text-xs text-[var(--color-gold-deep)] hover:underline">Mark paid</button>}
                   {p.state === 'PAID' && <button onClick={() => { if (confirm('Issue a Stripe refund for this payment?')) onAct({ op: 'refundPayment', paymentId: p.id }); }} className="text-xs text-[var(--color-stone-soft)] hover:underline">Refund</button>}
                   <button onClick={() => { if (confirm('Remove this payment row?')) onAct({ op: 'removePayment', paymentId: p.id }); }} aria-label="Remove payment" className="text-xs text-[var(--color-blush-deep)] hover:underline">✕</button>
                 </div>
@@ -308,8 +308,8 @@ function CourseCard({ course, enrolments }: { course: Course; enrolments: Enrolm
           <span className="text-xs text-[var(--color-stone)]"> · {course.level || 'No level'} · {money(course.pricePence)} · {course.cohorts.length} cohort(s){course.featured ? ' · featured' : ''}</span>
         </div>
         <div className="flex items-center gap-3 text-xs">
-          <a href={`/admin/academy/${course.id}`} className="font-medium text-[var(--color-ink)] hover:text-[var(--color-gold)] hover:underline">Curriculum →</a>
-          <button onClick={() => setEditing((v) => !v)} className="text-[var(--color-gold)] hover:underline">{editing ? 'Close' : 'Edit'}</button>
+          <a href={`/admin/academy/${course.id}`} className="font-medium text-[var(--color-ink)] hover:text-[var(--color-gold-deep)] hover:underline">Curriculum →</a>
+          <button onClick={() => setEditing((v) => !v)} className="text-[var(--color-gold-deep)] hover:underline">{editing ? 'Close' : 'Edit'}</button>
           <button onClick={() => act({ op: 'toggleCourse', id: course.id, active: !course.active })} className="text-[var(--color-stone)] hover:underline">{course.active ? 'Disable' : 'Enable'}</button>
           <button onClick={() => { if (confirm('Delete this course and its cohorts?')) act({ op: 'removeCourse', id: course.id }); }} className="text-[var(--color-blush-deep)] hover:underline">Delete</button>
         </div>
@@ -388,7 +388,7 @@ function Cohorts({ course, enrolments }: { course: Course; enrolments: Enrolment
     <div className="mt-3 border-t border-[var(--color-line)] pt-3">
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-stone)]">Cohorts — practical dates &amp; course-access window</p>
-        <button onClick={() => setAdd((v) => !v)} className="text-xs text-[var(--color-gold)] hover:underline">{add ? 'Cancel' : '+ Add cohort'}</button>
+        <button onClick={() => setAdd((v) => !v)} className="text-xs text-[var(--color-gold-deep)] hover:underline">{add ? 'Cancel' : '+ Add cohort'}</button>
       </div>
       {add && (
         <div className="mt-2 flex flex-wrap items-end gap-2">
@@ -437,7 +437,7 @@ function CohortRow({ courseId, cohort: h, enrolments, onRemove }: { courseId: st
         <span className="text-[var(--color-stone)]">→</span>
         <input type="date" value={aEnd} onChange={(e) => setAEnd(e.target.value)} className={field} title="Course access expires" />
         {dirty && <button onClick={saveAccess} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-2.5 py-1 text-[0.65rem] text-[var(--color-porcelain)] disabled:opacity-50">{busy ? '…' : 'Save'}</button>}
-        <button onClick={() => setShowStudents((v) => !v)} className="text-xs text-[var(--color-gold)] hover:underline">{enrolments.length} student{enrolments.length !== 1 ? 's' : ''}</button>
+        <button onClick={() => setShowStudents((v) => !v)} className="text-xs text-[var(--color-gold-deep)] hover:underline">{enrolments.length} student{enrolments.length !== 1 ? 's' : ''}</button>
         <button onClick={onRemove} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
       </div>
       {showStudents && (

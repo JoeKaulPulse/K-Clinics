@@ -68,7 +68,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         className={`group inline-flex items-center gap-1 ${className}`}
       >
         {label}
-        <span aria-hidden className={active ? 'text-[var(--color-gold)]' : 'opacity-0 group-hover:opacity-40'}>{active && dir === 'asc' ? '↑' : '↓'}</span>
+        <span aria-hidden className={active ? 'text-[var(--color-gold-deep)]' : 'opacity-0 group-hover:opacity-40'}>{active && dir === 'asc' ? '↑' : '↓'}</span>
       </Link>
     );
   };
@@ -108,8 +108,8 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
       {flag !== 'likelytest' && (hiddenTest > 0 || includeTest) && (
         <p className="mt-3 text-sm text-[var(--color-stone)]">
           {includeTest
-            ? <>Showing {total} including test/junk records · <Link href={`/admin/clients${qs({ showtest: '', page: '' })}`} className="text-[var(--color-gold)] hover:underline">Hide them</Link></>
-            : <>{hiddenTest} likely test/junk {hiddenTest === 1 ? 'record is' : 'records are'} hidden · <Link href={`/admin/clients${qs({ showtest: '1', page: '' })}`} className="text-[var(--color-gold)] hover:underline">Show</Link> · <Link href={`/admin/clients${qs({ flag: 'likelytest', page: '' })}`} className="text-[var(--color-gold)] hover:underline">Review them</Link></>}
+            ? <>Showing {total} including test/junk records · <Link href={`/admin/clients${qs({ showtest: '', page: '' })}`} className="text-[var(--color-gold-deep)] hover:underline">Hide them</Link></>
+            : <>{hiddenTest} likely test/junk {hiddenTest === 1 ? 'record is' : 'records are'} hidden · <Link href={`/admin/clients${qs({ showtest: '1', page: '' })}`} className="text-[var(--color-gold-deep)] hover:underline">Show</Link> · <Link href={`/admin/clients${qs({ flag: 'likelytest', page: '' })}`} className="text-[var(--color-gold-deep)] hover:underline">Review them</Link></>}
         </p>
       )}
 

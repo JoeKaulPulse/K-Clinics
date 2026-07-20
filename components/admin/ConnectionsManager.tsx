@@ -57,7 +57,7 @@ export function ConnectionsManager({ providers, flash }: { providers: Provider[]
               ) : (
                 <button onClick={() => setOpen(open === p.id ? null : p.id)} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)]">{open === p.id ? 'Hide setup' : 'Setup guide'}</button>
               )}
-              <a href={p.docsUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--color-gold)] hover:underline">Developer console ↗</a>
+              <a href={p.docsUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--color-gold-deep)] hover:underline">Developer console ↗</a>
             </div>
 
             {(open === p.id || (p.state === 'setup' && open === p.id)) && (

@@ -48,11 +48,11 @@ export function TreatmentContentEditor({ slug, base, override }: { slug: string;
 
   return (
     <div className="pb-24">
-      <Link href="/admin/services" className="text-sm text-[var(--color-gold)] hover:underline">← Services</Link>
+      <Link href="/admin/services" className="text-sm text-[var(--color-gold-deep)] hover:underline">← Services</Link>
       <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-[family-name:var(--font-display)] text-3xl">{base.title}</h1>
-          <p className="mt-1 text-sm text-[var(--color-stone)]">Marketing content for <Link href={`/${slug}`} target="_blank" className="text-[var(--color-gold)] hover:underline">/{slug} ↗</Link>. Pricing is edited on the Services page.</p>
+          <p className="mt-1 text-sm text-[var(--color-stone)]">Marketing content for <Link href={`/${slug}`} target="_blank" className="text-[var(--color-gold-deep)] hover:underline">/{slug} ↗</Link>. Pricing is edited on the Services page.</p>
         </div>
       </div>
 
@@ -125,7 +125,7 @@ function Repeater({ title, items, setItems, cols, blank, textarea, labels }: {
             </div>
           </div>
         ))}
-        <button onClick={() => setItems([...items, { ...blank }])} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">+ Add</button>
+        <button onClick={() => setItems([...items, { ...blank }])} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">+ Add</button>
       </div>
     </section>
   );

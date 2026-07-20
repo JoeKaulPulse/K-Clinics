@@ -45,7 +45,7 @@ export async function DeveloperMyDay({ session }: { session: Session }) {
       <DashWidget
         title="My focus today"
         eyebrow={`${mine.length} item${mine.length === 1 ? '' : 's'} assigned to you`}
-        action={<Link href="/admin/build" className="text-sm text-[var(--color-gold)] hover:underline">Open board →</Link>}
+        action={<Link href="/admin/build" className="text-sm text-[var(--color-gold-deep)] hover:underline">Open board →</Link>}
       >
         <TimelineList items={items} empty="Nothing assigned to you right now — pick up an item from the board." />
       </DashWidget>

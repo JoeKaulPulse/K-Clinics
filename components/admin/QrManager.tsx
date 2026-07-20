@@ -142,7 +142,7 @@ function QrCard({ row }: { row: QrRow }) {
             {editCode ? (
               <input value={code} onChange={(e) => setCode(e.target.value)} className={`${field} w-32 py-0.5`} />
             ) : (
-              <button onClick={copy} title="Copy link" className="font-mono hover:text-[var(--color-gold)]">/qr/{row.code}{copied ? ' ✓' : ''}</button>
+              <button onClick={copy} title="Copy link" className="font-mono hover:text-[var(--color-gold-deep)]">/qr/{row.code}{copied ? ' ✓' : ''}</button>
             )}
             <button onClick={() => setEditCode((v) => !v)} className="text-[var(--color-stone)] hover:underline">{editCode ? 'keep' : 'change code'}</button>
           </div>

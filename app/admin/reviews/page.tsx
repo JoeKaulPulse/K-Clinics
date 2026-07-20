@@ -108,7 +108,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
                   {r.title && <p className="mt-2 font-medium">{r.title}</p>}
                   {r.body && <p className="mt-1 text-sm text-[var(--color-ink-soft)]">{r.body}</p>}
                   <p className="mt-2 text-xs text-[var(--color-stone)]">
-                    <Link href={`/admin/clients/${r.client.id}`} className="hover:text-[var(--color-gold)]">{name}</Link>
+                    <Link href={`/admin/clients/${r.client.id}`} className="hover:text-[var(--color-gold-deep)]">{name}</Link>
                     {r.clinician?.name ? ` · ${r.clinician.name}` : ''}
                     {r.submittedAt ? ` · ${r.submittedAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
                   </p>

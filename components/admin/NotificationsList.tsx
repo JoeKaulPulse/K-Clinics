@@ -61,7 +61,7 @@ export function NotificationsList() {
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {tab(null, 'All')}
         {CATEGORIES.map((c) => tab(c, CATEGORY_LABEL[c], byCategory[c]))}
-        <button onClick={markAll} className="ml-auto text-sm text-[var(--color-gold)] hover:underline">Mark all read</button>
+        <button onClick={markAll} className="ml-auto text-sm text-[var(--color-gold-deep)] hover:underline">Mark all read</button>
       </div>
 
       <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
@@ -79,7 +79,7 @@ export function NotificationsList() {
                 {n.category && <span className="rounded-full bg-[var(--color-bone)] px-1.5 py-0.5">{CATEGORY_LABEL[n.category] || n.category}</span>}
                 {n.priority && n.priority !== 'normal' && <span className="uppercase tracking-wide">{n.priority}</span>}
                 <span>{ago(n.createdAt)}</span>
-                {!n.readAt && <span className="text-[var(--color-gold)]">• new</span>}
+                {!n.readAt && <span className="text-[var(--color-gold-deep)]">• new</span>}
               </span>
             </span>
             {n.href && <span aria-hidden className="mt-1 text-[var(--color-stone)]">→</span>}

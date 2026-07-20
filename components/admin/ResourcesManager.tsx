@@ -119,7 +119,7 @@ function RoomRow({ room, equipment }: { room: Resource; equipment: Resource[] })
           {equipNames.length > 0 && <span className="text-[var(--color-stone)]"> · 🛠 {equipNames.join(', ')}</span>}
         </span>
         <span className="flex items-center gap-3">
-          <button onClick={() => setOpen((v) => !v)} className="text-xs text-[var(--color-gold)] hover:underline">{open ? 'Close' : 'Edit'}</button>
+          <button onClick={() => setOpen((v) => !v)} className="text-xs text-[var(--color-gold-deep)] hover:underline">{open ? 'Close' : 'Edit'}</button>
           <button onClick={() => act({ op: 'toggle', id: room.id, active: !room.active })} className="text-xs text-[var(--color-stone)] hover:underline">{room.active ? 'Disable' : 'Enable'}</button>
           <button onClick={() => { if (confirm('Remove this room?')) act({ op: 'remove', id: room.id }); }} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
         </span>

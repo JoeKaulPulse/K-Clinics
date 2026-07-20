@@ -375,7 +375,7 @@ export function Header({ config }: { config: SiteConfig }) {
               <Link
                 href="/account"
                 onClick={() => setMobile(false)}
-                className="flex items-center justify-center gap-2 rounded-full border border-[var(--color-line)] px-6 py-3.5 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]"
+                className="flex items-center justify-center gap-2 rounded-full border border-[var(--color-line)] px-6 py-3.5 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]"
               >
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden>
                   <circle cx="12" cy="8" r="3.4" stroke="currentColor" strokeWidth="1.5" />

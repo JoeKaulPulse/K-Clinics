@@ -91,7 +91,7 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
       <aside className="lg:sticky lg:top-24">
         <Link href="/academy/portal" className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Trainee portal</Link>
         <h1 className="mt-3 font-[family-name:var(--font-display)] text-2xl leading-tight">{learning.course.title}</h1>
-        {learning.course.level && <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[var(--color-gold)]">{learning.course.level}</p>}
+        {learning.course.level && <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[var(--color-gold-deep)]">{learning.course.level}</p>}
 
         {/* Progress bar */}
         <div className="mt-5">
@@ -136,7 +136,7 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
                   return (
                     <li key={l.id}>
                       <button onClick={() => setSel({ type: 'lesson', moduleId: m.id, lessonId: l.id })} className={`flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-1.5 text-left text-sm transition-colors ${active ? 'bg-[var(--color-bone)] text-[var(--color-ink)]' : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-bone)]'}`}>
-                        <span className={`text-xs ${doneLessons.has(l.id) ? 'text-[var(--color-gold)]' : 'text-[var(--color-stone)]'}`}>{doneLessons.has(l.id) ? '✓' : '○'}</span>
+                        <span className={`text-xs ${doneLessons.has(l.id) ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-stone)]'}`}>{doneLessons.has(l.id) ? '✓' : '○'}</span>
                         <span className="flex-1">{l.title}</span>
                       </button>
                     </li>
@@ -145,7 +145,7 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
                 {m.quiz && (
                   <li>
                     <button onClick={() => setSel({ type: 'quiz', moduleId: m.id })} className={`flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-1.5 text-left text-sm transition-colors ${sel?.type === 'quiz' && sel.moduleId === m.id ? 'bg-[var(--color-bone)] text-[var(--color-ink)]' : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-bone)]'}`}>
-                      <span className={`text-xs ${quizState[m.quiz.id]?.passed ? 'text-[var(--color-gold)]' : 'text-[var(--color-stone)]'}`}>{quizState[m.quiz.id]?.passed ? '✓' : '◆'}</span>
+                      <span className={`text-xs ${quizState[m.quiz.id]?.passed ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-stone)]'}`}>{quizState[m.quiz.id]?.passed ? '✓' : '◆'}</span>
                       <span className="flex-1 font-medium">{m.quiz.title}</span>
                     </button>
                   </li>
@@ -234,9 +234,9 @@ function LessonPanel({ lesson, done, onComplete, onNext }: { lesson: LessonView;
               return (
                 <li key={url}>
                   {viewOnly ? (
-                    <button onClick={() => setPdfView({ index: idx, name })} className="flex w-full items-center gap-2.5 text-left text-sm text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-gold)]">{pdfIcon}<span className="truncate">{name}</span><span className="ml-auto shrink-0 text-xs text-[var(--color-stone)]">View only</span></button>
+                    <button onClick={() => setPdfView({ index: idx, name })} className="flex w-full items-center gap-2.5 text-left text-sm text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-gold-deep)]">{pdfIcon}<span className="truncate">{name}</span><span className="ml-auto shrink-0 text-xs text-[var(--color-stone)]">View only</span></button>
                   ) : (
-                    <a href={url} download={name} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 text-sm text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-gold)]">{pdfIcon}<span className="truncate">{name}</span><span className="ml-auto shrink-0 text-xs text-[var(--color-stone)]">Download</span></a>
+                    <a href={url} download={name} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 text-sm text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-gold-deep)]">{pdfIcon}<span className="truncate">{name}</span><span className="ml-auto shrink-0 text-xs text-[var(--color-stone)]">Download</span></a>
                   )}
                 </li>
               );
@@ -271,7 +271,7 @@ function LessonPanel({ lesson, done, onComplete, onNext }: { lesson: LessonView;
 
       <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--color-line)] pt-6">
         {done
-          ? <span className="inline-flex items-center gap-2 text-sm font-medium text-[var(--color-gold)]">✓ Lesson complete</span>
+          ? <span className="inline-flex items-center gap-2 text-sm font-medium text-[var(--color-gold-deep)]">✓ Lesson complete</span>
           : <span className="text-sm text-[var(--color-stone)]">Finished? Mark it complete to track your progress.</span>}
         {onNext
           ? <button onClick={() => { if (!done) onComplete(); onNext(); }} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">{done ? 'Next lesson →' : 'Complete & continue →'}</button>
@@ -372,7 +372,7 @@ function QuizPanel({ quiz, state, onGraded, onBadges, onNext }: { quiz: QuizView
         {quiz.timeLimitMin ? ` · ${quiz.timeLimitMin} min` : ''}
         {attemptsLeft != null ? ` · ${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} left` : ''}
       </p>
-      {state?.passed && !result && !quiz.isSurvey && <p className="mt-2 text-sm font-medium text-[var(--color-gold)]">✓ Passed{state.best != null ? ` · best score ${state.best}%` : ''}. You can retake it any time.</p>}
+      {state?.passed && !result && !quiz.isSurvey && <p className="mt-2 text-sm font-medium text-[var(--color-gold-deep)]">✓ Passed{state.best != null ? ` · best score ${state.best}%` : ''}. You can retake it any time.</p>}
 
       {result && !quiz.isSurvey && (
         <div className={`mt-5 rounded-[var(--radius-lg)] border p-5 ${result.passed ? 'border-[var(--color-gold)]/40 bg-[var(--color-gold)]/8' : 'border-[var(--color-blush)]/40 bg-[var(--color-blush)]/8'}`}>
@@ -408,7 +408,7 @@ function QuizPanel({ quiz, state, onGraded, onBadges, onNext }: { quiz: QuizView
                     placeholder="Type your answer…"
                     className={`w-full rounded-[var(--radius-sm)] border px-4 py-2.5 text-sm ${r ? (r.correct ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10' : 'border-[var(--color-blush)] bg-[var(--color-blush)]/10') : 'border-[var(--color-line)] bg-white focus:border-[var(--color-gold)] focus:outline-none'}`}
                   />
-                  {r && <p className={`mt-2 text-xs font-medium ${r.correct ? 'text-[var(--color-gold)]' : 'text-[var(--color-blush-deep)]'}`}>{r.correct ? '✓ Correct' : '✗ Not quite'}</p>}
+                  {r && <p className={`mt-2 text-xs font-medium ${r.correct ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-blush-deep)]'}`}>{r.correct ? '✓ Correct' : '✗ Not quite'}</p>}
                 </div>
               ) : (
                 <div className="mt-3 space-y-2">
@@ -421,7 +421,7 @@ function QuizPanel({ quiz, state, onGraded, onBadges, onNext }: { quiz: QuizView
                       <button key={origIdx} disabled={!!result} onClick={() => toggle(q.id, origIdx, multi)} className={`flex w-full items-center gap-3 rounded-[var(--radius-sm)] border px-4 py-2.5 text-left text-sm transition-colors ${stateCls}`}>
                         <span className={`grid h-4 w-4 shrink-0 place-items-center ${multi ? 'rounded-[3px]' : 'rounded-full'} border ${chosen ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-white' : 'border-[var(--color-stone-soft)]'}`}>{chosen ? '✓' : ''}</span>
                         <span className="flex-1">{opt}</span>
-                        {r && isCorrect && <span className="text-xs font-medium text-[var(--color-gold)]">correct</span>}
+                        {r && isCorrect && <span className="text-xs font-medium text-[var(--color-gold-deep)]">correct</span>}
                       </button>
                     );
                   })}

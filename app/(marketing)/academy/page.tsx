@@ -106,7 +106,7 @@ export default async function AcademyPage() {
               return (
                 <Reveal key={c.id}>
                   <Link href={`/academy/${c.slug}`} className="group flex h-full flex-col rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6 transition-colors hover:border-[var(--color-gold)]">
-                    {c.level && <span className="text-xs uppercase tracking-[0.16em] text-[var(--color-gold)]">{c.level}</span>}
+                    {c.level && <span className="text-xs uppercase tracking-[0.16em] text-[var(--color-gold-deep)]">{c.level}</span>}
                     <h3 className="mt-1 font-[family-name:var(--font-display)] text-xl leading-tight">{c.title}</h3>
                     {c.summary && <p className="mt-2 flex-1 text-sm text-[var(--color-ink-soft)]">{c.summary}</p>}
                     <div className="mt-4 flex items-center justify-between">
@@ -118,7 +118,7 @@ export default async function AcademyPage() {
                       ) : (
                         <span className="text-sm font-medium text-[var(--color-ink)]">{formatFee(c.pricePence)}</span>
                       )}
-                      <span className="text-sm text-[var(--color-gold)] group-hover:underline">View course →</span>
+                      <span className="text-sm text-[var(--color-gold-deep)] group-hover:underline">View course →</span>
                     </div>
                     {c.accreditations.length > 0 && <p className="mt-2 text-[0.7rem] uppercase tracking-wide text-[var(--color-stone)]">{c.accreditations.map((a) => ACCREDITATION_LABELS[a] ?? a).join(' · ')}</p>}
                   </Link>

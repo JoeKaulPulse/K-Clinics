@@ -104,7 +104,7 @@ export default async function DashboardPage() {
                 <p className="mt-0.5 text-sm text-[var(--color-stone)]">{t('rw.worth', { value: formatPrice(loyalty.valuePence) })}</p>
               </div>
             </div>
-            <span className="text-sm font-medium text-[var(--color-gold)]">{t('nav.rewards')} →</span>
+            <span className="text-sm font-medium text-[var(--color-gold-deep)]">{t('nav.rewards')} →</span>
           </Link>
         </Reveal>
       )}
@@ -120,7 +120,7 @@ export default async function DashboardPage() {
                   <p className="text-sm font-medium">{t('dash.profilePrompt')}</p>
                   <p className="text-sm text-[var(--color-stone)]">{t('dash.profileBody')}</p>
                 </div>
-                <span className="shrink-0 text-sm font-medium text-[var(--color-gold)] transition-transform group-hover:translate-x-0.5">{t('dash.updateProfile')} →</span>
+                <span className="shrink-0 text-sm font-medium text-[var(--color-gold-deep)] transition-transform group-hover:translate-x-0.5">{t('dash.updateProfile')} →</span>
               </Link>
             </Reveal>
           )}
@@ -214,15 +214,15 @@ export default async function DashboardPage() {
                     {openToday ? `${t('dash.openToday')} · ${todayHours!.open}–${todayHours!.close}` : t('dash.closedToday')}
                   </span>
                 </div>
-                <a href={site.mapLink} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-sm font-medium text-[var(--color-gold)] hover:text-[var(--color-ink)]">{t('dash.directions')} →</a>
+                <a href={site.mapLink} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-sm font-medium text-[var(--color-gold-deep)] hover:text-[var(--color-ink)]">{t('dash.directions')} →</a>
               </div>
               <div className="bg-[var(--color-bone)] p-6">
                 <RailHeading>{t('dash.needHelp')}</RailHeading>
-                <a href={site.phoneHref} className="mt-3 flex items-center gap-2.5 text-sm font-medium hover:text-[var(--color-gold)]">
+                <a href={site.phoneHref} className="mt-3 flex items-center gap-2.5 text-sm font-medium hover:text-[var(--color-gold-deep)]">
                   <svg viewBox="0 0 24 24" className="h-4 w-4 text-[var(--color-gold)]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" strokeLinejoin="round" /></svg>
                   {site.phone}
                 </a>
-                <a href={site.emailHref} className="mt-2.5 flex items-center gap-2.5 text-sm font-medium hover:text-[var(--color-gold)]">
+                <a href={site.emailHref} className="mt-2.5 flex items-center gap-2.5 text-sm font-medium hover:text-[var(--color-gold-deep)]">
                   <svg viewBox="0 0 24 24" className="h-4 w-4 text-[var(--color-gold)]" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></svg>
                   {site.email}
                 </a>
@@ -235,7 +235,7 @@ export default async function DashboardPage() {
             <Link href="/refer-a-friend" className="block overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-gold)]/30 bg-gradient-to-br from-[var(--color-bone)] to-[var(--color-sand)]/40 p-6 transition-colors hover:border-[var(--color-gold)]">
               <RailHeading>{t('dash.referHeading')}</RailHeading>
               <p className="mt-3 text-sm text-[var(--color-stone)]">{t('dash.referBody')}</p>
-              <span className="mt-4 inline-block text-sm font-medium text-[var(--color-gold)]">{t('dash.referCta')} →</span>
+              <span className="mt-4 inline-block text-sm font-medium text-[var(--color-gold-deep)]">{t('dash.referCta')} →</span>
             </Link>
           </Reveal>
         </aside>
@@ -250,7 +250,7 @@ export default async function DashboardPage() {
                 <p className="eyebrow mb-2 inline-flex items-center gap-2.5"><span className="h-px w-7 bg-[var(--color-gold)]/60" />{t('dash.curatedEyebrow')}</p>
                 <h2 className="font-[family-name:var(--font-display)] text-[clamp(1.7rem,1.2rem+1.6vw,2.6rem)] leading-tight">{t('dash.curatedTitle')}</h2>
               </div>
-              <Link href="/treatments" className="hidden shrink-0 text-sm font-medium text-[var(--color-gold)] hover:text-[var(--color-ink)] sm:block">{t('dash.explore')} →</Link>
+              <Link href="/treatments" className="hidden shrink-0 text-sm font-medium text-[var(--color-gold-deep)] hover:text-[var(--color-ink)] sm:block">{t('dash.explore')} →</Link>
             </div>
           </Reveal>
           <Stagger className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -297,7 +297,7 @@ function Card({ title, href, linkLabel, className = '', children }: { title: str
       </div>
       <div className="flex-1">{children}</div>
       {href && linkLabel && (
-        <Link href={href} className="mt-4 inline-block text-sm font-medium text-[var(--color-gold)]">{linkLabel}</Link>
+        <Link href={href} className="mt-4 inline-block text-sm font-medium text-[var(--color-gold-deep)]">{linkLabel}</Link>
       )}
     </section>
   );

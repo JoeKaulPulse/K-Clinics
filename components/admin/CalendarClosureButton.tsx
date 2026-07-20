@@ -36,7 +36,7 @@ export function CalendarClosureButton({ dateISO, closure }: { dateISO: string; c
   }
 
   if (!open) {
-    return <button onClick={() => setOpen(true)} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Close clinic</button>;
+    return <button onClick={() => setOpen(true)} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">Close clinic</button>;
   }
 
   return (

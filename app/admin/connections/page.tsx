@@ -31,7 +31,7 @@ export default async function ConnectionsPage() {
       </p>
       <div className="mt-4 flex items-start gap-2 rounded-[var(--radius-md)] border border-[var(--color-gold)]/40 bg-[color-mix(in_oklab,var(--color-gold)_8%,transparent)] p-3 text-xs text-[var(--color-ink-soft)]">
         <span aria-hidden>🔒</span>
-        <span>Keys are stored encrypted and never shown again — you can replace one but never read it back. For the raw key list see <a href="/admin/settings/credentials" className="text-[var(--color-gold)] hover:underline">Credentials</a>; for the full probe detail see <a href="/admin/api-health" className="text-[var(--color-gold)] hover:underline">API health</a>.</span>
+        <span>Keys are stored encrypted and never shown again — you can replace one but never read it back. For the raw key list see <a href="/admin/settings/credentials" className="text-[var(--color-gold-deep)] hover:underline">Credentials</a>; for the full probe detail see <a href="/admin/api-health" className="text-[var(--color-gold-deep)] hover:underline">API health</a>.</span>
       </div>
 
       <ConnectionCentre initial={centre} />

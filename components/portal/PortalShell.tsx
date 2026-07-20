@@ -83,7 +83,7 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
             <div className="flex items-center gap-3">
               <LanguageToggle locale={locale} onChange={changeLanguage} label={t('portal.language')} />
               <span className="hidden text-sm text-[var(--color-stone)] sm:block">{t('portal.greeting', { name: firstName })}</span>
-              <button onClick={signOut} className="rounded-full border border-[var(--color-line)] px-4 py-3 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
+              <button onClick={signOut} className="rounded-full border border-[var(--color-line)] px-4 py-3 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">
                 {t('portal.signOut')}
               </button>
             </div>
@@ -104,12 +104,12 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
 
         <footer className="mt-8 flex flex-col gap-3 border-t border-[var(--color-line)] py-7 text-xs text-[var(--color-stone)] sm:flex-row sm:items-center sm:justify-between">
           <p>{t('portal.footer')}{' '}
-            <a href={site.phoneHref} className="font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-gold)]">{site.phone}</a>.
+            <a href={site.phoneHref} className="font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-gold-deep)]">{site.phone}</a>.
           </p>
           <nav className="flex flex-wrap gap-x-5 gap-y-1" aria-label="Portal footer">
-            <Link href="/book" className="hover:text-[var(--color-gold)]">{t('dash.book')}</Link>
-            <Link href="/contact" className="hover:text-[var(--color-gold)]">Contact</Link>
-            <Link href="/info/website-privacy-terms" className="hover:text-[var(--color-gold)]">Privacy</Link>
+            <Link href="/book" className="hover:text-[var(--color-gold-deep)]">{t('dash.book')}</Link>
+            <Link href="/contact" className="hover:text-[var(--color-gold-deep)]">Contact</Link>
+            <Link href="/info/website-privacy-terms" className="hover:text-[var(--color-gold-deep)]">Privacy</Link>
           </nav>
         </footer>
       </div>

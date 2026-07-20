@@ -86,7 +86,7 @@ export async function ClinicianView({ session }: { session: Session }) {
           <div className="p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
-                <Link href={`/admin/clients/${focus.client.id}`} className="font-[family-name:var(--font-display)] text-xl hover:text-[var(--color-gold)]">{fullName(focus.client)}</Link>
+                <Link href={`/admin/clients/${focus.client.id}`} className="font-[family-name:var(--font-display)] text-xl hover:text-[var(--color-gold-deep)]">{fullName(focus.client)}</Link>
                 <p className="mt-0.5 text-sm text-[var(--color-stone)]">{focus.treatmentTitle}</p>
               </div>
               <Link href={`/admin/bookings/${focus.id}`} className="shrink-0 rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] transition-opacity hover:opacity-90">
@@ -119,7 +119,7 @@ export async function ClinicianView({ session }: { session: Session }) {
         {/* Today's appointments */}
         <DashWidget
           title="Today’s appointments"
-          action={<Link href="/admin/my-day" className="text-sm text-[var(--color-gold)] hover:underline">Open My day →</Link>}
+          action={<Link href="/admin/my-day" className="text-sm text-[var(--color-gold-deep)] hover:underline">Open My day →</Link>}
         >
           <p className="mb-2 text-xs text-[var(--color-stone)]">{mine.length} yours{mine.length ? ` · ${doneCount} done` : ''}</p>
           <TimelineList items={mine.map((b) => toItem(b))} empty="No appointments assigned to you today." />

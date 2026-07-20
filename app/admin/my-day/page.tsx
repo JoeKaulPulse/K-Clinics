@@ -262,7 +262,7 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
               <>
                 {dateTimeline}
                 <p className="mt-6 text-sm text-[var(--color-stone)]">
-                  <Link href="/admin" className="font-medium text-[var(--color-gold)] hover:underline">{uk ? 'Відкрити дашборд →' : 'Open management dashboard →'}</Link>
+                  <Link href="/admin" className="font-medium text-[var(--color-gold-deep)] hover:underline">{uk ? 'Відкрити дашборд →' : 'Open management dashboard →'}</Link>
                 </p>
               </>
             )}

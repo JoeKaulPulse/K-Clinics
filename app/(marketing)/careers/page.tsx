@@ -60,7 +60,7 @@ export default async function CareersPage() {
                   </div>
                   {v.summary && <p className="mt-2 text-[var(--color-ink-soft)]">{v.summary}</p>}
                   {v.description && <p className="mt-3 whitespace-pre-line text-sm text-[var(--color-stone)]">{v.description}</p>}
-                  <a href="#apply" className="mt-4 inline-block text-sm font-medium text-[var(--color-gold)] hover:underline">Apply for this role →</a>
+                  <a href="#apply" className="mt-4 inline-block text-sm font-medium text-[var(--color-gold-deep)] hover:underline">Apply for this role →</a>
                 </div>
               </Reveal>
             ))}

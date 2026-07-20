@@ -120,7 +120,7 @@ function Card({ r, canManage }: { r: SegmentRow; canManage: boolean }) {
           <h3 className="font-[family-name:var(--font-display)] text-lg">{r.name}</h3>
           <p className="text-xs text-[var(--color-stone)]">{r.summary}</p>
         </div>
-        <span className="shrink-0 rounded-full bg-[var(--color-gold)]/15 px-3 py-1 text-sm font-medium text-[var(--color-gold)]">{r.size}</span>
+        <span className="shrink-0 rounded-full bg-[var(--color-gold)]/15 px-3 py-1 text-sm font-medium text-[var(--color-gold-deep)]">{r.size}</span>
       </div>
       {canManage && (
         <div className="mt-3 flex flex-wrap items-center gap-3">

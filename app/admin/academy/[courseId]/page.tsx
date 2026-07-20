@@ -81,9 +81,9 @@ export default async function CurriculumPage({ params }: { params: Promise<{ cou
           <p className="mt-1 max-w-2xl text-sm text-[var(--color-stone)]">Add and edit modules, lessons (video, content, references) and quizzes. Changes are live in the trainee portal immediately and never affect existing trainee progress.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Link href={`/admin/academy/${courseId}/flashcards`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Flashcards →</Link>
-          <Link href={`/admin/academy/${courseId}/exercises`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Exercises →</Link>
-          <Link href={`/admin/academy/${courseId}/demos`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Spot-check →</Link>
+          <Link href={`/admin/academy/${courseId}/flashcards`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">Flashcards →</Link>
+          <Link href={`/admin/academy/${courseId}/exercises`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">Exercises →</Link>
+          <Link href={`/admin/academy/${courseId}/demos`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">Spot-check →</Link>
           <CoursePreviewButton preview={preview} />
         </div>
       </div>

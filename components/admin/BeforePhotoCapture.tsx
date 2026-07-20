@@ -143,9 +143,9 @@ export function BeforePhotoCapture({ bookingId, clientId, photos, optOutSigned, 
               <div className="mt-3 border-t border-[var(--color-line)] pt-3 text-xs text-[var(--color-stone)]">
                 Client wants to decline the photo?
                 {optLink ? (
-                  <a href={optLink} target="_blank" rel="noopener noreferrer" className="ml-1 text-[var(--color-gold)] hover:underline">Open opt-out form to sign →</a>
+                  <a href={optLink} target="_blank" rel="noopener noreferrer" className="ml-1 text-[var(--color-gold-deep)] hover:underline">Open opt-out form to sign →</a>
                 ) : (
-                  <button onClick={genOptOut} className="ml-1 text-[var(--color-gold)] hover:underline">Generate opt-out form</button>
+                  <button onClick={genOptOut} className="ml-1 text-[var(--color-gold-deep)] hover:underline">Generate opt-out form</button>
                 )}
               </div>
             )}

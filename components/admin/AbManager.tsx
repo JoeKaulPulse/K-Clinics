@@ -67,7 +67,7 @@ function TestCard({ t, canManage }: { t: AbTestRow; canManage: boolean }) {
             <div key={v.id} className={`rounded-[var(--radius-md)] border p-3 ${isBest ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/5' : 'border-[var(--color-line)] bg-white'}`}>
               <div className="flex flex-wrap items-center gap-3">
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-porcelain)]">{v.key}</span>
-                <span className="text-sm font-medium">{v.label}{isBest && <span className="ml-2 text-xs text-[var(--color-gold)]">★ leading</span>}</span>
+                <span className="text-sm font-medium">{v.label}{isBest && <span className="ml-2 text-xs text-[var(--color-gold-deep)]">★ leading</span>}</span>
                 <span className="ml-auto text-xs text-[var(--color-stone)]">{v.exposures} views · {v.conversions} clicks · <strong className="text-[var(--color-ink)]">{r.toFixed(1)}%</strong></span>
               </div>
               {canManage && (

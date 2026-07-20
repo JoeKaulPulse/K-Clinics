@@ -163,7 +163,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
 
   return (
     <AdminShell user={session?.email} can={can}>
-      <Link href="/admin/clients" className="text-sm text-[var(--color-gold)] hover:underline">← Clients</Link>
+      <Link href="/admin/clients" className="text-sm text-[var(--color-gold-deep)] hover:underline">← Clients</Link>
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -262,7 +262,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                   <span className={`absolute -left-[1.45rem] top-1.5 h-2.5 w-2.5 rounded-full ${st.dot}`} />
                   <div className="flex flex-wrap items-center gap-2">
                     <span className={`rounded-full px-2 py-0.5 text-[0.6rem] uppercase tracking-wide ${st.badge}`}>{st.label}</span>
-                    {it.pinned && <span className="text-[0.6rem] text-[var(--color-gold)]">★ pinned</span>}
+                    {it.pinned && <span className="text-[0.6rem] text-[var(--color-gold-deep)]">★ pinned</span>}
                   </div>
                   <p className="mt-1 text-sm font-medium">{it.summary}</p>
                   {it.detail && <p className="mt-0.5 whitespace-pre-wrap text-sm text-[var(--color-stone)]">{it.detail}</p>}
@@ -498,7 +498,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                   {cn.message && <p className="mt-2 whitespace-pre-wrap break-words text-sm">{tidyConsultText(cn.message)}</p>}
                   <div className="mt-2 flex items-center justify-between gap-2">
                     <p className="text-xs text-[var(--color-stone)]">{new Date(cn.createdAt).toLocaleDateString('en-GB')}</p>
-                    <Link href={`/admin/consultations/${cn.id}`} className="text-xs text-[var(--color-gold)] hover:underline">Notes →</Link>
+                    <Link href={`/admin/consultations/${cn.id}`} className="text-xs text-[var(--color-gold-deep)] hover:underline">Notes →</Link>
                   </div>
                 </div>
               ))}

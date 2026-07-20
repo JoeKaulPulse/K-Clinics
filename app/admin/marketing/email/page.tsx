@@ -137,7 +137,7 @@ export default async function EmailDashboard() {
           <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th className="p-3">Campaign</th><th className="p-3">Date</th><th className="p-3">Sent</th><th className="p-3">Opens</th><th className="p-3">Clicks</th><th className="p-3"></th></tr></thead>
           <tbody>
             {campaigns.length === 0 ? (
-              <tr><td colSpan={6} className="p-6 text-center text-sm text-[var(--color-stone)]">No emails sent yet. <Link href="/admin/marketing/email/new" className="text-[var(--color-gold)] underline">Send your first →</Link></td></tr>
+              <tr><td colSpan={6} className="p-6 text-center text-sm text-[var(--color-stone)]">No emails sent yet. <Link href="/admin/marketing/email/new" className="text-[var(--color-gold-deep)] underline">Send your first →</Link></td></tr>
             ) : campaigns.map((c) => {
               const s = stat.get(c.id) ?? { sent: 0, opened: 0, clicked: 0 };
               return (
@@ -147,7 +147,7 @@ export default async function EmailDashboard() {
                   <td className="p-3 tabular-nums">{s.sent}</td>
                   <td className="p-3 tabular-nums">{s.sent ? `${pct(s.opened, s.sent)}%` : '—'}</td>
                   <td className="p-3 tabular-nums">{s.sent ? `${pct(s.clicked, s.sent)}%` : '—'}</td>
-                  <td className="p-3 text-right">{canSend && <Link href={`/admin/marketing/email/new?clone=${c.id}`} className="text-xs text-[var(--color-gold)] hover:underline">Duplicate</Link>}</td>
+                  <td className="p-3 text-right">{canSend && <Link href={`/admin/marketing/email/new?clone=${c.id}`} className="text-xs text-[var(--color-gold-deep)] hover:underline">Duplicate</Link>}</td>
                 </tr>
               );
             })}
@@ -187,7 +187,7 @@ export default async function EmailDashboard() {
                 <tbody>
                   {topLinks.map((l) => (
                     <tr key={l.url} className="border-b border-[var(--color-line)] last:border-0">
-                      <td className="max-w-0 truncate p-3"><a href={l.url} target="_blank" rel="noreferrer" className="text-[var(--color-gold)] hover:underline">{l.url}</a></td>
+                      <td className="max-w-0 truncate p-3"><a href={l.url} target="_blank" rel="noreferrer" className="text-[var(--color-gold-deep)] hover:underline">{l.url}</a></td>
                       <td className="whitespace-nowrap p-3 text-right font-medium tabular-nums">{l._sum.clicks ?? 0} clicks</td>
                     </tr>
                   ))}

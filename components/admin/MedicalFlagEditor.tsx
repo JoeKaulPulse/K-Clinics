@@ -38,7 +38,7 @@ export function MedicalFlagEditor({ clientId, initial, setBy, setAt }: { clientI
             <p className="mt-2 text-xs text-[var(--color-stone)]">
               {setBy ? `Set by ${setBy}` : ''}{setAt ? ` · ${new Date(setAt).toLocaleDateString('en-GB')}` : ''}
             </p>
-            <button onClick={() => setEditing(true)} className="mt-3 text-xs font-medium text-[var(--color-gold)]">Edit</button>
+            <button onClick={() => setEditing(true)} className="mt-3 text-xs font-medium text-[var(--color-gold-deep)]">Edit</button>
           </>
         ) : (
           <>

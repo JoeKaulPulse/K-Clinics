@@ -60,7 +60,7 @@ export function ResultCard({
           descriptor, not the brand name, so it stays as a text eyebrow. */}
       <div className="flex flex-col items-center">
         <Logo />
-        <p className="mt-3 text-center font-[family-name:var(--font-display)] text-xs uppercase tracking-[0.3em] text-[var(--color-gold)]">
+        <p className="mt-3 text-center font-[family-name:var(--font-display)] text-xs uppercase tracking-[0.3em] text-[var(--color-gold-deep)]">
           Skin &amp; Smile
         </p>
       </div>
