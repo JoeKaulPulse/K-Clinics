@@ -80,14 +80,14 @@ export async function analyzeKioskPhoto(photoUrl: string): Promise<KioskAiResult
   }
 
   try {
-    // 1) Fetch the photo and base64-encode it.
-    const imgRes = await fetch(photoUrl);
-    if (!imgRes.ok) {
-      console.error('[kiosk-ai] photo fetch failed', imgRes.status);
+    // 1) Fetch the photo (private blob first — BLD-798) and base64-encode it.
+    const { fetchKioskBlob } = await import('@/lib/kiosk-blob');
+    const img = await fetchKioskBlob(photoUrl);
+    if (!img) {
+      console.error('[kiosk-ai] photo fetch failed');
       return null;
     }
-    const ab = await imgRes.arrayBuffer();
-    const b64 = Buffer.from(ab).toString('base64');
+    const b64 = Buffer.from(img.bytes).toString('base64');
     const media = mediaTypeFromUrl(photoUrl);
 
     // 2) Call Claude with a 30s timeout (same pattern as callClaude in lib/ai-consultation.ts).
@@ -293,12 +293,12 @@ export async function analyzeKioskPhotosV2(photoUrls: string[]): Promise<KioskAi
   try {
     // 1) Fetch + base64 every photo (keep ORIGINAL indexes so photoIndex /
     //    bestPhotoIndex map back onto photoUrls even if one fetch fails).
+    const { fetchKioskBlob } = await import('@/lib/kiosk-blob');
     const fetched = await Promise.all(urls.map(async (url, idx) => {
       try {
-        const res = await fetch(url);
-        if (!res.ok) return null;
-        const ab = await res.arrayBuffer();
-        return { idx, media: mediaTypeFromUrl(url), b64: Buffer.from(ab).toString('base64') };
+        const img = await fetchKioskBlob(url); // private blob first — BLD-798
+        if (!img) return null;
+        return { idx, media: mediaTypeFromUrl(url), b64: Buffer.from(img.bytes).toString('base64') };
       } catch { return null; }
     }));
     const photos = fetched.filter((p): p is NonNullable<typeof p> => !!p);

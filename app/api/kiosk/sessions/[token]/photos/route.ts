@@ -68,7 +68,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
       : file.type === 'image/webp' ? 'webp'
       : (file.type === 'image/heic' || file.type === 'image/heif') ? 'heic' : 'jpg';
     const blob = await put(`kiosk/${token}-p${poseIdx}-${Date.now()}.${ext}`, file, {
-      access: 'public',
+      access: 'private',
       addRandomSuffix: false,
       contentType: file.type || 'image/jpeg',
     });
