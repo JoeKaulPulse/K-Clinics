@@ -2099,6 +2099,59 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'npx tsc --noEmit and npm run build both pass clean (DB URL unset for the build check -- this sandbox cannot reach Postgres directly; no schema changes in this PR).',
     ],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Dynamic catch-all routes return HTTP 200 instead of 404 (soft 404s), including /booking', type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1637),
+    value: 9, effort: 5,
+    detail: 'app/(marketing)/[slug], journal/[slug], academy/[slug] and shop/[slug] all call notFound() for unmatched slugs but production returned HTTP 200 with the not-found UI. /booking was fixed earlier with a redirect (#1627); the status bug survived two reverted attempts (#1627 connection(), #1634 generateMetadata).',
+    notes: [
+      'Root cause: app/(marketing)/loading.tsx. The Suspense boundary streams its shell on any dynamic render, committing the 200 status before notFound() runs -- the page can then only swap UI, never the status. The two working routes (/packages, /info) are exactly the ones with dynamicParams=false, rejected before rendering starts. The generateMetadata attempt could not work because Next 15.2+ streams metadata, so it does not block the first flush either.',
+      'Fix (third attempt, PR #1637, isolated in its own commit for easy revert): delete the loading boundary so the render completes before the first byte. Build route table confirms /[slug] keeps SSG+ISR (the regression that reverted attempt #1 does not recur). Trade-off: no branded spinner on marketing route transitions.',
+      'This session CAN verify against the Vercel preview (the blocker recorded on 2026-07-19/20): preview status codes checked via a deployment-protection bypass before merge, result posted on the PR.',
+    ],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Staff paylink Checkout session has no Stripe idempotency key', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1637),
+    value: 7, effort: 1,
+    detail: 'app/api/admin/bookings/session/route.ts checkout.sessions.create for the paylink action had no idempotencyKey, unlike every other charge site -- a double-click before the chargedAt guard reflects completion could create two live payment links for the same booking balance.',
+    notes: ['Fix: { idempotencyKey: `paylink-${bookingId}-${amountPence}` } on the create call, matching pos-checkout-${order.id} in app/api/admin/pos/route.ts.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: "Homepage 3-step 'first hello' section invisible on mobile for most visitors", type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1637),
+    value: 8, effort: 2,
+    detail: 'components/home/PinnedExperience.tsx rendered the pinned scrollytelling version hidden md:block and the stacked fallback only under prefers-reduced-motion -- standard-motion mobile visitors (the majority) got neither, just the heading.',
+    notes: ['Fix: the stacked layout is now CSS-gated (md:hidden when motion is on, md:grid-cols-3 under reduced motion) independent of the JS reduce flag, the same pattern as HorizontalGallery.tsx:40 SwipeRail.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Kiosk AI analysis failures never reach Sentry — flagship demo fails silently', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1637),
+    value: 7, effort: 2,
+    detail: 'lib/kiosk-ai.ts provider failures during the in-clinic kiosk skin analysis only console.error -- a provider outage silently breaks the flagship demo with nobody aware.',
+    notes: ['Fix: Sentry.captureException (tags area:kiosk-ai) in both catch blocks -- the v1 analysis path and the v2 multi-photo path -- matching lib/chat-ai.ts and lib/ai-consultation.ts.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Stripe SetupIntent failure silently auto-cancels bookings with no alert', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1637),
+    value: 7, effort: 2,
+    detail: 'app/api/booking/start/route.ts -- when SetupIntent creation fails the booking is auto-cancelled with only a console/audit-log trace. A Stripe outage would silently cancel every card-protected booking sitewide.',
+    notes: ['Fix: Sentry.captureException (tags route:booking/start, stage:setup-intent) alongside the existing audit log, matching the booking/create twin fixed in #1623. Note: an earlier backlog note claimed this was fixed in "PR #1621" -- no such change ever reached the route; the board TRIAGE status was correct.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Redirect stub pages (careers/gift-vouchers) served as indexable 200-status duplicates', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1637),
+    value: 7, effort: 2,
+    detail: 'app/(marketing)/info/[slug] maps careers/refer-a-friend/gift-vouchers to redirect(), but the route is statically generated so Next baked a client-side meta-refresh served with HTTP 200 and a self-referencing canonical -- full duplicate content, two of the three still sitemap-listed.',
+    notes: ['Fix: true 308s in next.config.mjs redirects() for all three slugs; excluded from generateStaticParams (no baked duplicates exist any more); sitemap filter extended from refer-a-friend-only to all three.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Consultation/signup forms have no double-submit guard -- risk of duplicate leads/accounts', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1637),
+    value: 7, effort: 2,
+    detail: 'components/consult/ConsultForm.tsx relied on an onClick closure status check that reads a stale value on a fast double-click, firing two POST /api/consult requests; components/ai/KVision.tsx go() had the same pattern and never set the actual disabled attribute.',
+    notes: ['Fix: ref-based reentrancy guards inside submit()/go() (a ref flips synchronously, before any re-render) plus real disabled attributes on both buttons.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
