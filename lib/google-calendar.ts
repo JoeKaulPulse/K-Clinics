@@ -220,11 +220,28 @@ export async function removeBookingFromClinician(bookingId: string): Promise<{ o
   const token = await accessToken(decryptRefresh(b.practitioner.googleRefreshToken));
   if (!token) return { ok: false };
   const calId = encodeURIComponent(b.practitioner.googleCalendarId || 'primary');
-  await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calId}/events/${encodeURIComponent(b.googleEventId)}`, {
-    method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` },
-    signal: AbortSignal.timeout(10_000),
-  }).catch(() => {});
+  // BLD-914: only clear googleEventId when the event is actually gone from
+  // Google's side (deleted now, or already deleted/expired: 404/410). Clearing
+  // it on a failed delete left a cancelled appointment live on the clinician's
+  // calendar with no record that the sync failed.
+  try {
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calId}/events/${encodeURIComponent(b.googleEventId)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok && res.status !== 404 && res.status !== 410) {
+      console.error('[google-calendar] event delete failed:', res.status, bookingId);
+      const Sentry = await import('@sentry/nextjs');
+      Sentry.captureException(new Error(`Google Calendar event delete failed (${res.status})`), { tags: { area: 'google-calendar', stage: 'remove-booking' } });
+      return { ok: false };
+    }
+  } catch (e) {
+    console.error('[google-calendar] event delete failed:', (e as Error)?.message, bookingId);
+    const Sentry = await import('@sentry/nextjs');
+    Sentry.captureException(e, { tags: { area: 'google-calendar', stage: 'remove-booking' } });
+    return { ok: false };
+  }
   await db.booking.update({ where: { id: bookingId }, data: { googleEventId: null } });
   return { ok: true };
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { clientSignupSchema } from '@/lib/validation';
+import { clientSignupSchema, kVisionSignupSchema } from '@/lib/validation';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
@@ -8,7 +8,13 @@ export async function POST(req: Request) {
   if (!crmEnabled) {
     return NextResponse.json({ ok: false, error: 'Accounts are not enabled in this environment.' }, { status: 503 });
   }
-  const parsed = clientSignupSchema.safeParse(await req.json().catch(() => ({})));
+  const body = await req.json().catch(() => ({}));
+  // BLD-928: the K Vision flow sends a deliberately smaller shape (no surname/
+  // phone/dob — optional in SignupInput; terms line in its UI). Every one of its
+  // signups 422'd against the full portal schema, making the "Get my plan"
+  // account gate unpassable for new visitors.
+  const isKVision = (body as { source?: string })?.source === 'kvision';
+  const parsed = (isKVision ? kVisionSignupSchema : clientSignupSchema).safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message || 'Check your details.' }, { status: 422 });
   }
@@ -22,6 +28,17 @@ export async function POST(req: Request) {
   try {
     const { signupClient } = await import('@/lib/client-auth');
     const result = await signupClient({ ...parsed.data, ip: clientIp(req) });
+    // BLD-870: the K Vision "Get my plan" flow is a lead-gen mechanic — fire the
+    // server-side Lead (GA4 + Meta CAPI) like /api/consult does, deduped with
+    // the browser pixel via the shared eventId. No hashed email: this signup
+    // carries no marketing opt-in. Best-effort, never blocks the account.
+    if (result.ok && isKVision) {
+      try {
+        const { sendLead } = await import('@/lib/conversions');
+        const eventId = (parsed.data as { eventId?: string }).eventId || globalThis.crypto.randomUUID();
+        await sendLead({ eventId, email: null, sourceUrl: req.headers.get('referer') });
+      } catch { /* best-effort */ }
+    }
     return NextResponse.json(result, { status: result.ok ? 200 : 409 });
   } catch (err) {
     console.error('[account/signup] failed:', err);

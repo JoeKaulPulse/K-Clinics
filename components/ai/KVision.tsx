@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { KMark } from '@/components/brand/marks';
+import { trackLead } from '@/lib/analytics-events';
 
 type Stage = 'intro' | 'budget' | 'consent' | 'capture' | 'auth' | 'analysing' | 'results';
 type Finding = { area: string; label: string; note: string; severity: 'mild' | 'moderate' | 'notable' };
@@ -377,14 +378,29 @@ function AuthStep({ onDone, onError, onBack }: { onDone: (firstName?: string) =>
   // BLD-887: synchronous reentrancy guard — busy state alone lets a fast
   // double-click fire two signup/login POSTs before React re-renders.
   const busyRef = useRef(false);
+  // BLD-870: one Lead event id per auth attempt series — the browser pixel and
+  // the server CAPI copy share it so Meta de-duplicates.
+  const eventIdRef = useRef<string>('');
+  if (!eventIdRef.current && typeof crypto !== 'undefined' && crypto.randomUUID) eventIdRef.current = crypto.randomUUID();
   const input = 'w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-[#f4ece1] outline-none placeholder:text-[#9a8f80] focus:border-[var(--color-gold,#c8a96a)]';
   async function go() {
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true); onError('');
     const url = mode === 'signup' ? '/api/account/signup' : '/api/account/login';
-    const body = mode === 'signup' ? { firstName: f.firstName, email: f.email, password: f.password, locale: 'en', company: f.company } : { email: f.email, password: f.password };
-    try { const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const j = await res.json(); if (j.ok) onDone(mode === 'signup' ? f.firstName : undefined); else { onError(j.error || 'Something went wrong.'); setBusy(false); } } catch { onError('Network error.'); setBusy(false); } finally { busyRef.current = false; }
+    // BLD-928: source:'kvision' selects the relaxed signup schema server-side —
+    // this surface deliberately asks only name + email + password.
+    const body = mode === 'signup' ? { firstName: f.firstName, email: f.email, password: f.password, locale: 'en', company: f.company, source: 'kvision', eventId: eventIdRef.current || undefined } : { email: f.email, password: f.password };
+    try {
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await res.json();
+      if (j.ok) {
+        // BLD-870: a new account created to unlock the plan IS the lead —
+        // mirror the consult form's browser-side event (deduped with CAPI).
+        if (mode === 'signup') { try { trackLead({ eventId: eventIdRef.current || undefined, detail: { source: 'k-vision' } }); } catch { /* analytics best-effort */ } }
+        onDone(mode === 'signup' ? f.firstName : undefined);
+      } else { onError(j.error || 'Something went wrong.'); setBusy(false); }
+    } catch { onError('Network error.'); setBusy(false); } finally { busyRef.current = false; }
   }
   return (
     <motion.div {...fade} className="mx-auto max-w-md">
@@ -401,6 +417,11 @@ function AuthStep({ onDone, onError, onBack }: { onDone: (firstName?: string) =>
         <button onClick={() => setMode(mode === 'signup' ? 'login' : 'signup')} className="text-sm text-[#cdbfae] hover:text-[#f4ece1]">{mode === 'signup' ? 'Have an account? Sign in' : 'New here? Create one'}</button>
         <button onClick={() => go()} disabled={busy} className="rounded-full bg-[var(--color-gold,#c8a96a)] px-6 py-3 text-sm font-medium text-[#0c0b0a] disabled:opacity-50">{busy ? 'Please wait…' : mode === 'signup' ? 'Create & continue' : 'Sign in'}</button>
       </div>
+      {mode === 'signup' && (
+        <p className="mt-4 text-xs text-[#9a8f80]">
+          By continuing you agree to our <a href="/info/terms-conditions" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-[#cdbfae]">terms</a> and <a href="/info/privacy-policy" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-[#cdbfae]">privacy policy</a>.
+        </p>
+      )}
     </motion.div>
   );
 }

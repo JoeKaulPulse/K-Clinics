@@ -18,7 +18,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const c = await db.client.findUnique({
     where: { id },
     include: {
-      consultations: true, interactions: true, appointments: true, bookings: true,
+      // BLD-866: staff notes on a consultation are part of the subject's record
+      // (Art. 15) — they were silently missing from every export.
+      consultations: { include: { notes: true } }, interactions: true, appointments: true, bookings: true,
       emails: true, discountClaims: true, tasks: true,
       // BLD-315: previously omitted data-subject records now included.
       aiAnalyses: { include: { images: true } },
@@ -33,15 +35,42 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   });
   if (!c) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
 
-  // Decrypt the at-rest clinical/contact free-text so the subject's export is
-  // readable (tolerant of legacy plaintext).
+  // BLD-866: clinical (health) free-text is only DECRYPTED for staff who hold
+  // the revocable clients.clinical.view permission — clients.export alone gets
+  // the record with the clinical fields withheld (null), matching the gating
+  // the client profile and SAR photo/assessment sections already apply. This
+  // also covers call transcripts (BLD-701: health free-text) — previously all
+  // of it was decrypted for any exporter.
+  const clinical = sessionCan(session, 'clients.clinical.view');
   const { decClinical } = await import('@/lib/clinical-crypto');
-  c.medicalFlag = decClinical(c.medicalFlag);
-  c.allergies = decClinical(c.allergies);
-  for (const con of c.consultations) { con.concerns = decClinical(con.concerns); con.message = decClinical(con.message); con.medicalNotes = decClinical(con.medicalNotes); }
-  for (const bk of c.bookings) { bk.allergyNote = decClinical(bk.allergyNote); }
-  for (const it of c.interactions) { it.detail = decClinical(it.detail); }
-  for (const cr of c.callRecords) { cr.transcript = decClinical(cr.transcript); } // BLD-602: call transcripts are encrypted at rest
+  const { decryptJson } = await import('@/lib/crypto');
+  for (const con of c.consultations) { con.message = decClinical(con.message); }
+  if (clinical) {
+    c.medicalFlag = decClinical(c.medicalFlag);
+    c.allergies = decClinical(c.allergies);
+    for (const con of c.consultations) { con.concerns = decClinical(con.concerns); con.medicalNotes = decClinical(con.medicalNotes); }
+    for (const bk of c.bookings) { bk.allergyNote = decClinical(bk.allergyNote); }
+    for (const it of c.interactions) { it.detail = decClinical(it.detail); }
+    for (const cr of c.callRecords) { cr.transcript = decClinical(cr.transcript); } // BLD-602: encrypted at rest
+  } else {
+    c.medicalFlag = null;
+    c.allergies = null;
+    for (const con of c.consultations) { con.concerns = null; con.medicalNotes = null; }
+    for (const bk of c.bookings) { bk.allergyNote = null; }
+    // Non-clinical interaction notes stay readable; CLINICAL entries are withheld.
+    for (const it of c.interactions) { it.detail = it.type === 'CLINICAL' ? null : decClinical(it.detail); }
+    for (const cr of c.callRecords) { cr.transcript = null; }
+  }
+  // BLD-866: the in-appointment clinical note (Booking.clinicalNoteEnc) was
+  // exported as raw ciphertext — useless to the subject and omitted from the
+  // readable record. Decrypt it under the clinical gate; never ship the cipher.
+  for (const bk of c.bookings) {
+    const rec = bk as Record<string, unknown>;
+    let note: string | null = null;
+    if (clinical && bk.clinicalNoteEnc) { try { note = decryptJson<{ note: string }>(bk.clinicalNoteEnc).note; } catch { /* skip corrupt cipher */ } }
+    rec.clinicalNote = note;
+    delete rec.clinicalNoteEnc;
+  }
 
   // Strip secrets from the dump.
   const { passwordHash, resetTokenHash, resetTokenExp, ...client } = c as Record<string, unknown> & { passwordHash?: unknown; resetTokenHash?: unknown; resetTokenExp?: unknown };
@@ -71,7 +100,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   };
 
   // BLD-315: use the revocable permission, not the role-based canViewClinical.
-  if (sessionCan(session, 'clients.clinical.view')) {
+  if (clinical) {
     const assessments = await db.healthAssessment.findMany({ where: { clientId: id }, orderBy: { submittedAt: 'desc' } });
     const { formatAssessment } = await import('@/lib/health-assessments');
     const exportAudit = { actor: session?.email || 'unknown', actorRole: session?.role ?? undefined };
@@ -81,7 +110,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     // not just its metadata. Same decryption path as the authenticated serve
     // route, gated on the same clinical permission. One bad cipher must not fail
     // the whole export.
-    const { decryptJson } = await import('@/lib/crypto');
     const ciphers = await db.beforePhoto.findMany({ where: { clientId: id }, select: { id: true, dataEnc: true } });
     const imageById = new Map(ciphers.map((p) => {
       let image: string | null = null;
@@ -89,10 +117,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       return [p.id, image] as const;
     }));
     out.beforePhotos = beforePhotos.map((p) => ({ ...p, image: imageById.get(p.id) ?? null }));
+  } else {
+    // BLD-866: make the withholding explicit in the file, so nobody treats a
+    // non-clinical export as the complete Art. 15 record.
+    out.clinicalDataWithheld = 'Clinical fields (medical flag, allergies, consultation concerns/medical notes, clinical notes, call transcripts, health assessments, before photos) are withheld — the exporting account lacks clinical access. Ask a clinical-access holder to run the export for the complete record.';
   }
 
   const { logAudit } = await import('@/lib/audit');
-  await logAudit({ action: 'DATA_EXPORTED', actor: session!.email, actorRole: session!.role, clientId: id, summary: 'Client data exported (SAR — Art. 15 UK GDPR)' });
+  await logAudit({ action: 'DATA_EXPORTED', actor: session!.email, actorRole: session!.role, clientId: id, summary: `Client data exported (SAR — Art. 15 UK GDPR)${clinical ? '' : ' — clinical fields withheld (no clinical access)'}` });
 
   const name = [c.firstName, c.lastName].filter(Boolean).join('-').toLowerCase() || 'client';
   return new NextResponse(JSON.stringify(out, null, 2), {

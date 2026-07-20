@@ -48,6 +48,21 @@ export const clientSignupSchema = z.object({
 // without choosing a password; they claim it later via an activation email.
 export const guestBookingSchema = clientSignupSchema.omit({ password: true });
 
+// BLD-928: the K Vision "Get my plan" auth step deliberately collects only
+// name + email + password (low friction; lastName/phone/dob are optional in
+// SignupInput and captured later at booking). Terms acceptance is an explicit
+// "By continuing you agree…" line in that UI, so no consent checkbox field.
+// `eventId` de-dupes the browser Lead pixel against the server CAPI copy.
+export const kVisionSignupSchema = z.object({
+  firstName: z.string().min(1, 'First name is required').max(80),
+  email: z.string().email('Enter a valid email'),
+  password: z.string().min(8, 'Use at least 8 characters').max(200),
+  locale: z.enum(['en', 'uk']).optional(),
+  source: z.literal('kvision'),
+  eventId: z.string().max(64).optional(),
+  company: z.string().optional(),
+});
+
 export const clientLoginSchema = z.object({
   email: z.string().email('Enter a valid email'),
   password: z.string().min(1, 'Enter your password'),

@@ -80,13 +80,13 @@ export async function POST(req: Request) {
             } else {
               console.error('[webhook] shop order skipped — amount mismatch or currency:', { received: pi.amount_received, expected: order?.totalPence, currency: pi.currency });
             }
-          } catch (e) { console.error('[webhook] order finalize failed:', (e as Error)?.message); }
+          } catch (e) { console.error('[webhook] order finalize failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'order-finalize' } }); } // BLD-868
         }
         // BLD-119: handle both gift_voucher and gift_package — gift_package used the
         // wrong kind constant so the webhook backstop never confirmed it, leaving
         // paid-but-tab-closed purchases stuck in PENDING.
         if ((pi.metadata?.kind === 'gift_voucher' || pi.metadata?.kind === 'gift_package') && pi.metadata?.voucherId) {
-          try { const { confirmVoucher } = await import('@/lib/gift-vouchers'); await confirmVoucher(pi.metadata.voucherId); } catch (e) { console.error('[webhook] voucher confirm failed:', (e as Error)?.message); }
+          try { const { confirmVoucher } = await import('@/lib/gift-vouchers'); await confirmVoucher(pi.metadata.voucherId); } catch (e) { console.error('[webhook] voucher confirm failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'voucher-confirm' } }); } // BLD-868
         }
         // BLD-399 (BLD-409 course context): a Buy-Now-Pay-Later course pre-payment
         // succeeded (Klarna/Clearpay via hosted Checkout). Mark the booking PRE-PAID
@@ -195,7 +195,7 @@ export async function POST(req: Request) {
                 await creditVoucher(order.giftCardCode, order.giftCardPence);
               }
             }
-          } catch (e) { console.error('[webhook] gift card re-credit failed:', (e as Error)?.message); }
+          } catch (e) { console.error('[webhook] gift card re-credit failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'giftcard-recredit-failed-payment' } }); } // BLD-868
         }
         break;
       }
@@ -274,9 +274,9 @@ export async function POST(req: Request) {
             const claimed = await db.order.updateMany({ where: { id: order.id, status: { not: 'REFUNDED' } }, data: { status: 'REFUNDED' } });
             if (claimed.count > 0) {
               if (wasStockDecremented) {
-                try { const { restockOrder } = await import('@/lib/shop'); await restockOrder(order.id); } catch (e) { console.error('[webhook] order restock failed:', (e as Error)?.message); }
+                try { const { restockOrder } = await import('@/lib/shop'); await restockOrder(order.id); } catch (e) { console.error('[webhook] order restock failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'order-restock' } }); } // BLD-868
               }
-              try { const { creditVoucher } = await import('@/lib/gift-vouchers'); await creditVoucher(order.giftCardCode, order.giftCardPence); } catch (e) { console.error('[webhook] gift card re-credit failed:', (e as Error)?.message); }
+              try { const { creditVoucher } = await import('@/lib/gift-vouchers'); await creditVoucher(order.giftCardCode, order.giftCardPence); } catch (e) { console.error('[webhook] gift card re-credit failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'giftcard-recredit-refund' } }); } // BLD-868
             }
           }
           // PRJ-918.2: a gift-voucher's OWN purchase PaymentIntent was refunded. This
@@ -308,7 +308,7 @@ export async function POST(req: Request) {
                   try {
                     const { debitVoucherForPurchaseRefund } = await import('@/lib/gift-vouchers');
                     await debitVoucherForPurchaseRefund(voucher.id, Math.min(delta, voucher.amountPence), totalRefundedByStripe);
-                  } catch (e) { console.error('[webhook] voucher purchase refund debit failed:', (e as Error)?.message); }
+                  } catch (e) { console.error('[webhook] voucher purchase refund debit failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'voucher-purchase-refund-debit' } }); } // BLD-868
                 }
               }
             }
@@ -325,7 +325,7 @@ export async function POST(req: Request) {
               try {
                 const { reconcileEnrolmentPaymentRefund } = await import('@/lib/academy-payments');
                 await reconcileEnrolmentPaymentRefund(piId);
-              } catch (e) { console.error('[webhook] enrolment payment refund reconcile failed:', (e as Error)?.message); }
+              } catch (e) { console.error('[webhook] enrolment payment refund reconcile failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'enrolment-refund-reconcile' } }); } // BLD-868
             }
           }
           break;
