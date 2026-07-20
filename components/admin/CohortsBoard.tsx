@@ -9,6 +9,7 @@ export type CohortLite = { id: string; name: string | null; startAt: string; end
 export type CourseLite = { id: string; title: string; modules: { id: string; title: string }[]; cohorts: CohortLite[] };
 export type EnrolLite = { id: string; courseId: string; cohortId: string | null; name: string; email: string; status: string };
 export type ReleaseLite = { cohortId: string; moduleId: string; releaseAt: string };
+export type PracticalDayLite = { id: string; cohortId: string; title: string; startAt: string; endAt: string | null; location: string | null; trainer: string | null };
 
 const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -18,11 +19,12 @@ async function post(payload: object) {
   return fetch('/api/admin/academy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 }
 
-export function CohortsBoard({ courses, enrolments, releases = [] }: { courses: CourseLite[]; enrolments: EnrolLite[]; releases?: ReleaseLite[] }) {
+export function CohortsBoard({ courses, enrolments, releases = [], practicalDays = [] }: { courses: CourseLite[]; enrolments: EnrolLite[]; releases?: ReleaseLite[]; practicalDays?: PracticalDayLite[] }) {
   const router = useRouter();
   async function act(payload: object) { await post(payload); router.refresh(); }
   const total = courses.reduce((n, c) => n + c.cohorts.length, 0);
   const releaseFor = (cohortId: string) => new Map(releases.filter((r) => r.cohortId === cohortId).map((r) => [r.moduleId, r.releaseAt]));
+  const daysFor = (cohortId: string) => practicalDays.filter((d) => d.cohortId === cohortId);
 
   return (
     <div className="space-y-6">
@@ -34,7 +36,7 @@ export function CohortsBoard({ courses, enrolments, releases = [] }: { courses: 
           <section key={c.id} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
             <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg">{c.title}</h2>
             <ul className="space-y-2">
-              {c.cohorts.map((h) => <CohortRow key={h.id} courseId={c.id} cohort={h} students={enrolments.filter((e) => e.cohortId === h.id)} modules={c.modules} releases={releaseFor(h.id)} onAct={act} />)}
+              {c.cohorts.map((h) => <CohortRow key={h.id} courseId={c.id} cohort={h} students={enrolments.filter((e) => e.cohortId === h.id)} modules={c.modules} releases={releaseFor(h.id)} practicalDays={daysFor(h.id)} onAct={act} />)}
             </ul>
           </section>
         ))
@@ -86,13 +88,56 @@ function NewCohort({ courses, onDone }: { courses: CourseLite[]; onDone: () => v
   );
 }
 
-function CohortRow({ courseId, cohort: h, students, modules, releases, onAct }: { courseId: string; cohort: CohortLite; students: EnrolLite[]; modules: { id: string; title: string }[]; releases: Map<string, string>; onAct: (p: object) => Promise<void> }) {
+// One saved practical day: shown as a summary line; Edit unfolds the same form
+// used for adding, pre-filled.
+function PracticalDayRow({ d, cohortId, onAct }: { d: PracticalDayLite; cohortId: string; onAct: (p: object) => Promise<void> }) {
+  const [editing, setEditing] = useState(false);
+  return (
+    <li className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span>{d.title} · {fmtDate(d.startAt)}{d.endAt ? `–${fmtDate(d.endAt)}` : ''}{d.location ? ` · ${d.location}` : ''}{d.trainer ? ` · ${d.trainer}` : ''}</span>
+        <span className="flex items-center gap-3 text-xs">
+          <button onClick={() => setEditing((v) => !v)} className="text-[var(--color-gold-deep)] hover:underline">{editing ? 'Close' : 'Edit'}</button>
+          <button onClick={() => { if (confirm('Delete this practical day?')) onAct({ op: 'removePracticalDay', id: d.id }); }} className="text-[var(--color-blush-deep)] hover:underline">Delete</button>
+        </span>
+      </div>
+      {editing && <div className="mt-2"><PracticalDayForm cohortId={cohortId} existing={d} onAct={onAct} onDone={() => setEditing(false)} /></div>}
+    </li>
+  );
+}
+
+function PracticalDayForm({ cohortId, existing, onAct, onDone }: { cohortId: string; existing?: PracticalDayLite; onAct: (p: object) => Promise<void>; onDone?: () => void }) {
+  const blank = { title: '', startAt: '', endAt: '', location: '', trainer: '' };
+  const [f, setF] = useState(existing ? { title: existing.title, startAt: day(existing.startAt), endAt: day(existing.endAt), location: existing.location ?? '', trainer: existing.trainer ?? '' } : blank);
+  const [busy, setBusy] = useState(false);
+  const set = <K extends keyof typeof f>(k: K, v: string) => setF((p) => ({ ...p, [k]: v }));
+  async function save() {
+    if (!f.startAt) return;
+    setBusy(true);
+    await onAct({ op: 'upsertPracticalDay', ...(existing ? { id: existing.id } : {}), cohortId, title: f.title || null, startAt: f.startAt, endAt: f.endAt || null, location: f.location || null, trainer: f.trainer || null });
+    setBusy(false);
+    if (existing) onDone?.(); else setF(blank);
+  }
+  return (
+    <div className="mt-1 flex flex-wrap items-end gap-x-3 gap-y-2">
+      <label className="text-[0.6rem] text-[var(--color-stone)]">Label<br /><input value={f.title} onChange={(e) => set('title', e.target.value)} className={`${field} w-40`} placeholder="Practical training" /></label>
+      <label className="text-[0.6rem] text-[var(--color-stone)]">Date<br /><input type="date" value={f.startAt} onChange={(e) => set('startAt', e.target.value)} className={field} /></label>
+      <label className="text-[0.6rem] text-[var(--color-stone)]">To (optional)<br /><input type="date" value={f.endAt} onChange={(e) => set('endAt', e.target.value)} className={field} /></label>
+      <label className="text-[0.6rem] text-[var(--color-stone)]">Location<br /><input value={f.location} onChange={(e) => set('location', e.target.value)} className={`${field} w-32`} placeholder="cohort default" /></label>
+      <label className="text-[0.6rem] text-[var(--color-stone)]">Trainer<br /><input value={f.trainer} onChange={(e) => set('trainer', e.target.value)} className={`${field} w-32`} placeholder="cohort default" /></label>
+      <button onClick={save} disabled={busy || !f.startAt} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-50">{busy ? '…' : existing ? 'Save' : '+ Add practical day'}</button>
+    </div>
+  );
+}
+
+function CohortRow({ courseId, cohort: h, students, modules, releases, practicalDays, onAct }: { courseId: string; cohort: CohortLite; students: EnrolLite[]; modules: { id: string; title: string }[]; releases: Map<string, string>; practicalDays: PracticalDayLite[]; onAct: (p: object) => Promise<void> }) {
   const [name, setName] = useState(h.name ?? '');
   const [aStart, setAStart] = useState(day(h.accessStartAt));
   const [aEnd, setAEnd] = useState(day(h.accessEndAt));
   const [busy, setBusy] = useState(false);
   const [show, setShow] = useState(false);
   const [showRelease, setShowRelease] = useState(false);
+  const [showDays, setShowDays] = useState(false);
   const dirty = name !== (h.name ?? '') || aStart !== day(h.accessStartAt) || aEnd !== day(h.accessEndAt);
   async function save() {
     setBusy(true);
@@ -107,10 +152,20 @@ function CohortRow({ courseId, cohort: h, students, modules, releases, onAct }: 
         <label className="text-[0.6rem] text-[var(--color-stone)]">Access opens<br /><input type="date" value={aStart} onChange={(e) => setAStart(e.target.value)} className={field} /></label>
         <label className="text-[0.6rem] text-[var(--color-stone)]">Access expires<br /><input type="date" value={aEnd} onChange={(e) => setAEnd(e.target.value)} className={field} /></label>
         {dirty && <button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-50">{busy ? '…' : 'Save'}</button>}
+        <button onClick={() => setShowDays((v) => !v)} className="pb-1.5 text-xs text-[var(--color-gold-deep)] hover:underline">{practicalDays.length ? `${practicalDays.length} practical day${practicalDays.length !== 1 ? 's' : ''}` : 'Practical days'}</button>
         <button onClick={() => setShowRelease((v) => !v)} className="pb-1.5 text-xs text-[var(--color-gold-deep)] hover:underline">Release schedule</button>
         <button onClick={() => setShow((v) => !v)} className="pb-1.5 text-xs text-[var(--color-gold-deep)] hover:underline">{students.length} student{students.length !== 1 ? 's' : ''}</button>
         <button onClick={() => { if (confirm('Remove this cohort?')) onAct({ op: 'removeCohort', id: h.id }); }} className="pb-1.5 text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
       </div>
+      {showDays && (
+        <div className="mt-2 border-t border-[var(--color-line)] pt-2">
+          <p className="mb-2 text-xs text-[var(--color-stone)]">This cohort’s own in-person training dates (BLD-881) — add as many as needed; they apply to this cohort only and show in each student’s portal calendar. With no dates here, students see the single “Practical from/to” window above.</p>
+          <ul className="space-y-1.5">
+            {practicalDays.map((d) => <PracticalDayRow key={d.id} d={d} cohortId={h.id} onAct={onAct} />)}
+          </ul>
+          <PracticalDayForm cohortId={h.id} onAct={onAct} />
+        </div>
+      )}
       {showRelease && (
         <div className="mt-2 border-t border-[var(--color-line)] pt-2">
           <p className="mb-2 text-xs text-[var(--color-stone)]">Set a release date to <strong>lock a module</strong> for this cohort until then. Leave blank to keep it open now. Lessons in a locked module are hidden from students until the date.</p>

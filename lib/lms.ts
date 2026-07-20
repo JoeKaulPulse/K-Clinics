@@ -15,7 +15,7 @@ export type LessonType = 'TEXT' | 'VIDEO' | 'AUDIO' | 'PDF' | 'DOWNLOAD' | 'EMBE
 export type HomeworkSubmissionView = { files: string[]; note: string | null; status: string; feedback: string | null };
 export type LessonView = {
   id: string; title: string; order: number; durationMin: number | null; minSeconds: number | null;
-  type: LessonType; videoUrl: string | null; audioUrl: string | null; embedUrl: string | null; attachments: AttachmentRef[]; videoPositionSec: number;
+  type: LessonType; videoUrl: string | null; captionsUrl: string | null; audioUrl: string | null; embedUrl: string | null; attachments: AttachmentRef[]; videoPositionSec: number;
   imageUrl: string | null; body: string;
   keyPoints: string[]; objectives: string[]; studyTips: string[]; homework: string | null;
   examRefs: string[]; steps: unknown; citations: LinkRef[]; resources: LinkRef[]; pdfUrls: string[]; pdfNoDownload: string[]; requiresHomework: boolean; submission: HomeworkSubmissionView | null; done: boolean; locked: boolean;
@@ -160,14 +160,14 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
       if (isLocked) {
         return {
           id: l.id, title: l.title, order: l.order, durationMin: l.durationMin, minSeconds: null,
-          type: 'TEXT', videoUrl: null, audioUrl: null, embedUrl: null, attachments: [], videoPositionSec: 0,
+          type: 'TEXT', videoUrl: null, captionsUrl: null, audioUrl: null, embedUrl: null, attachments: [], videoPositionSec: 0,
           imageUrl: null, body: '', keyPoints: [], objectives: [], studyTips: [],
           homework: null, examRefs: [], steps: null, citations: [], resources: [], pdfUrls: [], pdfNoDownload: [], requiresHomework: false, submission: null, done: false, locked: true,
         };
       }
       return {
         id: l.id, title: l.title, order: l.order, durationMin: l.durationMin, minSeconds: l.minSeconds,
-        type: l.type, videoUrl: l.videoUrl, audioUrl: l.audioUrl, embedUrl: l.embedUrl, attachments: attArr(l.attachments), videoPositionSec: posByLesson.get(l.id) ?? 0,
+        type: l.type, videoUrl: l.videoUrl, captionsUrl: l.captionsUrl, audioUrl: l.audioUrl, embedUrl: l.embedUrl, attachments: attArr(l.attachments), videoPositionSec: posByLesson.get(l.id) ?? 0,
         imageUrl: l.imageUrl, body: l.body,
         keyPoints: strArr(l.keyPoints), objectives: strArr(l.objectives), studyTips: strArr(l.studyTips),
         homework: l.homework, examRefs: strArr(l.examRefs), steps: l.steps, citations: arr(l.citations), resources: arr(l.resources), pdfUrls: strArr(l.pdfUrls), pdfNoDownload: strArr(l.pdfNoDownload), requiresHomework: l.requiresHomework, submission: subByLesson.get(l.id) ?? null, done, locked: false,
@@ -532,7 +532,7 @@ export async function getCoursePreview(courseId: string): Promise<CourseLearning
   const moduleViews: ModuleView[] = modules.map((m) => {
     const lessons: LessonView[] = m.lessons.map((l) => ({
       id: l.id, title: l.title, order: l.order, durationMin: l.durationMin, minSeconds: l.minSeconds,
-      type: l.type, videoUrl: l.videoUrl, audioUrl: l.audioUrl, embedUrl: l.embedUrl, attachments: attArr(l.attachments), videoPositionSec: 0,
+      type: l.type, videoUrl: l.videoUrl, captionsUrl: l.captionsUrl, audioUrl: l.audioUrl, embedUrl: l.embedUrl, attachments: attArr(l.attachments), videoPositionSec: 0,
       imageUrl: l.imageUrl, body: l.body,
       keyPoints: strArr(l.keyPoints), objectives: strArr(l.objectives), studyTips: strArr(l.studyTips),
       homework: l.homework, examRefs: strArr(l.examRefs), steps: l.steps, citations: arr(l.citations), resources: arr(l.resources), pdfUrls: strArr(l.pdfUrls), pdfNoDownload: strArr(l.pdfNoDownload), requiresHomework: l.requiresHomework, submission: null, done: false, locked: false,
@@ -574,7 +574,7 @@ export async function getTasterLesson(courseSlug: string, lessonId: string): Pro
   if (!l) return null;
   const lesson: LessonView = {
     id: l.id, title: l.title, order: l.order, durationMin: l.durationMin, minSeconds: null,
-    type: l.type, videoUrl: l.videoUrl, audioUrl: l.audioUrl, embedUrl: l.embedUrl, attachments: attArr(l.attachments), videoPositionSec: 0,
+    type: l.type, videoUrl: l.videoUrl, captionsUrl: l.captionsUrl, audioUrl: l.audioUrl, embedUrl: l.embedUrl, attachments: attArr(l.attachments), videoPositionSec: 0,
     imageUrl: l.imageUrl, body: l.body,
     keyPoints: strArr(l.keyPoints), objectives: strArr(l.objectives), studyTips: strArr(l.studyTips),
     homework: null, examRefs: strArr(l.examRefs), steps: null, citations: arr(l.citations), resources: arr(l.resources), pdfUrls: strArr(l.pdfUrls), pdfNoDownload: strArr(l.pdfNoDownload), requiresHomework: false, submission: null, done: false, locked: false,
@@ -655,12 +655,16 @@ export async function getStudentCalendar(studentId: string): Promise<CalendarEve
 
   const [live, cohorts] = await Promise.all([
     db.liveClass.findMany({ where: { courseId: { in: courseIds }, startAt: { gte: new Date(now.getTime() - 36e5) } }, orderBy: { startAt: 'asc' } }),
-    cohortIds.length ? db.cohort.findMany({ where: { id: { in: cohortIds } }, include: { course: { select: { title: true } } } }) : Promise.resolve([]),
+    cohortIds.length ? db.cohort.findMany({ where: { id: { in: cohortIds } }, include: { course: { select: { title: true } }, practicalDays: { orderBy: { startAt: 'asc' } } } }) : Promise.resolve([]),
   ]);
 
   const events: CalendarEvent[] = [
     ...live.map((l) => ({ id: l.id, kind: 'live' as const, courseTitle: titleByCourse.get(l.courseId) ?? '', title: l.title, startAt: l.startAt, endAt: l.endAt, joinUrl: l.joinUrl, location: 'Online · Google Meet', trainer: l.trainer })),
-    ...cohorts.map((c) => ({ id: c.id, kind: 'practical' as const, courseTitle: c.course.title, title: 'Practical training', startAt: c.startAt, endAt: c.endAt, joinUrl: null, location: c.location ?? 'K Academy, Islington', trainer: c.trainer })),
+    // BLD-881: a cohort with its own practical-day rows shows each of them;
+    // a cohort without any keeps the legacy single window from its start/end.
+    ...cohorts.flatMap((c) => c.practicalDays.length
+      ? c.practicalDays.map((d) => ({ id: d.id, kind: 'practical' as const, courseTitle: c.course.title, title: d.title, startAt: d.startAt, endAt: d.endAt, joinUrl: null, location: d.location ?? c.location ?? 'K Academy, Islington', trainer: d.trainer ?? c.trainer }))
+      : [{ id: c.id, kind: 'practical' as const, courseTitle: c.course.title, title: 'Practical training', startAt: c.startAt, endAt: c.endAt, joinUrl: null, location: c.location ?? 'K Academy, Islington', trainer: c.trainer }]),
   ];
   return events.sort((a, b) => +a.startAt - +b.startAt);
 }

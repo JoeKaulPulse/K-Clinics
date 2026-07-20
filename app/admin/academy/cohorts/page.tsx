@@ -4,7 +4,7 @@ import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
-import { CohortsBoard, type CourseLite, type EnrolLite, type ReleaseLite } from '@/components/admin/CohortsBoard';
+import { CohortsBoard, type CourseLite, type EnrolLite, type ReleaseLite, type PracticalDayLite } from '@/components/admin/CohortsBoard';
 import { getLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
@@ -23,7 +23,11 @@ export default async function AdminAcademyCohortsPage() {
   ]);
   // BLD: per-cohort module release schedule (drip).
   const cohortIds = courses.flatMap((c) => c.cohorts.map((h) => h.id));
-  const releaseRows = cohortIds.length ? await db.cohortModuleRelease.findMany({ where: { cohortId: { in: cohortIds } }, select: { cohortId: true, moduleId: true, releaseAt: true } }) : [];
+  const [releaseRows, dayRows] = await Promise.all([
+    cohortIds.length ? db.cohortModuleRelease.findMany({ where: { cohortId: { in: cohortIds } }, select: { cohortId: true, moduleId: true, releaseAt: true } }) : Promise.resolve([]),
+    // BLD-881: each cohort's own practical training days.
+    cohortIds.length ? db.cohortPracticalDay.findMany({ where: { cohortId: { in: cohortIds } }, orderBy: { startAt: 'asc' } }) : Promise.resolve([]),
+  ]);
 
   const coursesView: CourseLite[] = courses.map((c) => ({
     id: c.id, title: c.title,
@@ -32,6 +36,7 @@ export default async function AdminAcademyCohortsPage() {
   }));
   const enrolmentsView: EnrolLite[] = enrolments.map((e) => ({ id: e.id, courseId: e.courseId, cohortId: e.cohortId, name: e.applicantName, email: e.applicantEmail, status: e.status }));
   const releasesView: ReleaseLite[] = releaseRows.map((r) => ({ cohortId: r.cohortId, moduleId: r.moduleId, releaseAt: r.releaseAt.toISOString() }));
+  const daysView: PracticalDayLite[] = dayRows.map((d) => ({ id: d.id, cohortId: d.cohortId, title: d.title, startAt: d.startAt.toISOString(), endAt: d.endAt?.toISOString() ?? null, location: d.location, trainer: d.trainer }));
 
   const can = await sessionPermissions();
   const locale = await getLocale();
@@ -41,7 +46,7 @@ export default async function AdminAcademyCohortsPage() {
       <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl">Cohorts</h1>
       <p className="mt-1 max-w-2xl text-sm text-[var(--color-stone)]">Create start groups for each course and control content release. The access window sets when the whole course opens/closes; the per-cohort <strong>release schedule</strong> lets you lock individual modules and unlock them on set dates as materials are ready.</p>
       <div className="mt-8">
-        <CohortsBoard courses={coursesView} enrolments={enrolmentsView} releases={releasesView} />
+        <CohortsBoard courses={coursesView} enrolments={enrolmentsView} releases={releasesView} practicalDays={daysView} />
       </div>
     </AdminShell>
   );

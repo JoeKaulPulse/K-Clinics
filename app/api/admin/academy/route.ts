@@ -110,6 +110,31 @@ export async function POST(req: Request) {
       await db.cohort.deleteMany({ where: { id: body.id, tenantId } });
       return ok();
     }
+    case 'upsertPracticalDay': {
+      // BLD-881: per-cohort practical training days — several per cohort,
+      // edited/deleted independently, never shared across cohorts.
+      const b = body as Record<string, unknown>;
+      if (!b.cohortId || !b.startAt) return bad();
+      const cohort = await db.cohort.findFirst({ where: { id: String(b.cohortId), tenantId }, select: { id: true } });
+      if (!cohort) return bad();
+      const data = {
+        title: (b.title as string)?.trim().slice(0, 120) || 'Practical training',
+        startAt: new Date(b.startAt as string),
+        endAt: b.endAt ? new Date(b.endAt as string) : null,
+        location: (b.location as string)?.trim() || null,
+        trainer: (b.trainer as string)?.trim() || null,
+        notes: (b.notes as string)?.trim() || null,
+      };
+      if (Number.isNaN(+data.startAt) || (data.endAt && Number.isNaN(+data.endAt))) return bad();
+      if (b.id) await db.cohortPracticalDay.updateMany({ where: { id: String(b.id), tenantId, cohortId: cohort.id }, data });
+      else await db.cohortPracticalDay.create({ data: { ...data, tenantId, cohortId: cohort.id } });
+      return ok();
+    }
+    case 'removePracticalDay': {
+      if (!body.id) return bad();
+      await db.cohortPracticalDay.deleteMany({ where: { id: body.id, tenantId } });
+      return ok();
+    }
     case 'updateEnrolment': {
       if (!body.id) return bad();
       const b = body as Record<string, unknown>;
