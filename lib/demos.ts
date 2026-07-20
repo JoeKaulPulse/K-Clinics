@@ -9,7 +9,7 @@ import { scoreAndBadge } from '@/lib/academy-gamification';
 // timings never reach the player until after grading.
 
 export type DemoCard = { id: string; title: string; description: string | null; courseTitle: string | null; mistakeCount: number; best: number | null };
-export type DemoPlay = { id: string; title: string; description: string | null; videoUrl: string; durationSec: number | null; mistakeCount: number; best: number | null };
+export type DemoPlay = { id: string; title: string; description: string | null; videoUrl: string; captionsUrl: string | null; durationSec: number | null; mistakeCount: number; best: number | null };
 export type DemoMistakeResult = { atSec: number; label: string; caught: boolean };
 export type DemoResult = { ok: boolean; error?: string; spotted?: number; total?: number; falsePositives?: number; scorePct?: number; mistakes?: DemoMistakeResult[] };
 
@@ -31,7 +31,7 @@ export async function getDemoPlay(id: string, studentId: string): Promise<DemoPl
   const r = await db.demoVideo.findFirst({ where: { id, active: true }, include: { _count: { select: { mistakes: true } } } });
   if (!r || r._count.mistakes === 0) return null;
   const a = await db.demoAttempt.findUnique({ where: { studentId_videoId: { studentId, videoId: id } }, select: { scorePct: true } }).catch(() => null);
-  return { id: r.id, title: r.title, description: r.description, videoUrl: r.videoUrl, durationSec: r.durationSec, mistakeCount: r._count.mistakes, best: a?.scorePct ?? null };
+  return { id: r.id, title: r.title, description: r.description, videoUrl: r.videoUrl, captionsUrl: r.captionsUrl, durationSec: r.durationSec, mistakeCount: r._count.mistakes, best: a?.scorePct ?? null };
 }
 
 /** Grade a learner's spacebar presses (seconds) against the marked mistakes. */
@@ -80,12 +80,12 @@ export async function gradeDemo(studentId: string, videoId: string, presses: unk
 
 // ── admin authoring ──────────────────────────────────────────────────────────
 export type AdminDemoMistake = { id: string; atSec: number; windowSec: number; label: string };
-export type AdminDemo = { id: string; courseId: string | null; title: string; description: string | null; videoUrl: string; durationSec: number | null; order: number; active: boolean; mistakes: AdminDemoMistake[] };
+export type AdminDemo = { id: string; courseId: string | null; title: string; description: string | null; videoUrl: string; captionsUrl: string | null; durationSec: number | null; order: number; active: boolean; mistakes: AdminDemoMistake[] };
 
 export async function adminListDemos(courseId: string): Promise<AdminDemo[]> {
   const rows = await db.demoVideo.findMany({ where: { courseId }, orderBy: { order: 'asc' }, include: { mistakes: { orderBy: { atSec: 'asc' } } } });
   return rows.map((r) => ({
-    id: r.id, courseId: r.courseId, title: r.title, description: r.description, videoUrl: r.videoUrl, durationSec: r.durationSec, order: r.order, active: r.active,
+    id: r.id, courseId: r.courseId, title: r.title, description: r.description, videoUrl: r.videoUrl, captionsUrl: r.captionsUrl, durationSec: r.durationSec, order: r.order, active: r.active,
     mistakes: r.mistakes.map((m) => ({ id: m.id, atSec: m.atSec, windowSec: m.windowSec, label: m.label })),
   }));
 }

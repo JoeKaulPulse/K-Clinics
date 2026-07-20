@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     }
     case 'updateDemo': {
       if (!b.id) return bad();
-      await db.demoVideo.update({ where: { id: String(b.id) }, data: { title: str(b.title).slice(0, 160) || 'Demo', description: str(b.description).slice(0, 2000) || null, active: b.active === undefined ? true : !!b.active } });
+      await db.demoVideo.update({ where: { id: String(b.id) }, data: { title: str(b.title).slice(0, 160) || 'Demo', description: str(b.description).slice(0, 2000) || null, captionsUrl: str(b.captionsUrl).slice(0, 1000) || null, active: b.active === undefined ? true : !!b.active } });
       return ok();
     }
     case 'deleteDemo': { if (!b.id) return bad(); await db.demoVideo.delete({ where: { id: String(b.id) } }); return ok(); }

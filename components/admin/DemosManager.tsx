@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 // BLD-539: staff authoring for "spot the mistake" demo videos.
 export type DemoMistake = { id: string; atSec: number; windowSec: number; label: string };
-export type AdminDemo = { id: string; courseId: string | null; title: string; description: string | null; videoUrl: string; durationSec: number | null; order: number; active: boolean; mistakes: DemoMistake[] };
+export type AdminDemo = { id: string; courseId: string | null; title: string; description: string | null; videoUrl: string; captionsUrl: string | null; durationSec: number | null; order: number; active: boolean; mistakes: DemoMistake[] };
 
 const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
 const label = 'block text-xs font-medium text-[var(--color-stone)]';
@@ -53,6 +53,7 @@ function DemoRow({ demo, busy, act, canUp, canDown, onMove }: { demo: AdminDemo;
   const [title, setTitle] = useState(demo.title);
   const [description, setDescription] = useState(demo.description ?? '');
   const [active, setActive] = useState(demo.active);
+  const [captionsUrl, setCaptionsUrl] = useState(demo.captionsUrl ?? '');
   const videoRef = useRef<HTMLVideoElement>(null);
 
   async function markHere() {
@@ -77,8 +78,9 @@ function DemoRow({ demo, busy, act, canUp, canDown, onMove }: { demo: AdminDemo;
             <label className={label}>Title<input className={`${field} mt-1`} value={title} onChange={(e) => setTitle(e.target.value)} /></label>
             <label className="flex items-center gap-2 self-end text-xs text-[var(--color-stone)]"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> Visible to trainees</label>
             <label className={`${label} sm:col-span-2`}>Description (optional)<input className={`${field} mt-1`} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What should they watch for?" /></label>
+            <label className={`${label} sm:col-span-2`}>Captions (.vtt link — BLD-904)<input className={`${field} mt-1`} value={captionsUrl} onChange={(e) => setCaptionsUrl(e.target.value)} placeholder="https://…/captions.vtt (WebVTT)" /></label>
           </div>
-          <button onClick={() => act({ op: 'updateDemo', id: demo.id, title, description, active })} disabled={busy} className={btnDark}>Save details</button>
+          <button onClick={() => act({ op: 'updateDemo', id: demo.id, title, description, captionsUrl, active })} disabled={busy} className={btnDark}>Save details</button>
 
           <div>
             {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
