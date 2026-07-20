@@ -7,6 +7,7 @@ import { getPublishedPage, pageMetaFromSections } from '@/lib/pages';
 import { TreatmentTemplate } from '@/components/treatment/TreatmentTemplate';
 import { SectionRenderer } from '@/components/cms/SectionRenderer';
 import { pageMeta, JsonLd, serviceLd, faqLd, breadcrumbLd } from '@/lib/seo';
+import { ViewItemTracker } from '@/components/marketing/ViewItemTracker';
 
 // Single-segment routes: treatment pages (static) + any admin-built CMS page
 // published at /<slug>. Folder routes (/about, /contact, …) take precedence.
@@ -48,6 +49,7 @@ export default async function TreatmentPage({ params }: { params: Promise<{ slug
             breadcrumbLd([{ name: 'Home', path: '/' }, { name: categoryLabel, path: categoryHref }, { name: t.title, path: `/${t.slug}` }]),
           ]}
         />
+        <ViewItemTracker id={t.slug} name={t.title} category={t.category} valuePence={fromPence ?? 0} />
         <TreatmentTemplate t={t} />
       </>
     );
