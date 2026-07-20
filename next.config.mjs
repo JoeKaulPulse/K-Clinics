@@ -72,6 +72,13 @@ const redirects = async () => [
   // has no page.tsx of its own, so it fell through to the marketing catch-all
   // and soft-404'd instead of reaching the booking flow). BLD-895.
   { source: '/booking', destination: '/book', permanent: true },
+  // BLD-886: these info stubs redirect() in the page, but the route is
+  // statically generated so Next bakes that into a meta-refresh served with
+  // HTTP 200 — an indexable duplicate of the destination. A config redirect
+  // runs before routing and issues a true 3xx.
+  { source: '/info/careers', destination: '/careers', permanent: true },
+  { source: '/info/refer-a-friend', destination: '/refer-a-friend', permanent: true },
+  { source: '/info/gift-vouchers', destination: '/gift-vouchers', permanent: true },
 ];
 
 const nextConfig = {

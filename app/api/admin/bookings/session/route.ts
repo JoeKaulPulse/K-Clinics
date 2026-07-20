@@ -184,7 +184,9 @@ export async function POST(req: Request) {
         payment_intent_data: { metadata: { bookingId, kind: 'booking_balance', expectedPence: String(amountPence) } },
         success_url: `${base}/pos-paid?booking=1`,
         cancel_url: `${base}/pos-paid?cancelled=1`,
-      });
+      // BLD-883: stable key so a double-click/client retry before the chargedAt
+      // guard catches up reuses the same Checkout Session instead of minting two.
+      }, { idempotencyKey: `paylink-${bookingId}-${amountPence}` });
       const QR = (await import('qrcode')).default;
       const qr = await QR.toDataURL(checkout.url || '', { margin: 1, width: 320 });
       return ok({ url: checkout.url, qr });

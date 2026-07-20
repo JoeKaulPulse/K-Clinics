@@ -1,4 +1,5 @@
 import 'server-only';
+import * as Sentry from '@sentry/nextjs';
 import { getSecret } from '@/lib/secrets';
 
 // Kiosk Skin & Smile AI analysis — lightweight, friendly, non-clinical.
@@ -144,6 +145,9 @@ export async function analyzeKioskPhoto(photoUrl: string): Promise<KioskAiResult
     return { headline, skinScore, smileScore, insights, treatments };
   } catch (e) {
     console.error('[kiosk-ai] analysis failed:', (e as Error)?.message);
+    // BLD-851: a provider outage silently breaks the in-clinic kiosk demo —
+    // surface it in Sentry like chat-ai/ai-consultation do.
+    Sentry.captureException(e, { tags: { area: 'kiosk-ai' } });
     return null;
   }
 }
@@ -373,6 +377,7 @@ export async function analyzeKioskPhotosV2(photoUrls: string[]): Promise<KioskAi
     return { clearlyOver21, headline, skinScore, smileScore, bestPhotoIndex, observations, treatments, shareCaption };
   } catch (e) {
     console.error('[kiosk-ai] v2 analysis failed:', (e as Error)?.message);
+    Sentry.captureException(e, { tags: { area: 'kiosk-ai' } });
     return null;
   }
 }

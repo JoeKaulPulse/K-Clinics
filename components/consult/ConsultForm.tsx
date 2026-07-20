@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { treatments } from '@/lib/treatments';
 import { site } from '@/lib/site';
@@ -41,6 +41,7 @@ export function ConsultForm() {
   const [d, setD] = useState<Data>(empty);
   const [status, setStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
   const [error, setError] = useState('');
+  const sendingRef = useRef(false);
 
   const set = <K extends keyof Data>(k: K, v: Data[K]) => setD((p) => ({ ...p, [k]: v }));
   const toggleTreatment = (name: string) =>
@@ -55,6 +56,11 @@ export function ConsultForm() {
     step === 3;
 
   async function submit() {
+    // BLD-887: reentrancy guard — the onClick closure's status check reads a
+    // stale value on a fast double-click, firing two POSTs and creating
+    // duplicate leads. The ref flips synchronously, before any re-render.
+    if (sendingRef.current) return;
+    sendingRef.current = true;
     setStatus('sending');
     setError('');
     // Shared id so the browser Lead event de-duplicates against the server-side
@@ -90,6 +96,8 @@ export function ConsultForm() {
     } catch {
       setError('Network error — please try again or call us.');
       setStatus('error');
+    } finally {
+      sendingRef.current = false;
     }
   }
 
@@ -227,7 +235,7 @@ export function ConsultForm() {
             Continue <ArrowIcon />
           </Button>
         ) : (
-          <Button onClick={() => d.consent && status !== 'sending' && submit()} variant={d.consent ? 'gold' : 'outline'}>
+          <Button onClick={() => d.consent && submit()} disabled={status === 'sending'} variant={d.consent ? 'gold' : 'outline'}>
             {status === 'sending' ? 'Sending…' : 'Request consultation'} <ArrowIcon />
           </Button>
         )}

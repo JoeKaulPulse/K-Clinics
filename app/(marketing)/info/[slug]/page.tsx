@@ -8,7 +8,10 @@ import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const dynamicParams = false;
 export function generateStaticParams() {
-  return infoSlugs.map((slug) => ({ slug }));
+  // BLD-886: don't bake static pages for slugs that only redirect — the
+  // config-level redirect in next.config.mjs handles them with a true 3xx,
+  // and generating them here produced 200-status meta-refresh duplicates.
+  return infoSlugs.filter((slug) => !REDIRECTS[slug]).map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {

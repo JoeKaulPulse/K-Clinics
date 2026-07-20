@@ -125,10 +125,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly' as const,
       priority: 0.7,
     })),
-    // BLD-535: refer-a-friend info page is incorrect (£50 vs live £25/£25) and
-    // redirects to /refer-a-friend — exclude from sitemap so search engines
-    // don't index the outdated commercial claim.
-    ...infoSlugs.filter((slug) => slug !== 'refer-a-friend').map((slug) => ({
+    // BLD-535/BLD-886: careers, refer-a-friend and gift-vouchers all redirect
+    // to their dedicated routes (which are already listed above) — exclude the
+    // /info/ stubs so search engines aren't re-submitted crawlable duplicates.
+    ...infoSlugs.filter((slug) => !['refer-a-friend', 'careers', 'gift-vouchers'].includes(slug)).map((slug) => ({
       url: `${base}/info/${slug}`,
       lastModified: reviewed,
       changeFrequency: 'yearly' as const,
