@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import { createManualBooking, searchClientsForBooking, logCallNote, resendBookingConfirmation } from '@/app/admin/bookings/create-action';
 import { clinicLocalToUTC, CLINIC_TZ } from '@/lib/clinic-time';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 type Variant = { id: string; name: string; durationMin: number; pricePence: number };
 type Treatment = { slug: string; title: string; group: string; variants?: Variant[] };
@@ -35,6 +36,8 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
   const [error, setError] = useState('');
   const [clash, setClash] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
+  // Modal behaviours (focus-in, Tab trap, Escape, focus restore) — shared Dialog primitive (BLD-849/BLD-803).
+  const { panelRef, onKeyDown } = useDialogBehaviours(onClose);
 
   // Group treatments by their group field for the two-step dropdown.
   const groups = Array.from(new Set(treatments.map((t) => t.group)));
@@ -103,11 +106,11 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-6">
-      <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }} transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onKeyDown={onKeyDown} className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-6">
+      <motion.div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="new-booking-title" tabIndex={-1} initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }} transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
         className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-[var(--radius-xl)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)] sm:rounded-[var(--radius-xl)] md:p-8">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="font-[family-name:var(--font-display)] text-2xl">{result ? 'Call walkthrough' : 'New phone booking'}</h2>
+          <h2 id="new-booking-title" className="font-[family-name:var(--font-display)] text-2xl">{result ? 'Call walkthrough' : 'New phone booking'}</h2>
           <button onClick={onClose} aria-label="Close" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>
         </div>
 

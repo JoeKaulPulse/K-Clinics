@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 export type Asset = { id: string; url: string; filename: string; alt: string | null; mime: string | null; size: number | null; width?: number | null; height?: number | null; folder: string | null; createdAt: string };
 
@@ -131,6 +132,8 @@ export function MediaGrid({ onPick, compact }: { onPick?: (asset: Asset) => void
 // A form field: shows the current image with a "Choose" button opening a modal.
 export function MediaField({ value, onChange, label }: { value: string; onChange: (url: string) => void; label?: string }) {
   const [open, setOpen] = useState(false);
+  // Modal behaviours (focus-in, Tab trap, Escape, focus restore) — shared Dialog primitive (BLD-849/BLD-803).
+  const { panelRef, onKeyDown } = useDialogBehaviours(() => setOpen(false), open);
   return (
     <div>
       {label && <label className="block text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-stone)] mb-1.5">{label}</label>}
@@ -149,10 +152,10 @@ export function MediaField({ value, onChange, label }: { value: string; onChange
       </div>
 
       {open && (
-        <div className="fixed inset-0 z-[80] grid place-items-center bg-black/40 p-4" onClick={() => setOpen(false)}>
-          <div className="max-h-[85vh] w-full max-w-3xl overflow-auto rounded-[var(--radius-xl)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-black/40 p-4" onClick={() => setOpen(false)} onKeyDown={onKeyDown}>
+          <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="media-picker-title" tabIndex={-1} className="max-h-[85vh] w-full max-w-3xl overflow-auto rounded-[var(--radius-xl)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-[family-name:var(--font-display)] text-xl">Media library</h3>
+              <h3 id="media-picker-title" className="font-[family-name:var(--font-display)] text-xl">Media library</h3>
               <button onClick={() => setOpen(false)} aria-label="Close" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>
             </div>
             <MediaGrid compact onPick={(a) => { onChange(a.url); setOpen(false); }} />

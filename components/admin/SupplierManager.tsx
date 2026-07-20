@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 type Row = { id: string; name: string; category: string | null; contactName: string | null; email: string | null; phone: string | null; accountNumber: string | null; xeroContactId: string | null; active: boolean };
 type Call = { id: string; direction: string; startedAt: string; durationSec: number; fromNumber: string; toNumber: string };
@@ -56,6 +57,9 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
 
   const filtered = rows.filter((s) => !q || `${s.name} ${s.category ?? ''} ${s.contactName ?? ''} ${s.phone ?? ''}`.toLowerCase().includes(q.toLowerCase()));
   const set = <K extends keyof Full>(k: K, v: Full[K]) => setEditing((e) => ({ ...e, [k]: v }));
+  // Modal behaviours (focus-in, Tab trap, Escape, focus restore) — shared Dialog primitive (BLD-849/BLD-803).
+  const closeEdit = useCallback(() => setEditing(null), []);
+  const { panelRef, onKeyDown } = useDialogBehaviours(closeEdit, !!editing);
 
   return (
     <div>
@@ -89,9 +93,9 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
       </div>
 
       {editing && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={() => setEditing(null)}>
-          <div onClick={(e) => e.stopPropagation()} className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]">
-            <h2 className="font-[family-name:var(--font-display)] text-xl">{editing.id ? 'Edit supplier' : 'New supplier'}</h2>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={() => setEditing(null)} onKeyDown={onKeyDown}>
+          <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="supplier-editor-title" tabIndex={-1} onClick={(e) => e.stopPropagation()} className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]">
+            <h2 id="supplier-editor-title" className="font-[family-name:var(--font-display)] text-xl">{editing.id ? 'Edit supplier' : 'New supplier'}</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2"><label className={label}>Name *</label><input className={field} value={editing.name || ''} onChange={(e) => set('name', e.target.value)} disabled={!canManage} /></div>
               <div><label className={label}>Category</label><input className={field} value={editing.category || ''} onChange={(e) => set('category', e.target.value)} disabled={!canManage} placeholder="Consumables, Equipment…" /></div>

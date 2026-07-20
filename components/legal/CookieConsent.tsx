@@ -53,7 +53,11 @@ export function CookieConsent() {
     return () => window.removeEventListener('kc-open-consent', open);
   }, []);
 
-  // Auto-focus first button on open; restore prior focus on close.
+  // Auto-focus first button on open; restore prior focus on close. The banner
+  // is deliberately NON-modal (PRJ-939.11): it has no backdrop and the page
+  // behind stays scrollable and clickable, so it must not claim aria-modal or
+  // trap Tab — keyboard users can browse the page and come back to it, exactly
+  // as mouse users can.
   useEffect(() => {
     if (show) {
       prevFocusRef.current = document.activeElement as HTMLElement;
@@ -64,27 +68,6 @@ export function CookieConsent() {
       prevFocusRef.current.focus();
       prevFocusRef.current = null;
     }
-  }, [show]);
-
-  // Tab/Shift+Tab focus trap while the dialog is open.
-  useEffect(() => {
-    if (!show) return;
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key !== 'Tab') return;
-      const el = dialogRef.current;
-      if (!el) return;
-      const nodes = Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE));
-      if (nodes.length === 0) return;
-      const first = nodes[0];
-      const last = nodes[nodes.length - 1];
-      if (e.shiftKey) {
-        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
-      } else {
-        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
-      }
-    }
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
   }, [show]);
 
   function decide(a: boolean, m: boolean) {
@@ -101,9 +84,8 @@ export function CookieConsent() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 24, opacity: 0 }}
           transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-          role="dialog"
+          role="region"
           aria-label="Cookie consent"
-          aria-modal="true"
           className="fixed inset-x-3 bottom-3 z-[80] mx-auto max-h-[38vh] max-w-2xl overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 shadow-[var(--shadow-lift)] md:inset-x-auto md:left-6 md:bottom-6 md:max-h-none md:overflow-visible md:p-6"
         >
           <p className="font-[family-name:var(--font-display)] text-lg">Your privacy, your choice</p>
