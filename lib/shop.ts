@@ -118,13 +118,39 @@ export async function finalizeOrder(orderId: string): Promise<{ ok: boolean; num
     return { ok: true, number: order.number };
   }
 
-  // Decrement stock for tracked products.
+  // Decrement stock for tracked products — guarded so it can never drive
+  // stockQty negative (BLD-898). validateCart's stock read is a UX pre-check,
+  // not a reservation: two carts can both pass it and both pay. The customer
+  // here has already paid, so a lost race must not reject the order — instead
+  // we take whatever stock is left (down to zero) and flag the oversell for
+  // staff, rather than the old unconditional decrement + global negative-clamp
+  // that hid it.
   for (const it of order.items) {
     if (!it.productId) continue;
-    await db.product.updateMany({ where: { id: it.productId, trackInventory: true }, data: { stockQty: { decrement: it.qty } } }).catch(() => {});
+    try {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        // Normal case: enough stock — one conditional, atomic decrement.
+        const dec = await db.product.updateMany({ where: { id: it.productId, trackInventory: true, stockQty: { gte: it.qty } }, data: { stockQty: { decrement: it.qty } } });
+        if (dec.count > 0) break;
+        // Short: take what's left. The stockQty < qty guard means a concurrent
+        // restock between the two statements can't be clobbered to zero — the
+        // update misses and the loop retries the plain decrement instead.
+        const short = await db.product.updateMany({ where: { id: it.productId, trackInventory: true, stockQty: { lt: it.qty } }, data: { stockQty: 0 } });
+        if (short.count > 0) {
+          console.error(`[shop] finalizeOrder: oversold "${it.name}" on order ${order.number} — ordered ${it.qty}, stock ran out first (concurrent checkout). Remaining stock zeroed; fulfilment needs staff review. (BLD-898)`);
+          try {
+            const Sentry = await import('@sentry/nextjs');
+            Sentry.captureMessage('[shop] order oversold — stock ran out between cart validation and payment', { level: 'warning', tags: { area: 'shop', order: order.number } });
+          } catch { /* monitoring is best-effort */ }
+          break;
+        }
+        // Neither matched: either the product is untracked/deleted (nothing to
+        // decrement) or a restock landed between the two statements — retry.
+        const p = await db.product.findUnique({ where: { id: it.productId }, select: { trackInventory: true } });
+        if (!p || !p.trackInventory) break;
+      }
+    } catch { /* stock accounting is best-effort; never blocks fulfilment */ }
   }
-  // Clamp any negatives to zero.
-  await db.product.updateMany({ where: { stockQty: { lt: 0 } }, data: { stockQty: 0 } }).catch(() => {});
 
   // NB: the gift-card balance was already RESERVED (atomically decremented) at
   // checkout time via reserveVoucher, so we deliberately do NOT redeem again here
