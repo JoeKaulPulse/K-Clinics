@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 // BLD-535: staff authoring for interactive exercises (hotspots / match / order).
@@ -111,16 +111,83 @@ function ExerciseRow({ ex, busy, act, canUp, canDown, onMove }: { ex: AdminExerc
   );
 }
 
+const DIRS: Record<string, [number, number] | undefined> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+
+// ── Keyboard pin placement (BLD-905, WCAG 2.1.1) — mirrors the learner-side
+// hook in components/academy/ExercisePlayer.tsx (duplicated: a shared module
+// would touch files outside this pair). Arrow keys move a crosshair (2% steps,
+// Shift = 10%) in the same %-of-image coordinate space the mouse path uses;
+// Enter/Space places at the crosshair. role="application" so screen readers
+// hand the arrow keys to us; a debounced aria-live region announces position.
+// The crosshair (two-tone: white + ink, readable on any image) only renders on
+// keyboard focus/use — mouse users see no change.
+function useCrosshair({ disabled, label, hint, onPlace }: { disabled: boolean; label: string; hint: string; onPlace: (x: number, y: number) => string | void }) {
+  const [pos, setPos] = useState({ x: 50, y: 50 });
+  const [showCross, setShowCross] = useState(false);
+  const liveRef = useRef<HTMLSpanElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hintId = useId();
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  const say = (msg: string, now = false) => {
+    if (timer.current) clearTimeout(timer.current);
+    if (now) { if (liveRef.current) liveRef.current.textContent = msg; }
+    else timer.current = setTimeout(() => { if (liveRef.current) liveRef.current.textContent = msg; }, 150);
+  };
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (disabled) return;
+    const d = DIRS[e.key];
+    if (d) {
+      e.preventDefault();
+      setShowCross(true);
+      const step = e.shiftKey ? 10 : 2;
+      const next = { x: Math.min(100, Math.max(0, pos.x + d[0] * step)), y: Math.min(100, Math.max(0, pos.y + d[1] * step)) };
+      setPos(next);
+      say(`Crosshair at ${Math.round(next.x)}% across, ${Math.round(next.y)}% down`);
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setShowCross(true);
+      say(onPlace(pos.x, pos.y) || `Placed at ${Math.round(pos.x)}% across, ${Math.round(pos.y)}% down.`, true);
+    }
+  };
+  const surfaceProps = {
+    tabIndex: disabled ? -1 : 0,
+    role: 'application' as const,
+    'aria-label': label,
+    'aria-describedby': hintId,
+    onKeyDown,
+    // :focus-visible = keyboard-derived focus; a plain mouse click focuses without showing the crosshair.
+    onFocus: (e: React.FocusEvent<HTMLDivElement>) => setShowCross(e.currentTarget.matches(':focus-visible')),
+    onBlur: () => setShowCross(false),
+  };
+  const overlay = (
+    <>
+      {showCross && !disabled && (
+        <span aria-hidden style={{ left: `${pos.x}%`, top: `${pos.y}%` }} className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white ring-2 ring-[#2a2420]">
+          <span className="absolute left-1/2 top-1/2 h-1 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white ring-1 ring-[#2a2420]" />
+        </span>
+      )}
+      <span ref={liveRef} aria-live="polite" className="sr-only" />
+      <span id={hintId} className="sr-only">{hint}</span>
+    </>
+  );
+  return { surfaceProps, overlay };
+}
+
+const surfaceFocus = 'outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)] focus-visible:ring-offset-2';
+
 function HotspotEditor({ imageUrl, spots, setSpots, uploading, onUpload, onClearImage }: { imageUrl: string; spots: Spot[]; setSpots: (s: Spot[]) => void; uploading: boolean; onUpload: (f: File) => void; onClearImage: () => void }) {
   const imgRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  function addAt(x: number, y: number) {
+    setSpots([...spots, { label: `Spot ${spots.length + 1}`, x, y, r: 8 }]);
+    return `Target ${spots.length + 1} added at ${x}% across, ${y}% down.`;
+  }
   function addSpot(e: React.MouseEvent) {
     if (!imgRef.current) return;
     const rect = imgRef.current.getBoundingClientRect();
-    const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
-    const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
-    setSpots([...spots, { label: `Spot ${spots.length + 1}`, x, y, r: 8 }]);
+    addAt(Math.round(((e.clientX - rect.left) / rect.width) * 100), Math.round(((e.clientY - rect.top) / rect.height) * 100));
   }
+  const kb = useCrosshair({ disabled: false, label: 'Exercise image. Add a target at the crosshair.', hint: 'Arrow keys move the crosshair 2% per press, hold Shift for 10%. Press Enter or Space to add a target at the crosshair.', onPlace: (x, y) => addAt(Math.round(x), Math.round(y)) });
   const setSpot = (i: number, patch: Partial<Spot>) => setSpots(spots.map((s, j) => (j === i ? { ...s, ...patch } : s)));
 
   return (
@@ -133,14 +200,15 @@ function HotspotEditor({ imageUrl, spots, setSpots, uploading, onUpload, onClear
         </div>
       ) : (
         <>
-          <div ref={imgRef} onClick={addSpot} className="relative w-full max-w-xl cursor-crosshair overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)]">
+          <div ref={imgRef} onClick={addSpot} {...kb.surfaceProps} className={`relative w-full max-w-xl cursor-crosshair overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)] ${surfaceFocus}`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={imageUrl} alt="" className="block w-full select-none" draggable={false} />
             {spots.map((s, i) => (
               <span key={i} style={{ left: `${s.x}%`, top: `${s.y}%`, width: `${s.r * 2}%`, paddingBottom: `${s.r * 2}%` }} className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--color-gold-deep)] bg-[var(--color-gold)]/20" />
             ))}
+            {kb.overlay}
           </div>
-          <p className="text-xs text-[var(--color-stone)]">Click the image to add a target. Trainees must click within each target’s circle.</p>
+          <p className="text-xs text-[var(--color-stone)]">Click the image to add a target (keyboard: focus the image, arrow keys move the crosshair, Enter adds). Trainees must click within each target’s circle.</p>
           <button onClick={onClearImage} className="text-xs text-[var(--color-blush-deep)] hover:underline">Change image</button>
           {spots.length > 0 && (
             <ul className="space-y-1.5">
@@ -169,6 +237,7 @@ function PointEditor({ imageUrl, uploading, onUpload, onClearImage, count, addAt
     const rect = imgRef.current.getBoundingClientRect();
     addAt(Math.round(((e.clientX - rect.left) / rect.width) * 100), Math.round(((e.clientY - rect.top) / rect.height) * 100));
   }
+  const kb = useCrosshair({ disabled: false, label: 'Diagram image. Add a marker at the crosshair.', hint: 'Arrow keys move the crosshair 2% per press, hold Shift for 10%. Press Enter or Space to add a marker at the crosshair.', onPlace: (x, y) => { addAt(Math.round(x), Math.round(y)); return `Marker ${count + 1} added at ${Math.round(x)}% across, ${Math.round(y)}% down.`; } });
   return (
     <div className="space-y-2">
       <p className={label}>Diagram image</p>
@@ -179,14 +248,15 @@ function PointEditor({ imageUrl, uploading, onUpload, onClearImage, count, addAt
         </div>
       ) : (
         <>
-          <div ref={imgRef} onClick={add} className="relative w-full max-w-xl cursor-crosshair overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)]">
+          <div ref={imgRef} onClick={add} {...kb.surfaceProps} className={`relative w-full max-w-xl cursor-crosshair overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)] ${surfaceFocus}`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={imageUrl} alt="" className="block w-full select-none" draggable={false} />
             {markers.map((m, i) => (
               <span key={i} style={{ left: `${m.x}%`, top: `${m.y}%` }} className="absolute -translate-x-1/2 -translate-y-1/2 grid h-6 w-6 place-items-center rounded-full bg-[var(--color-ink)] text-[0.6rem] font-bold text-[var(--color-porcelain)]">{i + 1}</span>
             ))}
+            {kb.overlay}
           </div>
-          <p className="text-xs text-[var(--color-stone)]">Click the image to add a marker ({count} so far). Number each marker’s answer below.</p>
+          <p className="text-xs text-[var(--color-stone)]">Click the image to add a marker ({count} so far; keyboard: arrow keys move the crosshair, Enter adds). Number each marker’s answer below.</p>
           <button onClick={onClearImage} className="text-xs text-[var(--color-blush-deep)] hover:underline">Change image</button>
           {count > 0 && <ul className="space-y-1.5">{children}</ul>}
         </>

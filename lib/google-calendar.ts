@@ -160,7 +160,6 @@ export async function pushBookingToClinician(bookingId: string): Promise<{ ok: b
   const b = await db.booking.findUnique({
     where: { id: bookingId },
     include: {
-      client: { select: { firstName: true, lastName: true, email: true, phone: true } },
       practitioner: { select: { googleRefreshToken: true, googleCalendarId: true } },
     },
   });
@@ -171,16 +170,16 @@ export async function pushBookingToClinician(bookingId: string): Promise<{ ok: b
   const token = await accessToken(decryptRefresh(staff.googleRefreshToken));
   if (!token) return { ok: false, error: 'token refresh failed' };
 
-  const name = [b.client?.firstName, b.client?.lastName].filter(Boolean).join(' ') || 'Client';
+  // PRJ-939.6: the clinician's Google Calendar is often a personal account —
+  // outside the CRM's access controls, mirrored to lock screens, notification
+  // previews and any calendars they share. A treatment name can itself reveal
+  // a health condition, so the event carries no clinical or contact substance:
+  // a generic title and a link back to the CRM booking, which enforces its own
+  // login and role checks. (The Hostinger CalDAV feed is the clinic's own
+  // business calendar and keeps its operational detail — see hostinger-calendar.)
   const event = {
-    summary: `${b.treatmentTitle} — ${name}`,
-    description: [
-      `Client: ${name}`,
-      b.client?.phone ? `Phone: ${b.client.phone}` : '',
-      b.client?.email ? `Email: ${b.client.email}` : '',
-      b.notes ? `Notes: ${b.notes}` : '',
-      `Open in CRM: ${site.url}/admin/bookings/${b.id}`,
-    ].filter(Boolean).join('\n'),
+    summary: 'KClinics appointment',
+    description: `Details in the CRM (login required): ${site.url}/admin/bookings/${b.id}`,
     start: { dateTime: b.startAt.toISOString() },
     end: { dateTime: b.endAt.toISOString() },
     // Tag the event so it's identifiable as clinic-managed.
@@ -244,4 +243,28 @@ export async function removeBookingFromClinician(bookingId: string): Promise<{ o
   }
   await db.booking.update({ where: { id: bookingId }, data: { googleEventId: null } });
   return { ok: true };
+}
+
+/** One-time sweep (PRJ-939.6): re-push every future clinic event so calendars
+ *  that already carry clinical titles and contact details get the redacted
+ *  content. Keyed in Settings so it runs once; new pushes are redacted at
+ *  source. Not run while Google is parked — the key is only stamped after a
+ *  real pass, so re-enabling the integration later still triggers the sweep. */
+export async function redactFutureClinicianEvents(): Promise<{ ok: boolean; updated: number }> {
+  const KEY = 'gcal_redact_backfill_v1';
+  if (!googleEnabled()) return { ok: false, updated: 0 };
+  const done = await db.setting.findUnique({ where: { key: KEY } }).catch(() => null);
+  if (done) return { ok: true, updated: 0 };
+  const rows = await db.booking.findMany({
+    where: { googleEventId: { not: null }, startAt: { gte: new Date() }, status: { not: 'CANCELLED' } },
+    select: { id: true },
+  });
+  let updated = 0;
+  for (const r of rows) {
+    const res = await pushBookingToClinician(r.id).catch(() => ({ ok: false }));
+    if (res.ok) updated++;
+  }
+  await db.setting.upsert({ where: { key: KEY }, update: { value: new Date().toISOString() }, create: { key: KEY, value: new Date().toISOString() } });
+  console.log(`[google-calendar] redaction backfill: ${updated}/${rows.length} future events re-pushed (PRJ-939.6)`);
+  return { ok: true, updated };
 }

@@ -45,7 +45,7 @@ export default async function AdminAcademyApplicationsPage() {
     id: e.id, courseId: e.courseId, courseTitle: e.course.title, cohortId: e.cohortId,
     applicantName: e.applicantName, applicantEmail: e.applicantEmail, applicantPhone: e.applicantPhone,
     experience: e.experience, financeInterest: e.financeInterest, status: e.status,
-    pricePence: e.pricePence, paidPence: e.paidPence, notes: e.notes, createdAt: e.createdAt.toISOString(),
+    pricePence: e.pricePence, feePence: e.agreedFeePence ?? e.pricePence, paidPence: e.paidPence, notes: e.notes, createdAt: e.createdAt.toISOString(),
     studentId: e.studentId, offeredAt: e.offeredAt?.toISOString() ?? null, offerExpiresAt: e.offerExpiresAt?.toISOString() ?? null,
     acceptedAt: e.acceptedAt?.toISOString() ?? null, paymentPlan: e.paymentPlan, preCourseAckAt: e.preCourseAckAt?.toISOString() ?? null,
     payments: (paymentsByEnrolment.get(e.id) ?? []).map((p) => ({

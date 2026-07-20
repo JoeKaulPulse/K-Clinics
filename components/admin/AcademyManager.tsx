@@ -6,7 +6,10 @@ import { useRouter } from 'next/navigation';
 export type Cohort = { id: string; startAt: string; endAt: string | null; accessStartAt: string | null; accessEndAt: string | null; capacity: number; location: string | null; trainer: string | null; name: string | null; status: string };
 export type Course = { id: string; slug: string; title: string; level: string | null; summary: string | null; description: string | null; pricePence: number; depositPence: number | null; promoPrice: number | null; promoStartAt: string | null; promoEndAt: string | null; durationText: string | null; format: string | null; accreditations: string[]; outcomes: string[]; prerequisites: string | null; thinkificUrl: string | null; featured: boolean; active: boolean; cohorts: Cohort[] };
 export type PaymentRow = { id: string; kind: string; method: string | null; state: string; amountPence: number; dueAt: string | null; paidAt: string | null; note: string | null; recordedBy: string | null };
-export type Enrolment = { id: string; courseId: string; courseTitle: string; cohortId: string | null; applicantName: string; applicantEmail: string; applicantPhone: string | null; experience: string | null; financeInterest: boolean; status: string; pricePence: number; paidPence: number; notes: string | null; createdAt: string; studentId: string | null; offeredAt: string | null; offerExpiresAt: string | null; acceptedAt: string | null; paymentPlan: boolean; preCourseAckAt: string | null; payments: PaymentRow[] };
+// feePence is the fee the money engine settles against (the locked agreed fee
+// when stamped, BLD-850 — else the list price); pricePence stays the raw
+// editable list price behind the £ field.
+export type Enrolment = { id: string; courseId: string; courseTitle: string; cohortId: string | null; applicantName: string; applicantEmail: string; applicantPhone: string | null; experience: string | null; financeInterest: boolean; status: string; pricePence: number; feePence: number; paidPence: number; notes: string | null; createdAt: string; studentId: string | null; offeredAt: string | null; offerExpiresAt: string | null; acceptedAt: string | null; paymentPlan: boolean; preCourseAckAt: string | null; payments: PaymentRow[] };
 
 const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
 const money = (p: number) => (p > 0 ? `£${(p / 100).toLocaleString('en-GB')}` : '—');
@@ -56,7 +59,7 @@ export function Applications({ enrolments, courses }: { enrolments: Enrolment[];
             </tr></thead>
             <tbody>
               {shown.map((e) => {
-                const outstanding = Math.max(0, e.pricePence - e.paidPence);
+                const outstanding = Math.max(0, e.feePence - e.paidPence);
                 const isOpen = open === e.id;
                 return (
                   <Fragment key={e.id}>
@@ -97,7 +100,7 @@ export function Applications({ enrolments, courses }: { enrolments: Enrolment[];
                         </select>
                       </td>
                       <td className="px-2 whitespace-nowrap">
-                        <span className="font-medium">{money(e.paidPence)}</span><span className="text-[var(--color-stone)]"> / {money(e.pricePence)}</span>
+                        <span className="font-medium">{money(e.paidPence)}</span><span className="text-[var(--color-stone)]"> / {money(e.feePence)}</span>
                         {outstanding > 0 && <span className="block text-[0.65rem] text-[var(--color-stone)]">{money(outstanding)} due{e.paymentPlan ? ' · plan' : ''}</span>}
                       </td>
                       <td className="px-2 text-right">
@@ -195,7 +198,7 @@ export function EnrolStudent({ courses }: { courses: Course[] }) {
 }
 
 function PaymentPanel({ enrolment: e, onAct }: { enrolment: Enrolment; onAct: (p: object) => Promise<void> }) {
-  const outstanding = Math.max(0, e.pricePence - e.paidPence);
+  const outstanding = Math.max(0, e.feePence - e.paidPence);
   const [amount, setAmount] = useState(outstanding > 0 ? String(outstanding / 100) : '');
   const [kind, setKind] = useState('BALANCE');
   const [method, setMethod] = useState('BANK_TRANSFER');

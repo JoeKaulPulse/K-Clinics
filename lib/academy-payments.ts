@@ -24,9 +24,16 @@ export type PaymentMethod = 'CARD' | 'BNPL' | 'BANK_TRANSFER' | 'CASH' | 'OTHER'
 export type PaymentKind = 'FULL' | 'DEPOSIT' | 'BALANCE' | 'INSTALMENT';
 export type PaymentState = 'SCHEDULED' | 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED' | 'CANCELLED';
 
-/** The effective fee the learner pays: an active promo overrides the captured
- *  list price (honest pricing — never charge above the live promotional price). */
-export function effectiveFeePence(enrolment: { pricePence: number }, course: { promoPrice: number | null; promoStartAt: Date | null; promoEndAt: Date | null }): number {
+/** The effective fee the learner pays. Once a fee has been locked in
+ *  (agreedFeePence — stamped when staff make the offer, or at the learner's
+ *  first payment / instalment plan, BLD-850) that price holds for the whole
+ *  enrolment: a promo expiring mid-plan can no longer inflate the balance to
+ *  list price, and a promo starting later doesn't silently re-discount an
+ *  agreed deal either. Rows from before the lock existed (agreedFeePence null)
+ *  keep the legacy derivation: an active promo overrides the captured list
+ *  price (honest pricing — never charge above the live promotional price). */
+export function effectiveFeePence(enrolment: { pricePence: number; agreedFeePence?: number | null }, course: { promoPrice: number | null; promoStartAt: Date | null; promoEndAt: Date | null }): number {
+  if (enrolment.agreedFeePence != null && enrolment.agreedFeePence > 0) return enrolment.agreedFeePence;
   const promo = getActivePromo(course);
   if (promo != null && promo < enrolment.pricePence) return promo;
   return enrolment.pricePence;
@@ -46,7 +53,7 @@ export type EnrolmentMoney = {
 export async function enrolmentMoney(enrolmentId: string): Promise<EnrolmentMoney | null> {
   const e = await db.enrolment.findUnique({
     where: { id: enrolmentId },
-    select: { pricePence: true, paidPence: true, paymentPlan: true, course: { select: { depositPence: true, promoPrice: true, promoStartAt: true, promoEndAt: true } } },
+    select: { pricePence: true, agreedFeePence: true, paidPence: true, paymentPlan: true, course: { select: { depositPence: true, promoPrice: true, promoStartAt: true, promoEndAt: true } } },
   });
   if (!e) return null;
   const fee = effectiveFeePence(e, e.course);
@@ -114,7 +121,7 @@ export async function makeOffer(enrolmentId: string, opts: { staffEmail?: string
   const e = await db.enrolment.findUnique({
     where: { id: enrolmentId },
     select: {
-      id: true, tenantId: true, studentId: true, status: true, pricePence: true,
+      id: true, tenantId: true, studentId: true, status: true, pricePence: true, agreedFeePence: true, paidPence: true,
       applicantEmail: true, applicantName: true, applicantPhone: true,
       course: { select: { title: true, slug: true, depositPence: true, promoPrice: true, promoStartAt: true, promoEndAt: true } },
     },
@@ -135,10 +142,17 @@ export async function makeOffer(enrolmentId: string, opts: { staffEmail?: string
     student = await ensureStudentForOffer({ tenantId: e.tenantId, email: e.applicantEmail, firstName, lastName: rest.join(' ') || null, phone: e.applicantPhone });
   }
 
+  // BLD-850: lock the fee this offer quotes. A re-offer before any money has
+  // moved re-quotes at live pricing (staff may have changed the price/promo);
+  // once the learner has paid anything, the price they agreed to holds.
+  const quotedFee = e.paidPence > 0
+    ? effectiveFeePence(e, e.course)
+    : effectiveFeePence({ pricePence: e.pricePence }, e.course);
+
   const offerExpiresAt = opts.expiresInDays ? new Date(Date.now() + opts.expiresInDays * 864e5) : null;
   await db.enrolment.update({
     where: { id: e.id },
-    data: { status: 'OFFERED', offeredAt: new Date(), offerExpiresAt, ...(e.studentId ? {} : { studentId: student.id }) },
+    data: { status: 'OFFERED', offeredAt: new Date(), offerExpiresAt, agreedFeePence: quotedFee, ...(e.studentId ? {} : { studentId: student.id }) },
   });
 
   const token = await createAcademyInvite(student.id);
@@ -150,7 +164,7 @@ export async function makeOffer(enrolmentId: string, opts: { staffEmail?: string
     await sendEmail({
       to: student.email,
       subject: `Your place on ${e.course.title} — accept & pay`,
-      html: tmplAcademyOffer({ firstName: student.firstName, courseTitle: e.course.title, pricePence: effectiveFeePence(e, e.course), depositPence: e.course.depositPence, acceptUrl, expiresAt: offerExpiresAt }),
+      html: tmplAcademyOffer({ firstName: student.firstName, courseTitle: e.course.title, pricePence: quotedFee, depositPence: e.course.depositPence, acceptUrl, expiresAt: offerExpiresAt }),
     });
   } catch { /* email failure must not fail the offer */ }
   return { ok: true };
@@ -176,7 +190,7 @@ export async function startEnrolmentPayment(studentId: string, enrolmentId: stri
   const e = await db.enrolment.findUnique({
     where: { id: enrolmentId },
     select: {
-      id: true, studentId: true, status: true, pricePence: true, paidPence: true, tenantId: true,
+      id: true, studentId: true, status: true, pricePence: true, agreedFeePence: true, paidPence: true, tenantId: true,
       applicantEmail: true, applicantName: true,
       course: { select: { title: true, depositPence: true, promoPrice: true, promoStartAt: true, promoEndAt: true } },
     },
@@ -186,6 +200,10 @@ export async function startEnrolmentPayment(studentId: string, enrolmentId: stri
   if (e.status === 'APPLIED') return { ok: false, error: 'Your place hasn’t been confirmed yet — we’ll email you when it’s ready to pay.', status: 409 };
 
   const fee = effectiveFeePence(e, e.course);
+  // BLD-850: enrolments that never went through the offer email (manual
+  // enrolments) get their fee locked here — the price the learner is shown and
+  // pays against is the price the rest of the plan settles against.
+  if (e.agreedFeePence == null) await db.enrolment.update({ where: { id: e.id }, data: { agreedFeePence: fee } }).catch(() => {});
   const outstanding = Math.max(0, fee - e.paidPence);
   if (outstanding <= 0) return { ok: false, error: 'This course is already paid in full.', status: 409 };
 
@@ -299,7 +317,7 @@ export async function finalizeEnrolmentPayment(piId: string, amountReceivedPence
 async function sendPaymentReceipt(enrolmentId: string, amountPence: number): Promise<void> {
   const e = await db.enrolment.findUnique({
     where: { id: enrolmentId },
-    select: { applicantEmail: true, applicantName: true, pricePence: true, paidPence: true, course: { select: { title: true, promoPrice: true, promoStartAt: true, promoEndAt: true } } },
+    select: { applicantEmail: true, applicantName: true, pricePence: true, agreedFeePence: true, paidPence: true, course: { select: { title: true, promoPrice: true, promoStartAt: true, promoEndAt: true } } },
   });
   if (!e?.applicantEmail) return;
   const fee = effectiveFeePence(e, e.course);
@@ -382,10 +400,13 @@ export async function createInstalmentPlan(enrolmentId: string, input: { count: 
   if (Number.isNaN(+start)) return { ok: false, error: 'Enter a valid start date.' };
   const e = await db.enrolment.findUnique({
     where: { id: enrolmentId },
-    select: { tenantId: true, pricePence: true, paidPence: true, course: { select: { promoPrice: true, promoStartAt: true, promoEndAt: true } } },
+    select: { tenantId: true, pricePence: true, agreedFeePence: true, paidPence: true, course: { select: { promoPrice: true, promoStartAt: true, promoEndAt: true } } },
   });
   if (!e) return { ok: false, error: 'Enrolment not found.' };
   const fee = effectiveFeePence(e, e.course);
+  // BLD-850: an in-house plan is an agreement too — lock the fee it was built
+  // against so instalment amounts and the outstanding figure never drift.
+  if (e.agreedFeePence == null) await db.enrolment.update({ where: { id: enrolmentId }, data: { agreedFeePence: fee } }).catch(() => {});
   const outstanding = Math.max(0, fee - e.paidPence);
   if (outstanding <= 0) return { ok: false, error: 'There’s nothing left to schedule — this course is paid in full.' };
   // Clear any existing unpaid schedule first so re-planning is clean.

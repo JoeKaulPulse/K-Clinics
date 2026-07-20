@@ -119,7 +119,10 @@ export async function POST(req: Request) {
         data: {
           ...(b.status && ['APPLIED', 'OFFERED', 'PAID', 'ENROLLED', 'COMPLETED', 'CANCELLED'].includes(b.status as string) ? { status: b.status as 'APPLIED' } : {}),
           ...(b.cohortId !== undefined ? { cohortId: (b.cohortId as string) || null } : {}),
-          ...(b.pricePence !== undefined ? { pricePence: Math.max(0, num(b.pricePence) ?? 0) } : {}),
+          // BLD-850: an explicit staff price edit is a new agreement — re-stamp
+          // the locked fee too, otherwise the money engine would keep settling
+          // against the old locked value and the edit would be silently dead.
+          ...(b.pricePence !== undefined ? { pricePence: Math.max(0, num(b.pricePence) ?? 0), agreedFeePence: Math.max(0, num(b.pricePence) ?? 0) } : {}),
           ...(b.paidPence !== undefined ? { paidPence: Math.max(0, num(b.paidPence) ?? 0) } : {}),
           ...(b.notes !== undefined ? { notes: (b.notes as string) || null } : {}),
         },
