@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
@@ -26,7 +27,8 @@ export async function POST(req: Request) {
     const pi = await stripe().paymentIntents.retrieve(order.stripePaymentIntentId);
     if (pi.status !== 'succeeded') return NextResponse.json({ ok: false, error: 'Payment not completed.' }, { status: 402 });
     if (pi.amount_received < order.totalPence || pi.currency !== 'gbp') return NextResponse.json({ ok: false, error: 'Payment amount mismatch.' }, { status: 402 });
-  } catch {
+  } catch (e) {
+    Sentry.captureException(e, { tags: { area: 'shop-confirm', stage: 'stripe-verify' } });
     return NextResponse.json({ ok: false, error: 'Could not verify payment.' }, { status: 502 });
   }
 

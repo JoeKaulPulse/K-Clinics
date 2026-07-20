@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { guestBookingSchema } from '@/lib/validation';
 import { crmEnabled } from '@/lib/crm';
 
@@ -56,6 +57,7 @@ export async function POST(req: Request) {
     return NextResponse.json(result);
   } catch (err) {
     console.error('[booking/guest] failed:', err);
+    Sentry.captureException(err, { tags: { area: 'booking/guest' } });
     return NextResponse.json({ ok: false, error: 'We couldn’t continue as a guest just now. Please try again shortly.' }, { status: 500 });
   }
 }

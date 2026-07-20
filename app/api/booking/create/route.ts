@@ -222,6 +222,7 @@ export async function POST(req: Request) {
   }
   } catch (e) {
     console.error('[booking/create] failed:', (e as Error)?.message);
+    Sentry.captureException(e, { tags: { area: 'booking/create' } });
     return NextResponse.json({ ok: false, error: 'We couldn’t hold your slot just now — please try again in a moment, or call us.' }, { status: 503 });
   }
 }

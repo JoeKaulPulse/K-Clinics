@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
+import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
@@ -52,6 +53,7 @@ export async function POST(req: Request) {
             { idempotencyKey: `order-refund-${body.id}-${order.totalPence}` },
           );
         } catch (e) {
+          Sentry.captureException(e, { tags: { area: 'admin/orders', stage: 'stripe-refund' } });
           // Roll back the status change so staff can retry after fixing Stripe config.
           await db.order.updateMany({ where: { id: body.id, status: body.status }, data: { status: order.status } }).catch(() => {});
           return NextResponse.json({ ok: false, error: (e as Error).message || 'Refund failed at Stripe.' }, { status: 502 });
@@ -63,7 +65,10 @@ export async function POST(req: Request) {
       // the same order can't credit the voucher twice.
       if (!alreadyReversed && order.giftCardCode && order.giftCardPence && order.giftCardPence > 0) {
         try { const { creditVoucher } = await import('@/lib/gift-vouchers'); await creditVoucher(order.giftCardCode, order.giftCardPence); }
-        catch (e) { console.error('[orders] gift-card balance restore failed for', body.id, (e as Error)?.message); }
+        catch (e) {
+          console.error('[orders] gift-card balance restore failed for', body.id, (e as Error)?.message);
+          Sentry.captureException(e, { tags: { area: 'admin/orders', stage: 'voucher-restore' } });
+        }
       }
       // PRJ-918.10: give back stock decremented at finalizeOrder time — ONLY if the
       // order was actually in a stock-decremented state (PAID/FULFILLED) first. Stock
@@ -73,7 +78,10 @@ export async function POST(req: Request) {
       // REFUNDED-after-CANCELLED, can't double-restock.
       if (wasPaid) {
         try { const { restockOrder } = await import('@/lib/shop'); await restockOrder(body.id); }
-        catch (e) { console.error('[orders] restock failed for', body.id, (e as Error)?.message); }
+        catch (e) {
+          console.error('[orders] restock failed for', body.id, (e as Error)?.message);
+          Sentry.captureException(e, { tags: { area: 'admin/orders', stage: 'restock' } });
+        }
       }
       // BLD-763: staff cancelling/refunding a paid order must not leave the
       // customer wondering where their money went. Only when money was actually

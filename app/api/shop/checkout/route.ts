@@ -86,6 +86,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error('[shop checkout] order create failed:', (e as Error)?.message);
+    Sentry.captureException(e, { tags: { area: 'shop-checkout', stage: 'order-create' } });
     await undoReservation();
     return NextResponse.json({ ok: false, error: 'Could not start your order — please try again.' }, { status: 500 });
   }

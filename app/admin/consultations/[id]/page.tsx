@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
+import { decClinical } from '@/lib/clinical-crypto';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { ConsultationNotes } from '@/components/admin/ConsultationNotes';
@@ -33,9 +34,11 @@ export default async function ConsultationDetail({ params }: { params: Promise<{
   const can = await sessionPermissions();
   const fullName = [consult.client.firstName, consult.client.lastName].filter(Boolean).join(' ');
 
+  // BLD-913: bodies are encrypted at rest; decClinical tolerates legacy
+  // plaintext rows until the daily backfill has swept them.
   const notes = consult.notes.map((n) => ({
     id: n.id,
-    body: n.body,
+    body: decClinical(n.body) ?? '',
     author: n.author,
     createdAt: n.createdAt.toISOString(),
   }));
