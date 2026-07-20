@@ -102,8 +102,11 @@ export async function eraseClientData(clientId: string) {
     // the captured email so the referrer's record becomes non-identifying.
     db.referral.updateMany({ where: { referredId: clientId }, data: { referredId: null, referredEmail: null } }),
     // Chat conversations initiated by this client (free text, contact details).
-    // ChatMessage rows cascade on ChatConversation delete.
-    db.chatConversation.deleteMany({ where: { clientId } }),
+    // ChatMessage rows cascade on ChatConversation delete. BLD-837: also match
+    // anonymous threads by the visitor email — the person may have chatted
+    // before creating an account (mirrors the PromoRedemption/GiftVoucher
+    // email-matched erasure above).
+    db.chatConversation.deleteMany({ where: { OR: [{ clientId }, { visitorEmail: { equals: client.email, mode: 'insensitive' } }] } }),
     // Waitlist entries (treatment window, contact details) — no retention basis.
     db.waitlistEntry.deleteMany({ where: { clientId } }),
     // Legacy Appointment model (pre-Booking era) — status/schedule data only,

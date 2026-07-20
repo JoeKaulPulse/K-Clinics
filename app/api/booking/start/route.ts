@@ -219,6 +219,15 @@ export async function POST(req: Request) {
         href: `/admin/bookings/${booking.id}`,
       });
     } catch { /* best-effort */ }
+    // BLD-873: a same-day request is still a placed booking (PENDING approval)
+    // with a real value — fire the same Schedule conversion the standard path
+    // sends below, deduped with the browser pixel via the booking id. Without
+    // this the early return skipped tracking entirely and ad platforms never
+    // saw same-day conversions.
+    try {
+      const { sendSchedule } = await import('@/lib/conversions');
+      await sendSchedule({ bookingId: booking.id, valuePence: totalPrice, clientId: client.id, email: dobRow?.marketingOptIn ? client.email : null, campaign: booking.attribCampaign });
+    } catch { /* best-effort */ }
     return NextResponse.json({ ok: true, requested: true, bookingId: booking.id, manageToken: booking.manageToken });
   }
 

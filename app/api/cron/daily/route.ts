@@ -118,6 +118,12 @@ export async function GET(req: Request) {
     ]);
     // GDPR: SecurityEvent rows hold IP + email + UA — no need beyond 90 days.
     await db.securityEvent.deleteMany({ where: { createdAt: { lt: secEventCutoff } } }).catch(() => {});
+    // BLD-837: anonymous chat threads (no client account) hold visitor name,
+    // email and free-text messages with no erasure path and were retained
+    // forever. 12 months after the last activity they are deleted outright
+    // (messages cascade) — account-linked threads are covered by erasure.
+    const anonChatCutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+    await db.chatConversation.deleteMany({ where: { clientId: null, updatedAt: { lt: anonChatCutoff } } }).catch((e: Error) => { console.error('[cron] anon chat retention failed (continuing):', e?.message); });
     retention = { replays: r.count, heatmap: h.count, calls: calls.count };
   } catch (e) {
     failures++; console.error('[cron] analytics retention failed (continuing):', (e as Error)?.message);

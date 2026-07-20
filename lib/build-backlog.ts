@@ -2261,6 +2261,27 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: '--color-gold (~2.5:1 on porcelain) used at 12px on interactive links in SiteSearch, ExamBankManager, FlashcardsManager, ConnectionCentre and ConsentPanel -- the named audit call sites.',
     notes: ['Fix: the eight named small-text occurrences swapped to --color-gold-deep (4.54:1). Scope is deliberately the audit\'s named functional sites only -- the full ~400-site sweep stays deferred to the design-reviewed pass (BLD-742), same call as BLD-770.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Same-day booking requests fire zero conversion-tracking events', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1642),
+    value: 7, effort: 3,
+    detail: 'The sameDayRequest early return in booking/start skipped the sendSchedule CAPI call, and the RequestReceived screen (unlike Done) fired no browser event -- same-day conversions were invisible to GA4/Meta.',
+    notes: ['Fix: the same-day path now fires the identical server-side Schedule conversion before its early return, and RequestReceived fires the same trackPurchase as Done, deduped via the booking id.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Add erasure and retention limit for anonymous chat PII', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1642),
+    value: 7, effort: 3,
+    detail: 'Anonymous chat threads (clientId null) hold visitorName/visitorEmail and free-text messages with no erasure path and indefinite retention -- eraseClientData only matched by clientId and no sweep touched ChatConversation.',
+    notes: ['Fix: the daily cron now deletes anonymous conversations 12 months after last activity (messages cascade), and erasure additionally matches threads by visitorEmail (case-insensitive), mirroring the PromoRedemption/GiftVoucher email-matched pattern.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Stripe dashboard refunds on shop orders without a gift card are never reconciled locally', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1642),
+    value: 7, effort: 3,
+    detail: 'The charge.refunded reconcile block was nested inside a giftCardCode check, so an ordinary order refunded in the Stripe dashboard stayed PAID/FULFILLED forever with stock never restored; and any partial refund on a gift-card order was treated as full, over-crediting the card.',
+    notes: ['Fix: every PI-matched order reconciles on a dashboard refund (status, restock, audit); the flip + gift-card credit only happen once Stripe\'s cumulative amount_refunded covers the whole card charge, and a partial is logged for staff to finish via Mark refunded. Cumulative per-order refund tracking (Order.refundedPence) arrives with BLD-767 in PR #1574 and can unify this with the delta pattern then.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

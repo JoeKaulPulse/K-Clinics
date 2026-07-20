@@ -262,21 +262,36 @@ export async function POST(req: Request) {
           // double-restock.
           const order = await db.order.findFirst({
             where: { stripePaymentIntentId: piId },
-            select: { id: true, status: true, giftCardCode: true, giftCardPence: true },
+            select: { id: true, number: true, status: true, totalPence: true, giftCardCode: true, giftCardPence: true },
           });
-          if (order?.giftCardCode && order.giftCardPence && order.giftCardPence > 0) {
-            // creditVoucher now caps the balance at the card's face value (BLD-646)
-            // but is not per-call idempotent, and charge.refunded redelivers / fires
-            // per partial refund — so claim the order's status → REFUNDED atomically
-            // and only credit when *this* call wins the transition. Mirrors the
-            // in-app refund route and the payment_failed order block.
-            const wasStockDecremented = order.status === 'PAID' || order.status === 'FULFILLED';
-            const claimed = await db.order.updateMany({ where: { id: order.id, status: { not: 'REFUNDED' } }, data: { status: 'REFUNDED' } });
-            if (claimed.count > 0) {
-              if (wasStockDecremented) {
-                try { const { restockOrder } = await import('@/lib/shop'); await restockOrder(order.id); } catch (e) { console.error('[webhook] order restock failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'order-restock' } }); } // BLD-868
+          // BLD-899: reconcile EVERY dashboard-refunded order, not only ones that
+          // used a gift card — an ordinary order refunded in the Stripe dashboard
+          // previously stayed PAID/FULFILLED forever with its stock never restored.
+          // Partial-aware: Stripe's amount_refunded is CUMULATIVE, so we only flip
+          // to REFUNDED (+ restock + full gift-card credit) once the whole card
+          // charge is back; a partial dashboard refund is surfaced for staff to
+          // finish via "Mark refunded" instead of over-crediting (the old code
+          // treated a 1p partial as a full refund of the gift card).
+          if (order) {
+            const fullyRefunded = (charge.amount_refunded ?? 0) >= order.totalPence;
+            if (!fullyRefunded) {
+              console.error(`[webhook] partial dashboard refund on order ${order.number} (${charge.amount_refunded}/${order.totalPence}p) — not auto-reconciled; complete it via Mark refunded in Orders.`);
+            } else {
+              // creditVoucher caps at the card's face value (BLD-646) but is not
+              // per-call idempotent, and charge.refunded redelivers — so claim the
+              // order's status → REFUNDED atomically and only run side-effects when
+              // *this* call wins the transition. Mirrors the in-app refund route.
+              const wasStockDecremented = order.status === 'PAID' || order.status === 'FULFILLED';
+              const claimed = await db.order.updateMany({ where: { id: order.id, status: { not: 'REFUNDED' } }, data: { status: 'REFUNDED' } });
+              if (claimed.count > 0) {
+                if (wasStockDecremented) {
+                  try { const { restockOrder } = await import('@/lib/shop'); await restockOrder(order.id); } catch (e) { console.error('[webhook] order restock failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'order-restock' } }); } // BLD-868
+                }
+                if (order.giftCardCode && order.giftCardPence > 0) {
+                  try { const { creditVoucher } = await import('@/lib/gift-vouchers'); await creditVoucher(order.giftCardCode, order.giftCardPence); } catch (e) { console.error('[webhook] gift card re-credit failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'giftcard-recredit-refund' } }); } // BLD-868
+                }
+                try { const { logAudit } = await import('@/lib/audit'); await logAudit({ action: 'PAYMENT_REFUNDED', actor: 'stripe-webhook', summary: `Order ${order.number} refunded in the Stripe dashboard — reconciled (status, stock${order.giftCardPence ? ', gift card' : ''})`, meta: { orderId: order.id } }); } catch { /* non-fatal */ }
               }
-              try { const { creditVoucher } = await import('@/lib/gift-vouchers'); await creditVoucher(order.giftCardCode, order.giftCardPence); } catch (e) { console.error('[webhook] gift card re-credit failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'giftcard-recredit-refund' } }); } // BLD-868
             }
           }
           // PRJ-918.2: a gift-voucher's OWN purchase PaymentIntent was refunded. This
