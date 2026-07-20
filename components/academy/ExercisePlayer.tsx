@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Card, Pill, AButton } from '@/components/academy/ui';
 
 // BLD-535: learner-facing interactive exercises (hotspots / match / order).
@@ -57,6 +57,67 @@ export function ExercisePlayer({ exercise }: { exercise: ExercisePlay }) {
 
 type SubProps = { exercise: ExercisePlay; result: Grade | null; busy: boolean; onGrade: (answer: unknown) => void };
 
+const DIRS: Record<string, [number, number] | undefined> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+
+// ── Keyboard pin placement (BLD-855, WCAG 2.1.1) ─────────────────────────────
+// Arrow keys move a crosshair (2% steps, Shift = 10%) in the same %-of-image
+// coordinate space the mouse path uses; Enter/Space places the pin there.
+// role="application" so screen readers hand the arrow keys to us instead of
+// browse mode; a debounced aria-live region announces the position. The
+// crosshair (two-tone: white + ink, so it reads on any image) only renders on
+// keyboard focus/use — mouse users see no change.
+function useCrosshair({ disabled, label, hint, onPlace }: { disabled: boolean; label: string; hint: string; onPlace: (x: number, y: number) => string | void }) {
+  const [pos, setPos] = useState({ x: 50, y: 50 });
+  const [showCross, setShowCross] = useState(false);
+  const liveRef = useRef<HTMLSpanElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hintId = useId();
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  const say = (msg: string, now = false) => {
+    if (timer.current) clearTimeout(timer.current);
+    if (now) { if (liveRef.current) liveRef.current.textContent = msg; }
+    else timer.current = setTimeout(() => { if (liveRef.current) liveRef.current.textContent = msg; }, 150);
+  };
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (disabled) return;
+    const d = DIRS[e.key];
+    if (d) {
+      e.preventDefault();
+      setShowCross(true);
+      const step = e.shiftKey ? 10 : 2;
+      const next = { x: Math.min(100, Math.max(0, pos.x + d[0] * step)), y: Math.min(100, Math.max(0, pos.y + d[1] * step)) };
+      setPos(next);
+      say(`Crosshair at ${Math.round(next.x)}% across, ${Math.round(next.y)}% down`);
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setShowCross(true);
+      say(onPlace(pos.x, pos.y) || `Pin placed at ${Math.round(pos.x)}% across, ${Math.round(pos.y)}% down.`, true);
+    }
+  };
+  const surfaceProps = {
+    tabIndex: disabled ? -1 : 0,
+    role: 'application' as const,
+    'aria-label': label,
+    'aria-describedby': hintId,
+    onKeyDown,
+    // :focus-visible = keyboard-derived focus; a plain mouse click focuses without showing the crosshair.
+    onFocus: (e: React.FocusEvent<HTMLDivElement>) => setShowCross(e.currentTarget.matches(':focus-visible')),
+    onBlur: () => setShowCross(false),
+  };
+  const overlay = (
+    <>
+      {showCross && !disabled && (
+        <span aria-hidden style={{ left: `${pos.x}%`, top: `${pos.y}%` }} className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white ring-2 ring-[#2a2420]">
+          <span className="absolute left-1/2 top-1/2 h-1 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white ring-1 ring-[#2a2420]" />
+        </span>
+      )}
+      <span ref={liveRef} aria-live="polite" className="sr-only" />
+      <span id={hintId} className="sr-only">{hint}</span>
+    </>
+  );
+  return { surfaceProps, overlay };
+}
+
 // ── HOTSPOT ──────────────────────────────────────────────────────────────────
 function Hotspot({ exercise, result, busy, onGrade }: SubProps) {
   const labels = exercise.labels ?? [];
@@ -65,17 +126,27 @@ function Hotspot({ exercise, result, busy, onGrade }: SubProps) {
   const reveal = (result?.reveal as { label: string; x: number; y: number; r: number }[] | undefined) ?? null;
   const imgRef = useRef<HTMLDivElement>(null);
 
-  function place(e: React.MouseEvent) {
-    if (result || !imgRef.current) return;
-    const rect = imgRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
+  function placeAt(x: number, y: number) {
     const updated = { ...pins, [active]: { x, y } };
     setPins(updated);
     // Auto-advance to the next label that still needs a pin.
     const next = labels.findIndex((_, i) => !(i in updated));
     if (next >= 0) setActive(next);
+    return `${labels[active] ?? 'Pin'} placed at ${Math.round(x)}% across, ${Math.round(y)}% down.${next >= 0 ? ` Now place: ${labels[next]}.` : ' All pins placed — you can check your answers.'}`;
   }
+
+  function place(e: React.MouseEvent) {
+    if (result || !imgRef.current) return;
+    const rect = imgRef.current.getBoundingClientRect();
+    placeAt(((e.clientX - rect.left) / rect.width) * 100, ((e.clientY - rect.top) / rect.height) * 100);
+  }
+
+  const kb = useCrosshair({
+    disabled: !!result,
+    label: `${exercise.title} image. Place the pin for ${labels[active] ?? 'the selected label'}.`,
+    hint: `Arrow keys move the crosshair 2% per press, hold Shift for 10%. Press Enter or Space to place the selected label's pin at the crosshair. Choose a different label with the buttons before the image.`,
+    onPlace: placeAt,
+  });
 
   return (
     <div>
@@ -87,7 +158,7 @@ function Hotspot({ exercise, result, busy, onGrade }: SubProps) {
           </button>
         ))}
       </div>
-      <div ref={imgRef} onClick={place} className={`relative w-full overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] ${result ? '' : 'cursor-crosshair'}`}>
+      <div ref={imgRef} onClick={place} {...kb.surfaceProps} className={`relative w-full overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)] focus-visible:ring-offset-2 ${result ? '' : 'cursor-crosshair'}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {exercise.imageUrl ? <img src={exercise.imageUrl} alt={exercise.title} className="block w-full select-none" draggable={false} /> : <div className="grid h-48 place-items-center text-sm text-[var(--color-stone)]">No image</div>}
         {/* learner pins */}
@@ -98,9 +169,10 @@ function Hotspot({ exercise, result, busy, onGrade }: SubProps) {
         {reveal?.map((s, i) => (
           <span key={`r${i}`} style={{ left: `${s.x}%`, top: `${s.y}%`, width: `${s.r * 2}%`, paddingBottom: `${s.r * 2}%` }} className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed border-[var(--color-gold-deep)]/70" />
         ))}
+        {kb.overlay}
       </div>
       {!result && <div className="mt-3"><AButton size="sm" disabled={busy || Object.keys(pins).length < labels.length} onClick={() => onGrade(pins)}>{busy ? 'Checking…' : 'Check answers'}</AButton></div>}
-      {!result && <p className="mt-1.5 text-xs text-[var(--color-stone)]">Pick a label, then click its location on the image. Place all {labels.length} to check.</p>}
+      {!result && <p className="mt-1.5 text-xs text-[var(--color-stone)]">Pick a label, then click its location on the image (keyboard: focus the image, arrow keys move the crosshair, Enter places). Place all {labels.length} to check.</p>}
     </div>
   );
 }
