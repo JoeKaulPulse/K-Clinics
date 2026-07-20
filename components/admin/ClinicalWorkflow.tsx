@@ -181,7 +181,7 @@ function Timer({ state }: { state: Props['state'] }) {
     return (
       <div className="rounded-[var(--radius-md)] bg-[var(--color-bone)] p-4 text-sm">
         Completed in <strong>{state.actualMinutes} min</strong> (booked {state.durationMin} min)
-        <span className={delta > 0 ? ' text-[var(--color-blush)]' : ' text-[var(--color-jade)]'}> · {delta > 0 ? `+${delta}` : delta} min</span>
+        <span className={delta > 0 ? ' text-[var(--color-blush-deep)]' : ' text-[var(--color-jade)]'}> · {delta > 0 ? `+${delta}` : delta} min</span>
       </div>
     );
   }

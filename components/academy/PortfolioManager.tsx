@@ -175,7 +175,7 @@ function Editor({ entry, courses, treatmentSuggestions, onClose }: { entry: Entr
                       <option value="before">Before</option><option value="after">After</option><option value="other">Other</option>
                     </select>
                     <input className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1 text-xs" value={p.caption ?? ''} disabled={readOnly} onChange={(e) => setPhoto(i, { caption: e.target.value })} placeholder="Caption (optional)" maxLength={200} />
-                    {!readOnly && <button onClick={() => removePhoto(i)} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>}
+                    {!readOnly && <button onClick={() => removePhoto(i)} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>}
                   </div>
                 </li>
               ))}
@@ -189,13 +189,13 @@ function Editor({ entry, courses, treatmentSuggestions, onClose }: { entry: Entr
           )}
         </div>
 
-        {error && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush)]">{error}</p>}
+        {error && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush-deep)]">{error}</p>}
 
         {!readOnly && (
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <AButton onClick={() => save(false)} disabled={busy || uploading} variant="secondary" size="sm">{busy ? 'Saving…' : 'Save draft'}</AButton>
             <AButton onClick={() => save(true)} disabled={busy || uploading} size="sm">{busy ? 'Saving…' : 'Save & submit for review'}</AButton>
-            {entry && <button onClick={del} disabled={busy} className="ml-auto text-xs text-[var(--color-blush)] hover:underline disabled:opacity-40">Delete case</button>}
+            {entry && <button onClick={del} disabled={busy} className="ml-auto text-xs text-[var(--color-blush-deep)] hover:underline disabled:opacity-40">Delete case</button>}
           </div>
         )}
       </Card>

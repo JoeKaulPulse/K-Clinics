@@ -56,7 +56,7 @@ export default async function DiscountsPage({ searchParams }: { searchParams: Pr
           { label: L('Active', 'Активні'), value: countOf('ACTIVE'), tone: 'text-green-700' },
           { label: L('Redeemed', 'Використані'), value: countOf('REDEEMED'), tone: '' },
           { label: L('Revoked', 'Скасовані'), value: countOf('REVOKED'), tone: 'text-[var(--color-stone)]' },
-          { label: L('Blocked', 'Заблоковані'), value: countOf('BLOCKED'), tone: 'text-[var(--color-blush)]' },
+          { label: L('Blocked', 'Заблоковані'), value: countOf('BLOCKED'), tone: 'text-[var(--color-blush-deep)]' },
         ].map((s) => (
           <div key={s.label} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
             <div className={`font-[family-name:var(--font-display)] text-2xl tabular-nums ${s.tone}`}>{s.value}</div>

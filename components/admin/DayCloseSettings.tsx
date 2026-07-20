@@ -78,7 +78,7 @@ export function DayCloseSettings({ initial }: { initial: DayCloseConfig }) {
           <div key={sec.id} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
             <div className="flex items-start gap-2">
               <input value={sec.title} onChange={(e) => patchSection(si, { title: e.target.value })} className={`${field} flex-1 font-medium`} />
-              <button onClick={() => patch({ sections: config.sections.filter((_, j) => j !== si) })} className="px-2 py-2 text-xs text-[var(--color-blush)] hover:underline">Remove</button>
+              <button onClick={() => patch({ sections: config.sections.filter((_, j) => j !== si) })} className="px-2 py-2 text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
             </div>
             <input value={sec.description || ''} onChange={(e) => patchSection(si, { description: e.target.value })} placeholder="Short description (optional)" className={`${field} mt-2 w-full text-xs`} />
 
@@ -99,7 +99,7 @@ export function DayCloseSettings({ initial }: { initial: DayCloseConfig }) {
                     />
                     note
                   </label>
-                  <button onClick={() => patchSection(si, { items: sec.items.filter((_, j) => j !== ii) })} aria-label="Remove item" className="px-1.5 text-xs text-[var(--color-blush)] hover:underline">✕</button>
+                  <button onClick={() => patchSection(si, { items: sec.items.filter((_, j) => j !== ii) })} aria-label="Remove item" className="px-1.5 text-xs text-[var(--color-blush-deep)] hover:underline">✕</button>
                 </li>
               ))}
             </ul>
@@ -116,7 +116,7 @@ export function DayCloseSettings({ initial }: { initial: DayCloseConfig }) {
           {status === 'saving' ? 'Saving…' : 'Save changes'}
         </button>
         {status === 'saved' && <span className="text-sm text-[var(--color-jade)]">Saved ✓</span>}
-        {status === 'error' && <span className="text-sm text-[var(--color-blush)]">{error}</span>}
+        {status === 'error' && <span className="text-sm text-[var(--color-blush-deep)]">{error}</span>}
       </div>
     </div>
   );

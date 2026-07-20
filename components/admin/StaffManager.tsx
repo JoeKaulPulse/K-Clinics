@@ -273,7 +273,7 @@ function Editor({ staff, actorRole, onClose, onSaved }: { staff: Staff | null; a
             <button
               type="button"
               onClick={async () => { if (confirm('Reset this member’s two-factor authentication? They’ll set it up again on next sign-in.')) { await fetch('/api/admin/staff', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'reset2fa', id: staff.id }) }); alert('2FA reset.'); } }}
-              className="mr-auto text-sm text-[var(--color-blush)] hover:underline"
+              className="mr-auto text-sm text-[var(--color-blush-deep)] hover:underline"
             >
               Reset 2FA
             </button>
@@ -348,7 +348,7 @@ function ProfileEditor({ staff, onClose, onSaved }: { staff: Staff; onClose: () 
           <label className="text-xs text-[var(--color-stone)] sm:col-span-2">Bio<br /><textarea rows={4} className={field} value={f.bio} onChange={(e) => set('bio', e.target.value)} /></label>
         </div>
         <p className="mt-3 text-xs text-[var(--color-stone)]">Services shown on the card come from this person’s competencies (set in Schedules), and the star rating is calculated from their published reviews.</p>
-        {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush)]">{err}</p>}
+        {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush-deep)]">{err}</p>}
         <div className="mt-5 flex justify-end gap-3">
           <button onClick={onClose} className="px-4 py-2.5 text-sm text-[var(--color-stone)]">Cancel</button>
           <button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-60">{busy ? 'Saving…' : 'Save profile'}</button>

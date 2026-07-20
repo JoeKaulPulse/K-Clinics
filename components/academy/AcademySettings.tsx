@@ -96,7 +96,7 @@ export function AcademySettings({ passkeys: initial, hasPassword }: { passkeys: 
             {passkeys.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm">
                 <span>{p.name}<span className="block text-xs text-[var(--color-stone)]">Added {fmt(p.createdAt)}{p.lastUsedAt ? ` · last used ${fmt(p.lastUsedAt)}` : ''}</span></span>
-                <button onClick={() => remove(p.id)} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
+                <button onClick={() => remove(p.id)} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
               </li>
             ))}
           </ul>
@@ -133,7 +133,7 @@ export function AcademySettings({ passkeys: initial, hasPassword }: { passkeys: 
         <button type="submit" disabled={pwBusy} className="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-espresso)] disabled:opacity-60">
           {pwBusy ? 'Saving…' : hasPassword ? 'Update password' : 'Set password'}
         </button>
-        {pwMsg && <p className={`mt-3 text-sm ${pwMsg.tone === 'ok' ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush)]'}`}>{pwMsg.text}</p>}
+        {pwMsg && <p className={`mt-3 text-sm ${pwMsg.tone === 'ok' ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush-deep)]'}`}>{pwMsg.text}</p>}
       </form>
     </div>
   );

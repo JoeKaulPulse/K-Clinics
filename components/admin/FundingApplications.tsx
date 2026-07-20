@@ -83,7 +83,7 @@ export function FundingApplications({ applications }: { applications: FundingVie
               <select aria-label="Status" value={r.status} onChange={(e) => setStatus(r.id, e.target.value)} className={field}>
                 {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
               </select>
-              <button type="button" onClick={() => remove(r.id)} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-blush)]" aria-label="Delete">Delete</button>
+              <button type="button" onClick={() => remove(r.id)} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]" aria-label="Delete">Delete</button>
             </div>
           </div>
 

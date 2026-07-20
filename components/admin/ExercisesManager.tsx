@@ -69,7 +69,7 @@ function ExerciseRow({ ex, busy, act, canUp, canDown, onMove }: { ex: AdminExerc
         <span className="flex-1 text-sm font-medium">{ex.title} <span className="font-normal text-[var(--color-stone)]">· {TYPES.find((t) => t.key === ex.type)?.label ?? ex.type}{ex.active ? '' : ' · hidden'}</span></span>
         <button onClick={() => onMove(-1)} disabled={busy || !canUp} className={btnGhost}>↑</button>
         <button onClick={() => onMove(1)} disabled={busy || !canDown} className={btnGhost}>↓</button>
-        <button onClick={() => { if (confirm('Delete this exercise? Trainee attempts on it are also removed.')) act({ op: 'delete', id: ex.id }); }} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+        <button onClick={() => { if (confirm('Delete this exercise? Trainee attempts on it are also removed.')) act({ op: 'delete', id: ex.id }); }} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
       </div>
       {open && (
         <div className="space-y-3 border-t border-[var(--color-line)] p-3">
@@ -87,7 +87,7 @@ function ExerciseRow({ ex, busy, act, canUp, canDown, onMove }: { ex: AdminExerc
               <li key={i} className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm">
                 <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-ink)] text-[0.6rem] text-[var(--color-porcelain)]">{i + 1}</span>
                 <input className="flex-1 rounded border border-[var(--color-line)] px-2 py-1 text-xs" value={p.label} onChange={(e) => setPoints(points.map((q, j) => (j === i ? { ...q, label: e.target.value } : q)))} placeholder="Correct label for this point" />
-                <button onClick={() => setPoints(points.filter((_, j) => j !== i))} className="text-xs text-[var(--color-blush)] hover:underline">remove</button>
+                <button onClick={() => setPoints(points.filter((_, j) => j !== i))} className="text-xs text-[var(--color-blush-deep)] hover:underline">remove</button>
               </li>
             ))}
           </PointEditor>}
@@ -96,7 +96,7 @@ function ExerciseRow({ ex, busy, act, canUp, canDown, onMove }: { ex: AdminExerc
               <li key={i} className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm">
                 <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-ink)] text-[0.6rem] text-[var(--color-porcelain)]">{i + 1}</span>
                 <input className="flex-1 rounded border border-[var(--color-line)] px-2 py-1 text-xs" value={t.accepted.join(', ')} onChange={(e) => setTargets(targets.map((q, j) => (j === i ? { ...q, accepted: e.target.value.split(',').map((s) => s.trim()) } : q)))} placeholder="Accepted answers, comma-separated" />
-                <button onClick={() => setTargets(targets.filter((_, j) => j !== i))} className="text-xs text-[var(--color-blush)] hover:underline">remove</button>
+                <button onClick={() => setTargets(targets.filter((_, j) => j !== i))} className="text-xs text-[var(--color-blush-deep)] hover:underline">remove</button>
               </li>
             ))}
           </PointEditor>}
@@ -141,7 +141,7 @@ function HotspotEditor({ imageUrl, spots, setSpots, uploading, onUpload, onClear
             ))}
           </div>
           <p className="text-xs text-[var(--color-stone)]">Click the image to add a target. Trainees must click within each target’s circle.</p>
-          <button onClick={onClearImage} className="text-xs text-[var(--color-blush)] hover:underline">Change image</button>
+          <button onClick={onClearImage} className="text-xs text-[var(--color-blush-deep)] hover:underline">Change image</button>
           {spots.length > 0 && (
             <ul className="space-y-1.5">
               {spots.map((s, i) => (
@@ -149,7 +149,7 @@ function HotspotEditor({ imageUrl, spots, setSpots, uploading, onUpload, onClear
                   <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-ink)] text-[0.6rem] text-[var(--color-porcelain)]">{i + 1}</span>
                   <input className="flex-1 rounded border border-[var(--color-line)] px-2 py-1 text-xs" value={s.label} onChange={(e) => setSpot(i, { label: e.target.value })} placeholder="Label (what to find)" />
                   <label className="flex items-center gap-1 text-xs text-[var(--color-stone)]">size <input type="range" min={3} max={25} value={s.r} onChange={(e) => setSpot(i, { r: Number(e.target.value) })} /></label>
-                  <button onClick={() => setSpots(spots.filter((_, j) => j !== i))} className="text-xs text-[var(--color-blush)] hover:underline">remove</button>
+                  <button onClick={() => setSpots(spots.filter((_, j) => j !== i))} className="text-xs text-[var(--color-blush-deep)] hover:underline">remove</button>
                 </li>
               ))}
             </ul>
@@ -187,7 +187,7 @@ function PointEditor({ imageUrl, uploading, onUpload, onClearImage, count, addAt
             ))}
           </div>
           <p className="text-xs text-[var(--color-stone)]">Click the image to add a marker ({count} so far). Number each marker’s answer below.</p>
-          <button onClick={onClearImage} className="text-xs text-[var(--color-blush)] hover:underline">Change image</button>
+          <button onClick={onClearImage} className="text-xs text-[var(--color-blush-deep)] hover:underline">Change image</button>
           {count > 0 && <ul className="space-y-1.5">{children}</ul>}
         </>
       )}
@@ -206,7 +206,7 @@ function MatchEditor({ pairs, setPairs }: { pairs: Pair[]; setPairs: (p: Pair[])
             <input className={field} value={p.left} onChange={(e) => setPair(i, { left: e.target.value })} placeholder="Left (e.g. term)" />
             <span className="text-[var(--color-stone)]">↔</span>
             <input className={field} value={p.right} onChange={(e) => setPair(i, { right: e.target.value })} placeholder="Right (e.g. definition)" />
-            <button onClick={() => setPairs(pairs.filter((_, j) => j !== i))} className="shrink-0 text-xs text-[var(--color-blush)] hover:underline">×</button>
+            <button onClick={() => setPairs(pairs.filter((_, j) => j !== i))} className="shrink-0 text-xs text-[var(--color-blush-deep)] hover:underline">×</button>
           </li>
         ))}
       </ul>
@@ -227,7 +227,7 @@ function OrderEditor({ items, setItems }: { items: string[]; setItems: (i: strin
             <input className={field} value={it} onChange={(e) => setItems(items.map((x, j) => (j === i ? e.target.value : x)))} placeholder={`Step ${i + 1}`} />
             <button onClick={() => move(i, -1)} disabled={i === 0} className={btnGhost}>↑</button>
             <button onClick={() => move(i, 1)} disabled={i === items.length - 1} className={btnGhost}>↓</button>
-            <button onClick={() => setItems(items.filter((_, j) => j !== i))} className="shrink-0 text-xs text-[var(--color-blush)] hover:underline">×</button>
+            <button onClick={() => setItems(items.filter((_, j) => j !== i))} className="shrink-0 text-xs text-[var(--color-blush-deep)] hover:underline">×</button>
           </li>
         ))}
       </ul>

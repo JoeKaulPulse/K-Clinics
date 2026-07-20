@@ -226,7 +226,7 @@ function Row({ t, staff, uk, orphanSub }: { t: Task; staff: Staff[]; uk: boolean
             <RefChip refId={t.ref} uk={uk} />
             <span className={`text-sm font-medium ${done ? 'line-through text-[var(--color-stone)]' : ''}`}>{t.title}</span>
             <span className={`rounded-full px-2 py-0.5 text-[0.6rem] uppercase tracking-wide ${PRIORITY_STYLE[t.priority]}`}>{t.priority.toLowerCase()}</span>
-            {t.dueAt && <span className={`text-xs ${overdue ? 'font-medium text-[var(--color-blush)]' : 'text-[var(--color-stone)]'}`}>{overdue ? '⚠ ' : ''}{new Date(t.dueAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>}
+            {t.dueAt && <span className={`text-xs ${overdue ? 'font-medium text-[var(--color-blush-deep)]' : 'text-[var(--color-stone)]'}`}>{overdue ? '⚠ ' : ''}{new Date(t.dueAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>}
             {orphanSub && t.parentRef && <span className="text-xs text-[var(--color-stone)]">↳ {L('part of', 'частина')} {t.parentRef}</span>}
           </div>
           {t.detail && <p className="mt-0.5 whitespace-pre-wrap text-sm text-[var(--color-stone)]">{t.detail}</p>}
@@ -242,7 +242,7 @@ function Row({ t, staff, uk, orphanSub }: { t: Task; staff: Staff[]; uk: boolean
             <button onClick={toggleComments} className="hover:text-[var(--color-gold)]">💬 {L('Comments', 'Коментарі')}{comments && comments.length > 0 ? ` (${comments.length})` : ''}</button>
             {done && t.assigneeName && <span>{t.assigneeName}</span>}
             {done && t.completedBy && <span>· {L('done by', 'виконав')} {t.completedBy}</span>}
-            <button onClick={remove} className="ml-auto hover:text-[var(--color-blush)]">{L('Delete', 'Видалити')}</button>
+            <button onClick={remove} className="ml-auto hover:text-[var(--color-blush-deep)]">{L('Delete', 'Видалити')}</button>
           </div>
           {subOpen && (
             <div className="mt-2 flex items-center gap-2">

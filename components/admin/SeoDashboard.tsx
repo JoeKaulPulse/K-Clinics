@@ -8,7 +8,7 @@ type PageScore = { path: string; title: string; description: string; focusKeywor
 type Audit = { pages: PageScore[]; health: number; byCategory: Record<string, number>; counts: Record<string, number> };
 
 const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
-const tone = (s: number) => (s >= 80 ? 'text-green-700' : s >= 70 ? 'text-amber-600' : 'text-[var(--color-blush)]');
+const tone = (s: number) => (s >= 80 ? 'text-green-700' : s >= 70 ? 'text-amber-600' : 'text-[var(--color-blush-deep)]');
 const bg = (s: number) => (s >= 80 ? 'bg-green-600' : s >= 70 ? 'bg-amber-500' : 'bg-[var(--color-blush)]');
 const gradeTone = (g: string) => (g === 'A' ? 'bg-green-600' : g === 'B' ? 'bg-green-500' : g === 'C' ? 'bg-amber-500' : g === 'D' ? 'bg-orange-500' : 'bg-[var(--color-blush)]');
 
@@ -25,7 +25,7 @@ export function SeoDashboard({ audit }: { audit: Audit }) {
           <div className="mt-4 flex justify-center gap-4 text-xs text-[var(--color-stone)]">
             <span><strong className="text-[var(--color-ink)]">{audit.counts.total}</strong> pages</span>
             <span><strong className="text-green-700">{audit.counts.a}</strong> A-grade</span>
-            <span><strong className="text-[var(--color-blush)]">{audit.counts.needsWork}</strong> need work</span>
+            <span><strong className="text-[var(--color-blush-deep)]">{audit.counts.needsWork}</strong> need work</span>
           </div>
         </div>
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
@@ -38,7 +38,7 @@ export function SeoDashboard({ audit }: { audit: Audit }) {
               </div>
             ))}
           </div>
-          {audit.counts.highIssues > 0 && <p className="mt-4 text-sm text-[var(--color-blush)]">{audit.counts.highIssues} high-severity issue(s) across the site.</p>}
+          {audit.counts.highIssues > 0 && <p className="mt-4 text-sm text-[var(--color-blush-deep)]">{audit.counts.highIssues} high-severity issue(s) across the site.</p>}
         </div>
       </section>
 
@@ -153,7 +153,7 @@ function PageEditor({ p }: { p: PageScore }) {
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <button onClick={aiSuggest} disabled={!!busy} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">{busy === 'ai' ? 'Thinking…' : '✦ AI suggest'}</button>
         <button onClick={save} disabled={!!busy} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy === 'save' ? 'Saving…' : 'Save overrides'}</button>
-        {p.overridden && <button onClick={clear} className="text-xs text-[var(--color-blush)] hover:underline">Remove override</button>}
+        {p.overridden && <button onClick={clear} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove override</button>}
         {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
       </div>
       <p className="mt-2 text-[0.7rem] text-[var(--color-stone)]">A live preview crawl reads the rendered page; scores update on save and reload.</p>

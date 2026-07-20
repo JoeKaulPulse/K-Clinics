@@ -135,7 +135,7 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
                     {bills.map((bl, i) => (
                       <li key={i} className="flex items-center justify-between px-3 py-2">
                         <span>{bl.invoiceNumber} · {bl.date ? new Date(bl.date).toLocaleDateString('en-GB') : '—'} <span className="text-[var(--color-stone)]">({bl.status})</span></span>
-                        <span className="font-medium tabular-nums">£{bl.total.toFixed(2)}{bl.amountDue > 0 && <span className="ml-1 text-[var(--color-blush)]">· £{bl.amountDue.toFixed(2)} due</span>}</span>
+                        <span className="font-medium tabular-nums">£{bl.total.toFixed(2)}{bl.amountDue > 0 && <span className="ml-1 text-[var(--color-blush-deep)]">· £{bl.amountDue.toFixed(2)} due</span>}</span>
                       </li>
                     ))}
                   </ul>
@@ -148,7 +148,7 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
                 {canManage && <button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Saving…' : 'Save'}</button>}
                 <button onClick={() => setEditing(null)} className="rounded-full border border-[var(--color-line)] px-5 py-2 text-sm font-medium">Close</button>
               </div>
-              {canManage && editing.id && <button onClick={() => remove(editing.id!)} className="text-sm text-[var(--color-blush)] hover:underline">Deactivate</button>}
+              {canManage && editing.id && <button onClick={() => remove(editing.id!)} className="text-sm text-[var(--color-blush-deep)] hover:underline">Deactivate</button>}
             </div>
           </div>
         </div>

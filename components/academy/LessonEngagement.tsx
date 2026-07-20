@@ -34,7 +34,7 @@ function CommentCard({ c, onReply, onDelete }: { c: CommentView; onReply: (paren
       <p className="mt-1.5 whitespace-pre-line text-sm text-[var(--color-ink-soft)]">{c.body}</p>
       <div className="mt-2 flex items-center gap-3 text-xs">
         <button onClick={() => setReplying((v) => !v)} className="text-[var(--color-gold)] hover:underline">Reply</button>
-        {c.mine && <button onClick={() => onDelete(c.id)} className="text-[var(--color-stone)] hover:text-[var(--color-blush)] hover:underline">Delete</button>}
+        {c.mine && <button onClick={() => onDelete(c.id)} className="text-[var(--color-stone)] hover:text-[var(--color-blush-deep)] hover:underline">Delete</button>}
       </div>
 
       {c.replies.length > 0 && (
@@ -47,7 +47,7 @@ function CommentCard({ c, onReply, onDelete }: { c: CommentView; onReply: (paren
                 <span className="ml-auto text-xs text-[var(--color-stone)]">{fmt(r.createdAt)}</span>
               </div>
               <p className="mt-1 whitespace-pre-line text-sm text-[var(--color-ink-soft)]">{r.body}</p>
-              {r.mine && <button onClick={() => onDelete(r.id)} className="mt-1 text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)] hover:underline">Delete</button>}
+              {r.mine && <button onClick={() => onDelete(r.id)} className="mt-1 text-xs text-[var(--color-stone)] hover:text-[var(--color-blush-deep)] hover:underline">Delete</button>}
             </li>
           ))}
         </ul>

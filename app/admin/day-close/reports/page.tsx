@@ -61,7 +61,7 @@ export default async function DayCloseReportsPage() {
                       <td className="px-4 py-3 tabular-nums">{money(c.expectedCardPence)}</td>
                       <td className="px-4 py-3 tabular-nums">{money(c.cashTakingsPence ?? 0)}</td>
                       <td className="px-4 py-3 font-medium tabular-nums">{money(c.expectedCardPence + (c.cashTakingsPence ?? 0))}</td>
-                      <td className={`px-4 py-3 tabular-nums ${v === 0 ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush)]'}`}>{v === 0 ? 'Balanced' : money(v)}</td>
+                      <td className={`px-4 py-3 tabular-nums ${v === 0 ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush-deep)]'}`}>{v === 0 ? 'Balanced' : money(v)}</td>
                       <td className="px-4 py-3 tabular-nums">{c.checklistDone}/{c.checklistTotal}</td>
                       <td className="px-4 py-3 text-[var(--color-stone)]">
                         {c.completedBy || '—'}

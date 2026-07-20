@@ -80,7 +80,7 @@ export function CourseReviewPrompt({ courseId, courseTitle, myReview }: { course
                 <label className="mt-3 block text-xs text-[var(--color-stone)]">Your review (optional)
                   <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} maxLength={4000} placeholder="What stood out? What would you tell someone thinking about this course?" className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm" />
                 </label>
-                {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush)]">{err}</p>}
+                {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush-deep)]">{err}</p>}
                 <div className="mt-5 flex items-center justify-end gap-3">
                   <button onClick={() => setOpen(false)} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">Cancel</button>
                   <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? 'Saving…' : 'Submit review'}</button>

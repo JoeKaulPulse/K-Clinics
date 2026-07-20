@@ -44,7 +44,7 @@ function Applications({ applications }: { applications: App[] }) {
                   </td>
                   <td className="px-2">{a.roleTitle}</td>
                   <td className="px-2"><select value={a.status} onChange={(e) => act({ op: 'appStatus', id: a.id, status: e.target.value })} className={field}>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></td>
-                  <td className="px-2 text-right"><button onClick={() => { if (confirm('Remove this application?')) act({ op: 'removeApp', id: a.id }); }} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button></td>
+                  <td className="px-2 text-right"><button onClick={() => { if (confirm('Remove this application?')) act({ op: 'removeApp', id: a.id }); }} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button></td>
                 </tr>
               ))}
             </tbody>
@@ -80,7 +80,7 @@ function VacancyRow({ v }: { v: Vacancy }) {
         <div className="flex items-center gap-3 text-xs">
           <button onClick={() => setEditing((e) => !e)} className="text-[var(--color-gold)] hover:underline">{editing ? 'Close' : 'Edit'}</button>
           <button onClick={() => act({ op: 'toggle', id: v.id, active: !v.active })} className="text-[var(--color-stone)] hover:underline">{v.active ? 'Unpublish' : 'Publish'}</button>
-          <button onClick={() => { if (confirm('Delete this vacancy?')) act({ op: 'remove', id: v.id }); }} className="text-[var(--color-blush)] hover:underline">Delete</button>
+          <button onClick={() => { if (confirm('Delete this vacancy?')) act({ op: 'remove', id: v.id }); }} className="text-[var(--color-blush-deep)] hover:underline">Delete</button>
         </div>
       </div>
       {editing && <div className="mt-3"><VacancyForm vacancy={v} onDone={() => setEditing(false)} /></div>}

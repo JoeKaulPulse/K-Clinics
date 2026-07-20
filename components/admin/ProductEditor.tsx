@@ -117,7 +117,7 @@ export function ProductEditor({ data }: { data: ProductData }) {
       <div className="sticky bottom-4 flex items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]/95 p-3 backdrop-blur">
         <button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-6 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Saving…' : 'Save product'}</button>
         {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
-        <button onClick={remove} className="ml-auto text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+        <button onClick={remove} className="ml-auto text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
       </div>
     </div>
   );

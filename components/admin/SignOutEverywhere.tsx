@@ -14,7 +14,7 @@ export function SignOutEverywhere() {
     router.refresh();
   }
   return (
-    <button onClick={go} disabled={busy} className="text-sm text-[var(--color-blush)] hover:underline disabled:opacity-50">
+    <button onClick={go} disabled={busy} className="text-sm text-[var(--color-blush-deep)] hover:underline disabled:opacity-50">
       {busy ? 'Signing out…' : 'Sign out of all devices'}
     </button>
   );

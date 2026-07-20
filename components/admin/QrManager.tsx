@@ -95,7 +95,7 @@ function CreatePanel() {
         <label className="text-xs text-[var(--color-stone)]">Destination URL<br /><input value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="https://kclinics.co.uk/offers" className={`${field} w-72`} /></label>
         <label className="text-xs text-[var(--color-stone)]">Custom code <span className="text-[var(--color-stone)]">(optional)</span><br /><input value={code} onChange={(e) => setCode(e.target.value)} placeholder="auto" className={`${field} w-32`} /></label>
         <button onClick={create} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-60">{busy ? 'Creating…' : 'Create'}</button>
-        {msg && <span className="text-sm text-[var(--color-blush)]">{msg}</span>}
+        {msg && <span className="text-sm text-[var(--color-blush-deep)]">{msg}</span>}
       </div>
       <label className="mt-2 block text-xs text-[var(--color-stone)]">Notes <span className="text-[var(--color-stone)]">(optional)</span><br /><input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Where this code is displayed / campaign" className={`${field} w-full max-w-xl`} /></label>
     </section>
@@ -146,7 +146,7 @@ function QrCard({ row }: { row: QrRow }) {
             )}
             <button onClick={() => setEditCode((v) => !v)} className="text-[var(--color-stone)] hover:underline">{editCode ? 'keep' : 'change code'}</button>
           </div>
-          {editCode && <p className="mt-1 text-[0.65rem] text-[var(--color-blush)]">Changing the code changes the printed URL — only do this before printing.</p>}
+          {editCode && <p className="mt-1 text-[0.65rem] text-[var(--color-blush-deep)]">Changing the code changes the printed URL — only do this before printing.</p>}
 
           <label className="mt-3 block text-xs text-[var(--color-stone)]">Redirects to
             <input value={destination} onChange={(e) => setDestination(e.target.value)} className={`${field} mt-0.5 w-full`} />
@@ -163,7 +163,7 @@ function QrCard({ row }: { row: QrRow }) {
               <button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-4 py-1 text-xs text-white disabled:opacity-60">{busy ? 'Saving…' : 'Save'}</button>
             ) : saved ? <span className="text-xs text-green-700">Saved ✓</span> : null}
             <button onClick={toggle} className="text-xs text-[var(--color-stone)] hover:underline">{row.active ? 'Disable' : 'Enable'}</button>
-            <button onClick={remove} className="text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+            <button onClick={remove} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
           </div>
         </div>
       </div>

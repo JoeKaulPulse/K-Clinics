@@ -58,7 +58,7 @@ export function PasskeyManager() {
             {keys.map((k) => (
               <li key={k.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
                 <span>{k.deviceName || 'Passkey'}<span className="ml-2 text-xs text-[var(--color-stone)]">added {new Date(k.createdAt).toLocaleDateString('en-GB')}{k.lastUsedAt ? ` · last used ${new Date(k.lastUsedAt).toLocaleDateString('en-GB')}` : ''}</span></span>
-                <button onClick={() => remove(k.id)} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
+                <button onClick={() => remove(k.id)} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
               </li>
             ))}
           </ul>

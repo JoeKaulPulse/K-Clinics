@@ -57,7 +57,7 @@ function CreatePanel() {
           </select>
         </label>
         <button onClick={create} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)]">Add</button>
-        {msg && <span className="text-sm text-[var(--color-blush)]">{msg}</span>}
+        {msg && <span className="text-sm text-[var(--color-blush-deep)]">{msg}</span>}
       </div>
     </section>
   );
@@ -106,7 +106,7 @@ function Row({ r }: { r: RedirectRow }) {
         <span className="flex items-center justify-end gap-3">
           {dirty ? <button onClick={save} className="rounded-full bg-[var(--color-gold)] px-3 py-1 text-xs text-white">Save</button> : saved ? <span className="text-xs text-green-700">Saved ✓</span> : null}
           <button onClick={toggle} className="text-xs text-[var(--color-stone)] hover:underline">{r.active ? 'Disable' : 'Enable'}</button>
-          <button onClick={remove} className="text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+          <button onClick={remove} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
         </span>
       </td>
     </tr>

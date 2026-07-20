@@ -54,7 +54,7 @@ export function ReviewsBoard({ reviews, questions }: { reviews: ReviewItem[]; qu
                   {r.status !== 'PUBLISHED' && <button disabled={busy} onClick={() => act({ op: 'setReviewStatus', id: r.id, status: 'PUBLISHED' })} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-[var(--color-porcelain)] disabled:opacity-50">Publish</button>}
                   {r.status !== 'HIDDEN' && <button disabled={busy} onClick={() => act({ op: 'setReviewStatus', id: r.id, status: 'HIDDEN' })} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 hover:border-[var(--color-gold)] disabled:opacity-50">Hide</button>}
                   {r.status === 'PUBLISHED' && <button disabled={busy} onClick={() => act({ op: 'setReviewStatus', id: r.id, status: 'PENDING' })} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 hover:border-[var(--color-gold)] disabled:opacity-50">Unpublish</button>}
-                  <button disabled={busy} onClick={() => { if (confirm('Delete this review permanently?')) act({ op: 'deleteReview', id: r.id }); }} className="rounded-full px-3 py-1.5 text-[var(--color-blush)] hover:underline disabled:opacity-50">Delete</button>
+                  <button disabled={busy} onClick={() => { if (confirm('Delete this review permanently?')) act({ op: 'deleteReview', id: r.id }); }} className="rounded-full px-3 py-1.5 text-[var(--color-blush-deep)] hover:underline disabled:opacity-50">Delete</button>
                 </div>
               </li>
             ))}
@@ -117,7 +117,7 @@ function QuestionRow({ q, busy, act }: { q: QuestionItem; busy: boolean; act: (p
         <button disabled={busy} onClick={() => act({ op: 'pinComment', id: q.id, pinned: !q.pinned })} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 hover:border-[var(--color-gold)] disabled:opacity-50">{q.pinned ? 'Unpin' : 'Pin'}</button>
         <button disabled={busy} onClick={() => act({ op: 'resolveComment', id: q.id, resolved: !q.resolved })} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 hover:border-[var(--color-gold)] disabled:opacity-50">{q.resolved ? 'Reopen' : 'Mark answered'}</button>
         <button disabled={busy} onClick={() => act({ op: 'hideComment', id: q.id, hidden: !q.hidden })} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 hover:border-[var(--color-gold)] disabled:opacity-50">{q.hidden ? 'Unhide' : 'Hide'}</button>
-        <button disabled={busy} onClick={() => { if (confirm('Delete this question and its replies?')) act({ op: 'deleteComment', id: q.id }); }} className="rounded-full px-3 py-1.5 text-[var(--color-blush)] hover:underline disabled:opacity-50">Delete</button>
+        <button disabled={busy} onClick={() => { if (confirm('Delete this question and its replies?')) act({ op: 'deleteComment', id: q.id }); }} className="rounded-full px-3 py-1.5 text-[var(--color-blush-deep)] hover:underline disabled:opacity-50">Delete</button>
       </div>
     </li>
   );

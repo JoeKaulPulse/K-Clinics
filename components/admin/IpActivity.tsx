@@ -133,7 +133,7 @@ export function IpActivity({ rows, blocked }: { rows: IpRow[]; blocked: BlockedR
                           <button onClick={() => setExpanded(open ? null : r.ip)} className="text-left font-[family-name:var(--font-mono,monospace)] hover:underline">
                             {r.ip}
                           </button>
-                          {r.blocked && <span className="ml-2 rounded-full bg-[var(--color-blush)]/15 px-2 py-0.5 text-[0.62rem] font-medium uppercase tracking-wide text-[var(--color-blush)]">Blocked</span>}
+                          {r.blocked && <span className="ml-2 rounded-full bg-[var(--color-blush)]/15 px-2 py-0.5 text-[0.62rem] font-medium uppercase tracking-wide text-[var(--color-blush-deep)]">Blocked</span>}
                         </td>
                         <td className="py-2 pr-3 text-[var(--color-ink-soft)]">
                           {r.devices.length === 0 ? <span className="text-[var(--color-stone)]">—</span> : deviceLabel(r.devices[0])}
@@ -147,7 +147,7 @@ export function IpActivity({ rows, blocked }: { rows: IpRow[]; blocked: BlockedR
                           {r.blocked ? (
                             <button disabled={busy} onClick={() => act({ op: 'unblockIp', ip: r.ip })} className="text-xs font-medium text-[var(--color-gold)] hover:underline">Unblock</button>
                           ) : (
-                            <button disabled={busy} onClick={() => act({ op: 'blockIp', ip: r.ip, reason: `${r.fails} failed events in 7d` })} className="text-xs font-medium text-[var(--color-blush)] hover:underline">Block</button>
+                            <button disabled={busy} onClick={() => act({ op: 'blockIp', ip: r.ip, reason: `${r.fails} failed events in 7d` })} className="text-xs font-medium text-[var(--color-blush-deep)] hover:underline">Block</button>
                           )}
                         </td>
                       </tr>

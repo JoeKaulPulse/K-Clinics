@@ -151,10 +151,10 @@ function MyTimeOff({ mine }: { mine: Mine[] }) {
                 </div>
                 <p className="mt-0.5 text-sm text-[var(--color-stone)]">{fmtRange(item.startAt, item.endAt, item.allDay)}</p>
                 {item.reason && <p className="mt-0.5 text-xs text-[var(--color-stone)]">{item.reason}</p>}
-                {item.status === 'DECLINED' && item.reviewNote && <p className="mt-0.5 text-xs text-[var(--color-blush)]">{t('status.DECLINED')}: {item.reviewNote}</p>}
+                {item.status === 'DECLINED' && item.reviewNote && <p className="mt-0.5 text-xs text-[var(--color-blush-deep)]">{t('status.DECLINED')}: {item.reviewNote}</p>}
               </div>
               {active && (
-                <button onClick={() => cancel(item.id)} disabled={busyId === item.id} className="shrink-0 text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)] disabled:opacity-50">
+                <button onClick={() => cancel(item.id)} disabled={busyId === item.id} className="shrink-0 text-xs text-[var(--color-stone)] hover:text-[var(--color-blush-deep)] disabled:opacity-50">
                   {busyId === item.id ? '…' : t('common.cancel')}
                 </button>
               )}
@@ -201,7 +201,7 @@ function Approvals({ pending }: { pending: Pending[] }) {
             {item.reason && <p className="mt-0.5 text-xs text-[var(--color-stone)]">{item.reason}</p>}
             <div className="mt-2 flex gap-2">
               <button onClick={() => decide(item.id, 'approve')} disabled={busyId === item.id} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-50">{t('timeoff.approve')}</button>
-              <button onClick={() => decide(item.id, 'decline')} disabled={busyId === item.id} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs hover:border-[var(--color-blush)] hover:text-[var(--color-blush)] disabled:opacity-50">{t('timeoff.decline')}</button>
+              <button onClick={() => decide(item.id, 'decline')} disabled={busyId === item.id} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs hover:border-[var(--color-blush)] hover:text-[var(--color-blush-deep)] disabled:opacity-50">{t('timeoff.decline')}</button>
             </div>
           </li>
         ))}

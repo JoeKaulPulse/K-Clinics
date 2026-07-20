@@ -12,7 +12,7 @@ export type ReviewEntry = {
 };
 
 const dateFmt = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
-const badge = (s: string) => s === 'APPROVED' ? 'bg-[var(--color-sage,#3f6f4f)]/15 text-[var(--color-sage,#3f6f4f)]' : s === 'SUBMITTED' ? 'bg-[var(--color-gold)]/15 text-[var(--color-gold-deep)]' : s === 'NEEDS_WORK' ? 'bg-[var(--color-blush)]/15 text-[var(--color-blush)]' : 'bg-[var(--color-line)] text-[var(--color-stone)]';
+const badge = (s: string) => s === 'APPROVED' ? 'bg-[var(--color-sage,#3f6f4f)]/15 text-[var(--color-sage,#3f6f4f)]' : s === 'SUBMITTED' ? 'bg-[var(--color-gold)]/15 text-[var(--color-gold-deep)]' : s === 'NEEDS_WORK' ? 'bg-[var(--color-blush)]/15 text-[var(--color-blush-deep)]' : 'bg-[var(--color-line)] text-[var(--color-stone)]';
 
 export function PortfolioReview({ entries, statusLabels }: { entries: ReviewEntry[]; statusLabels: Record<string, string> }) {
   const router = useRouter();

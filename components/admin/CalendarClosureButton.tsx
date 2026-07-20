@@ -30,7 +30,7 @@ export function CalendarClosureButton({ dateISO, closure }: { dateISO: string; c
       <button
         onClick={() => { if (confirm('Reopen the clinic this day? Online bookings will be offered again.')) post({ op: 'remove', id: closure.id }); }}
         disabled={busy}
-        className="rounded-full border border-[var(--color-blush)]/50 px-3 py-1.5 text-sm font-medium text-[var(--color-blush)] hover:bg-[var(--color-blush)]/10 disabled:opacity-60"
+        className="rounded-full border border-[var(--color-blush)]/50 px-3 py-1.5 text-sm font-medium text-[var(--color-blush-deep)] hover:bg-[var(--color-blush)]/10 disabled:opacity-60"
       >{busy ? '…' : 'Reopen clinic'}</button>
     );
   }
@@ -44,7 +44,7 @@ export function CalendarClosureButton({ dateISO, closure }: { dateISO: string; c
       <p className="mb-1 text-sm font-medium">Close the whole clinic</p>
       <p className="mb-2 text-xs text-[var(--color-stone)]">Blocks all online bookings for every clinician on {dateISO}.</p>
       <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional, e.g. Bank holiday)" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm" />
-      {msg && <p className="mt-2 text-xs text-[var(--color-blush)]">{msg}</p>}
+      {msg && <p className="mt-2 text-xs text-[var(--color-blush-deep)]">{msg}</p>}
       <div className="mt-3 flex gap-2">
         <button onClick={() => post({ startDate: dateISO, reason })} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-60">{busy ? '…' : 'Close clinic'}</button>
         <button onClick={() => { setOpen(false); setMsg(''); }} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs text-[var(--color-stone)]">Cancel</button>

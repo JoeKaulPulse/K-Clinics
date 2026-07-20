@@ -47,7 +47,7 @@ export function DataPrivacy({ clientId, canDelete = false }: { clientId: string;
 
         {/* Pseudonymise (keeps financial records) */}
         {!open ? (
-          <button onClick={() => setOpen(true)} className="block w-full text-center text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)]">
+          <button onClick={() => setOpen(true)} className="block w-full text-center text-xs text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">
             Erase personal data (keep financial records)…
           </button>
         ) : (
@@ -65,12 +65,12 @@ export function DataPrivacy({ clientId, canDelete = false }: { clientId: string;
         {canDelete && (
           <div className="mt-1 border-t border-[var(--color-line)] pt-3">
             {!delOpen ? (
-              <button onClick={() => setDelOpen(true)} className="block w-full text-center text-xs font-medium text-[var(--color-blush)] hover:underline">
+              <button onClick={() => setDelOpen(true)} className="block w-full text-center text-xs font-medium text-[var(--color-blush-deep)] hover:underline">
                 Delete client permanently…
               </button>
             ) : (
               <div className="space-y-2.5 rounded-[var(--radius-sm)] border border-[var(--color-blush)] bg-[var(--color-blush)]/8 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-blush)]">Danger zone</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-blush-deep)]">Danger zone</p>
                 <p className="text-xs leading-relaxed text-[var(--color-ink)]">
                   This <strong>permanently deletes</strong> the client and <strong>all</strong> related records — bookings, health forms, points, reviews and history. It <strong>cannot be undone</strong>.
                 </p>
@@ -85,7 +85,7 @@ export function DataPrivacy({ clientId, canDelete = false }: { clientId: string;
                   autoComplete="off"
                   className="w-full rounded-[var(--radius-sm)] border border-[var(--color-blush)]/60 bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-blush)]"
                 />
-                {delErr && <p className="text-xs text-[var(--color-blush)]">{delErr}</p>}
+                {delErr && <p className="text-xs text-[var(--color-blush-deep)]">{delErr}</p>}
                 <div className="flex gap-2">
                   <button onClick={destroy} disabled={delConfirm !== 'DELETE' || deleting} className="rounded-full bg-[var(--color-blush)] px-4 py-2 text-xs font-medium text-white disabled:opacity-40">{deleting ? 'Deleting…' : 'Delete permanently'}</button>
                   <button onClick={() => { setDelOpen(false); setDelConfirm(''); setDelErr(''); }} className="px-3 py-2 text-xs text-[var(--color-stone)]">Cancel</button>

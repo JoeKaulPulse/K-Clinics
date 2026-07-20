@@ -33,9 +33,9 @@ export function CashflowManager({ cfg, drivers, consumablesMonthly, months, rese
       <div className="grid gap-3 sm:grid-cols-4">
         {[
           { label: L('Opening cash', 'Початковий баланс'), value: gbp(cfg.openingPence), tone: '' },
-          { label: L(`Operating cash · month ${cfg.months}`, `Операційні кошти · міс ${cfg.months}`), value: gbp(summary.endOperating), tone: summary.endOperating < cfg.safetyFloorPence ? 'text-[var(--color-blush)]' : '' },
+          { label: L(`Operating cash · month ${cfg.months}`, `Операційні кошти · міс ${cfg.months}`), value: gbp(summary.endOperating), tone: summary.endOperating < cfg.safetyFloorPence ? 'text-[var(--color-blush-deep)]' : '' },
           { label: L('Ring-fenced reserves', 'Захищені резерви'), value: gbp(summary.endReserves), tone: 'text-[var(--color-jade)]' },
-          { label: L('Lowest operating point', 'Найнижча точка'), value: gbp(summary.lowestOperating), tone: summary.everBelowFloor ? 'text-[var(--color-blush)]' : '' },
+          { label: L('Lowest operating point', 'Найнижча точка'), value: gbp(summary.lowestOperating), tone: summary.everBelowFloor ? 'text-[var(--color-blush-deep)]' : '' },
         ].map((s) => (
           <div key={s.label} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
             <div className={`font-[family-name:var(--font-display)] text-2xl ${s.tone} tabular-nums`}>{s.value}</div>
@@ -68,9 +68,9 @@ export function CashflowManager({ cfg, drivers, consumablesMonthly, months, rese
                   <td className="px-4 py-2.5 text-right text-[var(--color-jade)]">{gbp(m.incomePence)}</td>
                   <td className="px-4 py-2.5 text-right text-[var(--color-stone)]" title={L('Confirmed/pending bookings', 'Підтверджені/очікувані записи')}>{m.committedPence > 0 ? gbp(m.committedPence) : '—'}</td>
                   <td className="px-4 py-2.5 text-right text-[var(--color-stone)]">{gbp(m.expensePence)}</td>
-                  <td className={`px-4 py-2.5 text-right ${m.netPence < 0 ? 'text-[var(--color-blush)]' : ''}`}>{gbp(m.netPence)}</td>
+                  <td className={`px-4 py-2.5 text-right ${m.netPence < 0 ? 'text-[var(--color-blush-deep)]' : ''}`}>{gbp(m.netPence)}</td>
                   <td className="px-4 py-2.5 text-right text-[var(--color-stone)]">{gbp(m.reserveContribPence)}</td>
-                  <td className={`px-4 py-2.5 text-right font-medium ${m.belowFloor ? 'text-[var(--color-blush)]' : ''}`}>{gbp(m.operatingPence)}{m.belowFloor ? ' ⚠' : ''}</td>
+                  <td className={`px-4 py-2.5 text-right font-medium ${m.belowFloor ? 'text-[var(--color-blush-deep)]' : ''}`}>{gbp(m.operatingPence)}{m.belowFloor ? ' ⚠' : ''}</td>
                   <td className="px-4 py-2.5 text-right text-[var(--color-jade)]">{gbp(m.reservesPence)}</td>
                 </tr>
               ))}
@@ -261,7 +261,7 @@ function Reserves({ reserves, canManage, uk }: { reserves: Reserve[]; canManage:
               )}
               <div className="mt-2 flex items-center justify-between text-xs text-[var(--color-stone)]">
                 <span>{L('Now', 'Зараз')} {gbp(r.startPence)} · +{gbp(r.monthlyContributionPence)}/{L('mo', 'міс')}</span>
-                {canManage && <button onClick={() => del(r.id)} className="hover:text-[var(--color-blush)]">{L('Delete', 'Видалити')}</button>}
+                {canManage && <button onClick={() => del(r.id)} className="hover:text-[var(--color-blush-deep)]">{L('Delete', 'Видалити')}</button>}
               </div>
             </div>
           );
@@ -313,7 +313,7 @@ function Entries({ entries, canManage, uk }: { entries: Entry[]; canManage: bool
             </span>
             <span className="flex items-center gap-3">
               <span className={`${e.type === 'INCOME' ? 'text-[var(--color-jade)]' : 'text-[var(--color-stone)]'} tabular-nums`}>{gbp(e.amountPence)}</span>
-              {canManage && <button onClick={() => del(e.id)} aria-label="Delete entry" className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)]">✕</button>}
+              {canManage && <button onClick={() => del(e.id)} aria-label="Delete entry" className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">✕</button>}
             </span>
           </div>
         ))}

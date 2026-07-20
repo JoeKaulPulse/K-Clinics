@@ -90,7 +90,7 @@ export function DataExportCard() {
             {passkeys.map((p) => (
               <li key={p.id} className="flex items-center justify-between py-2 text-sm">
                 <span>{p.deviceName || 'Passkey'}<span className="ml-2 text-xs text-[var(--color-stone)]">added {new Date(p.createdAt).toLocaleDateString('en-GB')}{p.lastUsedAt ? ` · last used ${new Date(p.lastUsedAt).toLocaleDateString('en-GB')}` : ''}</span></span>
-                <button onClick={() => removePasskey(p.id)} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
+                <button onClick={() => removePasskey(p.id)} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
               </li>
             ))}
           </ul>

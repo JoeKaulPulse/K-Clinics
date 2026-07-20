@@ -18,7 +18,7 @@ const statusTone: Record<string, string> = {
   PAID: 'bg-[var(--color-gold)]/15 text-[var(--color-gold)]',
   ENROLLED: 'bg-[var(--color-sage,#5b7a5b)]/15 text-[var(--color-ink)]',
   COMPLETED: 'bg-[var(--color-sage,#5b7a5b)]/20 text-[var(--color-ink)]',
-  CANCELLED: 'bg-[var(--color-blush)]/15 text-[var(--color-blush)]',
+  CANCELLED: 'bg-[var(--color-blush)]/15 text-[var(--color-blush-deep)]',
 };
 
 async function post(payload: object) {
@@ -73,7 +73,7 @@ export function StudentsManager({ students }: { students: StudentRow[] }) {
                 <tr key={s.id} className="border-t border-[var(--color-line)] align-top">
                   <td className="py-2 pr-2">
                     <Link href={`/admin/academy/students/${s.id}`} className="font-medium hover:text-[var(--color-gold)] hover:underline">{s.firstName} {s.lastName ?? ''}</Link>
-                    {!s.portalActive && <span className="ml-1 rounded-full bg-[var(--color-blush)]/15 px-1.5 py-0.5 text-[0.6rem] text-[var(--color-blush)]">Suspended</span>}
+                    {!s.portalActive && <span className="ml-1 rounded-full bg-[var(--color-blush)]/15 px-1.5 py-0.5 text-[0.6rem] text-[var(--color-blush-deep)]">Suspended</span>}
                     <span className="block text-xs text-[var(--color-stone)]">{s.email}{s.phone ? ` · ${s.phone}` : ''}</span>
                     <NoteEditor notes={s.notes} onSave={(notes) => act({ op: 'updateStudentNotes', id: s.id, notes })} />
                   </td>
@@ -95,7 +95,7 @@ export function StudentsManager({ students }: { students: StudentRow[] }) {
                   <td className="px-2">
                     <button
                       onClick={() => { if (s.portalActive ? confirm(`Suspend ${s.firstName}’s portal access?`) : true) act({ op: 'setStudentActive', id: s.id, active: !s.portalActive }); }}
-                      className={`rounded-full border px-3 py-1 text-xs ${s.portalActive ? 'border-[var(--color-line)] text-[var(--color-stone)] hover:border-[var(--color-blush)] hover:text-[var(--color-blush)]' : 'border-[var(--color-gold)] text-[var(--color-gold)]'}`}
+                      className={`rounded-full border px-3 py-1 text-xs ${s.portalActive ? 'border-[var(--color-line)] text-[var(--color-stone)] hover:border-[var(--color-blush)] hover:text-[var(--color-blush-deep)]' : 'border-[var(--color-gold)] text-[var(--color-gold)]'}`}
                     >{s.portalActive ? 'Suspend' : 'Reactivate'}</button>
                   </td>
                 </tr>

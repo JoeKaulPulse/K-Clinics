@@ -102,7 +102,7 @@ function Row({ v, canManage }: { v: Voucher; canManage: boolean }) {
           <div className="flex flex-wrap justify-end gap-2 text-xs">
             {redeemable && <button disabled={busy} onClick={() => { const a = prompt(`Redeem amount (£), balance ${money(v.balancePence)}:`); const p = Math.round(Number(a) * 100); if (p > 0) act({ op: 'redeem', id: v.id, amountPence: p }); }} className="text-[var(--color-gold)] hover:underline disabled:opacity-50">Redeem</button>}
             {(v.status === 'ACTIVE' || v.status === 'REDEEMED') && <button disabled={busy} onClick={() => act({ op: 'resend', id: v.id })} className="text-[var(--color-stone)] hover:underline disabled:opacity-50">Resend</button>}
-            {v.status !== 'CANCELLED' && <button disabled={busy} onClick={() => { if (confirm('Cancel this voucher? The balance will no longer be redeemable.')) act({ op: 'cancel', id: v.id }); }} className="text-[var(--color-blush)] hover:underline disabled:opacity-50">Cancel</button>}
+            {v.status !== 'CANCELLED' && <button disabled={busy} onClick={() => { if (confirm('Cancel this voucher? The balance will no longer be redeemable.')) act({ op: 'cancel', id: v.id }); }} className="text-[var(--color-blush-deep)] hover:underline disabled:opacity-50">Cancel</button>}
           </div>
         ) : <span className="text-xs text-[var(--color-stone)]">—</span>}
       </td>

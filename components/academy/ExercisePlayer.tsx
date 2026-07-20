@@ -82,7 +82,7 @@ function Hotspot({ exercise, result, busy, onGrade }: SubProps) {
       <div className="mb-3 flex flex-wrap gap-1.5">
         {labels.map((l, i) => (
           <button key={i} onClick={() => !result && setActive(i)} disabled={!!result}
-            className={`rounded-full border px-3 py-1 text-xs font-medium ${result ? (result.results?.[i] ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 text-[var(--color-gold-deep)]' : 'border-[var(--color-blush)] bg-[var(--color-blush)]/10 text-[var(--color-blush)]') : i === active ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-porcelain)]' : pins[i] ? 'border-[var(--color-gold)] text-[var(--color-ink)]' : 'border-[var(--color-line)] text-[var(--color-stone)]'}`}>
+            className={`rounded-full border px-3 py-1 text-xs font-medium ${result ? (result.results?.[i] ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 text-[var(--color-gold-deep)]' : 'border-[var(--color-blush)] bg-[var(--color-blush)]/10 text-[var(--color-blush-deep)]') : i === active ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-porcelain)]' : pins[i] ? 'border-[var(--color-gold)] text-[var(--color-ink)]' : 'border-[var(--color-line)] text-[var(--color-stone)]'}`}>
             {pins[i] && !result ? '✓ ' : ''}{result ? (result.results?.[i] ? '✓ ' : '✗ ') : ''}{l}
           </button>
         ))}

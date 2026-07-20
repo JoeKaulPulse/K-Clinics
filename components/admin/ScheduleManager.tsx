@@ -272,7 +272,7 @@ function TimeOff({ staff, onChange }: { staff: Staff; onChange: () => void }) {
         <input placeholder="Reason (optional)" value={reason} onChange={(e) => setReason(e.target.value)} className={`${f} flex-1`} />
         <button disabled={busy} onClick={add} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">Add</button>
       </div>
-      {msg && <p className="mt-2 text-sm text-[var(--color-blush)]">{msg}</p>}
+      {msg && <p className="mt-2 text-sm text-[var(--color-blush-deep)]">{msg}</p>}
       <ul className="mt-4 divide-y divide-[var(--color-line)]">
         {staff.timeOff.length === 0 && <li className="py-2 text-sm text-[var(--color-stone)]">None scheduled.</li>}
         {staff.timeOff.map((t) => (
@@ -282,7 +282,7 @@ function TimeOff({ staff, onChange }: { staff: Staff; onChange: () => void }) {
               {new Date(t.startAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })} – {new Date(t.endAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
               {t.reason ? ` · ${t.reason}` : ''}
             </span>
-            <button disabled={busy} onClick={() => remove(t.id)} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)] disabled:opacity-50">Remove</button>
+            <button disabled={busy} onClick={() => remove(t.id)} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush-deep)] disabled:opacity-50">Remove</button>
           </li>
         ))}
       </ul>

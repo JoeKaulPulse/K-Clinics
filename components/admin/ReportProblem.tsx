@@ -94,7 +94,7 @@ export function ReportProblem() {
                   {shots.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{shots.map((s) => <img key={s} src={s} alt="" className="h-16 w-auto rounded border border-[var(--color-line)]" />)}</div>}
                 </div>
 
-                {error && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush)]">{error}</p>}
+                {error && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush-deep)]">{error}</p>}
                 <div className="mt-4 flex justify-end gap-2">
                   <button onClick={() => setOpen(false)} className="rounded-full px-4 py-2 text-sm text-[var(--color-stone)]">Cancel</button>
                   <button onClick={submit} disabled={status === 'saving'} className="rounded-full bg-[var(--color-gold)] px-6 py-2 text-sm font-medium text-white disabled:opacity-50">{status === 'saving' ? 'Sending…' : 'Send to Claude'}</button>

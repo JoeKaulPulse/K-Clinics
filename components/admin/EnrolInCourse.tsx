@@ -56,7 +56,7 @@ export function EnrolInCourse({ studentEmail, studentName, courses }: { studentE
         <button onClick={submit} disabled={busy} className="rounded-full border border-[var(--color-gold)] px-4 py-1.5 text-sm text-[var(--color-gold)] hover:bg-[var(--color-gold)]/10 disabled:opacity-50">{busy ? 'Enrolling…' : 'Enrol'}</button>
         <button onClick={() => { setOpen(false); setError(''); }} disabled={busy} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)] disabled:opacity-50">Cancel</button>
       </div>
-      {error && <p role="alert" aria-live="assertive" className="mt-2 text-xs text-[var(--color-blush)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-2 text-xs text-[var(--color-blush-deep)]">{error}</p>}
     </div>
   );
 }

@@ -44,7 +44,7 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
         <h3 className="font-[family-name:var(--font-display)] text-lg">Two-factor authentication</h3>
         <p className="mt-1 inline-flex items-center gap-2 text-sm text-emerald-700"><span className="grid h-4 w-4 place-items-center rounded-full bg-emerald-600 text-[0.6rem] text-white">✓</span> Enabled — your account is protected with an authenticator app.</p>
-        <button onClick={disable} disabled={busy} className="mt-4 text-sm text-[var(--color-blush)] hover:underline disabled:opacity-50">Turn off 2FA</button>
+        <button onClick={disable} disabled={busy} className="mt-4 text-sm text-[var(--color-blush-deep)] hover:underline disabled:opacity-50">Turn off 2FA</button>
       </div>
     );
   }
@@ -72,7 +72,7 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
           <label className="block text-sm text-[var(--color-stone)]">2. Enter the 6-digit code it shows:
             <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" placeholder="123456" className="mt-1 w-40 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
           </label>
-          {err && <p role="alert" aria-live="assertive" className="text-sm text-[var(--color-blush)]">{err}</p>}
+          {err && <p role="alert" aria-live="assertive" className="text-sm text-[var(--color-blush-deep)]">{err}</p>}
           <div className="flex gap-2">
             <button onClick={confirm} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Verifying…' : 'Verify & enable'}</button>
             <button onClick={() => setStage('idle')} className="px-3 py-2 text-sm text-[var(--color-stone)]">Cancel</button>
@@ -91,7 +91,7 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
         </div>
       )}
 
-      {err && stage === 'idle' && <p className="mt-2 text-sm text-[var(--color-blush)]">{err}</p>}
+      {err && stage === 'idle' && <p className="mt-2 text-sm text-[var(--color-blush-deep)]">{err}</p>}
     </div>
   );
 }

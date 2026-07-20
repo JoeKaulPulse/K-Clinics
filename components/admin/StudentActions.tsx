@@ -28,7 +28,7 @@ export function StudentActions({ studentId, email, portalActive, hasClient }: { 
       <button
         onClick={() => act('setStudentActive', { id: studentId, active: !portalActive }, portalActive ? 'Suspended' : 'Reactivated', portalActive ? 'Suspend this trainee’s portal access?' : undefined)}
         disabled={!!busy}
-        className={portalActive ? `${btn} hover:!border-[var(--color-blush)] hover:!text-[var(--color-blush)]` : 'rounded-full border border-[var(--color-gold)] px-4 py-1.5 text-sm text-[var(--color-gold)]'}
+        className={portalActive ? `${btn} hover:!border-[var(--color-blush)] hover:!text-[var(--color-blush-deep)]` : 'rounded-full border border-[var(--color-gold)] px-4 py-1.5 text-sm text-[var(--color-gold)]'}
       >{portalActive ? 'Suspend access' : 'Reactivate'}</button>
       <button onClick={() => act('sendActivation', { studentId }, 'Access link sent')} disabled={!!busy} className={btn}>Email portal link</button>
       <button onClick={() => act('resetStudentPassword', { email }, 'Reset email sent')} disabled={!!busy} className={btn}>Send password reset</button>

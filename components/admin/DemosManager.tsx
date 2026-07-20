@@ -69,7 +69,7 @@ function DemoRow({ demo, busy, act, canUp, canDown, onMove }: { demo: AdminDemo;
         <span className="flex-1 text-sm font-medium">{demo.title} <span className="font-normal text-[var(--color-stone)]">· {demo.mistakes.length} mistake{demo.mistakes.length === 1 ? '' : 's'}{demo.active ? '' : ' · hidden'}</span></span>
         <button onClick={() => onMove(-1)} disabled={busy || !canUp} className={btnGhost}>↑</button>
         <button onClick={() => onMove(1)} disabled={busy || !canDown} className={btnGhost}>↓</button>
-        <button onClick={() => { if (confirm('Delete this demo and its mistakes? (the video file is not removed)')) act({ op: 'deleteDemo', id: demo.id }); }} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+        <button onClick={() => { if (confirm('Delete this demo and its mistakes? (the video file is not removed)')) act({ op: 'deleteDemo', id: demo.id }); }} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
       </div>
       {open && (
         <div className="space-y-3 border-t border-[var(--color-line)] p-3">
@@ -107,7 +107,7 @@ function MistakeRow({ m, busy, act, seek }: { m: DemoMistake; busy: boolean; act
       <input className="flex-1 rounded border border-[var(--color-line)] px-2 py-1 text-xs" value={labelText} onChange={(e) => setLabelText(e.target.value)} />
       <label className="flex items-center gap-1 text-xs text-[var(--color-stone)]">±s<input className="w-14 rounded border border-[var(--color-line)] px-1.5 py-1 text-xs" value={windowSec} onChange={(e) => setWindowSec(e.target.value)} /></label>
       <button onClick={() => act({ op: 'updateMistake', id: m.id, atSec: m.atSec, windowSec: Number(windowSec) || 3, label: labelText })} disabled={busy} className={btnGhost}>Save</button>
-      <button onClick={() => act({ op: 'deleteMistake', id: m.id })} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline">×</button>
+      <button onClick={() => act({ op: 'deleteMistake', id: m.id })} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline">×</button>
     </li>
   );
 }

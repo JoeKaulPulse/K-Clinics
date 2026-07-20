@@ -32,7 +32,7 @@ export function CartClient({ vatNote }: { vatNote: string }) {
                   <span className="w-7 text-center" aria-live="polite" aria-label={`${i.name} quantity`}>{i.qty}</span>
                   <button onClick={() => setQty(i.productId, i.qty + 1)} aria-label={`Increase quantity of ${i.name}`} className="h-11 w-11">+</button>
                 </div>
-                <button onClick={() => remove(i.productId)} aria-label={`Remove ${i.name} from bag`} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
+                <button onClick={() => remove(i.productId)} aria-label={`Remove ${i.name} from bag`} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
               </li>
             ))}
           </ul>

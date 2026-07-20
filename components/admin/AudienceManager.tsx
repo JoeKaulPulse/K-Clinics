@@ -134,7 +134,7 @@ function Card({ r, canManage }: { r: SegmentRow; canManage: boolean }) {
           </button>
           {r.metaSyncedAt && !msg && <span className="text-xs text-[var(--color-stone)]">Synced {new Date(r.metaSyncedAt).toLocaleDateString('en-GB')}</span>}
           {msg && <span className="min-w-0 text-xs text-[var(--color-stone)]">{msg}</span>}
-          <button onClick={remove} className="ml-auto text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+          <button onClick={remove} className="ml-auto text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
         </div>
       )}
     </section>

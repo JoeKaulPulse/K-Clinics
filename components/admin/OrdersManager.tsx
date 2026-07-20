@@ -82,7 +82,7 @@ function Row({ r, open, onToggle, canManage }: { r: OrderRow; open: boolean; onT
                 {!closed && (
                   <div className="flex gap-3 text-xs">
                     <button disabled={busy} onClick={() => { if (confirm(`Mark order ${r.number} as refunded? Refund the payment in Stripe separately.`)) update({ status: 'REFUNDED' }); }} className="text-[var(--color-stone)] hover:underline disabled:opacity-50">Mark refunded</button>
-                    <button disabled={busy} onClick={() => { const willRefund = r.status === 'PAID' || r.status === 'FULFILLED'; if (confirm(`Cancel order ${r.number}?${willRefund ? ' This will refund the customer via Stripe and can’t be undone here.' : ' This can’t be undone here.'}`)) update({ status: 'CANCELLED' }); }} className="text-[var(--color-blush)] hover:underline disabled:opacity-50">Cancel</button>
+                    <button disabled={busy} onClick={() => { const willRefund = r.status === 'PAID' || r.status === 'FULFILLED'; if (confirm(`Cancel order ${r.number}?${willRefund ? ' This will refund the customer via Stripe and can’t be undone here.' : ' This can’t be undone here.'}`)) update({ status: 'CANCELLED' }); }} className="text-[var(--color-blush-deep)] hover:underline disabled:opacity-50">Cancel</button>
                   </div>
                 )}
               </div>
