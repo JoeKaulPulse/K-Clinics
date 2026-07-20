@@ -32,7 +32,7 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'field.dob': { en: 'Date of birth', uk: 'Дата народження' },
   'field.password': { en: 'Create a password', uk: 'Створіть пароль' },
   'field.optional': { en: 'optional', uk: 'необовʼязково' },
-  'signup.marketing': { en: 'Send me offers, events and skincare tips.', uk: 'Надсилайте мені пропозиції, події та поради по догляду.' },
+  'signup.marketing': { en: 'Send me offers, events and skincare tips. We may also use your contact details, in hashed form, to show you our offers on social media — see our Privacy Policy.', uk: 'Надсилайте мені пропозиції, події та поради по догляду. Ми також можемо використовувати ваші контактні дані у хешованому вигляді, щоб показувати вам наші пропозиції в соцмережах — див. Політику конфіденційності.' },
   'signup.consent': { en: 'I agree to the Terms & Privacy Policy.', uk: 'Я погоджуюся з Умовами та Політикою конфіденційності.' },
   'signup.consentRequired': { en: 'Please accept the terms to continue.', uk: 'Будь ласка, прийміть умови, щоб продовжити.' },
   'signup.ageDeclare': { en: 'I confirm I am 18 years of age or older.', uk: 'Я підтверджую, що мені виповнилося 18 років.' },
@@ -227,7 +227,7 @@ export const PORTAL_DICT: Record<string, Entry> = {
   // Profile
   'profile.newPassword': { en: 'New password (optional)', uk: 'Новий пароль (необовʼязково)' },
   'profile.leaveBlank': { en: 'Leave blank to keep current', uk: 'Залиште порожнім, щоб не змінювати' },
-  'profile.marketing': { en: 'Email me offers, events and skincare tips.', uk: 'Надсилайте пропозиції, події та поради по догляду.' },
+  'profile.marketing': { en: 'Email me offers, events and skincare tips. We may also use your contact details, in hashed form, to show you our offers on social media — see our Privacy Policy.', uk: 'Надсилайте пропозиції, події та поради по догляду. Ми також можемо використовувати ваші контактні дані у хешованому вигляді, щоб показувати вам наші пропозиції в соцмережах — див. Політику конфіденційності.' },
   'gender.label': { en: 'Gender', uk: 'Стать' },
   'gender.help': { en: 'Helps us tailor treatment suggestions to you. Optional, and never used to exclude.', uk: 'Допомагає підібрати рекомендації саме для вас. Необовʼязково й ніколи не використовується для виключення.' },
   'gender.unset': { en: 'Prefer not to say', uk: 'Волію не вказувати' },

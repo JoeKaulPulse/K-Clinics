@@ -276,7 +276,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
                   {b.finishedAt ? 'Completed — review the walkthrough & timings' : b.startedAt ? 'In progress — rejoin the walkthrough' : 'Run the guided client walkthrough: arrival, consent, treatment, aftercare'}
                 </span>
               </span>
-              <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-gold)] text-white">→</span>
+              <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-gold-deep)] text-white">→</span>
             </Link>
           )}
           {/* Treatments & billing — itemised total; add a treatment mid-session */}

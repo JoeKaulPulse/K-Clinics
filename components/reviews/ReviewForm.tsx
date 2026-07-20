@@ -41,7 +41,7 @@ export function ReviewForm({ token, googleUrl }: { token: string; googleUrl: str
           {happy ? 'We’re so glad you had a great experience.' : 'Thank you for your honesty — we’ll use it to do better.'}
         </p>
         {happy && googleUrl && (
-          <a href={googleUrl} target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex items-center gap-2 rounded-full bg-[var(--color-gold)] px-6 py-3 text-sm font-medium text-white hover:bg-[var(--color-ink)]">
+          <a href={googleUrl} target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex items-center gap-2 rounded-full bg-[var(--color-gold-deep)] px-6 py-3 text-sm font-medium text-white hover:bg-[var(--color-ink)]">
             Share it on Google
           </a>
         )}
@@ -73,7 +73,7 @@ export function ReviewForm({ token, googleUrl }: { token: string; googleUrl: str
         <span>I’m happy for KClinics to feature my review — and my first name — on their website and marketing. (Optional. We only ever publish 5-star reviews with a written comment.)</span>
       </label>
       {error && <p role="alert" aria-live="assertive" className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm">{error}</p>}
-      <button onClick={submit} disabled={loading} className="w-full rounded-full bg-[var(--color-gold)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60">
+      <button onClick={submit} disabled={loading} className="w-full rounded-full bg-[var(--color-gold-deep)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60">
         {loading ? 'Submitting…' : 'Submit review'}
       </button>
     </div>

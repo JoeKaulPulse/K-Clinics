@@ -101,7 +101,7 @@ export function RewardManager({
               </label>
             </div>
             <div className="mt-4 flex items-center gap-3">
-              <button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? L('Saving…', 'Збереження…') : L('Save', 'Зберегти')}</button>
+              <button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? L('Saving…', 'Збереження…') : L('Save', 'Зберегти')}</button>
               <button onClick={() => setOpen(false)} className="text-sm text-[var(--color-stone)]">{L('Cancel', 'Скасувати')}</button>
               {msg && <span className="text-sm text-rose-600">{msg}</span>}
             </div>

@@ -151,7 +151,7 @@ export default async function AcademyPortalPage() {
         <Card className="p-5">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
             <div className="flex items-center gap-3">
-              <span className="grid h-12 w-12 place-items-center rounded-full bg-[var(--color-gold)] font-[family-name:var(--font-display)] text-xl text-white">{lvl.level}</span>
+              <span className="grid h-12 w-12 place-items-center rounded-full bg-[var(--color-gold-deep)] font-[family-name:var(--font-display)] text-xl text-white">{lvl.level}</span>
               <div>
                 <p className="font-medium">{lvl.title}</p>
                 <p className="text-xs text-[var(--color-stone)]">Level {lvl.level}{lvl.nextAt != null ? ` · ${(lvl.nextAt - standing.xp).toLocaleString()} XP to next` : ' · max'}</p>

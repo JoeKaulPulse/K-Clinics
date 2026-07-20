@@ -167,7 +167,7 @@ export function ChatManager() {
             </div>
             <div className="flex gap-2 border-t border-[var(--color-line)] p-3">
               <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); reply(); } }} placeholder="Type your reply…" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
-              <button onClick={() => reply(false)} disabled={busy || !draft.trim()} className="rounded-[var(--radius-sm)] bg-[var(--color-gold)] px-4 text-sm font-medium text-white disabled:opacity-50">Send</button>
+              <button onClick={() => reply(false)} disabled={busy || !draft.trim()} className="rounded-[var(--radius-sm)] bg-[var(--color-gold-deep)] px-4 text-sm font-medium text-white disabled:opacity-50">Send</button>
               {headerEmail && (
                 <button onClick={() => reply(true)} disabled={busy || !draft.trim()} title={`Send and email ${headerEmail}`} className="rounded-[var(--radius-sm)] border border-[var(--color-gold)] px-3 text-xs font-medium text-[var(--color-gold-deep)] disabled:opacity-50">Send + email</button>
               )}

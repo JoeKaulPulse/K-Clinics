@@ -127,7 +127,7 @@ export function CoursePlayer({ learning, slug }: { learning: CourseLearning; slu
             return (
             <div key={m.id}>
               <p className="mb-1.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-stone)]">
-                <span className={`grid h-4 w-4 place-items-center rounded-full text-[0.6rem] ${moduleComplete(m) ? 'bg-[var(--color-gold)] text-white' : 'border border-[var(--color-line)]'}`}>{moduleComplete(m) ? '✓' : mi + 1}</span>
+                <span className={`grid h-4 w-4 place-items-center rounded-full text-[0.6rem] ${moduleComplete(m) ? 'bg-[var(--color-gold-deep)] text-white' : 'border border-[var(--color-line)]'}`}>{moduleComplete(m) ? '✓' : mi + 1}</span>
                 {m.title}
               </p>
               <ul className="space-y-0.5 border-l border-[var(--color-line)] pl-3">
@@ -274,7 +274,7 @@ function LessonPanel({ lesson, done, onComplete, onNext }: { lesson: LessonView;
           ? <span className="inline-flex items-center gap-2 text-sm font-medium text-[var(--color-gold-deep)]">✓ Lesson complete</span>
           : <span className="text-sm text-[var(--color-stone)]">Finished? Mark it complete to track your progress.</span>}
         {onNext
-          ? <button onClick={() => { if (!done) onComplete(); onNext(); }} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">{done ? 'Next lesson →' : 'Complete & continue →'}</button>
+          ? <button onClick={() => { if (!done) onComplete(); onNext(); }} className="rounded-full bg-[var(--color-gold-deep)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">{done ? 'Next lesson →' : 'Complete & continue →'}</button>
           : (!done && <button onClick={onComplete} className="rounded-full bg-[var(--color-ink)] px-6 py-2.5 text-sm font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-espresso)]">Mark as complete</button>)}
       </div>
 
@@ -439,10 +439,10 @@ function QuizPanel({ quiz, state, onGraded, onBadges, onNext }: { quiz: QuizView
         {result ? (
           !quiz.isSurvey && !noAttemptsLeft && <button onClick={retake} className="rounded-full bg-[var(--color-ink)] px-6 py-2.5 text-sm font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-espresso)]">Retake assessment</button>
         ) : !noAttemptsLeft && (
-          <button onClick={() => submit(false)} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? 'Marking…' : quiz.isSurvey ? 'Submit feedback' : 'Submit answers'}</button>
+          <button onClick={() => submit(false)} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? 'Marking…' : quiz.isSurvey ? 'Submit feedback' : 'Submit answers'}</button>
         )}
         {onNext && (result?.passed || state?.passed || isSurveyResult) && (
-          <button onClick={onNext} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">Next →</button>
+          <button onClick={onNext} className="rounded-full bg-[var(--color-gold-deep)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">Next →</button>
         )}
       </div>
     </div>

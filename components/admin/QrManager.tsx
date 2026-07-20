@@ -160,7 +160,7 @@ function QrCard({ row }: { row: QrRow }) {
 
           <div className="mt-3 flex items-center gap-3">
             {dirty ? (
-              <button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-4 py-1 text-xs text-white disabled:opacity-60">{busy ? 'Saving…' : 'Save'}</button>
+              <button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-1 text-xs text-white disabled:opacity-60">{busy ? 'Saving…' : 'Save'}</button>
             ) : saved ? <span className="text-xs text-green-700">Saved ✓</span> : null}
             <button onClick={toggle} className="text-xs text-[var(--color-stone)] hover:underline">{row.active ? 'Disable' : 'Enable'}</button>
             <button onClick={remove} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>

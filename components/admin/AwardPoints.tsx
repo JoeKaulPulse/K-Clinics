@@ -60,7 +60,7 @@ export function AwardPoints({ staff }: { staff: Staff[] }) {
         </label>
       </div>
       <div className="mt-4 flex items-center gap-3">
-        <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? 'Saving…' : 'Award'}</button>
+        <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? 'Saving…' : 'Award'}</button>
         <button onClick={() => setOpen(false)} className="text-sm text-[var(--color-stone)]">Cancel</button>
         {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
       </div>

@@ -26,7 +26,7 @@ export function MarketingOptInPrompt() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="font-[family-name:var(--font-display)] text-lg">Want first access to offers?</p>
-            <p className="mt-1 text-sm text-[var(--color-ink-soft)]">Opt in to receive exclusive member offers, seasonal promotions and skincare tips. Unsubscribe any time.</p>
+            <p className="mt-1 text-sm text-[var(--color-ink-soft)]">Opt in to receive exclusive member offers, seasonal promotions and skincare tips. We may also use your contact details, in hashed form, to show you our offers on social media — see our Privacy Policy. Unsubscribe any time.</p>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={optIn} disabled={state === 'busy'} className="rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-60">{state === 'busy' ? 'Saving…' : 'Keep me updated'}</button>

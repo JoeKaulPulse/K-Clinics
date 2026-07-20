@@ -241,7 +241,7 @@ function Reserves({ reserves, canManage, uk }: { reserves: Reserve[]; canManage:
           <input type="number" value={v.balancePounds} onChange={set('balancePounds')} placeholder={L('Current £', 'Поточний £')} className={field} />
           <input type="number" value={v.targetPounds} onChange={set('targetPounds')} placeholder={L('Target £ (0 = none)', 'Ціль £ (0 = без)')} className={field} />
           <input type="number" value={v.monthlyPounds} onChange={set('monthlyPounds')} placeholder={L('Monthly top-up £', 'Щомісячно £')} className={field} />
-          <button onClick={add} className="rounded-full bg-[var(--color-gold)] px-4 py-2 text-sm text-white">{L('Add', 'Додати')}</button>
+          <button onClick={add} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm text-white">{L('Add', 'Додати')}</button>
         </div>
       )}
       <div className="space-y-3">
@@ -299,7 +299,7 @@ function Entries({ entries, canManage, uk }: { entries: Entry[]; canManage: bool
           <input value={v.label} onChange={setS('label')} placeholder={L('Label (e.g. Rent)', 'Назва (напр. Оренда)')} className={`${field} col-span-2`} />
           <input value={v.category} onChange={setS('category')} placeholder={L('Category', 'Категорія')} className={field} />
           <input type="number" value={v.amountPounds} onChange={setS('amountPounds')} placeholder={L('Amount £', 'Сума £')} className={field} />
-          <button onClick={add} className="col-span-2 rounded-full bg-[var(--color-gold)] px-4 py-2 text-sm text-white">{L('Add line', 'Додати')}</button>
+          <button onClick={add} className="col-span-2 rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm text-white">{L('Add line', 'Додати')}</button>
         </div>
       )}
       <div className="space-y-1.5">

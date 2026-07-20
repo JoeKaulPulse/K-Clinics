@@ -225,7 +225,7 @@ export function SessionRunner(p: Props) {
             )}
             {active && !isMine && !presenting && !sessionDone && (
               <button type="button" disabled={pending} onClick={() => run(() => api({ op: 'claim' }))}
-                className="shrink-0 rounded-full border border-[var(--color-gold)] px-3 py-1.5 text-xs font-medium text-[var(--color-gold-deep)] transition-colors hover:bg-[var(--color-gold)] hover:text-white disabled:opacity-50">
+                className="shrink-0 rounded-full border border-[var(--color-gold)] px-3 py-1.5 text-xs font-medium text-[var(--color-gold-deep)] transition-colors hover:bg-[var(--color-gold-deep)] hover:text-white disabled:opacity-50">
                 Take over
               </button>
             )}
@@ -251,7 +251,7 @@ export function SessionRunner(p: Props) {
             <button
               type="button" onClick={() => setPresenting((v) => !v)} aria-pressed={presenting}
               className={`min-h-11 rounded-full border px-4 py-2 text-sm transition-colors ${presenting
-                ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white'
+                ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white'
                 : 'border-[var(--color-line)] text-[var(--color-ink)] hover:border-[var(--color-gold)]'}`}
             >
               {presenting ? 'Presenting' : 'Present'}
@@ -277,7 +277,7 @@ export function SessionRunner(p: Props) {
                     className={`group flex w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-left transition-colors ${state === 'current' ? 'bg-[var(--color-bone)]' : 'hover:bg-[var(--color-bone)]/60'} ${otherStation ? 'opacity-45' : ''}`}
                   >
                     <span aria-hidden className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[10px] transition-colors ${
-                      state === 'done' ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white'
+                      state === 'done' ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white'
                       : state === 'current' ? 'border-[var(--color-gold)] text-[var(--color-gold-deep)]'
                       : 'border-[var(--color-line)] text-[var(--color-stone)]'}`}>
                       {state === 'done' ? <CheckIcon /> : i + 1}
@@ -439,7 +439,7 @@ function ArrivalStep({ p, presenting, onBegin }: { p: Props; presenting: boolean
         </div>
       )}
 
-      <button type="button" onClick={onBegin} className="mt-2 inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold)] px-8 py-3.5 text-base font-medium text-white transition-all hover:bg-[var(--color-ink)]">
+      <button type="button" onClick={onBegin} className="mt-2 inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold-deep)] px-8 py-3.5 text-base font-medium text-white transition-all hover:bg-[var(--color-ink)]">
         Begin <ArrowIcon />
       </button>
     </>
@@ -548,7 +548,7 @@ function ConsentStep({ p, live, onContinue, onSkip }: {
     return (
       <>
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-gold)]/40 bg-[var(--color-bone)] p-8 text-center">
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--color-gold)] text-white" aria-hidden><CheckIcon large /></span>
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--color-gold-deep)] text-white" aria-hidden><CheckIcon large /></span>
           <p className="mt-4 font-[family-name:var(--font-display)] text-2xl">Consent on record</p>
           {c && (
             <p className="mt-2 text-sm text-[var(--color-stone)]">
@@ -571,7 +571,7 @@ function ConsentStep({ p, live, onContinue, onSkip }: {
       {link ? (
         <div className="space-y-3 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6">
           <a href={link} target="_blank" rel="noopener noreferrer"
-            className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)]">
+            className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold-deep)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)]">
             Open the signing screen <ArrowIcon />
           </a>
           <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -584,7 +584,7 @@ function ConsentStep({ p, live, onContinue, onSkip }: {
         </div>
       ) : p.consent.templateKey ? (
         <button type="button" disabled={busy} onClick={createRequest}
-          className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-50">
+          className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold-deep)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-50">
           {busy ? 'Preparing…' : <>Prepare the consent form <ArrowIcon /></>}
         </button>
       ) : (
@@ -632,7 +632,7 @@ function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateH
             <ul className="space-y-2 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5 text-sm">
               {gateList.map((g) => (
                 <li key={g.label} className={`flex items-center gap-2.5 ${g.ok ? 'text-[var(--color-stone)]' : ''}`}>
-                  <span aria-hidden className={`grid h-5 w-5 place-items-center rounded-full ${g.ok ? 'bg-[var(--color-gold)] text-white' : 'border border-[var(--color-blush)] text-[var(--color-blush-deep)]'}`}>{g.ok ? <CheckIcon /> : '·'}</span>
+                  <span aria-hidden className={`grid h-5 w-5 place-items-center rounded-full ${g.ok ? 'bg-[var(--color-gold-deep)] text-white' : 'border border-[var(--color-blush)] text-[var(--color-blush-deep)]'}`}>{g.ok ? <CheckIcon /> : '·'}</span>
                   {g.label}
                 </li>
               ))}
@@ -651,7 +651,7 @@ function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateH
             />
           )}
           <button type="button" disabled={pending || !canStart} onClick={onStart}
-            className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+            className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold-deep)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
             Start treatment <ArrowIcon />
           </button>
         </>
@@ -705,7 +705,7 @@ function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateH
 
               {!finished && (
                 <button type="button" disabled={pending} onClick={onFinish}
-                  className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-ink)] px-8 py-3.5 text-base font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold)] disabled:opacity-50">
+                  className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-ink)] px-8 py-3.5 text-base font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)] disabled:opacity-50">
                   End treatment (stops the clock)
                 </button>
               )}
@@ -756,7 +756,7 @@ function AftercareStep({ p, live, sessData, api, onContinue }: {
       {confirmed ? (
         <>
           <p className="inline-flex items-center gap-2 rounded-full bg-[var(--color-bone)] px-4 py-2.5 text-sm text-[var(--color-stone)]">
-            <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-gold)] text-white" aria-hidden><CheckIcon /></span>
+            <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-gold-deep)] text-white" aria-hidden><CheckIcon /></span>
             Aftercare confirmed{confirmedBy ? ` by ${confirmedBy}` : ''}
           </p>
           <ContinueButton onClick={onContinue} label="Continue to checkout" />
@@ -769,7 +769,7 @@ function AftercareStep({ p, live, sessData, api, onContinue }: {
               placeholder={p.client.firstName}
               className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--color-gold)]" />
             <button type="button" disabled={busy} onClick={confirm}
-              className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-50">
+              className="min-h-12 rounded-full bg-[var(--color-gold-deep)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-50">
               {busy ? 'Saving…' : 'Confirm'}
             </button>
           </div>
@@ -888,7 +888,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
         </div>
         {charged ? (
           <p className="mt-3 inline-flex items-center gap-2 text-sm text-[var(--color-stone)]">
-            <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-gold)] text-white" aria-hidden><CheckIcon /></span>
+            <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-gold-deep)] text-white" aria-hidden><CheckIcon /></span>
             Paid {new Date(live.chargedAt!).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}.
           </p>
         ) : !presenting && p.canCharge ? (
@@ -952,7 +952,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
               {method === 'card' && (
                 <button type="button" disabled={pending || !live.finishedAt}
                   onClick={() => run(() => api({ op: 'charge', amountPence, ...discParams }))}
-                  className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+                  className="min-h-12 rounded-full bg-[var(--color-gold-deep)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
                   Charge the saved card
                 </button>
               )}
@@ -968,7 +968,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                 </div>
               ) : (
                 <button type="button" disabled={payBusy || !live.finishedAt} onClick={makeLink}
-                  className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+                  className="min-h-12 rounded-full bg-[var(--color-gold-deep)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
                   {payBusy ? 'Creating link…' : 'Create a payment link'}
                 </button>
               ))}
@@ -980,7 +980,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                     </select>
                   ) : <p className="text-sm text-[var(--color-stone)]">No card terminal is registered — add one under Devices.</p>}
                   <button type="button" disabled={payBusy || !live.finishedAt || p.terminals.length === 0} onClick={takeTerminal}
-                    className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+                    className="min-h-12 rounded-full bg-[var(--color-gold-deep)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
                     {payBusy ? 'Sending to terminal…' : 'Take payment on terminal'}
                   </button>
                 </div>
@@ -988,7 +988,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
               {method === 'cash' && (
                 <div>
                   <button type="button" disabled={payBusy || !live.finishedAt} onClick={takeCash}
-                    className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+                    className="min-h-12 rounded-full bg-[var(--color-gold-deep)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
                     {payBusy ? 'Recording…' : `Record ${money(duePence)} cash`}
                   </button>
                   <p className="mt-2 max-w-md text-xs text-[var(--color-stone)]">Records the sale as paid in cash against this booking. Remember to put the cash in the drawer — it’s included in the day-close total.</p>
@@ -997,7 +997,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
               {method === 'treatwell' && (
                 <div>
                   <button type="button" disabled={payBusy || !live.finishedAt} onClick={takeTreatwell}
-                    className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+                    className="min-h-12 rounded-full bg-[var(--color-gold-deep)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
                     {payBusy ? 'Recording…' : 'Record as paid via Treatwell'}
                   </button>
                   <p className="mt-2 max-w-md text-xs text-[var(--color-stone)]">Records the sale as settled on Treatwell — no card is charged here. Tip: invite {p.client.firstName} to book their next visit directly with us to skip the Treatwell commission.</p>
@@ -1094,7 +1094,7 @@ function Boutique({ p, sessData, api, presenting }: {
   if (paidNumber) {
     return (
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-gold)]/40 bg-[var(--color-bone)] p-6 text-center">
-        <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--color-gold)] text-white" aria-hidden><CheckIcon /></span>
+        <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--color-gold-deep)] text-white" aria-hidden><CheckIcon /></span>
         <p className="mt-3 font-[family-name:var(--font-display)] text-xl">Boutique — paid</p>
         <p className="mt-1 text-sm text-[var(--color-stone)]">Order {paidNumber}. The receipt is on its way by email; products are ready at the front desk.</p>
       </div>
@@ -1160,7 +1160,7 @@ function Boutique({ p, sessData, api, presenting }: {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="font-[family-name:var(--font-display)] text-xl tabular-nums">{money(total)} <span className="text-sm text-[var(--color-stone)]">· {count} item{count === 1 ? '' : 's'}</span></p>
                 <button type="button" disabled={busy} onClick={payOnPhone}
-                  className="min-h-12 rounded-full bg-[var(--color-ink)] px-7 py-3 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold)] disabled:opacity-50">
+                  className="min-h-12 rounded-full bg-[var(--color-ink)] px-7 py-3 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)] disabled:opacity-50">
                   {busy ? 'Preparing…' : 'Pay on your phone (QR)'}
                 </button>
               </div>
@@ -1211,7 +1211,7 @@ function NextVisitStep({ p, sessData, api, onContinue, onSkip }: {
     return (
       <>
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-gold)]/40 bg-[var(--color-bone)] p-8 text-center">
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--color-gold)] text-white" aria-hidden><CheckIcon large /></span>
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--color-gold-deep)] text-white" aria-hidden><CheckIcon large /></span>
           <p className="mt-4 font-[family-name:var(--font-display)] text-2xl">You’re booked in</p>
           <p className="mt-2 text-[var(--color-stone)]">
             {p.booking.treatmentTitle} — {d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/London' })} at {d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}.
@@ -1240,14 +1240,14 @@ function NextVisitStep({ p, sessData, api, onContinue, onSkip }: {
             : slots.length === 0 ? <p className="text-sm text-[var(--color-stone)]">Nothing free that day — try another.</p>
             : slots.map((s) => (
               <button key={s} type="button" role="option" aria-selected={slot === s} onClick={() => setSlot(s)}
-                className={`min-h-11 rounded-full border px-4 py-2 text-sm tabular-nums transition-colors ${slot === s ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}>
+                className={`min-h-11 rounded-full border px-4 py-2 text-sm tabular-nums transition-colors ${slot === s ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}>
                 {new Date(s).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
               </button>
             ))}
         </div>
         {slot && (
           <button type="button" disabled={busy} onClick={reserve}
-            className="mt-5 inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-50">
+            className="mt-5 inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold-deep)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-50">
             {busy ? 'Booking…' : <>Book it <ArrowIcon /></>}
           </button>
         )}
@@ -1269,7 +1269,7 @@ function FarewellStep({ p, live, pending, sessionDone, timings, stepSeconds, onC
   return (
     <>
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-gold)]/40 bg-[var(--color-bone)] p-8 text-center">
-        <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--color-gold)] text-white" aria-hidden><CheckIcon large /></span>
+        <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--color-gold-deep)] text-white" aria-hidden><CheckIcon large /></span>
         <p className="mt-4 font-[family-name:var(--font-display)] text-3xl">Thank you, {p.client.firstName}.</p>
         <p className="mt-2 text-[var(--color-stone)]">
           {live.actualMinutes ? <>Today took {live.actualMinutes} minutes (booked {p.booking.durationMin}). </> : null}
@@ -1280,7 +1280,7 @@ function FarewellStep({ p, live, pending, sessionDone, timings, stepSeconds, onC
       {!sessionDone ? (
         <>
           <button type="button" disabled={pending || !live.finishedAt} onClick={onComplete}
-            className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+            className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold-deep)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
             Complete the visit <ArrowIcon />
           </button>
           {!live.finishedAt && (
@@ -1313,7 +1313,7 @@ function FarewellStep({ p, live, pending, sessionDone, timings, stepSeconds, onC
       )}
 
       <Link href={`/admin/bookings/${p.booking.id}`}
-        className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-ink)] px-8 py-3.5 text-base font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold)]">
+        className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-ink)] px-8 py-3.5 text-base font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)]">
         Back to the booking <ArrowIcon />
       </Link>
     </>

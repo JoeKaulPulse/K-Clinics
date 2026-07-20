@@ -254,7 +254,7 @@ export function WorkspaceClient() {
                               onChange={(e) => setAliasValue(e.target.value)}
                               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addAlias(u.email); } }}
                             />
-                            <button type="button" onClick={() => addAlias(u.email)} className={`${btnCls} bg-[var(--color-gold)] text-white text-xs`}>Add</button>
+                            <button type="button" onClick={() => addAlias(u.email)} className={`${btnCls} bg-[var(--color-gold-deep)] text-white text-xs`}>Add</button>
                             <button type="button" onClick={() => setAliasTarget(null)} className={`${btnCls} border border-[var(--color-border)] text-xs`}>Cancel</button>
                           </div>
                         ) : (

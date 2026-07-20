@@ -75,7 +75,7 @@ export function ClinicalWorkflow({ bookingId, sop, sopSteps, sopSaved, medicalFl
       <div className="mt-4 flex flex-wrap gap-2">
         {!started && !finished && (
           <button disabled={pending || !sopOk || !flagOk} onClick={() => run(() => startAppointment(bookingId))}
-            className="rounded-full bg-[var(--color-gold)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-40">
+            className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-40">
             ▶ Start appointment
           </button>
         )}

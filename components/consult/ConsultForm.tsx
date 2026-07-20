@@ -205,7 +205,7 @@ export function ConsultForm() {
               <div><label className={label} htmlFor="ms">Anything else?</label><textarea id="ms" rows={2} className={field} value={d.message} onChange={(e) => set('message', e.target.value)} /></div>
               <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]">
                 <input type="checkbox" checked={d.marketingOptIn} onChange={(e) => set('marketingOptIn', e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />
-                Keep me updated with offers, events and skincare tips.
+                Keep me updated with offers, events and skincare tips. We may also use your contact details, in hashed form, to show you our offers on social media — see our Privacy Policy.
               </label>
               <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]">
                 <input type="checkbox" checked={d.consent} onChange={(e) => set('consent', e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />
@@ -256,7 +256,7 @@ function Group({ title, items, selected, onToggle }: { title: string; items: typ
               key={t.slug}
               type="button"
               onClick={() => onToggle(t.title)}
-              className={`rounded-full border px-4 py-2 text-sm transition-all ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-stone-soft)]'}`}
+              className={`rounded-full border px-4 py-2 text-sm transition-all ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-stone-soft)]'}`}
             >
               {t.title}
             </button>

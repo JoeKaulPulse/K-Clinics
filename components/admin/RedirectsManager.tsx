@@ -104,7 +104,7 @@ function Row({ r }: { r: RedirectRow }) {
       <td className="p-3 text-xs text-[var(--color-stone)]">{r.code}</td>
       <td className="p-3 text-right">
         <span className="flex items-center justify-end gap-3">
-          {dirty ? <button onClick={save} className="rounded-full bg-[var(--color-gold)] px-3 py-1 text-xs text-white">Save</button> : saved ? <span className="text-xs text-green-700">Saved ✓</span> : null}
+          {dirty ? <button onClick={save} className="rounded-full bg-[var(--color-gold-deep)] px-3 py-1 text-xs text-white">Save</button> : saved ? <span className="text-xs text-green-700">Saved ✓</span> : null}
           <button onClick={toggle} className="text-xs text-[var(--color-stone)] hover:underline">{r.active ? 'Disable' : 'Enable'}</button>
           <button onClick={remove} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
         </span>

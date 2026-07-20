@@ -113,7 +113,7 @@ export function LiveChat() {
                         {m.link ? <a href={m.link} target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--color-ink)]">{m.from}</a> : m.from}
                       </p>
                     )}
-                    <div className={`rounded-[var(--radius-md)] px-3 py-2 text-sm ${mine ? 'bg-[var(--color-gold)] text-white' : 'bg-[var(--color-bone)] text-[var(--color-ink)]'}`}>{m.body}</div>
+                    <div className={`rounded-[var(--radius-md)] px-3 py-2 text-sm ${mine ? 'bg-[var(--color-gold-deep)] text-white' : 'bg-[var(--color-bone)] text-[var(--color-ink)]'}`}>{m.body}</div>
                   </div>
                 );
               })}

@@ -100,7 +100,7 @@ export function BookingActions({
               className="w-28 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
             {!confirmCharge ? (
               <button disabled={pending || !(parseFloat(amount) > 0)} onClick={() => setConfirmCharge(true)}
-                className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm text-white disabled:opacity-60">Charge now…</button>
+                className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm text-white disabled:opacity-60">Charge now…</button>
             ) : (
               <span className="flex items-center gap-2">
                 <button disabled={pending} onClick={() => start(async () => {

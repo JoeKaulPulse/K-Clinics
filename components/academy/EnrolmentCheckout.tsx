@@ -47,7 +47,7 @@ export function EnrolmentCheckout(props: {
       <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6 text-center">
         <p className="font-[family-name:var(--font-display)] text-2xl">You’re all set ✓</p>
         <p className="mt-2 text-[var(--color-stone)]">{stage === 'done' ? 'Thank you — your payment is confirmed.' : 'This course is paid in full.'} Your online theory is unlocked.</p>
-        <Link href={`/academy/learn/${props.courseSlug}`} className="mt-5 inline-block rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">Start learning →</Link>
+        <Link href={`/academy/learn/${props.courseSlug}`} className="mt-5 inline-block rounded-full bg-[var(--color-gold-deep)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">Start learning →</Link>
       </div>
     );
   }
@@ -84,7 +84,7 @@ export function EnrolmentCheckout(props: {
           <p className="mt-1 text-sm text-[var(--color-stone)]">Pay by card, or spread the cost with Klarna or Clearpay at checkout.</p>
           {error && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush-deep)]">{error}</p>}
           <div className="mt-4 flex flex-wrap gap-3">
-            <button onClick={() => !busy && start('full')} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
+            <button onClick={() => !busy && start('full')} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
               {busy ? 'Please wait…' : `Pay ${money(outstandingPence)} now`}
             </button>
             {canDeposit && (
@@ -131,7 +131,7 @@ function PayStep({ paymentId, onDone }: { paymentId: string; onDone: () => void 
     <div>
       <PaymentElement />
       {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush-deep)]">{err}</p>}
-      <button onClick={() => !busy && pay()} disabled={busy} className="mt-4 w-full rounded-full bg-[var(--color-gold)] px-6 py-3 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? 'Processing…' : 'Pay now'}</button>
+      <button onClick={() => !busy && pay()} disabled={busy} className="mt-4 w-full rounded-full bg-[var(--color-gold-deep)] px-6 py-3 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? 'Processing…' : 'Pay now'}</button>
       <p className="mt-3 text-center text-xs text-[var(--color-stone)]">Payments are processed securely by Stripe.</p>
     </div>
   );

@@ -275,7 +275,7 @@ function VariantRow({ v }: { v: Variant }) {
           </select>
         </td>
         <td className="px-2 text-right">
-          {dirty ? <button onClick={save} className="rounded-full bg-[var(--color-gold)] px-3 py-1 text-xs text-white">Save</button>
+          {dirty ? <button onClick={save} className="rounded-full bg-[var(--color-gold-deep)] px-3 py-1 text-xs text-white">Save</button>
             : saved ? <span className="text-xs text-green-700">Saved ✓</span>
             : <button onClick={remove} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>}
         </td>

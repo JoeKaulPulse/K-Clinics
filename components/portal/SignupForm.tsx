@@ -83,7 +83,7 @@ export function SignupForm() {
       <div><label className={authLabel} htmlFor="pw">Create a password</label><input id="pw" type="password" autoComplete="new-password" required minLength={8} className={authField} value={d.password} onChange={(e) => set('password', e.target.value)} /></div>
       <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]">
         <input type="checkbox" checked={d.marketingOptIn} onChange={(e) => set('marketingOptIn', e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]" />
-        Send me offers, events and skincare tips.
+        Send me offers, events and skincare tips. We may also use your contact details, in hashed form, to show you our offers on social media — see our Privacy Policy.
       </label>
       <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]">
         <input type="checkbox" checked={d.consent} onChange={(e) => set('consent', e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]" />

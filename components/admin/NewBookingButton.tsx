@@ -209,7 +209,7 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
             <div className="flex justify-end gap-3">
               <button onClick={onClose} className="px-4 py-2.5 text-sm text-[var(--color-stone)]">Cancel</button>
               {clash && <button onClick={() => submit(true)} disabled={pending} className="rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium hover:border-[var(--color-gold)] disabled:opacity-60">Book anyway</button>}
-              <button onClick={() => submit(false)} disabled={pending} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{pending ? 'Creating…' : 'Create & send card link'}</button>
+              <button onClick={() => submit(false)} disabled={pending} className="rounded-full bg-[var(--color-gold-deep)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{pending ? 'Creating…' : 'Create & send card link'}</button>
             </div>
             <p className="text-xs text-[var(--color-stone)]">No card is taken over the phone — the client gets a secure link to save one and confirm. Read the script on the next step.</p>
           </div>

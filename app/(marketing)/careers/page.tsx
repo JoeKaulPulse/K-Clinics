@@ -34,7 +34,7 @@ export default async function CareersPage() {
     <>
       <JsonLd data={[breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Careers', path: '/careers' }]), ...jobsLd]} />
       <PageHero eyebrow="Careers" title="Do the best work of your career." lede="We’re building London’s most considered clinic — and that takes exceptional people. If you care about craft, safety and how clients feel, we’d love to hear from you." gradient={['#3d352f', '#7b6a5d']}>
-        <Link href="#apply" className="inline-flex items-center gap-2 rounded-full bg-[var(--color-gold)] px-7 py-3.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">Apply now →</Link>
+        <Link href="#apply" className="inline-flex items-center gap-2 rounded-full bg-[var(--color-gold-deep)] px-7 py-3.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">Apply now →</Link>
       </PageHero>
 
       <section className="container-lux section">

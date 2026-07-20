@@ -89,7 +89,7 @@ type BtnSize = 'sm' | 'md';
 const btnBase = 'inline-flex items-center justify-center gap-2 rounded-full font-medium transition-[transform,color,background-color,border-color] duration-200 active:scale-[0.97] motion-reduce:transition-colors motion-reduce:active:scale-100 disabled:cursor-not-allowed disabled:opacity-60';
 const btnSizes: Record<BtnSize, string> = { sm: 'px-3 py-1.5 text-xs', md: 'px-5 py-2 text-sm' };
 const btnVariants: Record<BtnVariant, string> = {
-  primary: 'bg-[var(--color-gold)] text-white hover:bg-[var(--color-ink)]',
+  primary: 'bg-[var(--color-gold-deep)] text-white hover:bg-[var(--color-ink)]',
   secondary: 'border border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]',
   ink: 'bg-[var(--color-ink)] text-[var(--color-porcelain)] hover:bg-[var(--color-espresso)]',
 };

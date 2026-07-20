@@ -114,7 +114,7 @@ export function ArrivalPrep({ a }: { a: NextArrival }) {
                     aria-pressed={checked}
                     className={`flex w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-left text-sm transition-colors ${p.soon ? 'cursor-default opacity-60' : 'hover:bg-[var(--color-bone)]'} ${isLiveRoom && roomBusy ? 'opacity-60' : ''}`}
                   >
-                    <span aria-hidden className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors ${checked ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-sand)]'}`}>
+                    <span aria-hidden className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors ${checked ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-sand)]'}`}>
                       {checked && <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6.2 4.8 9 10 3.4" /></svg>}
                     </span>
                     <span className={`min-w-0 break-words ${checked ? 'text-[var(--color-stone)] line-through' : 'text-[var(--color-ink-soft)]'}`}>{p.label}</span>

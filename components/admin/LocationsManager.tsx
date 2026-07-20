@@ -77,7 +77,7 @@ function Card({ loc, uk }: { loc: Loc; uk: boolean }) {
           <label className="flex items-center gap-2 text-xs text-[var(--color-stone)]">{L('Calendar colour', 'Колір календаря')}
             <input type="color" value={v.color} onChange={set('color')} className="h-8 w-12 rounded border border-[var(--color-line)]" />
           </label>
-          <button onClick={save} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)]">{L('Save', 'Зберегти')}</button>
+          <button onClick={save} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)]">{L('Save', 'Зберегти')}</button>
         </div>
       )}
     </div>
@@ -114,7 +114,7 @@ function AddLocation({ uk }: { uk: boolean }) {
         <input value={v.email} onChange={set('email')} placeholder="Email" className={field} />
       </div>
       <div className="mt-4 flex items-center gap-3">
-        <button onClick={add} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? L('Adding…', 'Додавання…') : L('Add location', 'Додати')}</button>
+        <button onClick={add} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? L('Adding…', 'Додавання…') : L('Add location', 'Додати')}</button>
         <button onClick={() => setOpen(false)} className="text-sm text-[var(--color-stone)]">{L('Cancel', 'Скасувати')}</button>
       </div>
     </section>

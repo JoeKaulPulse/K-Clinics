@@ -106,7 +106,7 @@ export function Applications({ enrolments, courses }: { enrolments: Enrolment[];
                       <td className="px-2 text-right">
                         <div className="flex flex-col items-end gap-1">
                           {(e.status === 'APPLIED' || e.status === 'OFFERED') && (
-                            <button onClick={() => { if (confirm(`Email ${e.applicantName} an offer with a one-click accept & pay link?`)) act({ op: 'makeOffer', id: e.id, expiresInDays: 14 }); }} className="rounded-full bg-[var(--color-gold)] px-3 py-1 text-xs font-medium text-white hover:bg-[var(--color-ink)]">
+                            <button onClick={() => { if (confirm(`Email ${e.applicantName} an offer with a one-click accept & pay link?`)) act({ op: 'makeOffer', id: e.id, expiresInDays: 14 }); }} className="rounded-full bg-[var(--color-gold-deep)] px-3 py-1 text-xs font-medium text-white hover:bg-[var(--color-ink)]">
                               {e.status === 'OFFERED' ? 'Resend offer' : 'Make offer'}
                             </button>
                           )}

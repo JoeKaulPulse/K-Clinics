@@ -88,7 +88,7 @@ export function DayClosePanel() {
 
         <button
           onClick={() => setOpen(true)}
-          className="mt-5 rounded-full bg-[var(--color-gold)] px-6 py-3 text-sm font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]"
+          className="mt-5 rounded-full bg-[var(--color-gold-deep)] px-6 py-3 text-sm font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]"
         >
           {closed ? 'Re-open close-down' : 'Begin close-down'}
         </button>

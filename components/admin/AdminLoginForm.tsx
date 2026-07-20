@@ -116,7 +116,7 @@ function Inner({ ssoEnabled }: { ssoEnabled: boolean }) {
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-full bg-[var(--color-gold)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60"
+        className="w-full rounded-full bg-[var(--color-gold-deep)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60"
       >
         {loading ? 'Signing in…' : twoFactor ? 'Verify & sign in' : 'Sign in to the CRM'}
       </button>

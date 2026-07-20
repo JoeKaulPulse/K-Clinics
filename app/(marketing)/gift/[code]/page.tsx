@@ -63,7 +63,7 @@ export default async function GiftCardViewPage({ params }: { params: Promise<{ c
                     {v!.balancePence !== v!.amountPence ? ` of ${money(v!.amountPence)}` : ''} · valid for 12 months · redeemable on any treatment.
                   </p>
                   <div className="mt-4 flex flex-wrap justify-center gap-3">
-                    <Link href={`/account/gift-cards?code=${clean}`} className="rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold)]">Add to your account</Link>
+                    <Link href={`/account/gift-cards?code=${clean}`} className="rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)]">Add to your account</Link>
                     <Link href="/book" className="rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium hover:bg-[var(--color-bone)]">Book a treatment</Link>
                   </div>
                 </>

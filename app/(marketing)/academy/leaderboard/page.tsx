@@ -40,7 +40,7 @@ export default async function ProgressPage() {
       {/* Your level + personal stats (private to this trainee) */}
       <Card className="grid gap-5 p-6 sm:grid-cols-[auto_1fr] sm:items-center">
         <div className="flex items-center gap-3">
-          <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--color-gold)] font-[family-name:var(--font-display)] text-2xl text-white">{lvl.level}</span>
+          <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--color-gold-deep)] font-[family-name:var(--font-display)] text-2xl text-white">{lvl.level}</span>
           <div>
             <p className="font-medium">{lvl.title}</p>
             <p className="text-xs text-[var(--color-stone)]">Level {lvl.level}{lvl.nextAt != null ? ` · ${(lvl.nextAt - standing.xp).toLocaleString()} XP to next` : ' · max level'}</p>
