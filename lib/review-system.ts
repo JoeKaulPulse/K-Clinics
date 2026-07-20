@@ -51,9 +51,19 @@ export async function ensureReviewRequest(bookingId: string) {
 export async function sendReviewRequest(reviewId: string, channel: 'EMAIL' | 'SMS' = 'EMAIL') {
   const review = await db.review.findUnique({
     where: { id: reviewId },
-    include: { client: { select: { firstName: true, email: true, phone: true } } },
+    include: { client: { select: { firstName: true, email: true, phone: true, marketingOptIn: true, unsubscribed: true, marketingConsentAt: true } } },
   });
   if (!review) return { ok: false, error: 'Not found' };
+
+  // BLD-891: a review invitation is a solicitation, not care mail — it now
+  // honours the same consent gate as every other marketing send (opt-in with
+  // recorded evidence, and never past an unsubscribe), on both channels.
+  // Triggered automatically on booking completion, so without this a client
+  // who unsubscribed kept getting review texts/emails.
+  const c = review.client;
+  if (!c.marketingOptIn || c.unsubscribed || !c.marketingConsentAt) {
+    return { ok: false, error: 'no-marketing-consent' };
+  }
 
   const link = reviewLink(review.token);
   const name = review.client.firstName;
