@@ -2282,6 +2282,27 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'The charge.refunded reconcile block was nested inside a giftCardCode check, so an ordinary order refunded in the Stripe dashboard stayed PAID/FULFILLED forever with stock never restored; and any partial refund on a gift-card order was treated as full, over-crediting the card.',
     notes: ['Fix: every PI-matched order reconciles on a dashboard refund (status, restock, audit); the flip + gift-card credit only happen once Stripe\'s cumulative amount_refunded covers the whole card charge, and a partial is logged for staff to finish via Mark refunded. Cumulative per-order refund tracking (Order.refundedPence) arrives with BLD-767 in PR #1574 and can unify this with the delta pattern then.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: "ConsultationNote.body stored in plaintext, bypassing the app's clinical-encryption pattern", type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1643),
+    value: 7, effort: 3,
+    detail: 'Staff team notes on consultations (free-text, can hold clinical detail) were written unencrypted, unlike every structurally equivalent field (medicalNotes, allergies, clinicalNoteEnc).',
+    notes: ['Fix: encClinical at write; reads (consultation page + SAR export under the clinical gate) decrypt with legacy-plaintext tolerance; the daily self-healing backfill now covers the field, with its done-flag bumped to v2 so the already-set production flag cannot skip the new column.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Meta descriptions hard-truncated mid-word/mid-sentence across ~31 treatment pages', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1643),
+    value: 7, effort: 3,
+    detail: 'Most imported treatment metaDescriptions were cut at ~155-157 chars mid-word (live snippets ending "...easy and efficien"), also feeding JSON-LD Service.description.',
+    notes: ['Fix: 26 of 34 rewritten as complete 120-155-char sentences built from each entry\'s own content (treatment name + primary benefit, UK spelling); 8 already clean. Two clean-but-long ones (permanent-makeup-removal 182ch, microcurrent 159ch) left as-is - they end properly; shorten under a follow-up if wanted.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Add Sentry error capture to booking and payment API routes missing it', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1643),
+    value: 9, effort: 4,
+    detail: 'Nearly all API routes caught their own errors and returned JSON without captureException, so onRequestError never saw them - only ~6 routes reported to Sentry.',
+    notes: ['Fix: 17 catch sites across 12 booking/payment routes now report, tagged by route/stage - including the fully-silent BNPL link create, POS session create, shop payment verification, and the admin-orders refund/restock/gift-card paths. Deliberate exclusions (4xx validation, designed degradation, client-input Stripe lookups that would spam on probes) documented on the PR.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
