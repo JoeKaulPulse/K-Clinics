@@ -67,6 +67,10 @@ async function journalCards(): Promise<{ slug: string; updated: Date }[]> {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // PRJ-939.14: only list /shop while there is something to sell.
+  const shopEntries = await shopProducts();
+  const shopLive = shopEntries.length > 0;
+
   const reviewed = CONTENT_REVIEWED;
   const base = site.url;
   // BLD-839: dentistry treatment pages render noindex (app/(marketing)/[slug]/page.tsx,
@@ -87,7 +91,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: '/packages', priority: 0.8, freq: 'monthly' },
     { path: '/pricing', priority: 0.8, freq: 'monthly' },
     { path: '/offers', priority: 0.7, freq: 'weekly' },
-    { path: '/shop', priority: 0.7, freq: 'weekly' },
+    ...(shopLive ? [{ path: '/shop', priority: 0.7, freq: 'weekly' as const }] : []),
     { path: '/gallery', priority: 0.6, freq: 'monthly' },
     { path: '/finance', priority: 0.6, freq: 'monthly' },
     { path: '/academy', priority: 0.8, freq: 'weekly' },
@@ -153,7 +157,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly' as const,
       priority: 0.6,
     })),
-    ...(await shopProducts()).map((p) => ({
+    ...shopEntries.map((p) => ({
       url: `${base}/shop/${p.slug}`,
       lastModified: p.updated,
       changeFrequency: 'weekly' as const,

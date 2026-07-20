@@ -135,16 +135,20 @@ export async function syncStaffCalendar(staffId: string, days = 60): Promise<{ o
   return { ok: true, imported };
 }
 
-/** Sync every connected clinician (used by cron + manual trigger). */
-export async function syncAllCalendars(): Promise<{ ok: boolean; staff: number; imported: number }> {
-  if (!googleConfigured()) return { ok: false, staff: 0, imported: 0 };
+/** Sync every connected clinician (used by cron + manual trigger). PRJ-918.8:
+ *  per-staff failures are counted and surfaced (ok flips false) instead of
+ *  being discarded — a clinician whose token expired silently stopped syncing. */
+export async function syncAllCalendars(): Promise<{ ok: boolean; staff: number; imported: number; failed: number }> {
+  if (!googleConfigured()) return { ok: false, staff: 0, imported: 0, failed: 0 };
   const connected = await db.adminUser.findMany({ where: { googleRefreshToken: { not: null }, active: true }, select: { id: true } });
   let imported = 0;
+  let failed = 0;
   for (const s of connected) {
     const r = await syncStaffCalendar(s.id);
     imported += r.imported;
+    if (!r.ok) { failed++; console.error(`[google-calendar] sync failed for staff ${s.id}: ${r.error}`); }
   }
-  return { ok: true, staff: connected.length, imported };
+  return { ok: failed === 0, staff: connected.length, imported, failed };
 }
 
 // ── Outbound: write the clinic's bookings onto the clinician's calendar ──────

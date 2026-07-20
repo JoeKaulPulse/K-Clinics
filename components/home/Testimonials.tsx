@@ -47,7 +47,9 @@ export function Testimonials({ reviews, rating }: { reviews: TestimonialCard[]; 
         )}
       </div>
 
-      <div className="relative">
+      {/* min-w-0: without it this grid column keeps min-width:auto and the
+          quote overflows + clips on narrow viewports (BLD-919). */}
+      <div className="relative min-w-0">
         <span className="font-[family-name:var(--font-display)] text-[6rem] leading-none text-[var(--color-gold)]/40">“</span>
         <div className="relative min-h-[220px]">
           <AnimatePresence mode="wait">

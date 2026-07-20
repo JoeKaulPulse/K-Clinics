@@ -131,7 +131,6 @@ export default async function HomePage() {
                   to={c.grad[1]}
                   seed={idx * 2}
                   alt={c.title}
-                  priority
                   sizes="(max-width: 1024px) 100vw, 50vw"
                   className="absolute inset-0 -z-0 transition-transform duration-[1.6s] [transition-timing-function:var(--ease-lux)] group-hover:scale-105"
                 />

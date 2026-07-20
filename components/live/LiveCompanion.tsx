@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { SESSION_STEPS, CLIENT_STAGE_COPY, type SessionStepKey } from '@/lib/appointment-session';
 import type { ClientLiveView } from '@/lib/appointment-session-server';
 import { CheckIcon } from '@/components/ui/session-icons';
+import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 import { ConsentSigner } from '@/components/consent/ConsentSigner';
 
 // BLD-138 v2 — the client's phone companion. A dark, jewel-box page that
@@ -105,10 +106,16 @@ export function LiveCompanion({ token, firstName, treatmentTitle, startAt, durat
 
       <div className="relative mx-auto flex min-h-dvh max-w-md flex-col px-6 pb-10 pt-8">
         {/* Brand */}
-        <header className="text-center">
-          <p className="font-[family-name:var(--font-display)] text-xl tracking-wide">KClinics</p>
-          <p className="mt-1 text-[11px] uppercase tracking-[0.3em] text-[#9a8f80]">Your visit · live</p>
+        {/* BLD-805/BLD-758: the real logo marks, never typed text, and no
+            strap-line beneath them (docs/BRAND_GUIDELINES.md) — same pattern
+            as KioskShell. The page descriptor moves away from the mark. */}
+        <header className="flex flex-col items-center text-center">
+          <span className="inline-flex items-center gap-2" aria-label="KClinics">
+            <span className="block h-6 w-4"><KMark /></span>
+            <span className="block h-[0.6rem] w-[6.5rem]"><ClinicsWordmark /></span>
+          </span>
         </header>
+        <p className="mt-6 text-center text-[11px] uppercase tracking-[0.3em] text-[#9a8f80]">Your visit · live</p>
 
         {/* Current stage — the breathing centrepiece */}
         <section className="mt-10 text-center" aria-live="polite">

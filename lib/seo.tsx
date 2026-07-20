@@ -169,7 +169,11 @@ export function serviceLd({
 }) {
   const proc: Record<string, unknown> = {
     '@context': 'https://schema.org',
-    '@type': category === 'dentistry' ? 'Dentistry' : 'MedicalProcedure',
+    // BLD-876: Dentistry is a MedicalSpecialty enum member, not an instantiable
+    // type — the entity is always a MedicalProcedure, with the specialty carried
+    // on relevantSpecialty where it applies.
+    '@type': 'MedicalProcedure',
+    ...(category === 'dentistry' ? { relevantSpecialty: 'https://schema.org/Dentistry' } : {}),
     name,
     description,
     url: `${base}${path}`,

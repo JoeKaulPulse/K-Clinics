@@ -115,10 +115,14 @@ export async function verifyTurnstile(token: string | undefined, req: Request): 
   if (!token) return false;
   try {
     const body = new URLSearchParams({ secret: process.env.TURNSTILE_SECRET_KEY!, response: token, remoteip: clientIp(req) });
-    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body });
+    // PRJ-939.12: cap the Cloudflare round-trip — a hung verify used to stall
+    // every gated form for the whole request budget, silently.
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body, signal: AbortSignal.timeout(8_000) });
     const j = await res.json();
     return Boolean(j.success);
-  } catch {
+  } catch (e) {
+    console.error('[turnstile] verify failed:', (e as Error)?.message);
+    try { const Sentry = await import('@sentry/nextjs'); Sentry.captureMessage('[turnstile] verify failed', { level: 'warning', tags: { area: 'turnstile' } }); } catch { /* best-effort */ }
     return false;
   }
 }
