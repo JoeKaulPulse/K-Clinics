@@ -64,6 +64,8 @@ export function DeviceManager({ devices, providers, rooms = [] }: { devices: Dev
                 </select>
               </label>
               <label className="text-xs text-[var(--color-stone)]">Provider device ID<input className={`${f} mt-1`} value={form.externalId} onChange={(e) => set('externalId', e.target.value)} placeholder="POI / terminal id" /></label>
+              {/* BLD-908: registering a device is not enough — the provider needs API credentials before payments work. */}
+              <p className="text-[0.65rem] text-[var(--color-stone)] sm:col-span-2">A registered terminal only appears at checkout once its provider&rsquo;s API credentials are set (e.g. Tyl needs TYL_API_KEY and TYL_MERCHANT_ID in the server environment). Until then, take payment by link or the card on file.</p>
             </>)}
             {form.kind === 'DISPLAY' && (
               <label className="text-xs text-[var(--color-stone)] sm:col-span-2">Treatment room (for a room-status display)

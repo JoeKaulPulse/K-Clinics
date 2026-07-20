@@ -107,8 +107,14 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
   const initialSnapshot = b.liveSession ? await sessionSnapshot(b.id) : null;
 
   // Unified payment capture (BLD-196): the card already on file, plus any
-  // active registered card terminals (BLD-195) for in-person taps.
-  const terminals = await db.device.findMany({ where: { kind: 'TERMINAL', active: true }, orderBy: { name: 'asc' }, select: { id: true, name: true } }).catch(() => []);
+  // active registered card terminals (BLD-195) for in-person taps. BLD-908:
+  // only offered when a provider actually has credentials — a registered
+  // device with an unconfigured provider made the Terminal tab a guaranteed
+  // mid-checkout dead end.
+  const { anyTerminalConfigured } = await import('@/lib/terminal');
+  const terminals = anyTerminalConfigured()
+    ? await db.device.findMany({ where: { kind: 'TERMINAL', active: true }, orderBy: { name: 'asc' }, select: { id: true, name: true } }).catch(() => [])
+    : [];
 
   const { refreshmentLabel } = await import('@/lib/hospitality');
 
