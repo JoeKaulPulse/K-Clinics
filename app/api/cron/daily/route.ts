@@ -75,25 +75,32 @@ export async function GET(req: Request) {
 
   // Refresh Google Calendar busy-times for connected clinicians (no-op if Google
   // isn't configured / nobody connected).
-  let gcal = { ok: false, staff: 0, imported: 0 };
+  // PRJ-918.8: sync failures are counted (driving the existing Sentry/webhook/
+  // 500 alerting) instead of silently reading as success — the cron still
+  // continues either way.
+  let gcal = { ok: false, staff: 0, imported: 0, failed: 0 };
   try {
     const { googleEnabled, syncAllCalendars, redactFutureClinicianEvents } = await import('@/lib/google-calendar');
     if (googleEnabled()) {
       gcal = await syncAllCalendars(); // parked while on Hostinger
+      if (gcal.failed > 0) { failures++; console.error(`[cron] gcal sync: ${gcal.failed} clinician calendar(s) failed`); }
       // One-time: strip clinical titles/contact details from already-pushed
       // future events (PRJ-939.6). Self-disables via a Settings key.
       await redactFutureClinicianEvents();
     }
-  } catch {
-    /* never fail the cron on a calendar sync issue */
+  } catch (e) {
+    failures++; console.error('[cron] gcal sync failed (continuing):', (e as Error)?.message);
   }
   // Import the latest Google Business reviews (no-op until connected).
   let gbiz = { ok: false, imported: 0 };
   try {
     const { googleBusinessConnected, syncGoogleReviews } = await import('@/lib/google-business');
-    if (await googleBusinessConnected()) gbiz = await syncGoogleReviews();
-  } catch {
-    /* never fail the cron on a review sync issue */
+    if (await googleBusinessConnected()) {
+      gbiz = await syncGoogleReviews();
+      if (!gbiz.ok) { failures++; console.error('[cron] google reviews sync reported failure'); }
+    }
+  } catch (e) {
+    failures++; console.error('[cron] google reviews sync failed (continuing):', (e as Error)?.message);
   }
   // Behaviour-analytics retention: prune old session replays (90d) and heatmap
   // points (180d) so storage stays bounded and we hold data no longer than needed.
@@ -260,7 +267,7 @@ export async function GET(req: Request) {
   try {
     const { runRenewalReminders } = await import('@/lib/renewals');
     await runRenewalReminders();
-  } catch (e) { console.error('[cron] renewal reminders failed (continuing):', (e as Error)?.message); }
+  } catch (e) { failures++; console.error('[cron] renewal reminders failed (continuing):', (e as Error)?.message); } // BLD-907: counted so the existing Sentry/webhook/500 alerting fires
 
   // BLD-537: daily community digest to staff (new threads, replies, unanswered).
   let communityDigest = { sent: false, threads: 0, posts: 0 };
