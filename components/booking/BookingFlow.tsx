@@ -220,7 +220,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
               {welcome && <p className="mt-2 text-sm text-[var(--color-gold-deep)]">✦ Your 15% welcome offer will be applied automatically.</p>}
               <div className="mt-6 grid max-h-[26rem] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
                 {catalogue.map((s) => (
-                  <button key={s.id} type="button" onClick={() => { setServiceId(s.id); setVariantId(''); setSessions(1); setAddOns(new Set()); setStage('variant'); }}
+                  <button key={s.id} type="button" aria-pressed={serviceId === s.id} onClick={() => { setServiceId(s.id); setVariantId(''); setSessions(1); setAddOns(new Set()); setStage('variant'); }}
                     className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border p-4 text-left transition-all ${serviceId === s.id ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                     <span>
                       <span className="block font-[family-name:var(--font-display)] text-base leading-tight">{s.name}</span>
@@ -247,7 +247,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                 {service.variants.map((v) => {
                   const pp = primaryPrice(v);
                   return (
-                    <button key={v.id} type="button" onClick={() => { setVariantId(v.id); setSessions(1); }}
+                    <button key={v.id} type="button" aria-pressed={variantId === v.id} onClick={() => { setVariantId(v.id); setSessions(1); }}
                       className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border p-4 text-left transition-all ${variantId === v.id ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                       <span>
                         <span className="block text-sm font-medium">{v.name}</span>
@@ -265,9 +265,9 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                 <div className="mt-5">
                   <p className={label}>Single session or a course?</p>
                   <div className="flex flex-wrap gap-2">
-                    <button onClick={() => setSessions(1)} className={`rounded-full border px-4 py-2 text-sm ${sessions === 1 ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)]'}`}>Single · {money(primaryPrice(variant).price)}</button>
+                    <button onClick={() => setSessions(1)} aria-pressed={sessions === 1} className={`rounded-full border px-4 py-2 text-sm ${sessions === 1 ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)]'}`}>Single · {money(primaryPrice(variant).price)}</button>
                     {variant.courses.map((c) => (
-                      <button key={c.sessions} onClick={() => setSessions(c.sessions)} className={`rounded-full border px-4 py-2 text-sm ${sessions === c.sessions ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)]'}`}>
+                      <button key={c.sessions} onClick={() => setSessions(c.sessions)} aria-pressed={sessions === c.sessions} className={`rounded-full border px-4 py-2 text-sm ${sessions === c.sessions ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)]'}`}>
                         Course of {c.sessions} · {money(c.totalPence)}
                       </button>
                     ))}
@@ -289,7 +289,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                     <p className="mb-1.5 text-xs text-[var(--color-stone)]"><span className="text-[var(--color-gold)]">★</span> Popular days — you’ll likely be seen sooner</p>
                     <div className="flex flex-wrap gap-2">
                       {popularDays.map((d) => (
-                        <button key={d} type="button" onClick={() => setDate(d)} className={`rounded-full border px-3 py-2.5 text-sm transition-all ${date === d ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20'}`}>
+                        <button key={d} type="button" aria-pressed={date === d} onClick={() => setDate(d)} className={`rounded-full border px-3 py-2.5 text-sm transition-all ${date === d ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20'}`}>
                           {new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
                         </button>
                       ))}
@@ -320,7 +320,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                             const isPref = preferred.includes(s);
                             const selected = slot === s;
                             return (
-                              <button key={s} type="button" onClick={() => setSlot(s)} title={isPref ? 'Sooner-seen slot — fits neatly with the day’s other appointments' : undefined} className={`relative rounded-full border px-4 py-2.5 text-sm transition-all ${selected ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : isPref ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
+                              <button key={s} type="button" aria-pressed={selected} onClick={() => setSlot(s)} title={isPref ? 'Sooner-seen slot — fits neatly with the day’s other appointments' : undefined} className={`relative rounded-full border px-4 py-2.5 text-sm transition-all ${selected ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : isPref ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                                 {!selected && isPref && <span aria-hidden className="mr-1 text-[var(--color-gold)]">★</span>}
                                 {new Date(s).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
                               </button>
