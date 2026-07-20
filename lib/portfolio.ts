@@ -1,6 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db';
 import { currentTenantId } from '@/lib/tenant';
+import { PORTFOLIO_PHOTO_RELAY } from '@/lib/portfolio-blob';
 
 // ── BLD-534: learner portfolio ───────────────────────────────────────────────
 // A trainee's evidence log of practical case studies, reviewed by tutors.
@@ -15,20 +16,33 @@ export const TREATMENT_SUGGESTIONS = ['Anti-wrinkle injections', 'Dermal filler'
 export type PortfolioPhoto = { url: string; caption?: string; kind: 'before' | 'after' | 'other' };
 export type PortfolioEntryView = {
   id: string; title: string; treatmentType: string; treatmentDate: string | null; clientRef: string | null;
-  notes: string; photos: PortfolioPhoto[]; status: string; feedback: string | null;
+  notes: string; photos: PortfolioPhoto[]; status: string; feedback: string | null; consentAttestedAt: string | null;
   courseId: string | null; courseTitle: string | null; createdAt: string; updatedAt: string; reviewedAt: string | null;
 };
 
 const KIND = new Set(['before', 'after', 'other']);
+// BLD-740: new uploads land in the PRIVATE blob store; entries saved before
+// the switch still hold public-store URLs until the daily sweep re-homes them.
+const BLOB_HOST = /\.(public|private)\.blob\.vercel-storage\.com$/;
+/** Resolve a submitted photo URL to its stored form: an https Vercel-Blob URL.
+ *  Views render relay URLs (BLD-740), so an edit round-trips them back here —
+ *  unwrap `/api/academy/portfolio/photo?u=…` to the underlying blob URL. */
+function storedPhotoUrl(raw: string): string | null {
+  let u: URL;
+  try { u = new URL(raw, 'https://kclinics.co.uk'); } catch { return null; }
+  if (u.pathname === PORTFOLIO_PHOTO_RELAY) {
+    try { u = new URL(u.searchParams.get('u') || ''); } catch { return null; }
+  }
+  return u.protocol === 'https:' && BLOB_HOST.test(u.hostname) ? u.toString() : null;
+}
 /** Validate + normalise the photos array: only https Vercel-Blob URLs, capped. */
 function cleanPhotos(input: unknown): PortfolioPhoto[] {
   if (!Array.isArray(input)) return [];
   const out: PortfolioPhoto[] = [];
   for (const p of input.slice(0, 24)) {
-    const url = typeof (p as { url?: unknown })?.url === 'string' ? (p as { url: string }).url : '';
-    let host = '';
-    try { const u = new URL(url); if (u.protocol === 'https:') host = u.hostname; } catch { /* invalid */ }
-    if (!host.endsWith('.public.blob.vercel-storage.com')) continue;
+    const raw = typeof (p as { url?: unknown })?.url === 'string' ? (p as { url: string }).url : '';
+    const url = storedPhotoUrl(raw);
+    if (!url) continue;
     const kindRaw = (p as { kind?: unknown })?.kind;
     const kind = (typeof kindRaw === 'string' && KIND.has(kindRaw) ? kindRaw : 'other') as PortfolioPhoto['kind'];
     const captionRaw = (p as { caption?: unknown })?.caption;
@@ -40,19 +54,27 @@ function cleanPhotos(input: unknown): PortfolioPhoto[] {
 
 type Row = {
   id: string; title: string; treatmentType: string; treatmentDate: Date | null; clientRef: string | null;
-  notes: string; photos: unknown; status: string; feedback: string | null; courseId: string | null;
+  notes: string; photos: unknown; status: string; feedback: string | null; consentAttestedAt: Date | null; courseId: string | null;
   createdAt: Date; updatedAt: Date; reviewedAt: Date | null; course?: { title: string } | null;
 };
 const toView = (e: Row): PortfolioEntryView => ({
   id: e.id, title: e.title, treatmentType: e.treatmentType, treatmentDate: e.treatmentDate?.toISOString() ?? null, clientRef: e.clientRef,
-  notes: e.notes, photos: cleanPhotos(e.photos), status: e.status, feedback: e.feedback,
+  notes: e.notes,
+  // BLD-740: never hand a raw blob URL to the UI — every photo reads through
+  // the authenticated relay (owner trainee or signed-in staff only).
+  photos: cleanPhotos(e.photos).map((p) => ({ ...p, url: `${PORTFOLIO_PHOTO_RELAY}?u=${encodeURIComponent(p.url)}` })),
+  status: e.status, feedback: e.feedback, consentAttestedAt: e.consentAttestedAt?.toISOString() ?? null,
   courseId: e.courseId, courseTitle: e.course?.title ?? null, createdAt: e.createdAt.toISOString(), updatedAt: e.updatedAt.toISOString(), reviewedAt: e.reviewedAt?.toISOString() ?? null,
 });
 
 const str = (v: unknown) => (typeof v === 'string' ? v : '');
 const parseDate = (v: unknown): Date | null => { const s = str(v).trim(); if (!s) return null; const d = new Date(s); return Number.isNaN(d.getTime()) ? null : d; };
 
-export type EntryInput = { title: string; treatmentType: string; treatmentDate?: string; clientRef?: string; notes?: string; courseId?: string; photos?: unknown };
+export type EntryInput = { title: string; treatmentType: string; treatmentDate?: string; clientRef?: string; notes?: string; courseId?: string; photos?: unknown; consentPhotos?: unknown };
+
+// BLD-740: an entry carrying photos of a treatment subject is only saved with
+// the trainee's attestation that the subject consented to storage and review.
+const CONSENT_ERROR = 'Please tick the consent confirmation — an entry with photos can only be saved once you confirm the person photographed consented.';
 
 /** The signed-in trainee's own entries, newest first. */
 export async function listMyEntries(studentId: string): Promise<PortfolioEntryView[]> {
@@ -108,13 +130,15 @@ export async function createEntry(studentId: string, input: EntryInput): Promise
   const treatmentType = str(input.treatmentType).trim();
   if (title.length < 3) return { ok: false, error: 'Give the case a title.' };
   if (!treatmentType) return { ok: false, error: 'Choose a treatment type.' };
+  const photos = cleanPhotos(input.photos);
+  if (photos.length > 0 && input.consentPhotos !== true) return { ok: false, error: CONSENT_ERROR };
   const tenantId = await currentTenantId();
   const e = await db.portfolioEntry.create({
     data: {
       tenantId, studentId, title: title.slice(0, 160), treatmentType: treatmentType.slice(0, 80),
       treatmentDate: parseDate(input.treatmentDate), clientRef: str(input.clientRef).trim().slice(0, 80) || null,
       notes: str(input.notes).slice(0, 8000), courseId: await ownedCourseId(studentId, input.courseId),
-      photos: cleanPhotos(input.photos) as unknown as object, status: 'DRAFT',
+      photos: photos as unknown as object, consentAttestedAt: photos.length > 0 ? new Date() : null, status: 'DRAFT',
     },
   });
   return { ok: true, id: e.id };
@@ -129,12 +153,15 @@ export async function updateEntry(studentId: string, id: string, input: EntryInp
   const treatmentType = str(input.treatmentType).trim();
   if (title.length < 3) return { ok: false, error: 'Give the case a title.' };
   if (!treatmentType) return { ok: false, error: 'Choose a treatment type.' };
+  const photos = cleanPhotos(input.photos);
+  if (photos.length > 0 && input.consentPhotos !== true) return { ok: false, error: CONSENT_ERROR };
   await db.portfolioEntry.update({
     where: { id },
     data: {
       title: title.slice(0, 160), treatmentType: treatmentType.slice(0, 80), treatmentDate: parseDate(input.treatmentDate),
       clientRef: str(input.clientRef).trim().slice(0, 80) || null, notes: str(input.notes).slice(0, 8000),
-      courseId: await ownedCourseId(studentId, input.courseId), photos: cleanPhotos(input.photos) as unknown as object,
+      courseId: await ownedCourseId(studentId, input.courseId), photos: photos as unknown as object,
+      consentAttestedAt: photos.length > 0 ? new Date() : null,
     },
   });
   return { ok: true };
@@ -142,10 +169,13 @@ export async function updateEntry(studentId: string, id: string, input: EntryInp
 
 /** Submit an owned draft / revised entry for tutor review. */
 export async function submitEntry(studentId: string, id: string): Promise<{ ok: boolean; error?: string }> {
-  const e = await db.portfolioEntry.findFirst({ where: { id, studentId }, select: { id: true, status: true, photos: true } });
+  const e = await db.portfolioEntry.findFirst({ where: { id, studentId }, select: { id: true, status: true, photos: true, consentAttestedAt: true } });
   if (!e) return { ok: false, error: 'Not found.' };
   if (e.status === 'SUBMITTED') return { ok: true };
   if (e.status === 'APPROVED') return { ok: false, error: 'Already approved.' };
+  // BLD-740: a pre-attestation entry with photos can't go for review until the
+  // trainee edits it and ticks the consent confirmation.
+  if (!e.consentAttestedAt && cleanPhotos(e.photos).length > 0) return { ok: false, error: CONSENT_ERROR };
   await db.portfolioEntry.update({ where: { id }, data: { status: 'SUBMITTED' } });
   return { ok: true };
 }

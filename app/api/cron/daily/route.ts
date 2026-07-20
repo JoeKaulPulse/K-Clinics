@@ -186,6 +186,18 @@ export async function GET(req: Request) {
     failures++; console.error('[cron] clinical-encryption backfill failed (continuing):', (e as Error)?.message);
   }
 
+  // BLD-740: one-time re-home of legacy PUBLIC portfolio photos into the
+  // private blob store (bounded per run; self-disables via a Settings key once
+  // a pass finds nothing left). Failures count so the alerting fires.
+  let portfolioMigration = { ran: false, migrated: 0, failed: 0, complete: false };
+  try {
+    const { migratePortfolioPhotosIfNeeded } = await import('@/lib/portfolio-blob');
+    portfolioMigration = await migratePortfolioPhotosIfNeeded();
+    if (portfolioMigration.failed > 0) { failures++; console.error(`[cron] portfolio photo migration: ${portfolioMigration.failed} photo(s) failed`); }
+  } catch (e) {
+    failures++; console.error('[cron] portfolio photo migration failed (continuing):', (e as Error)?.message);
+  }
+
   // (ClinicOS Ring 0 academy-tenant backfill retired in Ring 1c — tenantId is now
   // NOT NULL, so no row can be tenant-less and there is nothing to backfill.)
 
@@ -305,7 +317,7 @@ export async function GET(req: Request) {
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, retention, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, examBank, gamification, authored, courseContent, communityDigest },
+    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, retention, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, portfolioMigration, examBank, gamification, authored, courseContent, communityDigest },
     { status: failures === 0 ? 200 : 500 },
   );
 }

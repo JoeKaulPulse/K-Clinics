@@ -16,7 +16,7 @@ export async function POST(req: Request) {
 
   const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const p = await import('@/lib/portfolio');
-  const input = { title: b.title, treatmentType: b.treatmentType, treatmentDate: b.treatmentDate, clientRef: b.clientRef, notes: b.notes, courseId: b.courseId, photos: b.photos } as Parameters<typeof p.createEntry>[1];
+  const input = { title: b.title, treatmentType: b.treatmentType, treatmentDate: b.treatmentDate, clientRef: b.clientRef, notes: b.notes, courseId: b.courseId, photos: b.photos, consentPhotos: b.consentPhotos } as Parameters<typeof p.createEntry>[1];
 
   switch (b.op) {
     case 'create': { const r = await p.createEntry(student.id, input); return NextResponse.json(r, { status: r.ok ? 200 : 400 }); }
