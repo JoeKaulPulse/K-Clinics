@@ -177,7 +177,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
   const stepIndex = Math.max(0, steps.findIndex((s) => s.key === stage));
 
   if (stage === 'done') return requested
-    ? <RequestReceived firstName={firstName} treatment={service?.name} slot={slot} />
+    ? <RequestReceived firstName={firstName} treatment={service?.name} slot={slot} orderTotal={orderTotal} variantId={variantId} category={service?.category} bookingId={bookingId} />
     : <Done firstName={firstName} treatment={service?.name} slot={slot} orderTotal={orderTotal} variantId={variantId} category={service?.category} bookingId={bookingId} />;
 
   return (
@@ -577,7 +577,17 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
   );
 }
 
-function RequestReceived({ firstName, treatment, slot }: { firstName: string; treatment?: string; slot: string }) {
+function RequestReceived({ firstName, treatment, slot, orderTotal, variantId, category, bookingId }: { firstName: string; treatment?: string; slot: string; orderTotal: number; variantId: string; category?: string; bookingId?: string }) {
+  useEffect(() => {
+    // BLD-873: a same-day request is a placed booking pending approval — fire
+    // the same browser conversion Done does, deduped with the server CAPI
+    // Schedule via the booking id (previously this outcome tracked nothing).
+    trackPurchase({
+      valuePence: orderTotal,
+      eventId: bookingId || undefined,
+      detail: { items: [{ item_id: variantId, item_name: treatment, item_category: category }] },
+    });
+  }, []);
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-10 text-center md:p-16">
       <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-full bg-[var(--color-gold)] text-white">
