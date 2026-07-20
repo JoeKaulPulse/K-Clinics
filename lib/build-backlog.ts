@@ -2177,6 +2177,55 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'POS QR sales are paid via a Stripe Checkout Session; the webhook finalised by metadata.orderId but nothing wrote order.stripePaymentIntentId, so the orders route Mark refunded restocked, credited any gift card and flipped to REFUNDED while its Stripe refund leg was silently skipped. Found by the BLD-882 adversarial review.',
     notes: ['Fix: the shop_order webhook finalisation now records pi.id on the order (guarded, first writer wins). Pre-existing POS card orders still lack a PI -- refund those directly in Stripe.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'SAR export leaks clinical data to non-clinical staff and omits other clinical fields', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1639),
+    value: 8, effort: 3,
+    detail: 'app/api/admin/clients/[id]/export/route.ts decrypted medicalFlag/allergies/consultation concerns/medicalNotes/allergyNote/CLINICAL interactions/call transcripts for any clients.export holder; only assessments and photos were gated. The export also omitted ConsultationNote entirely and shipped Booking.clinicalNoteEnc as raw ciphertext.',
+    notes: ['Fix: all clinical free-text decrypts only under clients.clinical.view; a non-clinical export carries an explicit clinicalDataWithheld notice and the audit line records the withholding. Consultation staff notes now included; the clinical note decrypts under the gate and the cipher never leaves the server. Folds in the BLD-701 transcript gating pending on PR #1574 (that PR can drop its export-route hunk at its next rebase).'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Stripe webhook sub-handlers swallow financial reconciliation errors, invisible to Sentry', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1639),
+    value: 8, effort: 3,
+    detail: 'Order finalization, gift-voucher confirmation, gift-card re-credits, restock and refund reconciliation each ran in an inner try/catch that only console.error-ed -- the outer Sentry capture never fired for them, so a transient failure left a paid order un-finalized or a refund un-reconciled with zero alerting.',
+    notes: ['Fix: Sentry.captureException in all seven inner catches, tagged area:stripe-webhook + a sub tag per path (order-finalize, voucher-confirm, giftcard-recredit-failed-payment, order-restock, giftcard-recredit-refund, voucher-purchase-refund-debit, enrolment-refund-reconcile).'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Google Calendar cancellation desync -- delete failures swallowed silently, event stays live', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1639),
+    value: 8, effort: 3,
+    detail: 'removeBookingFromClinician wrapped the Calendar DELETE in .catch(()=>{}) then unconditionally cleared googleEventId and reported success -- a cancelled appointment could stay live on the clinician calendar with no record the sync failed.',
+    notes: ['Fix: googleEventId clears only when Google confirms the event is gone (2xx, or 404/410 already-deleted); failures console.error + Sentry.captureException (area:google-calendar) and keep the id so the desync is visible and retryable.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Academy payment finalization is non-atomic -- student can pay and stay locked out', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1639),
+    value: 8, effort: 3,
+    detail: 'finalizeEnrolmentPayment claimed the payment row (PENDING->PAID) then called applyPaidPayment as a separate write; a crash between the two left the payment PAID with the enrolment never advanced, and the redelivery branch treated already-claimed as already-applied so it could never self-heal.',
+    notes: ['Fix: claim + applyPaidPayment now run in one db.$transaction (applyPaidPayment accepts a transaction client) -- PAID implies the enrolment advanced. Notifications/receipt/audit stay outside the transaction as best-effort.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'K Vision signup always fails validation -- the Get My Plan account gate is unpassable for new users', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1639),
+    value: 9, effort: 2,
+    detail: 'components/ai/KVision.tsx AuthStep posts firstName/email/password but clientSignupSchema requires lastName, phone, dob and consent:true -- every signup from the flagship AI flow 422d (verified live). Found while implementing BLD-870: there were no conversions to track because the flow could not convert.',
+    notes: ['Fix: a kvision-scoped schema (source:"kvision" selects it in the signup route) accepts the designed name+email+password shape -- those fields are optional in SignupInput and the DB -- and the auth step gains a "By continuing you agree to our terms and privacy policy" line.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: "K Vision AI 'Get My Plan' lead flow fires zero conversion-tracking events", type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1639),
+    value: 8, effort: 3,
+    detail: 'The flagship homepage lead-gen mechanic gated the AI plan behind account creation but fired no trackLead/sendLead anywhere -- invisible to GA4/Meta, so ad platforms could not optimise toward it and funnel reporting undercounted leads.',
+    notes: ['Fix: successful K Vision signups fire trackLead (browser) and sendLead (GA4 + Meta CAPI, server) exactly like /api/consult, deduped via a shared eventId. No hashed email is sent -- the surface has no marketing opt-in. Shipped together with the BLD-928 signup fix that made the flow convertible at all.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: '--color-blush used as readable text fails WCAG contrast (1.69:1) across 20+ files', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1639),
+    value: 8, effort: 3,
+    detail: 'text-[var(--color-blush)] (#cdb4a3, 1.69:1 on porcelain / 1.56:1 on bone, needs 4.5:1) rendered error/status/delete-link text on light surfaces across the admin, academy, portal, shop and marketing forms.',
+    notes: ['Fix: 201 occurrences across 100 files swapped to --color-blush-deep (#8b4a4a, 5.68:1; dark-mode variant #e98a8a), the same mechanical pattern as the gold->gold-deep sweep; bg tints/borders untouched. Deliberately left: 24 kiosk usages (hard-coded dark shell, blush passes at 7.77:1 there) and NewsletterForm (renders only inside dark ink surfaces -- the audit named it from a context-free grep).'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
