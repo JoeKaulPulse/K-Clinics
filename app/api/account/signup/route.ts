@@ -27,7 +27,10 @@ export async function POST(req: Request) {
 
   try {
     const { signupClient } = await import('@/lib/client-auth');
-    const result = await signupClient({ ...parsed.data, ip: clientIp(req) });
+    // BLD-734 (owner, 20 Jul): the K Vision signup is passwordless — the account
+    // is created as a guest so the plan reveals on a live session with no
+    // password invented on the spot; a sign-in link is emailed below for later.
+    const result = await signupClient({ ...parsed.data, ...(isKVision ? { guest: true } : {}), ip: clientIp(req) });
     // BLD-870: the K Vision "Get my plan" flow is a lead-gen mechanic — fire the
     // server-side Lead (GA4 + Meta CAPI) like /api/consult does, deduped with
     // the browser pixel via the shared eventId. No hashed email: this signup
@@ -38,6 +41,24 @@ export async function POST(req: Request) {
         const eventId = (parsed.data as { eventId?: string }).eventId || globalThis.crypto.randomUUID();
         await sendLead({ eventId, email: null, sourceUrl: req.headers.get('referer') });
       } catch { /* best-effort */ }
+      // BLD-734: email the passwordless account a one-tap sign-in link so they
+      // can return without a password (same claim path as guest bookings,
+      // BLD-550). Best-effort — the plan is already visible on the live session.
+      try {
+        const { db } = await import('@/lib/db');
+        const { createAccountInvite } = await import('@/lib/client-auth');
+        const c = await db.client.findUnique({ where: { email: parsed.data.email.trim().toLowerCase() }, select: { id: true, firstName: true, email: true } });
+        if (c) {
+          const token = await createAccountInvite(c.id);
+          if (token) {
+            const { site } = await import('@/lib/site');
+            const base = process.env.NEXT_PUBLIC_SITE_URL || site.url;
+            const activateUrl = `${base}/account/activate?token=${token}&id=${c.id}`;
+            const { sendEmail, tmplPortalInvite } = await import('@/lib/email');
+            await sendEmail({ to: c.email, subject: 'Your KClinics plan & account link', html: tmplPortalInvite(c.firstName, activateUrl) });
+          }
+        }
+      } catch (e) { console.error('[account/signup] kvision invite email failed (continuing):', (e as Error)?.message); }
     }
     return NextResponse.json(result, { status: result.ok ? 200 : 409 });
   } catch (err) {

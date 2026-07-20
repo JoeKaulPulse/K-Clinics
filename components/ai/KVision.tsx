@@ -391,9 +391,10 @@ function AuthStep({ onDone, onError, onBack }: { onDone: (firstName?: string) =>
     busyRef.current = true;
     setBusy(true); onError('');
     const url = mode === 'signup' ? '/api/account/signup' : '/api/account/login';
-    // BLD-928: source:'kvision' selects the relaxed signup schema server-side —
-    // this surface deliberately asks only name + email + password.
-    const body = mode === 'signup' ? { firstName: f.firstName, email: f.email, password: f.password, locale: 'en', company: f.company, source: 'kvision', eventId: eventIdRef.current || undefined } : { email: f.email, password: f.password };
+    // BLD-928 + BLD-734: source:'kvision' selects the relaxed, PASSWORDLESS
+    // signup schema server-side — name + email only, no password. Login mode
+    // still takes a password for the minority who set one via their emailed link.
+    const body = mode === 'signup' ? { firstName: f.firstName, email: f.email, locale: 'en', company: f.company, source: 'kvision', eventId: eventIdRef.current || undefined } : { email: f.email, password: f.password };
     try {
       const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const j = await res.json();
@@ -408,17 +409,18 @@ function AuthStep({ onDone, onError, onBack }: { onDone: (firstName?: string) =>
   return (
     <motion.div {...fade} className="mx-auto max-w-md">
       <button onClick={onBack} className="mb-5 text-sm text-[#cdbfae] hover:text-[#f4ece1]">← Back to photos</button>
-      <Heading kicker="Your plan is ready" title={mode === 'signup' ? 'Create your free account to reveal it' : 'Welcome back — sign in to reveal it'} />
-      <p className="mt-3 text-sm text-[#cdbfae]">{mode === 'signup' ? 'Create a free account to see your personalised plan, keep it private, and unlock 15% off your first visit.' : 'Sign in to reveal your personalised plan.'}</p>
+      <Heading kicker="Your plan is ready" title={mode === 'signup' ? 'Enter your email to reveal it' : 'Welcome back — sign in to reveal it'} />
+      <p className="mt-3 text-sm text-[#cdbfae]">{mode === 'signup' ? 'No password to set up — we’ll show your personalised plan now and email you a one-tap link to get back in, plus 15% off your first visit.' : 'Sign in to reveal your personalised plan.'}</p>
       <div className="mt-6 space-y-3">
         {mode === 'signup' && <input className={input} aria-label="First name" autoComplete="given-name" placeholder="First name" value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} />}
         <input className={input} type="email" aria-label="Email" autoComplete="email" placeholder="Email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
-        <input className={input} type="password" aria-label="Password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} placeholder={mode === 'signup' ? 'Password (8+ characters)' : 'Password'} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />
+        {/* BLD-734: signup is passwordless (email-only) — password field shows in login mode only. */}
+        {mode === 'login' && <input className={input} type="password" aria-label="Password" autoComplete="current-password" placeholder="Password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />}
         <input type="text" tabIndex={-1} className="absolute -left-[9999px]" value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} aria-hidden />
       </div>
       <div className="mt-6 flex items-center justify-between gap-4">
-        <button onClick={() => setMode(mode === 'signup' ? 'login' : 'signup')} className="text-sm text-[#cdbfae] hover:text-[#f4ece1]">{mode === 'signup' ? 'Have an account? Sign in' : 'New here? Create one'}</button>
-        <button onClick={() => go()} disabled={busy} className="rounded-full bg-[var(--color-gold,#c8a96a)] px-6 py-3 text-sm font-medium text-[#0c0b0a] disabled:opacity-50">{busy ? 'Please wait…' : mode === 'signup' ? 'Create & continue' : 'Sign in'}</button>
+        <button onClick={() => setMode(mode === 'signup' ? 'login' : 'signup')} className="text-sm text-[#cdbfae] hover:text-[#f4ece1]">{mode === 'signup' ? 'Have a password? Sign in' : 'New here? Continue with email'}</button>
+        <button onClick={() => go()} disabled={busy} className="rounded-full bg-[var(--color-gold,#c8a96a)] px-6 py-3 text-sm font-medium text-[#0c0b0a] disabled:opacity-50">{busy ? 'Please wait…' : mode === 'signup' ? 'Reveal my plan' : 'Sign in'}</button>
       </div>
       {mode === 'signup' && (
         <p className="mt-4 text-xs text-[#9a8f80]">
