@@ -429,7 +429,11 @@ export async function refundEnrolmentPayment(paymentId: string, staffEmail?: str
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Refund failed at Stripe.' };
   }
-  const claimed = await db.enrolmentPayment.updateMany({ where: { id: p.id, state: 'PAID' }, data: { state: 'REFUNDED' } });
+  // BLD-869: stamp the refundedPence watermark here too, so the webhook's
+  // charge.refunded echo of THIS refund computes a zero delta instead of
+  // decrementing paidPence a second time (its metadata carries paymentId, not
+  // bookingId/orderId, so the originatedInApp skip doesn't catch it).
+  const claimed = await db.enrolmentPayment.updateMany({ where: { id: p.id, state: 'PAID' }, data: { state: 'REFUNDED', refundedPence: p.amountPence } });
   if (claimed.count === 0) return { ok: true };
   await db.enrolment.update({ where: { id: p.enrolmentId }, data: { paidPence: { decrement: p.amountPence } } }).catch(() => {});
   await logAudit({
@@ -450,22 +454,44 @@ export async function refundEnrolmentPayment(paymentId: string, staffEmail?: str
  *  request/admin context, so the audit entry is attributed to the webhook
  *  itself. Idempotent via the PAID → REFUNDED CAS: a redelivered webhook event,
  *  or one that arrives after an in-app refund already completed, is a no-op. */
-export async function reconcileEnrolmentPaymentRefund(piId: string): Promise<void> {
-  const payment = await db.enrolmentPayment.findFirst({
-    where: { stripePaymentIntentId: piId, state: 'PAID' },
-    select: { id: true, enrolmentId: true, amountPence: true },
-  });
-  if (!payment) return;
-  const claimed = await db.enrolmentPayment.updateMany({ where: { id: payment.id, state: 'PAID' }, data: { state: 'REFUNDED' } });
-  if (claimed.count === 0) return; // lost the race — another caller already reconciled it
-  await db.enrolment.update({ where: { id: payment.enrolmentId }, data: { paidPence: { decrement: payment.amountPence } } }).catch(() => {});
-  await logAudit({
-    action: 'PAYMENT_REFUNDED',
-    actor: 'stripe-webhook',
-    enrolmentId: payment.enrolmentId,
-    summary: `Academy payment £${(payment.amountPence / 100).toFixed(2)} refunded via Stripe dashboard`,
-    meta: { paymentId: payment.id, amountPence: payment.amountPence, piId },
-  }).catch(() => {});
+export async function reconcileEnrolmentPaymentRefund(piId: string, totalRefundedPence?: number): Promise<void> {
+  // BLD-869: delta-aware — a partial dashboard refund used to be dropped
+  // entirely (the webhook only called this once a charge was FULLY refunded),
+  // and a full one reversed the whole amountPence in one shot with no
+  // watermark. Now Stripe's cumulative amount_refunded is CAS-tracked on
+  // refundedPence (mirroring Booking/GiftVoucher), each call reconciles only
+  // the unrecorded delta, and the row flips to REFUNDED only once the whole
+  // payment is back. Legacy callers that pass no amount reconcile in full.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const payment = await db.enrolmentPayment.findFirst({
+      where: { stripePaymentIntentId: piId, state: { in: ['PAID', 'REFUNDED'] } },
+      select: { id: true, enrolmentId: true, amountPence: true, refundedPence: true, state: true },
+    });
+    if (!payment) return;
+    // Legacy guard: rows refunded before the watermark existed are REFUNDED
+    // with refundedPence=0 and already had paidPence fully reversed — a late
+    // webhook redelivery must not reverse them again.
+    if (payment.state === 'REFUNDED' && (payment.refundedPence ?? 0) === 0) return;
+    const target = Math.min(payment.amountPence, totalRefundedPence ?? payment.amountPence);
+    const delta = target - (payment.refundedPence ?? 0);
+    if (delta <= 0) return; // already reconciled to (or past) this watermark
+    const fully = target >= payment.amountPence;
+    const claimed = await db.enrolmentPayment.updateMany({
+      where: { id: payment.id, refundedPence: payment.refundedPence },
+      data: { refundedPence: target, ...(fully ? { state: 'REFUNDED' } : {}) },
+    });
+    if (claimed.count === 0) continue; // lost the race — re-read and retry
+    await db.enrolment.update({ where: { id: payment.enrolmentId }, data: { paidPence: { decrement: delta } } }).catch(() => {});
+    await logAudit({
+      action: 'PAYMENT_REFUNDED',
+      actor: 'stripe-webhook',
+      enrolmentId: payment.enrolmentId,
+      summary: `Academy payment refund £${(delta / 100).toFixed(2)}${fully ? ' (full)' : ' (partial)'} reconciled from Stripe`,
+      meta: { paymentId: payment.id, deltaPence: delta, totalRefundedPence: target, piId },
+    }).catch(() => {});
+    return;
+  }
+  throw new Error(`enrolment refund CAS conflict persisted for PI ${piId} — deferring to Stripe redelivery`);
 }
 
 /** Delete a payment/instalment row. If it was PAID, roll back paidPence so the
