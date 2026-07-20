@@ -2303,6 +2303,13 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Nearly all API routes caught their own errors and returned JSON without captureException, so onRequestError never saw them - only ~6 routes reported to Sentry.',
     notes: ['Fix: 17 catch sites across 12 booking/payment routes now report, tagged by route/stage - including the fully-silent BNPL link create, POS session create, shop payment verification, and the admin-orders refund/restock/gift-card paths. Deliberate exclusions (4xx validation, designed degradation, client-input Stripe lookups that would spam on probes) documented on the PR.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Kiosk selfie photos are stored as public, unauthenticated URLs', type: 'IDEA', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1644),
+    value: 8, effort: 4,
+    detail: 'Face photos were stored access:public on Vercel Blob at a path built from the 10-char session token - viewable by anyone with the URL for up to 30 days, unlike every other clinical image in the platform.',
+    notes: ['Fix: uploads now access:private; a session-token-authenticated relay (photo-view, no-store) is the only read path; wire payloads carry relay URLs so no display component changed; AI analysis fetches via the shared private-blob helper with a legacy-public fallback until the 30-day cleanup purges pre-change blobs. Deploy-verified: relay refuses a bogus token with 404. Sign-off note: one manual kiosk happy-path pass on the storefront screen recommended.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
