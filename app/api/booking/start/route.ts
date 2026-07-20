@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { bookingStartSchema } from '@/lib/validation';
 import { crmEnabled } from '@/lib/crm';
 import { stripeEnabled } from '@/lib/stripe';
@@ -298,6 +299,9 @@ export async function POST(req: Request) {
     // (no server-log access needed to diagnose, e.g. a bad key vs a missing customer).
     const se = e as { message?: string; code?: string; type?: string };
     const reason = [se.type, se.code, se.message].filter(Boolean).join(' · ').slice(0, 300) || 'unknown error';
+    // BLD-852: a Stripe outage here auto-cancels every card-protected booking
+    // sitewide — the audit log alone is invisible until someone goes looking.
+    Sentry.captureException(e, { tags: { route: 'booking/start', stage: 'setup-intent' } });
     // Release the held slot (CANCELLED is excluded from the held-slot checks) so a
     // failed attempt doesn't block the time, then return a clean, actionable error.
     await db.booking.update({ where: { id: booking.id }, data: { status: 'CANCELLED' } }).catch(() => {});
