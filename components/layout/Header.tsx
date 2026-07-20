@@ -170,7 +170,7 @@ export function Header({ config }: { config: SiteConfig }) {
         </nav>
 
         <div className="hidden items-center gap-3 xl:flex">
-          <Link href="/shop" className={`text-sm font-medium transition-colors ${light ? 'text-[var(--color-porcelain)] hover:text-[var(--color-gold)]' : 'text-[var(--color-ink)] hover:text-[var(--color-gold-deep)]'}`}>Shop</Link>
+          {config.shopLive && <Link href="/shop" className={`text-sm font-medium transition-colors ${light ? 'text-[var(--color-porcelain)] hover:text-[var(--color-gold)]' : 'text-[var(--color-ink)] hover:text-[var(--color-gold-deep)]'}`}>Shop</Link>}
           <SiteSearch light={light} />
           <AccountMenu light={light} />
           <Button href={booking.path} size="md" variant={light ? 'gold' : 'ink'}>
@@ -190,7 +190,7 @@ export function Header({ config }: { config: SiteConfig }) {
             size="md"
             variant={light ? 'gold' : 'ink'}
             magnetic={false}
-            className="!gap-1.5 !px-4 !py-2 !text-sm"
+            className="!min-h-11 !gap-1.5 !px-4 !py-2 !text-sm"
           >
             Book <ArrowIcon className="h-3.5 w-3.5" />
           </Button>
@@ -362,11 +362,13 @@ export function Header({ config }: { config: SiteConfig }) {
                   </motion.div>
                 );
               })}
-              <div className="py-4">
-                <Link href="/shop" onClick={() => setMobile(false)} className="block font-[family-name:var(--font-display)] text-2xl">
-                  Shop
-                </Link>
-              </div>
+              {config.shopLive && (
+                <div className="py-4">
+                  <Link href="/shop" onClick={() => setMobile(false)} className="block font-[family-name:var(--font-display)] text-2xl">
+                    Shop
+                  </Link>
+                </div>
+              )}
             </nav>
             <div className="mt-8 flex flex-col gap-3">
               <Button href={booking.path} size="lg" className="w-full">
