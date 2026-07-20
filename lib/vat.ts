@@ -54,7 +54,9 @@ export async function getVatNote(): Promise<string> {
   try {
     const config = await getVatConfig();
     if (!config.registered) return '';
-    return config.inclusive ? 'All prices include VAT.' : 'All prices are shown exclusive of VAT.';
+    // PRJ-939.1: prices are always inclusive now — the exclusive wording would
+    // contradict what is actually charged.
+    return 'All prices include VAT.';
   } catch {
     return '';
   }
@@ -64,10 +66,12 @@ export function vatBreakdown(amountPence: number, cfg: VatConfig, cls: VatClass)
   const exempt = cls === 'EXEMPT' || cls === 'ZERO';
   const ratePct = cfg.registered && !exempt ? ratePctForClass(cls, cfg.defaultRatePct) : 0;
   if (ratePct <= 0) return { netPence: amountPence, vatPence: 0, grossPence: amountPence, ratePct: 0, applied: false, exempt: cfg.registered && exempt };
-  if (cfg.inclusive) {
-    const net = Math.round(amountPence / (1 + ratePct / 100));
-    return { netPence: net, vatPence: amountPence - net, grossPence: amountPence, ratePct, applied: true, exempt: false };
-  }
-  const vat = Math.round((amountPence * ratePct) / 100);
-  return { netPence: amountPence, vatPence: vat, grossPence: amountPence + vat, ratePct, applied: true, exempt: false };
+  // PRJ-939.1/BLD-847 (owner decision, 20 Jul): amounts are ALWAYS treated as
+  // VAT-inclusive. The old exclusive branch added VAT on top of the amount for
+  // reporting while every charge path charged the listed amount — so the books
+  // recorded VAT that was never collected. Customers pay exactly the listed
+  // price; the VAT portion is extracted from within it. cfg.inclusive is
+  // retained on the type for compatibility but no longer branches.
+  const net = Math.round(amountPence / (1 + ratePct / 100));
+  return { netPence: net, vatPence: amountPence - net, grossPence: amountPence, ratePct, applied: true, exempt: false };
 }
