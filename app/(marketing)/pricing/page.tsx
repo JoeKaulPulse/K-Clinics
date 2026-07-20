@@ -13,6 +13,7 @@ type PricedRow = { id: string; name: string; courses: { sessions: number; totalP
 type PricedService = { id: string; name: string; treatmentSlug: string; rows: PricedRow[] };
 import { OffersStrip } from '@/components/marketing/OffersStrip';
 import { pageMeta, JsonLd, breadcrumbLd, offerCatalogLd } from '@/lib/seo';
+import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
 
 // ISR: refresh hourly so admin price edits go live without a redeploy.
 export const revalidate = 3600;
@@ -173,6 +174,7 @@ export default async function PricingPage() {
 </p>
         </Reveal>
       </section>
+      <NewsletterCapture source="pricing" />
     </>
   );
 }

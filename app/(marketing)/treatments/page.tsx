@@ -7,6 +7,7 @@ import { aesthetics, groupByGroup } from '@/lib/treatments';
 import { withCardOverrides } from '@/lib/treatment-content';
 import { pageMeta, JsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 import { pageImage } from '@/lib/treatment-images';
+import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
 
 export const revalidate = 3600;
 
@@ -61,6 +62,7 @@ export default async function TreatmentsPage() {
           </div>
         </section>
       ))}
+      <NewsletterCapture source="treatments" />
     </>
   );
 }

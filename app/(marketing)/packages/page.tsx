@@ -72,7 +72,7 @@ export default function PackagesPage() {
       </section>
 
       {/* BLD-353: mid-page newsletter capture */}
-      <NewsletterCapture />
+      <NewsletterCapture source="packages" />
     </>
   );
 }

@@ -46,6 +46,15 @@ export function trackLead({ eventId, detail = {} }: { eventId?: string; detail?:
   meta('Lead', detail, eventId);
 }
 
+/** View item — a treatment/package/product detail view (top of funnel). GA4
+ *  `view_item` builds remarketing audiences; Meta `ViewContent` feeds ad
+ *  optimisation. Same consent gating as everything else here (BLD-842). */
+export function trackViewItem({ id, name, category, valuePence = 0 }: { id: string; name: string; category?: string; valuePence?: number }) {
+  const value = Math.max(0, valuePence) / 100;
+  ga4('view_item', { currency: 'GBP', value, items: [{ item_id: id, item_name: name, ...(category ? { item_category: category } : {}) }] });
+  meta('ViewContent', { content_ids: [id], content_name: name, content_type: 'product', ...(category ? { content_category: category } : {}), currency: 'GBP', value });
+}
+
 /** Purchase — a completed booking. GA4 `purchase`; on the Meta side a booking is
  *  pre-charge, so we fire `Schedule` (not `Purchase`): the actual Meta `Purchase`
  *  is sent server-side from `lib/conversions.ts` when the card is charged, deduped
