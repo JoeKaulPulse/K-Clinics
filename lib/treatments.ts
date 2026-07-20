@@ -42,6 +42,10 @@ export type Treatment = {
    *  is closed (e.g. the machine isn't in yet — "coming soon"). The page shows an
    *  enquiry CTA instead of Book, and the booking API rejects it. */
   onRequest?: boolean;
+  /** CSS object-position for the card photo (e.g. "70% 50%"), for source images
+   *  whose subject isn't centred and gets cropped onto plain background at the
+   *  card's aspect ratio. Defaults to centred. */
+  imagePosition?: string;
 };
 
 /** Audiences to hide from a client's *recommendations* given their gender.
@@ -250,6 +254,9 @@ export const treatments: Treatment[] = [
     ],
     related: ['rf-lifting', 'cosmetic-injections', 'hydraglow-facial'],
     gradient: ['#a98a6d', '#2a2420'],
+    // BLD-834: the model is framed right-of-centre in the source photo — a
+    // centred crop clips her face and shows plain background on the right.
+    imagePosition: '72% 50%',
   },
   {
     slug: 'rf-lifting',
@@ -325,6 +332,9 @@ export const treatments: Treatment[] = [
     ],
     related: ['face-treatments', 'cosmetic-injections'],
     gradient: ['#cdb4a3', '#c2a589'],
+    // BLD-834: the model is framed left-of-centre in the source photo — a
+    // centred crop leaves too much plain background on the right.
+    imagePosition: '42% 50%',
   },
   {
     slug: 'face-treatments',

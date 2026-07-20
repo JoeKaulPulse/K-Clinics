@@ -60,7 +60,7 @@ export function SiteSearch({ light }: { light?: boolean }) {
             <input
               ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search treatments, articles…"
               role="combobox" aria-label="Search site" aria-expanded={hits.length > 0} aria-autocomplete="list" aria-controls="site-search-listbox"
-              className="w-full rounded-[var(--radius-sm)] bg-[var(--color-bone)] px-3 py-2 text-sm text-[var(--color-ink)] outline-none"
+              className="w-full rounded-[var(--radius-sm)] bg-[var(--color-bone)] px-3 py-2 text-sm text-[var(--color-ink)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
             />
           </form>
           {hits.length > 0 ? (

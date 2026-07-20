@@ -111,6 +111,7 @@ function Card({ t, index }: { t: Treatment; index: number }) {
           alt={t.title}
           sizes="(max-width: 768px) 78vw, 28vw"
           className="h-full w-full transition-transform duration-[1.6s] [transition-timing-function:var(--ease-lux)] group-hover:scale-[1.07]"
+          objectPosition={t.imagePosition}
         />
         <span className="absolute left-5 top-5 rounded-full bg-black/25 px-3 py-1 text-[0.65rem] font-medium uppercase tracking-[0.18em] text-white/90 backdrop-blur-sm">
           {t.group}

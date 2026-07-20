@@ -18,6 +18,7 @@ export function MediaArt({
   className = '',
   sizes = '(max-width: 768px) 100vw, 50vw',
   priority = false,
+  objectPosition,
 }: {
   src: string | null;
   from: string;
@@ -27,6 +28,10 @@ export function MediaArt({
   className?: string;
   sizes?: string;
   priority?: boolean;
+  /** CSS object-position (e.g. "70% 50%"), for photos whose subject isn't
+   *  centred and gets cropped out at the card's aspect ratio. Defaults to
+   *  centred. */
+  objectPosition?: string;
 }) {
   if (src) {
     // `next/image fill` needs a positioned parent. Only add `relative` when the
@@ -42,6 +47,7 @@ export function MediaArt({
           sizes={sizes}
           priority={priority}
           className="object-cover"
+          style={objectPosition ? { objectPosition } : undefined}
         />
         {/* Subtle scrim so overlaid live text (never baked) stays legible. */}
         <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(42,36,32,0.28),transparent_45%)]" />

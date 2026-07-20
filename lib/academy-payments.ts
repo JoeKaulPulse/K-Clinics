@@ -201,6 +201,23 @@ export async function startEnrolmentPayment(studentId: string, enrolmentId: stri
   const { stripe, stripeEnabled } = await import('@/lib/stripe');
   if (!stripeEnabled) return { ok: false, error: 'Payments aren’t available right now.', status: 503 };
 
+  // BLD-762: a double-tap or slow-network retry on "Pay in full" must not mint a
+  // second live PaymentIntent for the same course fee. Reuse a still-open PENDING
+  // attempt for this exact kind+amount if one already exists.
+  const pending = await db.enrolmentPayment.findFirst({
+    where: { enrolmentId: e.id, kind, amountPence, state: 'PENDING' },
+    select: { id: true, stripePaymentIntentId: true },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (pending?.stripePaymentIntentId) {
+    try {
+      const existingPi = await stripe().paymentIntents.retrieve(pending.stripePaymentIntentId);
+      if (existingPi.client_secret && existingPi.status !== 'canceled' && existingPi.status !== 'succeeded') {
+        return { ok: true, clientSecret: existingPi.client_secret, paymentId: pending.id, amountPence };
+      }
+    } catch { /* Stripe lookup failed — fall through and start a fresh attempt */ }
+  }
+
   const payment = await db.enrolmentPayment.create({
     data: { tenantId: e.tenantId, enrolmentId: e.id, kind, amountPence, state: 'PENDING' },
     select: { id: true },
@@ -218,7 +235,10 @@ export async function startEnrolmentPayment(studentId: string, enrolmentId: stri
         receipt_email: e.applicantEmail || undefined,
         metadata: { kind: 'enrolment', enrolmentId: e.id, paymentId: payment.id },
       },
-      { idempotencyKey: `enrol-pay-${payment.id}` },
+      // Stable across concurrent requests for the same kind+amount (unlike the old
+      // key derived from the freshly-created row id), so a race that slips past the
+      // PENDING check above still collapses to one PaymentIntent at Stripe.
+      { idempotencyKey: `enrol-pay-${e.id}-${kind}-${amountPence}` },
     );
     await db.enrolmentPayment.update({ where: { id: payment.id }, data: { stripePaymentIntentId: pi.id } });
     return { ok: true, clientSecret: pi.client_secret as string, paymentId: payment.id, amountPence };

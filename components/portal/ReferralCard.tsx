@@ -42,7 +42,7 @@ export function ReferralCard({ link, labels, qrSvg }: { link: string; labels: La
           readOnly
           value={link}
           onFocus={(e) => e.currentTarget.select()}
-          className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 font-[family-name:var(--font-mono)] text-sm text-[var(--color-ink)] outline-none"
+          className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 font-[family-name:var(--font-mono)] text-sm text-[var(--color-ink)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
         />
         <button
           onClick={copy}
