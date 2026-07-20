@@ -40,6 +40,13 @@ export async function POST(req: Request) {
       return NextResponse.json(res, { status: res.ok ? 200 : 400 });
     }
     case 'disable': {
+      // BLD-875: rate-limit the code check — without this, a stolen session
+      // cookie allows brute-forcing the 6-digit TOTP to strip 2FA entirely
+      // (same shape as the finance-PIN gap closed in PRJ-939.3).
+      const { enforceRateLimit } = await import('@/lib/security/guard');
+      if (!(await enforceRateLimit(req, 'twofa-disable', 8, 300, 'admin'))) {
+        return NextResponse.json({ ok: false, error: 'Too many attempts — wait a few minutes.' }, { status: 429 });
+      }
       const { db } = await import('@/lib/db');
       const { verifySecondFactor } = await import('@/lib/security/twofa');
       const u = await db.adminUser.findUnique({ where: { id: session.sub }, select: { id: true, totpSecret: true, totpEnabledAt: true, recoveryCodes: true } });
