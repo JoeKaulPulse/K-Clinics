@@ -11,11 +11,19 @@ import { getVatNote } from '@/lib/vat';
 
 export const revalidate = 3600;
 
-export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'Shop — Skincare & Products | KClinics',
-  description: 'Shop clinic-grade skincare and products from KClinics, delivered to your door or collect in clinic.',
-  path: '/shop',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const meta = await pageMeta({
+    title: 'Shop — Skincare & Products | KClinics',
+    description: 'Shop clinic-grade skincare and products from KClinics, delivered to your door or collect in clinic.',
+    path: '/shop',
+  });
+  // PRJ-939.14: while the shop has nothing to sell, keep the 'coming soon'
+  // placeholder out of the index (the nav link and sitemap entry are hidden
+  // too); flips back automatically when the first product goes live.
+  let live = false;
+  if (crmEnabled) { try { live = (await activeProducts()).length > 0; } catch { /* stay noindex */ } }
+  return live ? meta : { ...meta, robots: { index: false, follow: true } };
+}
 
 export default async function ShopPage() {
   let products: Awaited<ReturnType<typeof activeProducts>> = [];
