@@ -6,9 +6,14 @@ import { Card, Pill, AButton, EmptyState } from '@/components/academy/ui';
 
 // BLD-534: trainee portfolio — case studies with before/after photos + tutor review.
 export type Photo = { url: string; caption?: string; kind: 'before' | 'after' | 'other' };
+// A just-uploaded photo's blob URL is PRIVATE (BLD-740) — the browser can't
+// render it directly, so we carry a local object-URL preview until it's saved
+// (the server strips unknown fields; saved photos come back as relay URLs).
+type EditPhoto = Photo & { preview?: string };
 export type Entry = {
   id: string; title: string; treatmentType: string; treatmentDate: string | null; clientRef: string | null;
-  notes: string; photos: Photo[]; status: string; feedback: string | null; courseId: string | null; courseTitle: string | null;
+  notes: string; photos: Photo[]; status: string; feedback: string | null; consentAttestedAt: string | null;
+  courseId: string | null; courseTitle: string | null;
   createdAt: string; updatedAt: string; reviewedAt: string | null;
 };
 type Course = { id: string; title: string };
@@ -83,7 +88,8 @@ function Editor({ entry, courses, treatmentSuggestions, onClose }: { entry: Entr
   const [clientRef, setClientRef] = useState(entry?.clientRef ?? '');
   const [courseId, setCourseId] = useState(entry?.courseId ?? '');
   const [notes, setNotes] = useState(entry?.notes ?? '');
-  const [photos, setPhotos] = useState<Photo[]>(entry?.photos ?? []);
+  const [photos, setPhotos] = useState<EditPhoto[]>(entry?.photos ?? []);
+  const [consented, setConsented] = useState(!!entry?.consentAttestedAt);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [pct, setPct] = useState(0);
@@ -95,8 +101,10 @@ function Editor({ entry, courses, treatmentSuggestions, onClose }: { entry: Entr
     try {
       const { upload } = await import('@vercel/blob/client');
       const safe = (file.name || 'photo').replace(/[^A-Za-z0-9._-]+/g, '-').slice(-100);
-      const blob = await upload(`academy/portfolio/${Date.now()}-${safe}`, file, { access: 'public', handleUploadUrl: '/api/academy/portfolio/blob-token', onUploadProgress: (p) => setPct(Math.round(p.percentage)) });
-      setPhotos((ps) => [...ps, { url: blob.url, kind: 'before' }]);
+      // BLD-740: private store — the blob URL isn't browser-readable, so keep a
+      // local object-URL preview; once saved it renders via the photo relay.
+      const blob = await upload(`portfolio/${Date.now()}-${safe}`, file, { access: 'private', handleUploadUrl: '/api/academy/portfolio/blob-token', onUploadProgress: (p) => setPct(Math.round(p.percentage)) });
+      setPhotos((ps) => [...ps, { url: blob.url, kind: 'before', preview: URL.createObjectURL(file) }]);
     } catch (e) { setError((e as Error)?.message || 'Upload failed.'); }
     setUploading(false);
   }
@@ -104,8 +112,9 @@ function Editor({ entry, courses, treatmentSuggestions, onClose }: { entry: Entr
   const removePhoto = (i: number) => setPhotos((ps) => ps.filter((_, j) => j !== i));
 
   async function save(submit: boolean) {
+    if (photos.length > 0 && !consented) { setError('Please tick the consent confirmation below the photos before saving.'); return; }
     setBusy(true); setError(null);
-    const payload = { title, treatmentType, treatmentDate, clientRef, courseId, notes, photos };
+    const payload = { title, treatmentType, treatmentDate, clientRef, courseId, notes, photos: photos.map(({ preview: _preview, ...p }) => p), consentPhotos: consented };
     try {
       const op = entry ? 'update' : 'create';
       const r = await fetch('/api/academy/portfolio', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op, id: entry?.id, ...payload }) });
@@ -169,7 +178,7 @@ function Editor({ entry, courses, treatmentSuggestions, onClose }: { entry: Entr
               {photos.map((p, i) => (
                 <li key={i} className="flex gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] p-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={p.url} alt={p.caption || p.kind} className="h-16 w-16 shrink-0 rounded-[var(--radius-sm)] object-cover" />
+                  <img src={p.preview || p.url} alt={p.caption || p.kind} className="h-16 w-16 shrink-0 rounded-[var(--radius-sm)] object-cover" />
                   <div className="flex-1 space-y-1">
                     <select className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1 text-xs" value={p.kind} disabled={readOnly} onChange={(e) => setPhoto(i, { kind: e.target.value as Photo['kind'] })}>
                       <option value="before">Before</option><option value="after">After</option><option value="other">Other</option>
@@ -186,6 +195,13 @@ function Editor({ entry, courses, treatmentSuggestions, onClose }: { entry: Entr
               <input ref={fileRef} type="file" accept="image/*" className="hidden" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) addPhoto(f); e.currentTarget.value = ''; }} />
               <AButton size="sm" variant="secondary" onClick={() => fileRef.current?.click()} disabled={uploading}>{uploading ? `Uploading ${pct}%` : '+ Add photo'}</AButton>
             </div>
+          )}
+          {/* BLD-740: required subject-consent attestation for any entry with photos. */}
+          {photos.length > 0 && (
+            <label className="mt-3 flex items-start gap-2 text-xs text-[var(--color-ink-soft)]">
+              <input type="checkbox" className="mt-0.5 shrink-0" checked={consented} disabled={readOnly} onChange={(e) => setConsented(e.target.checked)} />
+              <span>I confirm the person in these photos consented to them being stored and reviewed for my portfolio.</span>
+            </label>
           )}
         </div>
 

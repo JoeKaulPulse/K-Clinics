@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 export type Photo = { url: string; caption?: string; kind: 'before' | 'after' | 'other' };
 export type ReviewEntry = {
   id: string; title: string; treatmentType: string; treatmentDate: string | null; clientRef: string | null;
-  notes: string; photos: Photo[]; status: string; feedback: string | null; courseTitle: string | null;
+  notes: string; photos: Photo[]; status: string; feedback: string | null; consentAttestedAt: string | null; courseTitle: string | null;
   studentName: string; studentEmail: string; createdAt: string; updatedAt: string; reviewedBy: string | null; reviewedAt: string | null;
 };
 
@@ -56,6 +56,10 @@ function EntryRow({ entry: e, statusLabels, onChanged }: { entry: ReviewEntry; s
             <span>Treatment date: <span className="text-[var(--color-ink)]">{dateFmt(e.treatmentDate)}</span></span>
             <span>Client ref: <span className="text-[var(--color-ink)]">{e.clientRef || '—'}</span></span>
             <span>Last updated: <span className="text-[var(--color-ink)]">{dateFmt(e.updatedAt)}</span></span>
+            {/* BLD-740: subject-consent attestation — legacy photo entries show "not recorded" until the trainee next edits. */}
+            {e.photos.length > 0 && (
+              <span>Subject consent: {e.consentAttestedAt ? <span className="text-[var(--color-ink)]">attested {dateFmt(e.consentAttestedAt)}</span> : <span className="text-[var(--color-blush-deep)]">not recorded</span>}</span>
+            )}
           </div>
 
           {e.notes && <p className="whitespace-pre-line rounded-[var(--radius-sm)] bg-[var(--color-bone)] p-3 text-sm text-[var(--color-ink-soft)]">{e.notes}</p>}

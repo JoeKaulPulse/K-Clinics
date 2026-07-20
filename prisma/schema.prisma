@@ -2372,6 +2372,7 @@ model PortfolioEntry {
   clientRef     String? // anonymised reference, e.g. "Client A"
   notes         String          @db.Text
   photos        Json            @default("[]") // [{ url, caption?, kind: 'before'|'after'|'other' }]
+  consentAttestedAt DateTime? // BLD-740: trainee attested the photographed subject consented to storage & review
   status        String          @default("DRAFT") // DRAFT | SUBMITTED | APPROVED | NEEDS_WORK
   feedback      String?         @db.Text // tutor feedback
   reviewedBy    String? // staff email
