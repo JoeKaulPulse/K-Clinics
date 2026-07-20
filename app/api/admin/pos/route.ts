@@ -27,13 +27,12 @@ export async function POST(req: Request) {
   // completing the sale. Nothing is reserved here — the atomic reservation
   // happens at checkout, so an abandoned basket can never strand a balance.
   if (b.op === 'voucher-check') {
-    const code = String(b.code || '').trim().toUpperCase();
+    const code = String(b.code || '').trim();
     if (!code) return NextResponse.json({ ok: false, error: 'Enter the voucher code.' }, { status: 400 });
-    const v = await db.giftVoucher.findUnique({ where: { code }, select: { status: true, balancePence: true, expiresAt: true } });
-    if (!v || v.status !== 'ACTIVE' || v.balancePence <= 0 || (v.expiresAt && v.expiresAt < new Date())) {
-      return NextResponse.json({ ok: false, error: 'That voucher code isn’t valid, has expired, or has no balance left.' }, { status: 400 });
-    }
-    return NextResponse.json({ ok: true, balancePence: v.balancePence });
+    const { spendableBalancePence, VOUCHER_INVALID_ERROR } = await import('@/lib/gift-vouchers');
+    const balancePence = await spendableBalancePence(code);
+    if (balancePence <= 0) return NextResponse.json({ ok: false, error: VOUCHER_INVALID_ERROR }, { status: 400 });
+    return NextResponse.json({ ok: true, balancePence });
   }
 
   // BLD-882: staff cancelled a pending card sale (QR never paid). Claims the
@@ -45,21 +44,32 @@ export async function POST(req: Request) {
     if (!orderId) return NextResponse.json({ ok: false }, { status: 400 });
     const o = await db.order.findUnique({ where: { id: orderId }, select: { status: true, giftCardCode: true, giftCardPence: true } });
     if (!o) return NextResponse.json({ ok: false, error: 'Sale not found.' }, { status: 404 });
-    const claimed = await db.order.updateMany({ where: { id: orderId, status: 'PENDING' }, data: { status: 'CANCELLED' } });
-    if (claimed.count === 0) return NextResponse.json({ ok: false, error: 'This sale has already been paid — use the Orders screen to refund it if needed.' }, { status: 409 });
-    if (o.giftCardCode && o.giftCardPence > 0) {
-      const { creditVoucher } = await import('@/lib/gift-vouchers');
-      await creditVoucher(o.giftCardCode, o.giftCardPence).catch(() => {});
-    }
+    // Expire the Checkout link FIRST: expire only succeeds while the session is
+    // unpaid, so once it goes through no payment can ever complete — the claim
+    // and re-credit below are then race-free. If the customer has already paid
+    // (or pays mid-expire), surface that instead of cancelling under them.
     if (b.sessionId) {
       try {
         const { stripe, stripeEnabled } = await import('@/lib/stripe');
         if (stripeEnabled) {
           const s = await stripe().checkout.sessions.retrieve(String(b.sessionId));
-          if (s.metadata?.orderId === orderId && s.status === 'open') await stripe().checkout.sessions.expire(s.id);
+          if (s.metadata?.orderId === orderId) {
+            if (s.status === 'complete') return NextResponse.json({ ok: false, error: 'This sale has just been paid — use the Orders screen to refund it if needed.' }, { status: 409 });
+            if (s.status === 'open') await stripe().checkout.sessions.expire(s.id);
+          }
         }
-      } catch { /* best-effort — finalizeOrder's CANCELLED guard (BLD-761) covers a payment racing this expiry */ }
+      } catch (e) {
+        // Couldn't confirm the link is dead — don't cancel a sale that may
+        // still be paid. Staff can retry; finalizeOrder's CANCELLED guard
+        // (BLD-761) is the last-resort backstop either way.
+        console.error('[pos] cancel: could not expire checkout session:', (e as Error)?.message);
+        return NextResponse.json({ ok: false, error: 'Couldn’t cancel the payment link — try again in a moment.' }, { status: 502 });
+      }
     }
+    const claimed = await db.order.updateMany({ where: { id: orderId, status: 'PENDING' }, data: { status: 'CANCELLED' } });
+    if (claimed.count === 0) return NextResponse.json({ ok: false, error: 'This sale has already been paid — use the Orders screen to refund it if needed.' }, { status: 409 });
+    const { undoVoucherReservation } = await import('@/lib/gift-vouchers');
+    await undoVoucherReservation(o.giftCardCode, o.giftCardPence);
     return NextResponse.json({ ok: true });
   }
 
@@ -90,18 +100,24 @@ export async function POST(req: Request) {
   let giftCardPence = 0; let giftCardCode: string | null = null;
   if (b.voucherCode) {
     const code = String(b.voucherCode).trim().toUpperCase();
-    const { reserveVoucher } = await import('@/lib/gift-vouchers');
+    const { reserveVoucher, VOUCHER_INVALID_ERROR } = await import('@/lib/gift-vouchers');
     const { reservedPence } = await reserveVoucher(code, cart.subtotalPence);
-    if (reservedPence <= 0) return NextResponse.json({ ok: false, error: 'That voucher code isn’t valid, has expired, or has no balance left.' }, { status: 400 });
+    if (reservedPence <= 0) return NextResponse.json({ ok: false, error: VOUCHER_INVALID_ERROR }, { status: 400 });
     giftCardPence = reservedPence; giftCardCode = code;
   }
   const totalPence = Math.max(0, cart.subtotalPence - giftCardPence);
   const undoReservation = async () => {
-    if (giftCardCode && giftCardPence > 0) {
-      const { creditVoucher } = await import('@/lib/gift-vouchers');
-      await creditVoucher(giftCardCode, giftCardPence).catch(() => {});
-    }
+    const { undoVoucherReservation } = await import('@/lib/gift-vouchers');
+    await undoVoucherReservation(giftCardCode, giftCardPence);
   };
+
+  // Stripe won't create a session under its ~30p GBP minimum. Catch the
+  // voucher-leaves-pennies case up front with a usable instruction instead of
+  // a raw API error after the order exists.
+  if (method === 'card' && totalPence > 0 && totalPence < 30) {
+    await undoReservation();
+    return NextResponse.json({ ok: false, error: `The remainder after the voucher (£${(totalPence / 100).toFixed(2)}) is below the card minimum — take it as cash or on the card machine instead.` }, { status: 400 });
+  }
 
   let order: Awaited<ReturnType<typeof db.order.create>>;
   try {

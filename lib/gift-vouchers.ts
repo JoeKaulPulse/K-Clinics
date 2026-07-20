@@ -7,6 +7,34 @@ export const VOUCHER_PRESETS = [2500, 5000, 7500, 10000, 15000, 25000];
 export const VOUCHER_MIN = 1000;   // £10
 export const VOUCHER_MAX = 50000;  // £500
 
+// One shared rejection message so previews and reservations never disagree in copy.
+export const VOUCHER_INVALID_ERROR = 'That voucher code isn’t valid, has expired, or has no balance left.';
+
+/** Read-only spendability check (BLD-882): the single predicate both the POS
+ *  preview and error paths use, kept in step with reserveVoucher's guard so a
+ *  preview can never promise a balance a reservation would refuse. Returns 0
+ *  when the voucher isn't spendable. */
+export async function spendableBalancePence(code: string): Promise<number> {
+  const v = await db.giftVoucher.findUnique({ where: { code: code.trim().toUpperCase() }, select: { status: true, balancePence: true, expiresAt: true } });
+  if (!v || v.status !== 'ACTIVE' || v.balancePence <= 0 || (v.expiresAt && v.expiresAt < new Date())) return 0;
+  return v.balancePence;
+}
+
+/** Reverse a reserveVoucher decrement on a failure path (BLD-739/BLD-882): one
+ *  shared unwind for every checkout so a fix to it lands everywhere at once.
+ *  Never throws; failures are logged loudly because a lost re-credit is
+ *  stranded customer money. */
+export async function undoVoucherReservation(code: string | null, pence: number): Promise<void> {
+  if (!code || pence <= 0) return;
+  try {
+    await creditVoucher(code, pence);
+  } catch (e) {
+    console.error(`[gift-vouchers] re-credit of ${pence}p to ${code} FAILED — balance stranded:`, (e as Error)?.message);
+    const Sentry = await import('@sentry/nextjs');
+    Sentry.captureException(e, { tags: { area: 'gift-vouchers', stage: 'undo-reservation' } });
+  }
+}
+
 const baseUrl = () => process.env.NEXT_PUBLIC_SITE_URL || site.url;
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
 

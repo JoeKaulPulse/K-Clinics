@@ -32,10 +32,18 @@ export async function POST(req: Request) {
   type Data = import('@/lib/appointment-session').SessionData;
   type Touchpoints = import('@/lib/appointment-session').Touchpoint[];
 
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, status: true, finishedAt: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, status: true, finishedAt: true, chargedAt: true, giftVoucherCode: true, giftVoucherPence: true } });
   if (!booking) return bad('Booking not found.', 404);
   // BLD-336: never run appointment-session actions against a cancelled booking.
   if (booking.status === 'CANCELLED') return bad('This booking was cancelled — no session actions are allowed.', 409);
+
+  // BLD-882: a partially-applied gift voucher is netted SERVER-SIDE off every
+  // amount collected below (paylink/terminal/external here; the saved-card path
+  // nets inside chargeBookingAction), so no surface — this checkout, the booking
+  // detail page, a reloaded till — can collect the full price on top of the
+  // reservation. The UI sends the agreed price; the server owns the arithmetic.
+  const voucherOffPence = booking.chargedAt ? 0 : (booking.giftVoucherPence ?? 0);
+  const VOUCHER_COVERS = 'The applied gift voucher already covers this amount — remove the voucher first to adjust the price.';
 
   switch (op) {
     // Create (or resume) the session; the opener becomes the active staff.
@@ -169,8 +177,11 @@ export async function POST(req: Request) {
     case 'paylink': {
       const { sessionCan } = await import('@/lib/auth');
       if (!sessionCan(session, 'bookings.charge')) return bad('You don’t have permission to take payments.', 403);
-      const amountPence = Math.round(Number(body.amountPence) || 0);
-      if (amountPence <= 0) return bad('Enter an amount to take.');
+      const grossPence = Math.round(Number(body.amountPence) || 0);
+      if (grossPence <= 0) return bad('Enter an amount to take.');
+      // BLD-882: the link charges only the post-voucher remainder.
+      const amountPence = grossPence - voucherOffPence;
+      if (amountPence <= 0) return bad(VOUCHER_COVERS);
       const b = await db.booking.findUnique({ where: { id: bookingId }, select: { treatmentTitle: true, chargedAt: true } });
       if (b?.chargedAt) return bad('This booking is already paid.');
       const { stripe } = await import('@/lib/stripe');
@@ -199,8 +210,11 @@ export async function POST(req: Request) {
     case 'terminal': {
       const { sessionCan } = await import('@/lib/auth');
       if (!sessionCan(session, 'bookings.charge')) return bad('You don’t have permission to take payments.', 403);
-      const amountPence = Math.round(Number(body.amountPence) || 0);
-      if (amountPence <= 0) return bad('Enter an amount to take.');
+      const grossPence = Math.round(Number(body.amountPence) || 0);
+      if (grossPence <= 0) return bad('Enter an amount to take.');
+      // BLD-882: the terminal captures only the post-voucher remainder.
+      const amountPence = grossPence - voucherOffPence;
+      if (amountPence <= 0) return bad(VOUCHER_COVERS);
       const paid = await db.booking.findUnique({ where: { id: bookingId }, select: { chargedAt: true } });
       if (paid?.chargedAt) return bad('This booking is already paid.');
       const deviceId = String(body.deviceId || '');
@@ -222,8 +236,11 @@ export async function POST(req: Request) {
     case 'external': {
       const { sessionCan } = await import('@/lib/auth');
       if (!sessionCan(session, 'bookings.charge')) return bad('You don’t have permission to take payments.', 403);
-      const amountPence = Math.round(Number(body.amountPence) || 0);
-      if (amountPence <= 0) return bad('Enter an amount.');
+      const grossPence = Math.round(Number(body.amountPence) || 0);
+      if (grossPence <= 0) return bad('Enter an amount.');
+      // BLD-882: record only the post-voucher remainder as externally collected.
+      const amountPence = grossPence - voucherOffPence;
+      if (amountPence <= 0) return bad(VOUCHER_COVERS);
       const channel = String(body.channel || 'external').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 24) || 'external';
       const updated = await db.booking.updateMany({
         where: { id: bookingId, chargedAt: null },
@@ -238,7 +255,8 @@ export async function POST(req: Request) {
         const dr = body.discountReason ? String(body.discountReason).slice(0, 120) : '';
         const op = body.originalPence ? Math.round(Number(body.originalPence)) : 0;
         const disc = dr ? ` (price adjustment — ${dr}${op > amountPence ? `; was £${(op / 100).toFixed(2)}` : ''})` : '';
-        await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, summary: `Paid via ${label} (£${(amountPence / 100).toFixed(2)})${disc} — recorded externally, no card charged`, bookingId, clientId: booking.clientId, meta: { channel, external: true, discountReason: dr || undefined } });
+        const vnote = voucherOffPence > 0 ? ` + gift voucher £${(voucherOffPence / 100).toFixed(2)} already applied` : '';
+        await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, summary: `Paid via ${label} (£${(amountPence / 100).toFixed(2)})${disc}${vnote} — recorded externally, no card charged`, bookingId, clientId: booking.clientId, meta: { channel, external: true, discountReason: dr || undefined, voucherPence: voucherOffPence || undefined } });
       } catch { /* non-fatal */ }
       return ok();
     }
@@ -256,22 +274,23 @@ export async function POST(req: Request) {
       if (amountPence <= 0) return bad('Enter the amount being collected first.');
       const code = String(body.code || '').trim().toUpperCase();
       if (!code) return bad('Enter the voucher code.');
-      const b = await db.booking.findUnique({ where: { id: bookingId }, select: { chargedAt: true, giftVoucherPence: true } });
-      if (b?.chargedAt) return bad('This booking is already paid.');
-      if ((b?.giftVoucherPence ?? 0) > 0) return bad('A voucher is already applied to this booking — remove it first to use a different one.');
-      const { reserveVoucher, creditVoucher } = await import('@/lib/gift-vouchers');
+      if (booking.chargedAt) return bad('This booking is already paid.');
+      if ((booking.giftVoucherPence ?? 0) > 0) return bad('A voucher is already applied to this booking — remove it first to use a different one.');
+      const { reserveVoucher, undoVoucherReservation, VOUCHER_INVALID_ERROR } = await import('@/lib/gift-vouchers');
       const { reservedPence } = await reserveVoucher(code, amountPence);
-      if (reservedPence <= 0) return bad('That voucher code isn’t valid, has expired, or has no balance left.');
+      if (reservedPence <= 0) return bad(VOUCHER_INVALID_ERROR);
       const { logAudit } = await import('@/lib/audit');
+      // BLD-207 parity with 'external': record any ad-hoc price adjustment.
+      const dr = body.discountReason ? String(body.discountReason).slice(0, 120) : '';
       if (reservedPence >= amountPence) {
         // Fully covered — settle now, mirroring the 'external' channel.
         const updated = await db.booking.updateMany({
           where: { id: bookingId, chargedAt: null, giftVoucherPence: 0 },
           data: { chargedPence: amountPence, chargedAt: new Date(), chargePaymentIntentId: 'ext_gift-voucher', giftVoucherCode: code, giftVoucherPence: amountPence },
         });
-        if (updated.count === 0) { await creditVoucher(code, reservedPence).catch(() => {}); return bad('This booking was just paid on another screen.'); }
+        if (updated.count === 0) { await undoVoucherReservation(code, reservedPence); return bad('This booking was just paid on another screen.'); }
         try { const { awardClientSpend } = await import('@/lib/client-loyalty'); await awardClientSpend(bookingId); } catch { /* non-fatal */ }
-        await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, summary: `Paid in full with gift voucher ${code} (£${(amountPence / 100).toFixed(2)})`, bookingId, clientId: booking.clientId, meta: { channel: 'gift-voucher', voucherCode: code, voucherPence: amountPence } }).catch(() => {});
+        await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, summary: `Paid in full with gift voucher ${code} (£${(amountPence / 100).toFixed(2)})${dr ? ` (price adjustment — ${dr})` : ''}`, bookingId, clientId: booking.clientId, meta: { channel: 'gift-voucher', voucherCode: code, voucherPence: amountPence, discountReason: dr || undefined } }).catch(() => {});
         return ok({ appliedPence: amountPence, remainingPence: 0, settled: true });
       }
       // Partial cover — record the application; the guarded update means a race
@@ -280,7 +299,7 @@ export async function POST(req: Request) {
         where: { id: bookingId, chargedAt: null, giftVoucherPence: 0 },
         data: { giftVoucherCode: code, giftVoucherPence: reservedPence },
       });
-      if (updated.count === 0) { await creditVoucher(code, reservedPence).catch(() => {}); return bad('This booking was just updated on another screen — try again.'); }
+      if (updated.count === 0) { await undoVoucherReservation(code, reservedPence); return bad('This booking was just updated on another screen — try again.'); }
       await logAudit({ action: 'REWARD_REDEEMED', actor: session.email, summary: `Gift voucher ${code} applied (£${(reservedPence / 100).toFixed(2)} of £${(amountPence / 100).toFixed(2)}) — remainder to collect £${((amountPence - reservedPence) / 100).toFixed(2)}`, bookingId, clientId: booking.clientId, meta: { channel: 'gift-voucher', voucherCode: code, voucherPence: reservedPence, partial: true } }).catch(() => {});
       return ok({ appliedPence: reservedPence, remainingPence: amountPence - reservedPence, settled: false });
     }
@@ -290,19 +309,29 @@ export async function POST(req: Request) {
     case 'voucher-remove': {
       const { sessionCan } = await import('@/lib/auth');
       if (!sessionCan(session, 'bookings.charge')) return bad('You don’t have permission to take payments.', 403);
-      const b = await db.booking.findUnique({ where: { id: bookingId }, select: { chargedAt: true, giftVoucherCode: true, giftVoucherPence: true } });
-      if (!b?.giftVoucherCode || (b.giftVoucherPence ?? 0) <= 0) return bad('No voucher is applied to this booking.');
-      if (b.chargedAt) return bad('This booking is already paid — the voucher can’t be removed now.');
+      const vCode = booking.giftVoucherCode; const vPence = booking.giftVoucherPence ?? 0;
+      if (!vCode || vPence <= 0) return bad('No voucher is applied to this booking.');
+      if (booking.chargedAt) return bad('This booking is already paid — the voucher can’t be removed now.');
       // Guarded clear so a concurrent charge/removal can't double-credit.
       const updated = await db.booking.updateMany({
-        where: { id: bookingId, chargedAt: null, giftVoucherCode: b.giftVoucherCode, giftVoucherPence: b.giftVoucherPence },
+        where: { id: bookingId, chargedAt: null, giftVoucherCode: vCode, giftVoucherPence: vPence },
         data: { giftVoucherCode: null, giftVoucherPence: 0 },
       });
       if (updated.count === 0) return bad('This booking was just updated on another screen — try again.');
       const { creditVoucher } = await import('@/lib/gift-vouchers');
-      await creditVoucher(b.giftVoucherCode, b.giftVoucherPence);
+      try {
+        await creditVoucher(vCode, vPence);
+      } catch (e) {
+        // The clear committed but the credit failed — restore the application so
+        // a retry can find it, otherwise the balance is silently stranded.
+        await db.booking.updateMany({ where: { id: bookingId, chargedAt: null, giftVoucherPence: 0 }, data: { giftVoucherCode: vCode, giftVoucherPence: vPence } }).catch(() => {});
+        console.error('[session] voucher-remove credit failed:', (e as Error)?.message);
+        const Sentry = await import('@sentry/nextjs');
+        Sentry.captureException(e, { tags: { area: 'gift-vouchers', stage: 'voucher-remove' } });
+        return bad('Couldn’t return the balance to the voucher — try again in a moment.');
+      }
       const { logAudit } = await import('@/lib/audit');
-      await logAudit({ action: 'REWARD_REDEEMED', actor: session.email, summary: `Gift voucher ${b.giftVoucherCode} removed — £${(b.giftVoucherPence / 100).toFixed(2)} returned to the voucher`, bookingId, clientId: booking.clientId, meta: { channel: 'gift-voucher', voucherCode: b.giftVoucherCode, removed: true } }).catch(() => {});
+      await logAudit({ action: 'REWARD_REDEEMED', actor: session.email, summary: `Gift voucher ${vCode} removed — £${(vPence / 100).toFixed(2)} returned to the voucher`, bookingId, clientId: booking.clientId, meta: { channel: 'gift-voucher', voucherCode: vCode, removed: true } }).catch(() => {});
       return ok();
     }
 

@@ -9,7 +9,7 @@ export function PosTerminal({ products }: { products: P[] }) {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [q, setQ] = useState('');
   const [stage, setStage] = useState<'shop' | 'pay'>('shop');
-  const [pay, setPay] = useState<{ qr?: string; url?: string; orderId?: string; sessionId?: string; duePence?: number } | null>(null);
+  const [pay, setPay] = useState<{ qr?: string; url?: string; orderId?: string; sessionId?: string; duePence: number; voucherPence: number } | null>(null);
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   // BLD-882: gift voucher against the sale. `vBalance` is a read-only preview
@@ -64,16 +64,20 @@ export function PosTerminal({ products }: { products: P[] }) {
     setBusy(false);
     if (!r.ok) { setStatus(r.error || 'Something went wrong.'); return; }
     if (r.paid) { setStatus(`Sale complete — ${r.number} ✓${r.voucherPence ? ` (gift voucher ${money(r.voucherPence)})` : ''}`); setTimeout(clear, 2500); return; }
-    setPay({ qr: r.qr, url: r.url, orderId: r.orderId, sessionId: r.sessionId, duePence: r.totalPence }); setStage('pay');
+    setPay({ qr: r.qr, url: r.url, orderId: r.orderId, sessionId: r.sessionId, duePence: r.totalPence ?? total, voucherPence: r.voucherPence ?? 0 }); setStage('pay');
   }
 
-  // Cancel a pending card sale properly: releases any voucher reservation and
-  // expires the payment link so the abandoned QR can't be paid later.
+  // Cancel a pending card sale properly: expires the payment link (so the
+  // abandoned QR can't be paid later) and releases any voucher reservation.
+  // The result matters — a 409 means the customer just PAID, and silently
+  // clearing would have staff re-ring or take cash on top.
   async function cancelSale() {
     if (pay?.orderId) {
       setBusy(true);
-      await fetch('/api/admin/pos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'cancel', orderId: pay.orderId, sessionId: pay.sessionId }) }).catch(() => {});
+      const r = await fetch('/api/admin/pos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'cancel', orderId: pay.orderId, sessionId: pay.sessionId }) })
+        .then((x) => x.json()).catch(() => ({ ok: false, error: 'Network error — the sale may still be pending. Check again or see the Orders screen.' }));
       setBusy(false);
+      if (!r.ok) { setStatus(r.error || 'Couldn’t cancel the sale — check the Orders screen.'); return; }
     }
     clear();
   }
@@ -90,8 +94,8 @@ export function PosTerminal({ products }: { products: P[] }) {
   if (stage === 'pay' && pay) {
     return (
       <div className="mx-auto max-w-md rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-8 text-center">
-        <h2 className="font-[family-name:var(--font-display)] text-2xl">Scan to pay {money(pay.duePence ?? total)}</h2>
-        <p className="mt-1 text-sm text-[var(--color-stone)]">Ask the customer to scan with their phone camera.{pay.duePence != null && pay.duePence < total ? ` A gift voucher covers the other ${money(total - pay.duePence)}.` : ''}</p>
+        <h2 className="font-[family-name:var(--font-display)] text-2xl">Scan to pay {money(pay.duePence)}</h2>
+        <p className="mt-1 text-sm text-[var(--color-stone)]">Ask the customer to scan with their phone camera.{pay.voucherPence > 0 ? ` A gift voucher covers the other ${money(pay.voucherPence)}.` : ''}</p>
         {pay.qr && <img src={pay.qr} alt="Payment QR" width={240} height={240} className="mx-auto mt-5 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-2" />}
         {pay.url && <a href={pay.url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block break-all text-xs text-[var(--color-gold-deep)] underline">Open payment link</a>}
         <div className="mt-6 flex justify-center gap-3">
@@ -156,13 +160,18 @@ export function PosTerminal({ products }: { products: P[] }) {
           <input value={vcode} onChange={(e) => { setVcode(e.target.value); setVBalance(null); }} onKeyDown={(e) => e.key === 'Enter' && checkVoucher()} placeholder="Gift voucher code" aria-label="Gift voucher code" className="min-w-0 flex-1 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
           <button onClick={checkVoucher} disabled={busy || !vcode.trim()} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm disabled:opacity-50">Check</button>
         </div>
-        {vBalance != null && vcode.trim() && (
-          <p className="mt-2 rounded-[var(--radius-sm)] bg-[var(--color-sand)]/40 px-3 py-2 text-xs">
-            Voucher balance {money(vBalance)} — covers {money(Math.min(vBalance, total))} of this sale.
-            {vBalance >= total ? ' Nothing left to pay.' : ` ${money(total - Math.min(vBalance, total))} still to pay below.`}
-            {vBalance > total ? ` ${money(vBalance - total)} stays on the voucher.` : ''}
-          </p>
-        )}
+        {vBalance != null && vcode.trim() && (() => {
+          const covers = Math.min(vBalance, total);
+          const due = total - covers;
+          const leftover = vBalance - covers;
+          return (
+            <p className="mt-2 rounded-[var(--radius-sm)] bg-[var(--color-sand)]/40 px-3 py-2 text-xs">
+              Voucher balance {money(vBalance)} — covers {money(covers)} of this sale.
+              {due > 0 ? ` ${money(due)} still to pay below.` : ' Nothing left to pay.'}
+              {leftover > 0 ? ` ${money(leftover)} stays on the voucher.` : ''}
+            </p>
+          );
+        })()}
         {needAge && <p className="mt-2 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-3 py-2 text-xs text-[var(--color-ink)]">Includes an 18+ product — confirm the customer’s age before completing.</p>}
         <div className="mt-4 grid gap-2">
           <button onClick={() => checkout('card', needAge)} disabled={busy || lines.length === 0} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-3 text-sm font-medium text-white disabled:opacity-50">Card — scan to pay</button>

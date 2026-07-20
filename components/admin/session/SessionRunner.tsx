@@ -806,8 +806,11 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
   const [discReason, setDiscReason] = useState('');
   // BLD-882 — gift voucher against the treatment sale. Applying reserves the
   // balance server-side (atomic); a full cover settles the booking (the SSE
-  // snapshot flips to Paid), a partial one reduces the amount still to collect.
-  const [vOpen, setVOpen] = useState((p.booking.giftVoucherPence ?? 0) > 0);
+  // snapshot flips to Paid), a partial one is netted off SERVER-SIDE by every
+  // charge op. The amount field always means the agreed price — the remainder
+  // is derived, never written back, so a reload, a second till or a discount
+  // can't double-count the voucher.
+  const [vOpen, setVOpen] = useState(false);
   const [vCode, setVCode] = useState('');
   const [vApplied, setVApplied] = useState<{ code: string; pence: number } | null>(
     p.booking.giftVoucherCode && (p.booking.giftVoucherPence ?? 0) > 0 && !p.booking.chargedAt
@@ -816,16 +819,19 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
   );
   const [vBusy, setVBusy] = useState(false);
   const [vErr, setVErr] = useState('');
+  // What the chosen method will actually collect (the server nets the same way).
+  const duePence = Math.max(0, amountPence - (vApplied?.pence ?? 0));
+  const voucherExceedsAmount = !!vApplied && amountPence <= vApplied.pence;
   async function applyVoucher() {
     if (vBusy || !vCode.trim() || amountPence <= 0) return;
     setVBusy(true); setVErr('');
-    const res = (await api({ op: 'voucher', code: vCode.trim(), amountPence })) as { ok: boolean; error?: string; appliedPence?: number; remainingPence?: number; settled?: boolean };
+    const res = (await api({ op: 'voucher', code: vCode.trim(), amountPence, ...discParams })) as { ok: boolean; error?: string; appliedPence?: number; settled?: boolean };
     setVBusy(false);
     if (!res.ok) { setVErr(res.error || 'Could not apply the voucher.'); return; }
     if (res.settled) return; // fully covered — the stream flips this card to Paid
     setVApplied({ code: vCode.trim().toUpperCase(), pence: res.appliedPence || 0 });
-    setAmount((((res.remainingPence ?? 0)) / 100).toFixed(2));
     setVCode('');
+    setLinkQr(null); // a previously-minted QR no longer matches the remainder
   }
   async function removeVoucher() {
     if (vBusy || !vApplied) return;
@@ -833,8 +839,9 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
     const res = await api({ op: 'voucher-remove' });
     setVBusy(false);
     if (!res.ok) { setVErr(res.error || 'Could not remove the voucher.'); return; }
-    setAmount(((amountPence + vApplied.pence) / 100).toFixed(2));
     setVApplied(null);
+    setVOpen(true);
+    setLinkQr(null); // a QR minted for the netted remainder is stale now
   }
   const discParams = discReason.trim() ? { discountReason: discReason.trim(), originalPence: p.booking.pricePence } : {};
   function applyDiscount() {
@@ -923,8 +930,9 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
             <div className="mt-2">
               {vApplied ? (
                 <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3 text-sm">
-                  <span>Gift voucher <span className="font-medium">{vApplied.code}</span> — {money(vApplied.pence)} applied. {money(amountPence)} left to collect.</span>
+                  <span>Gift voucher <span className="font-medium">{vApplied.code}</span> — {money(vApplied.pence)} applied. {money(duePence)} left to collect.</span>
                   <button type="button" onClick={removeVoucher} disabled={vBusy} className="text-xs text-[var(--color-gold)] underline-offset-2 hover:underline disabled:opacity-50">{vBusy ? 'Removing…' : 'Remove'}</button>
+                  {voucherExceedsAmount && <span className="w-full text-xs text-red-700">The voucher covers more than the current amount — remove it and apply again at the new price.</span>}
                 </div>
               ) : !vOpen ? (
                 <button type="button" onClick={() => setVOpen(true)} className="text-xs text-[var(--color-gold)] underline-offset-2 hover:underline">Redeem a gift voucher</button>
@@ -952,7 +960,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={linkQr.qr} alt="Payment QR code" width={120} height={120} className="rounded-[var(--radius-sm)]" />
                   <div className="min-w-0 text-sm">
-                    <p className="font-medium">Scan to pay {money(amountPence)}</p>
+                    <p className="font-medium">Scan to pay {money(duePence)}</p>
                     <p className="mt-1 text-[var(--color-stone)]">The client scans this with their phone camera. This screen updates to “Paid” automatically once it goes through.</p>
                     {linkQr.url && <a href={linkQr.url} target="_blank" rel="noreferrer" className="mt-1 inline-block break-all text-xs text-[var(--color-gold)] underline">Open the payment page</a>}
                   </div>
@@ -980,7 +988,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                 <div>
                   <button type="button" disabled={payBusy || !live.finishedAt} onClick={takeCash}
                     className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
-                    {payBusy ? 'Recording…' : `Record ${money(amountPence)} cash`}
+                    {payBusy ? 'Recording…' : `Record ${money(duePence)} cash`}
                   </button>
                   <p className="mt-2 max-w-md text-xs text-[var(--color-stone)]">Records the sale as paid in cash against this booking. Remember to put the cash in the drawer — it’s included in the day-close total.</p>
                 </div>
