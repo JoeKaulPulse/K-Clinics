@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { ROLES, PERMISSIONS, PERMISSION_GROUPS, roleDefaults, type Role } from '@/lib/permissions';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 type Profile = { publicProfile: boolean; title: string; photoUrl: string; publicPhone: string; bio: string; credentials: string; yearsExperience: number | null; profileOrder: number; isClinician: boolean };
 type Staff = {
@@ -122,6 +123,8 @@ function Editor({ staff, actorRole, onClose, onSaved }: { staff: Staff | null; a
   const [revoke, setRevoke] = useState<Set<string>>(new Set(staff?.permRevoke ?? []));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  // Modal behaviours (focus-in, Tab trap, Escape, focus restore) — shared Dialog primitive (BLD-849/BLD-803).
+  const { panelRef, onKeyDown } = useDialogBehaviours(onClose);
 
   const defaults = useMemo(() => new Set(roleDefaults(role)), [role]);
   const isOwnerTarget = staff?.role === 'OWNER';
@@ -177,14 +180,15 @@ function Editor({ staff, actorRole, onClose, onSaved }: { staff: Staff | null; a
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-6">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onKeyDown={onKeyDown} className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-6">
       <motion.div
+        ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="staff-editor-title" tabIndex={-1}
         initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-[var(--radius-xl)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)] sm:rounded-[var(--radius-xl)] md:p-8"
       >
         <div className="mb-6 flex items-start justify-between gap-4">
-          <h2 className="font-[family-name:var(--font-display)] text-2xl">{staff ? 'Edit staff member' : 'Add staff member'}</h2>
+          <h2 id="staff-editor-title" className="font-[family-name:var(--font-display)] text-2xl">{staff ? 'Edit staff member' : 'Add staff member'}</h2>
           <button onClick={onClose} aria-label="Close" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>
         </div>
 
@@ -313,6 +317,8 @@ function ProfileEditor({ staff, onClose, onSaved }: { staff: Staff; onClose: () 
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  // Modal behaviours (focus-in, Tab trap, Escape, focus restore) — shared Dialog primitive (BLD-849/BLD-803).
+  const { panelRef, onKeyDown } = useDialogBehaviours(onClose);
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((s) => ({ ...s, [k]: v }));
   const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
 
@@ -325,11 +331,11 @@ function ProfileEditor({ staff, onClose, onSaved }: { staff: Staff; onClose: () 
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-6">
-      <motion.div initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 24, opacity: 0 }} className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 sm:rounded-[var(--radius-lg)]">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onKeyDown={onKeyDown} className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-6">
+      <motion.div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="staff-profile-title" tabIndex={-1} initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 24, opacity: 0 }} className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 sm:rounded-[var(--radius-lg)]">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="font-[family-name:var(--font-display)] text-xl">Public team profile</h2>
+            <h2 id="staff-profile-title" className="font-[family-name:var(--font-display)] text-xl">Public team profile</h2>
             <p className="text-sm text-[var(--color-stone)]">{staff.name || staff.email} · shows on the /team page{p?.isClinician ? ' (clinical)' : ' (support)'}</p>
           </div>
           <button onClick={onClose} aria-label="Close" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>

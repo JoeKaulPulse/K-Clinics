@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 // Floating "Report a problem" button available across the admin. Staff log an
 // issue with a screenshot, detail and urgency; it lands on the Build & Issues
@@ -29,6 +30,8 @@ export function ReportProblem() {
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState<'idle' | 'saving' | 'done' | 'error'>('idle');
   const [error, setError] = useState('');
+  // Modal behaviours (focus-in, Tab trap, Escape, focus restore) — shared Dialog primitive (BLD-849/BLD-803).
+  const { panelRef, onKeyDown } = useDialogBehaviours(() => setOpen(false), open);
 
   async function upload(files: FileList | null) {
     if (!files?.length) return;
@@ -66,8 +69,8 @@ export function ReportProblem() {
       <button onClick={() => setOpen(true)} className="fixed bottom-20 right-5 z-40 rounded-full bg-[var(--color-ink)] px-4 py-2.5 text-sm font-medium text-[var(--color-porcelain)] shadow-[var(--shadow-lift)] hover:bg-[var(--color-gold-deep)]">⚑ Report a problem</button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[rgba(42,36,32,0.5)] p-4" onClick={() => setOpen(false)}>
-          <div className="my-8 w-full max-w-lg rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[rgba(42,36,32,0.5)] p-4" onClick={() => setOpen(false)} onKeyDown={onKeyDown}>
+          <div ref={panelRef} role="dialog" aria-modal="true" aria-label="Report a problem" tabIndex={-1} className="my-8 w-full max-w-lg rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
             {status === 'done' ? (
               <div className="py-8 text-center">
                 <p className="font-[family-name:var(--font-display)] text-2xl">Thank you — logged.</p>

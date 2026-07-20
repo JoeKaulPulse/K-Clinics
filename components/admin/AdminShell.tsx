@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 import { site } from '@/lib/site';
 import { GlobalSearch } from '@/components/admin/GlobalSearch';
@@ -132,14 +133,12 @@ export function AdminShell({
   }, []);
 
   // Mobile menu drawer (the desktop sidebar is hidden on small screens).
+  // Focus-in, Tab trap, Escape close and focus restore all come from the shared
+  // Dialog primitive's hook (PRJ-939.10).
   const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => { setMobileOpen(false); }, [pathname]); // close on navigation
-  useEffect(() => {
-    if (!mobileOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileOpen(false); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [mobileOpen]);
+  const closeMobile = useCallback(() => setMobileOpen(false), []);
+  const { panelRef: drawerRef, onKeyDown: drawerKeyDown } = useDialogBehaviours<HTMLElement>(closeMobile, mobileOpen);
 
   // Top-bar profile dropdown (account · language · sign out).
   const [profileOpen, setProfileOpen] = useState(false);
@@ -262,9 +261,9 @@ export function AdminShell({
 
         {/* Mobile drawer — off-canvas, opened from the top-bar hamburger. */}
         {mobileOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
+          <div className="fixed inset-0 z-50 lg:hidden" onKeyDown={drawerKeyDown}>
             <div className="kc-fade-in absolute inset-0 bg-[var(--color-ink)]/45 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-            <aside className="kc-slide-in-left absolute inset-y-0 left-0 flex w-[82%] max-w-xs flex-col bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)]">
+            <aside ref={drawerRef} role="dialog" aria-modal="true" aria-label={t('shell.menu')} tabIndex={-1} className="kc-slide-in-left absolute inset-y-0 left-0 flex w-[82%] max-w-xs flex-col bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)]">
               <div className="flex items-center justify-between border-b border-[var(--color-line)] px-5 py-4">
                 {brand}
                 <button onClick={() => setMobileOpen(false)} aria-label="Close menu" className="flex h-10 w-10 items-center justify-center rounded-full text-[var(--color-stone)] transition-colors hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)]">

@@ -2310,6 +2310,27 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Face photos were stored access:public on Vercel Blob at a path built from the 10-char session token - viewable by anyone with the URL for up to 30 days, unlike every other clinical image in the platform.',
     notes: ['Fix: uploads now access:private; a session-token-authenticated relay (photo-view, no-store) is the only read path; wire payloads carry relay URLs so no display component changed; AI analysis fetches via the shared private-blob helper with a legacy-public fallback until the 30-day cleanup purges pre-change blobs. Deploy-verified: relay refuses a bogus token with 404. Sign-off note: one manual kiosk happy-path pass on the storefront screen recommended.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Academy Stripe partial refunds silently dropped — paidPence and course access stay wrong', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1646),
+    value: 8, effort: 4,
+    detail: 'The Stripe webhook treated academy charge refunds as all-or-nothing: a partial dashboard refund on an enrolment payment was skipped entirely, so paidPence and course access never reflected the money going back.',
+    notes: ['Fix: reconcileEnrolmentPaymentRefund (lib/academy-payments.ts) applies the cumulative charge.amount_refunded against a new EnrolmentPayment.refundedPence watermark (additive migration), reversing paidPence and re-gating course access on each delta; a full refund still flips state to REFUNDED. In-app refunds stamp the watermark on their own claim so the webhook echo cannot double-apply, and legacy fully-refunded rows (refundedPence still 0) are recognised and skipped.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Stripe refund webhook drops refund deltas on concurrent events — no retry on CAS conflict', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1646),
+    value: 7, effort: 4,
+    detail: 'Booking refund reconciliation used a single compare-and-set on Booking.refundedPence: when two refund events for one booking landed concurrently, the loser silently dropped its delta — refund total understated, loyalty points never reversed for that slice.',
+    notes: ['Fix: the CAS is now a bounded retry loop (3 attempts) that re-fetches the booking on conflict and recomputes the delta from the cumulative charge.amount_refunded; if the conflict persists the handler throws, the webhook returns 500 and Stripe redelivers. Same treatment in the enrolment-payment reconciler.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Health-assessment \'Save & exit\' discards progress despite its label', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1646),
+    value: 5, effort: 2,
+    detail: 'components/portal/AssessmentRunner.tsx — the control was a plain link to /account labelled as a save; answers only lived in component state, so exiting mid-assessment silently discarded everything.',
+    notes: ['Fix: honest control instead of a phantom save lane — relabelled Exit assessment; leaves silently when nothing is answered, otherwise confirms the discard first (new assess.exitConfirm string, en/uk).'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

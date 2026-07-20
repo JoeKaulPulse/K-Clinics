@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { KMark } from '@/components/brand/marks';
 import { trackLead } from '@/lib/analytics-events';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 type Stage = 'intro' | 'budget' | 'consent' | 'capture' | 'auth' | 'analysing' | 'results';
 type Finding = { area: string; label: string; note: string; severity: 'mild' | 'moderate' | 'notable' };
@@ -331,6 +332,8 @@ function CameraCapture({ faceGuide, onCapture, onClose, onError }: { faceGuide: 
   const [facing, setFacing] = useState<'user' | 'environment'>('user');
   const [ready, setReady] = useState(false);
   const reduce = useReducedMotion();
+  // Modal behaviours (focus-in, Tab trap, Escape, focus restore) — shared Dialog primitive (BLD-849/BLD-803).
+  const { panelRef, onKeyDown } = useDialogBehaviours(onClose);
   useEffect(() => {
     let active = true;
     (async () => {
@@ -355,7 +358,7 @@ function CameraCapture({ faceGuide, onCapture, onClose, onError }: { faceGuide: 
     onCapture(canvas.toDataURL('image/jpeg', 0.85));
   }
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/95 p-4">
+    <div ref={panelRef} role="dialog" aria-modal="true" aria-label="Take a photo" tabIndex={-1} onKeyDown={onKeyDown} className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/95 p-4">
       <div className="relative aspect-[3/4] w-full max-w-sm overflow-hidden rounded-3xl border border-white/10">
         <video ref={videoRef} playsInline muted className={`h-full w-full object-cover ${facing === 'user' ? '-scale-x-100' : ''}`} />
         {faceGuide && <div className="pointer-events-none absolute inset-0 grid place-items-center"><motion.div className="h-[68%] w-[56%] rounded-[50%] border-2" style={{ borderColor: gold, boxShadow: '0 0 0 9999px rgba(0,0,0,0.4)' }} animate={reduce ? { opacity: 0.9 } : { opacity: [0.5, 1, 0.5] }} transition={reduce ? { duration: 0 } : { duration: 2.4, repeat: Infinity }} /></div>}

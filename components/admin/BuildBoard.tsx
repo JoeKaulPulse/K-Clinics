@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { MentionInput } from '@/components/admin/MentionInput';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 type Ev = { id: string; kind: string; body: string | null; actor: string; createdAt: string };
 type Subtask = { id: string; ref: string | null; title: string; status: string; assignee: string; ownerInput: boolean; order: number; completedAt: string | null; completedBy: string | null };
@@ -497,6 +498,8 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
   const d = durMs(item);
   const closed = item.status === 'CLOSED';
   const done = item.subtasks.filter((s) => s.status === 'DONE').length;
+  // Modal behaviours (focus-in, Tab trap, Escape, focus restore) — shared Dialog primitive (BLD-849/BLD-803).
+  const { panelRef, onKeyDown } = useDialogBehaviours(onClose);
 
   // Telemetry editor (managers): value/effort/ETA/tokens saved together.
   const [tel, setTel] = useState({ value: item.value ?? '', effort: item.effort ?? '', estCompleteAt: item.estCompleteAt ? item.estCompleteAt.slice(0, 10) : '', actualTokens: item.actualTokens ?? '' });
@@ -580,8 +583,8 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
 
   const lbl = 'text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]';
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(42,36,32,0.5)] p-4" onClick={onClose}>
-      <div className="my-8 w-full max-w-2xl rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(42,36,32,0.5)] p-4" onClick={onClose} onKeyDown={onKeyDown}>
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="task-modal-title" tabIndex={-1} className="my-8 w-full max-w-2xl rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="mb-1 flex items-center gap-2">
@@ -591,7 +594,7 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
               {item.project && <span className="text-[0.65rem] uppercase tracking-wide text-[var(--color-gold-deep)]">▣ {item.project.ref ? `${item.project.ref} · ` : ''}{item.project.name}</span>}
               {closed && <span className="rounded-full bg-[var(--color-jade)]/15 px-2 py-0.5 text-[0.65rem] font-medium text-[var(--color-jade)]">Closed ✓</span>}
             </div>
-            <h2 className="font-[family-name:var(--font-display)] text-xl">{item.title}</h2>
+            <h2 id="task-modal-title" className="font-[family-name:var(--font-display)] text-xl">{item.title}</h2>
             <p className="mt-0.5 text-xs text-[var(--color-stone)]">Reported by {item.reportedBy || '—'} · {fmt(item.createdAt)}{item.pageUrl ? ` · ${item.pageUrl}` : ''}</p>
           </div>
           <button onClick={onClose} aria-label="Close" className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>
@@ -809,6 +812,8 @@ function IdeaModal({ onClose, onDone }: { onClose: () => void; onDone: () => voi
   const [detail, setDetail] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  // Modal behaviours (focus-in, Tab trap, Escape, focus restore) — shared Dialog primitive (BLD-849/BLD-803).
+  const { panelRef, onKeyDown } = useDialogBehaviours(onClose);
   async function save() {
     if (!title.trim()) { setErr('Give the idea a short title.'); return; }
     setBusy(true); setErr('');
@@ -817,9 +822,9 @@ function IdeaModal({ onClose, onDone }: { onClose: () => void; onDone: () => voi
     if (r.ok) { onDone(); onClose(); } else setErr(r.error || 'Could not add.');
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(42,36,32,0.5)] p-4" onClick={onClose}>
-      <div className="my-12 w-full max-w-md rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
-        <h2 className="font-[family-name:var(--font-display)] text-xl">💡 Add an idea</h2>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(42,36,32,0.5)] p-4" onClick={onClose} onKeyDown={onKeyDown}>
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="idea-modal-title" tabIndex={-1} className="my-12 w-full max-w-md rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
+        <h2 id="idea-modal-title" className="font-[family-name:var(--font-display)] text-xl">💡 Add an idea</h2>
         <p className="mt-1 text-sm text-[var(--color-stone)]">Drop it in — Claude scores it (value/effort) and triages it into the workflow automatically.</p>
         <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus placeholder="The idea, in a line" className="mt-4 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
         <textarea value={detail} onChange={(e) => setDetail(e.target.value)} rows={4} placeholder="Any context, why it matters, links… (optional)" className="mt-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
