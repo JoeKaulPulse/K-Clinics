@@ -46,7 +46,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     return NextResponse.json({ ok: true, already: true });
   }
 
-  await db.kioskSession.update({ where: { id: session.id }, data: { stage: 'analyzing' } });
+  // BLD-808: claim the session atomically before scheduling the AI job — a
+  // fast double-tap or client retry used to pass the status check twice and
+  // trigger (and bill) two full analyses. Only the caller that flips stage to
+  // 'analyzing' schedules; the loser gets the same success shape and follows
+  // progress over SSE. A failed run resets stage to 'failed' (lib/kiosk.ts),
+  // so retries after a genuine failure still pass this claim.
+  const claimed = await db.kioskSession.updateMany({
+    where: { id: session.id, stage: { not: 'analyzing' } },
+    data: { stage: 'analyzing' },
+  });
+  if (claimed.count === 0) return NextResponse.json({ ok: true, already: true });
 
   after(async () => { await runKioskAnalysisV2(session.id).catch(() => {}); });
 

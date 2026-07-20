@@ -2366,6 +2366,34 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Duplicate of the Hotspot keyboard finding (BLD-855) from the end-of-day accessibility audit.',
     notes: ['Shipped with PR #1648 — see the BLD-855 entry.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Brand gold text fails WCAG AA contrast in 400+ places across admin', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1649),
+    value: 8, effort: 6,
+    detail: '--color-gold (#a98a6d) is 3.2:1 on white — passing AA only for large text — yet was the text colour of labels, links, prices, counts, table cells and badges across ~400 sites, public and admin.',
+    notes: ['296 small-text occurrences on light backgrounds moved to --color-gold-deep (the palette\'s documented AA text colour) across 153 files; 103 deliberately kept (large display text, gold on dark surfaces, non-text decoration — all pass as-is). Three both-surface components got surface-aware colours: Header shop-link hover follows header state, Button outline hover mixes 50% toward gold via color-mix, HomeworkPanel notice joined its tone maps. White-on-gold buttons (~180 sites) are the separate owner decision on PRJ-939.9.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Brand gold used directly as functional text color fails WCAG AA contrast across roughly 400 call sites', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1649),
+    value: 8, effort: 6,
+    detail: 'Same finding as BLD-742 from the public-site audit pass.',
+    notes: ['Shipped with BLD-742 in PR #1649 — one sitewide sweep covered both cards.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Training Days for Different Cohorts', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1650),
+    value: 8, effort: 5,
+    detail: 'Owner request: create separate practical training days per cohort, several dates per cohort, editable and deletable, never shared across cohorts.',
+    notes: ['New additive CohortPracticalDay table; Practical days panel on each cohort row (Admin → K Academy → Cohorts) with inline add/edit/delete; tenant-scoped API ops; student portal calendars show their own cohort\'s dates, with the old single practical window as the fallback for cohorts with no dates added. Registered in the BLD-300 tenant-isolation guard.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'K Academy course videos have no captions or transcript (WCAG 1.2.2 failure on paid product)', type: 'IDEA', urgency: 'P1', status: 'BLOCKED', assignee: 'claude', pr: PR(1650),
+    value: 7, effort: 6,
+    detail: 'No caption path existed anywhere in the academy video stack — lesson player, demo player, immersive player.',
+    notes: ['Plumbing shipped in PR #1650: additive Lesson.captionsUrl + DemoVideo.captionsUrl, caption tracks on the lesson and demo players, .vtt fields in the curriculum editor and demo manager. BLOCKED on the owner\'s A/B/C choice for captioning the existing catalogue (question on the card); the immersive player\'s encoded-art video path follows once caption files exist.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
