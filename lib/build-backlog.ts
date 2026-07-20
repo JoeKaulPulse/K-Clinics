@@ -2576,6 +2576,69 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'OffersStrip rendered only on /pricing and /account; the homepage never showed running discounts.',
     notes: ['Fix: the strip joins the homepage above the newsletter capture, rendering nothing when no offers are live. Main-nav placement of Special Offers offered to the owner as an option on the card.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: "Sitewide WCAG AA contrast failure — gold background paired with white text on ~90 interactive elements", type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1655),
+    value: 8, effort: 6,
+    detail: "White text on the light brand gold is ~2.9:1 — fails AA at every size — across ~180 buttons and highlights.",
+    notes: ["Owner chose to darken the buttons (20 Jul). 353 gold backgrounds judged individually; 168 swapped to gold-deep (the design system primary button colour) including 15 hover states and 6 hover no-ops moved to hover-to-ink; 185 kept (tints under dark text, dark-text-on-gold, decorations). Zero white-on-light-gold remains."],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: "Client contact lists uploaded to Meta for ad-audience matching without clear disclosure or distinct consent", type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1655),
+    value: 7, effort: 3,
+    detail: "Contact lists were uploaded to Meta for audience matching with only general marketing opt-in and no clear disclosure.",
+    notes: ["Owner chose disclose + keep uploading (20 Jul). The ad-matching disclosure (contact details used in hashed form to show offers on social media, with a Privacy Policy pointer) now appears at every marketing consent point — booking signup, portal signup + wizard, profile, consult form, portal prompt — in English and Ukrainian; the privacy policy processor entry already named Meta."],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: "WebAuthn/passkey RP ID and origin are derived from the request Host header, not a fixed allowlist", type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1656),
+    value: 7, effort: 3,
+    detail: "rp() built the RP ID and expected origins from the request URL, trusting the Host header.",
+    notes: ["Owner approved pinning (20 Jul). In production the request URL is ignored — RP ID and origins come from the canonical site URL (apex + www preserved for iOS); localhost honoured only outside production. Own PR per security-surface rule. Existing kclinics.co.uk passkeys unchanged."],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: "VAT-exclusive pricing charges net but reports gross — VAT never actually collected", type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1657),
+    value: 8, effort: 4,
+    detail: "Exclusive mode charged the listed net amount while reporting added VAT on top — recording VAT never collected.",
+    notes: ["Owner chose prices stay inclusive (20 Jul). vatBreakdown always extracts VAT from the charged amount; the note always reads inclusive; the dead toggle removed from finance settings. Zero change to any charge; reporting corrected. Covers BLD-847."],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: "VAT never added to the Stripe charge in exclusive-pricing mode", type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1657),
+    value: 8, effort: 4,
+    detail: "The charge-side twin of PRJ-939.1.",
+    notes: ["Resolved by the PRJ-939.1 decision (prices always inclusive) — no exclusive mode remains to add VAT in. Shipped with PR #1657."],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: "Academy trainee portfolio photos stored as public, unencrypted URLs with no consent record", type: 'IDEA', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1658),
+    value: 7, effort: 6,
+    detail: "Real before/after clinical photos stored as public blob URLs, identified only by a free-text ref, no consent field.",
+    notes: ["Owner chose full parity (20 Jul). Private storage (prefix-pinned token), an ownership-verified authenticated relay as the only read path, a required subject-consent attestation to save, and a self-healing daily sweep re-homing public blobs into private (permanent, not one-time, because the client token cannot pin the access level). Deploy-verified: the relay 404s an unauthenticated probe."],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: "Capture booking intent before contact details to enable true abandoned-booking recovery", type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1659),
+    value: 8, effort: 5,
+    detail: "The funnel captured no contact details until the final step, so a treatment+time drop-off was unrecoverable.",
+    notes: ["Owner chose both (20 Jul). An optional email-me-my-selection field after treatment selection posts a BookingIntent; a gated daily automation sends one transactional finish-your-booking nudge 2-72h later (legitimate interest, unsubscribe-honoured, never marketing, skipped if already booked). Plus 7-day in-browser resume, SSR-safe, capped at the time step. Covers BLD-853."],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: "Booking funnel captures zero contact info until the final step — most drop-off is unrecoverable", type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1659),
+    value: 8, effort: 5,
+    detail: "The browser-resume half of the funnel-capture finding.",
+    notes: ["Shipped with BLD-838 in PR #1659 — funnel selections persist in-browser for 7 days and a returning visitor resumes where they left off."],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: "AI consultation ('Get My Plan') requires full password signup before showing any result", type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1660),
+    value: 9, effort: 5,
+    detail: "The AI plan was gated behind a name + email + password account — the biggest drop-off point in the flow.",
+    notes: ["Owner chose email-only signup (20 Jul). The K Vision signup is passwordless: name + email creates a guest account (BLD-550), the plan reveals immediately on a live session, and a one-tap sign-in link is emailed for returning later. Login mode keeps the password field for the minority who set one. No schema change."],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
