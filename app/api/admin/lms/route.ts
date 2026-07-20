@@ -108,6 +108,7 @@ export async function POST(req: Request) {
           durationMin: b.durationMin === '' || b.durationMin == null ? null : num(b.durationMin),
           minSeconds: b.minSeconds === '' || b.minSeconds == null ? null : Math.max(0, num(b.minSeconds)),
           videoUrl: mediaUrl(b.videoUrl),
+          captionsUrl: mediaUrl(b.captionsUrl),
           audioUrl: mediaUrl(b.audioUrl),
           embedUrl: mediaUrl(b.embedUrl),
           attachments: attachmentArr(b.attachments),

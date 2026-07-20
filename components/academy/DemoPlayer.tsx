@@ -5,7 +5,7 @@ import { Card, Pill, AButton } from '@/components/academy/ui';
 
 // BLD-539: "spot the mistake" player. The learner watches and presses SPACE when
 // they think they see a mistake; presses (seconds) are graded server-side.
-export type DemoPlay = { id: string; title: string; description: string | null; videoUrl: string; durationSec: number | null; mistakeCount: number; best: number | null };
+export type DemoPlay = { id: string; title: string; description: string | null; videoUrl: string; captionsUrl: string | null; durationSec: number | null; mistakeCount: number; best: number | null };
 type Result = { ok: boolean; error?: string; spotted?: number; total?: number; falsePositives?: number; scorePct?: number; mistakes?: { atSec: number; label: string; caught: boolean }[] };
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -74,8 +74,11 @@ export function DemoPlayer({ demo }: { demo: DemoPlay }) {
       </div>
 
       <div className="relative mt-4 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-black">
+        {/* BLD-904: captions render when the demo has a VTT file; the rule can't see the conditional track. */}
         {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-        <video ref={videoRef} src={demo.videoUrl} playsInline onClick={() => !result && toggle()} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => { setPlaying(false); if (!finished && !result) finish(); }} className="block max-h-[60vh] w-full" />
+        <video ref={videoRef} src={demo.videoUrl} crossOrigin={demo.captionsUrl ? 'anonymous' : undefined} playsInline onClick={() => !result && toggle()} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => { setPlaying(false); if (!finished && !result) finish(); }} className="block max-h-[60vh] w-full">
+          {demo.captionsUrl && <track kind="captions" src={demo.captionsUrl} srcLang="en" label="English" default />}
+        </video>
         {flash && <div className="pointer-events-none absolute inset-0 ring-4 ring-[var(--color-gold)] ring-inset" />}
         {!playing && !result && (
           <button onClick={toggle} className="absolute inset-0 grid place-items-center bg-black/30 text-white">

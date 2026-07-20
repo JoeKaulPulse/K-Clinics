@@ -33,8 +33,8 @@ function savePosition(lessonId: string, positionSec: number) {
   } catch { /* ignore */ }
 }
 
-function ResumableMedia({ kind, src, startAt, lessonId, poster, onEnded }: {
-  kind: 'video' | 'audio'; src: string; startAt: number; lessonId: string; poster?: string | null; onEnded?: () => void;
+function ResumableMedia({ kind, src, startAt, lessonId, poster, captions, onEnded }: {
+  kind: 'video' | 'audio'; src: string; startAt: number; lessonId: string; poster?: string | null; captions?: string | null; onEnded?: () => void;
 }) {
   const mediaRef = useRef<HTMLMediaElement | null>(null);
   const lastSaved = useRef(0);
@@ -69,9 +69,13 @@ function ResumableMedia({ kind, src, startAt, lessonId, poster, onEnded }: {
     <video
       ref={(el) => { mediaRef.current = el; }}
       src={src} controls playsInline preload="metadata" poster={poster ?? undefined}
+      crossOrigin={captions ? 'anonymous' : undefined}
       className="aspect-video w-full rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-black"
       onLoadedMetadata={onLoaded} onTimeUpdate={onTime} onEnded={onEnd}
-    />
+    >
+      {/* BLD-904: WebVTT captions when the lesson has them (set in the curriculum editor). */}
+      {captions && <track kind="captions" src={captions} srcLang="en" label="English" default />}
+    </video>
   );
 }
 
@@ -127,7 +131,7 @@ export function LessonMedia({ lesson, onComplete }: { lesson: LessonView; onComp
       return (
         <div className="mt-6">
           <p className="eyebrow mb-2 text-xs">Watch first</p>
-          <ResumableMedia kind="video" src={lesson.videoUrl} startAt={lesson.videoPositionSec} lessonId={lesson.id} poster={lesson.imageUrl} onEnded={onComplete} />
+          <ResumableMedia kind="video" src={lesson.videoUrl} startAt={lesson.videoPositionSec} lessonId={lesson.id} poster={lesson.imageUrl} captions={lesson.captionsUrl} onEnded={onComplete} />
         </div>
       );
     }

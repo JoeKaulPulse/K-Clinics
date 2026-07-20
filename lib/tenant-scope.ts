@@ -52,6 +52,7 @@ export const ACADEMY_TENANT_MODELS: ReadonlySet<string> = new Set<string>([
   'liveClass',
   'cohort',
   'cohortModuleRelease',
+  'cohortPracticalDay',
   'enrolment',
   'enrolmentPayment',
   'fundingApplication',

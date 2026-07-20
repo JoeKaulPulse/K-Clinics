@@ -2040,6 +2040,7 @@ model Lesson {
   preview             Boolean              @default(false) // BLD-532: free taster lesson — viewable publicly before enrolment
   durationMin         Int?
   videoUrl            String? // native Blob/MP4 upload, YouTube/Vimeo embed, or a search link (pre-test explainer)
+  captionsUrl         String? // BLD-904: WebVTT captions for a native video (YouTube embeds carry their own)
   audioUrl            String? // BLD-529: native audio (Blob/MP3) or hosted audio URL
   embedUrl            String? // BLD-529: third-party iframe embed (slides, interactive widget, form)
   attachments         Json? // BLD-529: downloadable files [{ label, url, sizeBytes? }]
@@ -2432,6 +2433,7 @@ model DemoVideo {
   title       String
   description String?       @db.Text
   videoUrl    String // Vercel Blob URL
+  captionsUrl String? // BLD-904: WebVTT captions
   durationSec Int? // optional, for UI
   order       Int           @default(0)
   active      Boolean       @default(true)
@@ -2645,8 +2647,32 @@ model Cohort {
 
   enrolments     Enrolment[]
   moduleReleases CohortModuleRelease[]
+  practicalDays  CohortPracticalDay[]
 
   @@index([courseId, startAt])
+  @@index([tenantId])
+}
+
+// BLD-881: per-cohort practical training days. Each cohort keeps its own list
+// of in-person dates — several per cohort, edited and deleted independently,
+// never shared across cohorts. The cohort's own startAt/endAt remains the
+// legacy single practical window and is the student-calendar fallback for
+// cohorts with no day rows yet.
+model CohortPracticalDay {
+  id        String    @id @default(cuid())
+  tenantId  String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  cohort    Cohort    @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  cohortId  String
+  title     String    @default("Practical training")
+  startAt   DateTime
+  endAt     DateTime?
+  location  String? // falls back to the cohort's location when null
+  trainer   String? // falls back to the cohort's trainer when null
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([cohortId, startAt])
   @@index([tenantId])
 }
 
