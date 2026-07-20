@@ -170,7 +170,7 @@ export function Header({ config }: { config: SiteConfig }) {
         </nav>
 
         <div className="hidden items-center gap-3 xl:flex">
-          <Link href="/shop" className={`text-sm font-medium transition-colors hover:text-[var(--color-gold)] ${light ? 'text-[var(--color-porcelain)]' : 'text-[var(--color-ink)]'}`}>Shop</Link>
+          <Link href="/shop" className={`text-sm font-medium transition-colors ${light ? 'text-[var(--color-porcelain)] hover:text-[var(--color-gold)]' : 'text-[var(--color-ink)] hover:text-[var(--color-gold-deep)]'}`}>Shop</Link>
           <SiteSearch light={light} />
           <AccountMenu light={light} />
           <Button href={booking.path} size="md" variant={light ? 'gold' : 'ink'}>
