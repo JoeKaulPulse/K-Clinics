@@ -134,6 +134,8 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
           durationMin: b.durationMin,
           pricePence: b.pricePence,
           chargedAt: b.chargedAt?.toISOString() ?? null,
+          giftVoucherCode: b.giftVoucherCode,
+          giftVoucherPence: b.giftVoucherPence,
           refreshments: b.refreshments.map((r) => refreshmentLabel(r)),
           addOns: b.items.filter((i) => i.isAddon).map((i) => ({ id: i.id, label: i.label, pricePence: i.pricePence })),
         }}

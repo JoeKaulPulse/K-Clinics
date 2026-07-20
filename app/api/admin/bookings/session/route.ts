@@ -243,6 +243,69 @@ export async function POST(req: Request) {
       return ok();
     }
 
+    // Gift voucher against the treatment sale (BLD-882). Reserves the balance
+    // ATOMICALLY (reserveVoucher decrements the live balance, so two tills
+    // can't spend the same pounds twice). Full cover settles the booking like
+    // the 'external' channel; partial cover records the application on the
+    // booking and staff collect the remainder by any other method. Leftover
+    // balance stays on the voucher for a future visit — no cash change.
+    case 'voucher': {
+      const { sessionCan } = await import('@/lib/auth');
+      if (!sessionCan(session, 'bookings.charge')) return bad('You don’t have permission to take payments.', 403);
+      const amountPence = Math.round(Number(body.amountPence) || 0);
+      if (amountPence <= 0) return bad('Enter the amount being collected first.');
+      const code = String(body.code || '').trim().toUpperCase();
+      if (!code) return bad('Enter the voucher code.');
+      const b = await db.booking.findUnique({ where: { id: bookingId }, select: { chargedAt: true, giftVoucherPence: true } });
+      if (b?.chargedAt) return bad('This booking is already paid.');
+      if ((b?.giftVoucherPence ?? 0) > 0) return bad('A voucher is already applied to this booking — remove it first to use a different one.');
+      const { reserveVoucher, creditVoucher } = await import('@/lib/gift-vouchers');
+      const { reservedPence } = await reserveVoucher(code, amountPence);
+      if (reservedPence <= 0) return bad('That voucher code isn’t valid, has expired, or has no balance left.');
+      const { logAudit } = await import('@/lib/audit');
+      if (reservedPence >= amountPence) {
+        // Fully covered — settle now, mirroring the 'external' channel.
+        const updated = await db.booking.updateMany({
+          where: { id: bookingId, chargedAt: null, giftVoucherPence: 0 },
+          data: { chargedPence: amountPence, chargedAt: new Date(), chargePaymentIntentId: 'ext_gift-voucher', giftVoucherCode: code, giftVoucherPence: amountPence },
+        });
+        if (updated.count === 0) { await creditVoucher(code, reservedPence).catch(() => {}); return bad('This booking was just paid on another screen.'); }
+        try { const { awardClientSpend } = await import('@/lib/client-loyalty'); await awardClientSpend(bookingId); } catch { /* non-fatal */ }
+        await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, summary: `Paid in full with gift voucher ${code} (£${(amountPence / 100).toFixed(2)})`, bookingId, clientId: booking.clientId, meta: { channel: 'gift-voucher', voucherCode: code, voucherPence: amountPence } }).catch(() => {});
+        return ok({ appliedPence: amountPence, remainingPence: 0, settled: true });
+      }
+      // Partial cover — record the application; the guarded update means a race
+      // (second voucher, or a charge landing meanwhile) re-credits and errors.
+      const updated = await db.booking.updateMany({
+        where: { id: bookingId, chargedAt: null, giftVoucherPence: 0 },
+        data: { giftVoucherCode: code, giftVoucherPence: reservedPence },
+      });
+      if (updated.count === 0) { await creditVoucher(code, reservedPence).catch(() => {}); return bad('This booking was just updated on another screen — try again.'); }
+      await logAudit({ action: 'REWARD_REDEEMED', actor: session.email, summary: `Gift voucher ${code} applied (£${(reservedPence / 100).toFixed(2)} of £${(amountPence / 100).toFixed(2)}) — remainder to collect £${((amountPence - reservedPence) / 100).toFixed(2)}`, bookingId, clientId: booking.clientId, meta: { channel: 'gift-voucher', voucherCode: code, voucherPence: reservedPence, partial: true } }).catch(() => {});
+      return ok({ appliedPence: reservedPence, remainingPence: amountPence - reservedPence, settled: false });
+    }
+
+    // Undo a partial voucher application before the remainder is charged —
+    // re-credits the reserved amount back to the voucher (capped at face value).
+    case 'voucher-remove': {
+      const { sessionCan } = await import('@/lib/auth');
+      if (!sessionCan(session, 'bookings.charge')) return bad('You don’t have permission to take payments.', 403);
+      const b = await db.booking.findUnique({ where: { id: bookingId }, select: { chargedAt: true, giftVoucherCode: true, giftVoucherPence: true } });
+      if (!b?.giftVoucherCode || (b.giftVoucherPence ?? 0) <= 0) return bad('No voucher is applied to this booking.');
+      if (b.chargedAt) return bad('This booking is already paid — the voucher can’t be removed now.');
+      // Guarded clear so a concurrent charge/removal can't double-credit.
+      const updated = await db.booking.updateMany({
+        where: { id: bookingId, chargedAt: null, giftVoucherCode: b.giftVoucherCode, giftVoucherPence: b.giftVoucherPence },
+        data: { giftVoucherCode: null, giftVoucherPence: 0 },
+      });
+      if (updated.count === 0) return bad('This booking was just updated on another screen — try again.');
+      const { creditVoucher } = await import('@/lib/gift-vouchers');
+      await creditVoucher(b.giftVoucherCode, b.giftVoucherPence);
+      const { logAudit } = await import('@/lib/audit');
+      await logAudit({ action: 'REWARD_REDEEMED', actor: session.email, summary: `Gift voucher ${b.giftVoucherCode} removed — £${(b.giftVoucherPence / 100).toFixed(2)} returned to the voucher`, bookingId, clientId: booking.clientId, meta: { channel: 'gift-voucher', voucherCode: b.giftVoucherCode, removed: true } }).catch(() => {});
+      return ok();
+    }
+
     // Next visit: create the follow-on booking for the same treatment, card
     // already on file. Availability, practitioner/room assignment and the
     // overlap re-check go through the same engine + Serializable transaction

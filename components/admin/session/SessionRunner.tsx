@@ -34,6 +34,7 @@ type Props = {
   booking: {
     id: string; treatmentSlug: string; treatmentTitle: string; startAt: string; durationMin: number; pricePence: number;
     chargedAt: string | null;
+    giftVoucherCode: string | null; giftVoucherPence: number;
     refreshments: string[]; addOns: { id: string; label: string; pricePence: number }[];
   };
   photos: {
@@ -803,6 +804,38 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
   const [discType, setDiscType] = useState<'percent' | 'amount'>('percent');
   const [discVal, setDiscVal] = useState('');
   const [discReason, setDiscReason] = useState('');
+  // BLD-882 — gift voucher against the treatment sale. Applying reserves the
+  // balance server-side (atomic); a full cover settles the booking (the SSE
+  // snapshot flips to Paid), a partial one reduces the amount still to collect.
+  const [vOpen, setVOpen] = useState((p.booking.giftVoucherPence ?? 0) > 0);
+  const [vCode, setVCode] = useState('');
+  const [vApplied, setVApplied] = useState<{ code: string; pence: number } | null>(
+    p.booking.giftVoucherCode && (p.booking.giftVoucherPence ?? 0) > 0 && !p.booking.chargedAt
+      ? { code: p.booking.giftVoucherCode, pence: p.booking.giftVoucherPence }
+      : null,
+  );
+  const [vBusy, setVBusy] = useState(false);
+  const [vErr, setVErr] = useState('');
+  async function applyVoucher() {
+    if (vBusy || !vCode.trim() || amountPence <= 0) return;
+    setVBusy(true); setVErr('');
+    const res = (await api({ op: 'voucher', code: vCode.trim(), amountPence })) as { ok: boolean; error?: string; appliedPence?: number; remainingPence?: number; settled?: boolean };
+    setVBusy(false);
+    if (!res.ok) { setVErr(res.error || 'Could not apply the voucher.'); return; }
+    if (res.settled) return; // fully covered — the stream flips this card to Paid
+    setVApplied({ code: vCode.trim().toUpperCase(), pence: res.appliedPence || 0 });
+    setAmount((((res.remainingPence ?? 0)) / 100).toFixed(2));
+    setVCode('');
+  }
+  async function removeVoucher() {
+    if (vBusy || !vApplied) return;
+    setVBusy(true); setVErr('');
+    const res = await api({ op: 'voucher-remove' });
+    setVBusy(false);
+    if (!res.ok) { setVErr(res.error || 'Could not remove the voucher.'); return; }
+    setAmount(((amountPence + vApplied.pence) / 100).toFixed(2));
+    setVApplied(null);
+  }
   const discParams = discReason.trim() ? { discountReason: discReason.trim(), originalPence: p.booking.pricePence } : {};
   function applyDiscount() {
     const base = p.booking.pricePence;
@@ -884,6 +917,25 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                   {discReason.trim() && <span className="text-xs text-[var(--color-stone)]">was {money(p.booking.pricePence)} → {money(amountPence)}</span>}
                 </div>
               )}
+            </div>
+
+            {/* BLD-882: gift voucher — applies to the amount before any method collects the rest */}
+            <div className="mt-2">
+              {vApplied ? (
+                <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3 text-sm">
+                  <span>Gift voucher <span className="font-medium">{vApplied.code}</span> — {money(vApplied.pence)} applied. {money(amountPence)} left to collect.</span>
+                  <button type="button" onClick={removeVoucher} disabled={vBusy} className="text-xs text-[var(--color-gold)] underline-offset-2 hover:underline disabled:opacity-50">{vBusy ? 'Removing…' : 'Remove'}</button>
+                </div>
+              ) : !vOpen ? (
+                <button type="button" onClick={() => setVOpen(true)} className="text-xs text-[var(--color-gold)] underline-offset-2 hover:underline">Redeem a gift voucher</button>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3 text-sm">
+                  <input value={vCode} onChange={(e) => { setVCode(e.target.value); setVErr(''); }} onKeyDown={(e) => e.key === 'Enter' && applyVoucher()} placeholder="Voucher code" aria-label="Gift voucher code" className="min-w-[10rem] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 uppercase outline-none focus:border-[var(--color-gold)]" />
+                  <button type="button" onClick={applyVoucher} disabled={vBusy || !vCode.trim()} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-40">{vBusy ? 'Applying…' : 'Apply'}</button>
+                  <span className="text-xs text-[var(--color-stone)]">Covers up to the amount above; any leftover stays on the voucher.</span>
+                </div>
+              )}
+              {vErr && <p className="mt-1 text-xs text-red-700">{vErr}</p>}
             </div>
 
             {/* The action for the chosen method */}

@@ -414,6 +414,26 @@ export async function cancelBooking(
     }
   }
 
+  // BLD-882: return a reserved-but-unconsumed gift-voucher application. The
+  // reservation is only consumed when the voucher itself settled the booking
+  // (chargePaymentIntentId 'ext_gift-voucher'); a late fee charged to the card
+  // never spends it. Guarded clear so a concurrent removal can't double-credit.
+  if ((booking.giftVoucherPence ?? 0) > 0 && booking.giftVoucherCode && booking.chargePaymentIntentId !== 'ext_gift-voucher') {
+    try {
+      const cleared = await db.booking.updateMany({
+        where: { id: booking.id, giftVoucherCode: booking.giftVoucherCode, giftVoucherPence: booking.giftVoucherPence },
+        data: { giftVoucherCode: null, giftVoucherPence: 0 },
+      });
+      if (cleared.count > 0) {
+        const { creditVoucher } = await import('@/lib/gift-vouchers');
+        await creditVoucher(booking.giftVoucherCode, booking.giftVoucherPence);
+        await logAudit({ action: 'REWARD_REDEEMED', actor: opts.by, bookingId: booking.id, clientId: booking.clientId, summary: `Gift voucher ${booking.giftVoucherCode} returned on cancellation — £${(booking.giftVoucherPence / 100).toFixed(2)} back on the voucher` }).catch(() => {});
+      }
+    } catch (e) {
+      console.error('[cancelBooking] voucher re-credit failed (continuing):', (e as Error)?.message);
+    }
+  }
+
   // Cancellation email (free vs late-fee) — best-effort, with its outcome recorded
   // so a silent provider/config failure is visible in the email log.
   const cancelEmail = await sendEmail({

@@ -603,6 +603,14 @@ model Booking {
   prepaidAt             DateTime?
   prepaidCheckoutId     String? // Stripe Checkout Session id (traceability / idempotency)
 
+  // BLD-882: gift-voucher redemption at front-desk checkout. The voucher
+  // balance is reserved atomically (lib/gift-vouchers reserveVoucher) when
+  // applied; a partial application reduces the amount then collected by any
+  // other method, and staff can remove it (re-credit) any time before charge.
+  // Additive, nullable/defaulted — no existing rows change.
+  giftVoucherCode       String?
+  giftVoucherPence      Int      @default(0)
+
   // Refund (full or partial) of a charge, within the allowed window.
   refundedPence     Int?
   refundedAt        DateTime?
