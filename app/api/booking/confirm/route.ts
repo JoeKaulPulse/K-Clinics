@@ -7,12 +7,19 @@ import { stripeEnabled } from '@/lib/stripe';
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 
-const schema = z.object({ bookingId: z.string().min(1) });
+const schema = z.object({ bookingId: z.string().min(1), clientSecret: z.string().min(1).optional() });
 
 // Called after Stripe Elements confirms the SetupIntent. Verifies the saved
 // payment method, marks the booking CONFIRMED and sends confirmation emails.
 export async function POST(req: Request) {
   if (!crmEnabled || !stripeEnabled) return NextResponse.json({ ok: false }, { status: 503 });
+  // BLD-700: rate-limit so booking IDs can't be probed at volume. The funnel
+  // is anonymous (guests book without an account), so ownership is proven by
+  // possession of the SetupIntent client secret below, not a session.
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'booking-confirm', 10, 300))) {
+    return NextResponse.json({ ok: false, error: 'Too many attempts — wait a few minutes.' }, { status: 429 });
+  }
   const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ ok: false, error: 'Invalid request' }, { status: 422 });
 
@@ -41,6 +48,19 @@ export async function POST(req: Request) {
   }
   if (si.status !== 'succeeded' || !si.payment_method) {
     return NextResponse.json({ ok: false, error: 'Card not confirmed' }, { status: 400 });
+  }
+  // BLD-700: proof of possession — only the browser that ran the Elements flow
+  // holds the SetupIntent client secret, so a matching secret ties the confirm
+  // to the actual payer (works for guests, no session needed). A mismatch is an
+  // active probe and is refused. Absent secret = a funnel session from before
+  // this deploy; allowed for now but reported, so enforcement can turn strict
+  // once the old sessions have aged out.
+  if (parsed.data.clientSecret) {
+    if (parsed.data.clientSecret !== si.client_secret) {
+      return NextResponse.json({ ok: false, error: 'Not your booking session.' }, { status: 403 });
+    }
+  } else {
+    Sentry.captureMessage('[booking/confirm] legacy confirm without client secret', { level: 'warning', tags: { route: 'booking/confirm' } });
   }
   const pmId = typeof si.payment_method === 'string' ? si.payment_method : si.payment_method.id;
 

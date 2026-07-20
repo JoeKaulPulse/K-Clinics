@@ -441,7 +441,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
               </div>
               <div className="mt-5">
                 {isDemo ? <DemoCard onDone={() => setStage('done')} onError={setError} />
-                  : <ElementsWrapper clientSecret={clientSecret}><CardStep bookingId={bookingId} onDone={() => setStage('done')} onError={setError} /></ElementsWrapper>}
+                  : <ElementsWrapper clientSecret={clientSecret}><CardStep bookingId={bookingId} clientSecret={clientSecret} onDone={() => setStage('done')} onError={setError} /></ElementsWrapper>}
               </div>
             </div>
           )}
@@ -642,7 +642,7 @@ function ElementsWrapper({ clientSecret, children }: { clientSecret: string; chi
   );
 }
 
-function CardStep({ bookingId, onDone, onError }: { bookingId: string; onDone: () => void; onError: (e: string) => void }) {
+function CardStep({ bookingId, clientSecret, onDone, onError }: { bookingId: string; clientSecret: string; onDone: () => void; onError: (e: string) => void }) {
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
@@ -655,7 +655,8 @@ function CardStep({ bookingId, onDone, onError }: { bookingId: string; onDone: (
     // returns the same success), so a transient failure here is safe to surface
     // for retry without double-booking — and must not leave the button hung.
     try {
-      const res = await fetch('/api/booking/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId }) });
+      // BLD-700: the client secret proves this browser ran the Elements flow.
+      const res = await fetch('/api/booking/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId, clientSecret }) });
       const j = await res.json().catch(() => null);
       if (j?.ok) { onDone(); return; }
       onError(j?.error || 'Your card was saved, but we couldn’t finish confirming. Please tap Confirm again — you won’t be booked or charged twice.');
