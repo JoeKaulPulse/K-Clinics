@@ -52,6 +52,7 @@ enum EmailKind {
   REBOOK_NUDGE
   NPS_PROMOTER
   NPS_DETRACTOR
+  BOOKING_INTENT
 }
 
 enum EmailStatus {
@@ -3051,6 +3052,29 @@ model NewsletterSubscriber {
   updatedAt   DateTime @updatedAt
 
   @@index([active])
+}
+
+// BLD-838 / BLD-853: optional "email me my selection" capture from the public
+// booking funnel. A visitor who picks a treatment (before the deferred account
+// step, BLD-634) can leave an email to finish later, giving a follow-up route
+// for otherwise-unrecoverable drop-offs. Rows are anonymous (no client relation)
+// — the recovery automation matches to a Client by email only to honour a hard
+// unsubscribe. This is a single transactional "finish your booking" nudge under
+// legitimate interest, NOT a marketing opt-in. Mirrors NewsletterSubscriber:
+// no tenantId (single public-write tenant), no @unique (dedupe is structural).
+model BookingIntent {
+  id             String    @id @default(cuid())
+  email          String
+  treatmentSlug  String
+  treatmentTitle String
+  variantLabel   String?
+  source         String    @default("funnel")
+  createdAt      DateTime  @default(now())
+  recoveredAt    DateTime? // stamped when the email already/again has a booking for this treatment
+  emailedAt      DateTime? // stamped when the one-time recovery nudge is attempted (at-most-once)
+
+  @@index([email, treatmentSlug])
+  @@index([createdAt])
 }
 
 // Before/after gallery cases uploaded by staff in the CRM. Each holds a real

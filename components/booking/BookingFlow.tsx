@@ -23,6 +23,11 @@ const money = (p: number) => (p <= 0 ? 'On consultation' : `£${(p / 100).toLoca
 
 const UPSELL_PCT = 20;
 
+// BLD-853: versioned key for browser resume. Bump the suffix if the persisted
+// shape changes so stale blobs are ignored rather than mis-restored.
+const PROGRESS_KEY = 'kc-booking-progress-v1';
+const PROGRESS_TTL_MS = 7 * 864e5; // only resume selections saved within 7 days
+
 // Gender suitability (inclusive): undisclosed / non-binary / other see everything.
 function suitable(audience: string, gender: string | null): boolean {
   if (audience === 'all' || !gender) return true;
@@ -72,6 +77,9 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
   const [requested, setRequested] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // BLD-853: true once selections were restored from a previous visit in this
+  // browser — surfaces the dismissible "picked up where you left off" line.
+  const [resumed, setResumed] = useState(false);
 
   const service = catalogue.find((s) => s.id === serviceId);
   const variant = service?.variants.find((v) => v.id === variantId);
@@ -125,6 +133,48 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
     fetch('/api/booking/popular-days', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: service.treatmentSlug, durationMin: totalDuration }) })
       .then((r) => r.json()).then((j) => setPopularDays(j.days || [])).catch(() => setPopularDays([]));
   }, [stage, service, variant, totalDuration]);
+
+  // BLD-853 — Browser resume. On mount only, and only for an organic entry (no
+  // deep-link preselect, no waitlist date — those carry their own intent),
+  // restore a fresh set of selections from this browser and jump back to the
+  // right stage. Capped at `time` (never account/card/done), and slots are
+  // re-fetched by the time-step effect above. SSR-safe (typeof window guard) and
+  // private-mode-safe (try/catch): a storage failure never breaks the funnel.
+  useEffect(() => {
+    if (validPreselect || preselectDate) return;
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(PROGRESS_KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw) as { serviceId?: string; variantId?: string; sessions?: number; addOns?: string[]; date?: string; slot?: string; stage?: Stage; savedAt?: number };
+      if (!s || typeof s.savedAt !== 'number' || Date.now() - s.savedAt > PROGRESS_TTL_MS) return;
+      const svc = s.serviceId ? catalogue.find((x) => x.id === s.serviceId) : null;
+      if (!svc) return; // the saved treatment no longer exists — start clean
+      setServiceId(svc.id);
+      const v = svc.variants.find((x) => x.id === s.variantId);
+      if (v) setVariantId(v.id);
+      if (v && typeof s.sessions === 'number' && (s.sessions === 1 || v.courses.some((c) => c.sessions === s.sessions))) setSessions(s.sessions);
+      if (Array.isArray(s.addOns)) setAddOns(new Set(s.addOns.filter((id) => catalogue.some((x) => x.variants.some((vv) => vv.id === id)))));
+      if (typeof s.date === 'string') setDate(s.date);
+      // Slot is intentionally NOT restored — availability is re-fetched fresh.
+      // Cap the restored stage at `time`; anything at/after it resumes on `time`,
+      // anything earlier (or a variant that vanished) resumes on `variant`.
+      const past = s.stage === 'time' || s.stage === 'upsell' || s.stage === 'card' || s.stage === 'account' || s.stage === 'done';
+      setStage(v && past ? 'time' : 'variant');
+      setResumed(true);
+    } catch { /* private mode / quota / bad JSON — ignore, funnel unaffected */ }
+  }, []);
+
+  // BLD-853 — persist selections whenever they change so the visitor can resume.
+  // Terminal `done` clears the store (a completed booking shouldn't resume).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (stage === 'done') { window.localStorage.removeItem(PROGRESS_KEY); return; }
+      if (!serviceId) return; // nothing worth saving until a treatment is chosen
+      window.localStorage.setItem(PROGRESS_KEY, JSON.stringify({ serviceId, variantId, sessions, addOns: [...addOns], date, slot, stage, savedAt: Date.now() }));
+    } catch { /* private mode / quota — ignore */ }
+  }, [serviceId, variantId, sessions, addOns, date, slot, stage]);
 
   // Today is selectable: same-day appointments go through as a request that staff
   // confirm. Future dates book as normal. Clinic-local (UK) date.
@@ -182,6 +232,12 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
   return (
     <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6 md:p-10">
+      {resumed && (
+        <div className="mb-6 flex items-center justify-between gap-3 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] px-4 py-2.5 text-sm text-[var(--color-stone)]">
+          <span>Picked up where you left off.</span>
+          <button type="button" onClick={startOver} className="shrink-0 font-medium text-[var(--color-ink)] underline-offset-4 hover:underline">Start over</button>
+        </div>
+      )}
       <div role="progressbar" aria-valuenow={stepIndex + 1} aria-valuemin={1} aria-valuemax={steps.length} aria-label={`Step ${stepIndex + 1} of ${steps.length}: ${steps[stepIndex]?.label ?? ''}`} className="mb-8 flex items-center gap-2">
         {steps.map((s, i) => (
           <div key={s.key} className="flex flex-1 flex-col gap-2">
@@ -332,6 +388,9 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                     )}
                 </div>
               )}
+              {/* BLD-838: optional email capture — anonymous visitors only (signed-in
+                  clients are already recoverable). Never blocks progress. */}
+              {!client.email && <SaveProgress treatmentSlug={service.treatmentSlug} variantLabel={variant.name} />}
             </div>
           )}
 
@@ -466,6 +525,15 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
     const order: Stage[] = authed ? ['service', 'variant', 'time', 'upsell'] : ['service', 'variant', 'time', 'upsell', 'account'];
     const i = order.indexOf(stage);
     if (i > 0) setStage(order[i - 1]);
+  }
+
+  // BLD-853 — dismiss the resume and start fresh: clear the saved store and reset
+  // every selection back to the first stage.
+  function startOver() {
+    try { if (typeof window !== 'undefined') window.localStorage.removeItem(PROGRESS_KEY); } catch { /* ignore */ }
+    setResumed(false);
+    setServiceId(''); setVariantId(''); setSessions(1); setAddOns(new Set()); setDate(''); setSlot(''); setSlots([]);
+    setStage('service');
   }
 }
 
@@ -670,6 +738,45 @@ function CardStep({ bookingId, clientSecret, onDone, onError }: { bookingId: str
     <div>
       <PaymentElement />
       <div className="mt-6 flex justify-end"><Button onClick={submit} disabled={submitting} variant="gold" size="lg">{submitting ? 'Confirming…' : 'Confirm booking'} <ArrowIcon /></Button></div>
+    </div>
+  );
+}
+
+// BLD-838 — optional "email me my selection" capture on the time step. Gives a
+// follow-up route for anonymous visitors who drop off before the deferred
+// account step (BLD-634). Fire-and-forget: it never blocks funnel progress and
+// never surfaces a blocking error — the capture is a bonus, not a gate. This is
+// a specific-treatment follow-up under legitimate interest, not a marketing
+// opt-in (see app/api/booking/intent).
+function SaveProgress({ treatmentSlug, variantLabel }: { treatmentSlug: string; variantLabel?: string }) {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState<'' | 'saving' | 'saved'>('');
+  const [company, setCompany] = useState(''); // honeypot
+  const valid = /\S+@\S+\.\S+/.test(email.trim());
+
+  async function save() {
+    if (!valid || status === 'saving') return;
+    setStatus('saving');
+    try {
+      await fetch('/api/booking/intent', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), treatmentSlug, variantLabel, company }),
+      });
+    } catch { /* never block or alarm — the capture is a bonus, not a gate */ }
+    setStatus('saved');
+  }
+
+  return (
+    <div className="mt-8 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/50 p-4">
+      <label htmlFor="bintent" className={label}>Email me my selection so I can finish later (optional)</label>
+      <div className="mt-1 flex flex-wrap items-center gap-2">
+        <input id="bintent" type="email" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); if (status === 'saved') setStatus(''); }} onBlur={save} placeholder="you@email.com" aria-label="Email me my selection" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+        <input type="text" tabIndex={-1} autoComplete="off" value={company} onChange={(e) => setCompany(e.target.value)} className="absolute -left-[9999px] h-0 w-0" aria-hidden />
+        <button type="button" onClick={save} disabled={status === 'saving' || !valid} className="shrink-0 rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] disabled:opacity-50">{status === 'saving' ? '…' : 'Save'}</button>
+      </div>
+      {status === 'saved'
+        ? <p className="mt-1.5 text-sm text-[var(--color-jade,#3f7a5a)]">Saved ✓ We’ll email you a link to pick up where you left off — for this treatment only, no marketing.</p>
+        : <p className="mt-1.5 text-xs text-[var(--color-stone)]">We’ll only use this to send you back to this selection — you’re not signed up to anything.</p>}
     </div>
   );
 }

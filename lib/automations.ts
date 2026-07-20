@@ -21,13 +21,13 @@ const WIN_BACK_MONTHS = 6;
 const TIER_NUDGE_PENCE = 20000;   // nudge clients within £200 of the next tier
 const ANNIVERSARY_POINTS = 1000;  // bonus points on a membership anniversary
 
-type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; npsDetractors: number; errors: number };
+type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; bookingIntents: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; npsDetractors: number; errors: number };
 
 export async function runDailyAutomations(): Promise<Tally> {
-  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, errors: 0 };
+  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, errors: 0 };
   const { staffWeeklyDigest, staffReengagement } = await import('@/lib/staff-emails');
   // BLD-120: allSettled so one failing automation can't abort the rest.
-  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t), detractorFollowUp(t)]);
+  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), bookingIntentRecovery(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t), detractorFollowUp(t)]);
   for (const r of results) {
     if (r.status === 'rejected') { t.errors++; console.error('[automations] unhandled automation failure:', r.reason); }
   }
@@ -164,6 +164,69 @@ async function abandonedBookings(t: Tally) {
       res.ok ? t.abandonedBookings++ : t.errors++;
     }
   } catch (e) { t.errors++; console.error('[automations] abandoned bookings failed:', (e as Error)?.message); }
+}
+
+// ── Booking-funnel intent recovery (opt-in) ──
+// BLD-838 / BLD-853: a one-time nudge to visitors who left their email in the
+// public funnel ("email me my selection") but never completed a booking. The
+// rows are anonymous — we match to a Client by email only to honour a hard
+// unsubscribe; there is NO marketing enrolment. A single transactional "finish
+// your booking" message under legitimate interest, gated behind
+// booking_intent_recovery, sent 2–72h after capture, at most once per row.
+async function bookingIntentRecovery(t: Tally) {
+  try {
+    const { getSetting } = await import('@/lib/settings');
+    if (!(await getSetting('booking_intent_recovery'))) return;
+    const base = (SITE_URL || '').replace(/\/$/, '');
+    const now = Date.now();
+    const rows = await db.bookingIntent.findMany({
+      where: {
+        emailedAt: null,
+        recoveredAt: null,
+        createdAt: { gte: new Date(now - 72 * 3600e3), lte: new Date(now - 2 * 3600e3) },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 500,
+    });
+    for (const intent of rows) {
+      // Best-effort: if this email already has a live/booked booking for this
+      // treatment, they've re-engaged — don't nudge. Stamp recoveredAt so the row
+      // drops out of future scans.
+      const already = await db.booking.findFirst({
+        where: {
+          treatmentSlug: intent.treatmentSlug,
+          status: { in: ['REQUESTED', 'PENDING', 'CONFIRMED', 'COMPLETED'] },
+          client: { email: { equals: intent.email, mode: 'insensitive' } },
+        },
+        select: { id: true },
+      }).catch(() => null);
+      if (already) {
+        await db.bookingIntent.update({ where: { id: intent.id }, data: { recoveredAt: new Date() } }).catch(() => {});
+        continue;
+      }
+      // Consent: honour a hard unsubscribe if the email maps to a known client.
+      const client = await db.client.findFirst({
+        where: { email: { equals: intent.email, mode: 'insensitive' } },
+        select: { id: true, email: true, firstName: true, unsubscribed: true },
+      }).catch(() => null);
+      if (client && !canEmailCare(client)) {
+        // Suppressed for a hard unsubscribe — stamp so we don't re-check every run.
+        await db.bookingIntent.update({ where: { id: intent.id }, data: { emailedAt: new Date() } }).catch(() => {});
+        continue;
+      }
+      // Belt-and-braces dedup alongside the emailedAt stamp (mirrors the
+      // abandoned-booking pattern): one BOOKING_INTENT EmailEvent per row.
+      const dup = await db.emailEvent.findFirst({ where: { kind: 'BOOKING_INTENT', to: intent.email, meta: { path: ['intentId'], equals: intent.id } } });
+      if (dup) { await db.bookingIntent.update({ where: { id: intent.id }, data: { emailedAt: new Date() } }).catch(() => {}); continue; }
+      const resumeUrl = `${base}/book?treatment=${encodeURIComponent(intent.treatmentSlug)}`;
+      const res = await sendEmail({ to: intent.email, subject: `Finish booking your ${intent.treatmentTitle}`, html: tmplAbandonedBooking({ firstName: client?.firstName || 'there', treatment: intent.treatmentTitle, resumeUrl }) });
+      await db.emailEvent.create({ data: { clientId: client?.id ?? null, kind: 'BOOKING_INTENT', to: intent.email, subject: `Finish your ${intent.treatmentTitle} booking`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { intentId: intent.id } } }).catch(() => {});
+      // At-most-once: stamp emailedAt on every resolved attempt (success or fail),
+      // so a soft revenue nudge is never sent twice or hammered on a bad address.
+      await db.bookingIntent.update({ where: { id: intent.id }, data: { emailedAt: new Date() } }).catch(() => {});
+      res.ok ? t.bookingIntents++ : t.errors++;
+    }
+  } catch (e) { t.errors++; console.error('[automations] booking-intent recovery failed:', (e as Error)?.message); }
 }
 
 // Deliver any scheduled gift vouchers whose chosen delivery date has arrived.
