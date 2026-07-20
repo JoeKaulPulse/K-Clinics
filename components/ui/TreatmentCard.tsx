@@ -31,6 +31,7 @@ export async function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: nu
             alt={t.title}
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             className="h-full w-full transition-transform duration-[1.6s] [transition-timing-function:var(--ease-lux)] group-hover:scale-[1.08]"
+            objectPosition={t.imagePosition}
           />
           <span className="absolute left-4 top-4 rounded-full bg-black/25 px-3 py-1 text-[0.68rem] font-medium uppercase tracking-[0.18em] text-white/90 backdrop-blur-sm">
             {t.group}
