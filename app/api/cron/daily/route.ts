@@ -77,8 +77,13 @@ export async function GET(req: Request) {
   // isn't configured / nobody connected).
   let gcal = { ok: false, staff: 0, imported: 0 };
   try {
-    const { googleEnabled, syncAllCalendars } = await import('@/lib/google-calendar');
-    if (googleEnabled()) gcal = await syncAllCalendars(); // parked while on Hostinger
+    const { googleEnabled, syncAllCalendars, redactFutureClinicianEvents } = await import('@/lib/google-calendar');
+    if (googleEnabled()) {
+      gcal = await syncAllCalendars(); // parked while on Hostinger
+      // One-time: strip clinical titles/contact details from already-pushed
+      // future events (PRJ-939.6). Self-disables via a Settings key.
+      await redactFutureClinicianEvents();
+    }
   } catch {
     /* never fail the cron on a calendar sync issue */
   }
