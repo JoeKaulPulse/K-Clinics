@@ -323,6 +323,25 @@ export async function redeemPointsOnBooking(clientId: string, bookingId: string,
 }
 
 /** Return points tied to a booking (e.g. when it's cancelled). Idempotent. */
+/** BLD-836: claw back SPEND points earned on a booking when its charge is
+ *  refunded — refundBookingPoints below only returns REDEEMED points, so a
+ *  refunded client kept the points they earned on money that went back.
+ *  Pro-rata for partial refunds; idempotent by ledger arithmetic (negative
+ *  SPEND rows on the booking record what has already been reversed, so a
+ *  webhook redelivery or a second partial refund only reverses the delta). */
+export async function reverseSpendPoints(bookingId: string, totalRefundedPence: number, chargedPence: number): Promise<void> {
+  if (chargedPence <= 0 || totalRefundedPence <= 0) return;
+  const rows = await db.clientPoints.findMany({ where: { bookingId, category: 'SPEND' }, select: { points: true, clientId: true } });
+  if (!rows.length) return;
+  const earned = rows.filter((r) => r.points > 0).reduce((s, r) => s + r.points, 0);
+  const reversed = -rows.filter((r) => r.points < 0).reduce((s, r) => s + r.points, 0);
+  const shouldReverse = Math.floor(earned * Math.min(1, totalRefundedPence / chargedPence));
+  const delta = shouldReverse - reversed;
+  if (delta <= 0 || !rows[0]) return;
+  await awardClientPoints({ clientId: rows[0].clientId, points: -delta, category: 'SPEND', reason: 'Points reversed — payment refunded', bookingId, awardedBy: 'system' });
+  try { const { recomputeClientTier } = await import('@/lib/membership'); await recomputeClientTier(rows[0].clientId); } catch { /* tier refresh best-effort */ }
+}
+
 export async function refundBookingPoints(bookingId: string): Promise<void> {
   const b = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, pointsRedeemed: true, treatmentTitle: true } });
   if (!b || b.pointsRedeemed <= 0) return;

@@ -212,7 +212,7 @@ export function WorkspaceClient() {
             </details>
 
             {/* User list */}
-            <div className="rounded-lg border border-[var(--color-border)] overflow-hidden">
+            <div className="rounded-lg border border-[var(--color-border)] overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-[var(--color-surface-alt,#f9f5f0)] text-left">
                   <tr>
@@ -312,7 +312,7 @@ export function WorkspaceClient() {
               </form>
             </details>
 
-            <div className="rounded-lg border border-[var(--color-border)] overflow-hidden">
+            <div className="rounded-lg border border-[var(--color-border)] overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-[var(--color-surface-alt,#f9f5f0)] text-left">
                   <tr>

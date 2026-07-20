@@ -41,7 +41,7 @@ export function StaffManager({ staff, canManage, actorRole }: { staff: Staff[]; 
         )}
       </div>
 
-      <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+      <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
         <table className="w-full text-left text-sm">
           <thead className="bg-[var(--color-bone)] text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">
             <tr>

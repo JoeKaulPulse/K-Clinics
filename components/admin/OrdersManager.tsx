@@ -24,7 +24,7 @@ export function OrdersManager({ rows, canManage }: { rows: OrderRow[]; canManage
     </div>
   );
   return (
-    <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+    <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
       <table className="w-full text-sm tabular-nums">
         <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th scope="col" className="p-3">Order</th><th scope="col" className="p-3">Customer</th><th scope="col" className="p-3">Total</th><th scope="col" className="p-3">Status</th><th scope="col" className="p-3">Fulfilment</th></tr></thead>
         <tbody>

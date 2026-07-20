@@ -83,7 +83,7 @@ export function ComplianceManager({ rows, canManage }: { rows: Row[]; canManage:
         </div>
       )}
 
-      <div className="mt-6 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
+      <div className="mt-6 overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
         {rows.length === 0 ? (
           <p className="p-8 text-center text-sm text-[var(--color-stone)]">No compliance items yet.{canManage ? ' Add your first renewal above.' : ''}</p>
         ) : (

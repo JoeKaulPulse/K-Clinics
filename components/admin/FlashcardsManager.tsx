@@ -52,7 +52,7 @@ function DeckRow({ deck, busy, act }: { deck: AdminDeck; busy: boolean; act: (p:
           <div className="space-y-2">
             {deck.cards.map((c, i) => <CardRow key={c.id} card={c} index={i} total={deck.cards.length} ids={deck.cards.map((x) => x.id)} busy={busy} act={act} />)}
           </div>
-          <button onClick={() => act({ op: 'createCard', deckId: deck.id })} disabled={busy} className="text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add card</button>
+          <button onClick={() => act({ op: 'createCard', deckId: deck.id })} disabled={busy} className="text-xs font-medium text-[var(--color-gold-deep)] hover:underline">+ Add card</button>
         </div>
       )}
     </div>

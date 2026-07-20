@@ -346,6 +346,9 @@ export async function POST(req: Request) {
         if (fully) {
           try { const { refundBookingPoints } = await import('@/lib/client-loyalty'); await refundBookingPoints(booking.id); } catch { /* non-fatal */ }
         }
+        // BLD-836: claw back the SPEND points earned on the refunded money too
+        // (pro-rata, idempotent inside the helper) — parity with refundBooking().
+        try { const { reverseSpendPoints } = await import('@/lib/client-loyalty'); await reverseSpendPoints(booking.id, newTotal, booking.chargedPence ?? 0); } catch { /* non-fatal */ }
         try { const { pushBookingRefundToXero } = await import('@/lib/xero'); await pushBookingRefundToXero(booking.id, delta, 'Stripe refund'); } catch { /* non-fatal */ }
         try { const { logAudit } = await import('@/lib/audit'); await logAudit({ action: 'PAYMENT_REFUNDED', actor: 'stripe-webhook', bookingId: booking.id, clientId: booking.clientId, summary: `Webhook refund £${(delta / 100).toFixed(2)}${fully ? ' (full)' : ' (partial)'}`, meta: { delta, fully } }); } catch { /* non-fatal */ }
         // BLD-569: email the client when a refund is issued directly in the Stripe

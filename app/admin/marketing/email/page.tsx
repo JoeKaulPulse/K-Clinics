@@ -132,7 +132,7 @@ export default async function EmailDashboard() {
         </section>
       )}
 
-      <section className="mt-8 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+      <section className="mt-8 overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
         <table className="w-full text-sm">
           <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th className="p-3">Campaign</th><th className="p-3">Date</th><th className="p-3">Sent</th><th className="p-3">Opens</th><th className="p-3">Clicks</th><th className="p-3"></th></tr></thead>
           <tbody>
@@ -160,7 +160,7 @@ export default async function EmailDashboard() {
         {audienceRows.length > 0 && (
           <section>
             <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-[var(--color-stone)]">Performance by audience <span className="normal-case text-[var(--color-stone)]">· 90 days</span></h2>
-            <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+            <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
               <table className="w-full text-sm">
                 <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th className="p-3">Audience</th><th className="p-3">Sent</th><th className="p-3">Opens</th><th className="p-3">Clicks</th></tr></thead>
                 <tbody>
@@ -182,7 +182,7 @@ export default async function EmailDashboard() {
         {topLinks.length > 0 && (
           <section>
             <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-[var(--color-stone)]">Top clicked links</h2>
-            <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+            <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
               <table className="w-full text-sm">
                 <tbody>
                   {topLinks.map((l) => (

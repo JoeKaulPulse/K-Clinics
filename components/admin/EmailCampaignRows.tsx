@@ -33,7 +33,7 @@ export function EmailCampaignRows({ rows }: { rows: DraftRow[] }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+    <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
       <table className="w-full text-sm">
         <tbody>
           {rows.map((r) => (
