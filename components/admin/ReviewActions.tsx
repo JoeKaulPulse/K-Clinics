@@ -30,7 +30,7 @@ export function ReviewActions({ id, status }: { id: string; status: string }) {
         </>
       )}
       {status === 'PENDING' && (
-        <button disabled={pending} onClick={() => act('resend')} className={`${btn} border border-[var(--color-line)] hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]`}>Re-send request</button>
+        <button disabled={pending} onClick={() => act('resend')} className={`${btn} border border-[var(--color-line)] hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]`}>Re-send request</button>
       )}
       {(status === 'HIDDEN' || status === 'PUBLISHED') && (
         <button disabled={pending} onClick={() => act('approve')} className={`${btn} border border-[var(--color-line)] hover:border-[var(--color-gold)]`}>Restore</button>

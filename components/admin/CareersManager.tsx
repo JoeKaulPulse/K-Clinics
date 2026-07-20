@@ -39,7 +39,7 @@ function Applications({ applications }: { applications: App[] }) {
                   <td className="py-2 pr-2">
                     <span className="font-medium">{a.name}</span>
                     <span className="block text-xs text-[var(--color-stone)]">{a.email}{a.phone ? ` · ${a.phone}` : ''} · {fmt(a.createdAt)}</span>
-                    {a.cvUrl && <a href={a.cvUrl} target="_blank" rel="noopener" className="text-xs text-[var(--color-gold)] hover:underline">CV / portfolio ↗</a>}
+                    {a.cvUrl && <a href={a.cvUrl} target="_blank" rel="noopener" className="text-xs text-[var(--color-gold-deep)] hover:underline">CV / portfolio ↗</a>}
                     {a.coverNote && <span className="mt-1 block max-w-md text-xs text-[var(--color-stone)]">{a.coverNote}</span>}
                   </td>
                   <td className="px-2">{a.roleTitle}</td>
@@ -78,7 +78,7 @@ function VacancyRow({ v }: { v: Vacancy }) {
       <div className="flex items-center justify-between gap-3">
         <div><span className="font-medium">{v.title}</span><span className="text-xs text-[var(--color-stone)]"> · {[v.type, v.location, v.department].filter(Boolean).join(' · ') || 'no details'}</span></div>
         <div className="flex items-center gap-3 text-xs">
-          <button onClick={() => setEditing((e) => !e)} className="text-[var(--color-gold)] hover:underline">{editing ? 'Close' : 'Edit'}</button>
+          <button onClick={() => setEditing((e) => !e)} className="text-[var(--color-gold-deep)] hover:underline">{editing ? 'Close' : 'Edit'}</button>
           <button onClick={() => act({ op: 'toggle', id: v.id, active: !v.active })} className="text-[var(--color-stone)] hover:underline">{v.active ? 'Unpublish' : 'Publish'}</button>
           <button onClick={() => { if (confirm('Delete this vacancy?')) act({ op: 'remove', id: v.id }); }} className="text-[var(--color-blush-deep)] hover:underline">Delete</button>
         </div>

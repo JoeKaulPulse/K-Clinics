@@ -32,7 +32,7 @@ export function CalendarBlockButton({ clinicians, dateISO }: { clinicians: Clini
   const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm';
 
   if (!open) {
-    return <button onClick={() => setOpen(true)} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Block time</button>;
+    return <button onClick={() => setOpen(true)} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">Block time</button>;
   }
 
   return (

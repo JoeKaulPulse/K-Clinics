@@ -39,7 +39,7 @@ export function PublicGallery({ items }: { items: PublicGalleryItem[] }) {
                   {it.caption && <p className="mt-1 text-sm text-[var(--color-stone)]">{it.caption}</p>}
                 </div>
                 {it.treatmentSlug && (
-                  <Link href={`/${it.treatmentSlug}`} aria-label={`Explore ${it.category}`} className="shrink-0 text-sm font-medium text-[var(--color-gold)] hover:underline">View →</Link>
+                  <Link href={`/${it.treatmentSlug}`} aria-label={`Explore ${it.category}`} className="shrink-0 text-sm font-medium text-[var(--color-gold-deep)] hover:underline">View →</Link>
                 )}
               </figcaption>
             </figure>

@@ -179,7 +179,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   };
   return (
     <AdminShell user={session?.email} can={can}>
-      <Link href="/admin/bookings" className="text-sm text-[var(--color-gold)] hover:underline">← Bookings</Link>
+      <Link href="/admin/bookings" className="text-sm text-[var(--color-gold-deep)] hover:underline">← Bookings</Link>
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -215,7 +215,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
         <section>
           <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Client</h2>
           <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
-            <Link href={`/admin/clients/${b.clientId}`} className="font-medium hover:text-[var(--color-gold)]">{name}</Link>
+            <Link href={`/admin/clients/${b.clientId}`} className="font-medium hover:text-[var(--color-gold-deep)]">{name}</Link>
             <p className="mt-1 text-sm text-[var(--color-stone)]">{b.client.email}{b.client.phone ? ` · ${b.client.phone}` : ''}</p>
             {(() => { const n = (b.notes || '').replace(/\s*\[wp:[^\]]+\]/g, '').trim(); return n ? <p className="mt-3 whitespace-pre-line border-t border-[var(--color-line)] pt-3 text-sm">{n}</p> : null; })()}
             <p className="mt-3 text-xs text-[var(--color-stone)]">
@@ -253,7 +253,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
                 ))}
               </ul>
             )}
-            <Link href={`/admin/clients/${b.clientId}`} className="mt-3 inline-block text-xs text-[var(--color-gold)] hover:underline">View full health records →</Link>
+            <Link href={`/admin/clients/${b.clientId}`} className="mt-3 inline-block text-xs text-[var(--color-gold-deep)] hover:underline">View full health records →</Link>
           </div>
 
           {/* Staff: book the client's next appointment (fills this column + delivers

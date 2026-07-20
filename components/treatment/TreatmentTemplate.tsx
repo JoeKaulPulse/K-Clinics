@@ -78,7 +78,7 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
         <div>
           <p className="font-[family-name:var(--font-display)] text-lg text-[var(--color-ink)]">{v.name}</p>
           {!unavailable && note && <p className="mt-0.5 text-sm text-[var(--color-stone)]">{note}</p>}
-          {v.offerPence != null && v.offerName && <p className="mt-0.5 text-sm font-medium text-[var(--color-gold)]">{v.offerName}</p>}
+          {v.offerPence != null && v.offerName && <p className="mt-0.5 text-sm font-medium text-[var(--color-gold-deep)]">{v.offerName}</p>}
         </div>
         <p className="shrink-0 font-[family-name:var(--font-display)] text-xl text-[var(--color-ink)]">
           {unavailable ? (
@@ -292,8 +292,8 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
               </div>
               {vatNote && <p className="mt-4 text-xs text-[var(--color-stone)]">{vatNote}</p>}
               <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm">
-                <Link href="/gallery" className="font-medium text-[var(--color-gold)] hover:underline">See real results →</Link>
-                <Link href="/reviews" className="font-medium text-[var(--color-gold)] hover:underline">Read verified reviews →</Link>
+                <Link href="/gallery" className="font-medium text-[var(--color-gold-deep)] hover:underline">See real results →</Link>
+                <Link href="/reviews" className="font-medium text-[var(--color-gold-deep)] hover:underline">Read verified reviews →</Link>
               </div>
             </Reveal>
             <Reveal delay={0.1}>

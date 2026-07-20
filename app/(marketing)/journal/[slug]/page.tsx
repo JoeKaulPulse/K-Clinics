@@ -43,7 +43,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       <section className="container-narrow pt-[calc(var(--header-h,5.25rem)+2.5rem)]">
         <Reveal>
           <nav className="mb-6 flex items-center gap-2 text-sm text-[var(--color-stone)]" aria-label="Breadcrumb">
-            <Link href="/journal" className="hover:text-[var(--color-gold)]">Journal</Link>
+            <Link href="/journal" className="hover:text-[var(--color-gold-deep)]">Journal</Link>
             <span>/</span>
             <span>{a.category}</span>
           </nav>
@@ -78,7 +78,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             <p className="eyebrow mb-4">Treatments mentioned</p>
             <div className="flex flex-wrap gap-3">
               {related.map((t) => t && (
-                <Link key={t.slug} href={`/${t.slug}`} className="rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-5 py-2.5 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
+                <Link key={t.slug} href={`/${t.slug}`} className="rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-5 py-2.5 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">
                   {t.title}
                 </Link>
               ))}

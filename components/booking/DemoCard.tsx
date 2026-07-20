@@ -54,7 +54,7 @@ export function DemoCard({ onDone, onError }: { onDone: () => void; onError: (e:
 
       <p className="mt-3 text-xs text-[var(--color-stone)]">
         <span className="font-medium text-[var(--color-ink-soft)]">Demo mode.</span> Use Stripe test card{' '}
-        <button type="button" onClick={() => { setNum('4242 4242 4242 4242'); setExp('12 / 34'); setCvc('123'); }} className="font-[family-name:var(--font-mono)] underline underline-offset-2 hover:text-[var(--color-gold)]">4242 4242 4242 4242</button>.
+        <button type="button" onClick={() => { setNum('4242 4242 4242 4242'); setExp('12 / 34'); setCvc('123'); }} className="font-[family-name:var(--font-mono)] underline underline-offset-2 hover:text-[var(--color-gold-deep)]">4242 4242 4242 4242</button>.
         No payment is taken.
       </p>
 

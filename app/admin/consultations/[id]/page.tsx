@@ -46,9 +46,9 @@ export default async function ConsultationDetail({ params }: { params: Promise<{
   return (
     <AdminShell user={session?.email} can={can}>
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Link href="/admin/consultations" className="text-[var(--color-gold)] hover:underline">← Consultations</Link>
+        <Link href="/admin/consultations" className="text-[var(--color-gold-deep)] hover:underline">← Consultations</Link>
         <span className="text-[var(--color-stone)]">·</span>
-        <Link href={`/admin/clients/${consult.clientId}`} className="text-[var(--color-gold)] hover:underline">{fullName}</Link>
+        <Link href={`/admin/clients/${consult.clientId}`} className="text-[var(--color-gold-deep)] hover:underline">{fullName}</Link>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
@@ -136,7 +136,7 @@ export default async function ConsultationDetail({ params }: { params: Promise<{
               <p className="font-medium">{fullName}</p>
               <p className="text-xs text-[var(--color-stone)]">{consult.client.email}</p>
             </div>
-            <span className="text-xs text-[var(--color-gold)]">Client record →</span>
+            <span className="text-xs text-[var(--color-gold-deep)]">Client record →</span>
           </Link>
         </aside>
       </div>

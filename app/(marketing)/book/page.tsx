@@ -110,7 +110,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
             </ul>
             {promoted.length > 0 && (
               <div className="mt-8 rounded-[var(--radius-md)] border border-[var(--color-gold)]/30 bg-[var(--color-gold)]/8 p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-gold)]">On now</p>
+                <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-gold-deep)]">On now</p>
                 <ul className="mt-2 space-y-1 text-sm text-[var(--color-ink-soft)]">
                   {promoted.slice(0, 4).map((o) => (
                     <li key={o.id}>✦ {o.name}{o.percentOff ? ` — ${o.percentOff}% off` : ''}</li>

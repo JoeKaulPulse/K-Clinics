@@ -44,7 +44,7 @@ export default async function ShopPage() {
                   </div>
                   <div className="p-5">
                     {p.brand && <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">{p.brand}</p>}
-                    <h2 className="mt-1 font-[family-name:var(--font-display)] text-lg leading-tight group-hover:text-[var(--color-gold)]">{p.name}{p.ageRestricted && <span className="ml-2 align-middle rounded-full bg-[var(--color-ink)] px-1.5 py-0.5 text-[0.6rem] text-[var(--color-porcelain)]">18+</span>}</h2>
+                    <h2 className="mt-1 font-[family-name:var(--font-display)] text-lg leading-tight group-hover:text-[var(--color-gold-deep)]">{p.name}{p.ageRestricted && <span className="ml-2 align-middle rounded-full bg-[var(--color-ink)] px-1.5 py-0.5 text-[0.6rem] text-[var(--color-porcelain)]">18+</span>}</h2>
                     <p className="mt-2 font-[family-name:var(--font-display)] text-lg text-[var(--color-ink)]">
                       {formatPence(p.pricePence)}
                       {p.compareAtPence && p.compareAtPence > p.pricePence ? <span className="ml-2 text-sm text-[var(--color-stone)] line-through">{formatPence(p.compareAtPence)}</span> : null}

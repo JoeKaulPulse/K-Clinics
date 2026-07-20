@@ -42,7 +42,7 @@ export default async function WaitlistPage() {
             {rows.map((w) => (
               <tr key={w.id} className="bg-[var(--color-porcelain)] align-top transition-colors duration-150 hover:bg-[var(--color-bone)]">
                 <td className="px-4 py-3">
-                  <a href={`/admin/clients/${w.client.id}`} className="font-medium hover:text-[var(--color-gold)]">{[w.client.firstName, w.client.lastName].filter(Boolean).join(' ') || w.client.email}</a>
+                  <a href={`/admin/clients/${w.client.id}`} className="font-medium hover:text-[var(--color-gold-deep)]">{[w.client.firstName, w.client.lastName].filter(Boolean).join(' ') || w.client.email}</a>
                 </td>
                 <td className="px-4 py-3">{w.treatmentTitle}</td>
                 <td className="px-4 py-3 text-[var(--color-stone)]">{d(w.fromDate)}{+w.toDate !== +w.fromDate ? ` – ${d(w.toDate)}` : ''}</td>

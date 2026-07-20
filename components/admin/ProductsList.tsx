@@ -70,7 +70,7 @@ export function ProductsList({ rows }: { rows: ProductRow[] }) {
                         // eslint-disable-next-line @next/next/no-img-element
                         ? <img src={r.image} alt="" className="h-10 w-10 rounded object-cover" />
                         : <span className="grid h-10 w-10 place-items-center rounded bg-[var(--color-bone)] text-[var(--color-stone)]">▦</span>}
-                      <span className="font-medium hover:text-[var(--color-gold)]">{r.name}{r.ageRestricted && <span className="ml-2 rounded-full bg-[var(--color-ink)] px-1.5 py-0.5 text-[0.6rem] text-[var(--color-porcelain)]">18+</span>}</span>
+                      <span className="font-medium hover:text-[var(--color-gold-deep)]">{r.name}{r.ageRestricted && <span className="ml-2 rounded-full bg-[var(--color-ink)] px-1.5 py-0.5 text-[0.6rem] text-[var(--color-porcelain)]">18+</span>}</span>
                     </Link>
                   </td>
                   <td className="p-3 tabular-nums">{money(r.pricePence)}</td>

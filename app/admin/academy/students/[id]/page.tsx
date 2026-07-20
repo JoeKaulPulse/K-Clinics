@@ -78,7 +78,7 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
         <div>
           <h1 className="font-[family-name:var(--font-display)] text-3xl">{student.firstName} {student.lastName ?? ''}{!student.portalActive && <span className="ml-2 align-middle rounded-full bg-[var(--color-blush)]/15 px-2 py-0.5 text-xs text-[var(--color-blush-deep)]">Suspended</span>}</h1>
           <p className="mt-1 text-sm text-[var(--color-stone)]">{student.email}{student.phone ? ` · ${student.phone}` : ''}</p>
-          <p className="mt-1 text-xs text-[var(--color-stone)]">Clinic client: {client ? <Link href={`/admin/clients/${client.id}`} className="text-[var(--color-gold)] hover:underline">{client.firstName} {client.lastName ?? ''} →</Link> : <span>not linked</span>}</p>
+          <p className="mt-1 text-xs text-[var(--color-stone)]">Clinic client: {client ? <Link href={`/admin/clients/${client.id}`} className="text-[var(--color-gold-deep)] hover:underline">{client.firstName} {client.lastName ?? ''} →</Link> : <span>not linked</span>}</p>
         </div>
         <StudentActions studentId={student.id} email={student.email} portalActive={student.portalActive} hasClient={!!client} />
       </div>
@@ -114,7 +114,7 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
       </div>
 
       <div className="mt-5">
-        <Card title="Enrolments &amp; payments" action={<div className="flex items-center gap-3"><EnrolInCourse studentEmail={student.email} studentName={`${student.firstName}${student.lastName ? ` ${student.lastName}` : ''}`} courses={enrolCandidates} /><Link href="/admin/academy/enrolments" className="text-xs text-[var(--color-gold)] hover:underline">Manage in pipeline →</Link></div>}>
+        <Card title="Enrolments &amp; payments" action={<div className="flex items-center gap-3"><EnrolInCourse studentEmail={student.email} studentName={`${student.firstName}${student.lastName ? ` ${student.lastName}` : ''}`} courses={enrolCandidates} /><Link href="/admin/academy/enrolments" className="text-xs text-[var(--color-gold-deep)] hover:underline">Manage in pipeline →</Link></div>}>
           {enrolments.length === 0 ? <p className="text-sm text-[var(--color-stone)]">No enrolments.</p> : (
             <div className="space-y-3">
               {enrolments.map((e) => {
@@ -125,11 +125,11 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
                   <div key={e.id} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
-                        <Link href={`/admin/academy/${e.course.id}`} className="font-medium hover:text-[var(--color-gold)] hover:underline">{e.course.title}</Link>
+                        <Link href={`/admin/academy/${e.course.id}`} className="font-medium hover:text-[var(--color-gold-deep)] hover:underline">{e.course.title}</Link>
                         <span className="ml-2 rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-[0.65rem] uppercase tracking-wide text-[var(--color-stone)]">{e.status}</span>
                         <span className="block text-xs text-[var(--color-stone)]">{money(e.paidPence)} of {money(fee)} paid{outstanding > 0 ? ` · ${money(outstanding)} due` : ' · paid in full'}{e.cohort ? ` · cohort ${e.cohort.name || fmt(e.cohort.startAt)}` : ''}{e.preCourseAckAt ? ' · pre-course read ✓' : ''}</span>
                       </div>
-                      <Link href={`/academy/learn/${e.course.slug}`} className="text-xs text-[var(--color-gold)] hover:underline">View course →</Link>
+                      <Link href={`/academy/learn/${e.course.slug}`} className="text-xs text-[var(--color-gold-deep)] hover:underline">View course →</Link>
                     </div>
                     {ps.length > 0 && (
                       <ul className="mt-2 space-y-1 border-t border-[var(--color-line)] pt-2 text-xs">
@@ -150,7 +150,7 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
       </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
-        <Card title="Homework" action={<Link href="/admin/academy/homework" className="text-xs text-[var(--color-gold)] hover:underline">Review queue →</Link>}>
+        <Card title="Homework" action={<Link href="/admin/academy/homework" className="text-xs text-[var(--color-gold-deep)] hover:underline">Review queue →</Link>}>
           {homeworkRows.length === 0 ? <p className="text-sm text-[var(--color-stone)]">No homework submitted.</p> : (
             <ul className="space-y-1.5 text-sm">
               {homeworkRows.map((h) => (

@@ -34,7 +34,7 @@ export function ExercisesBoard({ groups }: { groups: ExerciseGroup[] }) {
                         </div>
                         <div className="flex items-center gap-2">
                           {ex.best != null && <Pill tone={ex.best === 100 ? 'good' : 'neutral'}>Best {ex.best}%</Pill>}
-                          <span className="text-sm text-[var(--color-gold)]">Start →</span>
+                          <span className="text-sm text-[var(--color-gold-deep)]">Start →</span>
                         </div>
                       </div>
                     </Card>

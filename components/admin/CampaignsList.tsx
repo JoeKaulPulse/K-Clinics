@@ -67,7 +67,7 @@ export function CampaignsList({ rows, canManage }: { rows: CampaignRow[]; canMan
               {rows.map((r) => (
                 <tr key={r.id} className="border-t border-[var(--color-line)] hover:bg-[var(--color-bone)]/50">
                   <td className="p-3">
-                    <Link href={`/admin/marketing/campaigns/${r.id}`} className="font-medium hover:text-[var(--color-gold)]">{r.name}</Link>
+                    <Link href={`/admin/marketing/campaigns/${r.id}`} className="font-medium hover:text-[var(--color-gold-deep)]">{r.name}</Link>
                     <span className="block text-xs text-[var(--color-stone)]">{r.goal} · {r.channels.length} channel{r.channels.length === 1 ? '' : 's'}</span>
                   </td>
                   <td className="p-3"><span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-medium ${STATUS_STYLE[r.status] ?? ''}`}>{r.status}</span></td>

@@ -88,7 +88,7 @@ export default async function TeamPage() {
               <StaggerItem key={p.slug}>
                 <div className="h-full rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-7">
                   <h3 className="font-[family-name:var(--font-display)] text-2xl">{p.name}</h3>
-                  <p className="mt-1 text-sm uppercase tracking-[0.14em] text-[var(--color-gold)]">{p.role}</p>
+                  <p className="mt-1 text-sm uppercase tracking-[0.14em] text-[var(--color-gold-deep)]">{p.role}</p>
                   <p className="mt-4 text-[var(--color-ink-soft)]">{p.bio}</p>
                   {p.focus.length > 0 && <div className="mt-4 flex flex-wrap gap-1.5">{p.focus.map((f) => <span key={f} className="rounded-full bg-[var(--color-porcelain)] px-2.5 py-1 text-xs text-[var(--color-stone)]">{f}</span>)}</div>}
                 </div>
@@ -123,7 +123,7 @@ function Card({ m }: { m: TeamMember }) {
         )}
         <div>
           <h3 className="font-[family-name:var(--font-display)] text-xl leading-tight">{m.name}</h3>
-          {m.title && <p className="text-sm uppercase tracking-[0.12em] text-[var(--color-gold)]">{m.title}</p>}
+          {m.title && <p className="text-sm uppercase tracking-[0.12em] text-[var(--color-gold-deep)]">{m.title}</p>}
           {m.yearsExperience ? <p className="mt-0.5 text-xs text-[var(--color-stone)]">{m.yearsExperience}+ years’ experience</p> : null}
         </div>
       </div>
@@ -140,7 +140,7 @@ function Card({ m }: { m: TeamMember }) {
 
       {m.phone && (
         <div className="mt-5 border-t border-[var(--color-line)] pt-4 text-sm">
-          <a href={`tel:${m.phone.replace(/\s/g, '')}`} className="text-[var(--color-ink)] hover:text-[var(--color-gold)]">☏ {m.phone}</a>
+          <a href={`tel:${m.phone.replace(/\s/g, '')}`} className="text-[var(--color-ink)] hover:text-[var(--color-gold-deep)]">☏ {m.phone}</a>
         </div>
       )}
     </div>

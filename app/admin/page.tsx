@@ -423,13 +423,13 @@ export default async function AdminOverview() {
         <section>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-[family-name:var(--font-display)] text-xl">Today’s schedule</h2>
-            <Link href="/admin/bookings" className="text-sm text-[var(--color-gold)] hover:underline">All bookings</Link>
+            <Link href="/admin/bookings" className="text-sm text-[var(--color-gold-deep)] hover:underline">All bookings</Link>
           </div>
           <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
             {a.today.length === 0 && <p className="p-6 text-sm text-[var(--color-stone)]">No appointments today.</p>}
             {a.today.map((b) => (
               <Link key={b.id} href={`/admin/bookings/${b.id}`} className="flex items-center gap-4 border-b border-[var(--color-line)] px-5 py-3.5 last:border-0 hover:bg-[var(--color-bone)]">
-                <span className="w-14 shrink-0 font-[family-name:var(--font-display)] text-lg text-[var(--color-gold)]">{b.time}</span>
+                <span className="w-14 shrink-0 font-[family-name:var(--font-display)] text-lg text-[var(--color-gold-deep)]">{b.time}</span>
                 <div className="flex-1">
                   <p className="font-medium">{b.treatment}</p>
                   <p className="text-xs text-[var(--color-stone)]">{b.client}</p>
@@ -441,7 +441,7 @@ export default async function AdminOverview() {
 
           <div className="mb-3 mt-8 flex items-center justify-between">
             <h2 className="font-[family-name:var(--font-display)] text-xl">Recent consultations</h2>
-            <Link href="/admin/consultations" className="text-sm text-[var(--color-gold)] hover:underline">View all</Link>
+            <Link href="/admin/consultations" className="text-sm text-[var(--color-gold-deep)] hover:underline">View all</Link>
           </div>
           <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
             {o.recentConsults.length === 0 && <p className="p-6 text-sm text-[var(--color-stone)]">No consultations yet.</p>}

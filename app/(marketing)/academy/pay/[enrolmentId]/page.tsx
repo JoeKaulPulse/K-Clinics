@@ -34,7 +34,7 @@ export default async function AcademyPayPage({ params }: { params: Promise<{ enr
   return (
     <AcademyPortalShell firstName={student.firstName}>
       <div className="mb-7">
-        {enrolment.course.level && <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-gold)]">K Academy · {enrolment.course.level}</p>}
+        {enrolment.course.level && <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-gold-deep)]">K Academy · {enrolment.course.level}</p>}
         <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl sm:text-4xl">{(enrolment.status === 'ENROLLED' || enrolment.status === 'PAID') && money && money.outstandingPence > 0 ? 'Pay your balance' : 'Accept your place'}</h1>
         <p className="mt-1 text-[var(--color-stone)]">Secure your place on {enrolment.course.title}.</p>
       </div>

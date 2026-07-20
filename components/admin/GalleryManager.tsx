@@ -155,7 +155,7 @@ function Case({ it }: { it: Item }) {
           <button disabled={busy} onClick={() => { if (confirm('Delete this case?')) act({ op: 'remove', id: it.id }); }} className="text-[var(--color-blush-deep)] hover:underline disabled:opacity-50">Delete</button>
         </div>
         {!it.consent && (
-          <button disabled={busy} onClick={() => { if (confirm('Confirm you hold this client’s written consent to publish these photos?')) act({ op: 'update', id: it.id, consent: true }); }} className="mt-2 text-[0.65rem] font-medium text-[var(--color-gold)] hover:underline disabled:opacity-50">
+          <button disabled={busy} onClick={() => { if (confirm('Confirm you hold this client’s written consent to publish these photos?')) act({ op: 'update', id: it.id, consent: true }); }} className="mt-2 text-[0.65rem] font-medium text-[var(--color-gold-deep)] hover:underline disabled:opacity-50">
             Confirm client consent →
           </button>
         )}

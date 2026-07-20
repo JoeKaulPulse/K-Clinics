@@ -70,7 +70,7 @@ export default async function PackagePage({ params }: { params: Promise<{ slug: 
                     </svg>
                   </span>
                   {href ? (
-                    <Link href={href} className="text-lg underline decoration-[var(--color-gold)]/40 underline-offset-4 transition-colors hover:text-[var(--color-gold)]">
+                    <Link href={href} className="text-lg underline decoration-[var(--color-gold)]/40 underline-offset-4 transition-colors hover:text-[var(--color-gold-deep)]">
                       {item}
                     </Link>
                   ) : (

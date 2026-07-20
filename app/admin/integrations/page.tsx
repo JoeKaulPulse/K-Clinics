@@ -91,7 +91,7 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
 
                   {(i.manageHref || i.docsHref) && (
                     <div className="mt-4 flex items-center gap-4 text-sm">
-                      {i.manageHref && <a href={i.manageHref} className="font-medium text-[var(--color-gold)] hover:text-[var(--color-ink)]">{uk ? 'Керувати' : 'Manage'} →</a>}
+                      {i.manageHref && <a href={i.manageHref} className="font-medium text-[var(--color-gold-deep)] hover:text-[var(--color-ink)]">{uk ? 'Керувати' : 'Manage'} →</a>}
                       {i.docsHref && <a href={i.docsHref} target="_blank" rel="noopener noreferrer" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">{uk ? 'Документація' : 'Get keys'} ↗</a>}
                     </div>
                   )}

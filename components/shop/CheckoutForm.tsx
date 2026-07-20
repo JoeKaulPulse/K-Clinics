@@ -40,7 +40,7 @@ export function CheckoutForm() {
   }
 
   if (items.length === 0 && stage !== 'done') {
-    return <p className="text-[var(--color-stone)]">Your bag is empty. <Link href="/shop" className="text-[var(--color-gold)] underline">Browse the shop →</Link></p>;
+    return <p className="text-[var(--color-stone)]">Your bag is empty. <Link href="/shop" className="text-[var(--color-gold-deep)] underline">Browse the shop →</Link></p>;
   }
 
   if (stage === 'done') {
@@ -48,7 +48,7 @@ export function CheckoutForm() {
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-8 text-center">
         <p className="font-[family-name:var(--font-display)] text-2xl">Thank you — order {orderNo} confirmed ✓</p>
         <p className="mt-2 text-[var(--color-stone)]">A confirmation email is on its way. {f.method === 'collect' ? 'We’ll let you know when it’s ready to collect.' : 'We’ll dispatch it shortly.'}</p>
-        <Link href="/shop" className="mt-5 inline-flex items-center gap-1 text-[var(--color-gold)] hover:underline">Continue shopping <ArrowIcon /></Link>
+        <Link href="/shop" className="mt-5 inline-flex items-center gap-1 text-[var(--color-gold-deep)] hover:underline">Continue shopping <ArrowIcon /></Link>
       </div>
     );
   }

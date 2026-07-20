@@ -103,7 +103,7 @@ export function ChatManager() {
             </div>
             <p className="mt-0.5 truncate text-xs text-[var(--color-stone)]">{c.preview}</p>
             <p className="mt-0.5 flex items-center gap-1.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">
-              <span className={`rounded px-1 py-px font-semibold not-italic ${c.mode === 'AI' ? 'bg-[var(--color-bone)] text-[var(--color-gold)]' : 'bg-[var(--color-ink)] text-[var(--color-porcelain)]'}`}>{c.mode === 'AI' ? 'AI' : 'Staff'}</span>
+              <span className={`rounded px-1 py-px font-semibold not-italic ${c.mode === 'AI' ? 'bg-[var(--color-bone)] text-[var(--color-gold-deep)]' : 'bg-[var(--color-ink)] text-[var(--color-porcelain)]'}`}>{c.mode === 'AI' ? 'AI' : 'Staff'}</span>
               <span>{c.status === 'CLOSED' ? 'Closed' : 'Open'} · {fmt(c.lastMessageAt)}</span>
             </p>
           </button>
@@ -127,8 +127,8 @@ export function ChatManager() {
               <div className="flex items-center gap-3 text-xs">
                 {headerEmail && <button onClick={emailTranscript} disabled={busy} title={`Email the chat to ${headerEmail}`} className="font-medium text-[var(--color-gold-deep)] hover:underline disabled:opacity-50">✉ Email chat</button>}
                 {meta?.mode === 'AI'
-                  ? <button onClick={() => setMode('STAFF')} className="font-medium text-[var(--color-gold)] hover:underline">Take over</button>
-                  : <button onClick={() => setMode('AI')} className="font-medium text-[var(--color-gold)] hover:underline">Resume AI</button>}
+                  ? <button onClick={() => setMode('STAFF')} className="font-medium text-[var(--color-gold-deep)] hover:underline">Take over</button>
+                  : <button onClick={() => setMode('AI')} className="font-medium text-[var(--color-gold-deep)] hover:underline">Resume AI</button>}
                 <button onClick={close} className="text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">Close chat</button>
               </div>
             </div>

@@ -231,15 +231,15 @@ function Row({ t, staff, uk, orphanSub }: { t: Task; staff: Staff[]; uk: boolean
           </div>
           {t.detail && <p className="mt-0.5 whitespace-pre-wrap text-sm text-[var(--color-stone)]">{t.detail}</p>}
           <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-[var(--color-stone)]">
-            {t.clientId && t.clientName && <Link href={`/admin/clients/${t.clientId}`} className="text-[var(--color-gold)] hover:underline">{t.clientName}</Link>}
+            {t.clientId && t.clientName && <Link href={`/admin/clients/${t.clientId}`} className="text-[var(--color-gold-deep)] hover:underline">{t.clientName}</Link>}
             {!done && (
               <select value={t.assigneeId || ''} onChange={(e) => reassign(e.target.value)} className="rounded-full border border-[var(--color-line)] bg-transparent px-2 py-0.5 text-xs">
                 <option value="">{L('Unassigned', 'Без виконавця')}</option>
                 {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             )}
-            {canAddSub && <button onClick={() => setSubOpen((o) => !o)} className="hover:text-[var(--color-gold)]">{subOpen ? L('Cancel', 'Скасувати') : `+ ${L('Sub-task', 'Підзавдання')}`}</button>}
-            <button onClick={toggleComments} className="hover:text-[var(--color-gold)]">💬 {L('Comments', 'Коментарі')}{comments && comments.length > 0 ? ` (${comments.length})` : ''}</button>
+            {canAddSub && <button onClick={() => setSubOpen((o) => !o)} className="hover:text-[var(--color-gold-deep)]">{subOpen ? L('Cancel', 'Скасувати') : `+ ${L('Sub-task', 'Підзавдання')}`}</button>}
+            <button onClick={toggleComments} className="hover:text-[var(--color-gold-deep)]">💬 {L('Comments', 'Коментарі')}{comments && comments.length > 0 ? ` (${comments.length})` : ''}</button>
             {done && t.assigneeName && <span>{t.assigneeName}</span>}
             {done && t.completedBy && <span>· {L('done by', 'виконав')} {t.completedBy}</span>}
             <button onClick={remove} className="ml-auto hover:text-[var(--color-blush-deep)]">{L('Delete', 'Видалити')}</button>

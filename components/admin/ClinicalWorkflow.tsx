@@ -127,7 +127,7 @@ function SopChecklist({ bookingId, title, steps, saved, acknowledged, disabled }
         <span className="text-sm font-medium">SOP checklist · {title}</span>
         <span className="flex items-center gap-2 text-xs">
           <span className={allChecked ? 'text-[var(--color-jade)]' : 'text-[var(--color-stone)]'}>{doneCount}/{items.length}</span>
-          <span className="text-[var(--color-gold)]">{collapsed ? 'Open' : 'Hide'}</span>
+          <span className="text-[var(--color-gold-deep)]">{collapsed ? 'Open' : 'Hide'}</span>
         </span>
       </button>
 

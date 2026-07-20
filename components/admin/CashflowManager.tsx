@@ -101,7 +101,7 @@ function LiveBalances({ balances, canManage, uk }: { balances: Balance[]; canMan
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
       <div className="flex items-center justify-between">
         <h2 className="font-[family-name:var(--font-display)] text-xl">{L('Live balances', 'Поточні баланси')}</h2>
-        {anyConnected && canManage && <button onClick={useAsOpening} className="text-sm text-[var(--color-gold)] hover:underline">{L('Use as opening cash', 'Як початковий баланс')}</button>}
+        {anyConnected && canManage && <button onClick={useAsOpening} className="text-sm text-[var(--color-gold-deep)] hover:underline">{L('Use as opening cash', 'Як початковий баланс')}</button>}
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         {balances.map((b) => (
@@ -184,7 +184,7 @@ function DriversPanel({ drivers, consumablesMonthly, canManage, uk }: { drivers:
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
       <div className="flex items-center justify-between">
         <h2 className="font-[family-name:var(--font-display)] text-xl">{L('Prediction drivers', 'Драйвери прогнозу')}</h2>
-        <button onClick={() => setOpen((o) => !o)} className="text-sm text-[var(--color-gold)] hover:underline">{open ? L('Hide', 'Сховати') : L('Edit assumptions', 'Редагувати')}</button>
+        <button onClick={() => setOpen((o) => !o)} className="text-sm text-[var(--color-gold-deep)] hover:underline">{open ? L('Hide', 'Сховати') : L('Edit assumptions', 'Редагувати')}</button>
       </div>
       <p className="mt-1 text-sm text-[var(--color-stone)]">
         {L(
@@ -233,7 +233,7 @@ function Reserves({ reserves, canManage, uk }: { reserves: Reserve[]; canManage:
     <section>
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-[family-name:var(--font-display)] text-xl">{L('Ring-fenced reserves', 'Захищені резерви')}</h2>
-        {canManage && <button onClick={() => setOpen((o) => !o)} className="text-sm text-[var(--color-gold)] hover:underline">{open ? L('Close', 'Закрити') : L('+ Add', '+ Додати')}</button>}
+        {canManage && <button onClick={() => setOpen((o) => !o)} className="text-sm text-[var(--color-gold-deep)] hover:underline">{open ? L('Close', 'Закрити') : L('+ Add', '+ Додати')}</button>}
       </div>
       {open && canManage && (
         <div className="mb-3 grid grid-cols-2 gap-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
@@ -290,7 +290,7 @@ function Entries({ entries, canManage, uk }: { entries: Entry[]; canManage: bool
     <section>
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-[family-name:var(--font-display)] text-xl">{L('Income & expense lines', 'Статті доходів і витрат')}</h2>
-        {canManage && <button onClick={() => setOpen((o) => !o)} className="text-sm text-[var(--color-gold)] hover:underline">{open ? L('Close', 'Закрити') : L('+ Add', '+ Додати')}</button>}
+        {canManage && <button onClick={() => setOpen((o) => !o)} className="text-sm text-[var(--color-gold-deep)] hover:underline">{open ? L('Close', 'Закрити') : L('+ Add', '+ Додати')}</button>}
       </div>
       {open && canManage && (
         <div className="mb-3 grid grid-cols-2 gap-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">

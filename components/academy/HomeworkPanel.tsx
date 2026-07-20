@@ -18,8 +18,8 @@ const fileName = (url: string) => { try { return decodeURIComponent(url.split('/
 // The panel renders in two places: the dark immersive player and the light course
 // outline. `tone` swaps the colour set so it sits correctly on either surface.
 const TONES = {
-  dark: { box: 'border-white/10 bg-white/5', head: 'text-white/40', sub: 'border-white/10 bg-white/5', strong: 'text-white/90', soft: 'text-white/70', faint: 'text-white/40', fileLink: 'text-white/70 hover:text-[var(--color-gold)]', attach: 'border-white/15 text-white/80 hover:border-[var(--color-gold)]', fileRow: 'text-white/80', remove: 'text-white/40 hover:text-white/70', textarea: 'border-white/10 bg-white/5 text-white/90 placeholder:text-white/30 focus:border-[var(--color-gold)]' },
-  light: { box: 'border-[var(--color-line)] bg-[var(--color-bone)]', head: 'text-[var(--color-stone)]', sub: 'border-[var(--color-line)] bg-[var(--color-porcelain)]', strong: 'text-[var(--color-ink)]', soft: 'text-[var(--color-ink-soft)]', faint: 'text-[var(--color-stone)]', fileLink: 'text-[var(--color-ink-soft)] hover:text-[var(--color-gold)]', attach: 'border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-gold)]', fileRow: 'text-[var(--color-ink-soft)]', remove: 'text-[var(--color-stone)] hover:text-[var(--color-ink)]', textarea: 'border-[var(--color-line)] bg-white text-[var(--color-ink)] placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)]' },
+  dark: { notice: 'text-[var(--color-gold)]', box: 'border-white/10 bg-white/5', head: 'text-white/40', sub: 'border-white/10 bg-white/5', strong: 'text-white/90', soft: 'text-white/70', faint: 'text-white/40', fileLink: 'text-white/70 hover:text-[var(--color-gold)]', attach: 'border-white/15 text-white/80 hover:border-[var(--color-gold)]', fileRow: 'text-white/80', remove: 'text-white/40 hover:text-white/70', textarea: 'border-white/10 bg-white/5 text-white/90 placeholder:text-white/30 focus:border-[var(--color-gold)]' },
+  light: { notice: 'text-[var(--color-gold-deep)]', box: 'border-[var(--color-line)] bg-[var(--color-bone)]', head: 'text-[var(--color-stone)]', sub: 'border-[var(--color-line)] bg-[var(--color-porcelain)]', strong: 'text-[var(--color-ink)]', soft: 'text-[var(--color-ink-soft)]', faint: 'text-[var(--color-stone)]', fileLink: 'text-[var(--color-ink-soft)] hover:text-[var(--color-gold-deep)]', attach: 'border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-gold)]', fileRow: 'text-[var(--color-ink-soft)]', remove: 'text-[var(--color-stone)] hover:text-[var(--color-ink)]', textarea: 'border-[var(--color-line)] bg-white text-[var(--color-ink)] placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)]' },
 } as const;
 
 export function HomeworkPanel({ lessonId, submission, tone = 'dark' }: { lessonId: string; submission: HomeworkSubmissionView | null; tone?: 'dark' | 'light' }) {
@@ -70,7 +70,7 @@ export function HomeworkPanel({ lessonId, submission, tone = 'dark' }: { lessonI
       )}
       {!locked && (
         <div className="space-y-2">
-          {submission?.status === 'NEEDS_REVISION' && <p className="text-sm text-[var(--color-gold)]">Please revise your work and resubmit.</p>}
+          {submission?.status === 'NEEDS_REVISION' && <p className={`text-sm ${c.notice}`}>Please revise your work and resubmit.</p>}
           {files.length > 0 && (
             <ul className="space-y-1 text-sm">{files.map((u, i) => (
               <li key={u} className={`flex items-center gap-2 ${c.fileRow}`}><span className="flex-1 truncate">{fileName(u)}</span><button onClick={() => setFiles((f) => f.filter((_, j) => j !== i))} className={`shrink-0 ${c.remove}`}>remove</button></li>

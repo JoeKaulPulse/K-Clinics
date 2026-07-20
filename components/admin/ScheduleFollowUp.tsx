@@ -51,7 +51,7 @@ export function ScheduleFollowUp({
         <p className="eyebrow mb-1 text-[var(--color-jade)]">Follow-up booked</p>
         <p className="text-sm text-[var(--color-ink)]">Next appointment booked for <strong>{done.when}</strong>.</p>
         <div className="mt-3 flex flex-wrap gap-4">
-          <Link href={`/admin/bookings/${done.id}`} className="text-sm text-[var(--color-gold)] hover:underline">Open appointment →</Link>
+          <Link href={`/admin/bookings/${done.id}`} className="text-sm text-[var(--color-gold-deep)] hover:underline">Open appointment →</Link>
           <button type="button" onClick={() => setDone(null)} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">Book another</button>
         </div>
       </div>

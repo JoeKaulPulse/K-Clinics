@@ -59,7 +59,7 @@ function PageRow({ p }: { p: PageScore }) {
       <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-3 py-2.5 text-left">
         <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold text-white ${gradeTone(p.grade)}`}>{p.grade}</span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium text-[var(--color-ink)]">{p.path}{p.overridden && <span className="ml-2 rounded-full bg-[var(--color-gold)]/15 px-1.5 py-0.5 text-[0.6rem] text-[var(--color-gold)]">custom</span>}</span>
+          <span className="block truncate text-sm font-medium text-[var(--color-ink)]">{p.path}{p.overridden && <span className="ml-2 rounded-full bg-[var(--color-gold)]/15 px-1.5 py-0.5 text-[0.6rem] text-[var(--color-gold-deep)]">custom</span>}</span>
           <span className="block truncate text-xs text-[var(--color-stone)]">{p.title}</span>
         </span>
         <span className="hidden shrink-0 gap-3 text-xs text-[var(--color-stone)] sm:flex">

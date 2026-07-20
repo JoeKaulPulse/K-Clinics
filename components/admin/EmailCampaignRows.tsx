@@ -54,7 +54,7 @@ export function EmailCampaignRows({ rows }: { rows: DraftRow[] }) {
                   <span className="text-xs text-[var(--color-stone)]">Testing in progress…</span>
                 ) : (
                   <div className="flex flex-wrap justify-end gap-3 text-xs">
-                    <Link href={`/admin/marketing/email/new?id=${r.id}`} className="text-[var(--color-gold)] hover:underline">Edit</Link>
+                    <Link href={`/admin/marketing/email/new?id=${r.id}`} className="text-[var(--color-gold-deep)] hover:underline">Edit</Link>
                     <button disabled={busy === r.id} onClick={() => sendNow(r)} className="text-[var(--color-ink)] hover:underline disabled:opacity-50">{busy === r.id ? '…' : 'Send now'}</button>
                     <button disabled={busy === r.id} onClick={() => remove(r)} className="text-[var(--color-blush-deep)] hover:underline disabled:opacity-50">{r.status === 'SCHEDULED' ? 'Cancel' : 'Delete'}</button>
                   </div>

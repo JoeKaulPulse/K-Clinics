@@ -82,14 +82,14 @@ export function CallLog({ canManage }: { canManage: boolean }) {
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
                         <span className="truncate text-sm font-medium">{c.client ? c.client.name : c.supplier ? c.supplier.name : (c.matchedLabel || ext)}</span>
-                        {c.client && <span className="rounded-full bg-[var(--color-gold)]/15 px-1.5 py-0.5 text-[0.6rem] font-medium text-[var(--color-gold)]">Client</span>}
+                        {c.client && <span className="rounded-full bg-[var(--color-gold)]/15 px-1.5 py-0.5 text-[0.6rem] font-medium text-[var(--color-gold-deep)]">Client</span>}
                         {c.supplier && <span className="rounded-full bg-[var(--color-jade)]/15 px-1.5 py-0.5 text-[0.6rem] font-medium text-[var(--color-jade)]">Supplier</span>}
                       </span>
                       <span className="mt-0.5 block truncate text-xs text-[var(--color-stone)]">{ext} · {fmtTime(c.startedAt)} · {fmtDur(c.durationSec)}</span>
                     </span>
                     <span className="flex shrink-0 items-center gap-1.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">
                       {c.recordingUrl && <span title="Recording available">●</span>}
-                      {c.hasTranscript && <span title="Transcript available" className="text-[var(--color-gold)]">T</span>}
+                      {c.hasTranscript && <span title="Transcript available" className="text-[var(--color-gold-deep)]">T</span>}
                       {missed && <span className="text-[var(--color-blush-deep)]">missed</span>}
                     </span>
                   </button>
@@ -109,8 +109,8 @@ export function CallLog({ canManage }: { canManage: boolean }) {
             <div>
               <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{detail.direction === 'INBOUND' ? 'Inbound call' : 'Outbound call'}</p>
               <p className="mt-1 font-[family-name:var(--font-display)] text-xl">
-                {detail.client ? <Link href={`/admin/clients/${detail.client.id}`} className="hover:text-[var(--color-gold)]">{detail.client.name}</Link>
-                  : detail.supplier ? <Link href="/admin/suppliers" className="hover:text-[var(--color-gold)]">{detail.supplier.name}</Link>
+                {detail.client ? <Link href={`/admin/clients/${detail.client.id}`} className="hover:text-[var(--color-gold-deep)]">{detail.client.name}</Link>
+                  : detail.supplier ? <Link href="/admin/suppliers" className="hover:text-[var(--color-gold-deep)]">{detail.supplier.name}</Link>
                   : (detail.matchedLabel || (detail.direction === 'INBOUND' ? detail.fromNumber : detail.toNumber))}
               </p>
               <p className="mt-0.5 text-sm text-[var(--color-stone)]">{detail.direction === 'INBOUND' ? detail.fromNumber : detail.toNumber} · {fmtTime(detail.startedAt)} · {fmtDur(detail.durationSec)}</p>
@@ -138,7 +138,7 @@ export function CallLog({ canManage }: { canManage: boolean }) {
               {canManage && (
                 <div className="mt-2 flex items-center gap-2">
                   <button onClick={saveNote} disabled={savingNote} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{savingNote ? 'Saving…' : 'Save note'}</button>
-                  <button onClick={() => dial(detail.direction === 'INBOUND' ? detail.fromNumber : detail.toNumber)} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Call back</button>
+                  <button onClick={() => dial(detail.direction === 'INBOUND' ? detail.fromNumber : detail.toNumber)} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">Call back</button>
                   {noteMsg && <span className="text-xs text-[var(--color-stone)]">{noteMsg}</span>}
                 </div>
               )}

@@ -36,7 +36,7 @@ export function ClientTasks({ clientId, tasks }: { clientId: string; tasks: Task
     <section>
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-[family-name:var(--font-display)] text-xl">Tasks</h2>
-        <Link href="/admin/tasks" className="text-sm text-[var(--color-gold)] hover:underline">All tasks</Link>
+        <Link href="/admin/tasks" className="text-sm text-[var(--color-gold-deep)] hover:underline">All tasks</Link>
       </div>
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
         <ul className="space-y-2">
@@ -62,7 +62,7 @@ export function ClientTasks({ clientId, tasks }: { clientId: string; tasks: Task
             </div>
           </div>
         ) : (
-          <button onClick={() => setAdding(true)} className="mt-3 text-sm text-[var(--color-gold)] hover:underline">+ Add task</button>
+          <button onClick={() => setAdding(true)} className="mt-3 text-sm text-[var(--color-gold-deep)] hover:underline">+ Add task</button>
         )}
       </div>
     </section>

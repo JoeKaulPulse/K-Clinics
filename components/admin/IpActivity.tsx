@@ -94,7 +94,7 @@ export function IpActivity({ rows, blocked }: { rows: IpRow[]; blocked: BlockedR
                   {b.reason && <span className="text-[var(--color-ink-soft)]"> · {b.reason}</span>}
                   <span className="text-xs text-[var(--color-stone)]"> · blocked {fmt(b.createdAt)}{b.createdBy ? ` by ${b.createdBy}` : ''}</span>
                 </span>
-                <button disabled={busy} onClick={() => act({ op: 'unblockIp', ip: b.ip })} className="shrink-0 text-xs font-medium text-[var(--color-gold)] hover:underline">Unblock</button>
+                <button disabled={busy} onClick={() => act({ op: 'unblockIp', ip: b.ip })} className="shrink-0 text-xs font-medium text-[var(--color-gold-deep)] hover:underline">Unblock</button>
               </li>
             ))}
           </ul>
@@ -145,7 +145,7 @@ export function IpActivity({ rows, blocked }: { rows: IpRow[]; blocked: BlockedR
                         <td className="py-2 pr-3 text-xs text-[var(--color-stone)]">{fmt(r.lastSeen)}</td>
                         <td className="py-2 text-right">
                           {r.blocked ? (
-                            <button disabled={busy} onClick={() => act({ op: 'unblockIp', ip: r.ip })} className="text-xs font-medium text-[var(--color-gold)] hover:underline">Unblock</button>
+                            <button disabled={busy} onClick={() => act({ op: 'unblockIp', ip: r.ip })} className="text-xs font-medium text-[var(--color-gold-deep)] hover:underline">Unblock</button>
                           ) : (
                             <button disabled={busy} onClick={() => act({ op: 'blockIp', ip: r.ip, reason: `${r.fails} failed events in 7d` })} className="text-xs font-medium text-[var(--color-blush-deep)] hover:underline">Block</button>
                           )}

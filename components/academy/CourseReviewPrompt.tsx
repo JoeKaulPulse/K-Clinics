@@ -56,7 +56,7 @@ export function CourseReviewPrompt({ courseId, courseTitle, myReview }: { course
 
   return (
     <>
-      <button onClick={() => { setOpen(true); setDone(false); }} className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
+      <button onClick={() => { setOpen(true); setDone(false); }} className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">
         <span className="text-[var(--color-gold)]">★</span> {label}
       </button>
 

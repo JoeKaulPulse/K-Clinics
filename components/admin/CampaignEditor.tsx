@@ -138,7 +138,7 @@ export function CampaignEditor({ data, stats, baseUrl, canManage, spendSyncedAt 
               {trackingLinks.map((l) => (
                 <li key={l.label} className="text-xs">
                   <span className="font-medium text-[var(--color-ink)]">{l.label}</span>
-                  <button onClick={() => navigator.clipboard?.writeText(l.url)} className="ml-2 text-[var(--color-gold)] hover:underline">copy</button>
+                  <button onClick={() => navigator.clipboard?.writeText(l.url)} className="ml-2 text-[var(--color-gold-deep)] hover:underline">copy</button>
                   <span className="mt-0.5 block truncate font-mono text-[0.65rem] text-[var(--color-stone)]">{l.url}</span>
                 </li>
               ))}

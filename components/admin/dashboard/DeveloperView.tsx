@@ -79,7 +79,7 @@ export async function DeveloperView({ session }: { session: Session }) {
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr] [&>*]:min-w-0">
         {/* Top open items */}
-        <DashWidget title="Top open items" action={<Link href="/admin/build" className="text-sm text-[var(--color-gold)] hover:underline">Open board →</Link>}>
+        <DashWidget title="Top open items" action={<Link href="/admin/build" className="text-sm text-[var(--color-gold-deep)] hover:underline">Open board →</Link>}>
           <TimelineList items={topItems.map(toItem)} empty="Nothing open — the board is clear." />
         </DashWidget>
 
@@ -102,7 +102,7 @@ export async function DeveloperView({ session }: { session: Session }) {
       </div>
 
       {/* Error reports */}
-      <DashWidget title="Error reports" eyebrow="Newest first" action={<Link href="/admin/build" className="text-sm text-[var(--color-gold)] hover:underline">All issues →</Link>}>
+      <DashWidget title="Error reports" eyebrow="Newest first" action={<Link href="/admin/build" className="text-sm text-[var(--color-gold-deep)] hover:underline">All issues →</Link>}>
         <TimelineList
           items={errors.map((e) => ({
             id: e.id,

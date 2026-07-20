@@ -19,8 +19,12 @@ const variants: Record<Variant, string> = {
   gold: 'bg-[var(--color-gold-deep)] text-white hover:bg-[var(--color-ink)] shadow-[var(--shadow-gold)]',
   ink: 'bg-[var(--color-ink)] text-[var(--color-porcelain)] hover:bg-[var(--color-espresso)]',
   ghost: 'bg-transparent text-current hover:bg-[color-mix(in_oklab,currentColor_8%,transparent)]',
+  // Hover mixes the base colour halfway toward gold instead of jumping to full
+  // gold: the variant sits on both dark heroes (porcelain base) and light
+  // sections (ink base), and a 50% mix keeps AA contrast on whichever surface
+  // the base colour already passed on (BLD-742).
   outline:
-    'bg-transparent text-current ring-1 ring-[color-mix(in_oklab,currentColor_28%,transparent)] hover:ring-[var(--color-gold)] hover:text-[var(--color-gold)]',
+    'bg-transparent text-current ring-1 ring-[color-mix(in_oklab,currentColor_28%,transparent)] hover:ring-[color-mix(in_oklab,var(--color-gold)_50%,currentColor)] hover:text-[color-mix(in_oklab,var(--color-gold)_50%,currentColor)]',
 };
 
 type Props = {

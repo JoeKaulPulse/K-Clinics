@@ -145,7 +145,7 @@ export function LessonMedia({ lesson, onComplete }: { lesson: LessonView; onComp
     return (
       <div className="mt-6">
         <p className="eyebrow mb-2 text-xs">Watch first</p>
-        <a href={lesson.videoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">▶ Watch explainer videos</a>
+        <a href={lesson.videoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">▶ Watch explainer videos</a>
       </div>
     );
   }

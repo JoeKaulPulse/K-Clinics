@@ -65,7 +65,7 @@ export default async function MarketingHubPage() {
         <section className="mt-8 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-[family-name:var(--font-display)] text-lg">Website traffic <span className="text-xs font-normal text-[var(--color-stone)]">· GA4 · 30 days</span></h2>
-            <Link href="/admin/marketing/analytics" className="text-xs text-[var(--color-gold)] hover:underline">Full analytics →</Link>
+            <Link href="/admin/marketing/analytics" className="text-xs text-[var(--color-gold-deep)] hover:underline">Full analytics →</Link>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Kpi label="Visitors" value={nf(ga.totals.activeUsers)} />
@@ -79,7 +79,7 @@ export default async function MarketingHubPage() {
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {TOOLS.map((t) => (
           <Link key={t.href} href={t.href} className="group rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 transition-colors hover:border-[var(--color-gold)]">
-            <h2 className="font-[family-name:var(--font-display)] text-lg transition-colors group-hover:text-[var(--color-gold)]">{t.title}</h2>
+            <h2 className="font-[family-name:var(--font-display)] text-lg transition-colors group-hover:text-[var(--color-gold-deep)]">{t.title}</h2>
             <p className="mt-1 text-sm text-[var(--color-stone)]">{t.desc}</p>
           </Link>
         ))}

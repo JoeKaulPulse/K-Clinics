@@ -48,7 +48,7 @@ export default async function ContactPage() {
                 <br />
                 {site.address.region} {site.address.postalCode}
               </p>
-              <a href={site.mapLink} target="_blank" rel="noopener noreferrer" className="link-underline mt-3 inline-block text-sm font-medium text-[var(--color-gold)]">
+              <a href={site.mapLink} target="_blank" rel="noopener noreferrer" className="link-underline mt-3 inline-block text-sm font-medium text-[var(--color-gold-deep)]">
                 Get directions →
               </a>
             </div>

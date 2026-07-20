@@ -19,7 +19,7 @@ export function FaqAccordion({ faqs }: { faqs: Faq[] }) {
               aria-controls={`faq-panel-${i}`}
               id={`faq-trigger-${i}`}
             >
-              <span className={`font-[family-name:var(--font-display)] text-xl leading-snug transition-all duration-500 [transition-timing-function:var(--ease-lux)] group-hover:text-[var(--color-gold)] ${isOpen ? 'translate-x-1' : ''}`}>
+              <span className={`font-[family-name:var(--font-display)] text-xl leading-snug transition-all duration-500 [transition-timing-function:var(--ease-lux)] group-hover:text-[var(--color-gold-deep)] ${isOpen ? 'translate-x-1' : ''}`}>
                 {f.q}
               </span>
               <span className={`relative grid h-8 w-8 shrink-0 place-items-center rounded-full border transition-colors duration-500 ${isOpen ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'border-[var(--color-line)] group-hover:border-[var(--color-gold)]'}`}>

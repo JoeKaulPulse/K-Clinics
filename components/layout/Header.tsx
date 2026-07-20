@@ -170,7 +170,7 @@ export function Header({ config }: { config: SiteConfig }) {
         </nav>
 
         <div className="hidden items-center gap-3 xl:flex">
-          <Link href="/shop" className={`text-sm font-medium transition-colors hover:text-[var(--color-gold)] ${light ? 'text-[var(--color-porcelain)]' : 'text-[var(--color-ink)]'}`}>Shop</Link>
+          <Link href="/shop" className={`text-sm font-medium transition-colors ${light ? 'text-[var(--color-porcelain)] hover:text-[var(--color-gold)]' : 'text-[var(--color-ink)] hover:text-[var(--color-gold-deep)]'}`}>Shop</Link>
           <SiteSearch light={light} />
           <AccountMenu light={light} />
           <Button href={booking.path} size="md" variant={light ? 'gold' : 'ink'}>
@@ -375,7 +375,7 @@ export function Header({ config }: { config: SiteConfig }) {
               <Link
                 href="/account"
                 onClick={() => setMobile(false)}
-                className="flex items-center justify-center gap-2 rounded-full border border-[var(--color-line)] px-6 py-3.5 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]"
+                className="flex items-center justify-center gap-2 rounded-full border border-[var(--color-line)] px-6 py-3.5 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]"
               >
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden>
                   <circle cx="12" cy="8" r="3.4" stroke="currentColor" strokeWidth="1.5" />

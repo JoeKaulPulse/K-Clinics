@@ -79,7 +79,7 @@ export function PromotionsManager({ universal, campaignBatches }: { universal: U
                     <td className="text-xs text-[var(--color-stone)]">{fmtDate(p.startsAt) || '—'} → {fmtDate(p.expiresAt) || 'no end'}</td>
                     <td><span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-medium uppercase ${p.active ? 'bg-emerald-100 text-emerald-800' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{p.active ? 'active' : 'off'}</span></td>
                     <td className="text-right">
-                      <button onClick={() => act({ op: 'toggle', id: p.id, active: !p.active })} disabled={busy} className="text-xs text-[var(--color-gold)] hover:underline">{p.active ? 'Disable' : 'Enable'}</button>
+                      <button onClick={() => act({ op: 'toggle', id: p.id, active: !p.active })} disabled={busy} className="text-xs text-[var(--color-gold-deep)] hover:underline">{p.active ? 'Disable' : 'Enable'}</button>
                       <button onClick={() => { if (confirm('Delete this code?')) act({ op: 'remove', id: p.id }); }} disabled={busy} className="ml-3 text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
                     </td>
                   </tr>

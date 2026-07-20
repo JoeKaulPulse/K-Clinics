@@ -183,7 +183,7 @@ async function Leaderboard() {
                   {i < 3 && <span aria-hidden>{MEDAL[i]}</span>}
                   <span className="truncate">{e.name}</span>
                 </p>
-                {e.tier && <p className="mt-0.5 text-xs uppercase tracking-[0.12em] text-[var(--color-gold)]">{e.tier}</p>}
+                {e.tier && <p className="mt-0.5 text-xs uppercase tracking-[0.12em] text-[var(--color-gold-deep)]">{e.tier}</p>}
                 <p className="mt-1 text-xs text-[var(--color-stone)]">{e.totalPoints.toLocaleString('en-GB')} pts</p>
               </div>
             </div>

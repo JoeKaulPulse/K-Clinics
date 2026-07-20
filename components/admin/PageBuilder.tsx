@@ -126,7 +126,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
     <div className="pb-10">
       {/* Toolbar */}
       <div className="sticky top-0 z-30 -mx-5 mb-5 flex flex-wrap items-center gap-3 border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-bone)_92%,transparent)] px-5 py-3 backdrop-blur md:-mx-8 md:px-8">
-        <a href="/admin/pages" className="text-sm text-[var(--color-gold)] hover:underline">← Pages</a>
+        <a href="/admin/pages" className="text-sm text-[var(--color-gold-deep)] hover:underline">← Pages</a>
         <div className="mr-auto">
           <p className="font-[family-name:var(--font-display)] text-lg leading-none">{initial.path}</p>
           <p className="mt-1 text-xs text-[var(--color-stone)]">
@@ -134,7 +134,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
             {dirty ? <span className="text-[#b06a2c]">Unsaved changes</span> : savedTick > 0 ? <span className="text-[var(--color-jade)]">All changes saved</span> : null}
           </p>
         </div>
-        <button onClick={() => (previewOn ? setPreviewOn(false) : openPreview())} className={`rounded-full border px-4 py-2 text-sm ${previewOn ? 'border-[var(--color-gold)] text-[var(--color-gold)]' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}>{previewOn ? 'Hide preview' : 'Live preview'}</button>
+        <button onClick={() => (previewOn ? setPreviewOn(false) : openPreview())} className={`rounded-full border px-4 py-2 text-sm ${previewOn ? 'border-[var(--color-gold)] text-[var(--color-gold-deep)]' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}>{previewOn ? 'Hide preview' : 'Live preview'}</button>
         <button disabled={busy} onClick={saveDraft} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">Save draft</button>
         {canPublish
           ? <button disabled={busy} onClick={publish} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Working…' : 'Publish'}</button>
@@ -177,7 +177,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
                       <button onClick={() => moveSec(i, 1)} aria-label="Down" className="hover:text-[var(--color-ink)] disabled:opacity-30" disabled={i === sections.length - 1}>▼</button>
                       <button onClick={() => remove(sec.id)} aria-label="Delete" className="hover:text-[#c0392b]">✕</button>
                       {isRef
-                        ? <Link href={`/admin/blocks/${refId}`} target="_blank" title="Edit reusable block" className="hover:text-[var(--color-gold)]">↗</Link>
+                        ? <Link href={`/admin/blocks/${refId}`} target="_blank" title="Edit reusable block" className="hover:text-[var(--color-gold-deep)]">↗</Link>
                         : <button onClick={() => setOpenId(open ? null : sec.id)} aria-label="Edit" className="hover:text-[var(--color-ink)]">{open ? '▾' : '▸'}</button>}
                     </span>
                   </div>
@@ -222,7 +222,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
                   <button key={d} onClick={() => setDevice(d)} className={`rounded-full px-3 py-1 capitalize ${device === d ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-ink-soft)]'}`}>{d}</button>
                 ))}
               </div>
-              <a href={`/preview/${initial.id}`} target="_blank" className="text-xs text-[var(--color-gold)] hover:underline">Open in new tab ↗</a>
+              <a href={`/preview/${initial.id}`} target="_blank" className="text-xs text-[var(--color-gold-deep)] hover:underline">Open in new tab ↗</a>
             </div>
             <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white">
               <div className="mx-auto transition-all" style={{ maxWidth: DEVICES[device] }}>
@@ -297,7 +297,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
 function Adder({ open, onToggle, onPick, reusables = [], onPickRef }: { open: boolean; onToggle: () => void; onPick: (type: string) => void; reusables?: Reusable[]; onPickRef?: (refId: string) => void }) {
   return (
     <div className="relative flex justify-center">
-      <button onClick={onToggle} className="z-[1] -my-1 inline-flex items-center gap-1 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1 text-xs text-[var(--color-stone)] hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">＋ Section</button>
+      <button onClick={onToggle} className="z-[1] -my-1 inline-flex items-center gap-1 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1 text-xs text-[var(--color-stone)] hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">＋ Section</button>
       {open && (
         <div className="absolute top-7 z-20 w-[22rem] max-w-[90vw] rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-2 shadow-[var(--shadow-lift)]">
           <div className="grid grid-cols-2 gap-1">

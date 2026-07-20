@@ -352,7 +352,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                           <span className="block text-sm font-medium">{s.name} — {v.name}</span>
                           <span className="text-xs text-[var(--color-stone)]">+{v.durationMin} min · save {money(ap.saved)}</span>
                         </span>
-                        <span className="shrink-0 text-right text-sm font-medium text-[var(--color-gold)]">
+                        <span className="shrink-0 text-right text-sm font-medium text-[var(--color-gold-deep)]">
                           <span className="mr-1 text-xs text-[var(--color-stone)] line-through">{money(v.pricePence)}</span>{money(ap.price)}
                         </span>
                       </button>
@@ -425,7 +425,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
               <p className="mt-3 text-sm text-[var(--color-stone)]">We couldn&apos;t load the payment form. Please go back and try again.</p>
               <button
                 onClick={() => { setStage('upsell'); setError(''); }}
-                className="mt-4 rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]"
+                className="mt-4 rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]"
               >
                 Go back
               </button>

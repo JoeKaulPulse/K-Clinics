@@ -37,12 +37,12 @@ export default async function ProfilePage() {
       <section className="mt-12 max-w-lg rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
         <h2 className="eyebrow mb-2">{pt(locale, 'privacy.title')}</h2>
         <p className="text-sm text-[var(--color-stone)]">{pt(locale, 'privacy.body')}</p>
-        <a href="/api/account/export" className="mt-4 inline-block rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
+        <a href="/api/account/export" className="mt-4 inline-block rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">
           {pt(locale, 'privacy.download')}
         </a>
         <p className="mt-4 text-xs text-[var(--color-stone)]">
           {pt(locale, 'privacy.erase')}{' '}
-          <a href="/contact" className="font-medium text-[var(--color-gold)]">{pt(locale, 'privacy.contact')}</a>
+          <a href="/contact" className="font-medium text-[var(--color-gold-deep)]">{pt(locale, 'privacy.contact')}</a>
         </p>
       </section>
     </PortalShell>

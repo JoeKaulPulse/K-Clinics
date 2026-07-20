@@ -29,7 +29,7 @@ export function GlobalSectionEditor({ block }: { block: { id: string; name: stri
 
   return (
     <div className="pb-16">
-      <Link href="/admin/blocks" className="text-sm text-[var(--color-gold)] hover:underline">← Reusable blocks</Link>
+      <Link href="/admin/blocks" className="text-sm text-[var(--color-gold-deep)] hover:underline">← Reusable blocks</Link>
       <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
         <input className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 font-[family-name:var(--font-display)] text-2xl outline-none focus:border-[var(--color-gold)]" value={name} onChange={(e) => setName(e.target.value)} />
         <div className="flex items-center gap-3">

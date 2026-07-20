@@ -53,7 +53,7 @@ export default async function ExercisesPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         {d.best != null && <Pill tone={d.best === 100 ? 'good' : 'neutral'}>Best {d.best}%</Pill>}
-                        <span className="text-sm text-[var(--color-gold)]">Watch →</span>
+                        <span className="text-sm text-[var(--color-gold-deep)]">Watch →</span>
                       </div>
                     </div>
                   </Card>

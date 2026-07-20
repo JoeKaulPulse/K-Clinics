@@ -199,7 +199,7 @@ function ServiceCard({ service }: { service: Service }) {
               <option value="EXEMPT">Exempt</option>
             </select>
           </label>
-          <Link href={`/admin/services/content/${service.treatmentSlug}`} className="text-xs font-medium text-[var(--color-gold)] hover:underline">Edit page content →</Link>
+          <Link href={`/admin/services/content/${service.treatmentSlug}`} className="text-xs font-medium text-[var(--color-gold-deep)] hover:underline">Edit page content →</Link>
           <button onClick={() => act({ op: 'updateService', id: service.id, active: !service.active })} className="text-xs text-[var(--color-stone)] hover:underline">{service.active ? 'Disable' : 'Enable'}</button>
         </div>
       </div>
@@ -260,7 +260,7 @@ function VariantRow({ v }: { v: Variant }) {
       <tr className="border-t border-[var(--color-line)]">
         <td className="py-1.5 pr-2">
           {v.name}
-          <button onClick={() => setShowCourses((s) => !s)} className="ml-1 text-[0.65rem] text-[var(--color-gold)] hover:underline" title="Edit course / package pricing">
+          <button onClick={() => setShowCourses((s) => !s)} className="ml-1 text-[0.65rem] text-[var(--color-gold-deep)] hover:underline" title="Edit course / package pricing">
             {courses.length > 0 ? `${courses.length} package${courses.length > 1 ? 's' : ''}` : '+ packages'}
           </button>
         </td>
@@ -309,7 +309,7 @@ function VariantRow({ v }: { v: Variant }) {
               </div>
               <div className="mt-2 flex items-center gap-3">
                 <button onClick={addCourse} className="rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:border-[var(--color-gold)]">+ Add package</button>
-                {coursesDirty && <span className="text-xs text-[var(--color-gold)]">Unsaved — use “Save” on the row to apply.</span>}
+                {coursesDirty && <span className="text-xs text-[var(--color-gold-deep)]">Unsaved — use “Save” on the row to apply.</span>}
               </div>
             </div>
           </td>
@@ -421,7 +421,7 @@ function OffersSection({ services, offers }: { services: Service[]; offers: Offe
               <span>
                 <span className="font-medium">{o.name.replace(/\s*[—–-]+\s*£?\d+%?\s*off\s*$/i, '').trim() || o.name}</span>
                 <span className="text-[var(--color-stone)]"> · {o.percentOff ? `${o.percentOff}% off` : `£${((o.amountOffPence ?? 0) / 100)} off`} · {o.scope === 'SERVICE' ? svcName(o.serviceId) : o.scope === 'VARIANT' ? 'one variant' : 'all services'}{o.endAt ? ` · ends ${new Date(o.endAt).toLocaleDateString('en-GB')}` : ''}</span>
-                {o.promoted && <span className="ml-2 rounded-full bg-[var(--color-gold)]/15 px-2 py-0.5 text-[0.65rem] text-[var(--color-gold)]">promoted</span>}
+                {o.promoted && <span className="ml-2 rounded-full bg-[var(--color-gold)]/15 px-2 py-0.5 text-[0.65rem] text-[var(--color-gold-deep)]">promoted</span>}
               </span>
               <span className="flex items-center gap-3">
                 <button onClick={() => act({ op: 'updateOffer', id: o.id, promoted: !o.promoted })} className="text-xs text-[var(--color-stone)] hover:underline">{o.promoted ? 'Unpromote' : 'Promote'}</button>

@@ -152,7 +152,7 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
                 </div>
               ))}
             </div>
-            <button className="mt-3 text-sm text-[var(--color-gold)] hover:underline" onClick={() => setSocial([...socialRows as [string, string][], ['', '']])}>+ Add social link</button>
+            <button className="mt-3 text-sm text-[var(--color-gold-deep)] hover:underline" onClick={() => setSocial([...socialRows as [string, string][], ['', '']])}>+ Add social link</button>
             <p className="mt-2 text-xs text-[var(--color-stone)]">Known platforms (instagram, facebook, tiktok) get branded icons; others show an initial.</p>
           </section>
 
@@ -192,7 +192,7 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
                     <span className="block">{new Date(r.createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                     {(r.label || r.createdBy) && <span className="text-xs text-[var(--color-stone)]">{r.label || r.createdBy}</span>}
                   </span>
-                  <button disabled={busy} onClick={() => rollback(r.id)} className="shrink-0 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:border-[var(--color-gold)] hover:text-[var(--color-gold)] disabled:opacity-50">Restore</button>
+                  <button disabled={busy} onClick={() => rollback(r.id)} className="shrink-0 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)] disabled:opacity-50">Restore</button>
                 </li>
               ))}
             </ul>

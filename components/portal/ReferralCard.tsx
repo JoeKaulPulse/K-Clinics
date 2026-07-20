@@ -46,7 +46,7 @@ export function ReferralCard({ link, labels, qrSvg }: { link: string; labels: La
         />
         <button
           onClick={copy}
-          className="shrink-0 rounded-full border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]"
+          className="shrink-0 rounded-full border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]"
         >
           {copied ? `✓ ${labels.copied}` : labels.copy}
         </button>
@@ -59,7 +59,7 @@ export function ReferralCard({ link, labels, qrSvg }: { link: string; labels: La
 
       {qrSvg && (
         <div className="mt-4">
-          <button onClick={() => setShowQr((v) => !v)} className="text-sm font-medium text-[var(--color-gold)] hover:underline">
+          <button onClick={() => setShowQr((v) => !v)} className="text-sm font-medium text-[var(--color-gold-deep)] hover:underline">
             {showQr ? (labels.qrHide ?? 'Hide QR code') : (labels.qrShow ?? 'Show QR code')}
           </button>
           {showQr && (

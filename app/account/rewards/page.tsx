@@ -129,7 +129,7 @@ export default async function RewardsPage() {
           ))}
         </ul>
       ) : (
-        <p className="text-[var(--color-stone)]">{t('rw.noActivity')} <Link href="/book" className="font-medium text-[var(--color-gold)]">{t('appt.bookNow')} →</Link></p>
+        <p className="text-[var(--color-stone)]">{t('rw.noActivity')} <Link href="/book" className="font-medium text-[var(--color-gold-deep)]">{t('appt.bookNow')} →</Link></p>
       )}
     </PortalShell>
   );

@@ -66,7 +66,7 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search suppliers…" className={`${field} max-w-xs`} />
         {canManage && <button onClick={() => setEditing(blank())} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-gold)]">Add supplier</button>}
-        {canManage && <button onClick={importXero} disabled={importing} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)] disabled:opacity-50">{importing ? 'Importing…' : 'Import from Xero'}</button>}
+        {canManage && <button onClick={importXero} disabled={importing} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)] disabled:opacity-50">{importing ? 'Importing…' : 'Import from Xero'}</button>}
       </div>
 
       <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
@@ -130,7 +130,7 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
                 <div className="flex items-center justify-between">
                   <p className={label}>Xero bills</p>
                   {editing.xeroContactId
-                    ? <button onClick={() => loadBills(editing.id!)} className="text-xs font-medium text-[var(--color-gold)] hover:underline">Load bills →</button>
+                    ? <button onClick={() => loadBills(editing.id!)} className="text-xs font-medium text-[var(--color-gold-deep)] hover:underline">Load bills →</button>
                     : <span className="text-xs text-[var(--color-stone)]">Add a Xero contact ID to see bills</span>}
                 </div>
                 {billsMsg && <p className="mt-1 text-sm text-[var(--color-stone)]">{billsMsg}</p>}

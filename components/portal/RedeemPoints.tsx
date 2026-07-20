@@ -58,7 +58,7 @@ export function RedeemPoints({
     // Nothing to redeem yet — only offer if they have at least £1 available here.
     if (ceilingPence < 100) return null;
     return (
-      <button onClick={() => setOpen(true)} className="rounded-full border border-[var(--color-gold)] px-4 py-2 text-sm font-medium text-[var(--color-gold)] hover:bg-[var(--color-gold)]/10">
+      <button onClick={() => setOpen(true)} className="rounded-full border border-[var(--color-gold)] px-4 py-2 text-sm font-medium text-[var(--color-gold-deep)] hover:bg-[var(--color-gold)]/10">
         {labels.use}
       </button>
     );
@@ -78,7 +78,7 @@ export function RedeemPoints({
           onChange={(e) => setPounds(Number(e.target.value))}
           className="flex-1 accent-[var(--color-gold)]"
         />
-        <span className="w-20 text-right font-[family-name:var(--font-display)] text-lg text-[var(--color-gold)]">−{currency(pounds * 100)}</span>
+        <span className="w-20 text-right font-[family-name:var(--font-display)] text-lg text-[var(--color-gold-deep)]">−{currency(pounds * 100)}</span>
       </div>
       {err && <p role="alert" aria-live="assertive" className="mt-2 text-xs text-[var(--color-blush-deep)]">{err}</p>}
       <div className="mt-3 flex gap-2">

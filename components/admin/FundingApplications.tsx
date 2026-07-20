@@ -116,7 +116,7 @@ export function FundingApplications({ applications }: { applications: FundingVie
                 {r.enrolmentOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
               </select>
             )}
-            {r.linkedLabel && <span className="text-xs text-[var(--color-gold)]">→ {r.linkedLabel}</span>}
+            {r.linkedLabel && <span className="text-xs text-[var(--color-gold-deep)]">→ {r.linkedLabel}</span>}
           </div>
 
           <div className="mt-3 flex items-center justify-between gap-3">

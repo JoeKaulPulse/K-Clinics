@@ -103,7 +103,7 @@ function MistakeRow({ m, busy, act, seek }: { m: DemoMistake; busy: boolean; act
   const [windowSec, setWindowSec] = useState(String(m.windowSec));
   return (
     <li className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm">
-      <button onClick={() => seek(m.atSec)} className="font-mono text-xs text-[var(--color-gold)] hover:underline">{mmss(m.atSec)}</button>
+      <button onClick={() => seek(m.atSec)} className="font-mono text-xs text-[var(--color-gold-deep)] hover:underline">{mmss(m.atSec)}</button>
       <input className="flex-1 rounded border border-[var(--color-line)] px-2 py-1 text-xs" value={labelText} onChange={(e) => setLabelText(e.target.value)} />
       <label className="flex items-center gap-1 text-xs text-[var(--color-stone)]">±s<input className="w-14 rounded border border-[var(--color-line)] px-1.5 py-1 text-xs" value={windowSec} onChange={(e) => setWindowSec(e.target.value)} /></label>
       <button onClick={() => act({ op: 'updateMistake', id: m.id, atSec: m.atSec, windowSec: Number(windowSec) || 3, label: labelText })} disabled={busy} className={btnGhost}>Save</button>

@@ -25,7 +25,7 @@ export default async function SecurityPage() {
       <p className="mt-1 max-w-2xl text-sm text-[var(--color-stone)]">
         The failsafe beneath the firewall — login protection, key health and live threat monitoring. Network-edge defences (DDoS, DNS, WAF) are configured in Vercel; this watches everything in the application layer.
       </p>
-      <a href="/admin/security/activity" className="mt-3 inline-block text-sm font-medium text-[var(--color-gold)] hover:underline">
+      <a href="/admin/security/activity" className="mt-3 inline-block text-sm font-medium text-[var(--color-gold-deep)] hover:underline">
         Review IP &amp; device activity and block suspicious IPs →
       </a>
       <div className="mt-8">

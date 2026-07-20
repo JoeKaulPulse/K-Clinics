@@ -104,7 +104,7 @@ export function DemoPlayer({ demo }: { demo: DemoPlay }) {
                 <span className={m.caught ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-blush-deep)]'}>{m.caught ? '✓' : '✗'}</span>
                 <span className="font-mono text-xs text-[var(--color-stone)]">{mmss(m.atSec)}</span>
                 <span className="flex-1 text-[var(--color-ink-soft)]">{m.label}</span>
-                {!m.caught && <button onClick={() => { const v = videoRef.current; if (v) { setResult(null); setFinished(false); pressesRef.current = []; setFlags([]); v.currentTime = Math.max(0, m.atSec - 2); v.play().catch(() => {}); } }} className="text-xs text-[var(--color-gold)] hover:underline">replay</button>}
+                {!m.caught && <button onClick={() => { const v = videoRef.current; if (v) { setResult(null); setFinished(false); pressesRef.current = []; setFlags([]); v.currentTime = Math.max(0, m.atSec - 2); v.play().catch(() => {}); } }} className="text-xs text-[var(--color-gold-deep)] hover:underline">replay</button>}
               </li>
             ))}
           </ul>

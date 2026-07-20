@@ -63,7 +63,7 @@ export function Markdown({ text, tone = 'light' }: { text: string; tone?: 'light
       <ol key={`o${k++}`} className="mt-4 space-y-2">
         {items.map((b, i) => (
           <li key={i} className={`flex gap-3 leading-relaxed ${bodyCls}`}>
-            <span className="font-[family-name:var(--font-display)] text-[var(--color-gold)]">{i + 1}.</span>
+            <span className="font-[family-name:var(--font-display)] text-[var(--color-gold-deep)]">{i + 1}.</span>
             <span>{inline(b, strongCls)}</span>
           </li>
         ))}

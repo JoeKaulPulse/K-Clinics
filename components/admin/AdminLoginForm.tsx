@@ -153,7 +153,7 @@ function Inner({ ssoEnabled }: { ssoEnabled: boolean }) {
       )}
       <p className="text-center text-xs text-[var(--color-stone)]">
         Authorised personnel only · activity is logged. Are you a client?{' '}
-        <Link href="/account/login" className="font-medium text-[var(--color-gold)]">Client sign in</Link>
+        <Link href="/account/login" className="font-medium text-[var(--color-gold-deep)]">Client sign in</Link>
       </p>
     </form>
   );

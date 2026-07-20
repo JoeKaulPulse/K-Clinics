@@ -133,7 +133,7 @@ export function ConsultForm() {
                 transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
               />
             </div>
-            <span className={`hidden text-[0.65rem] uppercase tracking-[0.14em] sm:block ${i === step ? 'text-[var(--color-gold)]' : 'text-[var(--color-stone)]'}`}>{s}</span>
+            <span className={`hidden text-[0.65rem] uppercase tracking-[0.14em] sm:block ${i === step ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-stone)]'}`}>{s}</span>
           </div>
         ))}
       </div>

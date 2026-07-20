@@ -107,7 +107,7 @@ export function SecurityCentre({ score, checks, policy, threats }: { score: numb
               {threats.lockedNow.map((l) => (
                 <li key={l.identifier} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <span className="min-w-0 truncate">{l.identifier} <span className="text-xs text-[var(--color-stone)]">· {l.fails} fails</span></span>
-                  <button disabled={busy} onClick={() => act({ op: 'unlock', identifier: l.identifier })} className="shrink-0 text-xs font-medium text-[var(--color-gold)] hover:underline">Unlock</button>
+                  <button disabled={busy} onClick={() => act({ op: 'unlock', identifier: l.identifier })} className="shrink-0 text-xs font-medium text-[var(--color-gold-deep)] hover:underline">Unlock</button>
                 </li>
               ))}
             </ul>
@@ -119,7 +119,7 @@ export function SecurityCentre({ score, checks, policy, threats }: { score: numb
               {threats.topIps.map((i) => (
                 <li key={i.ip} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <span className="min-w-0 truncate font-[family-name:var(--font-mono,monospace)]">{i.ip} <span className="text-xs text-[var(--color-stone)]">· {i.fails} fails</span></span>
-                  <button disabled={busy} onClick={() => act({ op: 'unlock', ip: i.ip })} className="shrink-0 text-xs font-medium text-[var(--color-gold)] hover:underline">Clear</button>
+                  <button disabled={busy} onClick={() => act({ op: 'unlock', ip: i.ip })} className="shrink-0 text-xs font-medium text-[var(--color-gold-deep)] hover:underline">Clear</button>
                 </li>
               ))}
             </ul>

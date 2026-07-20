@@ -38,7 +38,7 @@ export function EnrolInCourse({ studentEmail, studentName, courses }: { studentE
   }
 
   if (!open) {
-    return <button onClick={() => setOpen(true)} className="rounded-full border border-[var(--color-gold)] px-4 py-1.5 text-xs text-[var(--color-gold)] hover:bg-[var(--color-gold)]/10">+ Enrol in another course</button>;
+    return <button onClick={() => setOpen(true)} className="rounded-full border border-[var(--color-gold)] px-4 py-1.5 text-xs text-[var(--color-gold-deep)] hover:bg-[var(--color-gold)]/10">+ Enrol in another course</button>;
   }
 
   return (
@@ -53,7 +53,7 @@ export function EnrolInCourse({ studentEmail, studentName, courses }: { studentE
         <label className="flex items-center gap-1.5 text-xs text-[var(--color-stone)]">
           <input type="checkbox" checked={sendLink} onChange={(e) => setSendLink(e.target.checked)} /> Email them a portal link
         </label>
-        <button onClick={submit} disabled={busy} className="rounded-full border border-[var(--color-gold)] px-4 py-1.5 text-sm text-[var(--color-gold)] hover:bg-[var(--color-gold)]/10 disabled:opacity-50">{busy ? 'Enrolling…' : 'Enrol'}</button>
+        <button onClick={submit} disabled={busy} className="rounded-full border border-[var(--color-gold)] px-4 py-1.5 text-sm text-[var(--color-gold-deep)] hover:bg-[var(--color-gold)]/10 disabled:opacity-50">{busy ? 'Enrolling…' : 'Enrol'}</button>
         <button onClick={() => { setOpen(false); setError(''); }} disabled={busy} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)] disabled:opacity-50">Cancel</button>
       </div>
       {error && <p role="alert" aria-live="assertive" className="mt-2 text-xs text-[var(--color-blush-deep)]">{error}</p>}

@@ -138,7 +138,7 @@ export function PracticeRunner({ courses }: { courses: Course[] }) {
             <button key={oi} onClick={() => toggle(oi)} disabled={!!checked} className={`flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left text-sm transition-colors ${cls}`}>
               <span className={`grid h-5 w-5 shrink-0 place-items-center ${multi ? 'rounded-[4px]' : 'rounded-full'} border text-[0.7rem] ${chosen ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-white' : 'border-[var(--color-stone-soft)]'}`}>{chosen ? '✓' : ''}</span>
               <span className="flex-1">{opt}</span>
-              {checked && isC && <span className="text-xs font-medium text-[var(--color-gold)]">✓</span>}
+              {checked && isC && <span className="text-xs font-medium text-[var(--color-gold-deep)]">✓</span>}
             </button>
           );
         })}
@@ -146,7 +146,7 @@ export function PracticeRunner({ courses }: { courses: Course[] }) {
 
       {q.tip && !checked && (
         <div className="mt-3">
-          {showTip ? <p className="rounded-[var(--radius-md)] border border-[var(--color-gold)]/25 bg-[var(--color-gold)]/8 px-4 py-2.5 text-sm text-[var(--color-ink-soft)]">💡 {q.tip}</p> : <button onClick={() => setShowTip(true)} className="text-sm font-medium text-[var(--color-gold)] hover:underline">Need a hint?</button>}
+          {showTip ? <p className="rounded-[var(--radius-md)] border border-[var(--color-gold)]/25 bg-[var(--color-gold)]/8 px-4 py-2.5 text-sm text-[var(--color-ink-soft)]">💡 {q.tip}</p> : <button onClick={() => setShowTip(true)} className="text-sm font-medium text-[var(--color-gold-deep)] hover:underline">Need a hint?</button>}
         </div>
       )}
 

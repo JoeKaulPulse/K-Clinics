@@ -15,7 +15,7 @@ function Copy({ label, text, multiline }: { label?: string; text: string; multil
           {label && <p className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">{label}</p>}
           <p className={`text-sm text-[var(--color-ink)] ${multiline ? 'whitespace-pre-wrap' : ''}`}>{text}</p>
         </div>
-        <button onClick={() => { navigator.clipboard?.writeText(text); setDone(true); setTimeout(() => setDone(false), 1200); }} className="shrink-0 text-[0.65rem] text-[var(--color-gold)] hover:underline">{done ? '✓' : 'copy'}</button>
+        <button onClick={() => { navigator.clipboard?.writeText(text); setDone(true); setTimeout(() => setDone(false), 1200); }} className="shrink-0 text-[0.65rem] text-[var(--color-gold-deep)] hover:underline">{done ? '✓' : 'copy'}</button>
       </div>
     </div>
   );

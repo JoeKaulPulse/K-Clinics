@@ -54,7 +54,7 @@ export function PostEditor({ initial }: { initial: Initial }) {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link href="/admin/journal" className="text-sm text-[var(--color-gold)] hover:underline">← Journal</Link>
+        <Link href="/admin/journal" className="text-sm text-[var(--color-gold-deep)] hover:underline">← Journal</Link>
         <span className="text-xs text-[var(--color-stone)]">{words.toLocaleString('en-GB')} words · ~{f.readMinutes || estRead} min read</span>
       </div>
       <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl">{initial ? 'Edit post' : 'New post'}</h1>
@@ -110,7 +110,7 @@ export function PostEditor({ initial }: { initial: Initial }) {
             <div><label className={label}>Related treatment slugs <span className="normal-case text-[var(--color-stone)]">(comma-separated)</span></label><input className={field} value={f.related} onChange={(e) => set('related', e.target.value)} placeholder="laser-hair-removal, hydraglow-facial" /></div>
           </div>
 
-          {initial && <Link href={`/journal/${f.slug}`} target="_blank" className="block text-center text-sm text-[var(--color-gold)] hover:underline">View on site ↗</Link>}
+          {initial && <Link href={`/journal/${f.slug}`} target="_blank" className="block text-center text-sm text-[var(--color-gold-deep)] hover:underline">View on site ↗</Link>}
         </div>
       </div>
     </div>
