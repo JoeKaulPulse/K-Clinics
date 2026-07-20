@@ -129,7 +129,9 @@ async function blockedIps(): Promise<Set<string>> {
   if (_blocked && Date.now() - _blocked.at < 30_000) return _blocked.set;
   if (!SELF_BASE) return _blocked?.set ?? new Set(); // no trusted base → fail open
   try {
-    const res = await fetch(`${SELF_BASE}/api/blocked-ips`, { headers: { 'x-mw-block': '1' } });
+    // BLD-807: the feed requires the shared internal secret (timing-safe
+    // checked server-side); the old constant '1' was guessable from the source.
+    const res = await fetch(`${SELF_BASE}/api/blocked-ips`, { headers: { 'x-mw-block': process.env.MW_BLOCK_SECRET || process.env.CRON_SECRET || '' } });
     if (res.ok) _blocked = { set: new Set((await res.json()) as string[]), at: Date.now() };
   } catch { /* keep stale cache on failure */ }
   return _blocked?.set ?? new Set();
