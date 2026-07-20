@@ -73,6 +73,7 @@ export const KIOSK_STREAM_SELECT = {
   liveFrame: true,
   liveFrameAt: true,
   photoUrls: true,
+  token: true,
   expiresAt: true,
   result: {
     select: {
@@ -96,6 +97,7 @@ export type KioskSessionLite = {
   liveFrame: string | null;
   liveFrameAt: Date | null;
   photoUrls: string[];
+  token: string;
   result?: {
     id: string;
     headline: string;
@@ -125,7 +127,9 @@ export function buildKioskStreamPayload(s: KioskSessionLite): KioskStreamPayload
     poseIdx: s.poseIdx,
     frame: showFrame ? (s.liveFrame ?? null) : null,
     frameAt: showFrame && s.liveFrameAt ? s.liveFrameAt.toISOString() : null,
-    photoUrls: s.photoUrls ?? [],
+    // BLD-798: selfies are stored PRIVATE — the wire carries relay URLs
+    // (session-token-authenticated, no-store) instead of raw blob URLs.
+    photoUrls: (s.photoUrls ?? []).map((_, i) => `/api/kiosk/sessions/${s.token}/photo-view?i=${i}`),
   };
   if (revealed && s.result) {
     payload.result = {
@@ -138,7 +142,11 @@ export function buildKioskStreamPayload(s: KioskSessionLite): KioskStreamPayload
       annotations: Array.isArray(s.result.annotations)
         ? (s.result.annotations as unknown as KioskObservation[])
         : [],
-      bestPhotoUrl: s.result.bestPhotoUrl ?? null,
+      // BLD-798: same relay treatment — resolve the best photo back to its
+      // index in photoUrls (v1 single-photo results map to index 0).
+      bestPhotoUrl: s.result.bestPhotoUrl
+        ? `/api/kiosk/sessions/${s.token}/photo-view?i=${Math.max(0, (s.photoUrls ?? []).indexOf(s.result.bestPhotoUrl))}`
+        : null,
       shareSlug: s.result.shareSlug,
     };
   }
