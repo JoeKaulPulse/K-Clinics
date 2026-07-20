@@ -109,7 +109,7 @@ function CohortRow({ courseId, cohort: h, students, modules, releases, onAct }: 
         {dirty && <button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-50">{busy ? '…' : 'Save'}</button>}
         <button onClick={() => setShowRelease((v) => !v)} className="pb-1.5 text-xs text-[var(--color-gold)] hover:underline">Release schedule</button>
         <button onClick={() => setShow((v) => !v)} className="pb-1.5 text-xs text-[var(--color-gold)] hover:underline">{students.length} student{students.length !== 1 ? 's' : ''}</button>
-        <button onClick={() => { if (confirm('Remove this cohort?')) onAct({ op: 'removeCohort', id: h.id }); }} className="pb-1.5 text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+        <button onClick={() => { if (confirm('Remove this cohort?')) onAct({ op: 'removeCohort', id: h.id }); }} className="pb-1.5 text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
       </div>
       {showRelease && (
         <div className="mt-2 border-t border-[var(--color-line)] pt-2">
@@ -142,7 +142,7 @@ function CohortRow({ courseId, cohort: h, students, modules, releases, onAct }: 
               {students.map((e) => (
                 <li key={e.id} className="flex items-center justify-between gap-2">
                   <span>{e.name} · {e.email} · {e.status}</span>
-                  <button onClick={() => onAct({ op: 'updateEnrolment', id: e.id, cohortId: '' })} className="text-[var(--color-stone)] hover:text-[var(--color-blush)] hover:underline">Remove from cohort</button>
+                  <button onClick={() => onAct({ op: 'updateEnrolment', id: e.id, cohortId: '' })} className="text-[var(--color-stone)] hover:text-[var(--color-blush-deep)] hover:underline">Remove from cohort</button>
                 </li>
               ))}
             </ul>

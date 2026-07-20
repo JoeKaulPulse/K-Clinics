@@ -93,7 +93,7 @@ function ModuleCard({ module: m, index, total, busy, act, onMove }: { module: Mo
         <span className="text-xs text-[var(--color-stone)]">{m.lessons.length} lessons · {m.quiz ? `${m.quiz.questions.length} Q` : 'no quiz'}</span>
         <button onClick={() => onMove(-1)} disabled={busy || index === 0} className={btnGhost}>↑</button>
         <button onClick={() => onMove(1)} disabled={busy || index === total - 1} className={btnGhost}>↓</button>
-        <button onClick={() => { if (confirm('Delete this module and all its lessons/quiz?')) act({ op: 'deleteModule', id: m.id }); }} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+        <button onClick={() => { if (confirm('Delete this module and all its lessons/quiz?')) act({ op: 'deleteModule', id: m.id }); }} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
       </div>
 
       {open && (
@@ -213,7 +213,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
         <span className="flex-1 text-sm">{l.title}</span>
         <button onClick={() => move(-1)} disabled={busy || index === 0} className={btnGhost}>↑</button>
         <button onClick={() => move(1)} disabled={busy || index === total - 1} className={btnGhost}>↓</button>
-        <button onClick={() => { if (confirm('Delete this lesson?')) act({ op: 'deleteLesson', id: l.id }); }} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+        <button onClick={() => { if (confirm('Delete this lesson?')) act({ op: 'deleteLesson', id: l.id }); }} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
       </div>
       {open && (
         <div className="space-y-3 border-t border-[var(--color-line)] p-3">
@@ -283,7 +283,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
                       Download
                     </label>
                     <a href={url} target="_blank" rel="noreferrer" className="shrink-0 text-[var(--color-gold)] hover:underline">View</a>
-                    <button type="button" onClick={() => setF((s) => ({ ...s, pdfUrls: s.pdfUrls.filter((_, j) => j !== i), pdfNoDownload: s.pdfNoDownload.filter((u) => u !== url) }))} className="shrink-0 text-[var(--color-blush)] hover:underline">Remove</button>
+                    <button type="button" onClick={() => setF((s) => ({ ...s, pdfUrls: s.pdfUrls.filter((_, j) => j !== i), pdfNoDownload: s.pdfNoDownload.filter((u) => u !== url) }))} className="shrink-0 text-[var(--color-blush-deep)] hover:underline">Remove</button>
                   </div>
                 );
               })}
@@ -304,7 +304,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
                   </select>
                   <input className={`${field} min-w-[10rem] flex-1`} value={a.label} onChange={(e) => setF((s) => ({ ...s, attachments: s.attachments.map((x, j) => j === i ? { ...x, label: e.target.value } : x) }))} placeholder="File label shown to learner" />
                   <a href={a.url} target="_blank" rel="noreferrer" className="shrink-0 text-[var(--color-gold)] hover:underline">View</a>
-                  <button type="button" onClick={() => setF((s) => ({ ...s, attachments: s.attachments.filter((_, j) => j !== i) }))} className="shrink-0 text-[var(--color-blush)] hover:underline">Remove</button>
+                  <button type="button" onClick={() => setF((s) => ({ ...s, attachments: s.attachments.filter((_, j) => j !== i) }))} className="shrink-0 text-[var(--color-blush-deep)] hover:underline">Remove</button>
                 </div>
               ))}
               <label className={`inline-flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-line)] px-3 py-1.5 text-xs ${uploadingFile ? 'opacity-60' : 'hover:border-[var(--color-gold)]'}`}>
@@ -347,7 +347,7 @@ function QuizBlock({ module: m, busy, act }: { module: Module; busy: boolean; ac
           <label className={`${label} flex-1`}>Quiz title<input className={`${field} mt-1`} value={title} onChange={(e) => setTitle(e.target.value)} /></label>
           <label className={label}>Pass mark %<input type="number" min={1} max={100} disabled={isSurvey} className={`${field} mt-1 w-24 ${isSurvey ? 'opacity-50' : ''}`} value={passMark} onChange={(e) => setPassMark(Number(e.target.value))} /></label>
           <button onClick={() => act({ op: 'upsertQuiz', moduleId: m.id, title, passMark, ...settings })} disabled={busy} className={btnDark}>Save</button>
-          <button onClick={() => { if (confirm('Delete this quiz and its questions?')) act({ op: 'deleteQuiz', id: q.id }); }} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline">Delete quiz</button>
+          <button onClick={() => { if (confirm('Delete this quiz and its questions?')) act({ op: 'deleteQuiz', id: q.id }); }} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete quiz</button>
         </div>
         {/* BLD-529 assessment settings */}
         <div className="mt-3 grid gap-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3 sm:grid-cols-3">
@@ -413,7 +413,7 @@ function QuestionRow({ q, index, total, busy, act, ids, isSurvey = false }: { q:
         <span className="rounded-full bg-[var(--color-porcelain)] px-2 py-0.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">{q.type}</span>
         <button onClick={() => move(-1)} disabled={busy || index === 0} className={btnGhost}>↑</button>
         <button onClick={() => move(1)} disabled={busy || index === total - 1} className={btnGhost}>↓</button>
-        <button onClick={() => { if (confirm('Delete this question?')) act({ op: 'deleteQuestion', id: q.id }); }} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+        <button onClick={() => { if (confirm('Delete this question?')) act({ op: 'deleteQuestion', id: q.id }); }} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
       </div>
       {open && (
         <div className="space-y-3 border-t border-[var(--color-line)] p-3">
@@ -441,7 +441,7 @@ function QuestionRow({ q, index, total, busy, act, ids, isSurvey = false }: { q:
                 <div key={i} className="flex items-center gap-2">
                   <input type={type === 'MULTI' ? 'checkbox' : 'radio'} checked={correct.includes(i)} onChange={() => toggleCorrect(i)} className="h-4 w-4 accent-[var(--color-gold)]" />
                   <input className={field} value={o} onChange={(e) => setOpt(i, e.target.value)} disabled={type === 'TRUEFALSE'} />
-                  {type !== 'TRUEFALSE' && options.length > 2 && <button onClick={() => delOpt(i)} aria-label="Remove option" className="text-xs text-[var(--color-blush)]">✕</button>}
+                  {type !== 'TRUEFALSE' && options.length > 2 && <button onClick={() => delOpt(i)} aria-label="Remove option" className="text-xs text-[var(--color-blush-deep)]">✕</button>}
                 </div>
               ))}
             </div>
@@ -459,7 +459,7 @@ function QuestionRow({ q, index, total, busy, act, ids, isSurvey = false }: { q:
                 {uploadingImg ? 'Uploading…' : imageUrl ? '↑ Replace image' : '↑ Upload image'}
                 <input type="file" accept="image/*" className="hidden" disabled={uploadingImg} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadImage(file); e.currentTarget.value = ''; }} />
               </label>
-              {imageUrl && <button onClick={() => setImageUrl('')} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>}
+              {imageUrl && <button onClick={() => setImageUrl('')} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>}
             </div>
           </div>
           <label className={label}>Hint (optional — a nudge the learner can reveal before answering)<input className={`${field} mt-1`} value={tip} onChange={(e) => setTip(e.target.value)} placeholder="Think about which layer has no blood supply." /></label>

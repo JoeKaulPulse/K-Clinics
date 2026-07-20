@@ -117,7 +117,7 @@ export function ConsentPanel({ bookingId, clientId, treatmentForm, templates, si
                   <button onClick={emailToClient} disabled={emailing || !token} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">{emailing ? 'Sending…' : emailStatus === 'sent' ? 'Emailed ✓' : 'Email to client'}</button>
                 </div>
                 {emailStatus === 'sent' && <p className="text-xs text-[var(--color-jade)]">✓ Signing link emailed to the client.</p>}
-                {emailStatus === 'error' && <p className="text-xs text-[var(--color-blush)]">{emailError}</p>}
+                {emailStatus === 'error' && <p className="text-xs text-[var(--color-blush-deep)]">{emailError}</p>}
                 <p className="break-all font-mono text-[0.65rem] text-[var(--color-stone)]">{link}</p>
               </div>
             ) : (

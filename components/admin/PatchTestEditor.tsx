@@ -44,11 +44,11 @@ export function PatchTestEditor({ clientId, result, setBy, setAt }: { clientId: 
         ) : (
           <p className="text-sm text-[var(--color-stone)]">No patch test on record.</p>
         )}
-        {err && <p role="alert" aria-live="assertive" className="mt-1 text-xs text-[var(--color-blush)]">{err}</p>}
+        {err && <p role="alert" aria-live="assertive" className="mt-1 text-xs text-[var(--color-blush-deep)]">{err}</p>}
         <div className="mt-3 flex items-center gap-2">
           {!passed && <button disabled={pending} onClick={() => save('PASSED')} className="rounded-full bg-[var(--color-gold)] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-60">{pending ? 'Saving…' : 'Record passed'}</button>}
           {!failed && <button disabled={pending} onClick={() => save('FAILED')} className="rounded-full border border-[var(--color-blush)] px-4 py-1.5 text-xs font-medium text-[var(--color-blush-deep)] disabled:opacity-60">{pending ? 'Saving…' : 'Record failed'}</button>}
-          {result && <button disabled={pending} onClick={() => save(null)} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)]">Clear</button>}
+          {result && <button disabled={pending} onClick={() => save(null)} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">Clear</button>}
         </div>
       </div>
     </section>

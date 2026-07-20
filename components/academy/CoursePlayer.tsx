@@ -364,7 +364,7 @@ function QuizPanel({ quiz, state, onGraded, onBadges, onNext }: { quiz: QuizView
           <h2 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl">{quiz.title}</h2>
         </div>
         {!result && secondsLeft != null && !noAttemptsLeft && (
-          <span className={`rounded-full px-3 py-1 text-sm font-medium tabular-nums ${secondsLeft <= 30 ? 'bg-[var(--color-blush)]/15 text-[var(--color-blush)]' : 'bg-[var(--color-bone)] text-[var(--color-ink-soft)]'}`}>⏱ {mmss(secondsLeft)}</span>
+          <span className={`rounded-full px-3 py-1 text-sm font-medium tabular-nums ${secondsLeft <= 30 ? 'bg-[var(--color-blush)]/15 text-[var(--color-blush-deep)]' : 'bg-[var(--color-bone)] text-[var(--color-ink-soft)]'}`}>⏱ {mmss(secondsLeft)}</span>
         )}
       </div>
       <p className="mt-1 text-xs text-[var(--color-stone)]">
@@ -408,7 +408,7 @@ function QuizPanel({ quiz, state, onGraded, onBadges, onNext }: { quiz: QuizView
                     placeholder="Type your answer…"
                     className={`w-full rounded-[var(--radius-sm)] border px-4 py-2.5 text-sm ${r ? (r.correct ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10' : 'border-[var(--color-blush)] bg-[var(--color-blush)]/10') : 'border-[var(--color-line)] bg-white focus:border-[var(--color-gold)] focus:outline-none'}`}
                   />
-                  {r && <p className={`mt-2 text-xs font-medium ${r.correct ? 'text-[var(--color-gold)]' : 'text-[var(--color-blush)]'}`}>{r.correct ? '✓ Correct' : '✗ Not quite'}</p>}
+                  {r && <p className={`mt-2 text-xs font-medium ${r.correct ? 'text-[var(--color-gold)]' : 'text-[var(--color-blush-deep)]'}`}>{r.correct ? '✓ Correct' : '✗ Not quite'}</p>}
                 </div>
               ) : (
                 <div className="mt-3 space-y-2">
@@ -434,7 +434,7 @@ function QuizPanel({ quiz, state, onGraded, onBadges, onNext }: { quiz: QuizView
       </ol>
       )}
 
-      {err && <p role="alert" aria-live="assertive" className="mt-4 text-sm text-[var(--color-blush)]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-4 text-sm text-[var(--color-blush-deep)]">{err}</p>}
       <div className="mt-6 flex flex-wrap items-center gap-3">
         {result ? (
           !quiz.isSurvey && !noAttemptsLeft && <button onClick={retake} className="rounded-full bg-[var(--color-ink)] px-6 py-2.5 text-sm font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-espresso)]">Retake assessment</button>

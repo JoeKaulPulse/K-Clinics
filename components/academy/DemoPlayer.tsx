@@ -101,7 +101,7 @@ export function DemoPlayer({ demo }: { demo: DemoPlay }) {
           <ul className="space-y-1.5">
             {result.mistakes?.map((m, i) => (
               <li key={i} className={`flex items-center gap-2 rounded-[var(--radius-sm)] border px-3 py-2 text-sm ${m.caught ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10' : 'border-[var(--color-blush)] bg-[var(--color-blush)]/5'}`}>
-                <span className={m.caught ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-blush)]'}>{m.caught ? '✓' : '✗'}</span>
+                <span className={m.caught ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-blush-deep)]'}>{m.caught ? '✓' : '✗'}</span>
                 <span className="font-mono text-xs text-[var(--color-stone)]">{mmss(m.atSec)}</span>
                 <span className="flex-1 text-[var(--color-ink-soft)]">{m.label}</span>
                 {!m.caught && <button onClick={() => { const v = videoRef.current; if (v) { setResult(null); setFinished(false); pressesRef.current = []; setFlags([]); v.currentTime = Math.max(0, m.atSec - 2); v.play().catch(() => {}); } }} className="text-xs text-[var(--color-gold)] hover:underline">replay</button>}

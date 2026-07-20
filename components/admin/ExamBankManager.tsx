@@ -84,7 +84,7 @@ function QuestionRow({ q, courses, courseTitle, busy, act }: { q: QView; courses
         <span className="rounded-full bg-[var(--color-porcelain)] px-2 py-0.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">{q.type}</span>
         {courseTitle && <span className="hidden text-xs text-[var(--color-stone)] sm:inline">{courseTitle}</span>}
         <button onClick={() => act({ op: 'toggleQuestion', id: q.id, active: !q.active })} disabled={busy} className="text-xs text-[var(--color-stone)] hover:underline">{q.active ? 'Disable' : 'Enable'}</button>
-        <button onClick={() => { if (confirm('Delete this question?')) act({ op: 'deleteQuestion', id: q.id }); }} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+        <button onClick={() => { if (confirm('Delete this question?')) act({ op: 'deleteQuestion', id: q.id }); }} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
       </div>
       {open && <div className="border-t border-[var(--color-line)] p-3"><QuestionForm courses={courses} existing={q} busy={busy} act={act} /></div>}
     </div>
@@ -128,7 +128,7 @@ function QuestionForm({ courses, existing, defaultCourseId, busy, act }: { cours
           <div key={i} className="flex items-center gap-2">
             <input type={f.type === 'MULTI' ? 'checkbox' : 'radio'} checked={f.correct.includes(i)} onChange={() => toggleCorrect(i)} className="h-4 w-4 accent-[var(--color-gold)]" />
             <input className={field} value={o} onChange={(e) => setOpt(i, e.target.value)} disabled={f.type === 'TRUEFALSE'} />
-            {f.type !== 'TRUEFALSE' && f.options.length > 2 && <button onClick={() => setF((s) => ({ ...s, options: s.options.filter((_, k) => k !== i), correct: s.correct.filter((k) => k !== i).map((k) => (k > i ? k - 1 : k)) }))} aria-label="Remove option" className="text-xs text-[var(--color-blush)]">✕</button>}
+            {f.type !== 'TRUEFALSE' && f.options.length > 2 && <button onClick={() => setF((s) => ({ ...s, options: s.options.filter((_, k) => k !== i), correct: s.correct.filter((k) => k !== i).map((k) => (k > i ? k - 1 : k)) }))} aria-label="Remove option" className="text-xs text-[var(--color-blush-deep)]">✕</button>}
           </div>
         ))}
         {f.type !== 'TRUEFALSE' && <button onClick={() => setF((s) => ({ ...s, options: [...s.options, ''] }))} className="text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add option</button>}
@@ -153,7 +153,7 @@ function PaperRow({ p, courses, courseTitle, busy, act }: { p: PView; courses: C
         <button onClick={() => setOpen((v) => !v)} className="text-[var(--color-stone)]">{open ? '▾' : '▸'}</button>
         <span className="flex-1 text-sm">{p.title}</span>
         <span className="text-xs text-[var(--color-stone)]">{[p.examBoard, p.year, courseTitle].filter(Boolean).join(' · ')}</span>
-        <button onClick={() => { if (confirm('Delete this paper?')) act({ op: 'deletePaper', id: p.id }); }} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+        <button onClick={() => { if (confirm('Delete this paper?')) act({ op: 'deletePaper', id: p.id }); }} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
       </div>
       {open && <div className="border-t border-[var(--color-line)] p-3"><PaperForm courses={courses} existing={p} busy={busy} act={act} /></div>}
     </div>

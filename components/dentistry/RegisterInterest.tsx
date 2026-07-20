@@ -41,7 +41,7 @@ export function RegisterInterest({ className = '' }: { className?: string }) {
           {state === 'busy' ? '…' : 'Notify me'}
         </button>
       </div>
-      {state === 'error' && <p className="mt-2 text-xs text-[var(--color-blush)]">{msg}</p>}
+      {state === 'error' && <p className="mt-2 text-xs text-[var(--color-blush-deep)]">{msg}</p>}
       <p className="mt-2.5 text-xs text-[var(--color-stone)]">We’ll only email you about our dentistry launch. Unsubscribe any time.</p>
     </form>
   );

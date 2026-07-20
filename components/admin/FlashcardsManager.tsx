@@ -39,7 +39,7 @@ function DeckRow({ deck, busy, act }: { deck: AdminDeck; busy: boolean; act: (p:
       <div className="flex items-center gap-2 p-3">
         <button onClick={() => setOpen((v) => !v)} className="text-[var(--color-stone)]">{open ? '▾' : '▸'}</button>
         <span className="flex-1 text-sm font-medium">{deck.title} <span className="text-[var(--color-stone)]">· {deck.cards.length} card{deck.cards.length === 1 ? '' : 's'}</span></span>
-        <button onClick={() => { if (confirm('Delete this deck and its cards? Trainees’ review history for it is removed too.')) act({ op: 'deleteDeck', id: deck.id }); }} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+        <button onClick={() => { if (confirm('Delete this deck and its cards? Trainees’ review history for it is removed too.')) act({ op: 'deleteDeck', id: deck.id }); }} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
       </div>
       {open && (
         <div className="space-y-3 border-t border-[var(--color-line)] p-3">
@@ -84,7 +84,7 @@ function CardRow({ card, index, total, ids, busy, act }: { card: AdminDeck['card
         <span className="flex-1" />
         <button onClick={() => move(-1)} disabled={busy || index === 0} className={btnGhost}>↑</button>
         <button onClick={() => move(1)} disabled={busy || index === total - 1} className={btnGhost}>↓</button>
-        <button onClick={() => { if (confirm('Delete this card?')) act({ op: 'deleteCard', id: card.id }); }} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+        <button onClick={() => { if (confirm('Delete this card?')) act({ op: 'deleteCard', id: card.id }); }} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
         <label className={label}>Front (prompt)<textarea rows={3} className={`${field} mt-1`} value={front} onChange={(e) => setFront(e.target.value)} /></label>
@@ -96,7 +96,7 @@ function CardRow({ card, index, total, ids, busy, act }: { card: AdminDeck['card
           {uploading ? 'Uploading…' : imageUrl ? '↑ Replace image' : '↑ Add image'}
           <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.currentTarget.value = ''; }} />
         </label>
-        {imageUrl && <button onClick={() => setImageUrl('')} className="text-xs text-[var(--color-blush)] hover:underline">Remove image</button>}
+        {imageUrl && <button onClick={() => setImageUrl('')} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove image</button>}
         <span className="flex-1" />
         {dirty && <button onClick={() => act({ op: 'updateCard', id: card.id, front, back, imageUrl })} disabled={busy} className={btnDark}>Save card</button>}
       </div>

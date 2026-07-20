@@ -277,7 +277,7 @@ function VariantRow({ v }: { v: Variant }) {
         <td className="px-2 text-right">
           {dirty ? <button onClick={save} className="rounded-full bg-[var(--color-gold)] px-3 py-1 text-xs text-white">Save</button>
             : saved ? <span className="text-xs text-green-700">Saved ✓</span>
-            : <button onClick={remove} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>}
+            : <button onClick={remove} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>}
         </td>
       </tr>
       {showCourses && (
@@ -302,7 +302,7 @@ function VariantRow({ v }: { v: Variant }) {
                       <span className="text-xs text-[var(--color-stone)]">
                         {perSession != null ? `= ${money(perSession)}/session${savePct != null && savePct > 0 ? ` · save ${savePct}%` : ''}` : ''}
                       </span>
-                      <button onClick={() => removeCourse(i)} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
+                      <button onClick={() => removeCourse(i)} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
                     </div>
                   );
                 })}
@@ -411,7 +411,7 @@ function OffersSection({ services, offers }: { services: Service[]; offers: Offe
         <label className="text-xs text-[var(--color-stone)]">Starts<br /><input type="date" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={field} /></label>
         <label className="text-xs text-[var(--color-stone)]">Ends<br /><input type="date" value={endAt} onChange={(e) => setEndAt(e.target.value)} className={field} /></label>
         <button onClick={create} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)]">Add offer</button>
-        {msg && <span className="text-sm text-[var(--color-blush)]">{msg}</span>}
+        {msg && <span className="text-sm text-[var(--color-blush-deep)]">{msg}</span>}
       </div>
 
       {offers.length > 0 && (
@@ -425,7 +425,7 @@ function OffersSection({ services, offers }: { services: Service[]; offers: Offe
               </span>
               <span className="flex items-center gap-3">
                 <button onClick={() => act({ op: 'updateOffer', id: o.id, promoted: !o.promoted })} className="text-xs text-[var(--color-stone)] hover:underline">{o.promoted ? 'Unpromote' : 'Promote'}</button>
-                <button onClick={() => { if (confirm('Remove this offer?')) act({ op: 'removeOffer', id: o.id }); }} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
+                <button onClick={() => { if (confirm('Remove this offer?')) act({ op: 'removeOffer', id: o.id }); }} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
               </span>
             </li>
           ))}

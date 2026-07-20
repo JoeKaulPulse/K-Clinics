@@ -15,7 +15,7 @@ type Threats = {
 const ROLES = ['OWNER', 'ADMIN', 'PRACTITIONER', 'FRONT_DESK', 'STAFF'];
 
 const dot: Record<Severity, string> = { ok: 'bg-emerald-500', info: 'bg-sky-400', warn: 'bg-amber-400', critical: 'bg-[var(--color-blush)]' };
-const chip: Record<Severity, string> = { ok: 'text-emerald-700', info: 'text-sky-700', warn: 'text-amber-700', critical: 'text-[var(--color-blush)]' };
+const chip: Record<Severity, string> = { ok: 'text-emerald-700', info: 'text-sky-700', warn: 'text-amber-700', critical: 'text-[var(--color-blush-deep)]' };
 
 async function post(payload: object) {
   const r = await fetch('/api/admin/security', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -60,7 +60,7 @@ export function SecurityCentre({ score, checks, policy, threats }: { score: numb
   }
   function toggleRole(role: string) { setRoles((rs) => (rs.includes(role) ? rs.filter((x) => x !== role) : [...rs, role])); }
 
-  const scoreColor = score >= 85 ? 'text-emerald-600' : score >= 60 ? 'text-amber-600' : 'text-[var(--color-blush)]';
+  const scoreColor = score >= 85 ? 'text-emerald-600' : score >= 60 ? 'text-amber-600' : 'text-[var(--color-blush-deep)]';
 
   return (
     <div className="space-y-8">

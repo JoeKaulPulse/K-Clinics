@@ -116,7 +116,7 @@ export function ComplianceManager({ rows, canManage }: { rows: Row[]; canManage:
                         <div className="flex flex-wrap justify-end gap-x-3 gap-y-1 text-xs">
                           <button onClick={() => renew(r.id, r.renewalAt)} disabled={busy} className="font-medium text-[var(--color-gold)] hover:underline disabled:opacity-50">Renew</button>
                           <button onClick={() => setEditing(r.id)} disabled={busy} className="text-[var(--color-stone)] hover:text-[var(--color-ink)] disabled:opacity-50">Edit</button>
-                          <button onClick={() => remove(r.id)} disabled={busy} className="text-[var(--color-blush)] hover:underline disabled:opacity-50">Delete</button>
+                          <button onClick={() => remove(r.id)} disabled={busy} className="text-[var(--color-blush-deep)] hover:underline disabled:opacity-50">Delete</button>
                         </div>
                       )}
                     </td>

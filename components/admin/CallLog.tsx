@@ -76,7 +76,7 @@ export function CallLog({ canManage }: { canManage: boolean }) {
               return (
                 <li key={c.id}>
                   <button onClick={() => openCall(c.id)} className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--color-bone)] ${activeId === c.id ? 'bg-[var(--color-bone)]' : ''}`}>
-                    <span aria-hidden className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm ${missed ? 'bg-[var(--color-blush)]/20 text-[var(--color-blush)]' : c.direction === 'INBOUND' ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-gold)]/15 text-[var(--color-gold)]'}`}>
+                    <span aria-hidden className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm ${missed ? 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]' : c.direction === 'INBOUND' ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-gold)]/15 text-[var(--color-gold)]'}`}>
                       {c.direction === 'INBOUND' ? '↘' : '↗'}
                     </span>
                     <span className="min-w-0 flex-1">
@@ -90,7 +90,7 @@ export function CallLog({ canManage }: { canManage: boolean }) {
                     <span className="flex shrink-0 items-center gap-1.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">
                       {c.recordingUrl && <span title="Recording available">●</span>}
                       {c.hasTranscript && <span title="Transcript available" className="text-[var(--color-gold)]">T</span>}
-                      {missed && <span className="text-[var(--color-blush)]">missed</span>}
+                      {missed && <span className="text-[var(--color-blush-deep)]">missed</span>}
                     </span>
                   </button>
                 </li>

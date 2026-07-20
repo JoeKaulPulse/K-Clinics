@@ -54,7 +54,7 @@ function TestCard({ t, canManage }: { t: AbTestRow; canManage: boolean }) {
             <select value={t.status} onChange={(e) => act({ op: 'updateTest', id: t.id, status: e.target.value })} className={field}>
               <option value="DRAFT">Draft</option><option value="RUNNING">Running</option><option value="STOPPED">Stopped</option>
             </select>
-            <button onClick={() => { if (confirm('Delete this test?')) act({ op: 'removeTest', id: t.id }); }} className="text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+            <button onClick={() => { if (confirm('Delete this test?')) act({ op: 'removeTest', id: t.id }); }} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
           </div>
         )}
       </div>
@@ -78,7 +78,7 @@ function TestCard({ t, canManage }: { t: AbTestRow; canManage: boolean }) {
                   <input defaultValue={v.ctaHref} onBlur={(e) => e.target.value !== v.ctaHref && act({ op: 'updateVariant', id: v.id, ctaHref: e.target.value })} placeholder="CTA link (/book)" className={field} />
                 </div>
               )}
-              {canManage && t.variants.length > 2 && <button onClick={() => act({ op: 'removeVariant', id: v.id })} className="mt-2 text-xs text-[var(--color-blush)] hover:underline">Remove variant</button>}
+              {canManage && t.variants.length > 2 && <button onClick={() => act({ op: 'removeVariant', id: v.id })} className="mt-2 text-xs text-[var(--color-blush-deep)] hover:underline">Remove variant</button>}
             </div>
           );
         })}

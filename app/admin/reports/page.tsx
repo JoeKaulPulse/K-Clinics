@@ -224,7 +224,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                       <td className="px-4 py-2.5 text-right text-[var(--color-jade)]">{gbp(p.revenue)}</td>
                       <td className="px-4 py-2.5 text-right text-[var(--color-stone)]">{p.cost > 0 ? gbp(p.cost) : '—'}</td>
                       <td className="px-4 py-2.5 text-right font-medium">{gbp(p.margin)}</td>
-                      <td className={`px-4 py-2.5 text-right ${minMarginPct > 0 && p.cost > 0 && p.marginPct < minMarginPct ? 'text-amber-700' : p.marginPct >= 50 ? 'text-[var(--color-jade)]' : p.marginPct >= 0 ? 'text-[var(--color-ink)]' : 'text-[var(--color-blush)]'}`}>{p.marginPct}%</td>
+                      <td className={`px-4 py-2.5 text-right ${minMarginPct > 0 && p.cost > 0 && p.marginPct < minMarginPct ? 'text-amber-700' : p.marginPct >= 50 ? 'text-[var(--color-jade)]' : p.marginPct >= 0 ? 'text-[var(--color-ink)]' : 'text-[var(--color-blush-deep)]'}`}>{p.marginPct}%</td>
                     </tr>
                   ))}
                 </tbody>

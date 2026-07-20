@@ -263,17 +263,26 @@ export async function finalizeEnrolmentPayment(piId: string, amountReceivedPence
     console.error('[academy-pay] not finalising — amount/currency mismatch:', { piId, received: amountReceivedPence, expected: payment.amountPence, currency });
     return { ok: false };
   }
-  // Claim: only the writer that flips PENDING → PAID runs the side-effects.
-  const claimed = await db.enrolmentPayment.updateMany({
-    where: { id: payment.id, state: 'PENDING' },
-    data: { state: 'PAID', paidAt: new Date(), method: methodFromType(methodType) },
+  // Claim + apply ATOMICALLY (BLD-885): the claim (PENDING → PAID) and the
+  // enrolment advance (paidPence/status/acceptedAt) used to be two separate
+  // writes — a crash between them left the payment permanently PAID with the
+  // student still locked out, and the redelivery branch below treated "already
+  // claimed" as "already applied" so it could never self-heal. One transaction
+  // means PAID now implies the enrolment advanced.
+  const tx = await db.$transaction(async (t) => {
+    const claimed = await t.enrolmentPayment.updateMany({
+      where: { id: payment.id, state: 'PENDING' },
+      data: { state: 'PAID', paidAt: new Date(), method: methodFromType(methodType) },
+    });
+    if (claimed.count === 0) return { claimed: false as const, updated: null }; // redelivery — nothing to apply
+    return { claimed: true as const, updated: await applyPaidPayment(payment.enrolmentId, payment.amountPence, t) };
   });
-  if (claimed.count === 0) {
+  const updated = tx.updated;
+  if (!tx.claimed) {
     // Already finalised (redelivery). Resolve the slug so the confirm endpoint can redirect.
     const e = await db.enrolment.findUnique({ where: { id: payment.enrolmentId }, select: { course: { select: { slug: true } } } });
     return { ok: true, enrolmentId: payment.enrolmentId, courseSlug: e?.course.slug };
   }
-  const updated = await applyPaidPayment(payment.enrolmentId, payment.amountPence);
   await notifyPaymentReceived(payment.enrolmentId, payment.amountPence).catch(() => {});
   await sendPaymentReceipt(payment.enrolmentId, payment.amountPence).catch(() => {});
   await logAudit({
@@ -304,11 +313,14 @@ async function sendPaymentReceipt(enrolmentId: string, amountPence: number): Pro
 
 /** Advance an enrolment after a payment is marked PAID: bump paidPence, set
  *  acceptedAt, and move APPLIED/OFFERED → PAID (never downgrade ENROLLED/COMPLETED). */
-async function applyPaidPayment(enrolmentId: string, amountPence: number): Promise<{ courseSlug?: string } | null> {
-  const e = await db.enrolment.findUnique({ where: { id: enrolmentId }, select: { status: true, acceptedAt: true, course: { select: { slug: true } } } });
+// Accepts a transaction client so finalizeEnrolmentPayment can run the claim
+// and this advance atomically (BLD-885); defaults to the plain client for the
+// staff-action call sites that have their own idempotency.
+async function applyPaidPayment(enrolmentId: string, amountPence: number, client: Pick<typeof db, 'enrolment'> = db): Promise<{ courseSlug?: string } | null> {
+  const e = await client.enrolment.findUnique({ where: { id: enrolmentId }, select: { status: true, acceptedAt: true, course: { select: { slug: true } } } });
   if (!e) return null;
   const advance = e.status === 'APPLIED' || e.status === 'OFFERED';
-  await db.enrolment.update({
+  await client.enrolment.update({
     where: { id: enrolmentId },
     data: {
       paidPence: { increment: amountPence },

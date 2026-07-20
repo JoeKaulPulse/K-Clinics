@@ -113,7 +113,7 @@ export function CampaignEditor({ data, stats, baseUrl, canManage, spendSyncedAt 
             <div className="flex items-center gap-3 pt-1">
               <button onClick={() => save()} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Saving…' : 'Save'}</button>
               {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
-              <button onClick={remove} className="ml-auto text-xs text-[var(--color-blush)] hover:underline">Delete campaign</button>
+              <button onClick={remove} className="ml-auto text-xs text-[var(--color-blush-deep)] hover:underline">Delete campaign</button>
             </div>
           )}
         </section>

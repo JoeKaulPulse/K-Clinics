@@ -49,7 +49,7 @@ export function CalendarBlockButton({ clinicians, dateISO }: { clinicians: Clini
         </div>
         <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional)" className={`${field} w-full`} />
       </div>
-      {msg && <p className="mt-2 text-xs text-[var(--color-blush)]">{msg}</p>}
+      {msg && <p className="mt-2 text-xs text-[var(--color-blush-deep)]">{msg}</p>}
       <div className="mt-3 flex gap-2">
         <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-60">{busy ? '…' : 'Block'}</button>
         <button onClick={() => { setOpen(false); setMsg(''); }} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs text-[var(--color-stone)]">Cancel</button>

@@ -43,7 +43,7 @@ export function GiftCardClaim({ initialCode, needsAge, claimed }: { initialCode:
           </div>
         )}
 
-        {msg && <p className="mt-3 text-sm text-[var(--color-blush)]">{msg}</p>}
+        {msg && <p className="mt-3 text-sm text-[var(--color-blush-deep)]">{msg}</p>}
         {ok && <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-jade)]/12 px-3 py-2 text-sm text-[var(--color-jade)]">{ok}</p>}
         <button onClick={claim} disabled={busy || !code} className="mt-4 rounded-full bg-[var(--color-ink)] px-6 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Adding…' : 'Add gift card'}</button>
       </section>

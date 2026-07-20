@@ -35,7 +35,7 @@ export default async function AdminNpsPage() {
       ) : (
         <>
           <div className="mt-6 grid gap-4 sm:grid-cols-4">
-            <Stat label="NPS score" value={s.nps != null ? String(s.nps) : '—'} tone={s.nps != null && s.nps >= 50 ? 'text-[var(--color-jade)]' : s.nps != null && s.nps < 0 ? 'text-[var(--color-blush)]' : ''} />
+            <Stat label="NPS score" value={s.nps != null ? String(s.nps) : '—'} tone={s.nps != null && s.nps >= 50 ? 'text-[var(--color-jade)]' : s.nps != null && s.nps < 0 ? 'text-[var(--color-blush-deep)]' : ''} />
             <Stat label="Avg (0–10)" value={s.avg != null ? s.avg.toFixed(1) : '—'} />
             <Stat label="Responses" value={`${s.responses}/${s.sentTotal}`} />
             <Stat label="Promoters" value={`${s.promoters}`} tone="text-[var(--color-jade)]" />

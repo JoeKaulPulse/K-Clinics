@@ -78,7 +78,7 @@ export function ReviseBoard({ decks }: { decks: DeckSummary[] }) {
                 </div>
               ) : (
                 <div className="grid grid-cols-3 gap-2">
-                  <AButton variant="secondary" onClick={() => rate(0)} className="!text-[var(--color-blush)]">Again</AButton>
+                  <AButton variant="secondary" onClick={() => rate(0)} className="!text-[var(--color-blush-deep)]">Again</AButton>
                   <AButton variant="secondary" onClick={() => rate(1)}>Good</AButton>
                   <AButton variant="primary" onClick={() => rate(2)}>Easy</AButton>
                 </div>

@@ -126,7 +126,7 @@ function LocationSetup({ onReady }: { onReady: () => void }) {
           <p className="text-sm font-medium">{l.title}</p>
           {l.address && <p className="text-xs text-[var(--color-stone)]">{l.address}</p>}
         </div>
-        {err && <p role="alert" aria-live="assertive" className="mt-2 text-xs text-[var(--color-blush)]">{err}</p>}
+        {err && <p role="alert" aria-live="assertive" className="mt-2 text-xs text-[var(--color-blush-deep)]">{err}</p>}
         <button onClick={() => choose(l.ref)} disabled={busy} className="mt-3 rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Importing reviews…' : 'Use this & import reviews'}</button>
       </div>
     );
@@ -146,7 +146,7 @@ function LocationSetup({ onReady }: { onReady: () => void }) {
           </label>
         ))}
       </div>
-      {err && <p role="alert" aria-live="assertive" className="mt-2 text-xs text-[var(--color-blush)]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-2 text-xs text-[var(--color-blush-deep)]">{err}</p>}
       <button onClick={() => choose(chosen)} disabled={busy || !chosen} className="mt-3 rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Importing reviews…' : 'Use this & import reviews'}</button>
     </div>
   );
@@ -246,7 +246,7 @@ function ManualAdd({ onAdded }: { onAdded: () => void }) {
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={input + ' w-auto'} />
       </div>
       <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} placeholder="Review text" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
-      {err && <p role="alert" aria-live="assertive" className="text-xs text-[var(--color-blush)]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="text-xs text-[var(--color-blush-deep)]">{err}</p>}
       <div className="flex gap-2">
         <button onClick={add} disabled={busy || !comment.trim()} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Adding…' : 'Add review'}</button>
         <button onClick={() => setOpen(false)} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs text-[var(--color-stone)]">Cancel</button>
@@ -289,7 +289,7 @@ function BulkAdd({ onAdded }: { onAdded: () => void }) {
       <p className="text-sm font-medium text-[var(--color-ink)]">Paste your existing Google reviews</p>
       <p className="text-xs text-[var(--color-stone)]">One per line: <code className="text-[0.7rem]">rating | name | date | review text</code>. Date is optional. They publish on the site immediately.</p>
       <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} placeholder={'5 | Jane D. | 2025-01-10 | Brilliant, the whole team were so kind.\n5 | Tom R. | 2025-02-02 | Highly recommend — natural results.'} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 font-[family-name:var(--font-mono)] text-xs outline-none focus:border-[var(--color-gold)]" />
-      {msg && <p className="text-xs text-[var(--color-blush)]">{msg}</p>}
+      {msg && <p className="text-xs text-[var(--color-blush-deep)]">{msg}</p>}
       <div className="flex gap-2">
         <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Importing…' : 'Import all'}</button>
         <button onClick={() => setOpen(false)} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs text-[var(--color-stone)]">Cancel</button>
@@ -340,11 +340,11 @@ function GoogleReviewCard({ review, onChange }: { review: GReview; onChange: () 
       {open ? (
         <div className="mt-3">
           <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder="Write a public reply…" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
-          {err && <p role="alert" aria-live="assertive" className="mt-1 text-xs text-[var(--color-blush)]">{err}</p>}
+          {err && <p role="alert" aria-live="assertive" className="mt-1 text-xs text-[var(--color-blush-deep)]">{err}</p>}
           <div className="mt-2 flex gap-2">
             <button onClick={send} disabled={busy || !text.trim()} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Posting…' : 'Post reply to Google'}</button>
             <button onClick={() => setOpen(false)} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs text-[var(--color-stone)]">Cancel</button>
-            {review.replyComment && <button onClick={remove} disabled={busy} className="ml-auto text-xs text-[var(--color-blush)] hover:underline">Delete reply</button>}
+            {review.replyComment && <button onClick={remove} disabled={busy} className="ml-auto text-xs text-[var(--color-blush-deep)] hover:underline">Delete reply</button>}
           </div>
         </div>
       ) : (
@@ -352,7 +352,7 @@ function GoogleReviewCard({ review, onChange }: { review: GReview; onChange: () 
           <button onClick={() => { setText(review.replyComment || ''); setOpen(true); }} className="text-xs font-medium text-[var(--color-gold-deep)] hover:underline">
             {review.replyComment ? 'Edit reply' : 'Reply'}
           </button>
-          <button onClick={removeReview} disabled={busy} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)] hover:underline disabled:opacity-50">Remove</button>
+          <button onClick={removeReview} disabled={busy} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush-deep)] hover:underline disabled:opacity-50">Remove</button>
         </div>
       )}
     </div>

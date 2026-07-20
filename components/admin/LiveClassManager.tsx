@@ -47,7 +47,7 @@ function Row({ l, courses }: { l: LiveClass; courses: CourseRef[] }) {
         <div className="flex items-center gap-3 text-xs">
           {l.joinUrl && <a href={l.joinUrl} target="_blank" rel="noopener" className="text-[var(--color-gold)] hover:underline">Meet ↗</a>}
           <button onClick={() => setEditing((e) => !e)} className="text-[var(--color-gold)] hover:underline">{editing ? 'Close' : 'Edit'}</button>
-          <button onClick={() => { if (confirm('Delete this session?')) act({ op: 'removeLiveClass', id: l.id }); }} className="text-[var(--color-blush)] hover:underline">Delete</button>
+          <button onClick={() => { if (confirm('Delete this session?')) act({ op: 'removeLiveClass', id: l.id }); }} className="text-[var(--color-blush-deep)] hover:underline">Delete</button>
         </div>
       </div>
       {editing && <div className="mt-3"><Form courses={courses} liveClass={l} onDone={() => setEditing(false)} /></div>}

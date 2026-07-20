@@ -515,7 +515,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                     <p className="text-sm">{e.subject}</p>
                     <p className="text-xs text-[var(--color-stone)]">{e.kind.toLowerCase()} · {new Date(e.createdAt).toLocaleDateString('en-GB')}</p>
                   </div>
-                  <span className={`text-xs ${e.status === 'SENT' ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush)]'}`}>{e.status.toLowerCase()}</span>
+                  <span className={`text-xs ${e.status === 'SENT' ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush-deep)]'}`}>{e.status.toLowerCase()}</span>
                 </div>
               ))}
             </div>

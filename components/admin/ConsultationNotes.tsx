@@ -67,7 +67,7 @@ export function ConsultationNotes({ consultationId, initial }: { consultationId:
           {saving ? '…' : 'Post'}
         </button>
       </div>
-      {error && <p role="alert" aria-live="assertive" className="text-xs text-[var(--color-blush)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="text-xs text-[var(--color-blush-deep)]">{error}</p>}
     </div>
   );
 }

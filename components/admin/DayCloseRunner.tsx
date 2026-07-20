@@ -248,7 +248,7 @@ export function DayCloseRunner({
                           </div>
                           <div className="flex items-center gap-2">
                             {Math.abs(diff) > 1e-9 && (
-                              <span className={`text-xs tabular-nums ${diff < 0 ? 'text-[var(--color-blush)]' : 'text-[var(--color-jade)]'}`}>{diff > 0 ? '+' : ''}{diff}</span>
+                              <span className={`text-xs tabular-nums ${diff < 0 ? 'text-[var(--color-blush-deep)]' : 'text-[var(--color-jade)]'}`}>{diff > 0 ? '+' : ''}{diff}</span>
                             )}
                             <input
                               type="number"
@@ -308,7 +308,7 @@ export function DayCloseRunner({
                     {config.cashHandling && <SummaryRow label="Cash drawer variance" pence={cashVar} />}
                     <div className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[var(--color-line)] px-4 py-3 text-sm">
                       <span className="text-[var(--color-stone)]">Closedown checklist</span>
-                      <span className={doneItems === allItems ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush)]'}>{doneItems}/{allItems} complete</span>
+                      <span className={doneItems === allItems ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush-deep)]'}>{doneItems}/{allItems} complete</span>
                     </div>
                   </div>
 
@@ -373,7 +373,7 @@ function VarianceRow({ label, pence }: { label: string; pence: number }) {
   return (
     <div className="mt-2 flex items-center justify-between text-sm">
       <span className="text-[var(--color-stone)]">{label}</span>
-      <span className={ok ? 'text-[var(--color-jade)]' : 'font-medium text-[var(--color-blush)]'}>
+      <span className={ok ? 'text-[var(--color-jade)]' : 'font-medium text-[var(--color-blush-deep)]'}>
         {ok ? 'Balanced ✓' : `${pence > 0 ? '+' : '−'}£${(Math.abs(pence) / 100).toFixed(2)}`}
       </span>
     </div>
@@ -385,7 +385,7 @@ function SummaryRow({ label, pence }: { label: string; pence: number }) {
   return (
     <div className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[var(--color-line)] px-4 py-3 text-sm">
       <span className="text-[var(--color-stone)]">{label}</span>
-      <span className={ok ? 'text-[var(--color-jade)]' : 'font-medium text-[var(--color-blush)]'}>
+      <span className={ok ? 'text-[var(--color-jade)]' : 'font-medium text-[var(--color-blush-deep)]'}>
         {ok ? 'Balanced ✓' : `${pence > 0 ? '+' : '−'}£${(Math.abs(pence) / 100).toFixed(2)}`}
       </span>
     </div>

@@ -129,7 +129,7 @@ export function ChatManager() {
                 {meta?.mode === 'AI'
                   ? <button onClick={() => setMode('STAFF')} className="font-medium text-[var(--color-gold)] hover:underline">Take over</button>
                   : <button onClick={() => setMode('AI')} className="font-medium text-[var(--color-gold)] hover:underline">Resume AI</button>}
-                <button onClick={close} className="text-[var(--color-stone)] hover:text-[var(--color-blush)]">Close chat</button>
+                <button onClick={close} className="text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">Close chat</button>
               </div>
             </div>
             {emails.length > 0 && (

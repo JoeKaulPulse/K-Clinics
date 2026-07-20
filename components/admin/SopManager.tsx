@@ -58,7 +58,7 @@ function Editor({ item }: { item: Item }) {
       <textarea value={content} onChange={(e) => setContent(e.target.value)} rows={14} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 font-[family-name:var(--font-mono)] text-sm leading-relaxed outline-none focus:border-[var(--color-gold)]" />
       <div className="mt-4 flex items-center gap-3">
         <button disabled={saving} onClick={() => call({ treatmentSlug: item.slug, title, content })} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{saving ? 'Saving…' : 'Save SOP'}</button>
-        {item.source === 'db' && <button disabled={saving} onClick={() => { if (confirm('This permanently deletes your custom SOP and restores the default. Continue?')) call({ op: 'reset', treatmentSlug: item.slug }); }} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-blush)]">Reset to default</button>}
+        {item.source === 'db' && <button disabled={saving} onClick={() => { if (confirm('This permanently deletes your custom SOP and restores the default. Continue?')) call({ op: 'reset', treatmentSlug: item.slug }); }} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">Reset to default</button>}
         {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
       </div>
     </div>

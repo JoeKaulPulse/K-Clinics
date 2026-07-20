@@ -82,7 +82,7 @@ export function EnrolmentCheckout(props: {
         <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
           <h3 className="font-medium">Secure your place</h3>
           <p className="mt-1 text-sm text-[var(--color-stone)]">Pay by card, or spread the cost with Klarna or Clearpay at checkout.</p>
-          {error && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush)]">{error}</p>}
+          {error && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush-deep)]">{error}</p>}
           <div className="mt-4 flex flex-wrap gap-3">
             <button onClick={() => !busy && start('full')} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
               {busy ? 'Please wait…' : `Pay ${money(outstandingPence)} now`}
@@ -130,7 +130,7 @@ function PayStep({ paymentId, onDone }: { paymentId: string; onDone: () => void 
   return (
     <div>
       <PaymentElement />
-      {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush)]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush-deep)]">{err}</p>}
       <button onClick={() => !busy && pay()} disabled={busy} className="mt-4 w-full rounded-full bg-[var(--color-gold)] px-6 py-3 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? 'Processing…' : 'Pay now'}</button>
       <p className="mt-3 text-center text-xs text-[var(--color-stone)]">Payments are processed securely by Stripe.</p>
     </div>

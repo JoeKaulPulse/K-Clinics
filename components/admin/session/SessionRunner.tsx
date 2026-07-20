@@ -632,7 +632,7 @@ function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateH
             <ul className="space-y-2 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5 text-sm">
               {gateList.map((g) => (
                 <li key={g.label} className={`flex items-center gap-2.5 ${g.ok ? 'text-[var(--color-stone)]' : ''}`}>
-                  <span aria-hidden className={`grid h-5 w-5 place-items-center rounded-full ${g.ok ? 'bg-[var(--color-gold)] text-white' : 'border border-[var(--color-blush)] text-[var(--color-blush)]'}`}>{g.ok ? <CheckIcon /> : '·'}</span>
+                  <span aria-hidden className={`grid h-5 w-5 place-items-center rounded-full ${g.ok ? 'bg-[var(--color-gold)] text-white' : 'border border-[var(--color-blush)] text-[var(--color-blush-deep)]'}`}>{g.ok ? <CheckIcon /> : '·'}</span>
                   {g.label}
                 </li>
               ))}
@@ -773,7 +773,7 @@ function AftercareStep({ p, live, sessData, api, onContinue }: {
               {busy ? 'Saving…' : 'Confirm'}
             </button>
           </div>
-          {error && <p role="alert" className="mt-2 text-sm text-[var(--color-blush)]">{error}</p>}
+          {error && <p role="alert" className="mt-2 text-sm text-[var(--color-blush-deep)]">{error}</p>}
         </div>
       )}
     </>
@@ -1165,7 +1165,7 @@ function Boutique({ p, sessData, api, presenting }: {
               </div>
             </div>
           )}
-          {error && <p role="alert" className="mt-3 text-sm text-[var(--color-blush)]">{error}</p>}
+          {error && <p role="alert" className="mt-3 text-sm text-[var(--color-blush-deep)]">{error}</p>}
         </>
       )}
     </div>
@@ -1250,7 +1250,7 @@ function NextVisitStep({ p, sessData, api, onContinue, onSkip }: {
             {busy ? 'Booking…' : <>Book it <ArrowIcon /></>}
           </button>
         )}
-        {error && <p role="alert" className="mt-3 text-sm text-[var(--color-blush)]">{error}</p>}
+        {error && <p role="alert" className="mt-3 text-sm text-[var(--color-blush-deep)]">{error}</p>}
       </div>
 
       <button type="button" onClick={onSkip} className="block text-sm text-[var(--color-stone)] underline-offset-4 transition-colors hover:text-[var(--color-ink)] hover:underline">
@@ -1377,7 +1377,7 @@ function AddonList({ bookingId, addOns, charged, onRemove }: {
                 disabled={removing === a.id}
                 onClick={() => handleRemove(a.id)}
                 aria-label={`Remove ${a.label}`}
-                className="shrink-0 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs text-[var(--color-stone)] transition-colors hover:border-[var(--color-blush)] hover:text-[var(--color-blush)] disabled:opacity-50"
+                className="shrink-0 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs text-[var(--color-stone)] transition-colors hover:border-[var(--color-blush)] hover:text-[var(--color-blush-deep)] disabled:opacity-50"
               >
                 {removing === a.id ? 'Removing…' : 'Remove'}
               </button>

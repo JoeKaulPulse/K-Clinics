@@ -90,7 +90,7 @@ export function PracticeRunner({ courses }: { courses: Course[] }) {
             ))}
           </div>
         </div>
-        {err && <p role="alert" aria-live="assertive" className="mt-4 text-sm text-[var(--color-blush)]">{err}</p>}
+        {err && <p role="alert" aria-live="assertive" className="mt-4 text-sm text-[var(--color-blush-deep)]">{err}</p>}
         <button onClick={start} disabled={busy || !courseId} className="mt-6 rounded-full bg-[var(--color-gold)] px-7 py-3 text-sm font-semibold text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? 'Loading…' : 'Start practice →'}</button>
       </div>
     );

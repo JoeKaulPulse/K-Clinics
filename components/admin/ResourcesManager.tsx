@@ -68,7 +68,7 @@ function RoomSection({ rooms, equipment, locations, multiLocation }: { rooms: Re
         )}
         <button onClick={add} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-60">{busy ? '…' : 'Add room'}</button>
       </div>
-      {msg && <p className="mt-2 text-sm text-[var(--color-blush)]">{msg}</p>}
+      {msg && <p className="mt-2 text-sm text-[var(--color-blush-deep)]">{msg}</p>}
 
       {rooms.length > 0 && (
         <div className="mt-5 space-y-4">
@@ -121,7 +121,7 @@ function RoomRow({ room, equipment }: { room: Resource; equipment: Resource[] })
         <span className="flex items-center gap-3">
           <button onClick={() => setOpen((v) => !v)} className="text-xs text-[var(--color-gold)] hover:underline">{open ? 'Close' : 'Edit'}</button>
           <button onClick={() => act({ op: 'toggle', id: room.id, active: !room.active })} className="text-xs text-[var(--color-stone)] hover:underline">{room.active ? 'Disable' : 'Enable'}</button>
-          <button onClick={() => { if (confirm('Remove this room?')) act({ op: 'remove', id: room.id }); }} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
+          <button onClick={() => { if (confirm('Remove this room?')) act({ op: 'remove', id: room.id }); }} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
         </span>
       </div>
 
@@ -197,7 +197,7 @@ function EquipmentSection({ equipment, locations, multiLocation }: { equipment: 
         )}
         <button onClick={add} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-60">{busy ? '…' : 'Add'}</button>
       </div>
-      {msg && <p className="mt-2 text-sm text-[var(--color-blush)]">{msg}</p>}
+      {msg && <p className="mt-2 text-sm text-[var(--color-blush-deep)]">{msg}</p>}
 
       {equipment.length > 0 && (
         <ul className="mt-5 divide-y divide-[var(--color-line)] border-t border-[var(--color-line)]">
@@ -209,7 +209,7 @@ function EquipmentSection({ equipment, locations, multiLocation }: { equipment: 
               </span>
               <span className="flex items-center gap-3">
                 <button onClick={() => act({ op: 'toggle', id: r.id, active: !r.active })} className="text-xs text-[var(--color-stone)] hover:underline">{r.active ? 'Disable' : 'Enable'}</button>
-                <button onClick={() => { if (confirm('Remove this equipment?')) act({ op: 'remove', id: r.id }); }} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
+                <button onClick={() => { if (confirm('Remove this equipment?')) act({ op: 'remove', id: r.id }); }} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
               </span>
             </li>
           ))}

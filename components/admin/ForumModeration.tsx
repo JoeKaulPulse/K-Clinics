@@ -89,7 +89,7 @@ function ThreadRow({ thread: t, label, busy, act }: { thread: ModThread; label: 
             <button onClick={() => act({ op: 'pinThread', id: t.id, value: !t.pinned })} disabled={busy} className={btn}>{t.pinned ? 'Unpin' : 'Pin'}</button>
             <button onClick={() => act({ op: 'lockThread', id: t.id, value: !t.locked })} disabled={busy} className={btn}>{t.locked ? 'Unlock' : 'Lock'}</button>
             <button onClick={() => act({ op: 'hideThread', id: t.id, value: !t.hidden })} disabled={busy} className={btn}>{t.hidden ? 'Unhide' : 'Hide'}</button>
-            <button onClick={() => { if (confirm('Delete this thread and all its replies permanently?')) act({ op: 'deleteThread', id: t.id }); }} disabled={busy} className="rounded-full px-3 py-1 text-xs text-[var(--color-blush)] hover:underline disabled:opacity-40">Delete thread</button>
+            <button onClick={() => { if (confirm('Delete this thread and all its replies permanently?')) act({ op: 'deleteThread', id: t.id }); }} disabled={busy} className="rounded-full px-3 py-1 text-xs text-[var(--color-blush-deep)] hover:underline disabled:opacity-40">Delete thread</button>
           </div>
 
           {t.posts.length > 0 && (
@@ -100,7 +100,7 @@ function ThreadRow({ thread: t, label, busy, act }: { thread: ModThread; label: 
                     <span className="text-xs font-medium text-[var(--color-ink)]">{p.authorName}{p.isStaff ? ' (tutor)' : ''} <span className="text-[var(--color-stone)]">· {when(p.createdAt)}</span></span>
                     <span className="flex gap-2">
                       <button onClick={() => act({ op: 'hidePost', id: p.id, value: !p.hidden })} disabled={busy} className={btn}>{p.hidden ? 'Unhide' : 'Hide'}</button>
-                      <button onClick={() => { if (confirm('Delete this reply permanently?')) act({ op: 'deletePost', id: p.id }); }} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline disabled:opacity-40">Delete</button>
+                      <button onClick={() => { if (confirm('Delete this reply permanently?')) act({ op: 'deletePost', id: p.id }); }} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline disabled:opacity-40">Delete</button>
                     </span>
                   </div>
                   <p className="mt-1 whitespace-pre-line text-[var(--color-ink-soft)]">{p.body}</p>

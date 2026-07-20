@@ -58,7 +58,7 @@ export function ClosuresManager({ closures, locations, multiLocation }: { closur
         )}
         <button onClick={add} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-60">{busy ? '…' : 'Add closure'}</button>
       </div>
-      {msg && <p className="mt-2 text-sm text-[var(--color-blush)]">{msg}</p>}
+      {msg && <p className="mt-2 text-sm text-[var(--color-blush-deep)]">{msg}</p>}
 
       {closures.length > 0 && (
         <ul className="mt-5 divide-y divide-[var(--color-line)] border-t border-[var(--color-line)]">
@@ -71,7 +71,7 @@ export function ClosuresManager({ closures, locations, multiLocation }: { closur
                   {c.reason ? ` · ${c.reason}` : ''}
                   {multiLocation && <span className="text-[var(--color-stone)]"> · {locName(c.locationId)}</span>}
                 </span>
-                <button onClick={() => remove(c.id)} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
+                <button onClick={() => remove(c.id)} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
               </li>
             );
           })}

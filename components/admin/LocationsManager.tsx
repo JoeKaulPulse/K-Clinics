@@ -59,7 +59,7 @@ function Card({ loc, uk }: { loc: Loc; uk: boolean }) {
           <div className="mt-3 flex items-center gap-4 text-xs">
             <span className="text-[var(--color-stone)]">{loc.staffCount} {L('clinician(s)', 'клініцист(ів)')}</span>
             {!loc.isPrimary && <button onClick={setPrimary} className="text-[var(--color-gold)] hover:underline">{L('Make primary', 'Зробити основною')}</button>}
-            <button onClick={toggleActive} className="text-[var(--color-stone)] hover:text-[var(--color-blush)]">{loc.active ? L('Archive', 'Архівувати') : L('Reactivate', 'Відновити')}</button>
+            <button onClick={toggleActive} className="text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">{loc.active ? L('Archive', 'Архівувати') : L('Reactivate', 'Відновити')}</button>
           </div>
         </>
       ) : (

@@ -51,7 +51,7 @@ function BundleRow({ bundle, courses, busy, act }: { bundle: AdminBundle; course
       <div className="flex items-center gap-2 p-3">
         <button onClick={() => setOpen((v) => !v)} className="text-[var(--color-stone)]">{open ? '▾' : '▸'}</button>
         <span className="flex-1 text-sm font-medium">{bundle.title} <span className="text-[var(--color-stone)]">· {bundle.items.length} course{bundle.items.length === 1 ? '' : 's'}{active ? '' : ' · hidden'}</span></span>
-        <button onClick={() => { if (confirm('Delete this bundle? (courses are not affected)')) act({ op: 'deleteBundle', id: bundle.id }); }} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+        <button onClick={() => { if (confirm('Delete this bundle? (courses are not affected)')) act({ op: 'deleteBundle', id: bundle.id }); }} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
       </div>
       {open && (
         <div className="space-y-3 border-t border-[var(--color-line)] p-3">
@@ -75,7 +75,7 @@ function BundleRow({ bundle, courses, busy, act }: { bundle: AdminBundle; course
                     <span className="flex-1">{it.courseTitle}</span>
                     <button onClick={() => move(i, -1)} disabled={busy || i === 0} className={btnGhost}>↑</button>
                     <button onClick={() => move(i, 1)} disabled={busy || i === bundle.items.length - 1} className={btnGhost}>↓</button>
-                    <button onClick={() => act({ op: 'removeItem', id: it.id })} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
+                    <button onClick={() => act({ op: 'removeItem', id: it.id })} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
                   </li>
                 ))}
               </ul>

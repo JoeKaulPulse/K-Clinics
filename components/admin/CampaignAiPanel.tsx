@@ -110,8 +110,8 @@ export function CampaignAiPanel({ campaignId, enabled, initial }: { campaignId: 
           {advice.testIdeas?.length > 0 && <div className="mt-3"><p className="text-xs font-semibold text-[var(--color-ink)]">A/B test ideas</p><ul className="ml-4 list-disc text-sm text-[var(--color-stone)]">{advice.testIdeas.map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
         </div>
       )}
-      {!enabled && <p className="mt-2 text-xs text-[var(--color-blush)]">AI isn’t configured yet (missing ANTHROPIC_API_KEY).</p>}
-      {err && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[var(--color-blush)]">{err}</p>}
+      {!enabled && <p className="mt-2 text-xs text-[var(--color-blush-deep)]">AI isn’t configured yet (missing ANTHROPIC_API_KEY).</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[var(--color-blush-deep)]">{err}</p>}
 
       {pack && (
         <div className="mt-5 grid gap-6 lg:grid-cols-2">
