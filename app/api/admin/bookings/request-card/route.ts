@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 import { stripeEnabled } from '@/lib/stripe';
 
@@ -42,6 +43,7 @@ export async function POST(req: Request) {
       }
     } catch (stripeErr) {
       console.error('[request-card] Stripe customer sync failed (non-blocking):', (stripeErr as Error)?.message);
+      Sentry.captureException(stripeErr, { tags: { area: 'admin/bookings/request-card', stage: 'stripe-customer-sync' } });
     }
 
     const base = (process.env.NEXT_PUBLIC_SITE_URL || (await import('@/lib/site')).site.url).replace(/\/$/, '');
@@ -105,6 +107,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, sent, url: actionUrl, invited: noAccount });
   } catch (e) {
     console.error('[request-card] unexpected failure:', (e as Error)?.message);
+    Sentry.captureException(e, { tags: { area: 'admin/bookings/request-card' } });
     return NextResponse.json({ ok: false, error: `Could not send the link: ${(e as Error)?.message || 'unexpected error'}` }, { status: 500 });
   }
 }

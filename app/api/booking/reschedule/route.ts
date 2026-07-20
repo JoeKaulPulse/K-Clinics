@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
@@ -18,6 +19,7 @@ export async function POST(req: Request) {
     return NextResponse.json(result);
   } catch (e) {
     console.error('[reschedule]', (e as Error)?.message);
+    Sentry.captureException(e, { tags: { area: 'booking/reschedule' } });
     return NextResponse.json({ ok: false, error: 'An error occurred. Please try again.' }, { status: 500 });
   }
 }

@@ -279,7 +279,10 @@ export async function POST(req: Request) {
         customerId = fresh.id;
         await db.client.update({ where: { id: client.id }, data: { stripeCustomerId: fresh.id } }).catch(() => {});
         await db.booking.update({ where: { id: booking.id }, data: { stripeCustomerId: fresh.id } }).catch(() => {});
-      } catch (e2) { console.error('[booking-start] customer recreate failed for', booking.id, e2); }
+      } catch (e2) {
+        console.error('[booking-start] customer recreate failed for', booking.id, e2);
+        Sentry.captureException(e2, { tags: { area: 'booking/start', stage: 'customer-recreate' } });
+      }
     }
     // Any other retrieve error: fall through; the SetupIntent guard below handles it.
   }

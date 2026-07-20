@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 import { stripeEnabled } from '@/lib/stripe';
 import { getSession, sessionCan } from '@/lib/auth';
@@ -73,6 +74,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, url: checkout.url, amountPence: course.pence, sessions: course.sessions });
   } catch (e) {
+    Sentry.captureException(e, { tags: { area: 'admin/bookings/bnpl-link' } });
     return NextResponse.json({ ok: false, error: (e as Error)?.message || 'Could not start the payment link.' }, { status: 400 });
   }
 }

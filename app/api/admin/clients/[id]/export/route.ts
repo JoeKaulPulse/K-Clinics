@@ -48,14 +48,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (clinical) {
     c.medicalFlag = decClinical(c.medicalFlag);
     c.allergies = decClinical(c.allergies);
-    for (const con of c.consultations) { con.concerns = decClinical(con.concerns); con.medicalNotes = decClinical(con.medicalNotes); }
+    // BLD-913: team-note bodies are encrypted at rest; staff notes can hold
+    // clinical detail, so they follow the clinical gate like medicalNotes.
+    for (const con of c.consultations) { con.concerns = decClinical(con.concerns); con.medicalNotes = decClinical(con.medicalNotes); for (const n of con.notes) n.body = decClinical(n.body) ?? ''; }
     for (const bk of c.bookings) { bk.allergyNote = decClinical(bk.allergyNote); }
     for (const it of c.interactions) { it.detail = decClinical(it.detail); }
     for (const cr of c.callRecords) { cr.transcript = decClinical(cr.transcript); } // BLD-602: encrypted at rest
   } else {
     c.medicalFlag = null;
     c.allergies = null;
-    for (const con of c.consultations) { con.concerns = null; con.medicalNotes = null; }
+    for (const con of c.consultations) { con.concerns = null; con.medicalNotes = null; for (const n of con.notes) n.body = ''; }
     for (const bk of c.bookings) { bk.allergyNote = null; }
     // Non-clinical interaction notes stay readable; CLINICAL entries are withheld.
     for (const it of c.interactions) { it.detail = it.type === 'CLINICAL' ? null : decClinical(it.detail); }

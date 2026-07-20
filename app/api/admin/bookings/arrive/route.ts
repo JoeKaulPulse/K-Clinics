@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
@@ -22,7 +23,8 @@ export async function POST(req: Request) {
     const { db } = await import('@/lib/db');
     await db.booking.update({ where: { id: bookingId }, data: { arrivedAt: arrived ? new Date() : null } });
     return NextResponse.json({ ok: true, arrived });
-  } catch {
+  } catch (e) {
+    Sentry.captureException(e, { tags: { area: 'admin/bookings/arrive' } });
     return NextResponse.json({ ok: false, error: 'Could not update the booking.' }, { status: 500 });
   }
 }

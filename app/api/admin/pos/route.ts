@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
@@ -63,6 +64,7 @@ export async function POST(req: Request) {
         // still be paid. Staff can retry; finalizeOrder's CANCELLED guard
         // (BLD-761) is the last-resort backstop either way.
         console.error('[pos] cancel: could not expire checkout session:', (e as Error)?.message);
+        Sentry.captureException(e, { tags: { area: 'admin/pos', stage: 'cancel-expire' } });
         return NextResponse.json({ ok: false, error: 'Couldn’t cancel the payment link — try again in a moment.' }, { status: 502 });
       }
     }
@@ -132,6 +134,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error('[pos] order create failed:', (e as Error)?.message);
+    Sentry.captureException(e, { tags: { area: 'admin/pos', stage: 'order-create' } });
     await undoReservation();
     return NextResponse.json({ ok: false, error: 'Could not start the sale — please try again.' }, { status: 500 });
   }
@@ -180,6 +183,7 @@ export async function POST(req: Request) {
     const qr = await QR.toDataURL(checkout.url || '', { margin: 1, width: 320 });
     return NextResponse.json({ ok: true, orderId: order.id, sessionId: checkout.id, url: checkout.url, qr, totalPence, voucherPence: giftCardPence, issues: cart.issues });
   } catch (e) {
+    Sentry.captureException(e, { tags: { area: 'admin/pos', stage: 'checkout-create' } });
     await db.order.delete({ where: { id: order.id } }).catch(() => {});
     await undoReservation();
     return NextResponse.json({ ok: false, error: (e as Error)?.message || 'Could not start the card payment.' }, { status: 400 });
