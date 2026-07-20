@@ -2394,6 +2394,167 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'No caption path existed anywhere in the academy video stack — lesson player, demo player, immersive player.',
     notes: ['Plumbing shipped in PR #1650: additive Lesson.captionsUrl + DemoVideo.captionsUrl, caption tracks on the lesson and demo players, .vtt fields in the curriculum editor and demo manager. BLOCKED on the owner\'s A/B/C choice for captioning the existing catalogue (question on the card); the immersive player\'s encoded-art video path follows once caption files exist.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'TOTP 2FA-disable endpoint has no rate limiting — brute-forceable', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1651),
+    value: 7, effort: 2,
+    detail: 'A stolen admin session cookie allowed unlimited attempts at the 6-digit code to strip 2FA.',
+    notes: ['Fix: enforceRateLimit(twofa-disable, 8 attempts / 5 min, admin portal) before the code check — the PRJ-939.3 finance-PIN pattern.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Internal IP block-list feed is guarded by a guessable static header', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1651),
+    value: 6, effort: 2,
+    detail: 'The deny-list feed accepted a hardcoded x-mw-block: 1 header readable from source, letting an attacker learn whether their IP is blocked.',
+    notes: ['Fix: real shared secret (MW_BLOCK_SECRET, defaulting to the enforced CRON_SECRET) compared timing-safe on the route; the edge middleware sends the same secret. Unauthorised callers still get the indistinguishable empty 200. Verified live post-deploy: the old header value now returns an empty list.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Session JWT secret derived from weak input without a length floor', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1651),
+    value: 5, effort: 2,
+    detail: 'toKey byte-repeats sub-32-byte secrets up to the HS256 minimum — stretching length, not entropy.',
+    notes: ['Fix: startup check (instrumentation.ts, BLD-415 pattern) reports any of the three session secrets under 32 bytes with a loud error — deliberately not a throw; the value can only be fixed by rotating it in Vercel.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'booking/confirm confirms any bookingId without ownership scoping or rate limit', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1651),
+    value: 7, effort: 3,
+    detail: 'No session, no ownership check, no rate limit — booking-ID probing against a money-adjacent route. The funnel is anonymous, so a session check would break guest bookings.',
+    notes: ['Fix: ownership proven by possession of the SetupIntent client secret only the paying browser holds (funnel sends it; mismatch 403), plus a 10/5min rate limit. Legacy confirms without the secret are allowed but Sentry-reported; enforcement flips strict in a follow-up once pre-deploy sessions age out.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Stripe webhook sub-step failures (order finalize, voucher confirm, gift-card re-credit, refund, enrolment) never reach Sentry', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1651),
+    value: 6, effort: 2,
+    detail: 'BLD-868 covered the headline sub-steps; five money-path catches still swallowed errors silently.',
+    notes: ['Fix: the course-prepaid confirmation notify, full-refund points reversal, SPEND-points clawback, Xero refund push and dashboard-refund client email now log + captureException, still non-fatal.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Kiosk AI analysis can double-fire and double-bill on a fast double-tap', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1651),
+    value: 6, effort: 2,
+    detail: 'Two near-simultaneous analyze calls both passed the status check and both triggered a billed AI run.',
+    notes: ['Fix: compare-and-swap claim on stage != analyzing before scheduling; the loser returns the same success shape and follows over SSE. Failed runs reset stage to failed, so retries still pass.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Renewal-reminder cron failures never counted or alerted', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1652),
+    value: 5, effort: 1,
+    detail: 'The runRenewalReminders catch only console.errored, unlike every sibling step.',
+    notes: ['Fix: failures++ in the catch so the existing Sentry/webhook/500 alerting fires.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Daily cron discards Google Calendar and Google Business sync failures — always logs success eve', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1652),
+    value: 5, effort: 2,
+    detail: 'syncAllCalendars discarded per-staff errors and always returned ok; the gbiz step swallowed too.',
+    notes: ['Fix: per-staff failures counted and surfaced (ok flips false), both cron steps count into failures with logging.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Turnstile bot-check call has no timeout or telemetry', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1652),
+    value: 6, effort: 1,
+    detail: 'A hung Cloudflare verify stalled every gated form for the full request budget, silently.',
+    notes: ['Fix: 8s AbortSignal.timeout + console.error + Sentry warning on failure; still fails closed.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Kiosk selfie fetch has no timeout unlike the AI call that follows it', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1652),
+    value: 5, effort: 1,
+    detail: 'The blob photo read had no timeout while the AI call beside it is capped at 30s.',
+    notes: ['Fix: 15s timeout on both read paths in lib/kiosk-blob.ts (private get + legacy public fetch). Covers BLD-878 too.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Kiosk photo-fetch calls have no timeout, unlike the AI calls beside them', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1652),
+    value: 5, effort: 1,
+    detail: 'Duplicate of PRJ-939.13 from a different audit pass.',
+    notes: ['Shipped with PR #1652 — both kiosk blob read paths capped at 15s.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Homepage below-the-fold treatment card images marked priority, hurting LCP', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1652),
+    value: 5, effort: 1,
+    detail: 'Both dual-discipline cards preloaded eagerly despite rendering after a full-viewport hero.',
+    notes: ['Fix: priority removed; MediaArt defaults to lazy. Covers BLD-833 too.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Remove eager priority from below-the-fold homepage images', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1652),
+    value: 5, effort: 1,
+    detail: 'Duplicate of BLD-920.',
+    notes: ['Shipped with PR #1652.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Homepage testimonial quote text hard-clipped on mobile, unreadable', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1652),
+    value: 5, effort: 1,
+    detail: 'Classic grid min-width:auto overflow clipped quotes mid-word at 375px.',
+    notes: ['Fix: min-w-0 on the quote grid column.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'serviceLd() emits an invalid schema.org @type (\'Dentistry\') for dentistry treatment pages', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1652),
+    value: 5, effort: 1,
+    detail: 'Dentistry is a MedicalSpecialty enum member, not an instantiable type — failed validation on every dentistry page.',
+    notes: ['Fix: always MedicalProcedure, with relevantSpecialty: schema.org/Dentistry where it applies.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Mobile header \'Book\' CTA is below the 44px touch-target minimum', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1652),
+    value: 5, effort: 1,
+    detail: 'The primary conversion action measured 90x36px while the hamburger beside it was 44x44.',
+    notes: ['Fix: !min-h-11 on the button — 44px hit area, same visual compactness.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Live-visit page typesets "KClinics" as text instead of the logo mark, with a strap-line under i', type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1652),
+    value: 5, effort: 2,
+    detail: 'Both banned patterns from docs/BRAND_GUIDELINES.md in one header.',
+    notes: ['Fix: real K monogram + wordmark (KioskShell pattern); the Your visit · live descriptor moved off the mark. Covers BLD-758 too.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Plain-text \'KClinics\' typeset as a pseudo-logo with a strap-line in the live-visit compani', type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1652),
+    value: 5, effort: 2,
+    detail: 'Duplicate of BLD-805.',
+    notes: ['Shipped with PR #1652.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Gallery before/after photos servable with no published/consent check', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1652),
+    value: 7, effort: 2,
+    detail: 'The image route streamed any GalleryItem id — draft and unconsented clinical photos included.',
+    notes: ['Fix: public access requires published + consent; drafts viewable to signed-in staff only with private, no-store caching (the admin manager previews through the same URL).'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Review-request messages bypass marketing-consent/unsubscribe checks', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1652),
+    value: 6, effort: 2,
+    detail: 'sendReviewRequest sent email/SMS with no opt-in or unsubscribe check, auto-triggered on booking completion.',
+    notes: ['Fix: the standard marketing-consent gate (opt-in with recorded evidence, never past an unsubscribe) on both channels.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'No admin- or account-scoped 404 — unknown /admin URLs drop staff into the public marketing shel', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1652),
+    value: 4, effort: 2,
+    detail: 'The only not-found page rendered the full public marketing shell.',
+    notes: ['Fix: minimal scoped not-found pages for /admin and /account with routes back into each shell. Deploy-verified live.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'POS \'Terminal\' checkout option is a guaranteed dead end mid-session', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1652),
+    value: 5, effort: 2,
+    detail: 'The Terminal tab presented as first-class but always failed — no provider has credentials.',
+    notes: ['Fix: the tab renders only when a provider is configured AND a device is registered; the device manager explains the credential requirement.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Global \'Shop\' nav link is a permanent dead end to an empty, indexed page', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1652),
+    value: 5, effort: 2,
+    detail: 'Sitewide nav link to a coming-soon page with zero products, indexed at 0.7.',
+    notes: ['Fix: the nav link (desktop + mobile), sitemap entry and page indexability all key off the live ACTIVE-product count (config cached ~1h) — everything appears when the first product goes live.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
