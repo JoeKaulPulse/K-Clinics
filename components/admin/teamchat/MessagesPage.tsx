@@ -33,7 +33,7 @@ export function MessagesPage() {
       <aside className={`${selected ? 'hidden md:flex' : 'flex'} w-full shrink-0 flex-col border-r border-[var(--color-line)] md:w-80`}>
         <div className="flex items-center justify-between border-b border-[var(--color-line)] px-4 py-3">
           <h1 className="font-[family-name:var(--font-display)] text-xl">Team chat</h1>
-          <button onClick={() => setShowNew(true)} className="rounded-full bg-[var(--color-gold)] px-3 py-1 text-xs font-medium text-white hover:bg-[var(--color-gold-deep)]">New</button>
+          <button onClick={() => setShowNew(true)} className="rounded-full bg-[var(--color-gold-deep)] px-3 py-1 text-xs font-medium text-white hover:bg-[var(--color-ink)]">New</button>
         </div>
         <div className="flex-1 overflow-y-auto">
           {ready && channels.length === 0 && (
@@ -52,7 +52,7 @@ export function MessagesPage() {
                 </div>
                 <p className={`truncate text-xs ${c.unread > 0 ? 'text-[var(--color-ink-soft)]' : 'text-[var(--color-stone)]'}`}>{c.muted ? '🔕 ' : ''}{c.lastMessagePreview || 'No messages yet'}</p>
               </div>
-              {c.unread > 0 && <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-[var(--color-gold)] px-1 text-[0.65rem] font-semibold text-white">{c.unread}</span>}
+              {c.unread > 0 && <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-[var(--color-gold-deep)] px-1 text-[0.65rem] font-semibold text-white">{c.unread}</span>}
             </button>
           ))}
         </div>

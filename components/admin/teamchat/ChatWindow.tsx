@@ -243,7 +243,7 @@ function ManagePanel({ mode, channelId, onDone, roster, memberIds, currentName }
       {mode === 'rename' ? (
         <div className="flex items-center gap-2">
           <input value={name} onChange={(e) => setName(e.target.value)} className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
-          <button onClick={() => void api({ op: 'rename', channelId, name }).then(onDone)} className="rounded-full bg-[var(--color-gold)] px-3 py-1.5 text-xs font-medium text-white">Save</button>
+          <button onClick={() => void api({ op: 'rename', channelId, name }).then(onDone)} className="rounded-full bg-[var(--color-gold-deep)] px-3 py-1.5 text-xs font-medium text-white">Save</button>
           <button onClick={onDone} className="text-xs text-[var(--color-stone)]">Cancel</button>
         </div>
       ) : (
@@ -260,7 +260,7 @@ function ManagePanel({ mode, channelId, onDone, roster, memberIds, currentName }
           </div>
           <div className="mt-2 flex justify-end gap-2">
             <button onClick={onDone} className="text-xs text-[var(--color-stone)]">Cancel</button>
-            <button disabled={!picked.length} onClick={() => void api({ op: 'addMembers', channelId, memberIds: picked }).then(onDone)} className="rounded-full bg-[var(--color-gold)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40">Add</button>
+            <button disabled={!picked.length} onClick={() => void api({ op: 'addMembers', channelId, memberIds: picked }).then(onDone)} className="rounded-full bg-[var(--color-gold-deep)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40">Add</button>
           </div>
         </div>
       )}

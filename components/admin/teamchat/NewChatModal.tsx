@@ -56,7 +56,7 @@ export function NewChatModal({ onClose }: { onClose: () => void }) {
               >
                 <Avatar name={r.name} photo={r.photoUrl} size={30} />
                 <span className="min-w-0 flex-1"><span className="block truncate text-[var(--color-ink)]">{r.name}</span>{r.title && <span className="block truncate text-xs text-[var(--color-stone)]">{r.title}</span>}</span>
-                {mode === 'group' && <span className={`grid h-5 w-5 place-items-center rounded-full border ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)]'}`}>{on ? '✓' : ''}</span>}
+                {mode === 'group' && <span className={`grid h-5 w-5 place-items-center rounded-full border ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)]'}`}>{on ? '✓' : ''}</span>}
               </button>
             );
           })}
@@ -64,7 +64,7 @@ export function NewChatModal({ onClose }: { onClose: () => void }) {
 
         <div className="mt-4 flex justify-end gap-2">
           <button onClick={onClose} className="rounded-full px-4 py-2 text-sm text-[var(--color-stone)]">Cancel</button>
-          <button onClick={() => void go()} disabled={busy || picked.length === 0 || (mode === 'group' && picked.length < 1)} className="rounded-full bg-[var(--color-gold)] px-6 py-2 text-sm font-medium text-white hover:bg-[var(--color-gold-deep)] disabled:opacity-40">
+          <button onClick={() => void go()} disabled={busy || picked.length === 0 || (mode === 'group' && picked.length < 1)} className="rounded-full bg-[var(--color-gold-deep)] px-6 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-40">
             {mode === 'dm' ? 'Start chat' : `Create group${picked.length ? ` (${picked.length})` : ''}`}
           </button>
         </div>

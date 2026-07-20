@@ -210,7 +210,7 @@ function MoveForm({ itemId, unit, moq, uk, onDone }: { itemId: string; unit: str
         <input value={note} onChange={(e) => setNote(e.target.value)} className={field} />
       </label>
       <div className="flex items-center gap-3 sm:col-span-2">
-        <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
+        <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
           {busy ? L('Saving…', 'Збереження…') : L('Record', 'Записати')}
         </button>
         {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
@@ -256,7 +256,7 @@ function EditForm({ item, uk, onDone }: { item: Item; uk: boolean; onDone: () =>
       <label className="text-xs text-[var(--color-stone)]">{L('MOQ', 'МОЗ')}<input type="number" value={v.moq} onChange={set('moq')} className={field} /></label>
       <label className="text-xs text-[var(--color-stone)]">{L('Low-stock at', 'Поріг низького запасу')}<input type="number" step="any" value={v.lowStockAt} onChange={set('lowStockAt')} className={field} /></label>
       <label className="flex items-center gap-2 text-xs text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={v.isRetail} onChange={(e) => setV({ ...v, isRetail: e.target.checked })} className="h-4 w-4 accent-[var(--color-gold)]" />{L('Sold to clients (retail)', 'Продається клієнтам (роздріб)')}</label>
-      <div className="sm:col-span-2"><button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? L('Saving…', 'Збереження…') : L('Save', 'Зберегти')}</button></div>
+      <div className="sm:col-span-2"><button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? L('Saving…', 'Збереження…') : L('Save', 'Зберегти')}</button></div>
     </div>
   );
 }
@@ -305,7 +305,7 @@ function AddItem({ uk }: { uk: boolean }) {
         <label className="flex items-center gap-2 text-xs text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={v.isRetail} onChange={(e) => setV({ ...v, isRetail: e.target.checked })} className="h-4 w-4 accent-[var(--color-gold)]" />{L('Sold to clients (retail)', 'Продається клієнтам (роздріб)')}</label>
       </div>
       <div className="mt-4 flex items-center gap-3">
-        <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? L('Adding…', 'Додавання…') : L('Add item', 'Додати')}</button>
+        <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? L('Adding…', 'Додавання…') : L('Add item', 'Додати')}</button>
         <button onClick={() => setOpen(false)} className="text-sm text-[var(--color-stone)]">{L('Cancel', 'Скасувати')}</button>
         {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
       </div>

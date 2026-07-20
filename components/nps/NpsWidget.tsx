@@ -38,7 +38,7 @@ export function NpsWidget({ token, initialScore }: { token: string; initialScore
           <div className="mt-5 flex flex-wrap justify-center gap-1.5">
             {Array.from({ length: 11 }, (_, n) => (
               <button key={n} onClick={() => record(n)} aria-pressed={score === n}
-                className={`grid h-10 w-10 place-items-center rounded-[var(--radius-sm)] border text-sm transition-colors ${score === n ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}>
+                className={`grid h-10 w-10 place-items-center rounded-[var(--radius-sm)] border text-sm transition-colors ${score === n ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}>
                 {n}
               </button>
             ))}
@@ -47,7 +47,7 @@ export function NpsWidget({ token, initialScore }: { token: string; initialScore
             <div className="mt-6 text-left">
               <p className="text-sm text-[var(--color-stone)]">Thank you{score != null ? ` for the ${score}` : ''}! Anything you'd like to add? (optional)</p>
               <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} placeholder="What did we do well, or how could we improve?" className="mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-gold)]" />
-              <button onClick={submitComment} disabled={busy} className="mt-3 rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Sending…' : comment.trim() ? 'Send feedback' : 'Done'}</button>
+              <button onClick={submitComment} disabled={busy} className="mt-3 rounded-full bg-[var(--color-gold-deep)] px-6 py-2.5 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Sending…' : comment.trim() ? 'Send feedback' : 'Done'}</button>
             </div>
           )}
         </>

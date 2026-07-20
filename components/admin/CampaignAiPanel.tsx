@@ -120,7 +120,7 @@ export function CampaignAiPanel({ campaignId, enabled, initial }: { campaignId: 
             <Copy label="Preview" text={pack.email.preview} />
             <Copy label="Headline" text={pack.email.headline} />
             <Copy label="Body" text={pack.email.body} multiline />
-            <button onClick={createEmailDraft} disabled={emailBusy} className="w-full rounded-full bg-[var(--color-gold)] px-4 py-2 text-sm text-white hover:bg-[var(--color-ink)] disabled:opacity-50">
+            <button onClick={createEmailDraft} disabled={emailBusy} className="w-full rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm text-white hover:bg-[var(--color-ink)] disabled:opacity-50">
               {emailBusy ? 'Creating…' : 'Create email draft →'}
             </button>
           </Group>

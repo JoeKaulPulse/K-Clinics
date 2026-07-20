@@ -65,7 +65,7 @@ export function DashboardHero({ firstName, locale, next, visits, memberSince, la
                 {dateFmt(next.startISO, { weekday: 'long', day: 'numeric', month: 'long' })} · {new Date(next.startISO).toLocaleTimeString(lc, { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
               </p>
             </div>
-            <Link href="/account/appointments" className="rounded-full bg-[var(--color-gold)] px-6 py-3 text-sm font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-white hover:text-[var(--color-ink)]">
+            <Link href="/account/appointments" className="rounded-full bg-[var(--color-gold-deep)] px-6 py-3 text-sm font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-white hover:text-[var(--color-ink)]">
               {t('dash.manage')} →
             </Link>
           </motion.div>
@@ -75,7 +75,7 @@ export function DashboardHero({ firstName, locale, next, visits, memberSince, la
             className="mt-9 flex flex-wrap items-center justify-between gap-6 border-t border-white/12 pt-8"
           >
             <p className="max-w-md text-[color-mix(in_oklab,var(--color-porcelain)_80%,transparent)]">{t('dash.noUpcoming')}</p>
-            <Link href="/book" className="rounded-full bg-[var(--color-gold)] px-6 py-3 text-sm font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-white hover:text-[var(--color-ink)]">
+            <Link href="/book" className="rounded-full bg-[var(--color-gold-deep)] px-6 py-3 text-sm font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-white hover:text-[var(--color-ink)]">
               {t('dash.bookNow')} →
             </Link>
           </motion.div>

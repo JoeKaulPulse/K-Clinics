@@ -256,7 +256,7 @@ function Group({ title, items, selected, onToggle }: { title: string; items: typ
               key={t.slug}
               type="button"
               onClick={() => onToggle(t.title)}
-              className={`rounded-full border px-4 py-2 text-sm transition-all ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-stone-soft)]'}`}
+              className={`rounded-full border px-4 py-2 text-sm transition-all ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-stone-soft)]'}`}
             >
               {t.title}
             </button>

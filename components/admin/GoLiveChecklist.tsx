@@ -91,7 +91,7 @@ export function GoLiveChecklist({ groups: initial }: { groups: GoLiveGroup[] }) 
                           onClick={() => toggle(it)}
                           disabled={pending === it.id}
                           aria-label={it.done ? 'Mark not done' : 'Mark done'}
-                          className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-[6px] border transition-colors ${it.done ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-stone-soft)] hover:border-[var(--color-gold)]'}`}
+                          className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-[6px] border transition-colors ${it.done ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-stone-soft)] hover:border-[var(--color-gold)]'}`}
                         >
                           {it.done && <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                         </button>

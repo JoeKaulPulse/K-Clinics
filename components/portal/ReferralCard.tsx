@@ -51,7 +51,7 @@ export function ReferralCard({ link, labels, qrSvg }: { link: string; labels: La
           {copied ? `✓ ${labels.copied}` : labels.copy}
         </button>
         {canShare && (
-          <button onClick={share} className="shrink-0 rounded-full bg-[var(--color-gold)] px-4 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">
+          <button onClick={share} className="shrink-0 rounded-full bg-[var(--color-gold-deep)] px-4 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">
             {labels.share}
           </button>
         )}

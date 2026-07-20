@@ -50,7 +50,7 @@ export default async function AftercarePage() {
       {treatments.length === 0 ? (
         <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] bg-[var(--color-porcelain)] p-10 text-center">
           <p className="mx-auto max-w-md text-[var(--color-stone)]">{t('after.empty')}</p>
-          <Link href="/treatments" className="mt-5 inline-block rounded-full bg-[var(--color-gold)] px-6 py-3 text-sm font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">{t('after.exploreCta')}</Link>
+          <Link href="/treatments" className="mt-5 inline-block rounded-full bg-[var(--color-gold-deep)] px-6 py-3 text-sm font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">{t('after.exploreCta')}</Link>
         </div>
       ) : (
         <div className="space-y-6">

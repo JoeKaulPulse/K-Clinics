@@ -283,7 +283,7 @@ function Editor({ staff, actorRole, onClose, onSaved }: { staff: Staff | null; a
             </button>
           )}
           <button onClick={onClose} className="px-4 py-2.5 text-sm text-[var(--color-stone)]">Cancel</button>
-          <button onClick={save} disabled={saving} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
+          <button onClick={save} disabled={saving} className="rounded-full bg-[var(--color-gold-deep)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
             {saving ? 'Saving…' : 'Save'}
           </button>
         </div>

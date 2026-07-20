@@ -103,7 +103,7 @@ export function TreatmentFinder({ gender, prices = {} }: { gender?: string | nul
               })}
             </div>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/consultation" className="rounded-full bg-[var(--color-gold)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">Book a free consultation</Link>
+              <Link href="/consultation" className="rounded-full bg-[var(--color-gold-deep)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">Book a free consultation</Link>
               <button onClick={() => { setAnswers({}); setStep(0); setDir(-1); }} className="rounded-full border border-[var(--color-line)] px-6 py-3.5 font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">Start over</button>
             </div>
           </motion.div>

@@ -98,7 +98,7 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
         <Card title="Progress &amp; gamification">
           <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
             <div className="flex items-center gap-3">
-              <span className="grid h-11 w-11 place-items-center rounded-full bg-[var(--color-gold)] font-[family-name:var(--font-display)] text-lg text-white">{lvl.level}</span>
+              <span className="grid h-11 w-11 place-items-center rounded-full bg-[var(--color-gold-deep)] font-[family-name:var(--font-display)] text-lg text-white">{lvl.level}</span>
               <div><p className="font-medium">{lvl.title}</p><p className="text-xs text-[var(--color-stone)]">Level {lvl.level}</p></div>
             </div>
             {[['XP', student.xp.toLocaleString()], ['Rank', standing ? `#${standing.rank}` : '—'], ['Time', totalMin >= 60 ? `${Math.floor(totalMin / 60)}h ${totalMin % 60}m` : `${totalMin}m`], ['Lessons', String(lessonRows.length)], ['Quizzes passed', String(quizzesPassed)]].map(([l, v]) => (

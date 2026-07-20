@@ -37,7 +37,7 @@ export function RegisterInterest({ className = '' }: { className?: string }) {
           className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-[var(--color-ink)] outline-none placeholder:text-[var(--color-stone)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
         />
         <input type="text" tabIndex={-1} autoComplete="off" value={company} onChange={(e) => setCompany(e.target.value)} className="absolute -left-[9999px]" aria-hidden />
-        <button type="submit" disabled={state === 'busy'} className="shrink-0 bg-[var(--color-ink)] px-5 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold)] hover:text-white disabled:opacity-60">
+        <button type="submit" disabled={state === 'busy'} className="shrink-0 bg-[var(--color-ink)] px-5 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)] hover:text-white disabled:opacity-60">
           {state === 'busy' ? '…' : 'Notify me'}
         </button>
       </div>

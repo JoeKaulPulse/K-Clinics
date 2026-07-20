@@ -36,7 +36,7 @@ export function NewsletterForm({ source = 'footer' }: { source?: string } = {}) 
           className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-[var(--color-porcelain)] outline-none placeholder:text-[color-mix(in_oklab,var(--color-porcelain)_45%,transparent)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
         />
         <input type="text" tabIndex={-1} autoComplete="off" value={company} onChange={(e) => setCompany(e.target.value)} className="absolute -left-[9999px]" aria-hidden />
-        <button type="submit" disabled={state === 'busy'} aria-label="Subscribe" className="grid w-12 shrink-0 place-items-center bg-[var(--color-gold)] text-white transition-colors hover:bg-[var(--color-gold-soft)] hover:text-[var(--color-ink)] disabled:opacity-60">
+        <button type="submit" disabled={state === 'busy'} aria-label="Subscribe" className="grid w-12 shrink-0 place-items-center bg-[var(--color-gold-deep)] text-white transition-colors hover:bg-[var(--color-gold-soft)] hover:text-[var(--color-ink)] disabled:opacity-60">
           {state === 'busy' ? '…' : '→'}
         </button>
       </div>

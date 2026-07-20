@@ -71,7 +71,7 @@ export function CheckoutForm() {
               <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg">Delivery</h2>
               <div className="flex gap-2">
                 {(['ship', 'collect'] as const).map((m) => (
-                  <button key={m} onClick={() => set('method', m)} className={`rounded-full border px-4 py-1.5 text-sm ${f.method === m ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)]'}`}>{m === 'ship' ? 'Ship to me' : 'Collect in clinic'}</button>
+                  <button key={m} onClick={() => set('method', m)} className={`rounded-full border px-4 py-1.5 text-sm ${f.method === m ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)]'}`}>{m === 'ship' ? 'Ship to me' : 'Collect in clinic'}</button>
                 ))}
               </div>
               {f.method === 'ship' && (

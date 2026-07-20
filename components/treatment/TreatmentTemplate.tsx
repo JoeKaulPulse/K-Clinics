@@ -196,7 +196,7 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
                     </>
                   ) : fromOfferPence != null ? (
                     <>
-                      <p className="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">From <span className="rounded-full bg-[var(--color-gold)] px-1.5 py-0.5 text-[0.6rem] font-semibold normal-case tracking-normal text-white">Offer</span></p>
+                      <p className="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">From <span className="rounded-full bg-[var(--color-gold-deep)] px-1.5 py-0.5 text-[0.6rem] font-semibold normal-case tracking-normal text-white">Offer</span></p>
                       <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]"><span className="mr-2 text-lg text-[var(--color-stone)] line-through">{formatPence(fromPence)}</span>{formatPence(fromOfferPence)}</p>
                     </>
                   ) : (
@@ -222,7 +222,7 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
           <Stagger className="mt-[var(--space-block)] grid gap-px overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2">
             {t.benefits.map((b) => (
               <StaggerItem key={b.title} className="group bg-[var(--color-porcelain)] p-8 transition-colors duration-500 hover:bg-[var(--color-bone)]">
-                <div className="mb-4 grid h-11 w-11 place-items-center rounded-full bg-[var(--color-ink)] text-[var(--color-gold-soft)] transition-all duration-500 [transition-timing-function:var(--ease-spring)] group-hover:scale-110 group-hover:bg-[var(--color-gold)] group-hover:text-white">
+                <div className="mb-4 grid h-11 w-11 place-items-center rounded-full bg-[var(--color-ink)] text-[var(--color-gold-soft)] transition-all duration-500 [transition-timing-function:var(--ease-spring)] group-hover:scale-110 group-hover:bg-[var(--color-gold-deep)] group-hover:text-white">
                   <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none">
                     <path d="M4 10.5l4 4 8-9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
@@ -270,7 +270,7 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
               <h2 className="text-title">Transparent pricing.</h2>
               {offerName && !enquiryOnly && (
                 <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--color-gold-soft)] px-3 py-1 text-sm font-medium text-[var(--color-ink)]">
-                  <span className="rounded-full bg-[var(--color-gold)] px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-white">Offer</span>
+                  <span className="rounded-full bg-[var(--color-gold-deep)] px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-white">Offer</span>
                   {offerName}
                 </p>
               )}

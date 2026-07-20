@@ -89,7 +89,7 @@ export default async function DashboardPage() {
                 </div>
               </div>
             </div>
-            <Link href="/book" className="rounded-full bg-[var(--color-gold)] px-5 py-2.5 text-sm font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">{t('dash.book')}</Link>
+            <Link href="/book" className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2.5 text-sm font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">{t('dash.book')}</Link>
           </div>
         </Reveal>
       )}
@@ -135,7 +135,7 @@ export default async function DashboardPage() {
                       return (
                         <li key={q.key} className="flex items-center justify-between gap-3">
                           <span>{lq.title}</span>
-                          <Link href={`/account/assessments/${q.key}`} className="shrink-0 rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold)]">
+                          <Link href={`/account/assessments/${q.key}`} className="shrink-0 rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)]">
                             {t('dash.complete')} · {q.estMinutes} {t('dash.min')}
                           </Link>
                         </li>
@@ -191,7 +191,7 @@ export default async function DashboardPage() {
                   { href: '/account/profile', label: t('dash.qaProfile') },
                 ].map((a) => (
                   <li key={a.href}>
-                    <Link href={a.href} className={`group flex items-center justify-between rounded-[var(--radius-sm)] px-3 py-2.5 text-sm transition-colors ${a.primary ? 'bg-[var(--color-ink)] font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-gold)]' : 'hover:bg-[var(--color-bone)]'}`}>
+                    <Link href={a.href} className={`group flex items-center justify-between rounded-[var(--radius-sm)] px-3 py-2.5 text-sm transition-colors ${a.primary ? 'bg-[var(--color-ink)] font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-gold-deep)]' : 'hover:bg-[var(--color-bone)]'}`}>
                       {a.label}
                       <span className="transition-transform group-hover:translate-x-0.5">→</span>
                     </Link>
@@ -270,7 +270,7 @@ export default async function DashboardPage() {
           <div className="relative z-10">
             <h2 className="mx-auto max-w-xl font-[family-name:var(--font-display)] text-[clamp(1.8rem,1.2rem+2vw,2.8rem)] leading-tight">{t('dash.ctaTitle')}</h2>
             <p className="mx-auto mt-3 max-w-md text-[color-mix(in_oklab,var(--color-porcelain)_78%,transparent)]">{t('dash.ctaBody')}</p>
-            <Link href="/book" className="mt-7 inline-block rounded-full bg-[var(--color-gold)] px-7 py-3.5 text-sm font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-white hover:text-[var(--color-ink)]">{t('dash.book')}</Link>
+            <Link href="/book" className="mt-7 inline-block rounded-full bg-[var(--color-gold-deep)] px-7 py-3.5 text-sm font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-white hover:text-[var(--color-ink)]">{t('dash.book')}</Link>
           </div>
         </section>
       </Reveal>

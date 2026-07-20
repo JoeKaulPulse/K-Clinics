@@ -83,7 +83,7 @@ export function CourseReviewPrompt({ courseId, courseTitle, myReview }: { course
                 {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush-deep)]">{err}</p>}
                 <div className="mt-5 flex items-center justify-end gap-3">
                   <button onClick={() => setOpen(false)} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">Cancel</button>
-                  <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? 'Saving…' : 'Submit review'}</button>
+                  <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? 'Saving…' : 'Submit review'}</button>
                 </div>
               </>
             )}

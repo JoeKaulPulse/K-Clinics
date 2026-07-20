@@ -74,7 +74,7 @@ export function ProfileForm({ initial, locale = 'en' }: { initial: Initial; loca
         Text me appointment confirmations &amp; reminders
       </label>
       {msg && <p className="text-sm text-[var(--color-gold-deep)]">{msg}</p>}
-      <button type="submit" disabled={saving} className="rounded-full bg-[var(--color-gold)] px-6 py-3 font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
+      <button type="submit" disabled={saving} className="rounded-full bg-[var(--color-gold-deep)] px-6 py-3 font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
         {saving ? t('profile.saving') : t('profile.save')}
       </button>
     </form>

@@ -291,7 +291,7 @@ export function EmailComposer({ segments, tags, initial, templates = [] }: { seg
           {showSchedule && (
             <div className="mt-3 flex flex-wrap items-end gap-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3">
               <label className="text-xs text-[var(--color-stone)]">Send at<input type="datetime-local" value={scheduleAt} onChange={(e) => setScheduleAt(e.target.value)} className={`${field} mt-1`} /></label>
-              <button onClick={schedule} disabled={busy || !scheduleAt || !subject} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm text-white disabled:opacity-50">Schedule send</button>
+              <button onClick={schedule} disabled={busy || !scheduleAt || !subject} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm text-white disabled:opacity-50">Schedule send</button>
               <span className="text-xs text-[var(--color-stone)]">Delivered automatically within ~15 min of the chosen time.</span>
             </div>
           )}

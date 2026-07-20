@@ -12,7 +12,7 @@ function Check({ checked, onChange, label }: { checked: boolean; onChange: (v: b
   return (
     <label className="inline-flex cursor-pointer items-center justify-center">
       <input type="checkbox" className="peer sr-only" checked={checked} onChange={(e) => onChange(e.target.checked)} aria-label={label} />
-      <span className="grid h-5 w-5 place-items-center rounded border border-[var(--color-line)] bg-white text-transparent peer-checked:border-[var(--color-gold)] peer-checked:bg-[var(--color-gold)] peer-checked:text-white">
+      <span className="grid h-5 w-5 place-items-center rounded border border-[var(--color-line)] bg-white text-transparent peer-checked:border-[var(--color-gold)] peer-checked:bg-[var(--color-gold-deep)] peer-checked:text-white">
         <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
       </span>
     </label>

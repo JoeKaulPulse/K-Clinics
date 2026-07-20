@@ -122,7 +122,7 @@ export function BeforePhotoCapture({ bookingId, clientId, photos, optOutSigned, 
                   {!on ? (
                     <button onClick={startCam} disabled={!attest} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">Open camera</button>
                   ) : (
-                    <button onClick={capture} className="rounded-full bg-[var(--color-gold)] px-4 py-1.5 text-sm text-white">Capture</button>
+                    <button onClick={capture} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-1.5 text-sm text-white">Capture</button>
                   )}
                 </div>
               </>

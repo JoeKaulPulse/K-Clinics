@@ -82,7 +82,7 @@ export function RedeemPoints({
       </div>
       {err && <p role="alert" aria-live="assertive" className="mt-2 text-xs text-[var(--color-blush-deep)]">{err}</p>}
       <div className="mt-3 flex gap-2">
-        <button onClick={() => send(pounds * 100)} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
+        <button onClick={() => send(pounds * 100)} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
           {busy ? '…' : labels.apply}
         </button>
         <button onClick={() => { setOpen(false); setErr(''); }} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium text-[var(--color-stone)]">{labels.cancel}</button>

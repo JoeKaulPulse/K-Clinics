@@ -74,7 +74,7 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
           </label>
           {err && <p role="alert" aria-live="assertive" className="text-sm text-[var(--color-blush-deep)]">{err}</p>}
           <div className="flex gap-2">
-            <button onClick={confirm} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Verifying…' : 'Verify & enable'}</button>
+            <button onClick={confirm} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Verifying…' : 'Verify & enable'}</button>
             <button onClick={() => setStage('idle')} className="px-3 py-2 text-sm text-[var(--color-stone)]">Cancel</button>
           </div>
         </div>

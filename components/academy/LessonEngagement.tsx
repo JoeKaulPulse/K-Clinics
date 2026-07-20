@@ -136,7 +136,7 @@ export function LessonEngagement({ lessonId }: { lessonId: string }) {
         <p className="eyebrow mb-2">Discussion &amp; questions</p>
         <div className="mb-3 flex flex-col gap-2 sm:flex-row">
           <textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} rows={2} placeholder="Ask a question or share a thought with your trainer and cohort…" className="flex-1 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm" />
-          <button onClick={addTopLevel} disabled={posting || !newComment.trim()} className="shrink-0 self-end rounded-full bg-[var(--color-gold)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50">{posting ? 'Posting…' : 'Post'}</button>
+          <button onClick={addTopLevel} disabled={posting || !newComment.trim()} className="shrink-0 self-end rounded-full bg-[var(--color-gold-deep)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50">{posting ? 'Posting…' : 'Post'}</button>
         </div>
         {!loaded ? (
           <p className="text-sm text-[var(--color-stone)]">Loading…</p>

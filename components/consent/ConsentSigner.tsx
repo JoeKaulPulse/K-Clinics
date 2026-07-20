@@ -66,7 +66,7 @@ export function ConsentSigner({
           initial={reduce ? false : { scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.1 }}
-          className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[var(--color-gold)] text-white"
+          className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[var(--color-gold-deep)] text-white"
         >
           <svg width="28" height="28" viewBox="0 0 12 12" fill="none"><path d="M2 6.2 4.8 9 10 3.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </motion.span>
@@ -116,7 +116,7 @@ export function ConsentSigner({
             </div>
 
             <button type="button" onClick={() => setAct('agree')}
-              className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--color-ink)] px-6 py-3.5 text-base font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold)]">
+              className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--color-ink)] px-6 py-3.5 text-base font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)]">
               I’ve read this — continue
             </button>
             <p className="mt-2 text-center text-xs text-[var(--color-stone)]" role="status">{readPct < 100 ? 'Scroll to read it all — the gold line tracks your place.' : 'Read to the end — thank you.'}</p>
@@ -144,7 +144,7 @@ export function ConsentSigner({
                         ? 'border-[var(--color-gold)] bg-[var(--color-bone)]'
                         : 'border-[var(--color-line)] bg-[var(--color-porcelain)] hover:border-[var(--color-gold)]/50'}`}
                     >
-                      <span aria-hidden className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors duration-200 ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)]'}`}>
+                      <span aria-hidden className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors duration-200 ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)]'}`}>
                         {on && <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6.2 4.8 9 10 3.4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                       </span>
                       <span className={on ? 'text-[var(--color-ink)]' : 'text-[var(--color-ink-soft)]'}>{a}</span>
@@ -157,7 +157,7 @@ export function ConsentSigner({
             <div className="mt-5 flex items-center gap-3">
               <button type="button" onClick={() => setAct('read')} className="min-h-11 rounded-full px-4 py-2 text-sm text-[var(--color-stone)] transition-colors hover:text-[var(--color-ink)]">← Back</button>
               <button type="button" disabled={!allTicked} onClick={() => setAct('sign')}
-                className="min-h-12 flex-1 rounded-full bg-[var(--color-ink)] px-6 py-3.5 text-base font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold)] disabled:opacity-40">
+                className="min-h-12 flex-1 rounded-full bg-[var(--color-ink)] px-6 py-3.5 text-base font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)] disabled:opacity-40">
                 Continue to sign
               </button>
             </div>
@@ -200,7 +200,7 @@ export function ConsentSigner({
               <div className="mt-5 flex items-center gap-3">
                 <button type="button" onClick={() => setAct('agree')} className="min-h-11 rounded-full px-4 py-2 text-sm text-[var(--color-stone)] transition-colors hover:text-[var(--color-ink)]">← Back</button>
                 <button type="button" onClick={submit} disabled={busy}
-                  className="min-h-12 flex-1 rounded-full bg-[var(--color-gold)] px-6 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-50">
+                  className="min-h-12 flex-1 rounded-full bg-[var(--color-gold-deep)] px-6 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-50">
                   {busy ? 'Sealing…' : kind === 'photo_opt_out' ? 'Sign & decline photos' : 'Sign & consent'}
                 </button>
               </div>

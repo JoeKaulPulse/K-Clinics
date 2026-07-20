@@ -100,7 +100,7 @@ export function ReportProblem() {
                 {error && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush-deep)]">{error}</p>}
                 <div className="mt-4 flex justify-end gap-2">
                   <button onClick={() => setOpen(false)} className="rounded-full px-4 py-2 text-sm text-[var(--color-stone)]">Cancel</button>
-                  <button onClick={submit} disabled={status === 'saving'} className="rounded-full bg-[var(--color-gold)] px-6 py-2 text-sm font-medium text-white disabled:opacity-50">{status === 'saving' ? 'Sending…' : 'Send to Claude'}</button>
+                  <button onClick={submit} disabled={status === 'saving'} className="rounded-full bg-[var(--color-gold-deep)] px-6 py-2 text-sm font-medium text-white disabled:opacity-50">{status === 'saving' ? 'Sending…' : 'Send to Claude'}</button>
                 </div>
               </>
             )}

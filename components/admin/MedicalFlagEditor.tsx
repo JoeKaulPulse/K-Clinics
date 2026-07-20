@@ -52,7 +52,7 @@ export function MedicalFlagEditor({ clientId, initial, setBy, setAt }: { clientI
             <p className="mt-1 text-xs text-[var(--color-stone)]">A concise alert clinicians must review before each appointment. Detailed history stays in the encrypted assessments.</p>
             {err && <p role="alert" aria-live="assertive" className="mt-1 text-xs text-[var(--color-blush-deep)]">{err}</p>}
             <div className="mt-3 flex items-center gap-2">
-              <button disabled={pending} onClick={() => save(flag)} className="rounded-full bg-[var(--color-gold)] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-60">{pending ? 'Saving…' : 'Save flag'}</button>
+              <button disabled={pending} onClick={() => save(flag)} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-60">{pending ? 'Saving…' : 'Save flag'}</button>
               {hasFlag && <button disabled={pending} onClick={() => save('')} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">Clear flag</button>}
               {hasFlag && <button onClick={() => { setFlag(initial ?? ''); setEditing(false); }} className="text-xs text-[var(--color-stone)]">Cancel</button>}
             </div>

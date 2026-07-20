@@ -156,7 +156,7 @@ export function Composer({ channel, meId, onSent, replyTo, onCancelReply }: {
         />
         <button
           type="button" onClick={() => void send()} disabled={sending || (!text.trim() && drafts.length === 0)}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--color-gold)] text-white transition-colors hover:bg-[var(--color-gold-deep)] disabled:opacity-40"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--color-gold-deep)] text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40"
           aria-label="Send"
         >
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 10l14-7-7 14-2-5-5-2z" /></svg>

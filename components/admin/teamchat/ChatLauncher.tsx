@@ -54,7 +54,7 @@ export function ChatLauncher() {
         <div role="menu" className="kc-pop absolute right-0 z-40 mt-2 flex max-h-[70vh] w-[22rem] flex-col overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white shadow-[var(--shadow-lift)]">
           <div className="flex items-center justify-between border-b border-[var(--color-line)] px-4 py-3">
             <h3 className="font-[family-name:var(--font-display)] text-lg text-[var(--color-ink)]">Messages</h3>
-            <button onClick={() => { setShowNew(true); setOpen(false); }} className="rounded-full bg-[var(--color-gold)] px-3 py-1 text-xs font-medium text-white hover:bg-[var(--color-gold-deep)]">New</button>
+            <button onClick={() => { setShowNew(true); setOpen(false); }} className="rounded-full bg-[var(--color-gold-deep)] px-3 py-1 text-xs font-medium text-white hover:bg-[var(--color-ink)]">New</button>
           </div>
           <div className="border-b border-[var(--color-line)] px-3 py-2">
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search conversations…" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
@@ -76,7 +76,7 @@ export function ChatLauncher() {
                   </div>
                   <p className={`truncate text-xs ${c.unread > 0 ? 'text-[var(--color-ink-soft)]' : 'text-[var(--color-stone)]'}`}>{c.muted ? '🔕 ' : ''}{c.lastMessagePreview || 'No messages yet'}</p>
                 </div>
-                {c.unread > 0 && <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-[var(--color-gold)] px-1 text-[0.65rem] font-semibold text-white">{c.unread}</span>}
+                {c.unread > 0 && <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-[var(--color-gold-deep)] px-1 text-[0.65rem] font-semibold text-white">{c.unread}</span>}
               </button>
             ))}
           </div>

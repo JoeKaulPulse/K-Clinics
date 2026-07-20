@@ -65,7 +65,7 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search suppliers…" className={`${field} max-w-xs`} />
-        {canManage && <button onClick={() => setEditing(blank())} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-gold)]">Add supplier</button>}
+        {canManage && <button onClick={() => setEditing(blank())} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-gold-deep)]">Add supplier</button>}
         {canManage && <button onClick={importXero} disabled={importing} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)] disabled:opacity-50">{importing ? 'Importing…' : 'Import from Xero'}</button>}
       </div>
 

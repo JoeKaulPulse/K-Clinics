@@ -86,7 +86,7 @@ export function OnboardingModal({ title, intro, steps, initial, endpoint, onClos
                     {step.options.map((o) => {
                       const arr = (vals[step.key] as string[]) ?? [];
                       const on = arr.includes(o);
-                      return <button key={o} onClick={() => set(step.key, on ? arr.filter((x) => x !== o) : [...arr, o])} className={`rounded-full border px-4 py-2 text-sm ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}>{o}</button>;
+                      return <button key={o} onClick={() => set(step.key, on ? arr.filter((x) => x !== o) : [...arr, o])} className={`rounded-full border px-4 py-2 text-sm ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}>{o}</button>;
                     })}
                   </div>
                 )}

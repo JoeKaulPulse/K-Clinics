@@ -149,7 +149,7 @@ function CreateTask({ staff, uk }: { staff: Staff[]; uk: boolean }) {
           </select>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
+          <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
             {busy ? L('Adding…', 'Додавання…') : L('Add task', 'Додати завдання')}
           </button>
           {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
@@ -218,7 +218,7 @@ function Row({ t, staff, uk, orphanSub }: { t: Task; staff: Staff[]; uk: boolean
     <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
       <div className="flex items-start gap-3">
         <button onClick={toggle} disabled={busy} title={done ? L('Reopen', 'Відкрити знову') : L('Mark done', 'Позначити виконаним')}
-          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${done ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-stone-soft)] hover:border-[var(--color-gold)]'}`}>
+          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${done ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-stone-soft)] hover:border-[var(--color-gold)]'}`}>
           {done && '✓'}
         </button>
         <div className="min-w-0 flex-1">
@@ -279,7 +279,7 @@ function Row({ t, staff, uk, orphanSub }: { t: Task; staff: Staff[]; uk: boolean
                 <input value={cText} onChange={(e) => setCText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addComment()}
                   placeholder={L('Write a comment…', 'Напишіть коментар…')}
                   className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
-                <button onClick={addComment} disabled={cBusy || !cText.trim()} className="rounded-[var(--radius-sm)] bg-[var(--color-gold)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--color-gold-deep)] disabled:opacity-50">
+                <button onClick={addComment} disabled={cBusy || !cText.trim()} className="rounded-[var(--radius-sm)] bg-[var(--color-gold-deep)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50">
                   {cBusy ? L('…', '…') : L('Send', 'Надіслати')}
                 </button>
               </div>

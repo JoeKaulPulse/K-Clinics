@@ -48,7 +48,7 @@ export default async function AppointmentsPage() {
       <PortalPageHeader
         eyebrow={t('nav.appointments')}
         title={t('appt.title')}
-        action={<Link href="/book" className="rounded-full bg-[var(--color-gold)] px-6 py-3 text-sm font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)]">{t('appt.bookNew')}</Link>}
+        action={<Link href="/book" className="rounded-full bg-[var(--color-gold-deep)] px-6 py-3 text-sm font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)]">{t('appt.bookNew')}</Link>}
       />
 
       <Reveal>

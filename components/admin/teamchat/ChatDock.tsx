@@ -28,7 +28,7 @@ export function ChatDock() {
               >
                 {channel.kind === 'GROUP' ? <AvatarStack members={channel.members} meId={meId} size={24} /> : <Avatar name={channel.title} photo={channel.members.find((m) => m.id !== meId)?.photoUrl} size={24} />}
                 <span className="min-w-0 flex-1 truncate text-sm">{channel.title}</span>
-                {channel.unread > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[var(--color-gold)] px-1 text-[0.65rem] font-semibold text-white">{channel.unread}</span>}
+                {channel.unread > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[var(--color-gold-deep)] px-1 text-[0.65rem] font-semibold text-white">{channel.unread}</span>}
                 <span onClick={(e) => { e.stopPropagation(); closeWindow(id); }} className="text-[var(--color-gold-bright)]" aria-label="Close">✕</span>
               </button>
             );

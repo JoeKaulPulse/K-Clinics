@@ -48,7 +48,7 @@ const field =
   'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
 const labelCls = 'mb-1 block text-xs font-medium uppercase tracking-[0.14em] text-[var(--color-stone)]';
 const primaryBtn =
-  'rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-gold-deep)] disabled:opacity-50';
+  'rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50';
 const ghostBtn =
   'rounded-full px-4 py-2 text-sm text-[var(--color-stone)] hover:bg-[var(--color-bone)] disabled:opacity-50';
 

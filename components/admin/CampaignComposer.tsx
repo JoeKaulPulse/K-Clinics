@@ -42,7 +42,7 @@ export function CampaignComposer({ audience }: { audience: number }) {
         )}
       </div>
       {result && <p className="text-sm text-[var(--color-stone)]">{result}</p>}
-      <button disabled={pending} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm text-white disabled:opacity-60">
+      <button disabled={pending} className="rounded-full bg-[var(--color-gold-deep)] px-6 py-2.5 text-sm text-white disabled:opacity-60">
         {pending ? 'Sending…' : 'Send campaign'}
       </button>
     </form>

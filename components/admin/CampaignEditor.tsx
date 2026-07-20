@@ -105,7 +105,7 @@ export function CampaignEditor({ data, stats, baseUrl, canManage, spendSyncedAt 
             <p className="text-xs text-[var(--color-stone)]">Channels</p>
             <div className="mt-1 flex flex-wrap gap-2">
               {CHANNELS.map((c) => (
-                <button key={c.key} onClick={() => toggleChannel(c.key)} className={`rounded-full border px-3 py-1 text-xs ${f.channels.includes(c.key) ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}>{c.label}</button>
+                <button key={c.key} onClick={() => toggleChannel(c.key)} className={`rounded-full border px-3 py-1 text-xs ${f.channels.includes(c.key) ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}>{c.label}</button>
               ))}
             </div>
           </div>

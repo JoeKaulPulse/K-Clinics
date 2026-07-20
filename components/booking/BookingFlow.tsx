@@ -265,9 +265,9 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                 <div className="mt-5">
                   <p className={label}>Single session or a course?</p>
                   <div className="flex flex-wrap gap-2">
-                    <button onClick={() => setSessions(1)} aria-pressed={sessions === 1} className={`rounded-full border px-4 py-2 text-sm ${sessions === 1 ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)]'}`}>Single · {money(primaryPrice(variant).price)}</button>
+                    <button onClick={() => setSessions(1)} aria-pressed={sessions === 1} className={`rounded-full border px-4 py-2 text-sm ${sessions === 1 ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)]'}`}>Single · {money(primaryPrice(variant).price)}</button>
                     {variant.courses.map((c) => (
-                      <button key={c.sessions} onClick={() => setSessions(c.sessions)} aria-pressed={sessions === c.sessions} className={`rounded-full border px-4 py-2 text-sm ${sessions === c.sessions ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)]'}`}>
+                      <button key={c.sessions} onClick={() => setSessions(c.sessions)} aria-pressed={sessions === c.sessions} className={`rounded-full border px-4 py-2 text-sm ${sessions === c.sessions ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)]'}`}>
                         Course of {c.sessions} · {money(c.totalPence)}
                       </button>
                     ))}
@@ -289,7 +289,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                     <p className="mb-1.5 text-xs text-[var(--color-stone)]"><span className="text-[var(--color-gold)]">★</span> Popular days — you’ll likely be seen sooner</p>
                     <div className="flex flex-wrap gap-2">
                       {popularDays.map((d) => (
-                        <button key={d} type="button" aria-pressed={date === d} onClick={() => setDate(d)} className={`rounded-full border px-3 py-2.5 text-sm transition-all ${date === d ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20'}`}>
+                        <button key={d} type="button" aria-pressed={date === d} onClick={() => setDate(d)} className={`rounded-full border px-3 py-2.5 text-sm transition-all ${date === d ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20'}`}>
                           {new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
                         </button>
                       ))}
@@ -320,7 +320,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                             const isPref = preferred.includes(s);
                             const selected = slot === s;
                             return (
-                              <button key={s} type="button" aria-pressed={selected} onClick={() => setSlot(s)} title={isPref ? 'Sooner-seen slot — fits neatly with the day’s other appointments' : undefined} className={`relative rounded-full border px-4 py-2.5 text-sm transition-all ${selected ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : isPref ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
+                              <button key={s} type="button" aria-pressed={selected} onClick={() => setSlot(s)} title={isPref ? 'Sooner-seen slot — fits neatly with the day’s other appointments' : undefined} className={`relative rounded-full border px-4 py-2.5 text-sm transition-all ${selected ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : isPref ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                                 {!selected && isPref && <span aria-hidden className="mr-1 text-[var(--color-gold)]">★</span>}
                                 {new Date(s).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
                               </button>
@@ -372,7 +372,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                           const on = refreshments.has(it.id);
                           return (
                             <button key={it.id} type="button" aria-pressed={on} onClick={() => setRefreshments((p) => { const n = new Set(p); n.has(it.id) ? n.delete(it.id) : n.add(it.id); return n; })}
-                              className={`rounded-full border px-3.5 py-1.5 text-sm transition-all ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
+                              className={`rounded-full border px-3.5 py-1.5 text-sm transition-all ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                               {it.label}
                             </button>
                           );
@@ -590,7 +590,7 @@ function RequestReceived({ firstName, treatment, slot, orderTotal, variantId, ca
   }, []);
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-10 text-center md:p-16">
-      <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-full bg-[var(--color-gold)] text-white">
+      <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-full bg-[var(--color-gold-deep)] text-white">
         <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </div>
       <h2 className="text-title">Request received{firstName ? `, ${firstName}` : ''}.</h2>
@@ -628,7 +628,7 @@ function Done({ firstName, treatment, slot, orderTotal, variantId, category, boo
       <div className="mx-auto mt-8 max-w-sm rounded-[var(--radius-lg)] border border-[var(--color-gold)]/40 bg-[var(--color-porcelain)] p-6 text-left">
         <p className="text-sm font-medium text-[var(--color-ink)]">Know someone who'd love KClinics?</p>
         <p className="mt-1 text-sm text-[var(--color-stone)]">Refer a friend — you both receive <strong className="font-semibold text-[var(--color-ink)]">£25 credit</strong> towards any treatment, and your Beauty Points for today&apos;s booking have been credited to <a href="/account" className="link-underline font-medium text-[var(--color-ink)]">your account</a>.</p>
-        <a href="/refer-a-friend" className="mt-4 inline-block rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white">Share your referral link →</a>
+        <a href="/refer-a-friend" className="mt-4 inline-block rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white">Share your referral link →</a>
       </div>
     </motion.div>
   );
@@ -703,7 +703,7 @@ function WaitlistCTA({ treatmentSlug, treatmentTitle, date, client }: { treatmen
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" aria-label="Your name" className={inp} />
         <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Email" aria-label="Email" className={inp} />
-        <button type="button" onClick={join} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Joining…' : 'Join waitlist'}</button>
+        <button type="button" onClick={join} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Joining…' : 'Join waitlist'}</button>
       </div>
       {err && <p role="alert" aria-live="assertive" className="mt-1 text-xs text-[var(--color-blush-deep)]">{err}</p>}
     </div>

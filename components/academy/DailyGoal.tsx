@@ -69,7 +69,7 @@ export function DailyGoal({ status }: { status: Status }) {
           ) : (
             <GiftBox className="h-8 w-8 opacity-60" />
           )}
-          {opened && <span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-[var(--color-gold)] text-[0.6rem] text-white">✓</span>}
+          {opened && <span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-[var(--color-gold-deep)] text-[0.6rem] text-white">✓</span>}
         </button>
       </div>
       <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--color-line)]"><div className="h-full rounded-full bg-[var(--color-gold)] transition-[width] duration-500" style={{ width: `${pct}%` }} /></div>

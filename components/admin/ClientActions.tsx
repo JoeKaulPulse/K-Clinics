@@ -144,7 +144,7 @@ export function SendEmail({ clientId, email }: { clientId: string; email: string
             const r = await sendManualEmail(clientId, email, subject, body);
             if (r?.ok) { setMsg('Sent ✓'); setSubject(''); setBody(''); } else setMsg(r?.error || 'Failed');
           })}
-          className="rounded-[var(--radius-sm)] bg-[var(--color-gold)] px-4 py-2 text-sm text-white disabled:opacity-60"
+          className="rounded-[var(--radius-sm)] bg-[var(--color-gold-deep)] px-4 py-2 text-sm text-white disabled:opacity-60"
         >
           {pending ? 'Sending…' : 'Send'}
         </button>

@@ -19,13 +19,13 @@ export function ReviewActions({ id, status }: { id: string; status: string }) {
     <div className="flex flex-wrap gap-2">
       {status === 'SUBMITTED' && (
         <>
-          <button disabled={pending} onClick={() => act('approve')} className={`${btn} bg-[var(--color-ink)] text-[var(--color-porcelain)] hover:bg-[var(--color-gold)]`}>Approve</button>
+          <button disabled={pending} onClick={() => act('approve')} className={`${btn} bg-[var(--color-ink)] text-[var(--color-porcelain)] hover:bg-[var(--color-gold-deep)]`}>Approve</button>
           <button disabled={pending} onClick={() => act('hide')} className={`${btn} border border-[var(--color-line)] hover:border-[var(--color-blush)] hover:text-[var(--color-blush-deep)]`}>Hide</button>
         </>
       )}
       {status === 'APPROVED' && (
         <>
-          <button disabled={pending} onClick={() => act('publish')} className={`${btn} bg-[var(--color-gold)] text-white hover:bg-[var(--color-ink)]`}>Publish</button>
+          <button disabled={pending} onClick={() => act('publish')} className={`${btn} bg-[var(--color-gold-deep)] text-white hover:bg-[var(--color-ink)]`}>Publish</button>
           <button disabled={pending} onClick={() => act('hide')} className={`${btn} border border-[var(--color-line)] hover:border-[var(--color-blush)] hover:text-[var(--color-blush-deep)]`}>Hide</button>
         </>
       )}
