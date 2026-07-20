@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-export function NewsletterForm() {
+export function NewsletterForm({ source = 'footer' }: { source?: string } = {}) {
   const [email, setEmail] = useState('');
   const [company, setCompany] = useState(''); // honeypot
   const [state, setState] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
@@ -13,7 +13,7 @@ export function NewsletterForm() {
     if (!/\S+@\S+\.\S+/.test(email)) { setState('error'); setMsg('Please enter a valid email address.'); return; }
     setState('busy'); setMsg('');
     try {
-      const res = await fetch('/api/newsletter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, company }) });
+      const res = await fetch('/api/newsletter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, company, source }) });
       const j = await res.json().catch(() => ({ ok: false }));
       if (j.ok) { setState('done'); setEmail(''); }
       else { setState('error'); setMsg(j.error || 'Something went wrong.'); }

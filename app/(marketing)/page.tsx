@@ -25,6 +25,7 @@ import { packages } from '@/lib/packages';
 import { site } from '@/lib/site';
 import { JsonLd, breadcrumbLd, aggregateRatingLd } from '@/lib/seo';
 import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
+import { OffersStrip } from '@/components/marketing/OffersStrip';
 
 // ISR: refresh hourly so live "from" prices on the featured cards stay current.
 export const revalidate = 3600;
@@ -234,8 +235,12 @@ export default async function HomePage() {
         </section>
       )}
 
+      {/* BLD-771: live discounts visible to first-time visitors — the strip
+          renders nothing when no offers are on, so the page is unchanged then. */}
+      <section className="container-lux section-sm"><OffersStrip /></section>
+
       {/* BLD-353: mid-page newsletter capture */}
-      <NewsletterCapture />
+      <NewsletterCapture source="home" />
 
       {/* Offer / membership */}
       <section className="section container-lux">

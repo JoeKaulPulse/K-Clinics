@@ -95,7 +95,7 @@ export default async function DentistryPage() {
       ))}
 
       {/* BLD-353: mid-page newsletter capture */}
-      <NewsletterCapture />
+      <NewsletterCapture source="dentistry" />
 
       {comingSoon && (
         <section id="interest" className="scroll-mt-28 bg-[var(--color-bone)] section">

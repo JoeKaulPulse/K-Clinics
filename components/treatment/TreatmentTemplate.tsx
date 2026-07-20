@@ -13,6 +13,7 @@ import { BookingButtons } from '@/components/booking/BookingButtons';
 import { site } from '@/lib/site';
 import { pricingForTreatment, formatPence, statusLabel, type ServiceStatus } from '@/lib/services';
 import { getVatNote } from '@/lib/vat';
+import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
 
 /** Build the small print under a variant — duration + course price, per-session
  *  cost and the saving vs a single session (so the value of a course is clear). */
@@ -364,6 +365,8 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
           </Stagger>
         </section>
       )}
+      {/* BLD-691: email capture on every treatment page, attributed. */}
+      <NewsletterCapture source="treatment" />
     </article>
   );
 }
