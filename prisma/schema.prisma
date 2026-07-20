@@ -2699,6 +2699,7 @@ model Enrolment {
 
   status         EnrolmentStatus @default(APPLIED)
   pricePence     Int             @default(0)
+  agreedFeePence Int? // BLD-850: the fee actually quoted (promo-aware) — locked at offer / first payment so later promo changes never re-price an in-flight enrolment
   paidPence      Int             @default(0) // running total of PAID EnrolmentPayments (kept in sync on every payment)
   notes          String?
   preCourseAckAt DateTime? // BLD-445: when the learner acknowledged the pre-course information page

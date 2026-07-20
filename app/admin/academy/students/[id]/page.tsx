@@ -119,14 +119,15 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
             <div className="space-y-3">
               {enrolments.map((e) => {
                 const ps = paymentsByEnrol.get(e.id) ?? [];
-                const outstanding = Math.max(0, e.pricePence - e.paidPence);
+                const fee = e.agreedFeePence ?? e.pricePence; // BLD-850: settle against the locked agreed fee when stamped
+                const outstanding = Math.max(0, fee - e.paidPence);
                 return (
                   <div key={e.id} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <Link href={`/admin/academy/${e.course.id}`} className="font-medium hover:text-[var(--color-gold)] hover:underline">{e.course.title}</Link>
                         <span className="ml-2 rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-[0.65rem] uppercase tracking-wide text-[var(--color-stone)]">{e.status}</span>
-                        <span className="block text-xs text-[var(--color-stone)]">{money(e.paidPence)} of {money(e.pricePence)} paid{outstanding > 0 ? ` · ${money(outstanding)} due` : ' · paid in full'}{e.cohort ? ` · cohort ${e.cohort.name || fmt(e.cohort.startAt)}` : ''}{e.preCourseAckAt ? ' · pre-course read ✓' : ''}</span>
+                        <span className="block text-xs text-[var(--color-stone)]">{money(e.paidPence)} of {money(fee)} paid{outstanding > 0 ? ` · ${money(outstanding)} due` : ' · paid in full'}{e.cohort ? ` · cohort ${e.cohort.name || fmt(e.cohort.startAt)}` : ''}{e.preCourseAckAt ? ' · pre-course read ✓' : ''}</span>
                       </div>
                       <Link href={`/academy/learn/${e.course.slug}`} className="text-xs text-[var(--color-gold)] hover:underline">View course →</Link>
                     </div>
