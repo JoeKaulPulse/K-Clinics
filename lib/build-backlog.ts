@@ -2555,6 +2555,27 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Sitewide nav link to a coming-soon page with zero products, indexed at 0.7.',
     notes: ['Fix: the nav link (desktop + mobile), sitemap entry and page indexability all key off the live ACTIVE-product count (config cached ~1h) — everything appears when the first product goes live.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Add view_item/ViewContent tracking on treatment pages', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1653),
+    value: 6, effort: 2,
+    detail: 'No top-of-funnel signal existed — trackLead/trackPurchase only; detail-page views built no remarketing audience.',
+    notes: ['Fix: consent-gated trackViewItem (GA4 view_item + Meta ViewContent) fired once per mount by a null-rendering client tracker on every treatment page (with live from-price) and package page.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Newsletter capture absent from most high-traffic marketing pages', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1653),
+    value: 6, effort: 3,
+    detail: 'Email capture rendered on only three pages and every signup was attributed to footer.',
+    notes: ['Fix: NewsletterCapture on /treatments, /offers, /pricing, /reviews, /ai-consultation and every treatment page; the form carries a validated per-surface source through the API so attribution is real. Deploy-verified rendering live on /treatments.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Discount/offers program is invisible to first-time visitors — no homepage placement, buried in ', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1653),
+    value: 5, effort: 2,
+    detail: 'OffersStrip rendered only on /pricing and /account; the homepage never showed running discounts.',
+    notes: ['Fix: the strip joins the homepage above the newsletter capture, rendering nothing when no offers are live. Main-nav placement of Special Offers offered to the owner as an option on the card.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
