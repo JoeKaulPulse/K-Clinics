@@ -2331,6 +2331,41 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'components/portal/AssessmentRunner.tsx — the control was a plain link to /account labelled as a save; answers only lived in component state, so exiting mid-assessment silently discarded everything.',
     notes: ['Fix: honest control instead of a phantom save lane — relabelled Exit assessment; leaves silently when nothing is answered, otherwise confirms the discard first (new assess.exitConfirm string, en/uk).'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Clinical treatment names and booking notes synced in plaintext to clinicians\' personal Google Calendars', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1648),
+    value: 7, effort: 4,
+    detail: 'Events pushed to a clinician\'s connected Google Calendar carried the treatment name in the title and client phone/email/notes in the description — often a personal account, outside CRM access controls, surfacing in lock-screen previews and shared calendars. A treatment name can itself reveal a health condition.',
+    notes: ['Fix: events now carry a generic title and a login-gated CRM link only; the client data is no longer queried at all. A one-time backfill re-pushes future events with redacted content on the daily cron (Settings-keyed; not stamped while Google is parked, so enabling the integration later still triggers it). The Hostinger CalDAV feed is the clinic\'s own business calendar and deliberately keeps operational detail — owner can extend the redaction there on request.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Academy course-fee promo price re-evaluated live instead of locked at offer time', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1648),
+    value: 7, effort: 5,
+    detail: 'effectiveFeePence re-derived the fee from whatever promo was live on every call: a learner who paid a deposit during a promo was billed balance = list price minus paid once it expired — more than agreed — and the reverse windfall also occurred.',
+    notes: ['Fix: additive Enrolment.agreedFeePence, stamped when staff make the offer (re-offers before any payment re-quote at live pricing), at the learner\'s first online payment, and at instalment-plan creation; an explicit staff price edit re-stamps it. The money engine settles against the locked fee; pre-lock rows keep the legacy derivation. Admin pipeline and student profile display the locked fee; marketing pages still quote live promos to prospects.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Academy \'Hotspot\' exercise has no keyboard path — blocks graded assessment', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1648),
+    value: 7, effort: 5,
+    detail: 'The Hotspot answer surface was a plain onClick div — keyboard-only students could not complete graded coursework at all (WCAG 2.1.1 Level A), unlike every sibling exercise type in ExercisePlayer.tsx.',
+    notes: ['Fix: focusable image surface with visible focus ring; arrow keys move a two-tone crosshair in the same %-coordinate space as the mouse (2% steps, Shift 10%); Enter/Space places through the identical code path as a click; debounced aria-live announces position and placements; role=application + sr-only key instructions. Crosshair renders only on keyboard focus, so pointer users see no change. Same mechanism on the ExercisesManager authoring surfaces (hotspot, label, type-in). Covers BLD-890 and BLD-905.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Graded academy \'label the image\' exercise is keyboard-inaccessible', type: 'IDEA', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1648),
+    value: 7, effort: 5,
+    detail: 'Same finding as the Hotspot card from a different audit pass, plus the staff authoring tool (ExercisesManager) sharing the mouse-only pin placement.',
+    notes: ['Shipped with the Hotspot fix in PR #1648 — the arrow-key crosshair mechanism the card proposed, applied to the learner exercise and all three authoring point editors.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'K Academy \'Hotspot\' exercise cannot be completed by keyboard', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1648),
+    value: 6, effort: 5,
+    detail: 'Duplicate of the Hotspot keyboard finding (BLD-855) from the end-of-day accessibility audit.',
+    notes: ['Shipped with PR #1648 — see the BLD-855 entry.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
