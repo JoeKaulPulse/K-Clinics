@@ -95,7 +95,18 @@ export function AssessmentRunner({ q, locale = 'en' }: { q: Questionnaire; local
       {/* Top bar: progress + exit */}
       <div className="sticky top-0 z-10 bg-[var(--color-porcelain)]/90 backdrop-blur-sm">
         <div className="mx-auto flex max-w-2xl items-center gap-4 px-6 py-4">
-          <Link href="/account" aria-label="Save & exit" className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">✕</Link>
+          {/* BLD-840: this was aria-labelled "Save & exit" but saved nothing — a
+              plain link that silently discarded every answer. Until a draft
+              lane exists, be honest: label it Exit and confirm the discard
+              whenever any answer has been given. */}
+          <button
+            type="button"
+            aria-label="Exit assessment"
+            onClick={() => {
+              if (Object.keys(answers).length === 0 || confirm(t('assess.exitConfirm'))) router.push('/account');
+            }}
+            className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]"
+          >✕</button>
           <div className="h-1 flex-1 overflow-hidden rounded-full bg-[var(--color-sand)]">
             <motion.div className="h-full bg-[var(--color-gold)]" initial={false} animate={{ width: `${progress}%` }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} />
           </div>

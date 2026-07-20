@@ -125,6 +125,7 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'assess.saving': { en: 'Encrypting & saving…', uk: 'Шифрування та збереження…' },
   'assess.doneTitle': { en: 'All done — thank you.', uk: 'Готово — дякуємо.' },
   'assess.doneBody': { en: 'Your {form} has been encrypted and added to your confidential record. Your clinician will review it before your visit.', uk: 'Ваша анкета «{form}» зашифрована та додана до конфіденційного запису. Клініцист перегляне її перед вашим візитом.' },
+  'assess.exitConfirm': { en: 'Exit the assessment? Your answers so far won’t be saved.', uk: 'Вийти з анкети? Ваші відповіді не буде збережено.' },
   'assess.backToPortal': { en: 'Back to portal', uk: 'Повернутися до кабінету' },
   'error.couldNotSave': { en: 'Could not save.', uk: 'Не вдалося зберегти.' },
 

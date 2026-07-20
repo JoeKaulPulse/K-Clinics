@@ -2770,6 +2770,11 @@ model EnrolmentPayment {
   method                AcademyPaymentMethod?
   state                 AcademyPaymentState  @default(PENDING)
   amountPence           Int
+  // BLD-869: cumulative Stripe amount_refunded watermark, mirroring
+  // Booking.refundedPence / GiftVoucher.purchaseRefundedPence — partial
+  // dashboard refunds reconcile as deltas instead of being dropped (or the
+  // whole amountPence being reversed at once). Additive, defaulted.
+  refundedPence         Int                  @default(0)
   dueAt                 DateTime? // for scheduled instalments / an outstanding balance
   paidAt                DateTime?
   stripePaymentIntentId String? // set for online payments

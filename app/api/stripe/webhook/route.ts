@@ -336,42 +336,62 @@ export async function POST(req: Request) {
             // left the Stripe balance. reconcileEnrolmentPaymentRefund mirrors that
             // function's DB effects; no admin actor is available here (out-of-band),
             // so its audit entry is attributed to the webhook.
-            if (!voucher && charge.refunded) {
+            // BLD-869: reconcile on ANY refund amount, not only charge.refunded
+            // (true only when FULLY refunded) — partials now flow through as
+            // deltas against the payment's refundedPence watermark.
+            if (!voucher && (charge.amount_refunded ?? 0) > 0) {
               try {
                 const { reconcileEnrolmentPaymentRefund } = await import('@/lib/academy-payments');
-                await reconcileEnrolmentPaymentRefund(piId);
+                await reconcileEnrolmentPaymentRefund(piId, charge.amount_refunded ?? 0);
               } catch (e) { console.error('[webhook] enrolment payment refund reconcile failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'enrolment-refund-reconcile' } }); } // BLD-868
             }
           }
           break;
         }
+        // PRJ-939.2: CAS with re-read retry — two refund events racing on the
+        // same booking used to bare-break on a lost CAS, silently
+        // under-recording refundedPence vs Stripe's true amount_refunded while
+        // still returning 200 (so Stripe never redelivered). Re-read and retry;
+        // if the row is still contended after two retries, throw —
+        // charge.refunded is in the critical list below, so the 500 makes
+        // Stripe redeliver the event with its cumulative amount_refunded.
         const totalRefundedByStripe = charge.amount_refunded ?? 0;
-        const alreadyRecorded = booking.refundedPence ?? 0;
-        const delta = totalRefundedByStripe - alreadyRecorded;
-        if (delta <= 0) break; // already fully reconciled
-        const newTotal = alreadyRecorded + delta;
-        const fully = newTotal >= (booking.chargedPence ?? 0);
-        // Compare-and-swap: only the writer that advances refundedPence past the
-        // value it observed runs the side-effects. Guards webhook redeliveries.
-        const claimed = await db.booking.updateMany({
-          where: { id: booking.id, refundedPence: booking.refundedPence },
-          data: { refundedPence: newTotal, refundedAt: new Date() },
-        });
-        if (claimed.count === 0) break; // a concurrent writer got there first
-        if (fully) {
-          try { const { refundBookingPoints } = await import('@/lib/client-loyalty'); await refundBookingPoints(booking.id); } catch { /* non-fatal */ }
+        let bk = booking;
+        for (let attempt = 0; ; attempt++) {
+          const alreadyRecorded = bk.refundedPence ?? 0;
+          const delta = totalRefundedByStripe - alreadyRecorded;
+          if (delta <= 0) break; // already fully reconciled
+          const newTotal = alreadyRecorded + delta;
+          const fully = newTotal >= (bk.chargedPence ?? 0);
+          // Compare-and-swap: only the writer that advances refundedPence past
+          // the value it observed runs the side-effects.
+          const claimed = await db.booking.updateMany({
+            where: { id: bk.id, refundedPence: bk.refundedPence },
+            data: { refundedPence: newTotal, refundedAt: new Date() },
+          });
+          if (claimed.count === 0) {
+            if (attempt >= 2) throw new Error(`booking refund CAS conflict persisted for ${bk.id} — deferring to Stripe redelivery`);
+            const fresh = await db.booking.findFirst({ where: { id: bk.id }, include: { client: true } });
+            if (!fresh) break;
+            bk = fresh;
+            continue;
+          }
+          if (fully) {
+            try { const { refundBookingPoints } = await import('@/lib/client-loyalty'); await refundBookingPoints(bk.id); } catch { /* non-fatal */ }
+          }
+          // BLD-836: claw back the SPEND points earned on the refunded money too
+          // (pro-rata, idempotent inside the helper) — parity with refundBooking().
+          try { const { reverseSpendPoints } = await import('@/lib/client-loyalty'); await reverseSpendPoints(bk.id, newTotal, bk.chargedPence ?? 0); } catch { /* non-fatal */ }
+          try { const { pushBookingRefundToXero } = await import('@/lib/xero'); await pushBookingRefundToXero(bk.id, delta, 'Stripe refund'); } catch { /* non-fatal */ }
+          try { const { logAudit } = await import('@/lib/audit'); await logAudit({ action: 'PAYMENT_REFUNDED', actor: 'stripe-webhook', bookingId: bk.id, clientId: bk.clientId, summary: `Webhook refund £${(delta / 100).toFixed(2)}${fully ? ' (full)' : ' (partial)'}`, meta: { delta, fully } }); } catch { /* non-fatal */ }
+          // BLD-569: email the client when a refund is issued directly in the Stripe
+          // dashboard (in-app refunds already send via refundBooking()).
+          try {
+            const { sendEmail, tmplRefund } = await import('@/lib/email');
+            await sendEmail({ to: bk.client.email, subject: `Refund processed — ${bk.treatmentTitle}`, html: tmplRefund({ firstName: bk.client.firstName, treatment: bk.treatmentTitle, amountPence: delta, fully }) });
+          } catch { /* non-fatal */ }
+          break;
         }
-        // BLD-836: claw back the SPEND points earned on the refunded money too
-        // (pro-rata, idempotent inside the helper) — parity with refundBooking().
-        try { const { reverseSpendPoints } = await import('@/lib/client-loyalty'); await reverseSpendPoints(booking.id, newTotal, booking.chargedPence ?? 0); } catch { /* non-fatal */ }
-        try { const { pushBookingRefundToXero } = await import('@/lib/xero'); await pushBookingRefundToXero(booking.id, delta, 'Stripe refund'); } catch { /* non-fatal */ }
-        try { const { logAudit } = await import('@/lib/audit'); await logAudit({ action: 'PAYMENT_REFUNDED', actor: 'stripe-webhook', bookingId: booking.id, clientId: booking.clientId, summary: `Webhook refund £${(delta / 100).toFixed(2)}${fully ? ' (full)' : ' (partial)'}`, meta: { delta, fully } }); } catch { /* non-fatal */ }
-        // BLD-569: email the client when a refund is issued directly in the Stripe
-        // dashboard (in-app refunds already send via refundBooking()).
-        try {
-          const { sendEmail, tmplRefund } = await import('@/lib/email');
-          await sendEmail({ to: booking.client.email, subject: `Refund processed — ${booking.treatmentTitle}`, html: tmplRefund({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, amountPence: delta, fully }) });
-        } catch { /* non-fatal */ }
         break;
       }
       default:
