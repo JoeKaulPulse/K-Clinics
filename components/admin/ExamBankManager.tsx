@@ -108,7 +108,7 @@ function QuestionForm({ courses, existing, defaultCourseId, busy, act }: { cours
     if (r.ok && !existing) setF({ courseId: f.courseId, topic: f.topic, difficulty: 'STANDARD', examBoard: f.examBoard, prompt: '', type: 'SINGLE', options: ['', ''], correct: [], explanation: '', tip: '' });
   }
 
-  if (!existing && !open) return <button onClick={() => setOpen(true)} className="mt-3 text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add a question</button>;
+  if (!existing && !open) return <button onClick={() => setOpen(true)} className="mt-3 text-xs font-medium text-[var(--color-gold-deep)] hover:underline">+ Add a question</button>;
 
   return (
     <div className={existing ? '' : 'mt-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)] p-3'}>
@@ -131,7 +131,7 @@ function QuestionForm({ courses, existing, defaultCourseId, busy, act }: { cours
             {f.type !== 'TRUEFALSE' && f.options.length > 2 && <button onClick={() => setF((s) => ({ ...s, options: s.options.filter((_, k) => k !== i), correct: s.correct.filter((k) => k !== i).map((k) => (k > i ? k - 1 : k)) }))} aria-label="Remove option" className="text-xs text-[var(--color-blush-deep)]">✕</button>}
           </div>
         ))}
-        {f.type !== 'TRUEFALSE' && <button onClick={() => setF((s) => ({ ...s, options: [...s.options, ''] }))} className="text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add option</button>}
+        {f.type !== 'TRUEFALSE' && <button onClick={() => setF((s) => ({ ...s, options: [...s.options, ''] }))} className="text-xs font-medium text-[var(--color-gold-deep)] hover:underline">+ Add option</button>}
       </div>
       <div className="mt-2 grid gap-2 sm:grid-cols-2">
         <label className={lbl}>Hint (optional)<input className={`${field} mt-1`} value={f.tip} onChange={(e) => set('tip', e.target.value)} /></label>
@@ -165,7 +165,7 @@ function PaperForm({ courses, existing, busy, act }: { courses: CourseRef[]; exi
   const [f, setF] = useState({ courseId: existing?.courseId ?? '', title: existing?.title ?? '', examBoard: existing?.examBoard ?? '', year: existing?.year ?? '', description: existing?.description ?? '', fileUrl: existing?.fileUrl ?? '' });
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((s) => ({ ...s, [k]: v }));
   async function save() { const r = await act({ op: 'upsertPaper', id: existing?.id, ...f }); if (r.ok && !existing) setF({ courseId: '', title: '', examBoard: '', year: '', description: '', fileUrl: '' }); }
-  if (!existing && !open) return <button onClick={() => setOpen(true)} className="mt-3 text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add a paper</button>;
+  if (!existing && !open) return <button onClick={() => setOpen(true)} className="mt-3 text-xs font-medium text-[var(--color-gold-deep)] hover:underline">+ Add a paper</button>;
   return (
     <div className={existing ? '' : 'mt-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)] p-3'}>
       <div className="grid gap-2 sm:grid-cols-2">

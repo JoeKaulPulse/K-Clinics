@@ -73,7 +73,7 @@ export function SiteSearch({ light }: { light?: boolean }) {
                   </Link>
                 </li>
               ))}
-              <li role="option" aria-selected={false}><button onClick={submit} className="w-full px-3 py-2.5 text-left text-xs font-medium text-[var(--color-gold)] hover:bg-[var(--color-bone)]">See all results →</button></li>
+              <li role="option" aria-selected={false}><button onClick={submit} className="w-full px-3 py-2.5 text-left text-xs font-medium text-[var(--color-gold-deep)] hover:bg-[var(--color-bone)]">See all results →</button></li>
             </ul>
           ) : q.trim().length >= 2 ? (
             <p className="px-3 py-4 text-sm text-[var(--color-stone)]">No quick matches — press Enter to search.</p>

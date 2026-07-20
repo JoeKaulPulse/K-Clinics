@@ -71,7 +71,7 @@ function Card({ c }: { c: ConnectionView }) {
           </div>
           <p className={`mt-1 text-sm font-medium ${l.text}`}>{c.detail}</p>
         </div>
-        {c.console && <a href={c.console.url} target="_blank" rel="noreferrer" className="shrink-0 text-xs text-[var(--color-gold)] hover:underline">{c.console.label} ↗</a>}
+        {c.console && <a href={c.console.url} target="_blank" rel="noreferrer" className="shrink-0 text-xs text-[var(--color-gold-deep)] hover:underline">{c.console.label} ↗</a>}
       </div>
 
       <p className="mt-2 text-sm text-[var(--color-stone)]">{c.powers}</p>

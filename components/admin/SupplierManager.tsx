@@ -65,7 +65,7 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
         {canManage && <button onClick={importXero} disabled={importing} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)] disabled:opacity-50">{importing ? 'Importing…' : 'Import from Xero'}</button>}
       </div>
 
-      <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
+      <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
         {filtered.length === 0 ? (
           <p className="p-6 text-sm text-[var(--color-stone)]">No suppliers yet.</p>
         ) : (

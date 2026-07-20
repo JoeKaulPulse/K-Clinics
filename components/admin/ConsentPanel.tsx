@@ -80,7 +80,7 @@ export function ConsentPanel({ bookingId, clientId, treatmentForm, templates, si
         {treatmentSigned ? (
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm"><span className="text-[var(--color-jade)]">✓ Signed</span> · {treatmentSigned.title} <span className="text-xs text-[var(--color-stone)]">· {new Date(treatmentSigned.signedAt).toLocaleString('en-GB')}</span></p>
-            {canClinical && <Link href={`/admin/consent/cert/${treatmentSigned.id}`} className="shrink-0 text-xs text-[var(--color-gold)] hover:underline">Certificate →</Link>}
+            {canClinical && <Link href={`/admin/consent/cert/${treatmentSigned.id}`} className="shrink-0 text-xs text-[var(--color-gold-deep)] hover:underline">Certificate →</Link>}
           </div>
         ) : !canManage ? (
           // Read-only for clinical staff without booking-management rights.
@@ -130,7 +130,7 @@ export function ConsentPanel({ bookingId, clientId, treatmentForm, templates, si
         {signed.filter((s) => s.kind !== 'treatment').map((s) => (
           <div key={s.id} className="mt-2 flex items-center justify-between gap-3 border-t border-[var(--color-line)] pt-2">
             <p className="text-sm">{s.declined ? '⚠ ' : '✓ '}{s.title} <span className="text-xs text-[var(--color-stone)]">· {new Date(s.signedAt).toLocaleString('en-GB')}</span></p>
-            {canClinical && <Link href={`/admin/consent/cert/${s.id}`} className="shrink-0 text-xs text-[var(--color-gold)] hover:underline">Certificate →</Link>}
+            {canClinical && <Link href={`/admin/consent/cert/${s.id}`} className="shrink-0 text-xs text-[var(--color-gold-deep)] hover:underline">Certificate →</Link>}
           </div>
         ))}
       </div>

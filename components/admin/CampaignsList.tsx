@@ -58,7 +58,7 @@ export function CampaignsList({ rows, canManage }: { rows: CampaignRow[]; canMan
       {rows.length === 0 ? (
         <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 text-sm text-[var(--color-stone)]">No campaigns yet.</p>
       ) : (
-        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+        <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
           <table className="w-full text-sm">
             <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]">
               <th scope="col" className="p-3">Campaign</th><th scope="col" className="p-3">Status</th><th scope="col" className="p-3">Bookings</th><th scope="col" className="p-3">Revenue</th><th scope="col" className="p-3">ROI</th>

@@ -58,7 +58,7 @@ export function ProductsList({ rows }: { rows: ProductRow[] }) {
       {rows.length === 0 ? (
         <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 text-sm text-[var(--color-stone)]">No products yet.</p>
       ) : (
-        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+        <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
           <table className="w-full text-sm">
             <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th scope="col" className="p-3">Product</th><th scope="col" className="p-3">Price</th><th scope="col" className="p-3">Stock</th><th scope="col" className="p-3">Status</th></tr></thead>
             <tbody>

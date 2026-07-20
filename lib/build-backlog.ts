@@ -2233,6 +2233,34 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'BookingFlow treatment list, variant list, single/course toggle, popular days and time slots -- plus the ManageClient reschedule slots -- were single-select buttons with no aria-pressed, distinguished only by a gold border/fill (WCAG 4.1.2 + 1.4.1) on the primary revenue flow.',
     notes: ['Fix: aria-pressed on all six button groups, matching the pattern the add-on and refreshment buttons in the same file already used.'],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Booking refund claws back redeemed loyalty points but not points earned on that spend', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1641),
+    value: 7, effort: 3,
+    detail: 'refundBooking reversed only the REDEMPTION category on refund; the SPEND points awarded by awardClientSpend for the charged amount were never reversed, so a refunded client kept points earned on money that went back.',
+    notes: ['Fix: new reverseSpendPoints in lib/client-loyalty.ts -- pro-rata on partial refunds, idempotent by ledger arithmetic (negative SPEND rows record what is already reversed, so webhook redeliveries and successive partials only reverse the delta), tier recomputed after. Wired into both refundBooking and the charge.refunded dashboard-refund webhook path.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: "Erased/deleted client data survives in clinicians' Google Calendars", type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1641),
+    value: 8, effort: 3,
+    detail: 'Synced calendar events carry client name/phone/email and booking notes into clinicians\' Google Calendars and the shared clinic CalDAV calendar, but eraseClientData/deleteClient never called the calendar-delete path -- a right-to-erasure request left identifying data in third-party accounts indefinitely.',
+    notes: ['Fix: both actions now remove every synced event for the client\'s bookings (Google per-clinician + Hostinger CalDAV). Erasure runs the cleanup AFTER its transaction commits; deletion runs it BEFORE the cascade destroys the event ids. Failures never block the data subject\'s right -- they are logged, reach Sentry via the BLD-914-hardened helper, and are counted in the audit record for manual follow-up.'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Admin data tables clip instead of scrolling on narrow screens', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1641),
+    value: 6, effort: 2,
+    detail: 'Sixteen admin table wrappers (StaffManager, RedirectsManager, CampaignsList, OrdersManager, ComplianceManager, SupplierManager, WorkspaceClient x2, EmailCampaignRows, ProductsList, ReplayList, marketing/email x3, reports/sessions x2) used overflow-hidden, clipping data at tablet widths.',
+    notes: ['Fix: swapped to overflow-x-auto on each wrapper (rounded-corner clipping is preserved -- a non-visible overflow-x forces overflow-y out of visible per the CSS spec, so corners still clip).'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Swap low-contrast gold text to the AA-safe token sitewide', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1641),
+    value: 7, effort: 2,
+    detail: '--color-gold (~2.5:1 on porcelain) used at 12px on interactive links in SiteSearch, ExamBankManager, FlashcardsManager, ConnectionCentre and ConsentPanel -- the named audit call sites.',
+    notes: ['Fix: the eight named small-text occurrences swapped to --color-gold-deep (4.54:1). Scope is deliberately the audit\'s named functional sites only -- the full ~400-site sweep stays deferred to the design-reviewed pass (BLD-742), same call as BLD-770.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

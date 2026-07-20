@@ -68,7 +68,7 @@ export default async function SessionInsightsPage({ searchParams }: { searchPara
           </div>
 
           {/* Per-step breakdown */}
-          <section className="mt-8 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+          <section className="mt-8 overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]">
@@ -108,7 +108,7 @@ export default async function SessionInsightsPage({ searchParams }: { searchPara
             <section className="mt-9">
               <h2 className="mb-1 font-[family-name:var(--font-display)] text-xl">By clinician</h2>
               <p className="mb-3 text-sm text-[var(--color-stone)]">How long each clinician’s sessions run, and where their time goes — busiest first.</p>
-              <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+              <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]">

@@ -14,7 +14,7 @@ export function ReplayList({ rows }: { rows: ReplayRow[] }) {
       {rows.length === 0 ? (
         <p className="text-sm text-[var(--color-stone)]">No replays captured yet.</p>
       ) : (
-        <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)]">
+        <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[var(--color-line)]">
           <table className="w-full text-sm">
             <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th scope="col" className="p-2">When</th><th scope="col" className="p-2">Entry</th><th scope="col" className="p-2">Device</th><th scope="col" className="p-2">Length</th><th scope="col" className="p-2"></th></tr></thead>
             <tbody>

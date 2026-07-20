@@ -129,7 +129,22 @@ export async function eraseClientData(clientId: string) {
     // BLD-671: remove NewsletterSubscriber rows by email — no retention basis post-erasure.
     db.newsletterSubscriber.deleteMany({ where: { email: client.email.toLowerCase() } }),
   ]);
-  await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
+  // BLD-799: synced calendar events carry the client's name/contact details and
+  // booking notes into clinicians' Google Calendars and the shared clinic CalDAV
+  // calendar — outside the CRM, so the erasure above never reached them. Remove
+  // every event for this client's bookings. Runs AFTER the transaction (never
+  // touch external data if the DB erasure failed); failures are logged + reach
+  // Sentry inside the helpers and are counted in the audit record.
+  let calendarFailures = 0;
+  try {
+    const synced = await db.booking.findMany({ where: { clientId, googleEventId: { not: null } }, select: { id: true } });
+    const { removeBookingFromClinician } = await import('@/lib/google-calendar');
+    for (const b of synced) { const r = await removeBookingFromClinician(b.id).catch(() => ({ ok: false })); if (!r.ok) calendarFailures++; }
+    const all = await db.booking.findMany({ where: { clientId }, select: { id: true } });
+    const { removeBooking } = await import('@/lib/hostinger-calendar');
+    for (const b of all) { await removeBooking(b.id).catch(() => {}); }
+  } catch (e) { console.error('[erase] calendar cleanup failed (recorded in audit):', (e as Error)?.message); calendarFailures++; }
+  await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, clientId, summary: `Client personal + special-category data erased across all records (GDPR right-to-erasure)${calendarFailures ? ` — ${calendarFailures} synced calendar event(s) could not be removed, follow up manually` : ''}`, meta: calendarFailures ? { calendarFailures } : undefined });
   try {
     const { notifyStaffByPermission } = await import('@/lib/notifications');
     await notifyStaffByPermission('settings.manage', { kind: 'status', category: 'system', priority: 'high', title: 'Client data erased (GDPR)', body: `Right-to-erasure completed by ${session.email.split('@')[0]}`, href: '/admin/clients' }, session.email);
@@ -153,6 +168,21 @@ export async function deleteClient(clientId: string, confirm: string) {
   const c = await db.client.findUnique({ where: { id: clientId }, select: { firstName: true, lastName: true, email: true } });
   if (!c) return { ok: false, error: 'Client not found.' };
 
+  // BLD-799: remove the client's synced calendar events BEFORE the cascade
+  // deletes the bookings that hold the event ids — after deletion the events
+  // in clinicians' Google Calendars (name/contact/notes) become unreachable.
+  // Deletion still proceeds on a calendar failure (the data subject's right
+  // isn't blocked by a third-party API hiccup) but the failure is recorded.
+  let calendarFailures = 0;
+  try {
+    const synced = await db.booking.findMany({ where: { clientId, googleEventId: { not: null } }, select: { id: true } });
+    const { removeBookingFromClinician } = await import('@/lib/google-calendar');
+    for (const b of synced) { const r = await removeBookingFromClinician(b.id).catch(() => ({ ok: false })); if (!r.ok) calendarFailures++; }
+    const all = await db.booking.findMany({ where: { clientId }, select: { id: true } });
+    const { removeBooking } = await import('@/lib/hostinger-calendar');
+    for (const b of all) { await removeBooking(b.id).catch(() => {}); }
+  } catch (e) { console.error('[delete] calendar cleanup failed (recorded in audit):', (e as Error)?.message); calendarFailures++; }
+
   try {
     // Cascades to the client's bookings, assessments, points, reviews, etc.
     await db.client.delete({ where: { id: clientId } });
@@ -166,8 +196,8 @@ export async function deleteClient(clientId: string, confirm: string) {
     actor: session.email,
     actorRole: session.role,
     clientId,
-    summary: 'Client permanently deleted (right to erasure)',
-    meta: { email: c.email },
+    summary: `Client permanently deleted (right to erasure)${calendarFailures ? ` — ${calendarFailures} synced calendar event(s) could not be removed, follow up manually` : ''}`,
+    meta: { email: c.email, ...(calendarFailures ? { calendarFailures } : {}) },
   });
   revalidatePath('/admin/clients');
   return { ok: true };
