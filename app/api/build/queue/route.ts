@@ -26,7 +26,10 @@ export async function GET(req: Request) {
   if (!tokenOk(req)) return NextResponse.json({ ok: false, error: 'Unauthorised' }, { status: 401 });
   try {
     const { routineQueue } = await import('@/lib/build-board');
-    return NextResponse.json({ ok: true, ...(await routineQueue()) }, { headers: { 'Cache-Control': 'no-store' } });
+    // Optional ?limit= (1-50, default 15) lets a long session read past the top
+    // window once it has moved the visible slice to IN_REVIEW.
+    const limit = Number(new URL(req.url).searchParams.get('limit')) || 15;
+    return NextResponse.json({ ok: true, ...(await routineQueue(limit)) }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) {
     console.error('[build/queue] failed', e);
     return NextResponse.json({ ok: false, error: 'Could not load the queue.' }, { status: 500 });

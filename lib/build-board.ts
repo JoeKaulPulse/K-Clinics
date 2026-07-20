@@ -950,7 +950,10 @@ export async function pendingWork() {
 /** Rich, self-contained work queue for an unattended routine session — includes
  *  full detail, open subtasks, blocking dependencies and recent comments so a
  *  session can act on DB-only items (e.g. reported bugs) without a login. */
-export async function routineQueue() {
+export async function routineQueue(limit = 15) {
+  // Clamped so a routine session can page past the default window without
+  // being able to demand the whole 150+-item board in one response.
+  const cap = Math.max(1, Math.min(50, Math.round(limit) || 15));
   const items = await db.buildItem.findMany({
     where: { assignee: 'claude', status: { in: ['TRIAGE', 'IN_PROGRESS', 'IN_REVIEW'] } },
     include: {
@@ -982,8 +985,8 @@ export async function routineQueue() {
     continueRequestedAt: continueAt,
     lastWakeAt: lastWake,
     counts: { actionable: actionable.length, blocked: blocked.length, awaitingSignoff: await db.buildItem.count({ where: { status: 'SHIPPED' } }) },
-    actionable: actionable.slice(0, 15).map(serialize),
-    blocked: blocked.slice(0, 15).map(serialize),
+    actionable: actionable.slice(0, cap).map(serialize),
+    blocked: blocked.slice(0, cap).map(serialize),
   };
 }
 
