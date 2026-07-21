@@ -40,7 +40,10 @@ export async function GET(req: Request) {
       points: { orderBy: { createdAt: 'desc' }, select: { points: true, category: true, reason: true, expiresAt: true, createdAt: true } },
       npsResponses: { orderBy: { sentAt: 'desc' }, select: { score: true, comment: true, treatment: true, sentAt: true, respondedAt: true } },
       waitlist: { orderBy: { createdAt: 'desc' }, select: { treatmentTitle: true, fromDate: true, toDate: true, status: true, createdAt: true } },
-      referralsMade: { orderBy: { createdAt: 'desc' }, select: { referredEmail: true, status: true, qualifiedAt: true, rewardedAt: true, createdAt: true } },
+      // PRJ-1033.5: no referredEmail here — that is the referred person's email
+      // (a third party's PII), and this login-only export must return only the
+      // signed-in subject's own data. Status + dates are the subject's own.
+      referralsMade: { orderBy: { createdAt: 'desc' }, select: { status: true, qualifiedAt: true, rewardedAt: true, createdAt: true } },
     },
   });
   if (!c) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });

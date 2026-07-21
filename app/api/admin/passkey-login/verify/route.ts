@@ -42,7 +42,11 @@ export async function POST(req: Request) {
       credential: { id: cred.credentialId, publicKey: new Uint8Array(cred.publicKey), counter: cred.counter, transports: cred.transports as AuthenticatorTransport[] },
     });
   } catch (e) {
-    return NextResponse.json({ ok: false, error: (e as Error)?.message || 'Could not verify passkey.' }, { status: 400 });
+    // PRJ-1033.4: don't leak WebAuthn ceremony detail (origin/RPID/challenge
+    // state) to an anonymous caller — log it, return a generic message. Mirrors
+    // the academy passkey routes hardened under PRJ-1032.5.
+    console.error('[admin passkey-login] verify failed:', (e as Error)?.message);
+    return NextResponse.json({ ok: false, error: 'Could not verify passkey.' }, { status: 400 });
   }
   if (!verification.verified) return NextResponse.json({ ok: false, error: 'Passkey not verified.' }, { status: 400 });
 

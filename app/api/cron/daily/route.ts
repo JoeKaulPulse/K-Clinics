@@ -123,9 +123,13 @@ export async function GET(req: Request) {
       db.signedConsent.deleteMany({ where: { signedAt: { lt: consentCutoff } } }),
       db.consentRequest.deleteMany({ where: { status: 'PENDING', expiresAt: { lt: new Date() } } }),
       db.beforePhoto.deleteMany({ where: { createdAt: { lt: consentCutoff } } }),
+      // PRJ-1033.1: past the retention window, also anonymise the counterparty
+      // phone numbers (personal data, like the SecurityEvent IP/email purge
+      // above) — not just the recording/transcript. Idempotent: once redacted a
+      // row no longer matches, so the sweep converges.
       db.callRecord.updateMany({
-        where: { startedAt: { lt: callCutoff }, OR: [{ transcript: { not: null } }, { recordingUrl: { not: null } }] },
-        data: { transcript: null, recordingUrl: null, raw: Prisma.DbNull, transcriptStatus: 'unavailable' },
+        where: { startedAt: { lt: callCutoff }, OR: [{ transcript: { not: null } }, { recordingUrl: { not: null } }, { fromNumber: { not: 'REDACTED' } }] },
+        data: { transcript: null, recordingUrl: null, raw: Prisma.DbNull, transcriptStatus: 'unavailable', fromNumber: 'REDACTED', toNumber: 'REDACTED' },
       }),
     ]);
     // GDPR: SecurityEvent rows hold IP + email + UA — no need beyond 90 days.
