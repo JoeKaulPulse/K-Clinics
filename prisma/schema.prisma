@@ -2952,6 +2952,21 @@ model AiAnalysisImage {
   @@index([analysisId])
 }
 
+// BLD-714: Stripe webhook idempotency ledger. Every handler is already
+// individually idempotent (CAS on booking/order state), but recording each
+// processed event.id here lets the entry point short-circuit a redelivery
+// before any handler runs — defence-in-depth against replay/double-process.
+// The Stripe event id (evt_...) IS the primary key, so a duplicate insert fails
+// structurally (P2002) with no @unique-on-existing-table deploy hazard. The
+// receivedAt index lets the daily retention sweep prune old rows.
+model ProcessedStripeEvent {
+  id         String   @id // Stripe event.id (evt_...)
+  type       String
+  receivedAt DateTime @default(now())
+
+  @@index([receivedAt])
+}
+
 // ── Careers — live vacancies (admin-managed) + applications ──────────────────
 model Vacancy {
   id          String   @id @default(cuid())

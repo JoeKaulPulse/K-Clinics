@@ -141,6 +141,27 @@ export async function GET(req: Request) {
     failures++; console.error('[cron] analytics retention failed (continuing):', (e as Error)?.message);
   }
 
+  // BLD-718: minimise identifier metadata on records that are retained for
+  // clinical/legal reasons. The submission IP on health assessments and the
+  // plaintext IP on signed consents (the SAME IP is preserved inside the
+  // encrypted consent evidence, so nothing evidential is lost) are no longer
+  // needed after 13 months — null them while the record itself is kept for its
+  // full retention period. Call `fromNumber` is deliberately retained as a call
+  // fact under the BLD-127 policy (who/when/duration stay), so it is not touched
+  // here; masking it would be a retention-policy change for the owner to make.
+  let idMeta = { assessments: 0, consents: 0 };
+  try {
+    const { db } = await import('@/lib/db');
+    const idMetaCutoff = new Date(Date.now() - 395 * 24 * 60 * 60 * 1000);
+    const [a, c] = await Promise.all([
+      db.healthAssessment.updateMany({ where: { submittedAt: { lt: idMetaCutoff }, submittedIp: { not: null } }, data: { submittedIp: null } }),
+      db.signedConsent.updateMany({ where: { signedAt: { lt: idMetaCutoff }, ip: { not: null } }, data: { ip: null } }),
+    ]);
+    idMeta = { assessments: a.count, consents: c.count };
+  } catch (e) {
+    failures++; console.error('[cron] identifier-metadata minimisation failed (continuing):', (e as Error)?.message);
+  }
+
   // BLD-314 Phase 3: GDPR retention sweep. Purge rejected/abandoned job
   // applications (no retention basis after the hiring decision) and reset tokens
   // that expired more than 7 days ago (pure housekeeping).
@@ -317,7 +338,7 @@ export async function GET(req: Request) {
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, retention, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, portfolioMigration, examBank, gamification, authored, courseContent, communityDigest },
+    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, retention, idMeta, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, portfolioMigration, examBank, gamification, authored, courseContent, communityDigest },
     { status: failures === 0 ? 200 : 500 },
   );
 }
