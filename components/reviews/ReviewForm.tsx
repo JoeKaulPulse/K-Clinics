@@ -51,10 +51,10 @@ export function ReviewForm({ token, googleUrl }: { token: string; googleUrl: str
 
   return (
     <div className="space-y-6">
-      {/* Stars */}
-      <div className="flex items-center gap-2">
+      {/* Stars — PRJ-1032.28: a radiogroup so assistive tech announces the chosen rating. */}
+      <div className="flex items-center gap-2" role="radiogroup" aria-label="Star rating">
         {[1, 2, 3, 4, 5].map((n) => (
-          <button key={n} type="button" onClick={() => setRating(n)} onMouseEnter={() => setHover(n)} onMouseLeave={() => setHover(0)} aria-label={`${n} star${n > 1 ? 's' : ''}`}>
+          <button key={n} type="button" role="radio" aria-checked={rating === n} onClick={() => setRating(n)} onMouseEnter={() => setHover(n)} onMouseLeave={() => setHover(0)} aria-label={`${n} star${n > 1 ? 's' : ''}`}>
             <svg viewBox="0 0 20 20" className={`h-10 w-10 transition-colors ${(hover || rating) >= n ? 'text-[var(--color-gold)]' : 'text-[var(--color-sand)]'}`} fill="currentColor">
               <path d="M10 1l2.47 5.18 5.68.74-4.18 3.9 1.06 5.62L10 19.4 4.97 16.44l1.06-5.62-4.18-3.9 5.68-.74z" />
             </svg>
