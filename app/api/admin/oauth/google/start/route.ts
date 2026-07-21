@@ -14,8 +14,9 @@ export async function GET(req: Request) {
   const { googleSsoEnabled, googleSsoAuthUrl } = await import('@/lib/google-sso');
   if (!(await googleSsoEnabled())) return loginErr('unavailable');
 
+  const { safeReturnPath } = await import('@/lib/safe-path');
   const from = new URL(req.url).searchParams.get('from') || '';
-  const safeFrom = from.startsWith('/') && !from.startsWith('//') ? from : '';
+  const safeFrom = safeReturnPath(from, ''); // PRJ-1032.1: reject backslash/host-bearing paths
 
   const { newOAuthState, attachOAuthState } = await import('@/lib/oauth-state');
   const state = `${newOAuthState('gsso')}|${encodeURIComponent(safeFrom)}`;

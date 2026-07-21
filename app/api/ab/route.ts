@@ -16,6 +16,10 @@ function weightedPick<T extends V>(variants: T[]): T {
 // (convert). Aggregate counters only — no per-visitor storage.
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
+  // PRJ-1032.4: this is an unauthenticated public write to the exposure/conversion
+  // counters — throttle per IP so cookie-less requests can't inflate the A/B data.
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'ab', 60, 600))) return NextResponse.json({ ok: false }, { status: 429 });
   const body = await req.json().catch(() => ({}));
   const slug = String(body.slug || '').slice(0, 60);
   if (!slug) return NextResponse.json({ ok: false }, { status: 400 });

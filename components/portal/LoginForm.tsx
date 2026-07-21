@@ -8,6 +8,7 @@ import { Turnstile } from '@/components/security/Turnstile';
 import { portalTranslator, DEFAULT_LOCALE, type Locale } from '@/lib/i18n-portal';
 import { isLocale } from '@/lib/i18n';
 import { IS_STATIC_DEMO } from '@/lib/static-demo';
+import { safeReturnPath } from '@/lib/safe-path';
 
 function readCookieLocale(): Locale {
   if (typeof document === 'undefined') return DEFAULT_LOCALE;
@@ -54,9 +55,8 @@ function Inner() {
       }
       const json = await res.json().catch(() => ({ ok: false, error: 'Unexpected response.' }));
       if (json.ok) {
-        // Only honour same-origin relative paths to avoid an open redirect.
-        const from = params.get('from');
-        router.push(from && from.startsWith('/') && !from.startsWith('//') ? from : '/account');
+        // Only honour same-origin relative paths to avoid an open redirect (PRJ-1032.1).
+        router.push(safeReturnPath(params.get('from'), '/account'));
         router.refresh();
       } else {
         if (json.requireCaptcha && json.captchaSiteKey) setCaptchaSiteKey(json.captchaSiteKey);

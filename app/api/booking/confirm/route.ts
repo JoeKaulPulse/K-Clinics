@@ -49,18 +49,15 @@ export async function POST(req: Request) {
   if (si.status !== 'succeeded' || !si.payment_method) {
     return NextResponse.json({ ok: false, error: 'Card not confirmed' }, { status: 400 });
   }
-  // BLD-700: proof of possession — only the browser that ran the Elements flow
-  // holds the SetupIntent client secret, so a matching secret ties the confirm
-  // to the actual payer (works for guests, no session needed). A mismatch is an
-  // active probe and is refused. Absent secret = a funnel session from before
-  // this deploy; allowed for now but reported, so enforcement can turn strict
-  // once the old sessions have aged out.
-  if (parsed.data.clientSecret) {
-    if (parsed.data.clientSecret !== si.client_secret) {
-      return NextResponse.json({ ok: false, error: 'Not your booking session.' }, { status: 403 });
-    }
-  } else {
-    Sentry.captureMessage('[booking/confirm] legacy confirm without client secret', { level: 'warning', tags: { route: 'booking/confirm' } });
+  // BLD-700 / PRJ-1032.3: proof of possession — only the browser that ran the
+  // Elements flow holds the SetupIntent client secret, so a matching secret ties
+  // the confirm to the actual payer (works for guests, no session needed). The
+  // secret is now REQUIRED: the pre-deploy funnel sessions it used to exempt have
+  // long since aged out, so an absent secret is treated as a probe and refused
+  // (previously it was allowed-but-reported, which let a guessed bookingId flip
+  // to CONFIRMED and fire the client email by simply omitting the field).
+  if (!parsed.data.clientSecret || parsed.data.clientSecret !== si.client_secret) {
+    return NextResponse.json({ ok: false, error: 'Not your booking session.' }, { status: 403 });
   }
   const pmId = typeof si.payment_method === 'string' ? si.payment_method : si.payment_method.id;
 

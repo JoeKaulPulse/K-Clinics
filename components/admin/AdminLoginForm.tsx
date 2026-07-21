@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { authField, authLabel } from '@/components/portal/AuthShell';
 import { Turnstile } from '@/components/security/Turnstile';
 import { startAuthentication } from '@simplewebauthn/browser';
+import { safeReturnPath } from '@/lib/safe-path';
 
 export function AdminLoginForm({ ssoEnabled = false }: { ssoEnabled?: boolean }) {
   return (
@@ -52,9 +53,8 @@ function Inner({ ssoEnabled }: { ssoEnabled: boolean }) {
       });
       const json = await res.json();
       if (json.ok) {
-        // Only honour same-origin relative paths to avoid an open redirect.
-        const from = params.get('from');
-        const dest = from && from.startsWith('/') && !from.startsWith('//') ? from : '/admin';
+        // Only honour same-origin relative paths to avoid an open redirect (PRJ-1032.1).
+        const dest = safeReturnPath(params.get('from'), '/admin');
         router.push(json.setup ? '/admin/profile?setup2fa=1' : dest);
         router.refresh();
         return;
@@ -77,8 +77,7 @@ function Inner({ ssoEnabled }: { ssoEnabled: boolean }) {
       const resp = await startAuthentication({ optionsJSON: o.options });
       const v = await fetch('/api/admin/passkey-login/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ response: resp }) }).then((r) => r.json());
       if (!v.ok) { setError(v.error || 'Could not sign in with that passkey.'); return; }
-      const from = params.get('from');
-      router.push(from && from.startsWith('/') && !from.startsWith('//') ? from : '/admin');
+      router.push(safeReturnPath(params.get('from'), '/admin')); // PRJ-1032.1
       router.refresh();
     } catch {
       setError('Passkey sign-in was cancelled.');

@@ -24,7 +24,9 @@ export async function POST(req: Request) {
   try {
     verification = await verifyRegistrationResponse({ response: body.response, expectedChallenge, expectedOrigin: origins, expectedRPID: rpID, requireUserVerification: true });
   } catch (e) {
-    return NextResponse.json({ ok: false, error: (e as Error)?.message || 'Could not verify passkey.' }, { status: 400 });
+    // PRJ-1032.5: don't return the raw simplewebauthn error to the client.
+    console.error('[academy] passkey register-verify failed:', (e as Error)?.message);
+    return NextResponse.json({ ok: false, error: 'Could not verify passkey. Please try again.' }, { status: 400 });
   }
   if (!verification.verified || !verification.registrationInfo) return NextResponse.json({ ok: false, error: 'Passkey not verified.' }, { status: 400 });
 
