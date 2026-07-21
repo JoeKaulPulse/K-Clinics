@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
@@ -27,7 +28,7 @@ export default async function CredentialsPage() {
       <p className="mt-1 max-w-2xl text-sm text-[var(--color-stone)]">
         Enter your integration keys here and they take effect immediately — no developer or redeploy needed. Values are
         encrypted and never shown again; we only display whether each one is set. A key set here always overrides the
-        hosting environment; if you clear it, the app falls back to any hosting value. See <a href="/admin/integrations" className="text-[var(--color-gold-deep)] hover:underline">Integrations</a> for live connection status.
+        hosting environment; if you clear it, the app falls back to any hosting value. See <Link href="/admin/integrations" className="text-[var(--color-gold-deep)] hover:underline">Integrations</Link> for live connection status.
       </p>
       <div className="mt-4 flex items-start gap-2 rounded-[var(--radius-md)] border border-[var(--color-gold)]/40 bg-[color-mix(in_oklab,var(--color-gold)_8%,transparent)] p-3 text-xs text-[var(--color-ink-soft)]">
         <span aria-hidden>🔒</span>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Avatar, AvatarStack } from './Avatar';
 import { NewChatModal } from './NewChatModal';
 import { useTeamChat } from './TeamChatProvider';
@@ -80,7 +81,7 @@ export function ChatLauncher() {
               </button>
             ))}
           </div>
-          <a href="/admin/messages" className="border-t border-[var(--color-line)] px-4 py-2.5 text-center text-xs text-[var(--color-gold-deep)] hover:bg-[var(--color-bone)]">Open messages page →</a>
+          <Link href="/admin/messages" className="border-t border-[var(--color-line)] px-4 py-2.5 text-center text-xs text-[var(--color-gold-deep)] hover:bg-[var(--color-bone)]">Open messages page →</Link>
         </div>
       )}
 

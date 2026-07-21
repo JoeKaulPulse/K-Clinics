@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import Image from 'next/image';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
@@ -110,7 +111,7 @@ export default async function MembershipPage() {
           </Stagger>
           <Reveal>
             <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-[var(--color-stone)]">
-              Manage your balance, see what’s expiring and grab your referral link any time from your <a href="/account/rewards" className="link-underline font-medium text-[var(--color-ink)]">rewards page</a>. Questions? Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>.
+              Manage your balance, see what’s expiring and grab your referral link any time from your <Link href="/account/rewards" className="link-underline font-medium text-[var(--color-ink)]">rewards page</Link>. Questions? Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>.
             </p>
           </Reveal>
         </div>

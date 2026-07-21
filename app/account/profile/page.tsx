@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { PortalShell } from '@/components/portal/PortalShell';
 import { PortalPageHeader } from '@/components/portal/PortalPageHeader';
 import { ProfileForm } from '@/components/portal/ProfileForm';
@@ -42,7 +43,7 @@ export default async function ProfilePage() {
         </a>
         <p className="mt-4 text-xs text-[var(--color-stone)]">
           {pt(locale, 'privacy.erase')}{' '}
-          <a href="/contact" className="font-medium text-[var(--color-gold-deep)]">{pt(locale, 'privacy.contact')}</a>
+          <Link href="/contact" className="font-medium text-[var(--color-gold-deep)]">{pt(locale, 'privacy.contact')}</Link>
         </p>
       </section>
     </PortalShell>

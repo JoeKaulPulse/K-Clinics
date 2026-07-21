@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import Link from 'next/link';
 import { Logo } from '@/components/brand/Logo';
 import { ResultCard, type KioskResultView } from './ResultCard';
 import { ClaimReward } from './ClaimReward';
@@ -389,12 +390,12 @@ export function KioskSessionFlow({
           <p className="mt-3 text-sm text-[var(--color-stone)]">
             If you’re 18 or over, come and say hello in the clinic — we’d love to meet you.
           </p>
-          <a
+          <Link
             href="/"
             className="mt-8 block w-full rounded-[var(--radius-md)] border border-[var(--color-gold)] px-6 py-4 text-lg font-medium text-[var(--color-gold-bright)] transition hover:opacity-90"
           >
             Explore K Clinics →
-          </a>
+          </Link>
         </motion.div>
       )}
 

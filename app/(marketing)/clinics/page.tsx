@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
@@ -125,7 +126,7 @@ export default async function ClinicsPage() {
                 <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> Accessible parking as close to the entrance as possible.</li>
                 <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> Spacious, comfortable waiting areas for clients using mobility aids.</li>
               </ul>
-              <p className="mt-5 text-sm text-[var(--color-stone)]">Anything you need to make your visit easier? Tell us when you book, or read our <a href="/info/accessibility" className="link-underline font-medium text-[var(--color-ink)]">accessibility statement</a>.</p>
+              <p className="mt-5 text-sm text-[var(--color-stone)]">Anything you need to make your visit easier? Tell us when you book, or read our <Link href="/info/accessibility" className="link-underline font-medium text-[var(--color-ink)]">accessibility statement</Link>.</p>
             </div>
             <AccessBadges tone="light" className="lg:justify-end" />
           </div>

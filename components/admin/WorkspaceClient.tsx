@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { WorkspaceSeatAudit } from '@/components/admin/WorkspaceSeatAudit';
 
@@ -170,7 +171,7 @@ export function WorkspaceClient() {
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
             <strong>Not configured.</strong> Set <code>GOOGLE_WORKSPACE_SA_KEY</code> and{' '}
             <code>GOOGLE_WORKSPACE_ADMIN_EMAIL</code> in{' '}
-            <a href="/admin/settings/credentials" className="underline">Admin &gt; Credentials</a>.
+            <Link href="/admin/settings/credentials" className="underline">Admin &gt; Credentials</Link>.
             See <a href="/docs/GOOGLE_WORKSPACE_MIGRATION.md" className="underline">the setup guide</a> (§10.1) for the service account steps.
           </div>
         )}
