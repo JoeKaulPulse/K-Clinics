@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 export function NewsletterForm({ source = 'footer' }: { source?: string } = {}) {
   const [email, setEmail] = useState('');
@@ -42,7 +43,7 @@ export function NewsletterForm({ source = 'footer' }: { source?: string } = {}) 
       </div>
       {state === 'error' && <p className="mt-2 text-xs text-[var(--color-blush)]">{msg}</p>}
       <p className="mt-2.5 text-[0.7rem] leading-relaxed text-[color-mix(in_oklab,var(--color-porcelain)_50%,transparent)]">
-        By subscribing you agree to receive occasional updates. Unsubscribe any time. See our <a href="/info/privacy-policy" className="underline hover:text-[var(--color-gold-soft)]">privacy policy</a>.
+        By subscribing you agree to receive occasional updates. Unsubscribe any time. See our <Link href="/info/privacy-policy" className="underline hover:text-[var(--color-gold-soft)]">privacy policy</Link>.
       </p>
     </form>
   );

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { crmEnabled } from '@/lib/crm';
 
 // Promoted special offers, surfaced on the marketing site and in client portals.
@@ -33,7 +34,7 @@ export async function OffersStrip({ heading = 'Offers on now' }: { heading?: str
           </li>
         ))}
       </ul>
-      <p className="mt-4 text-xs text-[var(--color-stone)]">Discounts apply automatically at booking. <a href="/book" className="link-underline font-medium text-[var(--color-ink)]">Book now →</a></p>
+      <p className="mt-4 text-xs text-[var(--color-stone)]">Discounts apply automatically at booking. <Link href="/book" className="link-underline font-medium text-[var(--color-ink)]">Book now →</Link></p>
     </div>
   );
 }

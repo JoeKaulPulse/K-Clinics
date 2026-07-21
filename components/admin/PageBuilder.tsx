@@ -126,7 +126,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
     <div className="pb-10">
       {/* Toolbar */}
       <div className="sticky top-0 z-30 -mx-5 mb-5 flex flex-wrap items-center gap-3 border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-bone)_92%,transparent)] px-5 py-3 backdrop-blur md:-mx-8 md:px-8">
-        <a href="/admin/pages" className="text-sm text-[var(--color-gold-deep)] hover:underline">← Pages</a>
+        <Link href="/admin/pages" className="text-sm text-[var(--color-gold-deep)] hover:underline">← Pages</Link>
         <div className="mr-auto">
           <p className="font-[family-name:var(--font-display)] text-lg leading-none">{initial.path}</p>
           <p className="mt-1 text-xs text-[var(--color-stone)]">

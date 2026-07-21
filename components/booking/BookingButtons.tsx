@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { site } from '@/lib/site';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 
@@ -39,7 +40,7 @@ export function BookingProviders({ className = '' }: { className?: string }) {
     <div className={`flex flex-wrap items-center gap-x-6 gap-y-3 ${className}`}>
       <span className="text-xs uppercase tracking-[0.2em] text-[var(--color-stone)]">Reserve your visit</span>
       <a href={site.booking.path} className="link-underline text-sm font-medium">Book online</a>
-      <a href="/consultation" className="link-underline text-sm font-medium">Free consultation</a>
+      <Link href="/consultation" className="link-underline text-sm font-medium">Free consultation</Link>
       <a href={site.phoneHref} className="link-underline text-sm font-medium">{site.phone}</a>
     </div>
   );

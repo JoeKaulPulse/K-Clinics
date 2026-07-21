@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 // Share-to-claim reward: after sharing, the visitor enters their name + email to
 // create an account and receive a single-use discount code (issued + emailed by
@@ -46,7 +47,7 @@ export function ClaimReward({ resultId, hasShared = false }: { resultId: string;
         <p className="mt-2 text-sm text-[var(--color-stone)]">Quote this code when you book your first treatment. We’ve emailed it to you too.</p>
         <p className="mx-auto mt-4 inline-block rounded-[var(--radius-md)] border-2 border-dashed border-[var(--color-gold)] px-5 py-3 font-[family-name:var(--font-mono,monospace)] text-2xl tracking-widest">{done.code}</p>
         <p className="mt-3 text-xs text-[var(--color-stone)]">Single use · valid {done.days} days · ages 18+.</p>
-        <a href="/book" className="mt-5 block rounded-[var(--radius-md)] bg-[var(--color-ink)] px-4 py-3 text-base font-medium text-[var(--color-porcelain)] transition hover:opacity-90">Book your treatment →</a>
+        <Link href="/book" className="mt-5 block rounded-[var(--radius-md)] bg-[var(--color-ink)] px-4 py-3 text-base font-medium text-[var(--color-porcelain)] transition hover:opacity-90">Book your treatment →</Link>
       </div>
     );
   }

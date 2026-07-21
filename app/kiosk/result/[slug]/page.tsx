@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { db } from '@/lib/db';
 import { ResultCard } from '@/components/kiosk/ResultCard';
 
@@ -36,12 +37,12 @@ export default async function KioskResultPage({ params }: { params: Promise<{ sl
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[var(--color-ink)] px-5 py-10">
       <ResultCard result={result} showShare claimHref={`/account/signup?ref=kiosk&slug=${result.shareSlug}`} />
-      <a
+      <Link
         href="/kiosk/display"
         className="text-sm text-[var(--color-gold-soft)] underline underline-offset-4 hover:text-[var(--color-gold)]"
       >
         Try the Skin &amp; Smile scanner →
-      </a>
+      </Link>
     </main>
   );
 }

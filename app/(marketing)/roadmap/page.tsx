@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { listPublicItems } from '@/lib/build-board';
 import { comingSoonContent, shippedContent, type RoadmapEntry } from '@/lib/roadmap-content';
 import { pageMeta } from '@/lib/seo';
@@ -136,7 +137,7 @@ export default async function RoadmapPage() {
 
       <div className="mt-16 border-t border-[var(--color-line)] pt-8 text-center">
         <p className="text-sm text-[var(--color-stone)]">
-          Have a suggestion? <a href="/contact" className="text-[var(--color-gold-deep)] underline">Get in touch</a>
+          Have a suggestion? <Link href="/contact" className="text-[var(--color-gold-deep)] underline">Get in touch</Link>
         </p>
       </div>
     </main>

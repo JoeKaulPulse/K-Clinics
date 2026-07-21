@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
@@ -40,7 +41,7 @@ export default async function SeoPage() {
             {gsc.configured && <span className="text-xs text-[var(--color-stone)] tabular-nums">{gsc.totals.clicks.toLocaleString('en-GB')} clicks · {gsc.totals.impressions.toLocaleString('en-GB')} impressions · {pct(gsc.totals.ctr)} CTR</span>}
           </div>
           {!gsc.configured ? (
-            <p className="text-sm text-[var(--color-stone)]">Connect Google in <a href="/admin/marketing/connections" className="underline">Connections</a> (the Search Console scope is already requested) and make sure this site is verified in Search Console to see your top organic queries, impressions, CTR and average ranking here.</p>
+            <p className="text-sm text-[var(--color-stone)]">Connect Google in <Link href="/admin/marketing/connections" className="underline">Connections</Link> (the Search Console scope is already requested) and make sure this site is verified in Search Console to see your top organic queries, impressions, CTR and average ranking here.</p>
           ) : gsc.topQueries.length === 0 ? (
             <p className="text-sm text-[var(--color-stone)]">No Search Console data for the last 28 days.</p>
           ) : (

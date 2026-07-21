@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { crmEnabled } from '@/lib/crm';
@@ -73,7 +74,7 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
     <Shell>
       <h2 className="text-title">{m.title}</h2>
       <p className="mt-3 text-[var(--color-ink-soft)]">{m.body}</p>
-      <a href="/book" className="mt-6 inline-block rounded-full bg-[var(--color-ink)] px-7 py-3 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)]">See live availability</a>
+      <Link href="/book" className="mt-6 inline-block rounded-full bg-[var(--color-ink)] px-7 py-3 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)]">See live availability</Link>
       {callUs}
     </Shell>
   );
