@@ -19,7 +19,7 @@
   --color-porcelain: #f6ece3;  /* primary light background — brand cream */
   --color-bone: #efe3d7;       /* secondary light surface */
   --color-sand: #e3d3c4;       /* muted warm border / divider */
-  --color-stone: #7d6259;      /* muted body text — brand taupe (AA on light) */
+  --color-stone: #775f54;      /* muted body text — brand taupe. PRJ-1032.32: nudged a hair darker than the old #7d6259 so small text clears AA (4.5:1) on the bone surface too, not just porcelain (4.69 on bone, 5.08 on porcelain); barely perceptible, strictly higher contrast everywhere. Sand is a divider colour — put small body text on sand in ink-soft. */
   --color-stone-soft: #b7a294; /* decorative/borders only — NOT for text on light */
 
   --color-gold: #a98a6d;       /* warm taupe-gold — decorative/large-text accent */
