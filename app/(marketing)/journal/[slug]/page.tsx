@@ -124,7 +124,7 @@ const JOURNAL_PROSE_CSS = `
 .journal-prose li{margin:0.4rem 0;}
 .journal-prose ul li{list-style:disc;}
 .journal-prose ol li{list-style:decimal;}
-.journal-prose a{color:var(--color-gold);text-decoration:underline;text-underline-offset:3px;}
+.journal-prose a{color:var(--color-gold-deep);text-decoration:underline;text-underline-offset:3px;}
 .journal-prose strong{color:var(--color-ink);font-weight:600;}
 .journal-prose img{max-width:100%;height:auto;border-radius:var(--radius-lg);margin:1.5rem 0;}
 .journal-prose blockquote{border-left:3px solid var(--color-gold);padding-left:1rem;margin:1.5rem 0;color:var(--color-stone);font-style:italic;}
