@@ -2768,6 +2768,16 @@ model Enrolment {
   notes          String?
   preCourseAckAt DateTime? // BLD-445: when the learner acknowledged the pre-course information page
 
+  // BLD-730: signed Learner (Training) Agreement — a contract for the provision
+  // of training services, signed at the pre-course gate before lessons unlock.
+  // The typed full name + timestamp + wording version make the signature
+  // demonstrable; bump LEARNER_AGREEMENT_VERSION (lib/learner-agreement.ts)
+  // whenever the wording changes. Additive, nullable — existing enrolments that
+  // already acknowledged the pre-course gate are not re-gated.
+  agreementSignedAt   DateTime?
+  agreementSignedName String?
+  agreementVersion    String?
+
   // BLD-528: enrolment + payment engine. The place is confirmed by staff (offer),
   // then the learner accepts & pays online (full or deposit) or staff set up an
   // in-house instalment plan. paidPence is the source of truth for "how much is in";

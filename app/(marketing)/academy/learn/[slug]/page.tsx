@@ -38,11 +38,20 @@ export default async function LearnPage({ params }: { params: Promise<{ slug: st
   }
 
   // BLD-445: the mandatory pre-course information must be acknowledged first.
-  if (learning.course.preCourseInfo && !learning.preCourseAck) {
+  // BLD-730: the gate now also collects the signed Learner Agreement, and shows
+  // for every not-yet-acked enrolment (even when a course has no pre-course
+  // info page) so no new learner starts without a signed agreement. Learners who
+  // already acknowledged are not re-gated.
+  if (!learning.preCourseAck) {
     const { PreCourseGate } = await import('@/components/academy/PreCourseGate');
+    const { LEARNER_AGREEMENT_SECTIONS, LEARNER_AGREEMENT_VERSION } = await import('@/lib/learner-agreement');
     return (
       <AcademyPortalShell firstName={student.firstName}>
-        <PreCourseGate slug={slug} title={learning.course.title} level={learning.course.level} content={learning.course.preCourseInfo} />
+        <PreCourseGate
+          slug={slug} title={learning.course.title} level={learning.course.level}
+          content={learning.course.preCourseInfo ?? ''}
+          agreement={{ sections: LEARNER_AGREEMENT_SECTIONS, version: LEARNER_AGREEMENT_VERSION }}
+        />
       </AcademyPortalShell>
     );
   }
