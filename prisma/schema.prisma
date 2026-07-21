@@ -181,6 +181,7 @@ enum AuditAction {
   TASK_ASSIGNED // an internal task was assigned to a colleague (PRJ-63.11)
   TASK_COMPLETED // an assigned task was marked done (PRJ-63.11)
   ROOM_TURNOVER // a room was handed over for cleaning after a session (PRJ-63.11)
+  INCIDENT_LOGGED // a staff-only internal incident (accident) report was logged (BLD-760)
 }
 
 enum ReviewStatus {
@@ -374,6 +375,7 @@ model Client {
   referredVia    Referral?          @relation("ReferralReceived")
   callRecords    CallRecord[]
   academyStudents AcademyStudent[] // BLD-528: linked K Academy trainee account(s) (same person, by email)
+  incidents      Incident[] // BLD-760: staff-only internal incident (accident) reports
 
   @@index([createdAt])
   @@index([dob])
@@ -500,6 +502,39 @@ model Interaction {
 
   @@index([clientId, createdAt])
   @@index([clientId, pinned])
+}
+
+// ── Internal incident (accident) report — BLD-760 ───────────────────────────
+// Staff-only record of an incident during or after a treatment. NEVER exposed to
+// the client portal (admin surfaces only). The health/injury free-text
+// (description, injury, action taken, witnesses) is AES-256-GCM encrypted at
+// rest in `descriptionEnc` via the same encClinical helper used for clinical
+// notes — it never sits in a plaintext column and never appears in an audit
+// summary or the client timeline. The non-sensitive classification
+// (category / severity / location / RIDDOR flag) stays in the clear so staff can
+// triage. Linked to the client (so it surfaces in their treatment history) and
+// optionally to the booking it happened at.
+model Incident {
+  id        String   @id @default(cuid())
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId  String
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  bookingId String?
+
+  category String // slip_trip | adverse_reaction | equipment | other
+  severity String // minor | moderate | serious
+  location String?
+
+  // Encrypted JSON blob: { description, injury, actionTaken, witnesses }.
+  descriptionEnc   String
+  riddorReportable Boolean @default(false)
+
+  loggedBy  String? // staff email who logged it
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([bookingId])
 }
 
 model Appointment {
@@ -661,6 +696,7 @@ model Booking {
   items       BookingItem[] // line items: primary treatment + any upsell add-ons
   followUp    FollowUp? // post-treatment follow-up questionnaire
   liveSession AppointmentSession? // BLD-138 interactive in-clinic session
+  incidents   Incident[] // BLD-760: internal incident reports linked to this appointment
 
   @@index([startAt])
   @@index([status])
