@@ -32,6 +32,7 @@ const genderLabel = (g: string, selfDescribe?: string | null) =>
 import { MedicalFlagEditor } from '@/components/admin/MedicalFlagEditor';
 import { PatchTestEditor } from '@/components/admin/PatchTestEditor';
 import { ClientTasks } from '@/components/admin/ClientTasks';
+import { LogIncident } from '@/components/admin/LogIncident';
 import { DataPrivacy } from '@/components/admin/DataPrivacy';
 import { sessionCan } from '@/lib/auth';
 import { fmtClinicTime, fmtClinicDate } from '@/lib/clinic-time';
@@ -424,6 +425,11 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
               assigneeName: tk.assignee?.name || tk.assignee?.email || null,
             }))}
           />
+
+          {/* Internal incident (accident) report — staff only (BLD-760). Gated on
+              clients.edit to match the API; the completed report links into this
+              client's treatment history. Never surfaced to the client portal. */}
+          {sessionCan(session, 'clients.edit') && <LogIncident clientId={c.id} />}
 
           {/* Welcome discount */}
           {c.discountClaims.length > 0 && (
