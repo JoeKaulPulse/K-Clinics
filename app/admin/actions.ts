@@ -34,6 +34,7 @@ export async function eraseClientData(clientId: string) {
   if (!session || !sessionCan(session, 'clients.delete')) return { ok: false, error: 'Not permitted' };
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
+  const { encClinical } = await import('@/lib/clinical-crypto');
   // Fetch before erasing — purchaserEmail is a plain string (no FK), so we
   // need the current email to match GiftVouchers the client purchased.
   const client = await db.client.findUnique({ where: { id: clientId }, select: { email: true } });
@@ -135,6 +136,23 @@ export async function eraseClientData(clientId: string) {
     db.promoRedemption.updateMany({ where: { email: client.email.toLowerCase() }, data: { email: null } }),
     // BLD-671: remove NewsletterSubscriber rows by email — no retention basis post-erasure.
     db.newsletterSubscriber.deleteMany({ where: { email: client.email.toLowerCase() } }),
+    // PRJ-1032.15: Incident (adverse-reaction/accident) records hold AES-encrypted
+    // special-category free-text keyed by clientId (BLD-760). They have a genuine
+    // H&S/RIDDOR retention basis (Art. 17(3)(b)), so — like bookings/consultations —
+    // the row is RETAINED but its identifying/health narrative is stripped: the
+    // encrypted description/injury/witnesses blob is redacted and the free-text
+    // location nulled, leaving only the anonymised safety fact (category, severity,
+    // RIDDOR flag, date). Documented in docs/data-protection/retention-schedule.md.
+    db.incident.updateMany({ where: { clientId }, data: { descriptionEnc: encClinical(JSON.stringify({ redacted: 'client-erased' })), location: null } }),
+    // PRJ-1032.17: BookingIntent (abandoned-checkout funnel) captures the person's
+    // email for the finish-your-booking nudge. Guest rows aren't reached by any FK
+    // and have no retention basis once erased — delete by email (mirrors the
+    // email-matched GiftVoucher/PromoRedemption erasure above).
+    db.bookingIntent.deleteMany({ where: { email: { equals: client.email, mode: 'insensitive' } } }),
+    // PRJ-1032.19: the clientId-linked EmailEvent rows are deleted above; also purge
+    // guest rows addressed to this person's email (clientId null, `to` = the address)
+    // so no send metadata carrying their email survives erasure.
+    db.emailEvent.deleteMany({ where: { to: { equals: client.email, mode: 'insensitive' } } }),
   ]);
   // BLD-799: synced calendar events carry the client's name/contact details and
   // booking notes into clinicians' Google Calendars and the shared clinic CalDAV

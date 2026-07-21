@@ -101,6 +101,18 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     promoRedemptions,
   };
 
+  // PRJ-1032.16: the subject's own incident/accident records are their personal +
+  // special-category data (Art. 15) — include them, decrypting the health
+  // free-text only under the clinical gate (metadata always; content when clinical).
+  const incidents = await db.incident.findMany({ where: { clientId: id }, orderBy: { createdAt: 'desc' } });
+  out.incidents = incidents.map((inc) => {
+    const base = { id: inc.id, bookingId: inc.bookingId, category: inc.category, severity: inc.severity, location: inc.location, riddorReportable: inc.riddorReportable, loggedBy: inc.loggedBy, createdAt: inc.createdAt };
+    if (!clinical) return base;
+    let detail: unknown = null;
+    try { detail = JSON.parse(decClinical(inc.descriptionEnc) || '{}'); } catch { /* corrupt/redacted cipher → no detail */ }
+    return { ...base, detail };
+  });
+
   // BLD-315: use the revocable permission, not the role-based canViewClinical.
   if (clinical) {
     const assessments = await db.healthAssessment.findMany({ where: { clientId: id }, orderBy: { submittedAt: 'desc' } });
