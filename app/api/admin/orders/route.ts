@@ -99,6 +99,23 @@ export async function POST(req: Request) {
         } catch (e) { console.error('[orders] refund/cancel email failed for', body.id, (e as Error)?.message); }
       }
     }
+    // PRJ-1033.2: a PENDING (unpaid) order that reserved a gift voucher at
+    // checkout still has that balance debited. needsMoneyReversal is false for an
+    // unpaid Cancel, so the restore above is skipped — and because this manual
+    // flip consumes the PENDING status, neither the payment_intent.canceled nor
+    // the checkout.session.expired webhook can win the claim to credit it either,
+    // stranding real customer balance. Claim the transition atomically here and
+    // credit only on the winning claim, so a concurrent webhook can't double-credit.
+    else if (body.status === 'CANCELLED' && !alreadyReversed && order.giftCardCode && order.giftCardPence && order.giftCardPence > 0) {
+      const claimed = await db.order.updateMany({ where: { id: body.id, status: 'PENDING' }, data: { status: 'CANCELLED' } });
+      if (claimed.count > 0) {
+        try { const { creditVoucher } = await import('@/lib/gift-vouchers'); await creditVoucher(order.giftCardCode, order.giftCardPence); }
+        catch (e) {
+          console.error('[orders] unpaid-cancel voucher restore failed for', body.id, (e as Error)?.message);
+          Sentry.captureException(e, { tags: { area: 'admin/orders', stage: 'voucher-restore-unpaid' } });
+        }
+      }
+    }
   }
 
   const data: Record<string, unknown> = {};
@@ -113,13 +130,23 @@ export async function POST(req: Request) {
     select: { email: true, number: true, fulfillment: true, method: true, trackingNote: true, status: true, paidAt: true },
   });
 
-  // PRJ-1032.7: stamp the settlement time when staff manually flip an order to
-  // PAID, so it lands in the right day-close session. Only on a genuine first
-  // transition — never overwrite an existing paidAt (that would move already-
-  // settled takings to today).
-  if (data.status === 'PAID' && prevOrder && !prevOrder.paidAt) data.paidAt = new Date();
+  // PRJ-1033.3: a manual PENDING→PAID must go through finalizeOrder, not a bare
+  // status write. finalizeOrder atomically claims the order, decrements stock,
+  // redeems any reserved voucher, stamps paidAt (PRJ-1032.7) and emails
+  // confirmation — it is the single canonical "order is now paid" path and is
+  // idempotent. Writing status:PAID directly skipped the stock decrement, so a
+  // later Cancel/Refund (wasPaid=true) ran restockOrder and inflated inventory.
+  if (data.status === 'PAID' && prevOrder?.status === 'PENDING') {
+    const { finalizeOrder } = await import('@/lib/shop');
+    await finalizeOrder(body.id);
+    delete data.status; // finalizeOrder owns the PAID flip + paidAt
+  } else if (data.status === 'PAID' && prevOrder && !prevOrder.paidAt) {
+    // Rare non-PENDING → PAID (e.g. reinstating an order): keep the plain flip
+    // and still stamp the settlement time so day-close brackets it correctly.
+    data.paidAt = new Date();
+  }
 
-  await db.order.update({ where: { id: body.id }, data });
+  if (Object.keys(data).length > 0) await db.order.update({ where: { id: body.id }, data });
   const { logAudit } = await import('@/lib/audit');
   await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: `Updated order ${body.id}` });
 

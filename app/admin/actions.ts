@@ -97,8 +97,11 @@ export async function eraseClientData(clientId: string) {
     // contains the client's typed name; startedBy stores staff email). Must be
     // erased under Art. 17 — no financial retention basis for the session data.
     db.appointmentSession.deleteMany({ where: { booking: { clientId } } }),
-    // BLD-127: scrub call recordings/transcripts/raw payload for this client.
-    db.callRecord.updateMany({ where: { matchedClientId: clientId }, data: { transcript: null, recordingUrl: null, raw: Prisma.DbNull, transcriptStatus: 'unavailable' } }),
+    // BLD-127 / PRJ-1033.1: scrub call recordings/transcripts/raw payload AND the
+    // direct identifiers — fromNumber/toNumber (one is the client's real number),
+    // the staff note and match label — then unlink the call from the erased
+    // client. Previously the numbers survived erasure and re-surfaced in a SAR.
+    db.callRecord.updateMany({ where: { matchedClientId: clientId }, data: { transcript: null, recordingUrl: null, raw: Prisma.DbNull, transcriptStatus: 'unavailable', fromNumber: 'REDACTED', toNumber: 'REDACTED', matchedLabel: null, notes: null, matchedClientId: null } }),
     // BLD-286: broaden Art. 17 to non-special-category personal-data tables.
     // Referrals made by this client (referrer PII) — hard-delete; the reward
     // history has no stand-alone retention basis once the referrer is erased.
@@ -114,6 +117,9 @@ export async function eraseClientData(clientId: string) {
     db.chatConversation.deleteMany({ where: { OR: [{ clientId }, { visitorEmail: { equals: client.email, mode: 'insensitive' } }] } }),
     // Waitlist entries (treatment window, contact details) — no retention basis.
     db.waitlistEntry.deleteMany({ where: { clientId } }),
+    // PRJ-1033.6: consent requests keyed to this client — remove for completeness
+    // (the SAR lists them as subject data; only PENDING+expired rows were purged).
+    db.consentRequest.deleteMany({ where: { clientId } }),
     // Legacy Appointment model (pre-Booking era) — status/schedule data only,
     // no financial retention basis, safe to hard-delete.
     db.appointment.deleteMany({ where: { clientId } }),
