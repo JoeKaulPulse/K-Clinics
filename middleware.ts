@@ -93,10 +93,11 @@ const isPublicAcademyPath = (p: string) =>
 // resolving without a DB hit on every request.
 type RedirectMap = Record<string, { to: string; code: number }>;
 let _redirects: { map: RedirectMap; at: number } | null = null;
-async function loadRedirects(origin: string): Promise<RedirectMap> {
+async function loadRedirects(): Promise<RedirectMap> {
   if (_redirects && Date.now() - _redirects.at < 60_000) return _redirects.map;
+  if (!SELF_BASE) return _redirects?.map ?? {}; // no trusted base → fail open
   try {
-    const res = await fetch(`${origin}/api/redirects`, { headers: { 'x-mw-redirects': '1' } });
+    const res = await fetch(`${SELF_BASE}/api/redirects`, { headers: { 'x-mw-redirects': '1' } });
     if (res.ok) _redirects = { map: (await res.json()) as RedirectMap, at: Date.now() };
   } catch { /* keep stale cache on failure */ }
   return _redirects?.map ?? {};
@@ -105,7 +106,7 @@ async function matchRedirect(req: NextRequest): Promise<NextResponse | null> {
   const { pathname, search, origin } = req.nextUrl;
   // Only the public marketing surface — never the app areas or our own handlers.
   if (/^\/(admin|account|api|qr)(\/|$)/.test(pathname)) return null;
-  const map = await loadRedirects(origin);
+  const map = await loadRedirects();
   const key = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname;
   const hit = map[key] ?? map[pathname];
   if (!hit) return null;
@@ -120,10 +121,11 @@ async function matchRedirect(req: NextRequest): Promise<NextResponse | null> {
 // at most once every 30s, so a blocked IP is denied page requests without a DB
 // hit per request. Fails OPEN (no block) on any fetch error — a telemetry
 // outage must never lock out legitimate visitors.
-// Trusted, non-user-controlled base for the internal feed. Never the request
-// Host (req.nextUrl.origin) — a client can spoof Host, which would turn this
-// self-fetch into an SSRF sink. NEXT_PUBLIC_SITE_URL is the canonical site URL
-// the rest of the app already uses for absolute links.
+// Trusted, non-user-controlled base for internal self-fetches (this feed and
+// loadRedirects above). Never the request Host (req.nextUrl.origin) — a client
+// can spoof Host, which would turn either self-fetch into an SSRF sink.
+// NEXT_PUBLIC_SITE_URL is the canonical site URL the rest of the app already
+// uses for absolute links.
 const SELF_BASE = (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/$/, '');
 let _blocked: { set: Set<string>; at: number } | null = null;
 async function blockedIps(): Promise<Set<string>> {

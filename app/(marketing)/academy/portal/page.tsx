@@ -15,6 +15,14 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: 'Trai
 export const dynamic = 'force-dynamic';
 
 const STATUS_LABEL: Record<string, string> = { APPLIED: 'Application received', OFFERED: 'Place offered', PAID: 'Paid', ENROLLED: 'Enrolled', COMPLETED: 'Completed', CANCELLED: 'Cancelled' };
+const FUNDING_STATUS: Record<string, { label: string; tone: 'neutral' | 'info' | 'good' | 'gold' }> = {
+  NEW: { label: 'Application received', tone: 'neutral' },
+  REVIEWING: { label: 'Under review', tone: 'info' },
+  REFERRED: { label: 'Referred to funding provider', tone: 'info' },
+  APPROVED: { label: 'Approved', tone: 'good' },
+  FUNDED: { label: 'Fully funded', tone: 'good' },
+  DECLINED: { label: 'Not funded', tone: 'neutral' },
+};
 const fmtDate = (d: Date) => d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
 const fmtShort = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 const fmtTime = (d: Date) => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -93,6 +101,12 @@ export default async function AcademyPortalPage() {
     ?? null;
   const offers = enrolments.filter((e) => e.status === 'OFFERED' && money.get(e.id));
   const balances = enrolments.filter((e) => ACTIVE.includes(e.status) && (money.get(e.id)?.outstandingPence ?? 0) > 0);
+  // BLD-741: surface funding application status — previously only visible to staff.
+  const fundingApps = await db.fundingApplication.findMany({
+    where: { studentId: student.id, status: { not: 'CLOSED' } },
+    orderBy: { updatedAt: 'desc' },
+    include: { course: { select: { title: true } } },
+  });
   // Don't greet a brand-new trainee with a wall of zeroes — only show the
   // gamification snapshot once they're actually studying or have earned XP.
   const showGamification = activeWithContent.length > 0 || standing.xp > 0;
@@ -141,6 +155,29 @@ export default async function AcademyPortalPage() {
                 <AButton href={`/academy/pay/${e.id}`} variant="secondary" className="shrink-0">Pay balance →</AButton>
               </Card>
             ); })}
+          </div>
+        </section>
+      )}
+
+      {/* Funding application status (BLD-741) */}
+      {fundingApps.length > 0 && (
+        <section className="mb-8">
+          <SectionTitle>Funding application</SectionTitle>
+          <div className="space-y-3">
+            {fundingApps.map((f) => {
+              const st = FUNDING_STATUS[f.status] ?? { label: f.status, tone: 'neutral' as const };
+              return (
+                <Card key={f.id} tone="porcelain" className="flex flex-wrap items-center justify-between gap-3 p-4">
+                  <div>
+                    <p className="flex items-center gap-2 font-medium text-[var(--color-ink)]">
+                      {f.course?.title ?? 'Funding application'}
+                      <Pill tone={st.tone}>{st.label}</Pill>
+                    </p>
+                    <p className="text-sm text-[var(--color-stone)]">Updated {fmtShort(f.updatedAt.toISOString())}</p>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         </section>
       )}

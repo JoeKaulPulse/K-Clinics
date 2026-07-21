@@ -2639,6 +2639,31 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: "The AI plan was gated behind a name + email + password account — the biggest drop-off point in the flow.",
     notes: ["Owner chose email-only signup (20 Jul). The K Vision signup is passwordless: name + email creates a guest account (BLD-550), the plan reveals immediately on a live session, and a one-tap sign-in link is emailed for returning later. Login mode keeps the password field for the minority who set one. No schema change."],
   },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: "middleware.ts redirect self-fetch uses the request's own Host-derived origin — the same SSRF pattern a neighboring fetch was hardened against", type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1662),
+    value: 5, effort: 2,
+    detail: "loadRedirects built its self-fetch URL from req.nextUrl.origin, a client-spoofable Host header — the same SSRF sink blockedIps() next to it was already hardened against.",
+    notes: ["Fix: loadRedirects now uses the same trusted SELF_BASE (NEXT_PUBLIC_SITE_URL) constant blockedIps already used, instead of the request-derived origin."],
+  },
+  {
+    title: 'Add scheduled uptime monitoring for the live health check', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1662),
+    value: 7, effort: 3,
+    detail: 'scripts/healthcheck.mjs and /api/health were well-built but nothing scheduled them — no automatic detection of a production outage between manual audits.',
+    notes: ["Fix: Vercel Cron hits /api/health every 5 minutes (matching the project's existing /api/cron/* convention, CRON_SECRET-authed); a failed check pages CRON_ALERT_WEBHOOK_URL and Sentry, mirroring app/api/cron/daily. CRON_ALERT_WEBHOOK_URL documented in .env.example (used in 3 places, previously undocumented)."],
+  },
+  {
+    title: 'Academy funding application decisions never reach the student', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1662),
+    value: 7, effort: 4,
+    detail: 'Staff decisions on FundingApplication.status (APPROVED/DECLINED/FUNDED) were saved with no email and no portal visibility for the applicant.',
+    notes: ['Fix: a status-change email (tmplFundingDecision) fires on Approved/Declined/Funded/Referred, and the trainee portal now shows a "Funding application" card with the live status.'],
+  },
+  {
+    title: 'Student Last Login Tracking', type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1662),
+    value: 6, effort: 2,
+    detail: 'Most students showed "-" in the admin Last Login column despite active portal use.',
+    notes: ["Root cause: students onboarded via the magic-link activation flow (app/(marketing)/academy/activate) never got lastLoginAt written — only password login and passkey auth did. activateStudent() now records lastLoginAt like every other sign-in path."],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
