@@ -2,6 +2,7 @@ import 'server-only';
 import { db, withDbRetry } from '@/lib/db';
 import crypto from 'crypto';
 import type { ClientPointsCategory } from '@prisma/client';
+import { escapeHtml } from '@/lib/sanitize';
 
 // ── Client loyalty engine ────────────────────────────────────────────────────
 // Points live in an append-only ledger (ClientPoints). A client's balance is the
@@ -271,10 +272,10 @@ async function maybeQualifyReferral(clientId: string, bookingId: string, spendPe
     const { sendEmail, tmplManual } = await import('@/lib/email');
     const pts = LOYALTY.referralReward;
     if (referrer?.email && !referrer.unsubscribed) {
-      await sendEmail({ to: referrer.email, subject: 'Your referral reward has landed', html: tmplManual(`<p>Hi ${referrer.firstName || 'there'},</p><p>Great news — a friend you referred has completed their first treatment, so we've added <strong>${pts} loyalty points</strong> to your account as a thank-you. Redeem them as money off a future visit.</p><p>Thank you for spreading the word.</p>`) });
+      await sendEmail({ to: referrer.email, subject: 'Your referral reward has landed', html: tmplManual(`<p>Hi ${escapeHtml(referrer.firstName || 'there')},</p><p>Great news — a friend you referred has completed their first treatment, so we've added <strong>${pts} loyalty points</strong> to your account as a thank-you. Redeem them as money off a future visit.</p><p>Thank you for spreading the word.</p>`) });
     }
     if (referee?.email && !referee.unsubscribed) {
-      await sendEmail({ to: referee.email, subject: 'Your welcome bonus is here', html: tmplManual(`<p>Hi ${referee.firstName || 'there'},</p><p>Welcome to K Clinics! As you joined through a friend, we've added <strong>${pts} loyalty points</strong> to your account — redeemable as money off your next visit.</p>`) });
+      await sendEmail({ to: referee.email, subject: 'Your welcome bonus is here', html: tmplManual(`<p>Hi ${escapeHtml(referee.firstName || 'there')},</p><p>Welcome to K Clinics! As you joined through a friend, we've added <strong>${pts} loyalty points</strong> to your account — redeemable as money off your next visit.</p>`) });
     }
   } catch { /* email is best-effort */ }
 }

@@ -57,7 +57,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     });
     blobUrl = blob.url;
   } catch (e) {
-    return NextResponse.json({ ok: false, error: (e as Error)?.message || 'Upload failed.' }, { status: 500 });
+    // BLD-713: never surface the raw storage/Blob error to an anonymous visitor
+    // (it can leak bucket names, tokens or infra detail). Log the detail and
+    // return a generic message.
+    console.error('[kiosk] blob upload failed:', (e as Error)?.message);
+    try { const Sentry = await import('@sentry/nextjs'); Sentry.captureException(e, { tags: { area: 'kiosk-photo-upload' } }); } catch { /* Sentry optional */ }
+    return NextResponse.json({ ok: false, error: 'Upload failed. Please try again.' }, { status: 500 });
   }
 
   await db.kioskSession.update({
