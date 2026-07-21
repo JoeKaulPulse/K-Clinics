@@ -27,9 +27,13 @@ export async function GET(req: Request) {
   try {
     const { routineQueue } = await import('@/lib/build-board');
     // Optional ?limit= (1-50, default 15) lets a long session read past the top
-    // window once it has moved the visible slice to IN_REVIEW.
-    const limit = Number(new URL(req.url).searchParams.get('limit')) || 15;
-    return NextResponse.json({ ok: true, ...(await routineQueue(limit)) }, { headers: { 'Cache-Control': 'no-store' } });
+    // window once it has moved the visible slice to IN_REVIEW. BLD-929: ?offset=
+    // pages further down the same ranking without moving items, so a session can
+    // read the whole backlog in windows (counts still report the true totals).
+    const sp = new URL(req.url).searchParams;
+    const limit = Number(sp.get('limit')) || 15;
+    const offset = Number(sp.get('offset')) || 0;
+    return NextResponse.json({ ok: true, ...(await routineQueue(limit, offset)) }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) {
     console.error('[build/queue] failed', e);
     return NextResponse.json({ ok: false, error: 'Could not load the queue.' }, { status: 500 });

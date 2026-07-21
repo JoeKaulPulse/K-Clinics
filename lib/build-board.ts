@@ -950,10 +950,13 @@ export async function pendingWork() {
 /** Rich, self-contained work queue for an unattended routine session — includes
  *  full detail, open subtasks, blocking dependencies and recent comments so a
  *  session can act on DB-only items (e.g. reported bugs) without a login. */
-export async function routineQueue(limit = 15) {
+export async function routineQueue(limit = 15, offset = 0) {
   // Clamped so a routine session can page past the default window without
   // being able to demand the whole 150+-item board in one response.
   const cap = Math.max(1, Math.min(50, Math.round(limit) || 15));
+  // BLD-929: optional window offset so a long session can read past the top
+  // `cap` items (the counts below still report the true totals for both lanes).
+  const off = Math.max(0, Math.round(offset) || 0);
   const items = await db.buildItem.findMany({
     where: { assignee: 'claude', status: { in: ['TRIAGE', 'IN_PROGRESS', 'IN_REVIEW'] } },
     include: {
@@ -985,8 +988,8 @@ export async function routineQueue(limit = 15) {
     continueRequestedAt: continueAt,
     lastWakeAt: lastWake,
     counts: { actionable: actionable.length, blocked: blocked.length, awaitingSignoff: await db.buildItem.count({ where: { status: 'SHIPPED' } }) },
-    actionable: actionable.slice(0, cap).map(serialize),
-    blocked: blocked.slice(0, cap).map(serialize),
+    actionable: actionable.slice(off, off + cap).map(serialize),
+    blocked: blocked.slice(off, off + cap).map(serialize),
   };
 }
 
