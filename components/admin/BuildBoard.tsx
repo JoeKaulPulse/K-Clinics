@@ -243,7 +243,7 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
 
       {/* Search + view switcher + sync state */}
       <div className="mb-3 flex flex-wrap items-center gap-3">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search ref, title, detail, people… (all words must match)" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search ref, title, detail, people… (all words must match)" aria-label="Search board items" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
         <div className="flex rounded-full border border-[var(--color-line)] bg-white p-0.5 text-xs">
           {(['kanban', 'list', 'timeline', 'projects'] as const).map((v) => (
             <button key={v} onClick={() => { setView(v); if (v === 'projects') setProjectFilter(null); }} className={`rounded-full px-3 py-1 capitalize ${view === v ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)]'}`}>{v}</button>
@@ -701,7 +701,7 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
         </ul>
         {canManage && (
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <input value={stTitle} onChange={(e) => setStTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addSub()} placeholder="Add a subtask…" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
+            <input value={stTitle} onChange={(e) => setStTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addSub()} placeholder="Add a subtask…" aria-label="Add a subtask" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
             <label className="flex items-center gap-1 text-[0.65rem] text-[var(--color-stone)]"><input type="checkbox" checked={stOwner} onChange={(e) => setStOwner(e.target.checked)} className="h-3.5 w-3.5 accent-[var(--color-gold)]" /> owner input</label>
             <button onClick={addSub} disabled={stBusy || !stTitle.trim()} className="rounded-[var(--radius-sm)] bg-[var(--color-ink)] px-3 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">Add</button>
           </div>
@@ -718,7 +718,7 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
           <p className="mt-2 text-xs text-[var(--color-stone)]">Not part of a project.</p>
         ) : newProj ? (
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <input autoFocus value={projName} onChange={(e) => setProjName(e.target.value)} placeholder="New project name" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm" />
+            <input autoFocus value={projName} onChange={(e) => setProjName(e.target.value)} placeholder="New project name" aria-label="New project name" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm" />
             <button onClick={() => projName.trim() && promote({ name: projName.trim() })} disabled={projBusy || !projName.trim()} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-50">{projBusy ? 'Creating…' : 'Create & add'}</button>
             <button onClick={() => { setNewProj(false); setProjName(''); }} className="text-[0.7rem] text-[var(--color-stone)] hover:underline">cancel</button>
           </div>
@@ -826,8 +826,8 @@ function IdeaModal({ onClose, onDone }: { onClose: () => void; onDone: () => voi
       <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="idea-modal-title" tabIndex={-1} className="my-12 w-full max-w-md rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
         <h2 id="idea-modal-title" className="font-[family-name:var(--font-display)] text-xl">💡 Add an idea</h2>
         <p className="mt-1 text-sm text-[var(--color-stone)]">Drop it in — Claude scores it (value/effort) and triages it into the workflow automatically.</p>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus placeholder="The idea, in a line" className="mt-4 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
-        <textarea value={detail} onChange={(e) => setDetail(e.target.value)} rows={4} placeholder="Any context, why it matters, links… (optional)" className="mt-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+        <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus placeholder="The idea, in a line" aria-label="Idea title" className="mt-4 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+        <textarea value={detail} onChange={(e) => setDetail(e.target.value)} rows={4} placeholder="Any context, why it matters, links… (optional)" aria-label="Idea details" className="mt-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
         {err && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[var(--color-blush-deep)]">{err}</p>}
         <div className="mt-4 flex justify-end gap-2">
           <button onClick={onClose} className="rounded-full px-4 py-2 text-sm text-[var(--color-stone)]">Cancel</button>

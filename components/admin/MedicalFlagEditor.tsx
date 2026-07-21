@@ -47,6 +47,7 @@ export function MedicalFlagEditor({ clientId, initial, setBy, setAt }: { clientI
               onChange={(e) => setFlag(e.target.value)}
               rows={2}
               placeholder="e.g. Diabetes — confirm before laser; or Pregnant — defer injectables"
+              aria-label="Medical flag"
               className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]"
             />
             <p className="mt-1 text-xs text-[var(--color-stone)]">A concise alert clinicians must review before each appointment. Detailed history stays in the encrypted assessments.</p>

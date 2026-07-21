@@ -86,8 +86,8 @@ export function ReportProblem() {
                   <label className="flex-1 text-xs text-[var(--color-stone)]">Urgency<br /><select value={urgency} onChange={(e) => setUrgency(e.target.value)} className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-2 text-sm">{URG.map((u) => <option key={u.v} value={u.v}>{u.label}</option>)}</select></label>
                 </div>
 
-                <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Short title — e.g. ‘Pricing page total is wrong’" className="mt-3 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
-                <textarea value={detail} onChange={(e) => setDetail(e.target.value)} rows={4} placeholder="What happened, what you expected, steps to reproduce…" className="mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+                <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Short title — e.g. ‘Pricing page total is wrong’" aria-label="Title" className="mt-3 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+                <textarea value={detail} onChange={(e) => setDetail(e.target.value)} rows={4} placeholder="What happened, what you expected, steps to reproduce…" aria-label="Details" className="mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
 
                 <div className="mt-3">
                   <label className="inline-block cursor-pointer rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs hover:bg-[var(--color-bone)]">

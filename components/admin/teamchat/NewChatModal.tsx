@@ -40,9 +40,9 @@ export function NewChatModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {mode === 'group' && (
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Group name (e.g. Front desk)" className="mb-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Group name (e.g. Front desk)" aria-label="Group name" className="mb-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
         )}
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people…" className="mb-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people…" aria-label="Search people" className="mb-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
 
         <div className="max-h-64 space-y-0.5 overflow-y-auto">
           {people.length === 0 && <p className="py-6 text-center text-sm text-[var(--color-stone)]">No one found.</p>}

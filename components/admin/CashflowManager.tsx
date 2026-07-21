@@ -237,10 +237,10 @@ function Reserves({ reserves, canManage, uk }: { reserves: Reserve[]; canManage:
       </div>
       {open && canManage && (
         <div className="mb-3 grid grid-cols-2 gap-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
-          <input value={v.name} onChange={set('name')} placeholder={L('Name (e.g. Refurbishment)', 'Назва (напр. Ремонт)')} className={`${field} col-span-2`} />
-          <input type="number" value={v.balancePounds} onChange={set('balancePounds')} placeholder={L('Current £', 'Поточний £')} className={field} />
-          <input type="number" value={v.targetPounds} onChange={set('targetPounds')} placeholder={L('Target £ (0 = none)', 'Ціль £ (0 = без)')} className={field} />
-          <input type="number" value={v.monthlyPounds} onChange={set('monthlyPounds')} placeholder={L('Monthly top-up £', 'Щомісячно £')} className={field} />
+          <input value={v.name} onChange={set('name')} placeholder={L('Name (e.g. Refurbishment)', 'Назва (напр. Ремонт)')} aria-label={L('Name', 'Назва')} className={`${field} col-span-2`} />
+          <input type="number" value={v.balancePounds} onChange={set('balancePounds')} placeholder={L('Current £', 'Поточний £')} aria-label={L('Current balance (£)', 'Поточний баланс (£)')} className={field} />
+          <input type="number" value={v.targetPounds} onChange={set('targetPounds')} placeholder={L('Target £ (0 = none)', 'Ціль £ (0 = без)')} aria-label={L('Target (£)', 'Ціль (£)')} className={field} />
+          <input type="number" value={v.monthlyPounds} onChange={set('monthlyPounds')} placeholder={L('Monthly top-up £', 'Щомісячно £')} aria-label={L('Monthly top-up (£)', 'Щомісячне поповнення (£)')} className={field} />
           <button onClick={add} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm text-white">{L('Add', 'Додати')}</button>
         </div>
       )}
@@ -296,9 +296,9 @@ function Entries({ entries, canManage, uk }: { entries: Entry[]; canManage: bool
         <div className="mb-3 grid grid-cols-2 gap-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
           <select value={v.type} onChange={setS('type')} className={field}><option value="INCOME">{L('Income', 'Дохід')}</option><option value="EXPENSE">{L('Expense', 'Витрата')}</option></select>
           <select value={v.cadence} onChange={setS('cadence')} className={field}>{['ONE_OFF', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL'].map((c) => <option key={c} value={c}>{cadenceLabel(c)}</option>)}</select>
-          <input value={v.label} onChange={setS('label')} placeholder={L('Label (e.g. Rent)', 'Назва (напр. Оренда)')} className={`${field} col-span-2`} />
-          <input value={v.category} onChange={setS('category')} placeholder={L('Category', 'Категорія')} className={field} />
-          <input type="number" value={v.amountPounds} onChange={setS('amountPounds')} placeholder={L('Amount £', 'Сума £')} className={field} />
+          <input value={v.label} onChange={setS('label')} placeholder={L('Label (e.g. Rent)', 'Назва (напр. Оренда)')} aria-label={L('Label', 'Назва')} className={`${field} col-span-2`} />
+          <input value={v.category} onChange={setS('category')} placeholder={L('Category', 'Категорія')} aria-label={L('Category', 'Категорія')} className={field} />
+          <input type="number" value={v.amountPounds} onChange={setS('amountPounds')} placeholder={L('Amount £', 'Сума £')} aria-label={L('Amount (£)', 'Сума (£)')} className={field} />
           <button onClick={add} className="col-span-2 rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm text-white">{L('Add line', 'Додати')}</button>
         </div>
       )}

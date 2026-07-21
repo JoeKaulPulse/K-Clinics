@@ -133,7 +133,7 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
                 </div>
               ) : (
                 <div>
-                  <input className={f} placeholder="Search name, email or phone…" value={q} onChange={(e) => setQ(e.target.value)} />
+                  <input className={f} placeholder="Search name, email or phone…" aria-label="Search clients" value={q} onChange={(e) => setQ(e.target.value)} />
                   {matches.length > 0 && (
                     <div className="mt-1 overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)]">
                       {matches.map((c) => (
@@ -149,11 +149,11 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
             ) : (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <input className={f} placeholder="First name" value={d.firstName} onChange={(e) => set('firstName', e.target.value)} />
-                  <input className={f} placeholder="Last name" value={d.lastName} onChange={(e) => set('lastName', e.target.value)} />
+                  <input className={f} placeholder="First name" aria-label="First name" value={d.firstName} onChange={(e) => set('firstName', e.target.value)} />
+                  <input className={f} placeholder="Last name" aria-label="Last name" value={d.lastName} onChange={(e) => set('lastName', e.target.value)} />
                 </div>
-                <input className={f} type="email" placeholder="Email (for confirmation + reminders)" value={d.email} onChange={(e) => set('email', e.target.value)} />
-                <input className={f} type="tel" placeholder="Phone (for reminders)" value={d.phone} onChange={(e) => set('phone', e.target.value)} />
+                <input className={f} type="email" placeholder="Email (for confirmation + reminders)" aria-label="Email" value={d.email} onChange={(e) => set('email', e.target.value)} />
+                <input className={f} type="tel" placeholder="Phone (for reminders)" aria-label="Phone" value={d.phone} onChange={(e) => set('phone', e.target.value)} />
               </div>
             )}
 
@@ -198,12 +198,12 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
                   Override price for this booking (admin only)
                 </label>
                 {d.overridePrice && (
-                  <input className={f} type="number" min={0} step="0.01" inputMode="decimal" placeholder="Custom total price (£)"
+                  <input className={f} type="number" min={0} step="0.01" inputMode="decimal" placeholder="Custom total price (£)" aria-label="Custom total price (£)"
                     value={d.overridePriceValue} onChange={(e) => set('overridePriceValue', e.target.value)} />
                 )}
               </div>
             )}
-            <textarea className={f} rows={2} placeholder="Notes (optional)" value={d.notes} onChange={(e) => set('notes', e.target.value)} />
+            <textarea className={f} rows={2} placeholder="Notes (optional)" aria-label="Notes" value={d.notes} onChange={(e) => set('notes', e.target.value)} />
 
             {error && <p role="alert" aria-live="assertive" className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm">{error}</p>}
             <div className="flex justify-end gap-3">
@@ -339,7 +339,7 @@ function DoneView({ result, treatmentTitle, whenLabel, onClose, router }: { resu
             </label>
           ))}
         </div>
-        <textarea className={f} rows={2} placeholder="Call notes / outcome (saved to the client’s record)…" value={note} onChange={(e) => setNote(e.target.value)} />
+        <textarea className={f} rows={2} placeholder="Call notes / outcome (saved to the client’s record)…" aria-label="Call notes" value={note} onChange={(e) => setNote(e.target.value)} />
         <div className="flex items-center gap-3">
           <button onClick={saveNote} disabled={!hasSomething || noteState === 'saving'} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] disabled:opacity-50">
             {noteState === 'saving' ? 'Saving…' : noteState === 'saved' ? 'Saved ✓' : 'Save to client record'}

@@ -264,7 +264,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
             <label className={label}>References (one per line: Label | https://url)<textarea rows={3} className={`${field} mt-1 text-xs`} value={f.citations} onChange={(e) => set('citations', e.target.value)} /></label>
             <div>
               <p className={label}>PDF attachments &amp; further reading (Label | URL, one per line)</p>
-              <textarea rows={3} className={`${field} mt-1 text-xs`} value={f.resources} onChange={(e) => set('resources', e.target.value)} placeholder="My Guide | https://…" />
+              <textarea rows={3} className={`${field} mt-1 text-xs`} value={f.resources} onChange={(e) => set('resources', e.target.value)} placeholder="My Guide | https://…" aria-label="PDF attachments and further reading" />
               <label className={`mt-1.5 inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs ${uploadingPdf ? 'opacity-60 pointer-events-none' : 'hover:border-[var(--color-gold)]'}`}>
                 {uploadingPdf ? 'Uploading...' : '↑ Upload PDF'}
                 <input type="file" accept="application/pdf" className="hidden" disabled={uploadingPdf} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadPdf(file); e.currentTarget.value = ''; }} />
@@ -305,7 +305,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
                   <select value={a.kind ?? DEFAULT_KIND} onChange={(e) => setF((s) => ({ ...s, attachments: s.attachments.map((x, j) => j === i ? { ...x, kind: e.target.value } : x) }))} className={`${field} shrink-0`} aria-label="File type">
                     {ATTACHMENT_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
                   </select>
-                  <input className={`${field} min-w-[10rem] flex-1`} value={a.label} onChange={(e) => setF((s) => ({ ...s, attachments: s.attachments.map((x, j) => j === i ? { ...x, label: e.target.value } : x) }))} placeholder="File label shown to learner" />
+                  <input className={`${field} min-w-[10rem] flex-1`} value={a.label} onChange={(e) => setF((s) => ({ ...s, attachments: s.attachments.map((x, j) => j === i ? { ...x, label: e.target.value } : x) }))} placeholder="File label shown to learner" aria-label="File label" />
                   <a href={a.url} target="_blank" rel="noreferrer" className="shrink-0 text-[var(--color-gold-deep)] hover:underline">View</a>
                   <button type="button" onClick={() => setF((s) => ({ ...s, attachments: s.attachments.filter((_, j) => j !== i) }))} className="shrink-0 text-[var(--color-blush-deep)] hover:underline">Remove</button>
                 </div>

@@ -288,6 +288,7 @@ export function DayCloseRunner({
                           {it.note && (
                             <input
                               placeholder="Reading / note…"
+                              aria-label="Reading or note"
                               value={st?.note ?? ''}
                               onChange={(e) => setNote(current.section.id, it.id, e.target.value)}
                               className="mt-2.5 ml-8 w-[calc(100%-2rem)] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]"
@@ -320,7 +321,7 @@ export function DayCloseRunner({
                   )}
 
                   <label className="mt-6 block text-sm font-medium">Notes for the manager (optional)</label>
-                  <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything to flag — variance reasons, faults, incidents…" className="mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none focus:border-[var(--color-gold)]" />
+                  <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything to flag — variance reasons, faults, incidents…" aria-label="Notes for the manager" className="mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none focus:border-[var(--color-gold)]" />
 
                   {error && <p role="alert" aria-live="assertive" className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
                   <button onClick={submit} disabled={status === 'saving'} className="mt-8 rounded-full bg-[var(--color-gold-deep)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)] disabled:opacity-60">

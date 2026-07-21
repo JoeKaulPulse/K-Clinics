@@ -41,8 +41,8 @@ export function NavEditor({ nav, onChange }: { nav: { primary: NavGroup[]; foote
             <div key={gi} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)] p-3">
               <div className="flex items-start gap-2">
                 <div className="grid flex-1 gap-2 sm:grid-cols-2">
-                  <input className={fld} value={g.label} placeholder="Menu label" onChange={(e) => setPrimary(setAt(primary, gi, { ...g, label: e.target.value }))} />
-                  <input className={fld} value={g.href} placeholder="/link" onChange={(e) => setPrimary(setAt(primary, gi, { ...g, href: e.target.value }))} />
+                  <input className={fld} value={g.label} placeholder="Menu label" aria-label="Menu label" onChange={(e) => setPrimary(setAt(primary, gi, { ...g, label: e.target.value }))} />
+                  <input className={fld} value={g.href} placeholder="/link" aria-label="Link URL" onChange={(e) => setPrimary(setAt(primary, gi, { ...g, href: e.target.value }))} />
                 </div>
                 <Reorder onUp={() => setPrimary(move(primary, gi, -1))} onDown={() => setPrimary(move(primary, gi, 1))} onDel={() => setPrimary(delAt(primary, gi))} />
               </div>
@@ -59,16 +59,16 @@ export function NavEditor({ nav, onChange }: { nav: { primary: NavGroup[]; foote
                     return (
                       <div key={ci} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
                         <div className="flex items-center gap-2">
-                          <input className={`${fld} font-medium`} value={col.heading} placeholder="Column heading" onChange={(e) => setCol({ ...col, heading: e.target.value })} />
+                          <input className={`${fld} font-medium`} value={col.heading} placeholder="Column heading" aria-label="Column heading" onChange={(e) => setCol({ ...col, heading: e.target.value })} />
                           <Reorder onUp={() => setPrimary(setAt(primary, gi, { ...g, columns: move(g.columns!, ci, -1) }))} onDown={() => setPrimary(setAt(primary, gi, { ...g, columns: move(g.columns!, ci, 1) }))} onDel={() => setPrimary(setAt(primary, gi, { ...g, columns: delAt(g.columns!, ci) }))} />
                         </div>
                         <div className="mt-2 space-y-2">
                           {col.links.map((l, li) => (
                             <div key={li} className="flex items-start gap-2">
                               <div className="grid flex-1 gap-1.5 sm:grid-cols-3">
-                                <input className={fld} value={l.label} placeholder="Label" onChange={(e) => setCol({ ...col, links: setAt(col.links, li, { ...l, label: e.target.value }) })} />
-                                <input className={fld} value={l.href} placeholder="/link" onChange={(e) => setCol({ ...col, links: setAt(col.links, li, { ...l, href: e.target.value }) })} />
-                                <input className={fld} value={l.description || ''} placeholder="Description (optional)" onChange={(e) => setCol({ ...col, links: setAt(col.links, li, { ...l, description: e.target.value }) })} />
+                                <input className={fld} value={l.label} placeholder="Label" aria-label="Link label" onChange={(e) => setCol({ ...col, links: setAt(col.links, li, { ...l, label: e.target.value }) })} />
+                                <input className={fld} value={l.href} placeholder="/link" aria-label="Link URL" onChange={(e) => setCol({ ...col, links: setAt(col.links, li, { ...l, href: e.target.value }) })} />
+                                <input className={fld} value={l.description || ''} placeholder="Description (optional)" aria-label="Link description" onChange={(e) => setCol({ ...col, links: setAt(col.links, li, { ...l, description: e.target.value }) })} />
                               </div>
                               <Reorder onUp={() => setCol({ ...col, links: move(col.links, li, -1) })} onDown={() => setCol({ ...col, links: move(col.links, li, 1) })} onDel={() => setCol({ ...col, links: delAt(col.links, li) })} />
                             </div>
@@ -97,15 +97,15 @@ export function NavEditor({ nav, onChange }: { nav: { primary: NavGroup[]; foote
             return (
               <div key={ci} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)] p-3">
                 <div className="flex items-center gap-2">
-                  <input className={`${fld} font-medium`} value={col.heading} placeholder="Column heading" onChange={(e) => setCol({ ...col, heading: e.target.value })} />
+                  <input className={`${fld} font-medium`} value={col.heading} placeholder="Column heading" aria-label="Column heading" onChange={(e) => setCol({ ...col, heading: e.target.value })} />
                   <Reorder onUp={() => setFooter(move(footer, ci, -1))} onDown={() => setFooter(move(footer, ci, 1))} onDel={() => setFooter(delAt(footer, ci))} />
                 </div>
                 <div className="mt-2 space-y-2">
                   {col.links.map((l, li) => (
                     <div key={li} className="flex items-start gap-2">
                       <div className="grid flex-1 gap-1.5 sm:grid-cols-2">
-                        <input className={fld} value={l.label} placeholder="Label" onChange={(e) => setCol({ ...col, links: setAt(col.links, li, { ...l, label: e.target.value }) })} />
-                        <input className={fld} value={l.href} placeholder="/link" onChange={(e) => setCol({ ...col, links: setAt(col.links, li, { ...l, href: e.target.value }) })} />
+                        <input className={fld} value={l.label} placeholder="Label" aria-label="Link label" onChange={(e) => setCol({ ...col, links: setAt(col.links, li, { ...l, label: e.target.value }) })} />
+                        <input className={fld} value={l.href} placeholder="/link" aria-label="Link URL" onChange={(e) => setCol({ ...col, links: setAt(col.links, li, { ...l, href: e.target.value }) })} />
                       </div>
                       <Reorder onUp={() => setCol({ ...col, links: move(col.links, li, -1) })} onDown={() => setCol({ ...col, links: move(col.links, li, 1) })} onDel={() => setCol({ ...col, links: delAt(col.links, li) })} />
                     </div>

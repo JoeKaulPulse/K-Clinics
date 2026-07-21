@@ -64,15 +64,15 @@ function Card({ loc, uk }: { loc: Loc; uk: boolean }) {
         </>
       ) : (
         <div className="mt-3 space-y-2">
-          <input value={v.name} onChange={set('name')} placeholder={L('Name', 'Назва')} className={field} />
-          <input value={v.addressLine} onChange={set('addressLine')} placeholder={L('Address', 'Адреса')} className={field} />
+          <input value={v.name} onChange={set('name')} placeholder={L('Name', 'Назва')} aria-label={L('Name', 'Назва')} className={field} />
+          <input value={v.addressLine} onChange={set('addressLine')} placeholder={L('Address', 'Адреса')} aria-label={L('Address', 'Адреса')} className={field} />
           <div className="grid grid-cols-2 gap-2">
-            <input value={v.city} onChange={set('city')} placeholder={L('City', 'Місто')} className={field} />
-            <input value={v.postcode} onChange={set('postcode')} placeholder={L('Postcode', 'Індекс')} className={field} />
+            <input value={v.city} onChange={set('city')} placeholder={L('City', 'Місто')} aria-label={L('City', 'Місто')} className={field} />
+            <input value={v.postcode} onChange={set('postcode')} placeholder={L('Postcode', 'Індекс')} aria-label={L('Postcode', 'Індекс')} className={field} />
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <input value={v.phone} onChange={set('phone')} placeholder={L('Phone', 'Телефон')} className={field} />
-            <input value={v.email} onChange={set('email')} placeholder="Email" className={field} />
+            <input value={v.phone} onChange={set('phone')} placeholder={L('Phone', 'Телефон')} aria-label={L('Phone', 'Телефон')} className={field} />
+            <input value={v.email} onChange={set('email')} placeholder="Email" aria-label="Email" className={field} />
           </div>
           <label className="flex items-center gap-2 text-xs text-[var(--color-stone)]">{L('Calendar colour', 'Колір календаря')}
             <input type="color" value={v.color} onChange={set('color')} className="h-8 w-12 rounded border border-[var(--color-line)]" />
@@ -106,12 +106,12 @@ function AddLocation({ uk }: { uk: boolean }) {
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
       <h2 className="mb-4 font-[family-name:var(--font-display)] text-xl">{L('New location', 'Нова локація')}</h2>
       <div className="grid gap-2 sm:grid-cols-2">
-        <input value={v.name} onChange={set('name')} placeholder={L('Name', 'Назва')} className={`${field} sm:col-span-2`} />
-        <input value={v.addressLine} onChange={set('addressLine')} placeholder={L('Address', 'Адреса')} className={`${field} sm:col-span-2`} />
-        <input value={v.city} onChange={set('city')} placeholder={L('City', 'Місто')} className={field} />
-        <input value={v.postcode} onChange={set('postcode')} placeholder={L('Postcode', 'Індекс')} className={field} />
-        <input value={v.phone} onChange={set('phone')} placeholder={L('Phone', 'Телефон')} className={field} />
-        <input value={v.email} onChange={set('email')} placeholder="Email" className={field} />
+        <input value={v.name} onChange={set('name')} placeholder={L('Name', 'Назва')} aria-label={L('Name', 'Назва')} className={`${field} sm:col-span-2`} />
+        <input value={v.addressLine} onChange={set('addressLine')} placeholder={L('Address', 'Адреса')} aria-label={L('Address', 'Адреса')} className={`${field} sm:col-span-2`} />
+        <input value={v.city} onChange={set('city')} placeholder={L('City', 'Місто')} aria-label={L('City', 'Місто')} className={field} />
+        <input value={v.postcode} onChange={set('postcode')} placeholder={L('Postcode', 'Індекс')} aria-label={L('Postcode', 'Індекс')} className={field} />
+        <input value={v.phone} onChange={set('phone')} placeholder={L('Phone', 'Телефон')} aria-label={L('Phone', 'Телефон')} className={field} />
+        <input value={v.email} onChange={set('email')} placeholder="Email" aria-label="Email" className={field} />
       </div>
       <div className="mt-4 flex items-center gap-3">
         <button onClick={add} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? L('Adding…', 'Додавання…') : L('Add location', 'Додати')}</button>

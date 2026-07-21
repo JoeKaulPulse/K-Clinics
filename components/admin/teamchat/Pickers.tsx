@@ -57,7 +57,7 @@ export function GifPicker({ onPick, onClose }: { onPick: (g: DraftAttachment) =>
   return (
     <div ref={ref} className={`${POP} left-0 w-72 p-2`}>
       <input
-        autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search GIFs…"
+        autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search GIFs…" aria-label="Search GIFs"
         className="mb-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]"
       />
       {!configured ? (

@@ -558,6 +558,7 @@ function AutomationForm({
               value={form.name}
               onChange={(e) => set('name', e.target.value)}
               placeholder="e.g. Weekly stock check"
+              aria-label="Name"
               className={field}
             />
           </div>
@@ -567,6 +568,7 @@ function AutomationForm({
               value={form.description}
               onChange={(e) => set('description', e.target.value)}
               placeholder="A short note about what this is for"
+              aria-label="Description"
               className={field}
             />
           </div>
@@ -685,6 +687,7 @@ function AutomationForm({
               value={form.matchText}
               onChange={(e) => set('matchText', e.target.value)}
               placeholder="e.g. consultation"
+              aria-label="Title contains"
               className={field}
             />
             <p className="mt-1 text-xs text-[var(--color-stone)]">Leave blank to fire for every completed task.</p>
@@ -700,6 +703,7 @@ function AutomationForm({
               value={form.titleTemplate}
               onChange={(e) => set('titleTemplate', e.target.value)}
               placeholder="e.g. Stock check for {weekday}"
+              aria-label="Task title"
               className={field}
             />
             <p className="mt-1 text-xs text-[var(--color-stone)]">
@@ -714,6 +718,7 @@ function AutomationForm({
               onChange={(e) => set('detailTemplate', e.target.value)}
               rows={3}
               placeholder="Any notes to include on the task"
+              aria-label="Task details"
               className={field}
             />
           </div>
@@ -734,6 +739,7 @@ function AutomationForm({
                 value={form.dueInDays}
                 onChange={(e) => set('dueInDays', e.target.value)}
                 placeholder="N"
+                aria-label="Due in days"
                 className={field}
               />
               <p className="mt-1 text-xs text-[var(--color-stone)]">Due N days after it&apos;s created.</p>

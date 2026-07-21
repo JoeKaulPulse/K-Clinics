@@ -147,6 +147,7 @@ function KeyRow({ k }: { k: ConnectionKey }) {
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <input type="password" value={value} onChange={(e) => setValue(e.target.value)} autoComplete="off"
             placeholder={source === 'app' ? 'Enter to replace' : 'Paste value'}
+            aria-label={k.label}
             className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm focus:border-[var(--color-gold)] focus:outline-none" />
           <button onClick={save} disabled={busy || !value.trim()} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm font-medium text-[var(--color-porcelain)] hover:opacity-90 disabled:opacity-40">{busy ? '…' : 'Save'}</button>
           {source === 'app' && <button onClick={clear} disabled={busy} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm text-[var(--color-stone)] hover:bg-[var(--color-bone)] disabled:opacity-40">Clear</button>}

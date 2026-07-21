@@ -51,7 +51,7 @@ export function StudentsManager({ students }: { students: StudentRow[] }) {
           <p className="text-sm text-[var(--color-stone)]">{students.length} portal account{students.length === 1 ? '' : 's'}. Suspend access, add notes, and see each trainee’s progress.</p>
         </div>
         <div className="flex items-center gap-2">
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email…" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email…" aria-label="Search trainees" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm" />
           <select value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'xp')} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm" title="Sort">
             <option value="recent">Newest first</option>
             <option value="xp">Top XP (best performers)</option>
@@ -120,7 +120,7 @@ function NoteEditor({ notes, onSave }: { notes: string | null; onSave: (notes: s
   }
   return (
     <span className="mt-1 flex items-center gap-1.5">
-      <input autoFocus value={val} onChange={(e) => setVal(e.target.value)} placeholder="Internal note" className="w-52 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1 text-xs" />
+      <input autoFocus value={val} onChange={(e) => setVal(e.target.value)} placeholder="Internal note" aria-label="Internal note" className="w-52 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1 text-xs" />
       <button onClick={() => { onSave(val); setOpen(false); }} className="text-xs text-[var(--color-gold-deep)] hover:underline">Save</button>
       <button onClick={() => { setVal(notes ?? ''); setOpen(false); }} className="text-xs text-[var(--color-stone)] hover:underline">Cancel</button>
     </span>

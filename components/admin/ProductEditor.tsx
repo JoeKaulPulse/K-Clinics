@@ -77,7 +77,7 @@ export function ProductEditor({ data }: { data: ProductData }) {
               ))}
             </div>
             <div className="mt-3 flex gap-2">
-              <input value={img} onChange={(e) => setImg(e.target.value)} placeholder="Image URL (upload in Media first)" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm" />
+              <input value={img} onChange={(e) => setImg(e.target.value)} placeholder="Image URL (upload in Media first)" aria-label="Image URL" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm" />
               <button onClick={addImg} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)]">Add</button>
             </div>
           </section>

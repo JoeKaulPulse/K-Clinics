@@ -74,7 +74,7 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
             <div className="grid gap-4 sm:grid-cols-2">
               <div><label className={label}>Name</label><input className={field} value={c.name} onChange={(e) => top('name', e.target.value)} /></div>
               <div><label className={label}>Legal name</label><input className={field} value={c.legalName} onChange={(e) => top('legalName', e.target.value)} /></div>
-              <div><label className={label}>Company number</label><input className={field} value={c.companyNumber} onChange={(e) => top('companyNumber', e.target.value)} placeholder="17101088" /></div>
+              <div><label className={label}>Company number</label><input className={field} value={c.companyNumber} onChange={(e) => top('companyNumber', e.target.value)} placeholder="17101088" aria-label="Company number" /></div>
             </div>
             <div className="mt-4"><label className={label}>Tagline</label><input className={field} value={c.tagline} onChange={(e) => top('tagline', e.target.value)} /></div>
             <div className="mt-4"><label className={label}>Description <span className="normal-case text-[var(--color-stone)]">(SEO / meta default)</span></label><textarea className={`${field} min-h-[80px]`} value={c.description} onChange={(e) => top('description', e.target.value)} /></div>
@@ -89,10 +89,10 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
                 Show banner
               </label>
             </div>
-            <div><label className={label}>Message</label><input className={field} value={c.announcement.message} placeholder="e.g. 15% off your first visit this month" onChange={(e) => nest('announcement', { message: e.target.value })} /></div>
+            <div><label className={label}>Message</label><input className={field} value={c.announcement.message} placeholder="e.g. 15% off your first visit this month" aria-label="Announcement message" onChange={(e) => nest('announcement', { message: e.target.value })} /></div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div><label className={label}>Link text <span className="normal-case text-[var(--color-stone)]">(optional)</span></label><input className={field} value={c.announcement.linkLabel || ''} onChange={(e) => nest('announcement', { linkLabel: e.target.value })} /></div>
-              <div><label className={label}>Link URL</label><input className={field} value={c.announcement.linkHref || ''} placeholder="/offers" onChange={(e) => nest('announcement', { linkHref: e.target.value })} /></div>
+              <div><label className={label}>Link URL</label><input className={field} value={c.announcement.linkHref || ''} placeholder="/offers" aria-label="Announcement link URL" onChange={(e) => nest('announcement', { linkHref: e.target.value })} /></div>
             </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div><label className={label}>Start date <span className="normal-case text-[var(--color-stone)]">(optional)</span></label><input type="date" className={field} value={c.announcement.startAt?.slice(0, 10) || ''} onChange={(e) => nest('announcement', { startAt: e.target.value || null })} /></div>
@@ -133,8 +133,8 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
               {c.hours.map((h, i) => (
                 <div key={h.day} className="grid grid-cols-[7rem_1fr_1fr] items-center gap-3">
                   <span className="text-sm font-medium">{h.day}</span>
-                  <input className={field} value={h.open} placeholder="09:00 or Closed" onChange={(e) => { const hours = [...c.hours]; hours[i] = { ...h, open: e.target.value }; top('hours', hours); }} />
-                  <input className={field} value={h.close} placeholder="19:00 or Closed" onChange={(e) => { const hours = [...c.hours]; hours[i] = { ...h, close: e.target.value }; top('hours', hours); }} />
+                  <input className={field} value={h.open} placeholder="09:00 or Closed" aria-label={`${h.day} opening time`} onChange={(e) => { const hours = [...c.hours]; hours[i] = { ...h, open: e.target.value }; top('hours', hours); }} />
+                  <input className={field} value={h.close} placeholder="19:00 or Closed" aria-label={`${h.day} closing time`} onChange={(e) => { const hours = [...c.hours]; hours[i] = { ...h, close: e.target.value }; top('hours', hours); }} />
                 </div>
               ))}
             </div>
@@ -146,8 +146,8 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
             <div className="space-y-2">
               {socialRows.map(([k, v], i) => (
                 <div key={i} className="grid grid-cols-[8rem_1fr_2rem] items-center gap-3">
-                  <input className={field} value={k} placeholder="platform" onChange={(e) => { const rows = socialRows.map((r) => [...r] as [string, string]); rows[i][0] = e.target.value.toLowerCase(); setSocial(rows); }} />
-                  <input className={field} value={v} placeholder="https://…" onChange={(e) => { const rows = socialRows.map((r) => [...r] as [string, string]); rows[i][1] = e.target.value; setSocial(rows); }} />
+                  <input className={field} value={k} placeholder="platform" aria-label="Social platform" onChange={(e) => { const rows = socialRows.map((r) => [...r] as [string, string]); rows[i][0] = e.target.value.toLowerCase(); setSocial(rows); }} />
+                  <input className={field} value={v} placeholder="https://…" aria-label="Social profile URL" onChange={(e) => { const rows = socialRows.map((r) => [...r] as [string, string]); rows[i][1] = e.target.value; setSocial(rows); }} />
                   <button className="text-[var(--color-stone)] hover:text-[#c0392b]" onClick={() => setSocial(socialRows.filter((_, j) => j !== i) as [string, string][])} aria-label="Remove">✕</button>
                 </div>
               ))}

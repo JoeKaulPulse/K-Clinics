@@ -93,6 +93,7 @@ export function MentionInput({
     ref: ref as React.Ref<never>,
     value,
     placeholder: placeholder || (canMention ? 'Add a note… (@ to mention)' : 'Add a note…'),
+    'aria-label': placeholder || (canMention ? 'Add a note (mention colleagues with @)' : 'Add a note'),
     autoFocus,
     onChange: (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => { onChange(e.target.value); refresh(e.target); },
     onKeyDown,

@@ -134,7 +134,7 @@ export function CallLog({ canManage }: { canManage: boolean }) {
 
             <div>
               <p className="mb-1 text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">Note</p>
-              <textarea value={note} onChange={(e) => { setNote(e.target.value); if (noteMsg) setNoteMsg(''); }} disabled={!canManage} rows={3} placeholder={canManage ? 'Add a note about this call…' : 'No note'} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-2.5 text-sm outline-none focus:border-[var(--color-gold)] disabled:opacity-60" />
+              <textarea value={note} onChange={(e) => { setNote(e.target.value); if (noteMsg) setNoteMsg(''); }} disabled={!canManage} rows={3} placeholder={canManage ? 'Add a note about this call…' : 'No note'} aria-label="Call note" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-2.5 text-sm outline-none focus:border-[var(--color-gold)] disabled:opacity-60" />
               {canManage && (
                 <div className="mt-2 flex items-center gap-2">
                   <button onClick={saveNote} disabled={savingNote} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{savingNote ? 'Saving…' : 'Save note'}</button>

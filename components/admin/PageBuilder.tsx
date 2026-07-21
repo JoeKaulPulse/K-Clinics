@@ -235,7 +235,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
           <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
             <div className={`${card} p-4`}>
               <label className="block text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-stone)] mb-1.5">Admin label</label>
-              <input className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={title} placeholder={initial.path} onChange={(e) => setTitle(e.target.value)} />
+              <input className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={title} placeholder={initial.path} aria-label="Admin label" onChange={(e) => setTitle(e.target.value)} />
               {hasPublished && <button disabled={busy} onClick={unpublish} className="mt-4 text-sm text-[var(--color-stone)] hover:text-[#c0392b] disabled:opacity-50">Unpublish</button>}
             </div>
             <div className={`${card} p-4`}>
@@ -250,7 +250,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
             <div className={`${card} p-4`}>
               <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-stone)]">SEO</h3>
               <div className="space-y-3">
-                <div><label className="mb-1 block text-xs text-[var(--color-stone)]">Page title</label><input className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={seo.title} onChange={(e) => setSeo((s) => ({ ...s, title: e.target.value }))} placeholder="Defaults to the hero heading" /></div>
+                <div><label className="mb-1 block text-xs text-[var(--color-stone)]">Page title</label><input className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={seo.title} onChange={(e) => setSeo((s) => ({ ...s, title: e.target.value }))} placeholder="Defaults to the hero heading" aria-label="Page title" /></div>
                 <div><label className="mb-1 block text-xs text-[var(--color-stone)]">Meta description</label><textarea className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={seo.description} onChange={(e) => setSeo((s) => ({ ...s, description: e.target.value }))} /></div>
                 <MediaField label="Social share image" value={seo.ogImage} onChange={(v) => setSeo((s) => ({ ...s, ogImage: v }))} />
                 <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={seo.noindex} onChange={(e) => setSeo((s) => ({ ...s, noindex: e.target.checked }))} /> Hide from search engines</label>

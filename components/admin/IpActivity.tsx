@@ -105,7 +105,7 @@ export function IpActivity({ rows, blocked }: { rows: IpRow[]; blocked: BlockedR
       <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-[family-name:var(--font-display)] text-lg">Recent activity by IP <span className="text-sm text-[var(--color-stone)]">(7 days)</span></h2>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter IP, email or device…" className="w-64 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter IP, email or device…" aria-label="Filter activity" className="w-64 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm" />
         </div>
         {filtered.length === 0 ? (
           <p className="text-sm text-[var(--color-stone)]">No IP activity recorded in this window.</p>

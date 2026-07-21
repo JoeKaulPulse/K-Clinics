@@ -62,6 +62,7 @@ export function AddNote({ clientId, clinical = false }: { clientId: string; clin
         className={fieldCls}
         rows={expanded ? 3 : 1}
         placeholder="Add a note…"
+        aria-label="Add a note"
         value={val}
         onFocus={() => setExpanded(true)}
         onChange={(e) => setVal(e.target.value)}
@@ -134,8 +135,8 @@ export function SendEmail({ clientId, email }: { clientId: string; email: string
   return (
     <div className="space-y-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
       <p className="text-xs text-[var(--color-stone)]">To: {email}</p>
-      <input className={fieldCls} placeholder="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
-      <textarea className={fieldCls} rows={5} placeholder="Write your message…" value={body} onChange={(e) => setBody(e.target.value)} />
+      <input className={fieldCls} placeholder="Subject" aria-label="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
+      <textarea className={fieldCls} rows={5} placeholder="Write your message…" aria-label="Message" value={body} onChange={(e) => setBody(e.target.value)} />
       {msg && <p className="text-xs text-[var(--color-stone)]">{msg}</p>}
       <div className="flex gap-2">
         <button

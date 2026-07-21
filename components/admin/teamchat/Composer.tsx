@@ -152,6 +152,7 @@ export function Composer({ channel, meId, onSent, replyTo, onCancelReply }: {
           ref={taRef} rows={1} value={text}
           onChange={(e) => onChange(e.target.value)} onKeyDown={onKeyDown}
           placeholder="Message…"
+          aria-label="Message"
           className="max-h-28 min-h-[2.25rem] flex-1 resize-none rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]"
         />
         <button

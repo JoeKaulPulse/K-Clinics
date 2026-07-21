@@ -263,7 +263,7 @@ function PaymentPanel({ enrolment: e, onAct }: { enrolment: Enrolment; onAct: (p
             <label className="text-[0.6rem] text-[var(--color-stone)]">Type<select value={kind} onChange={(ev) => setKind(ev.target.value)} className={field}>{PAY_KINDS.map((k) => <option key={k} value={k}>{k.toLowerCase()}</option>)}</select></label>
             <label className="text-[0.6rem] text-[var(--color-stone)]">Method<select value={method} onChange={(ev) => setMethod(ev.target.value)} className={field}>{PAY_METHODS.map((m) => <option key={m} value={m}>{METHOD_LABEL[m]}</option>)}</select></label>
           </div>
-          <input value={note} onChange={(ev) => setNote(ev.target.value)} className={`${field} mt-2 w-full`} placeholder="Note (optional)" />
+          <input value={note} onChange={(ev) => setNote(ev.target.value)} className={`${field} mt-2 w-full`} placeholder="Note (optional)" aria-label="Payment note" />
           <button onClick={record} disabled={busy} className="mt-2 rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-50">{busy ? '…' : 'Record payment'}</button>
         </div>
         <div className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
@@ -392,13 +392,13 @@ function Cohorts({ course, enrolments }: { course: Course; enrolments: Enrolment
       </div>
       {add && (
         <div className="mt-2 flex flex-wrap items-end gap-2">
-          <input value={c.name} onChange={(e) => setC({ ...c, name: e.target.value })} className={`${field} w-44`} placeholder="Cohort name (e.g. Sep 2026)" />
+          <input value={c.name} onChange={(e) => setC({ ...c, name: e.target.value })} className={`${field} w-44`} placeholder="Cohort name (e.g. Sep 2026)" aria-label="Cohort name" />
           <label className="text-[0.6rem] text-[var(--color-stone)]">Practical from<input type="date" value={c.startAt} onChange={(e) => setC({ ...c, startAt: e.target.value })} className={field} /></label>
           <label className="text-[0.6rem] text-[var(--color-stone)]">to<input type="date" value={c.endAt} onChange={(e) => setC({ ...c, endAt: e.target.value })} className={field} /></label>
           <label className="text-[0.6rem] text-[var(--color-stone)]">Access opens<input type="date" value={c.accessStartAt} onChange={(e) => setC({ ...c, accessStartAt: e.target.value })} className={field} /></label>
           <label className="text-[0.6rem] text-[var(--color-stone)]">Access expires<input type="date" value={c.accessEndAt} onChange={(e) => setC({ ...c, accessEndAt: e.target.value })} className={field} /></label>
-          <input value={c.capacity} onChange={(e) => setC({ ...c, capacity: e.target.value })} className={`${field} w-16`} placeholder="cap" />
-          <input value={c.trainer} onChange={(e) => setC({ ...c, trainer: e.target.value })} className={`${field} w-32`} placeholder="trainer" />
+          <input value={c.capacity} onChange={(e) => setC({ ...c, capacity: e.target.value })} className={`${field} w-16`} placeholder="cap" aria-label="Capacity" />
+          <input value={c.trainer} onChange={(e) => setC({ ...c, trainer: e.target.value })} className={`${field} w-32`} placeholder="trainer" aria-label="Trainer" />
           <button onClick={save} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-porcelain)]">Add</button>
         </div>
       )}

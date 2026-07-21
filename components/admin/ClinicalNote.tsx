@@ -33,6 +33,7 @@ export function ClinicalNote({ bookingId, initial, savedBy, savedAt }: {
         onChange={(e) => setNote(e.target.value)}
         rows={6}
         placeholder="What was done this session — products/settings used, observations, advice given, follow-up…"
+        aria-label="Treatment note"
         className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-relaxed outline-none focus:border-[var(--color-gold)]"
       />
       <div className="mt-3 flex flex-wrap items-center gap-3">

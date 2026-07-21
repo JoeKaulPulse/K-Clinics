@@ -52,8 +52,8 @@ export function ConsumablesPanel({ bookingId, items, used }: { bookingId: string
             <option value="">Select item…</option>
             {items.map((i) => <option key={i.id} value={i.id}>{i.name} ({i.currentQty} {i.unit})</option>)}
           </select>
-          <input type="number" step="any" placeholder="Qty" value={qty} onChange={(e) => setQty(e.target.value)} className={`${field} w-20`} />
-          <input placeholder="Batch (optional)" value={batchNo} onChange={(e) => setBatchNo(e.target.value)} className={`${field} w-32`} />
+          <input type="number" step="any" placeholder="Qty" aria-label="Quantity" value={qty} onChange={(e) => setQty(e.target.value)} className={`${field} w-20`} />
+          <input placeholder="Batch (optional)" aria-label="Batch" value={batchNo} onChange={(e) => setBatchNo(e.target.value)} className={`${field} w-32`} />
           <button onClick={add} disabled={pending} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">{pending ? '…' : 'Add'}</button>
         </div>
       )}

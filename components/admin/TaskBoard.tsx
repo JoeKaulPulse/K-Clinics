@@ -125,8 +125,8 @@ function CreateTask({ staff, uk }: { staff: Staff[]; uk: boolean }) {
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
       <h2 className="mb-4 font-[family-name:var(--font-display)] text-xl">{L('New task', 'Нове завдання')}</h2>
       <div className="space-y-3">
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={L('What needs doing?', 'Що потрібно зробити?')} className={field} />
-        <textarea value={detail} onChange={(e) => setDetail(e.target.value)} rows={3} placeholder={L('Details (optional)', 'Деталі (необовʼязково)')} className={field} />
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={L('What needs doing?', 'Що потрібно зробити?')} aria-label={L('Task title', 'Назва завдання')} className={field} />
+        <textarea value={detail} onChange={(e) => setDetail(e.target.value)} rows={3} placeholder={L('Details (optional)', 'Деталі (необовʼязково)')} aria-label={L('Task details', 'Деталі завдання')} className={field} />
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="mb-1 block text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{L('Priority', 'Пріоритет')}</label>
@@ -248,6 +248,7 @@ function Row({ t, staff, uk, orphanSub }: { t: Task; staff: Staff[]; uk: boolean
             <div className="mt-2 flex items-center gap-2">
               <input value={subTitle} onChange={(e) => setSubTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addSub()} autoFocus
                 placeholder={L(`Sub-task of ${t.ref || 'this task'}…`, `Підзавдання ${t.ref || 'цього завдання'}…`)}
+                aria-label={L('Sub-task title', 'Назва підзавдання')}
                 className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
               <button onClick={addSub} disabled={subBusy || !subTitle.trim()} className="rounded-[var(--radius-sm)] bg-[var(--color-ink)] px-3 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">
                 {subBusy ? L('Adding…', 'Додавання…') : L('Add', 'Додати')}
@@ -278,6 +279,7 @@ function Row({ t, staff, uk, orphanSub }: { t: Task; staff: Staff[]; uk: boolean
               <div className="mt-2 flex items-center gap-2">
                 <input value={cText} onChange={(e) => setCText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addComment()}
                   placeholder={L('Write a comment…', 'Напишіть коментар…')}
+                  aria-label={L('Write a comment', 'Напишіть коментар')}
                   className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
                 <button onClick={addComment} disabled={cBusy || !cText.trim()} className="rounded-[var(--radius-sm)] bg-[var(--color-gold-deep)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50">
                   {cBusy ? L('…', '…') : L('Send', 'Надіслати')}
