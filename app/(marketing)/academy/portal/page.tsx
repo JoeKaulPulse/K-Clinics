@@ -66,9 +66,14 @@ export default async function AcademyPortalPage() {
     orderBy: { createdAt: 'desc' },
     include: { course: true, cohort: true },
   });
-  const calendar = await getStudentCalendar(student.id);
+  // PRJ-1032.12: the calendar and the drip schedule are independent reads —
+  // run them concurrently instead of one-then-the-other.
+  const [calendar, scheduleAll] = await Promise.all([
+    getStudentCalendar(student.id),
+    getStudentSchedule(student.id),
+  ]);
   // Content drip schedule — only surface courses that actually have something pending.
-  const schedule = (await getStudentSchedule(student.id)).filter((s) => s.hasUpcoming);
+  const schedule = scheduleAll.filter((s) => s.hasUpcoming);
   const progress = new Map(
     await Promise.all(
       enrolments.filter((e) => ACTIVE.includes(e.status)).map(async (e) => [e.id, await courseProgress(student.id, e.courseId)] as const),

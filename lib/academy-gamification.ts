@@ -173,17 +173,39 @@ async function recomputeStudentXp(studentId: string): Promise<void> {
 }
 
 const BACKFILL_KEY = 'academy_gamification_backfilled';
+// PRJ-1032.11: resume cursor + per-run cap for the backfill scan.
+const BACKFILL_CURSOR_KEY = 'academy_gamification_backfill_cursor';
+const BACKFILL_BATCH = 50;
 
 /** Self-healing: compute XP + badges for everyone once, so leaderboards are real
- *  from launch. Flag-gated; subsequent activity is scored live. */
+ *  from launch. Flag-gated; subsequent activity is scored live.
+ *
+ *  PRJ-1032.11: the scan is bounded per run and resumes from a cursor, so a large
+ *  trainee base can't turn this one-shot backfill into a single unbounded
+ *  O(students × courses) query storm that times the cron out. Each run does up to
+ *  BACKFILL_BATCH students (ordered by id, after the cursor) and advances the
+ *  cursor; the done flag is set only once the scan reaches the end. */
 export async function backfillGamificationIfNeeded(): Promise<{ ran: boolean; students: number }> {
   const done = await db.setting.findUnique({ where: { key: BACKFILL_KEY } }).catch(() => null);
   if (done?.value === 'true') return { ran: false, students: 0 };
-  const students = await db.academyStudent.findMany({ select: { id: true } });
+  const cur = await db.setting.findUnique({ where: { key: BACKFILL_CURSOR_KEY } }).catch(() => null);
+  const cursor = cur?.value || '';
+  const students = await db.academyStudent.findMany({
+    where: cursor ? { id: { gt: cursor } } : undefined,
+    orderBy: { id: 'asc' },
+    take: BACKFILL_BATCH,
+    select: { id: true },
+  });
+  if (students.length === 0) {
+    // Scan exhausted — mark done so this never runs again.
+    await db.setting.upsert({ where: { key: BACKFILL_KEY }, update: { value: 'true' }, create: { key: BACKFILL_KEY, value: 'true' } }).catch(() => {});
+    return { ran: false, students: 0 };
+  }
   for (const s of students) {
     await recomputeStudentXp(s.id).catch(() => {});
     await checkAndAwardBadges(s.id).catch(() => {}); // adds badge bonus XP on top of the recomputed base
   }
-  await db.setting.upsert({ where: { key: BACKFILL_KEY }, update: { value: 'true' }, create: { key: BACKFILL_KEY, value: 'true' } }).catch(() => {});
+  const last = students[students.length - 1].id;
+  await db.setting.upsert({ where: { key: BACKFILL_CURSOR_KEY }, update: { value: last }, create: { key: BACKFILL_CURSOR_KEY, value: last } }).catch(() => {});
   return { ran: true, students: students.length };
 }

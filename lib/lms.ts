@@ -687,22 +687,38 @@ export async function getStudentSchedule(studentId: string): Promise<CourseSched
   });
   if (enrols.length === 0) return [];
   const now = Date.now();
+  // One schedule per course (most recent enrolment wins), keeping enrolment order.
   const seen = new Set<string>();
+  const uniqueEnrols = enrols.filter((e) => (seen.has(e.courseId) ? false : (seen.add(e.courseId), true)));
+
+  // PRJ-1032.12: two grouped reads for the whole set instead of a
+  // courseModule + cohortModuleRelease pair per course (the old N+1).
+  const courseIds = uniqueEnrols.map((e) => e.courseId);
+  const cohortIds = uniqueEnrols.map((e) => e.cohortId).filter(Boolean) as string[];
+  const [allModules, allReleases] = await Promise.all([
+    db.courseModule.findMany({ where: { courseId: { in: courseIds } }, orderBy: { order: 'asc' }, select: { id: true, title: true, order: true, courseId: true } }),
+    cohortIds.length
+      ? db.cohortModuleRelease.findMany({ where: { cohortId: { in: cohortIds } }, select: { moduleId: true, releaseAt: true, cohortId: true } })
+      : Promise.resolve([] as { moduleId: string; releaseAt: Date; cohortId: string }[]),
+  ]);
+  const modulesByCourse = new Map<string, typeof allModules>();
+  for (const m of allModules) {
+    const arr = modulesByCourse.get(m.courseId);
+    if (arr) arr.push(m); else modulesByCourse.set(m.courseId, [m]);
+  }
+  // Keyed by cohort+module, so a course only ever reads the drip dates for its
+  // own modules (equivalent to the old per-course module:{courseId} filter).
+  const relByCohortModule = new Map<string, Date>();
+  for (const r of allReleases) relByCohortModule.set(`${r.cohortId}:${r.moduleId}`, r.releaseAt);
+
   const out: CourseSchedule[] = [];
-  for (const e of enrols) {
-    if (seen.has(e.courseId)) continue; // one schedule per course (most recent enrolment wins)
-    seen.add(e.courseId);
-    const modules = await db.courseModule.findMany({ where: { courseId: e.courseId }, orderBy: { order: 'asc' }, select: { id: true, title: true, order: true } });
-    if (modules.length === 0) continue;
-    const relMap = new Map<string, Date>();
-    if (e.cohortId) {
-      const rels = await db.cohortModuleRelease.findMany({ where: { cohortId: e.cohortId, module: { courseId: e.courseId } }, select: { moduleId: true, releaseAt: true } });
-      for (const r of rels) relMap.set(r.moduleId, r.releaseAt);
-    }
+  for (const e of uniqueEnrols) {
+    const modules = modulesByCourse.get(e.courseId);
+    if (!modules || modules.length === 0) continue;
     const accessStart = e.cohort?.accessStartAt && e.cohort.accessStartAt.getTime() > now ? e.cohort.accessStartAt : null;
     let hasUpcoming = false;
     const mods: ScheduleModule[] = modules.map((m) => {
-      const drip = relMap.get(m.id);
+      const drip = e.cohortId ? relByCohortModule.get(`${e.cohortId}:${m.id}`) : undefined;
       const release = drip && drip.getTime() > now ? drip : accessStart;
       if (release) hasUpcoming = true;
       return { id: m.id, title: m.title, order: m.order, releaseAt: release ? release.toISOString() : null };
