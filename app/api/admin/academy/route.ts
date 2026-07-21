@@ -203,13 +203,30 @@ export async function POST(req: Request) {
       if (!body.id) return bad();
       const b = body as Record<string, unknown>;
       const STATUSES = ['NEW', 'REVIEWING', 'REFERRED', 'APPROVED', 'DECLINED', 'FUNDED', 'CLOSED'];
-      await db.fundingApplication.update({
+      const statusChange = b.status && STATUSES.includes(b.status as string) ? (b.status as string) : null;
+      const before = statusChange ? await db.fundingApplication.findUnique({ where: { id: String(b.id) }, select: { status: true, name: true, email: true, course: { select: { title: true } } } }) : null;
+      const updated = await db.fundingApplication.update({
         where: { id: String(b.id) },
         data: {
-          ...(b.status && STATUSES.includes(b.status as string) ? { status: b.status as 'NEW' } : {}),
+          ...(statusChange ? { status: statusChange as 'NEW' } : {}),
           ...(b.notes !== undefined ? { notes: (b.notes as string)?.slice(0, 4000) || null } : {}),
         },
+        select: { name: true, email: true, course: { select: { title: true } } },
       });
+      // BLD-741: notify the applicant on a decision — staff previously updated
+      // the status with no signal reaching the student.
+      const NOTIFY_STATUSES = ['APPROVED', 'DECLINED', 'FUNDED', 'REFERRED'];
+      if (statusChange && before && before.status !== statusChange && NOTIFY_STATUSES.includes(statusChange)) {
+        try {
+          const { sendEmail, tmplFundingDecision } = await import('@/lib/email');
+          const { site } = await import('@/lib/site');
+          await sendEmail({
+            to: updated.email,
+            subject: 'An update on your K Academy funding application',
+            html: tmplFundingDecision({ name: updated.name, status: statusChange, courseTitle: updated.course?.title, portalUrl: `${site.url}/academy/portal` }),
+          });
+        } catch { /* best-effort — status change itself already saved */ }
+      }
       return ok();
     }
     case 'removeFunding': {

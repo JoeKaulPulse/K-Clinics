@@ -224,7 +224,12 @@ export async function activateStudent(studentId: string, token: string): Promise
   });
   if (!student?.resetTokenHash || !student.resetTokenExp || student.resetTokenExp < new Date()) return { ok: false };
   if (!hashesEqual(sha256(token), student.resetTokenHash)) return { ok: false };
-  await db.academyStudent.update({ where: { id: student.id }, data: { portalActive: true } });
+  // BLD-909: this magic-link flow is the primary entry point for trainees
+  // onboarded via an offer (no password set), so it must record lastLoginAt
+  // like every other sign-in path (loginStudent, passkey auth) — otherwise
+  // the admin "Last Login" column shows "—" for most students despite them
+  // actively using the portal.
+  await db.academyStudent.update({ where: { id: student.id }, data: { portalActive: true, lastLoginAt: new Date() } });
   return { ok: true, student: { id: student.id, email: student.email, firstName: student.firstName, sessionEpoch: student.sessionEpoch } };
 }
 
