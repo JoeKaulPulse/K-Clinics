@@ -203,7 +203,13 @@ export async function computeExpected(
     const orders = await db.order.aggregate({
       _sum: { totalPence: true },
       _count: true,
-      where: { status: { in: ['PAID', 'FULFILLED'] }, updatedAt: { gte, lte } },
+      // PRJ-1032.6: only count orders actually settled by CARD. POS records
+      // over-the-counter cash and external-terminal sales as ordinary PAID orders
+      // (app/api/admin/pos/route.ts) with no Stripe PaymentIntent, so including
+      // them inflated the expected CARD figure and produced a phantom shortfall.
+      // A Stripe-processed order always carries stripePaymentIntentId; cash/
+      // terminal POS orders never do.
+      where: { status: { in: ['PAID', 'FULFILLED'] }, updatedAt: { gte, lte }, stripePaymentIntentId: { not: null } },
     });
     ordersPence = orders._sum.totalPence ?? 0;
     orderCount = orders._count;

@@ -81,6 +81,14 @@ export async function POST(req: Request) {
       if (!body.id) return bad();
       const c = await db.course.findFirst({ where: { id: body.id, tenantId }, select: { slug: true } });
       if (!c) return bad();
+      // PRJ-1032.8: deleting a Course cascades Enrolment → EnrolmentPayment, which
+      // would permanently wipe the Stripe payment/refund ledger (financial records
+      // the clinic must retain). Refuse the delete when any enrolment carries a
+      // real payment record; the course can be hidden/archived instead.
+      const paid = await db.enrolmentPayment.count({ where: { enrolment: { courseId: body.id }, state: { in: ['PAID', 'REFUNDED'] } } });
+      if (paid > 0) return NextResponse.json({ ok: false, error: `This course has ${paid} payment record(s) and can’t be deleted — deleting it would erase the Stripe payment/refund history. Unpublish or archive it instead.` }, { status: 409 });
+      const enrolled = await db.enrolment.count({ where: { courseId: body.id, status: { not: 'CANCELLED' } } });
+      if (enrolled > 0) return NextResponse.json({ ok: false, error: `This course has ${enrolled} active enrolment(s) and can’t be deleted. Cancel them first, or unpublish the course.` }, { status: 409 });
       await db.course.delete({ where: { id: body.id } });
       await revalidateAcademy(c.slug);
       return ok();
