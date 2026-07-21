@@ -509,6 +509,28 @@ export function tmplAcademyOffer(o: { firstName: string; courseTitle: string; pr
   });
 }
 
+// BLD-741: funding application decision — staff previously updated
+// FundingApplication.status with no notification, leaving applicants to chase
+// the outcome themselves.
+const FUNDING_DECISION_COPY: Record<string, { headline: string; body: string }> = {
+  APPROVED: { headline: 'Your funding application has been approved.', body: "Great news — we've reviewed your application and confirmed your funding. We'll be in touch shortly to arrange your place." },
+  DECLINED: { headline: 'An update on your funding application.', body: "We've reviewed your application and, unfortunately, aren't able to offer funding on this route. This doesn't affect your ability to book a course — get in touch and we'll talk through the options, including payment plans." },
+  FUNDED: { headline: 'Your course is now fully funded.', body: 'Your funding has been confirmed and applied to your course. No further payment is needed on the funded portion — welcome aboard.' },
+  REFERRED: { headline: 'Your funding application has moved forward.', body: "We've referred your application to the funding provider for the next stage. We'll email you again as soon as we hear back." },
+};
+export function tmplFundingDecision(o: { name: string; status: string; courseTitle?: string | null; portalUrl?: string | null }) {
+  const copy = FUNDING_DECISION_COPY[o.status] ?? { headline: 'An update on your funding application.', body: "We've updated the status of your funding application." };
+  return emailShell({
+    preheader: copy.headline,
+    body: `<h1 style="font-size:24px;margin:0 0 16px;">${escape(copy.headline)}</h1>
+    <p>Hi ${escape(o.name)},</p>
+    <p>${copy.body}</p>
+    ${o.courseTitle ? `<p style="font-size:14px;color:#91766e;">Course: ${escape(o.courseTitle)}</p>` : ''}
+    ${o.portalUrl ? `<p style="margin:28px 0;">${btn(o.portalUrl, 'View in my portal')}</p>` : ''}
+    <p style="margin-top:20px;">With warmth,<br>The K Academy team</p>`,
+  });
+}
+
 // Payment confirmation / receipt for a course payment.
 export function tmplAcademyPaymentReceipt(o: { firstName: string; courseTitle: string; amountPence: number; outstandingPence: number; portalUrl: string }) {
   const paid = `£${(o.amountPence / 100).toLocaleString('en-GB')}`;
