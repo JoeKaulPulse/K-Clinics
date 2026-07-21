@@ -27,9 +27,11 @@ export async function GET(req: Request) {
   if (!identity || !identity.emailVerified) return back('error');
   if (!emailDomainAllowed(identity.email)) return back('domain');
 
-  // Same-origin return path carried after the nonce (validated in the start route).
+  // Same-origin return path carried after the nonce. Re-validated here (never
+  // trust the round-tripped value) with the shared guard — PRJ-1032.1.
+  const { safeReturnPath } = await import('@/lib/safe-path');
   const from = decodeURIComponent(state.split('|')[1] || '');
-  const dest = from.startsWith('/') && !from.startsWith('//') ? from : '/admin';
+  const dest = safeReturnPath(from, '/admin');
 
   const { resolveOrProvisionSsoUser } = await import('@/lib/google-sso-provision');
   const result = await resolveOrProvisionSsoUser(identity);

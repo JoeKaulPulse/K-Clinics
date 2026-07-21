@@ -36,7 +36,9 @@ export async function POST(req: Request) {
       credential: { id: cred.credentialId, publicKey: new Uint8Array(cred.publicKey), counter: cred.counter, transports: cred.transports as AuthenticatorTransport[] },
     });
   } catch (e) {
-    return NextResponse.json({ ok: false, error: (e as Error)?.message || 'Could not verify passkey.' }, { status: 400 });
+    // PRJ-1032.5: don't return the raw simplewebauthn error to the client.
+    console.error('[academy] passkey auth-verify failed:', (e as Error)?.message);
+    return NextResponse.json({ ok: false, error: 'Could not verify passkey. Please try again.' }, { status: 400 });
   }
   if (!verification.verified) return NextResponse.json({ ok: false, error: 'Passkey not verified.' }, { status: 400 });
 

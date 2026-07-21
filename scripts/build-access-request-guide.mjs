@@ -54,7 +54,7 @@ const toc = [];
 const bg = (c = C.porcelain) => { doc.save(); doc.rect(0, 0, W, H).fill(c); doc.restore(); };
 function header() {
   doc.save();
-  doc.font('semi').fontSize(7).fillColor(C.gold).text('KCLINICS', M, 46, { characterSpacing: 2.5 });
+  kmark(M, 45, 15, C.gold); // PRJ-1032.33 — brand rule: the K mark, not the name typeset as text
   doc.font('body').fontSize(7.5).fillColor(C.stone).text(currentSection, M, 46, { width: CW, align: 'right' });
   doc.lineWidth(0.5).strokeColor(C.sand).moveTo(M, 64).lineTo(W - M, 64).stroke();
   doc.restore();

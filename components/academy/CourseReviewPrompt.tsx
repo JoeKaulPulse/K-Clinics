@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { ReviewView } from '@/lib/lms';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 // BLD-529: trainee leaves / edits a star review for the course. Submissions are
 // held for staff moderation before appearing on the public course page.
@@ -42,6 +43,8 @@ export function CourseReviewPrompt({ courseId, courseTitle, myReview }: { course
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState('');
+  // PRJ-1032.24: dialog semantics + focus trap / Escape / restore.
+  const { panelRef, onKeyDown } = useDialogBehaviours<HTMLDivElement>(() => setOpen(false), open);
 
   async function submit() {
     if (!rating) { setErr('Please choose a star rating.'); return; }
@@ -61,8 +64,8 @@ export function CourseReviewPrompt({ courseId, courseTitle, myReview }: { course
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/40 p-4" onClick={() => setOpen(false)}>
-          <div className="w-full max-w-md rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/40 p-4" onClick={() => setOpen(false)} onKeyDown={onKeyDown}>
+          <div ref={panelRef} role="dialog" aria-modal="true" aria-label={`Review ${courseTitle}`} tabIndex={-1} className="w-full max-w-md rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 shadow-xl outline-none" onClick={(e) => e.stopPropagation()}>
             {done ? (
               <div className="text-center">
                 <p className="font-[family-name:var(--font-display)] text-2xl">Thank you</p>

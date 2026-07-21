@@ -29,12 +29,29 @@ export function RegisterForm() {
       action={(fd) => start(async () => { await registerAndCheckIn(fd); })}
       className="space-y-3"
     >
-      <input name="name" required maxLength={120} placeholder="Full name *" className={field} autoComplete="name" />
-      <input name="company" maxLength={120} placeholder="Company (optional)" className={field} autoComplete="organization" />
-      <input name="tradeType" maxLength={120} placeholder="Trade — e.g. electrician (optional)" className={field} />
+      {/* PRJ-1032.26: a persistent visible <label> per field (placeholders alone
+          disappear on input and are not a robust accessible name). */}
+      <label className="block text-sm">
+        <span className="mb-1 block font-medium text-[var(--color-ink)]">Full name <span aria-hidden="true">*</span><span className="sr-only">(required)</span></span>
+        <input name="name" required maxLength={120} placeholder="Full name" className={field} autoComplete="name" />
+      </label>
+      <label className="block text-sm">
+        <span className="mb-1 block font-medium text-[var(--color-ink)]">Company <span className="text-[var(--color-stone)]">(optional)</span></span>
+        <input name="company" maxLength={120} placeholder="Company" className={field} autoComplete="organization" />
+      </label>
+      <label className="block text-sm">
+        <span className="mb-1 block font-medium text-[var(--color-ink)]">Trade <span className="text-[var(--color-stone)]">(optional)</span></span>
+        <input name="tradeType" maxLength={120} placeholder="e.g. electrician" className={field} />
+      </label>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <input name="email" type="email" maxLength={120} placeholder="Email (optional)" className={field} autoComplete="email" />
-        <input name="phone" maxLength={120} placeholder="Phone (optional)" className={field} autoComplete="tel" inputMode="tel" />
+        <label className="block text-sm">
+          <span className="mb-1 block font-medium text-[var(--color-ink)]">Email <span className="text-[var(--color-stone)]">(optional)</span></span>
+          <input name="email" type="email" maxLength={120} placeholder="Email" className={field} autoComplete="email" />
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block font-medium text-[var(--color-ink)]">Phone <span className="text-[var(--color-stone)]">(optional)</span></span>
+          <input name="phone" maxLength={120} placeholder="Phone" className={field} autoComplete="tel" inputMode="tel" />
+        </label>
       </div>
       <button
         type="submit"

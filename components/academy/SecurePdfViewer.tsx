@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 // BLD-529: view-only PDF reader. Renders pages to <canvas> with pdf.js — no
 // browser PDF toolbar, so no download/print buttons — and pulls bytes from the
@@ -25,6 +26,8 @@ export function SecurePdfViewer({ lessonId, index, title, onClose }: { lessonId:
   const canvasHost = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState(DEFAULT_ERROR);
+  // PRJ-1032.25: dialog semantics + focus trap / Escape / restore.
+  const { panelRef, onKeyDown } = useDialogBehaviours<HTMLDivElement>(onClose, true);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,7 +73,7 @@ export function SecurePdfViewer({ lessonId, index, title, onClose }: { lessonId:
   }, [lessonId, index]);
 
   return (
-    <div className="fixed inset-0 z-[220] flex flex-col bg-black/85" onContextMenu={(e) => e.preventDefault()}>
+    <div ref={panelRef} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} onKeyDown={onKeyDown} className="fixed inset-0 z-[220] flex flex-col bg-black/85 outline-none" onContextMenu={(e) => e.preventDefault()}>
       <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 text-white">
         <span className="min-w-0 flex-1 truncate text-sm font-medium">{title}</span>
         <span className="hidden shrink-0 text-xs text-white/45 sm:block">View only — downloading and printing are disabled</span>

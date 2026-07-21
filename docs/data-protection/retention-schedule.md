@@ -26,7 +26,8 @@ the owner to set, usually against UK clinical, tax or awarding-body guidance.
 | Before-photos | `BeforePhoto` | Last treatment | As clinical records above **[OWNER TO CONFIRM]** | Clinical documentation |
 | Signed consents | `SignedConsent`, `ConsentRequest` | Treatment date | As clinical records above **[OWNER TO CONFIRM]** | Evidence of informed consent |
 | Allergies / medical flag | `Client.allergies`, `Client.medicalFlag` | Account closure | With the clinical record | Clinical safety |
-| AI consultation findings + images | `AiAnalysis`, `AiAnalysisImage` | Analysis date | **[OWNER TO CONFIRM — short purge window recommended; images are opt-in via `storeImages`]** | Consent |
+| AI consultation findings + images | `AiAnalysis`, `AiAnalysisImage` | Analysis date | Encrypted facial images (`AiAnalysisImage`) auto-deleted after **90 days** (daily cron); the non-image plan/findings kept for the client's own history **[OWNER TO CONFIRM the findings window]** | Consent |
+| Incident / accident reports | `Incident` | Incident date | **Retained on an H&S / RIDDOR legal-obligation basis** (RIDDOR reports kept ≥3 years; general accident records often longer). On erasure the row is kept but the encrypted injury/description narrative is redacted and free-text location nulled — only the anonymised safety fact (category, severity, RIDDOR flag, date) remains. **[OWNER TO CONFIRM the retention period]** | Legal obligation (Art. 17(3)(b)), H&S |
 
 ## Client / contact data
 
